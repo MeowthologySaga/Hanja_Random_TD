@@ -1,0 +1,139 @@
+{
+  "package": "hanzi_game_prefill_v3",
+  "purpose": "Codex 토큰 절약용 지역/오행/진화트리 초벌 데이터",
+  "regions": {
+    "KR": {
+      "title": "한국 · 천자문 1000",
+      "scope": 1000,
+      "glyphStandard": "한국 정자체 / 천자문 원문 자형",
+      "wuxingTarget": {
+        "木": 200,
+        "火": 200,
+        "土": 200,
+        "金": 200,
+        "水": 200
+      },
+      "stats": {
+        "characters": 1000,
+        "stageCounts": {
+          "1": 860,
+          "2": 122,
+          "3": 18
+        },
+        "wuxingCounts": {
+          "木": 200,
+          "火": 200,
+          "土": 200,
+          "金": 200,
+          "水": 200
+        },
+        "craftable": 140,
+        "directAcquire": 860,
+        "needsReview": 800,
+        "reviewRate": 0.8,
+        "wuxingNeutralBalance": 318,
+        "wuxingBalanceOverride": 0
+      },
+      "devFile": "data/KR_1000.prelim.dev.json",
+      "runtimeFile": "data/KR_1000.prelim.runtime.json",
+      "reviewFile": "review/KR_review_queue.csv"
+    },
+    "JP": {
+      "title": "일본 · 상용한자 2136",
+      "scope": 2136,
+      "glyphStandard": "일본 상용한자표 자형(신자체 포함)",
+      "wuxingTarget": {
+        "木": 428,
+        "火": 427,
+        "土": 427,
+        "金": 427,
+        "水": 427
+      },
+      "stats": {
+        "characters": 2136,
+        "stageCounts": {
+          "1": 1644,
+          "2": 369,
+          "3": 93,
+          "4": 29,
+          "5": 1
+        },
+        "wuxingCounts": {
+          "木": 428,
+          "火": 427,
+          "土": 427,
+          "金": 427,
+          "水": 427
+        },
+        "craftable": 492,
+        "directAcquire": 1644,
+        "needsReview": 1544,
+        "reviewRate": 0.7228,
+        "wuxingNeutralBalance": 947,
+        "wuxingBalanceOverride": 0
+      },
+      "devFile": "data/JP_2136.prelim.dev.json",
+      "runtimeFile": "data/JP_2136.prelim.runtime.json",
+      "reviewFile": "review/JP_review_queue.csv"
+    },
+    "CN": {
+      "title": "중국 · 1급 상용한자 3500",
+      "scope": 3500,
+      "glyphStandard": "중국 《通用规范汉字表》 1급 규범자(간체 중심)",
+      "wuxingTarget": {
+        "木": 700,
+        "火": 700,
+        "土": 700,
+        "金": 700,
+        "水": 700
+      },
+      "stats": {
+        "characters": 3500,
+        "stageCounts": {
+          "1": 1593,
+          "2": 1283,
+          "3": 493,
+          "4": 117,
+          "5": 14
+        },
+        "wuxingCounts": {
+          "木": 700,
+          "火": 700,
+          "土": 700,
+          "金": 700,
+          "水": 700
+        },
+        "craftable": 1907,
+        "directAcquire": 1593,
+        "needsReview": 1455,
+        "reviewRate": 0.4157,
+        "wuxingNeutralBalance": 545,
+        "wuxingBalanceOverride": 19
+      },
+      "devFile": "data/CN_3500.prelim.dev.json",
+      "runtimeFile": "data/CN_3500.prelim.runtime.json",
+      "reviewFile": "review/CN_review_queue.csv"
+    }
+  },
+  "criticalRegression": {
+    "CN:刘": {
+      "stage": 2,
+      "parents": [
+        "文",
+        "刀"
+      ]
+    },
+    "CN:浏": {
+      "stage": 3,
+      "parents": [
+        "水",
+        "刘"
+      ],
+      "wuxing": "水"
+    }
+  },
+  "doNotUseAsFinal": [
+    "이전 중국 3500 진화트리 결과(浏=1단이던 버전)",
+    "지역 간 자형을 단순 치환해서 재사용한 레시피"
+  ]
+}

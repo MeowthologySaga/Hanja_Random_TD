@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "id": "hanji-ink-field",
+  "mapMode": "scene_mode",
+  "visualModel": "layered_raster",
+  "runtimeObjectModel": "scene_hooks",
+  "collisionModel": "trigger_zones",
+  "engineTarget": "raw_canvas",
+  "canvas": {
+    "width": 880,
+    "height": 720
+  },
+  "foundation": {
+    "asset": "hanji-paper-base.png",
+    "cameraSpace": "viewport-fixed",
+    "fit": "cover"
+  },
+  "runtimeLayers": [
+    "ink-route",
+    "ink-current",
+    "spawn-seals",
+    "element-formations",
+    "idiom-links",
+    "enemies",
+    "towers",
+    "combat-fx"
+  ],
+  "geometrySource": "src/core/content.ts",
+  "notes": "Only the paper foundation is baked. Route points, spawn hooks, grid cells, actors, selection, and effects remain runtime-controlled."
+}
