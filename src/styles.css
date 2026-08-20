@@ -126,6 +126,45 @@ input:focus-visible {
   background: rgba(12, 20, 32, 0.94);
 }
 
+.hanja-emphasis-control {
+  position: absolute;
+  left: 158px;
+  bottom: 14px;
+  z-index: 8;
+  display: flex;
+  min-height: 48px;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 11px;
+  color: #aebed2;
+  border: 1px solid rgba(155, 181, 215, 0.25);
+  border-radius: 9px;
+  background: rgba(5, 10, 18, 0.86);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+  cursor: pointer;
+  backdrop-filter: blur(8px);
+}
+
+.hanja-emphasis-control span {
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.hanja-emphasis-control strong {
+  color: #7f90a7;
+  font-size: 13px;
+}
+
+.hanja-emphasis-control.is-on {
+  color: #fff1c6;
+  border-color: rgba(255, 209, 113, 0.5);
+  background: rgba(24, 22, 16, 0.92);
+}
+
+.hanja-emphasis-control.is-on strong {
+  color: #ffd46f;
+}
+
 .stage-topbar {
   position: absolute;
   top: 14px;

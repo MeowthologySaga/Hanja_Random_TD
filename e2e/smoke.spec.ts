@@ -1,4 +1,19 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
+
+async function canvasPositionForWorld(page: Page, worldX: number, worldY: number): Promise<{ x: number; y: number }> {
+  const canvas = page.locator("#battle-canvas");
+  const box = await canvas.boundingBox();
+  const camera = await canvas.evaluate((element) => ({
+    zoom: Number(element.dataset.mapZoom),
+    offsetX: Number(element.dataset.mapOffsetX),
+    offsetY: Number(element.dataset.mapOffsetY)
+  }));
+  if (!box) throw new Error("battle canvas is not visible");
+  return {
+    x: (camera.offsetX + worldX * camera.zoom) * box.width / 880,
+    y: (camera.offsetY + worldY * camera.zoom) * box.height / 720
+  };
+}
 
 test("renders a viewport-fixed hanji field and moving ink current at minimum zoom", async ({ page }) => {
   await page.goto("/?seed=E2E-HANJI-INK");
@@ -13,6 +28,8 @@ test("renders a viewport-fixed hanji field and moving ink current at minimum zoo
   await page.locator("#battle-canvas").hover({ position: { x: 440, y: 360 } });
   await page.mouse.wheel(0, 5000);
   await expect(page.locator("#battle-canvas")).toHaveAttribute("data-map-zoom", "0.72");
+  await expect(page.locator("#battle-canvas")).toHaveAttribute("data-map-zoom-display", "28");
+  await expect(page.locator("#map-zoom-value")).toHaveText("28%");
   const backdrop = await page.locator("#battle-canvas").evaluate((canvasElement) => {
     const style = getComputedStyle(canvasElement);
     return { color: style.backgroundColor, image: style.backgroundImage };
@@ -85,8 +102,11 @@ test("starts a KR run and exposes the finished core loop at 1280x720", async ({ 
   await expect(page.locator("#gold-value")).toHaveText("64");
   await expect(page.locator("#interest-preview")).toHaveText("이자 +6");
   await expect(page.locator(".game-shell")).toHaveAttribute("data-game-speed", "1");
-  await expect(page.locator("#map-zoom-value")).toHaveText("115%");
-  await expect(page.locator("#battle-canvas")).toHaveAttribute("data-map-zoom", "1.15");
+  await expect(page.locator("#map-zoom-value")).toHaveText("100%");
+  await expect(page.locator("#battle-canvas")).toHaveAttribute("data-map-zoom", "2.60");
+  await expect(page.locator("#battle-canvas")).toHaveAttribute("data-map-zoom-display", "100");
+  await expect(page.locator("#battle-canvas")).toHaveAttribute("data-label-density", "reading");
+  await expect(page.locator("#hanja-emphasis-toggle")).toHaveAttribute("aria-pressed", "true");
   await page.locator("#speed-button").click();
   await expect(page.locator("#speed-button")).toHaveText("2×");
   await page.locator("#speed-button").click();
@@ -109,15 +129,23 @@ test("starts a KR run and exposes the finished core loop at 1280x720", async ({ 
   await expect(page.locator("#goal-reading")).toContainText("서로 상");
   await expect.poll(() => page.evaluate(() => performance.getEntriesByType("resource").some((entry) => entry.name.includes("/assets/jaryeongs/")))).toBe(true);
 
-  const selectedBeforeZoom = await page.locator("#selected-card .selected-glyph").textContent();
   await page.locator("#battle-canvas").hover({ position: { x: 516, y: 54 } });
   await page.mouse.wheel(0, -500);
-  await expect.poll(async () => Number(await page.locator("#battle-canvas").getAttribute("data-map-zoom"))).toBeGreaterThan(1.15);
-  await expect(page.locator("#map-zoom-value")).not.toHaveText("115%");
-  await page.locator("#battle-canvas").click({ position: { x: 516, y: 54 } });
-  await expect(page.locator("#selected-card .selected-glyph")).toHaveText(selectedBeforeZoom ?? "");
+  await expect.poll(async () => Number(await page.locator("#battle-canvas").getAttribute("data-map-zoom"))).toBeGreaterThan(2.6);
+  await expect(page.locator("#map-zoom-value")).not.toHaveText("100%");
   const canvasBox = await page.locator("#battle-canvas").boundingBox();
   expect(canvasBox).not.toBeNull();
+
+  await page.locator("#map-zoom-reset").click();
+  const offsetBeforeLeftPan = Number(await page.locator("#battle-canvas").getAttribute("data-map-offset-x"));
+  await page.mouse.move((canvasBox?.x ?? 0) + 440, (canvasBox?.y ?? 0) + 360);
+  await page.mouse.down({ button: "left" });
+  await page.mouse.move((canvasBox?.x ?? 0) + 500, (canvasBox?.y ?? 0) + 400, { steps: 3 });
+  await expect(page.locator("#battle-canvas")).toHaveClass(/is-panning/u);
+  await page.mouse.up({ button: "left" });
+  await expect(page.locator("#battle-canvas")).not.toHaveClass(/is-panning/u);
+  await expect.poll(async () => Number(await page.locator("#battle-canvas").getAttribute("data-map-offset-x"))).not.toBe(offsetBeforeLeftPan);
+
   const offsetBeforePan = Number(await page.locator("#battle-canvas").getAttribute("data-map-offset-x"));
   await page.mouse.move((canvasBox?.x ?? 0) + 516, (canvasBox?.y ?? 0) + 54);
   await page.mouse.down({ button: "middle" });
@@ -127,18 +155,18 @@ test("starts a KR run and exposes the finished core loop at 1280x720", async ({ 
   await expect(page.locator("#battle-canvas")).not.toHaveClass(/is-panning/u);
   await expect.poll(async () => Number(await page.locator("#battle-canvas").getAttribute("data-map-offset-x"))).not.toBe(offsetBeforePan);
   await page.locator("#map-zoom-reset").click();
-  await expect(page.locator("#map-zoom-value")).toHaveText("115%");
+  await expect(page.locator("#map-zoom-value")).toHaveText("100%");
   await page.locator("#battle-canvas").hover({ position: { x: 440, y: 360 } });
   await page.mouse.wheel(0, -5_000);
-  await expect.poll(async () => Number(await page.locator("#battle-canvas").getAttribute("data-map-zoom"))).toBe(2.6);
-  await expect(page.locator("#map-zoom-value")).toHaveText("260%");
+  await expect.poll(async () => Number(await page.locator("#battle-canvas").getAttribute("data-map-zoom"))).toBe(5.2);
+  await expect(page.locator("#map-zoom-value")).toHaveText("200%");
   await page.locator("#map-zoom-reset").click();
-  await expect(page.locator("#map-zoom-value")).toHaveText("115%");
+  await expect(page.locator("#map-zoom-value")).toHaveText("100%");
   await page.locator("#battle-canvas").hover({ position: { x: 440, y: 360 } });
   await page.mouse.wheel(0, 500);
-  await expect.poll(async () => Number(await page.locator("#battle-canvas").getAttribute("data-map-zoom"))).toBeLessThan(1);
+  await expect.poll(async () => Number(await page.locator("#battle-canvas").getAttribute("data-map-zoom"))).toBeLessThan(2.6);
   await page.locator("#map-zoom-reset").click();
-  await expect(page.locator("#map-zoom-value")).toHaveText("115%");
+  await expect(page.locator("#map-zoom-value")).toHaveText("100%");
   await page.screenshot({ path: "artifacts/jaryeong-mode-1280x720.png", fullPage: true });
 
   await expect(page.getByTestId("auto-arrange-button")).toBeEnabled();
@@ -231,11 +259,12 @@ test("stores manual summons in the run inventory, deploys them, and returns boar
   await inventoryCard.click();
   await expect(inventoryCard).toHaveClass(/is-selected/u);
 
-  await page.locator("#battle-canvas").click({ position: { x: 374, y: 94 } });
+  const deploymentCell = await canvasPositionForWorld(page, 374, 294);
+  await page.locator("#battle-canvas").click({ position: deploymentCell });
   await expect(page.locator("#tower-count-value")).toHaveText("1 / 80");
   await expect(page.locator("#run-inventory-count")).toHaveText("0");
 
-  await page.locator("#battle-canvas").click({ position: { x: 374, y: 94 } });
+  await page.locator("#battle-canvas").click({ position: deploymentCell });
   await expect(page.getByTestId("store-tower")).toBeVisible();
   await page.getByTestId("store-tower").click();
   await expect(page.locator("#tower-count-value")).toHaveText("0 / 80");
@@ -257,7 +286,8 @@ test("shows synthesis branches, highlights board materials, protects locked Jary
 
   let readySourceFound = false;
   for (const x of [374, 422, 470, 518]) {
-    await page.locator("#battle-canvas").click({ position: { x, y: 94 } });
+    const towerPosition = await canvasPositionForWorld(page, x, 94);
+    await page.locator("#battle-canvas").click({ position: towerPosition });
     readySourceFound = await page.getByTestId("derivative-composition").evaluate((element) => element.classList.contains("has-ready"));
     if (readySourceFound) break;
   }

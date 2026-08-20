@@ -86,7 +86,10 @@ app.innerHTML = `
     <section class="battle-stage" aria-label="한자 랜덤 타워 디펜스 전장">
       <canvas id="battle-canvas" width="${WORLD_WIDTH}" height="${WORLD_HEIGHT}"></canvas>
       <button id="map-zoom-reset" class="map-zoom-control" type="button" title="지도 확대/축소 초기화">
-        <span>지도</span><strong id="map-zoom-value">115%</strong><small>휠 확대·축소</small>
+        <span>지도</span><strong id="map-zoom-value">100%</strong><small>휠 확대·축소</small>
+      </button>
+      <button id="hanja-emphasis-toggle" class="hanja-emphasis-control is-on" type="button" aria-pressed="true" title="전장 한자 표찰 강조 전환">
+        <span>한자 강조</span><strong>ON</strong>
       </button>
       <div class="stage-topbar" aria-live="polite">
         <div class="stage-chip"><span>웨이브</span><strong id="stage-wave">0 / 20</strong></div>
@@ -250,7 +253,7 @@ app.innerHTML = `
       <section id="synergy-strip" class="synergy-strip" aria-label="오행 상생"></section>
 
       <footer class="panel-footer">
-        <span class="canvas-tip">클릭: 선택·이동 · 끌기: 교환 · 휠: 확대 · 휠 클릭 드래그: 패닝 · 성어 자동 판정</span>
+        <span class="canvas-tip">클릭: 선택·이동 · 자령 끌기: 교환 · 빈 곳 좌클릭/휠 클릭 드래그: 패닝 · 휠: 확대 · 성어 자동 판정</span>
         <span><b id="message-value">지역과 목표 한자를 선택하세요.</b> · 시드 <b id="seed-value">-</b></span>
       </footer>
     </aside>
@@ -306,7 +309,7 @@ app.innerHTML = `
           <li><b>보유 자령</b><span>소환·합성으로 획득한 자령은 지역별 횟수와 함께 브라우저에 자동 저장됩니다. 도감의 보유 자령 탭에서 확인합니다.</span></li>
           <li><b>런 인벤토리</b><span>동일한 한자는 한 스택으로 묶입니다. 인벤토리 자령을 고른 뒤 빈 칸을 누르면 배치하고, 찬 칸을 누르면 기존 자령을 인벤토리로 보내며 즉시 교체합니다.</span></li>
           <li><b>정리와 농축</b><span>판매는 엽전을, 분해는 해당 오행 문기를 줍니다. 동일 한자 중복 또는 오행 문기로 최대 濃 3까지 연속·심화 농축할 수 있습니다. 자동 정리는 잠금·유일 보유·성어·합성·오행진 임계치를 보호합니다.</span></li>
-          <li><b>지도 배율</b><span>기본 115%이며 휠 스크롤로 72%~260% 확대·축소합니다. 휠 버튼을 누른 채 드래그하면 확대된 지도를 이동하고, 왼쪽 아래 배율 버튼을 누르면 중앙 정렬된 115%로 돌아옵니다.</span></li>
+          <li><b>지도 배율</b><span>기존 260% 크기를 새 100% 기준으로 사용합니다. 휠로 약 28%~200% 확대·축소하고, 빈 칸·길에서 좌클릭 드래그하거나 휠 버튼을 누른 채 드래그하면 지도를 이동합니다. 왼쪽 아래 배율 버튼은 중앙 정렬된 100%로 돌아갑니다.</span></li>
           <li><b>게임 배속</b><span>오른쪽 위 배속 버튼이나 F키로 1×·2×·3×를 순환합니다.</span></li>
           <li><b>게임오버</b><span>적은 경로 끝에서 사라지지 않고 계속 순환합니다. 전장에 ${MAX_ENEMIES}체가 쌓이거나 보스를 제한시간 안에 처치하지 못하면 즉시 실패합니다. 제어 능력은 적을 뒤로 밀지 않고 현재 공격권 안에서 감속·봉쇄합니다.</span></li>
         </ol>
@@ -495,14 +498,24 @@ let towerDragMoved = false;
 let mapPanPointerId: number | null = null;
 let mapPanStartScreen: Point | null = null;
 let mapPanStartOffset: Point | null = null;
+let mapPanButton: 0 | 1 | null = null;
+let mapPanMoved = false;
+let mapPanClickCell = -1;
+let hoveredTowerId: number | null = null;
+let hanjaEmphasis = true;
 const MIN_MAP_ZOOM = 0.72;
-const DEFAULT_MAP_ZOOM = 1.15;
-const MAX_MAP_ZOOM = 2.6;
+const BASE_MAP_ZOOM = 2.6;
+const DEFAULT_MAP_ZOOM = BASE_MAP_ZOOM;
+const MAX_MAP_ZOOM = BASE_MAP_ZOOM * 2;
+const DEFAULT_MAP_FOCUS: Point = { x: WORLD_WIDTH / 2, y: WORLD_HEIGHT / 2 };
+function defaultMapOffset(): Point {
+  return {
+    x: WORLD_WIDTH / 2 - DEFAULT_MAP_FOCUS.x * DEFAULT_MAP_ZOOM,
+    y: WORLD_HEIGHT / 2 - DEFAULT_MAP_FOCUS.y * DEFAULT_MAP_ZOOM
+  };
+}
 let mapZoom = DEFAULT_MAP_ZOOM;
-let mapOffset: Point = {
-  x: (WORLD_WIDTH - WORLD_WIDTH * DEFAULT_MAP_ZOOM) / 2,
-  y: (WORLD_HEIGHT - WORLD_HEIGHT * DEFAULT_MAP_ZOOM) / 2
-};
+let mapOffset: Point = defaultMapOffset();
 type GameSpeed = 1 | 2 | 3;
 let gameSpeed: GameSpeed = 1;
 const hanjiPaperUrl = `${import.meta.env.BASE_URL}assets/map/hanji-ink-field/hanji-paper-base.png`;
@@ -1532,6 +1545,7 @@ function drawWorld(delta: number): void {
   for (const tower of [...state.towers].sort((a, b) => a.cell - b.cell)) drawTower(tower);
   updateAndDrawFx(delta);
   context.restore();
+  drawHoveredTowerCard();
 }
 
 function drawPaperBackdrop(): void {
@@ -1797,17 +1811,22 @@ function drawCompositionMaterialLinks(): void {
 
 function drawSelection(): void {
   const selected = engine.selectedTower();
-  if (!selected || engine.selectedTowerIsStored()) return;
-  const cell = BOARD_CELLS[selected.cell] as Point;
-  const definition = definitionForTower(engine.catalog, selected.definitionId);
-  const style = ELEMENT_STYLES[selected.wuxing];
+  if (selected && !engine.selectedTowerIsStored()) drawTowerRange(selected, false);
+  const hovered = hoveredTowerId === null ? undefined : engine.state.towers.find((tower) => tower.id === hoveredTowerId);
+  if (hovered && hovered.id !== selected?.id) drawTowerRange(hovered, true);
+}
+
+function drawTowerRange(tower: Tower, hovered: boolean): void {
+  const cell = BOARD_CELLS[tower.cell] as Point;
+  const definition = definitionForTower(engine.catalog, tower.definitionId);
+  const style = ELEMENT_STYLES[tower.wuxing];
   context.save();
-  context.strokeStyle = style.color + "40";
-  context.fillStyle = style.color + "09";
-  context.lineWidth = 1.5;
-  context.setLineDash([7, 7]);
+  context.strokeStyle = style.color + (hovered ? "8f" : "40");
+  context.fillStyle = style.color + (hovered ? "10" : "09");
+  context.lineWidth = hovered ? 2.2 : 1.5;
+  context.setLineDash(hovered ? [10, 6] : [7, 7]);
   context.beginPath();
-  context.arc(cell.x, cell.y, definition.combat.range + (selected.stage - 1) * 7 + engine.idiomBonus("range") + (selected.concentration ?? 0) * 4 + engine.combinedUpgradeBonus(selected.wuxing, "range"), 0, Math.PI * 2);
+  context.arc(cell.x, cell.y, definition.combat.range + (tower.stage - 1) * 7 + engine.idiomBonus("range") + (tower.concentration ?? 0) * 4 + engine.combinedUpgradeBonus(tower.wuxing, "range"), 0, Math.PI * 2);
   context.fill();
   context.stroke();
   context.restore();
@@ -1867,6 +1886,52 @@ function drawStudyTower(tower: Tower, cell: Point, definition: HanziDefinition, 
   context.fillText(learningInfo(engine.state.region, tower.char).short, cell.x, cell.y + 24, 40);
 }
 
+function drawSpiritTowerLabel(tower: Tower, cell: Point, selected: boolean, material: boolean): void {
+  const style = ELEMENT_STYLES[tower.wuxing];
+  const learning = learningInfo(engine.state.region, tower.char);
+  const glyphOnly = mapZoom / BASE_MAP_ZOOM < 0.6;
+  const emphasized = hanjaEmphasis;
+  const width = glyphOnly ? 36 : emphasized ? 56 : 44;
+  const height = glyphOnly ? 36 : emphasized ? 54 : 22;
+  const top = glyphOnly ? -52 : emphasized ? -70 : -39;
+
+  context.save();
+  context.translate(cell.x, cell.y);
+  // Counter-scale the label so Hanja stays readable while the map zooms and pans.
+  context.scale(1 / mapZoom, 1 / mapZoom);
+  context.fillStyle = emphasized ? "rgba(4, 9, 16, 0.96)" : "rgba(4, 10, 18, 0.92)";
+  context.strokeStyle = selected || material ? "#fff1bf" : style.color;
+  context.lineWidth = selected || material ? 2.4 : emphasized ? 1.7 : 1.25;
+  context.shadowColor = selected || material ? "rgba(255, 231, 164, 0.55)" : "rgba(0, 0, 0, 0.4)";
+  context.shadowBlur = selected || material ? 12 : 6;
+  context.beginPath();
+  context.roundRect(-width / 2, top, width, height, emphasized ? 8 : 5);
+  context.fill();
+  context.stroke();
+  context.shadowBlur = 0;
+  context.textAlign = "center";
+  context.textBaseline = "middle";
+  context.fillStyle = "#fff8e8";
+  context.font = `900 ${glyphOnly ? 26 : emphasized ? 28 : 17}px "Malgun Gothic", "Noto Sans CJK KR", serif`;
+  context.fillText(tower.char, !glyphOnly && !emphasized ? -13 : 0, top + (glyphOnly ? 19 : emphasized ? 19 : 11), emphasized || glyphOnly ? width - 8 : 16);
+  if (!glyphOnly && emphasized) {
+    context.strokeStyle = "rgba(225, 236, 248, 0.16)";
+    context.lineWidth = 1;
+    context.beginPath();
+    context.moveTo(-width / 2 + 6, top + 36);
+    context.lineTo(width / 2 - 6, top + 36);
+    context.stroke();
+    context.fillStyle = "#f1e5c8";
+    context.font = '900 13px "Malgun Gothic", sans-serif';
+    context.fillText(learning.short, 0, top + 46, width - 7);
+  } else if (!glyphOnly) {
+    context.fillStyle = "#f2e7cc";
+    context.font = '900 8px "Malgun Gothic", sans-serif';
+    context.fillText(learning.short, 12, top + 12, 24);
+  }
+  context.restore();
+}
+
 function drawSpiritTower(tower: Tower, cell: Point, definition: HanziDefinition, selected: boolean, material: boolean): void {
   const abilities = definition.combat.abilities;
   const style = ELEMENT_STYLES[tower.wuxing];
@@ -1921,25 +1986,7 @@ function drawSpiritTower(tower: Tower, cell: Point, definition: HanziDefinition,
     context.shadowBlur = 0;
   }
 
-  const labelX = cell.x - 22;
-  const labelY = cell.y - 24;
-  context.fillStyle = "rgba(4, 10, 18, 0.94)";
-  context.strokeStyle = selected || material ? "#fff1bf" : style.color;
-  context.lineWidth = selected || material ? 2 : 1.25;
-  context.beginPath();
-  context.roundRect(labelX, labelY, 44, 16, 5);
-  context.fill();
-  context.stroke();
-  context.fillStyle = "rgba(221, 232, 246, 0.22)";
-  context.fillRect(cell.x - 6, labelY + 3, 1, 10);
-  context.fillStyle = "#fff8e8";
-  context.textAlign = "center";
-  context.textBaseline = "middle";
-  context.font = '900 13px "Malgun Gothic", "Noto Sans CJK KR", serif';
-  context.fillText(tower.char, cell.x - 14, labelY + 9);
-  context.fillStyle = "#f2e7cc";
-  context.font = '900 7.4px "Malgun Gothic", sans-serif';
-  context.fillText(learningInfo(engine.state.region, tower.char).short, cell.x + 8, labelY + 9.5, 28);
+  drawSpiritTowerLabel(tower, cell, selected, material);
 }
 
 function drawTowerAbilityPopup(tower: Tower, cell: Point): void {
@@ -2017,6 +2064,71 @@ function drawTower(tower: Tower): void {
     context.fillText("鎖", lockX, lockY + 2);
   }
   drawTowerAbilityPopup(tower, cell);
+  context.restore();
+}
+
+function drawHoveredTowerCard(): void {
+  const tower = hoveredTowerId === null ? undefined : engine.state.towers.find((candidate) => candidate.id === hoveredTowerId);
+  if (!tower || mapPanPointerId !== null || towerDragMoved) return;
+  const cell = BOARD_CELLS[tower.cell] as Point;
+  const point = { x: mapOffset.x + cell.x * mapZoom, y: mapOffset.y + cell.y * mapZoom };
+  if (point.x < -24 || point.x > WORLD_WIDTH + 24 || point.y < -24 || point.y > WORLD_HEIGHT + 24) return;
+  const definition = definitionForTower(engine.catalog, tower.definitionId);
+  const style = ELEMENT_STYLES[tower.wuxing];
+  const learning = learningInfo(engine.state.region, tower.char);
+  const width = 178;
+  const height = 112;
+  const x = point.x + 36 + width > WORLD_WIDTH - 10 ? point.x - width - 36 : point.x + 36;
+  const y = Math.min(WORLD_HEIGHT - height - 18, Math.max(72, point.y - height / 2));
+  const anchorX = x > point.x ? x : x + width;
+  const anchorY = Math.min(y + height - 18, Math.max(y + 18, point.y));
+
+  context.save();
+  context.strokeStyle = style.color + "bb";
+  context.lineWidth = 1.5;
+  context.beginPath();
+  context.moveTo(point.x, point.y - 14);
+  context.lineTo(anchorX, anchorY);
+  context.stroke();
+  context.fillStyle = "rgba(4, 10, 18, 0.97)";
+  context.strokeStyle = style.color;
+  context.lineWidth = 2;
+  context.shadowColor = "rgba(0, 0, 0, 0.55)";
+  context.shadowBlur = 18;
+  context.beginPath();
+  context.roundRect(x, y, width, height, 12);
+  context.fill();
+  context.stroke();
+  context.shadowBlur = 0;
+
+  context.fillStyle = style.color + "24";
+  context.beginPath();
+  context.roundRect(x + 9, y + 10, 54, 72, 9);
+  context.fill();
+  context.strokeStyle = style.color + "88";
+  context.lineWidth = 1;
+  context.stroke();
+  context.fillStyle = "#fff9e8";
+  context.textAlign = "center";
+  context.textBaseline = "middle";
+  context.font = '900 38px "Malgun Gothic", "Noto Sans CJK KR", serif';
+  context.fillText(tower.char, x + 36, y + 46, 46);
+
+  context.textAlign = "left";
+  context.fillStyle = "#f7edcf";
+  context.font = '900 16px "Malgun Gothic", sans-serif';
+  context.fillText(learning.short, x + 72, y + 26, width - 82);
+  context.fillStyle = style.color;
+  context.font = '900 12px "Malgun Gothic", sans-serif';
+  context.fillText(`${style.name}행 · ${ROLE_LABELS[tower.combatRole]}`, x + 72, y + 48, width - 82);
+  context.fillStyle = "#b9c8d9";
+  context.font = '800 11px "Malgun Gothic", sans-serif';
+  context.fillText(definition.combat.effectLabel, x + 72, y + 69, width - 82);
+  context.fillStyle = "rgba(218, 229, 241, 0.16)";
+  context.fillRect(x + 10, y + 90, width - 20, 1);
+  context.fillStyle = "#8ea1b8";
+  context.font = '800 10px "Malgun Gothic", sans-serif';
+  context.fillText("클릭: 선택 · 끌기: 교환", x + 12, y + 102, width - 24);
   context.restore();
 }
 
@@ -2237,18 +2349,19 @@ function constrainMapCamera(): void {
 }
 
 function syncMapZoomControl(): void {
-  must<HTMLElement>("#map-zoom-value").textContent = `${Math.round(mapZoom * 100)}%`;
+  const displayZoom = Math.round(mapZoom / BASE_MAP_ZOOM * 100);
+  must<HTMLElement>("#map-zoom-value").textContent = `${displayZoom}%`;
   canvas.dataset.mapZoom = mapZoom.toFixed(2);
+  canvas.dataset.mapZoomDisplay = String(displayZoom);
   canvas.dataset.mapOffsetX = mapOffset.x.toFixed(1);
   canvas.dataset.mapOffsetY = mapOffset.y.toFixed(1);
+  canvas.dataset.labelDensity = mapZoom / BASE_MAP_ZOOM < 0.6 ? "glyph" : "reading";
+  canvas.dataset.hanjaEmphasis = String(hanjaEmphasis);
 }
 
 function resetMapCamera(): void {
   mapZoom = DEFAULT_MAP_ZOOM;
-  mapOffset = {
-    x: (WORLD_WIDTH - WORLD_WIDTH * mapZoom) / 2,
-    y: (WORLD_HEIGHT - WORLD_HEIGHT * mapZoom) / 2
-  };
+  mapOffset = defaultMapOffset();
   constrainMapCamera();
   syncMapZoomControl();
 }
@@ -2267,6 +2380,25 @@ function setMapZoom(nextZoom: number, anchor: Point = { x: WORLD_WIDTH / 2, y: W
   syncMapZoomControl();
 }
 
+function focusMapOnSelectedTower(): void {
+  const tower = engine.selectedTower();
+  const cell = tower && tower.cell >= 0 ? BOARD_CELLS[tower.cell] : undefined;
+  if (!cell) return;
+  mapOffset = {
+    x: WORLD_WIDTH / 2 - cell.x * mapZoom,
+    y: WORLD_HEIGHT / 2 - cell.y * mapZoom
+  };
+  constrainMapCamera();
+  syncMapZoomControl();
+}
+
+function summonAndFocus(amount = 1): void {
+  sound.unlock();
+  const result = amount === 1 ? engine.summon() : engine.summonMany(amount);
+  handleAction(result);
+  if (result.ok) focusMapOnSelectedTower();
+}
+
 function setGameSpeed(speed: GameSpeed): void {
   gameSpeed = speed;
   const button = must<HTMLButtonElement>("#speed-button");
@@ -2280,8 +2412,33 @@ function cycleGameSpeed(): void {
   setGameSpeed(gameSpeed === 1 ? 2 : gameSpeed === 2 ? 3 : 1);
 }
 
+function toggleHanjaEmphasis(): void {
+  hanjaEmphasis = !hanjaEmphasis;
+  const button = must<HTMLButtonElement>("#hanja-emphasis-toggle");
+  button.classList.toggle("is-on", hanjaEmphasis);
+  button.setAttribute("aria-pressed", String(hanjaEmphasis));
+  must<HTMLElement>("#hanja-emphasis-toggle strong").textContent = hanjaEmphasis ? "ON" : "OFF";
+  syncMapZoomControl();
+  showToast(hanjaEmphasis ? "한자 강조 ON · 큰 한자와 훈독을 고정 크기로 표시" : "한자 강조 OFF · 자령 중심의 간결한 표찰");
+}
+
 function cellAtPoint(point: Point): number {
   return BOARD_CELLS.findIndex((candidate) => Math.hypot(candidate.x - point.x, candidate.y - point.y) <= 21);
+}
+
+function beginMapPan(event: PointerEvent, button: 0 | 1, clickCell = -1): void {
+  mapPanPointerId = event.pointerId;
+  mapPanStartScreen = canvasScreenPoint(event);
+  mapPanStartOffset = { ...mapOffset };
+  mapPanButton = button;
+  mapPanMoved = button === 1;
+  mapPanClickCell = clickCell;
+  if (button === 1) canvas.classList.add("is-panning");
+  try {
+    canvas.setPointerCapture(event.pointerId);
+  } catch {
+    // Panning still works while the pointer remains over the canvas.
+  }
 }
 
 canvas.addEventListener("pointerdown", (event) => {
@@ -2289,15 +2446,7 @@ canvas.addEventListener("pointerdown", (event) => {
   if (engine.state.phase === "title" || engine.state.phase === "victory" || engine.state.phase === "defeat") return;
   if (event.button === 1) {
     event.preventDefault();
-    mapPanPointerId = event.pointerId;
-    mapPanStartScreen = canvasScreenPoint(event);
-    mapPanStartOffset = { ...mapOffset };
-    canvas.classList.add("is-panning");
-    try {
-      canvas.setPointerCapture(event.pointerId);
-    } catch {
-      // Panning still works while the pointer remains over the canvas.
-    }
+    beginMapPan(event, 1);
     return;
   }
   if (event.button !== 0) return;
@@ -2320,19 +2469,22 @@ canvas.addEventListener("pointerdown", (event) => {
     evolutionRenderKey = "";
     selectedRenderKey = "";
     syncPanel();
-  } else if (cell < 0) {
-    engine.selectTower(null);
-    evolutionRenderKey = "";
-    selectedRenderKey = "";
-    syncPanel();
   } else {
-    handleAction(engine.moveSelectedToCell(cell));
+    // Empty board space keeps its ordinary click action, but becomes camera
+    // panning once the pointer moves beyond the drag threshold.
+    beginMapPan(event, 0, cell);
   }
 });
 
 canvas.addEventListener("pointermove", (event) => {
   if (event.pointerId === mapPanPointerId && mapPanStartScreen && mapPanStartOffset) {
     const point = canvasScreenPoint(event);
+    const distance = Math.hypot(point.x - mapPanStartScreen.x, point.y - mapPanStartScreen.y);
+    if (!mapPanMoved && distance >= 7) {
+      mapPanMoved = true;
+      canvas.classList.add("is-panning");
+    }
+    if (!mapPanMoved) return;
     mapOffset = {
       x: mapPanStartOffset.x + point.x - mapPanStartScreen.x,
       y: mapPanStartOffset.y + point.y - mapPanStartScreen.y
@@ -2340,6 +2492,9 @@ canvas.addEventListener("pointermove", (event) => {
     constrainMapCamera();
     return;
   }
+  const hoverCell = cellAtPoint(canvasPoint(event));
+  hoveredTowerId = hoverCell >= 0 ? towerAtCell(hoverCell)?.id ?? null : null;
+  canvas.dataset.hoveredTowerId = hoveredTowerId === null ? "" : String(hoveredTowerId);
   if (event.pointerId !== towerDragPointerId || !towerDragStart) return;
   const point = canvasPoint(event);
   if (Math.hypot(point.x - towerDragStart.x, point.y - towerDragStart.y) >= 10) towerDragMoved = true;
@@ -2365,25 +2520,46 @@ function finishTowerDrag(event: PointerEvent, applyMove: boolean): void {
   handleAction(engine.relocateSelectedToCell(targetCell));
 }
 
-function finishMapPan(event: PointerEvent): boolean {
+function finishMapPan(event: PointerEvent, applyClick: boolean): boolean {
   if (event.pointerId !== mapPanPointerId) return false;
   try {
     if (canvas.hasPointerCapture(event.pointerId)) canvas.releasePointerCapture(event.pointerId);
   } catch {
     // The camera remains at the last valid offset if capture was unavailable.
   }
+  const button = mapPanButton;
+  const moved = mapPanMoved;
+  const clickCell = mapPanClickCell;
   mapPanPointerId = null;
   mapPanStartScreen = null;
   mapPanStartOffset = null;
+  mapPanButton = null;
+  mapPanMoved = false;
+  mapPanClickCell = -1;
   canvas.classList.remove("is-panning");
+  if (applyClick && button === 0 && !moved) {
+    if (clickCell < 0) {
+      engine.selectTower(null);
+      evolutionRenderKey = "";
+      selectedRenderKey = "";
+      syncPanel();
+    } else {
+      handleAction(engine.moveSelectedToCell(clickCell));
+    }
+  }
   return true;
 }
 
 canvas.addEventListener("pointerup", (event) => {
-  if (!finishMapPan(event)) finishTowerDrag(event, true);
+  if (!finishMapPan(event, true)) finishTowerDrag(event, true);
+});
+canvas.addEventListener("pointerleave", () => {
+  if (mapPanPointerId !== null || towerDragPointerId !== null) return;
+  hoveredTowerId = null;
+  canvas.dataset.hoveredTowerId = "";
 });
 canvas.addEventListener("pointercancel", (event) => {
-  if (!finishMapPan(event)) finishTowerDrag(event, false);
+  if (!finishMapPan(event, false)) finishTowerDrag(event, false);
 });
 canvas.addEventListener("auxclick", (event) => {
   if (event.button === 1) event.preventDefault();
@@ -2394,6 +2570,7 @@ canvas.addEventListener("wheel", (event) => {
   setMapZoom(mapZoom * Math.exp(-event.deltaY * 0.0012), anchor);
 }, { passive: false });
 must<HTMLButtonElement>("#map-zoom-reset").addEventListener("click", resetMapCamera);
+must<HTMLButtonElement>("#hanja-emphasis-toggle").addEventListener("click", toggleHanjaEmphasis);
 must<HTMLButtonElement>("#speed-button").addEventListener("click", cycleGameSpeed);
 
 document.querySelectorAll<HTMLButtonElement>(".region-option").forEach((button) => {
@@ -2429,8 +2606,8 @@ must<HTMLButtonElement>("#new-seed-button").addEventListener("click", () => star
 document.querySelectorAll<HTMLButtonElement>("[data-summon-intent]").forEach((button) => {
   button.addEventListener("click", () => handleAction(engine.setSummonIntent(button.dataset.summonIntent as SummonIntent)));
 });
-must<HTMLButtonElement>("#summon-button").addEventListener("click", () => { sound.unlock(); handleAction(engine.summon()); });
-must<HTMLButtonElement>("#multi-summon-button").addEventListener("click", () => { sound.unlock(); handleAction(engine.summonMany(10)); });
+must<HTMLButtonElement>("#summon-button").addEventListener("click", () => summonAndFocus());
+must<HTMLButtonElement>("#multi-summon-button").addEventListener("click", () => summonAndFocus(10));
 must<HTMLButtonElement>("#summon-reveal-close").addEventListener("click", hideSummonReveal);
 document.addEventListener("pointerdown", () => {
   if (summonReveal.classList.contains("is-active")) hideSummonReveal();
@@ -2583,8 +2760,8 @@ must<HTMLElement>("#selected-card").addEventListener("click", (event) => {
 
 window.addEventListener("keydown", (event) => {
   if (event.target instanceof HTMLInputElement || helpDialog.open || settingsDialog.open || elementUpgradeDialog.open || codexDialog.open) return;
-  if (event.code === "Digit1") handleAction(engine.summon());
-  else if (event.code === "KeyQ") handleAction(engine.summonMany(10));
+  if (event.code === "Digit1") summonAndFocus();
+  else if (event.code === "KeyQ") summonAndFocus(10);
   else if (event.code === "Digit2") {
     const option = engine.availableEvolutions()[0];
     handleAction(option ? engine.evolve(option.recipeId) : { ok: false, message: "현재 가능한 합성이 없습니다." });
