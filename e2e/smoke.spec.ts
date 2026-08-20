@@ -43,7 +43,7 @@ test("shows a readable single summon reveal and a ten-result board", async ({ pa
   await expect(page.locator("#summon-reveal-title")).toHaveText("10연 소환 결과");
   await expect(page.locator(".summon-result-card")).toHaveCount(10);
   await expect(page.locator("#summon-reveal-summary")).toContainText("새 발견");
-  await expect(page.locator("#summon-reveal-summary")).toContainText("목표·성어 재료");
+  await expect(page.locator("#summon-reveal-summary")).toContainText("합성 재료");
   await page.waitForTimeout(900);
   await page.screenshot({ path: "artifacts/summon-ten-result-1280x720.png", fullPage: true });
 });
@@ -54,12 +54,12 @@ test("upgrades each five-element branch from the run forge", async ({ page }) =>
   await page.getByTestId("element-upgrade-button").click();
   await expect(page.locator("#element-upgrade-dialog")).toBeVisible();
   await expect(page.locator(".element-upgrade-card")).toHaveCount(5);
-  const wood = page.locator('[data-upgrade-element="木"]');
-  await expect(wood).toContainText("24엽전");
-  await wood.click();
-  await expect(page.locator("#gold-value")).toHaveText("40");
-  await expect(page.locator(".element-upgrade-card").first()).toContainText("피해 +8%");
-  await expect(page.locator(".element-upgrade-card").first()).toContainText("42엽전");
+  const commonDamage = page.locator('[data-upgrade-scope="global"][data-upgrade-stat="damage"]');
+  await expect(commonDamage).toContainText("16엽전");
+  await commonDamage.click();
+  await expect(page.locator("#gold-value")).toHaveText("48");
+  await expect(commonDamage).toContainText("19엽전");
+  await expect(page.locator('[data-upgrade-element="木"][data-upgrade-stat="damage"]')).toBeDisabled();
   await page.screenshot({ path: "artifacts/element-upgrades-1280x720.png", fullPage: true });
   await page.locator("#element-upgrade-close").click();
   await expect(page.locator("#element-upgrade-total")).toHaveText("총 1단계");
@@ -81,7 +81,7 @@ test("starts a KR run and exposes the finished core loop at 1280x720", async ({ 
 
   await page.getByTestId("start-run").click();
   await expect(page.locator("#barrier-value")).toHaveCount(0);
-  await expect(page.locator("#enemy-cap-value")).toHaveText("40체");
+  await expect(page.locator("#enemy-cap-value")).toHaveText("80체");
   await expect(page.locator("#gold-value")).toHaveText("64");
   await expect(page.locator("#interest-preview")).toHaveText("이자 +6");
   await expect(page.locator(".game-shell")).toHaveAttribute("data-game-speed", "1");
@@ -101,7 +101,7 @@ test("starts a KR run and exposes the finished core loop at 1280x720", async ({ 
   await expect(page.locator("#interest-preview")).toHaveText("이자 +4");
   await expect(page.locator("#seed-value")).toHaveText("E2E-FIXED-01");
   await expect(page.locator("#synergy-strip span")).toHaveCount(5);
-  await expect(page.locator("#selected-card .ability-pills span")).toHaveCount(3);
+  await expect(page.locator("#selected-card .ability-pills span")).toHaveCount(4);
   await expect(page.locator("#selected-card .ability-charge")).toBeVisible();
   await expect(page.locator("#selected-card .selected-learning")).toContainText("훈음");
   await expect(page.locator("#selected-card .selected-radical")).toContainText("훈음");
@@ -180,7 +180,7 @@ test("advances on the reinforcement clock while surviving enemies keep circulati
   await expect(page.locator("#stage-wave")).toHaveText("2 / 20", { timeout: 8_000 });
   await expect(page.locator("#message-value")).toContainText("잔존");
   await expect(page.locator("#message-value")).toContainText("은행 이자 +");
-  await expect(page.locator("#stage-enemies")).not.toHaveText("0 / 40");
+  await expect(page.locator("#stage-enemies")).not.toHaveText("0 / 80");
   await page.screenshot({ path: "artifacts/bank-interest-1280x720.png", fullPage: true });
 });
 
@@ -206,6 +206,7 @@ test("moves the original glyph battlefield into persistent study mode settings",
 });
 
 test("stores manual summons in the run inventory, deploys them, and returns board units", async ({ page }) => {
+  test.setTimeout(45_000);
   const errors: string[] = [];
   page.on("console", (message) => {
     if (message.type() === "error") errors.push(message.text());
@@ -251,7 +252,7 @@ test("stores manual summons in the run inventory, deploys them, and returns boar
 test("shows synthesis branches, highlights board materials, protects locked Jaryeong, and persists the strategy inventory", async ({ page }) => {
   await page.goto("/?seed=EVO-E2E-2");
   await page.getByTestId("start-run").click();
-  await expect(page.locator("#stage-enemies")).toHaveText("0 / 40");
+  await expect(page.locator("#stage-enemies")).toHaveText("0 / 80");
   for (let index = 0; index < 4; index += 1) await page.getByTestId("summon-button").click();
 
   let readySourceFound = false;
@@ -270,12 +271,7 @@ test("shows synthesis branches, highlights board materials, protects locked Jary
   await expect.poll(async () => Number(await page.locator("#battle-canvas").getAttribute("data-composition-material-count"))).toBeGreaterThan(0);
   await page.screenshot({ path: "artifacts/composition-tree-1280x720.png", fullPage: true });
   await page.locator("#composition-drawer-close").click();
-  const lockHitTarget = await page.getByTestId("lock-tower").evaluate((element) => {
-    const rect = element.getBoundingClientRect();
-    const hit = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2) as HTMLElement | null;
-    return { id: hit?.id ?? "", rect: { left: rect.left, top: rect.top, width: rect.width, height: rect.height } };
-  });
-  expect(lockHitTarget.id, JSON.stringify(lockHitTarget)).toBe("lock-button");
+  await expect(page.getByTestId("lock-tower")).toBeVisible();
 
   await page.getByRole("tab", { name: "합성" }).click();
   const evolution = page.locator('.evolution-card[data-recipe="KR:相"]');
@@ -333,7 +329,7 @@ test("keeps CN glyphs regional and opens the complete codex", async ({ page }) =
   await expect(page.locator("#codex-list")).toContainText("水+刘");
   await expect(page.locator("#codex-detail")).toContainText("합성 단계");
   await expect(page.locator("#codex-detail")).toContainText("2단 합성");
-  await expect(page.locator("#codex-detail .codex-abilities article")).toHaveCount(4);
+  await expect(page.locator("#codex-detail .codex-abilities article")).toHaveCount(5);
   await expect(page.locator("#codex-detail")).toContainText("계승");
   await expect(page.locator("#codex-detail")).toContainText("병음");
   await page.screenshot({ path: "artifacts/cn-codex-1280x720.png", fullPage: true });

@@ -21,12 +21,14 @@ import {
 } from "./idioms";
 import {
   ELEMENT_STYLES,
-  ELEMENT_UPGRADE_DAMAGE_PER_LEVEL,
   GAME_CONFIG,
-  MAX_ELEMENT_UPGRADE_LEVEL,
+  MAX_UPGRADE_LEVEL,
   STAGE_MULTIPLIERS,
+  UPGRADE_STAT_ORDER,
+  UPGRADE_STAT_META,
   activePoolBaseWeight,
   definitionForTower,
+  globalUpgradeCost,
   generatorOf,
   getCatalog,
   elementUpgradeCost,
@@ -56,7 +58,9 @@ import type {
   SimulationResult,
   Stage,
   SummonIntent,
+  StatUpgradeLevels,
   Tower,
+  UpgradeStat,
   WavePlan,
   Wuxing
 } from "./types";
@@ -71,8 +75,18 @@ export function interestForGold(gold: number): number {
   return Math.max(0, Math.floor(gold / 10));
 }
 
-function emptyElementUpgrades(): Record<Wuxing, number> {
-  return { "木": 0, "火": 0, "土": 0, "金": 0, "水": 0 };
+function emptyStatUpgrades(): StatUpgradeLevels {
+  return { damage: 0, attackSpeed: 0, range: 0, abilityPower: 0, statusPower: 0 };
+}
+
+function emptyElementUpgrades(): Record<Wuxing, StatUpgradeLevels> {
+  return {
+    "木": emptyStatUpgrades(),
+    "火": emptyStatUpgrades(),
+    "土": emptyStatUpgrades(),
+    "金": emptyStatUpgrades(),
+    "水": emptyStatUpgrades()
+  };
 }
 
 function emptyElementEssence(): Record<Wuxing, number> {
@@ -147,6 +161,7 @@ export class GameEngine {
       maxWaves: GAME_CONFIG.maxWaves,
       gold: 64,
       researchLevel: 0,
+      globalUpgrades: emptyStatUpgrades(),
       elementUpgrades: emptyElementUpgrades(),
       summonCount: 0,
       killCount: 0,
@@ -190,6 +205,7 @@ export class GameEngine {
       wave: 0,
       gold: 64,
       researchLevel: 0,
+      globalUpgrades: emptyStatUpgrades(),
       elementUpgrades: emptyElementUpgrades(),
       summonCount: 0,
       killCount: 0,
@@ -337,7 +353,7 @@ export class GameEngine {
   private findTarget(tower: Tower): Enemy | undefined {
     const origin = BOARD_CELLS[tower.cell] as Point;
     const definition = definitionForTower(this.catalog, tower.definitionId);
-    const range = definition.combat.range + (tower.stage - 1) * 7 + this.idiomBonus("range") + (tower.concentration ?? 0) * 4;
+    const range = definition.combat.range + (tower.stage - 1) * 7 + this.idiomBonus("range") + (tower.concentration ?? 0) * 4 + this.combinedUpgradeBonus(tower.wuxing, "range");
     const candidates = this.state.enemies.filter((enemy) => distance(origin, positionOnPath(enemy.progress)) <= range);
     const priority = definition.combat.abilities.targetPriority;
     const clusterSize = (enemy: Enemy): number => candidates.filter((candidate) =>
@@ -369,6 +385,8 @@ export class GameEngine {
     tower.shotCount += 1;
     const concentration = tower.concentration ?? 0;
     const concentrationPath = tower.concentrationPath ?? null;
+    const abilityPower = 1 + this.combinedUpgradeBonus(tower.wuxing, "abilityPower");
+    const statusPower = 1 + this.combinedUpgradeBonus(tower.wuxing, "statusPower");
     const semanticEvery = Math.max(3, tuning.semanticEvery - (concentration >= 3 ? 1 : 0));
     const semanticTrigger = tower.shotCount % semanticEvery === 0
       && (abilities.semanticFamily !== "weather" || this.state.enemies.length >= 5);
@@ -377,7 +395,7 @@ export class GameEngine {
     const signatureControlBonus = signature && profile.role === "control" ? tuning.roleControlBonus : 0;
     let damage = profile.baseDamage * STAGE_MULTIPLIERS[tower.stage] * profile.budgetMultiplier;
     damage *= 1 + concentration * (concentrationPath === "potent" ? 0.12 : 0.055);
-    damage *= 1 + this.elementDamageBonus(tower.wuxing);
+    damage *= 1 + this.combinedUpgradeBonus(tower.wuxing, "damage");
     damage *= 1 + this.idiomBonus("damage");
     damage *= 1 + this.formationDamageBonus(tower.cell);
     if (synergy) damage *= 1 + GAME_CONFIG.synergyBonus + (profile.role === "support" ? 0.08 : 0);
@@ -415,27 +433,27 @@ export class GameEngine {
       for (const enemy of this.state.enemies
         .filter((candidate) => candidate.id !== target.id && distance(positionOnPath(candidate.progress), targetPoint) <= splashRadius)
         .slice(0, 5)) {
-        this.damageEnemy(enemy, damage * splashRatio, false, enemy.weakness === tower.wuxing);
+        this.damageEnemy(enemy, damage * splashRatio * abilityPower, false, enemy.weakness === tower.wuxing);
         elementTargets += 1;
       }
     } else if (tower.wuxing === "水" && this.state.enemies.includes(target)) {
       target.slowFactor = Math.min(target.slowFactor, Math.max(0.38, tuning.slowFactor - signatureControlBonus));
-      target.slowUntil = this.state.elapsed + tuning.slowDuration * (signatureControlBonus > 0 ? 1.35 : 1);
+      target.slowUntil = this.state.elapsed + tuning.slowDuration * (signatureControlBonus > 0 ? 1.35 : 1) * statusPower;
       const chained = this.state.enemies
         .filter((candidate) => candidate.id !== target.id && distance(positionOnPath(candidate.progress), targetPoint) <= 150)
         .sort((a, b) => b.progress - a.progress)
         .slice(0, tuning.chainCount);
       for (const enemy of chained) {
-        this.damageEnemy(enemy, damage * tuning.chainRatio, false, enemy.weakness === tower.wuxing);
+        this.damageEnemy(enemy, damage * tuning.chainRatio * abilityPower, false, enemy.weakness === tower.wuxing);
         elementTargets += 1;
       }
     } else if (tower.wuxing === "木" && this.state.enemies.includes(target)) {
-      target.poisonDps = Math.max(target.poisonDps, damage * (tuning.poisonRatio + signatureControlBonus * 0.35));
-      target.poisonUntil = this.state.elapsed + tuning.poisonDuration * (signatureControlBonus > 0 ? 1.35 : 1);
+      target.poisonDps = Math.max(target.poisonDps, damage * (tuning.poisonRatio + signatureControlBonus * 0.35) * abilityPower);
+      target.poisonUntil = this.state.elapsed + tuning.poisonDuration * (signatureControlBonus > 0 ? 1.35 : 1) * statusPower;
     } else if (tower.wuxing === "土" && this.state.enemies.includes(target)) {
       const stunChance = tuning.stunChance + signatureControlBonus;
       if (this.rng.chance(stunChance)) {
-        target.stunnedUntil = Math.max(target.stunnedUntil, this.state.elapsed + tuning.stunDuration * (signatureControlBonus > 0 ? 1.35 : 1));
+        target.stunnedUntil = Math.max(target.stunnedUntil, this.state.elapsed + tuning.stunDuration * (signatureControlBonus > 0 ? 1.35 : 1) * statusPower);
       } else {
         elementTargets = 0;
       }
@@ -447,13 +465,13 @@ export class GameEngine {
       let roleTargets = 1;
       let roleEffect = "이번 공격 피해 ×" + tuning.signatureMultiplier.toFixed(2);
       if (profile.role === "rapid" && this.state.enemies.includes(target)) {
-        this.damageEnemy(target, damage * 0.58 * tuning.signatureMultiplier, false, weakness, armorPenetration * 0.5);
+        this.damageEnemy(target, damage * 0.58 * tuning.signatureMultiplier * abilityPower, false, weakness, armorPenetration * 0.5);
         roleEffect = "같은 적에게 " + String(Math.round(58 * tuning.signatureMultiplier)) + "% 추가타";
       } else if (profile.role === "splash") {
         const spreadTargets = this.state.enemies
           .filter((candidate) => candidate.id !== target.id && distance(positionOnPath(candidate.progress), targetPoint) <= tuning.splashRadius + 22)
           .slice(0, 5);
-        for (const enemy of spreadTargets) this.damageEnemy(enemy, damage * tuning.roleSplashRatio, false, enemy.weakness === tower.wuxing);
+        for (const enemy of spreadTargets) this.damageEnemy(enemy, damage * tuning.roleSplashRatio * abilityPower, false, enemy.weakness === tower.wuxing);
         roleTargets += spreadTargets.length;
         roleEffect = "주변 " + String(spreadTargets.length) + "체에 " + String(Math.round(tuning.roleSplashRatio * 100)) + "% 확산";
       } else if (profile.role === "control") {
@@ -472,7 +490,7 @@ export class GameEngine {
 
     if (lineageTrigger && abilities.lineage && abilities.lineageWuxing) {
       const lineageWeakness = target.weakness === abilities.lineageWuxing;
-      if (this.state.enemies.includes(target)) this.damageEnemy(target, damage * tuning.lineageRatio, false, lineageWeakness, 0.15);
+      if (this.state.enemies.includes(target)) this.damageEnemy(target, damage * tuning.lineageRatio * abilityPower, false, lineageWeakness, 0.15);
       this.events.push({ type: "shot", from: origin, to: targetPoint, color: abilities.lineage.color, critical: false });
       this.emitAbility(
         tower,
@@ -516,8 +534,7 @@ export class GameEngine {
     }
 
     if (profile.role === "economy" && this.rng.chance(0.035 + tower.stage * 0.008)) this.state.gold += 1;
-    const concentrationHaste = concentrationPath === "swift" ? concentration * 0.075 : concentration * 0.02;
-    tower.cooldownLeft = Math.max(0.14, profile.cooldown * (1 - (tower.stage - 1) * 0.035) * (1 - concentrationHaste));
+    tower.cooldownLeft = this.towerAttackCooldown(tower);
     tower.pulse = 1;
   }
 
@@ -527,6 +544,8 @@ export class GameEngine {
     const family = abilities.semanticFamily;
     const tuning = abilities.tuning;
     const potency = 1 + (tower.concentrationPath === "potent" ? (tower.concentration ?? 0) * 0.08 : 0);
+    const abilityPower = 1 + this.combinedUpgradeBonus(tower.wuxing, "abilityPower");
+    const statusPower = 1 + this.combinedUpgradeBonus(tower.wuxing, "statusPower");
     let targets = 1;
     let effect = abilities.semantic.summary;
 
@@ -537,7 +556,7 @@ export class GameEngine {
       if (relay) {
         const relayPoint = positionOnPath(relay.progress);
         this.events.push({ type: "shot", from: targetPoint, to: relayPoint, color: abilities.semantic.color, critical: false });
-        this.damageEnemy(relay, damage * tuning.semanticMultiplier * potency, false, relay.weakness === tower.wuxing, 0.12);
+        this.damageEnemy(relay, damage * tuning.semanticMultiplier * potency * abilityPower, false, relay.weakness === tower.wuxing, 0.12);
         targets = 2;
         effect = "길 반대편 1체에 " + String(Math.round(tuning.semanticMultiplier * potency * 100)) + "% 전이";
       }
@@ -546,22 +565,20 @@ export class GameEngine {
       const victims = this.state.enemies
         .filter((candidate) => candidate.id !== target.id && distance(positionOnPath(candidate.progress), targetPoint) <= radius)
         .slice(0, family === "weather" ? 7 : 5);
-      for (const victim of victims) this.damageEnemy(victim, damage * tuning.semanticMultiplier * potency, false, victim.weakness === tower.wuxing);
+      for (const victim of victims) this.damageEnemy(victim, damage * tuning.semanticMultiplier * potency * abilityPower, false, victim.weakness === tower.wuxing);
       targets += victims.length;
       effect = "밀집 구간 " + String(targets) + "체에 " + String(Math.round(tuning.semanticMultiplier * potency * 100)) + "% 피해";
     } else if (family === "mountain" && this.state.enemies.includes(target)) {
-      target.progress = Math.max(0, target.progress - 0.022 * potency);
-      target.stunnedUntil = Math.max(target.stunnedUntil, this.state.elapsed + 0.32 * potency);
-      effect = "진행도 후퇴 · " + (0.32 * potency).toFixed(1) + "초 봉쇄";
+      target.stunnedUntil = Math.max(target.stunnedUntil, this.state.elapsed + 0.55 * potency * statusPower);
+      effect = "제자리 봉쇄 · " + (0.55 * potency * statusPower).toFixed(1) + "초";
     } else if (family === "motion" && this.state.enemies.includes(target)) {
-      target.progress = Math.max(0, target.progress - 0.014 * potency);
-      target.slowFactor = Math.min(target.slowFactor, 0.58);
-      target.slowUntil = Math.max(target.slowUntil, this.state.elapsed + 1.35 * potency);
-      effect = "최고속 적 후퇴 · 감속 " + (1.35 * potency).toFixed(1) + "초";
+      target.slowFactor = Math.min(target.slowFactor, 0.52);
+      target.slowUntil = Math.max(target.slowUntil, this.state.elapsed + 1.75 * potency * statusPower);
+      effect = "최고속 적 48% 감속 · " + (1.75 * potency * statusPower).toFixed(1) + "초";
     } else if (family === "speech") {
       const formation = Math.floor(tower.cell / CELLS_PER_FORMATION);
       const allies = this.state.towers.filter((candidate) => candidate.id !== tower.id && Math.floor(candidate.cell / CELLS_PER_FORMATION) === formation);
-      for (const ally of allies) ally.cooldownLeft = Math.max(0, ally.cooldownLeft - 0.12 * potency);
+      for (const ally of allies) ally.cooldownLeft = Math.max(0, ally.cooldownLeft - 0.06 * potency);
       targets = Math.max(1, allies.length);
       effect = "같은 진 " + String(allies.length) + "기 공격 대기 감소";
     } else if (family === "growth") {
@@ -569,15 +586,15 @@ export class GameEngine {
         .filter((candidate) => candidate.id !== target.id && distance(positionOnPath(candidate.progress), targetPoint) <= 145)
         .slice(0, 2);
       for (const enemy of rooted) {
-        enemy.poisonDps = Math.max(enemy.poisonDps, damage * 0.16 * potency);
-        enemy.poisonUntil = Math.max(enemy.poisonUntil, this.state.elapsed + 3 * potency);
+        enemy.poisonDps = Math.max(enemy.poisonDps, damage * 0.16 * potency * abilityPower);
+        enemy.poisonUntil = Math.max(enemy.poisonUntil, this.state.elapsed + 3 * potency * statusPower);
         enemy.slowFactor = Math.min(enemy.slowFactor, 0.72);
-        enemy.slowUntil = Math.max(enemy.slowUntil, this.state.elapsed + 1.1 * potency);
+        enemy.slowUntil = Math.max(enemy.slowUntil, this.state.elapsed + 1.1 * potency * statusPower);
       }
       targets += rooted.length;
       effect = "가까운 " + String(rooted.length) + "체에 뿌리독 번식";
     } else if (family === "heart") {
-      for (const ally of this.state.towers) ally.cooldownLeft = Math.max(0, ally.cooldownLeft - 0.055 * potency);
+      for (const ally of this.state.towers) ally.cooldownLeft = Math.max(0, ally.cooldownLeft - 0.025 * potency);
       targets = this.state.towers.length;
       effect = "진 전체 " + String(targets) + "기 호흡 가속";
     } else if (family === "wealth") {
@@ -925,23 +942,64 @@ export class GameEngine {
     this.state.selectedTowerId = exists ? id : null;
   }
 
-  upgradeElement(wuxing: Wuxing): ActionResult {
+  upgradeGlobal(stat: UpgradeStat): ActionResult {
     if (!this.isRunActive()) return { ok: false, message: "진행 중인 수비전이 없습니다." };
-    const level = this.state.elementUpgrades[wuxing];
-    if (level >= MAX_ELEMENT_UPGRADE_LEVEL) return { ok: false, message: `${wuxing}행 강화가 최고 단계입니다.` };
-    const cost = elementUpgradeCost(level);
-    if (this.state.gold < cost) return { ok: false, message: `${wuxing}행 강화에 엽전 ${cost}이 필요합니다.` };
+    const level = this.state.globalUpgrades[stat];
+    const meta = UPGRADE_STAT_META[stat];
+    if (level >= MAX_UPGRADE_LEVEL) return { ok: false, message: `공용 ${meta.label} 강화가 최고 단계입니다.` };
+    const cost = globalUpgradeCost(stat, level);
+    if (this.state.gold < cost) return { ok: false, message: `공용 ${meta.label} 강화에 엽전 ${cost}이 필요합니다.` };
     const nextLevel = level + 1;
     this.state.gold -= cost;
-    this.state.elementUpgrades[wuxing] = nextLevel;
-    const damageBonus = this.elementDamageBonus(wuxing);
-    this.state.lastMessage = `${wuxing}행 강화 ${nextLevel}단계 · 해당 자령 피해 +${Math.round(damageBonus * 100)}%`;
-    this.events.push({ type: "elementUpgrade", wuxing, level: nextLevel, cost, damageBonus });
+    this.state.globalUpgrades[stat] = nextLevel;
+    const bonus = this.globalUpgradeBonus(stat);
+    this.state.lastMessage = `공용 ${meta.label} ${nextLevel}단계 · ${this.formatUpgradeBonus(stat, bonus)}`;
+    this.events.push({ type: "statUpgrade", scope: "global", wuxing: null, stat, level: nextLevel, cost, bonus });
     return { ok: true, message: this.state.lastMessage };
   }
 
+  upgradeElement(wuxing: Wuxing, stat: UpgradeStat = "damage"): ActionResult {
+    if (!this.isRunActive()) return { ok: false, message: "진행 중인 수비전이 없습니다." };
+    const level = this.state.elementUpgrades[wuxing][stat];
+    const meta = UPGRADE_STAT_META[stat];
+    if (level >= MAX_UPGRADE_LEVEL) return { ok: false, message: `${wuxing}행 ${meta.label} 강화가 최고 단계입니다.` };
+    const cost = elementUpgradeCost(level);
+    if (this.state.elementEssence[wuxing] < cost) return { ok: false, message: `${wuxing}행 ${meta.label} 강화에 ${wuxing} 문기 ${cost}가 필요합니다.` };
+    const nextLevel = level + 1;
+    this.state.elementEssence[wuxing] -= cost;
+    this.state.elementUpgrades[wuxing][stat] = nextLevel;
+    const bonus = this.elementUpgradeBonus(wuxing, stat);
+    this.state.lastMessage = `${wuxing}행 ${meta.label} ${nextLevel}단계 · ${this.formatUpgradeBonus(stat, bonus)}`;
+    this.events.push({ type: "statUpgrade", scope: "element", wuxing, stat, level: nextLevel, cost, bonus });
+    return { ok: true, message: this.state.lastMessage };
+  }
+
+  globalUpgradeBonus(stat: UpgradeStat): number {
+    return this.state.globalUpgrades[stat] * UPGRADE_STAT_META[stat].globalPerLevel;
+  }
+
+  elementUpgradeBonus(wuxing: Wuxing, stat: UpgradeStat): number {
+    return this.state.elementUpgrades[wuxing][stat] * UPGRADE_STAT_META[stat].elementPerLevel;
+  }
+
+  combinedUpgradeBonus(wuxing: Wuxing, stat: UpgradeStat): number {
+    return this.globalUpgradeBonus(stat) + this.elementUpgradeBonus(wuxing, stat);
+  }
+
+  towerAttackCooldown(tower: Tower): number {
+    const profile = definitionForTower(this.catalog, tower.definitionId).combat;
+    const concentration = tower.concentration ?? 0;
+    const concentrationHaste = tower.concentrationPath === "swift" ? concentration * 0.075 : concentration * 0.02;
+    const upgradeHaste = this.combinedUpgradeBonus(tower.wuxing, "attackSpeed");
+    return Math.max(0.28, profile.cooldown * (1 - (tower.stage - 1) * 0.035) * (1 - concentrationHaste) / (1 + upgradeHaste));
+  }
+
   elementDamageBonus(wuxing: Wuxing): number {
-    return this.state.elementUpgrades[wuxing] * ELEMENT_UPGRADE_DAMAGE_PER_LEVEL;
+    return this.elementUpgradeBonus(wuxing, "damage");
+  }
+
+  private formatUpgradeBonus(stat: UpgradeStat, bonus: number): string {
+    return stat === "range" ? `사거리 +${bonus.toFixed(1)}` : `${UPGRADE_STAT_META[stat].label} +${(bonus * 100).toFixed(1)}%`;
   }
 
   moveSelectedToCell(cell: number): ActionResult {
@@ -1465,6 +1523,8 @@ export function runAutoplay(seed: string, region: RegionCode = "KR", maxSeconds 
       engine.upgradeResearch();
     }
 
+    autoplayPurchaseUpgrades(engine);
+
     let attempts = 0;
     while (engine.state.towers.length < GAME_CONFIG.maxTowerCount && engine.state.gold >= summonCost(engine.state.summonCount) && attempts < 12) {
       engine.summon();
@@ -1484,7 +1544,8 @@ export function runAutoplay(seed: string, region: RegionCode = "KR", maxSeconds 
         .sort((a, b) => a.stage - b.stage)[0];
       if (disposable) {
         engine.selectTower(disposable.id);
-        engine.sellSelected();
+        engine.dismantleSelected();
+        autoplayPurchaseUpgrades(engine);
       }
     }
 
@@ -1507,6 +1568,30 @@ export function runAutoplay(seed: string, region: RegionCode = "KR", maxSeconds 
     researchLevel: engine.state.researchLevel,
     endReason: engine.state.lastMessage
   };
+}
+
+function autoplayPurchaseUpgrades(engine: GameEngine): void {
+  if (engine.state.towers.length >= 20 || engine.state.wave >= 8) {
+    const stat = [...UPGRADE_STAT_ORDER].sort(
+      (left, right) => engine.state.globalUpgrades[left] - engine.state.globalUpgrades[right]
+    )[0];
+    if (stat) {
+      const level = engine.state.globalUpgrades[stat];
+      const cost = globalUpgradeCost(stat, level);
+      const reserve = Math.max(36, summonCost(engine.state.summonCount) * 4);
+      if (cost > 0 && engine.state.gold >= cost + reserve) engine.upgradeGlobal(stat);
+    }
+  }
+
+  const elements: readonly Wuxing[] = ["木", "火", "土", "金", "水"];
+  for (const wuxing of elements) {
+    const stat = [...UPGRADE_STAT_ORDER].sort(
+      (left, right) => engine.state.elementUpgrades[wuxing][left] - engine.state.elementUpgrades[wuxing][right]
+    )[0];
+    if (!stat) continue;
+    const cost = elementUpgradeCost(engine.state.elementUpgrades[wuxing][stat]);
+    if (cost > 0 && engine.state.elementEssence[wuxing] >= cost) engine.upgradeElement(wuxing, stat);
+  }
 }
 
 function autoplayProtectedChars(engine: GameEngine): Set<string> {

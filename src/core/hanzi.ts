@@ -17,6 +17,7 @@ import type {
   HanziDefinition,
   RegionCode,
   Stage,
+  UpgradeStat,
   Wuxing
 } from "./types";
 
@@ -220,7 +221,7 @@ function buildCombatProfile(
   const deadEndCompensation = childCount === 0 ? 0.12 : 0;
   const budgetMultiplier = 1 - connectivityTax + deadEndCompensation;
   const roleDamage: Record<CombatRole, number> = { rapid: 0.76, burst: 1.42, splash: 0.93, control: 0.84, support: 0.82, economy: 0.78 };
-  const roleCooldown: Record<CombatRole, number> = { rapid: 0.55, burst: 1.02, splash: 0.82, control: 0.76, support: 0.72, economy: 0.7 };
+  const roleCooldown: Record<CombatRole, number> = { rapid: 0.6, burst: 1.1, splash: 0.9, control: 0.84, support: 0.8, economy: 0.78 };
   const roleRange: Record<CombatRole, number> = { rapid: 238, burst: 226, splash: 242, control: 258, support: 264, economy: 246 };
   const style = ELEMENT_STYLES[wuxing];
   const abilities = composeAbilityLoadout({ char, wuxing, stage, role, graphRole, parents, parentWuxing });
@@ -365,11 +366,36 @@ export function multiSummonCost(summonCount: number, amount = 10): number {
     .reduce((total, cost) => total + cost, 0);
 }
 
-export const MAX_ELEMENT_UPGRADE_LEVEL = 5;
-export const ELEMENT_UPGRADE_DAMAGE_PER_LEVEL = 0.08;
+export const MAX_UPGRADE_LEVEL = 99;
+export const UPGRADE_STAT_ORDER: readonly UpgradeStat[] = ["damage", "attackSpeed", "range", "abilityPower", "statusPower"];
+
+export interface UpgradeStatMeta {
+  label: string;
+  glyph: string;
+  description: string;
+  globalPerLevel: number;
+  elementPerLevel: number;
+  globalBaseCost: number;
+  globalCostGrowth: number;
+}
+
+export const UPGRADE_STAT_META: Record<UpgradeStat, UpgradeStatMeta> = {
+  damage: { label: "공격력", glyph: "攻", description: "기본 공격과 공격 기반 피해", globalPerLevel: 0.0125, elementPerLevel: 0.018, globalBaseCost: 16, globalCostGrowth: 3 },
+  attackSpeed: { label: "공격 속도", glyph: "速", description: "공격 대기시간을 완만하게 단축", globalPerLevel: 0.006, elementPerLevel: 0.008, globalBaseCost: 18, globalCostGrowth: 4 },
+  range: { label: "사거리", glyph: "遠", description: "공격 가능 반경", globalPerLevel: 1.25, elementPerLevel: 1.5, globalBaseCost: 12, globalCostGrowth: 3 },
+  abilityPower: { label: "능력 위력", glyph: "術", description: "광역·연쇄·독·추가타 피해", globalPerLevel: 0.0125, elementPerLevel: 0.018, globalBaseCost: 20, globalCostGrowth: 4 },
+  statusPower: { label: "효과 지속", glyph: "持", description: "감속·봉쇄·독 지속시간", globalPerLevel: 0.01, elementPerLevel: 0.014, globalBaseCost: 15, globalCostGrowth: 3 }
+};
+
+export function globalUpgradeCost(stat: UpgradeStat, level: number): number {
+  if (level >= MAX_UPGRADE_LEVEL) return 0;
+  const meta = UPGRADE_STAT_META[stat];
+  const safeLevel = Math.max(0, Math.floor(level));
+  return meta.globalBaseCost + meta.globalCostGrowth * safeLevel + Math.floor(safeLevel * safeLevel / 12);
+}
 
 export function elementUpgradeCost(level: number): number {
-  return level >= MAX_ELEMENT_UPGRADE_LEVEL ? 0 : 24 + Math.max(0, level) * 18;
+  return level >= MAX_UPGRADE_LEVEL ? 0 : 1 + Math.floor(Math.max(0, level) / 6);
 }
 
 export function researchCost(level: number): number {

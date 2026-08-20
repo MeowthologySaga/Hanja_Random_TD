@@ -7,6 +7,8 @@ export type AutomationMode = "manual" | "semi" | "goal";
 export type SummonIntent = "balanced" | "discovery" | "lineage" | "concentration";
 export type ConcentrationPath = "swift" | "potent";
 export type ConcentrationLevel = 0 | 1 | 2 | 3;
+export type UpgradeStat = "damage" | "attackSpeed" | "range" | "abilityPower" | "statusPower";
+export type StatUpgradeLevels = Record<UpgradeStat, number>;
 export type CombatRole = "rapid" | "burst" | "splash" | "control" | "support" | "economy";
 export type GraphRole = "hub" | "bridge" | "finisher" | "independent";
 export type SemanticFamily =
@@ -246,7 +248,8 @@ export interface GameState {
   maxWaves: number;
   gold: number;
   researchLevel: number;
-  elementUpgrades: Record<Wuxing, number>;
+  globalUpgrades: StatUpgradeLevels;
+  elementUpgrades: Record<Wuxing, StatUpgradeLevels>;
   summonCount: number;
   killCount: number;
   evolutionCount: number;
@@ -283,7 +286,7 @@ export type GameEvent =
   | { type: "summon"; at: Point; tower: Tower; stored: boolean; helpful: boolean; helpfulReason: "goal" | "idiom" | "both" | null; newDiscovery: boolean; utility: "new" | "synthesis" | "concentration" | "replacement" }
   | { type: "dismantle"; tower: Tower; wuxing: Wuxing; essence: number }
   | { type: "concentrate"; tower: Tower; level: ConcentrationLevel; path: ConcentrationPath; usedDuplicate: boolean; essenceCost: number }
-  | { type: "elementUpgrade"; wuxing: Wuxing; level: number; cost: number; damageBonus: number }
+  | { type: "statUpgrade"; scope: "global" | "element"; wuxing: Wuxing | null; stat: UpgradeStat; level: number; cost: number; bonus: number }
   | { type: "evolve"; at: Point; tower: Tower; parents: string[]; targetCompleted: boolean }
   | { type: "ability"; at: Point; source: Point; towerId: number; name: string; glyph: string; color: string; kind: AbilityFxKind; targets: number; effect: string }
   | { type: "goal"; char: string; reward: number }

@@ -2393,7 +2393,7 @@ body {
 .control-panel {
   position: relative;
   display: grid;
-  grid-template-rows: 42px 54px 64px 112px 90px minmax(164px, 1fr) 42px 30px 32px;
+  grid-template-rows: 42px 54px 64px 112px 102px minmax(164px, 1fr) 42px 30px 32px;
   gap: 6px;
   width: 100%;
   height: 100%;
@@ -2513,11 +2513,18 @@ body {
 }
 
 .action-row {
+  position: relative;
+  z-index: 1;
   display: grid;
   grid-template-columns: repeat(6, minmax(0, 1fr));
   grid-template-rows: 57px 27px;
   gap: 6px;
   min-height: 0;
+  pointer-events: none;
+}
+
+.action-row button {
+  pointer-events: auto;
 }
 
 .summon-action-group {
@@ -2656,6 +2663,7 @@ body {
 
 .context-deck {
   position: relative;
+  z-index: 2;
   min-width: 0;
   min-height: 0;
   overflow: hidden;
@@ -2896,13 +2904,14 @@ body {
 .selected-card {
   grid-template-columns: 86px minmax(0, 1fr) auto;
   grid-template-rows: auto auto 18px;
-  align-content: center;
+  align-content: start;
   align-items: center;
   gap: 5px 8px;
   width: 100%;
   height: 100%;
   min-height: 0;
   padding: 10px;
+  overflow-y: auto;
   border-color: rgba(151, 181, 219, 0.19);
   border-radius: 12px;
   background: linear-gradient(145deg, rgba(8, 18, 31, 0.94), rgba(4, 9, 16, 0.92));
@@ -3480,7 +3489,7 @@ body {
 .selected-actions {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  align-self: center;
+  align-self: start;
   gap: 4px;
   width: 132px;
 }
@@ -4759,4 +4768,217 @@ body {
 .battle-stage,
 #battle-canvas {
   background-color: #efe3c2;
+}
+
+/* v0.28: broad, repeatable common and elemental stat forge. */
+.element-upgrade-dialog {
+  width: min(960px, calc(100vw - 32px));
+  max-height: min(88vh, 820px);
+  overflow: auto;
+}
+
+.upgrade-section-heading {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 14px;
+  margin: 18px 0 9px;
+  padding-bottom: 7px;
+  border-bottom: 1px solid rgba(175, 193, 218, 0.18);
+}
+
+.upgrade-section-heading div {
+  display: grid;
+  gap: 2px;
+}
+
+.upgrade-section-heading b {
+  color: #f4f7fb;
+  font-size: 17px;
+}
+
+.upgrade-section-heading span,
+.upgrade-section-heading em {
+  color: #a9b7ca;
+  font-size: 12px;
+  font-style: normal;
+}
+
+.upgrade-section-heading em {
+  color: #f1d68c;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.global-upgrade-list {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.stat-upgrade-card {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  gap: 7px;
+  min-width: 0;
+  padding: 9px;
+  border: 1px solid rgba(173, 191, 216, 0.18);
+  border-radius: 10px;
+  background: rgba(10, 19, 31, 0.82);
+}
+
+.stat-upgrade-glyph {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  color: #f2dd9d;
+  font: 900 17px "Malgun Gothic", sans-serif;
+  border: 1px solid rgba(230, 203, 129, 0.35);
+  border-radius: 8px;
+  background: rgba(91, 69, 24, 0.35);
+}
+
+.stat-upgrade-card > div:nth-child(2) {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.stat-upgrade-card strong {
+  color: #edf4ff;
+  font-size: 13px;
+}
+
+.stat-upgrade-card strong em,
+.element-stat-button em {
+  color: #dcc478;
+  font-size: 10px;
+  font-style: normal;
+}
+
+.stat-upgrade-card span,
+.stat-upgrade-card small {
+  color: #99a8bc;
+  font-size: 10px;
+  line-height: 1.35;
+}
+
+.stat-upgrade-card > button {
+  grid-column: 1 / -1;
+  min-height: 38px;
+  color: #f7e5ad;
+  font-weight: 900;
+  border: 1px solid rgba(222, 189, 101, 0.34);
+  border-radius: 8px;
+  background: rgba(88, 62, 17, 0.45);
+}
+
+.stat-upgrade-card > button small {
+  display: block;
+  color: #c7b98c;
+}
+
+.element-upgrade-list {
+  grid-template-columns: 1fr;
+  gap: 10px;
+}
+
+.element-upgrade-card.is-expanded {
+  display: block;
+  padding: 12px;
+  border-color: color-mix(in srgb, var(--upgrade) 30%, rgba(173, 191, 216, 0.18));
+}
+
+.element-upgrade-card.is-expanded > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.element-upgrade-card.is-expanded > header p {
+  display: grid;
+  justify-items: end;
+  gap: 1px;
+  margin: 0;
+}
+
+.element-upgrade-card.is-expanded > header p strong {
+  color: var(--upgrade);
+  font-size: 14px;
+}
+
+.element-upgrade-card.is-expanded > header p small {
+  color: #a9b7c9;
+  font-size: 11px;
+}
+
+.element-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.element-stat-button {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr);
+  gap: 6px;
+  min-width: 0;
+  min-height: 66px;
+  padding: 8px;
+  text-align: left;
+  border: 1px solid color-mix(in srgb, var(--upgrade) 25%, rgba(174, 191, 214, 0.18));
+  border-radius: 8px;
+  background: rgba(8, 16, 27, 0.88);
+}
+
+.element-stat-button > i {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  color: var(--upgrade);
+  font-size: 15px;
+  font-style: normal;
+  font-weight: 900;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--upgrade) 13%, transparent);
+}
+
+.element-stat-button > span {
+  display: grid;
+  min-width: 0;
+}
+
+.element-stat-button b {
+  overflow: hidden;
+  color: #edf4fd;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.element-stat-button small {
+  color: #9facbf;
+  font-size: 11px;
+}
+
+.element-stat-button > strong {
+  grid-column: 1 / -1;
+  color: var(--upgrade);
+  font-size: 12px;
+  text-align: center;
+}
+
+.stat-upgrade-card button:disabled,
+.element-stat-button:disabled {
+  opacity: 0.38;
+  cursor: default;
+}
+
+@media (max-width: 800px) {
+  .global-upgrade-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .element-upgrade-list { grid-template-columns: 1fr; }
 }

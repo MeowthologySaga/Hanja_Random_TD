@@ -1,6 +1,6 @@
 {
   "name": "hanzi-random-tower-defense",
-  "version": "0.27.0",
+  "version": "0.28.0",
   "private": true,
   "description": "지역별 실제 한자 조합식으로 합성하는 20웨이브 랜덤 타워 디펜스",
   "type": "module",

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { MAX_ENEMIES, WAVE_REINFORCEMENT_DELAY } from "../src/core/content";
 import { GameEngine, dismantleEssenceValue, interestForGold, runAutoplay } from "../src/core/game";
-import { elementUpgradeCost, getCatalog, multiSummonCost } from "../src/core/hanzi";
+import { elementUpgradeCost, getCatalog, globalUpgradeCost, multiSummonCost } from "../src/core/hanzi";
 import type { Enemy, RegionCode, Tower } from "../src/core/types";
 
 function tower(region: RegionCode, char: string, id: number, cell: number): Tower {
@@ -82,19 +82,29 @@ describe("regional recipe defense run", () => {
     expect(manual.state.inventoryTowers).toHaveLength(10);
   });
 
-  it("upgrades each element independently up to five levels", () => {
-    expect([0, 1, 2, 3, 4].map(elementUpgradeCost)).toEqual([24, 42, 60, 78, 96]);
+  it("splits repeatable gold and elemental essence upgrades by stat", () => {
+    expect([0, 1, 2, 3, 4].map((level) => globalUpgradeCost("damage", level))).toEqual([16, 19, 22, 25, 29]);
+    expect([0, 1, 5, 6, 12].map(elementUpgradeCost)).toEqual([1, 1, 1, 2, 3]);
     const engine = new GameEngine("element-upgrades", "KR");
     engine.begin();
     engine.state.gold = 1_000;
-    expect(engine.upgradeElement("木")).toMatchObject({ ok: true });
-    expect(engine.state.elementUpgrades).toMatchObject({ "木": 1, "火": 0, "土": 0, "金": 0, "水": 0 });
-    expect(engine.elementDamageBonus("木")).toBeCloseTo(0.08);
-    expect(engine.state.gold).toBe(976);
-    expect(engine.consumeEvents()).toContainEqual({ type: "elementUpgrade", wuxing: "木", level: 1, cost: 24, damageBonus: 0.08 });
-    for (let level = 1; level < 5; level += 1) expect(engine.upgradeElement("木").ok).toBe(true);
-    expect(engine.elementDamageBonus("木")).toBeCloseTo(0.4);
-    expect(engine.upgradeElement("木")).toMatchObject({ ok: false, message: "木행 강화가 최고 단계입니다." });
+    engine.state.elementEssence["木"] = 20;
+    expect(engine.upgradeGlobal("damage")).toMatchObject({ ok: true });
+    expect(engine.state.globalUpgrades.damage).toBe(1);
+    expect(engine.globalUpgradeBonus("damage")).toBeCloseTo(0.0125);
+    expect(engine.state.gold).toBe(984);
+    expect(engine.upgradeElement("木", "attackSpeed")).toMatchObject({ ok: true });
+    expect(engine.state.elementUpgrades["木"].attackSpeed).toBe(1);
+    expect(engine.state.elementUpgrades["火"].attackSpeed).toBe(0);
+    expect(engine.elementUpgradeBonus("木", "attackSpeed")).toBeCloseTo(0.008);
+    expect(engine.state.elementEssence["木"]).toBe(19);
+    expect(engine.consumeEvents()).toContainEqual({ type: "statUpgrade", scope: "element", wuxing: "木", stat: "attackSpeed", level: 1, cost: 1, bonus: 0.008 });
+    engine.state.elementUpgrades["木"].attackSpeed = 99;
+    expect(engine.upgradeElement("木", "attackSpeed")).toMatchObject({ ok: false, message: "木행 공격 속도 강화가 최고 단계입니다." });
+  });
+
+  it("uses the expanded eighty-enemy loss limit", () => {
+    expect(MAX_ENEMIES).toBe(80);
   });
 
   it("replays the same weighted summon sequence from the same seed", () => {

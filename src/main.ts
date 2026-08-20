@@ -25,18 +25,20 @@ import { LEARNING_DATA_META, learningInfo } from "./core/learning";
 import { radicalGlyph, radicalLearningLabel } from "./core/radicals";
 import {
   ELEMENT_STYLES,
-  ELEMENT_UPGRADE_DAMAGE_PER_LEVEL,
   GAME_CONFIG,
   GRAPH_ROLE_LABELS,
+  MAX_UPGRADE_LEVEL,
   REGION_META,
   ROLE_LABELS,
   STAGE_COLORS,
   STAGE_MULTIPLIERS,
   STAGE_NAMES,
+  UPGRADE_STAT_META,
+  UPGRADE_STAT_ORDER,
   WUXING_ORDER,
   definitionForTower,
   elementUpgradeCost,
-  MAX_ELEMENT_UPGRADE_LEVEL,
+  globalUpgradeCost,
   multiSummonCost,
   researchCost,
   sellValue,
@@ -59,6 +61,7 @@ import type {
   RunPhase,
   SummonIntent,
   Tower,
+  UpgradeStat,
   Wuxing
 } from "./core/types";
 import { SoundManager } from "./ui/audio";
@@ -161,7 +164,7 @@ app.innerHTML = `
           <b>자동배치</b><small>성어·오행 최적화</small>
         </button>
         <button id="element-upgrade-button" class="action-button action-button--element-upgrade" type="button" data-testid="element-upgrade-button">
-          <b>오행 강화</b><small id="element-upgrade-total">총 0단계</small>
+          <b>능력 강화</b><small id="element-upgrade-total">총 0단계</small>
         </button>
       </section>
 
@@ -297,7 +300,7 @@ app.innerHTML = `
           <li><b>은행 이자</b><span>웨이브가 끝나거나 잔존 적을 둔 채 다음 웨이브가 합류할 때, 현재 보유 엽전 10개당 1엽전을 한 번 지급합니다. 기본 웨이브 보상을 받은 뒤 이자를 계산합니다.</span></li>
           <li><b>훈·독</b><span>기본 자령 모드는 머리 위 한자·훈음을 표시합니다. 설정의 공부 모드는 전장에 큰 한자와 짧은 읽기를 표시하며, 선택 카드와 도감에서는 자세한 훈음·음독·훈독·병음과 뜻을 확인합니다.</span></li>
           <li><b>전투</b><span>웨이브 약점 오행은 피해가 30% 증가합니다. 水→木→火→土→金→水 상생을 함께 배치하면 추가 피해를 줍니다.</span></li>
-          <li><b>오행 강화</b><span>런마다 각 오행을 5단계까지 강화합니다. 한 단계마다 해당 오행 자령의 공격 기반 효과가 8% 증가하며, 강화 비용은 단계마다 상승합니다.</span></li>
+          <li><b>능력 강화</b><span>엽전으로 모든 자령의 공격력·공격 속도·사거리·능력 위력·효과 지속을, 분해 문기로 해당 오행의 같은 다섯 능력치를 각각 99단계까지 강화합니다.</span></li>
           <li><b>능력 조합</b><span>모든 한자는 오행 효과·전투 역할·조합망 패시브를 가집니다. 합성 한자는 재료의 오행도 계승해 주기 추가타를 얻습니다.</span></li>
           <li><b>잠금</b><span>선택한 자령을 잠그면 공격·이동은 유지되지만 합성 재료와 판매 대상에서는 제외됩니다.</span></li>
           <li><b>보유 자령</b><span>소환·합성으로 획득한 자령은 지역별 횟수와 함께 브라우저에 자동 저장됩니다. 도감의 보유 자령 탭에서 확인합니다.</span></li>
@@ -305,7 +308,7 @@ app.innerHTML = `
           <li><b>정리와 농축</b><span>판매는 엽전을, 분해는 해당 오행 문기를 줍니다. 동일 한자 중복 또는 오행 문기로 최대 濃 3까지 연속·심화 농축할 수 있습니다. 자동 정리는 잠금·유일 보유·성어·합성·오행진 임계치를 보호합니다.</span></li>
           <li><b>지도 배율</b><span>기본 115%이며 휠 스크롤로 72%~260% 확대·축소합니다. 휠 버튼을 누른 채 드래그하면 확대된 지도를 이동하고, 왼쪽 아래 배율 버튼을 누르면 중앙 정렬된 115%로 돌아옵니다.</span></li>
           <li><b>게임 배속</b><span>오른쪽 위 배속 버튼이나 F키로 1×·2×·3×를 순환합니다.</span></li>
-          <li><b>게임오버</b><span>적은 경로 끝에서 사라지지 않고 계속 순환합니다. 전장에 ${MAX_ENEMIES}체가 쌓이거나 보스를 제한시간 안에 처치하지 못하면 즉시 실패합니다.</span></li>
+          <li><b>게임오버</b><span>적은 경로 끝에서 사라지지 않고 계속 순환합니다. 전장에 ${MAX_ENEMIES}체가 쌓이거나 보스를 제한시간 안에 처치하지 못하면 즉시 실패합니다. 제어 능력은 적을 뒤로 밀지 않고 현재 공격권 안에서 감속·봉쇄합니다.</span></li>
         </ol>
         <div class="key-guide"><span><kbd>1</kbd> 소환</span><span><kbd>Q</kbd> 10연</span><span><kbd>2</kbd> 첫 합성</span><span><kbd>3</kbd> 연구</span><span><kbd>Space</kbd> 출전</span><span><kbd>F</kbd> 배속</span><span><kbd>C</kbd> 도감</span><span><kbd>M</kbd> 음소거</span></div>
         <p>장갑·질풍·군집·회생 적의 특성을 미리 확인하세요. 놓친 적도 사라지지 않고 다음 바퀴를 돌기 때문에 누적 수를 계속 관리해야 합니다.</p>
@@ -337,12 +340,15 @@ app.innerHTML = `
 
     <dialog id="element-upgrade-dialog" class="element-upgrade-dialog">
       <div class="dialog-heading">
-        <div><p class="eyebrow">FIVE ELEMENT FORGE</p><h2>오행 강화</h2></div>
+        <div><p class="eyebrow">ENDLESS STAT FORGE</p><h2>공용·오행 능력 강화</h2></div>
         <button id="element-upgrade-close" type="button" aria-label="오행 강화 닫기">×</button>
       </div>
-      <p class="element-upgrade-intro">엽전을 투자해 선택한 오행 자령의 공격·추가타·지속 피해를 강화합니다. 강화는 이번 런 동안 유지됩니다.</p>
+      <p class="element-upgrade-intro">엽전은 모든 자령의 공용 능력치에, 분해 문기는 해당 오행 능력치에 투자합니다. 각 항목은 최고 99단계이며 이번 런 동안 유지됩니다.</p>
+      <div class="upgrade-section-heading"><div><b>공용 강화</b><span>엽전 사용 · 모든 자령 적용</span></div><em id="global-upgrade-total">0단계</em></div>
+      <div id="global-upgrade-list" class="global-upgrade-list"></div>
+      <div class="upgrade-section-heading"><div><b>오행 강화</b><span>각 오행 문기 사용 · 해당 오행만 적용</span></div><em id="element-essence-dialog-summary">木0 火0 土0 金0 水0</em></div>
       <div id="element-upgrade-list" class="element-upgrade-list"></div>
-      <p class="element-upgrade-note">단계당 피해 +${Math.round(ELEMENT_UPGRADE_DAMAGE_PER_LEVEL * 100)}% · 오행별 최고 ${MAX_ELEMENT_UPGRADE_LEVEL}단계</p>
+      <p class="element-upgrade-note">공격 속도 보너스는 기본 공격 주기를 나누는 방식으로 적용해 고단계에서도 폭주하지 않습니다. 사거리를 제외한 수치는 누적 보너스입니다.</p>
     </dialog>
 
     <dialog id="codex-dialog" class="codex-dialog">
@@ -700,22 +706,61 @@ function showSummonReveal(events: Array<Extract<GameEvent, { type: "summon" }>>)
   if (events.length === 1) summonRevealTimer = window.setTimeout(hideSummonReveal, 3800);
 }
 
+function formatStatBonus(stat: UpgradeStat, bonus: number): string {
+  return stat === "range" ? `+${bonus.toFixed(1)}` : `+${(bonus * 100).toFixed(1)}%`;
+}
+
+function totalGlobalUpgradeLevels(): number {
+  return UPGRADE_STAT_ORDER.reduce((sum, stat) => sum + engine.state.globalUpgrades[stat], 0);
+}
+
+function totalElementUpgradeLevels(): number {
+  return WUXING_ORDER.reduce((sum, wuxing) => sum + UPGRADE_STAT_ORDER.reduce((elementSum, stat) => elementSum + engine.state.elementUpgrades[wuxing][stat], 0), 0);
+}
+
+function upgradeStateSignature(): string {
+  const global = UPGRADE_STAT_ORDER.map((stat) => engine.state.globalUpgrades[stat]).join(",");
+  const elements = WUXING_ORDER.map((wuxing) => UPGRADE_STAT_ORDER.map((stat) => engine.state.elementUpgrades[wuxing][stat]).join(",")).join("|");
+  const essence = WUXING_ORDER.map((wuxing) => engine.state.elementEssence[wuxing]).join(",");
+  return `${engine.state.phase}:${engine.state.gold}:${global}:${elements}:${essence}`;
+}
+
 function renderElementUpgrades(): void {
   const active = engine.state.phase === "prep" || engine.state.phase === "combat";
-  must<HTMLElement>("#element-upgrade-list").innerHTML = WUXING_ORDER.map((wuxing) => {
-    const level = engine.state.elementUpgrades[wuxing];
-    const cost = elementUpgradeCost(level);
-    const maxed = level >= MAX_ELEMENT_UPGRADE_LEVEL;
-    const style = ELEMENT_STYLES[wuxing];
-    const bonus = Math.round(engine.elementDamageBonus(wuxing) * 100);
-    const pips = Array.from({ length: MAX_ELEMENT_UPGRADE_LEVEL }, (_, index) => `<i class="${index < level ? "is-filled" : ""}"></i>`).join("");
-    return `<article class="element-upgrade-card" style="--upgrade:${style.color}">
-      <div class="element-upgrade-seal"><b>${wuxing}</b><span>${style.name}행</span></div>
-      <div class="element-upgrade-copy"><strong>피해 +${bonus}%</strong><span>${pips}</span><small>다음 단계 +${Math.round(ELEMENT_UPGRADE_DAMAGE_PER_LEVEL * 100)}%</small></div>
-      <button type="button" data-upgrade-element="${wuxing}" ${!active || maxed || engine.state.gold < cost ? "disabled" : ""}><b>${maxed ? "최고 단계" : `${cost}엽전`}</b><small>${maxed ? `${level}/${MAX_ELEMENT_UPGRADE_LEVEL}` : `${level} → ${level + 1}단계`}</small></button>
+  const globalTotal = totalGlobalUpgradeLevels();
+  must<HTMLElement>("#global-upgrade-total").textContent = `${globalTotal}단계`;
+  must<HTMLElement>("#element-essence-dialog-summary").textContent = WUXING_ORDER.map((wuxing) => `${wuxing}${engine.state.elementEssence[wuxing]}`).join(" ");
+  must<HTMLElement>("#global-upgrade-list").innerHTML = UPGRADE_STAT_ORDER.map((stat) => {
+    const meta = UPGRADE_STAT_META[stat];
+    const level = engine.state.globalUpgrades[stat];
+    const cost = globalUpgradeCost(stat, level);
+    const maxed = level >= MAX_UPGRADE_LEVEL;
+    const bonus = engine.globalUpgradeBonus(stat);
+    return `<article class="stat-upgrade-card is-global">
+      <div class="stat-upgrade-glyph">${meta.glyph}</div>
+      <div><strong>${meta.label} <em>Lv.${level}</em></strong><span>${meta.description}</span><small>현재 ${formatStatBonus(stat, bonus)} · 단계당 ${formatStatBonus(stat, meta.globalPerLevel)}</small></div>
+      <button type="button" data-upgrade-scope="global" data-upgrade-stat="${stat}" ${!active || maxed || engine.state.gold < cost ? "disabled" : ""}><b>${maxed ? "최고" : `${cost}엽전`}</b><small>${maxed ? `Lv.${MAX_UPGRADE_LEVEL}` : `Lv.${level + 1}`}</small></button>
     </article>`;
   }).join("");
-  elementUpgradeRenderKey = `${engine.state.phase}:${engine.state.gold}:${WUXING_ORDER.map((wuxing) => engine.state.elementUpgrades[wuxing]).join(":")}`;
+  must<HTMLElement>("#element-upgrade-list").innerHTML = WUXING_ORDER.map((wuxing) => {
+    const style = ELEMENT_STYLES[wuxing];
+    const elementTotal = UPGRADE_STAT_ORDER.reduce((sum, stat) => sum + engine.state.elementUpgrades[wuxing][stat], 0);
+    const controls = UPGRADE_STAT_ORDER.map((stat) => {
+      const meta = UPGRADE_STAT_META[stat];
+      const level = engine.state.elementUpgrades[wuxing][stat];
+      const cost = elementUpgradeCost(level);
+      const maxed = level >= MAX_UPGRADE_LEVEL;
+      const bonus = engine.elementUpgradeBonus(wuxing, stat);
+      return `<button type="button" class="element-stat-button" data-upgrade-scope="element" data-upgrade-element="${wuxing}" data-upgrade-stat="${stat}" ${!active || maxed || engine.state.elementEssence[wuxing] < cost ? "disabled" : ""} title="${meta.description}">
+        <i>${meta.glyph}</i><span><b>${meta.label} <em>Lv.${level}</em></b><small>${formatStatBonus(stat, bonus)}</small></span><strong>${maxed ? "최고" : `${wuxing}${cost}`}</strong>
+      </button>`;
+    }).join("");
+    return `<article class="element-upgrade-card is-expanded" style="--upgrade:${style.color}">
+      <header><div class="element-upgrade-seal"><b>${wuxing}</b><span>${style.name}행</span></div><p><strong>${elementTotal}단계</strong><small>보유 문기 ${engine.state.elementEssence[wuxing]}</small></p></header>
+      <div class="element-stat-grid">${controls}</div>
+    </article>`;
+  }).join("");
+  elementUpgradeRenderKey = upgradeStateSignature();
 }
 
 function registerKillCombo(): void {
@@ -784,9 +829,13 @@ function processEvent(event: GameEvent): void {
       }
       addCombatFeed("濃", `${event.tower.char} ${event.path === "swift" ? "연속" : "심화"} 농축`, event.usedDuplicate ? "동일 한자 중복 소비" : `${event.tower.wuxing} 문기 ${event.essenceCost} 소비`, ELEMENT_STYLES[event.tower.wuxing].color);
       break;
-    case "elementUpgrade": {
-      const style = ELEMENT_STYLES[event.wuxing];
-      addCombatFeed(event.wuxing, `${style.name}행 ${event.level}단계`, `피해 +${Math.round(event.damageBonus * 100)}% · ${event.cost}엽전 투자`, style.color);
+    case "statUpgrade": {
+      const meta = UPGRADE_STAT_META[event.stat];
+      const style = event.wuxing ? ELEMENT_STYLES[event.wuxing] : null;
+      const glyph = event.wuxing ?? meta.glyph;
+      const title = event.wuxing ? `${style?.name ?? event.wuxing}행 ${meta.label} Lv.${event.level}` : `공용 ${meta.label} Lv.${event.level}`;
+      const currency = event.scope === "global" ? `${event.cost}엽전 투자` : `${event.wuxing} 문기 ${event.cost} 투자`;
+      addCombatFeed(glyph, title, `${formatStatBonus(event.stat, event.bonus)} · ${currency}`, style?.color ?? "#d5c4ff");
       break;
     }
     case "evolve":
@@ -850,7 +899,7 @@ function showEndScreen(phase: "victory" | "defeat"): void {
     <div><span>목표 완성</span><b>${state.goalsCompleted.length}</b></div>
     <div><span>사자성어 봉인</span><b>${state.idiomSeals.length} / ${engine.idioms().length}</b></div>
     <div><span>은행 이자</span><b>${state.interestEarned}엽전</b></div>
-    <div><span>오행 강화</span><b>${Object.values(state.elementUpgrades).reduce((sum, level) => sum + level, 0)}단계</b></div>
+    <div><span>능력 강화</span><b>${totalGlobalUpgradeLevels() + totalElementUpgradeLevels()}단계</b></div>
     <div><span>발견 한자</span><b>${state.discoveredChars.length}</b></div>
     <div><span>경과 시간</span><b>${formatTime(state.elapsed)}</b></div>
   `;
@@ -921,8 +970,8 @@ function syncPanel(): void {
   must<HTMLButtonElement>("#research-button").disabled = !active || state.researchLevel >= 5 || state.gold < researchCost(state.researchLevel);
   must<HTMLButtonElement>("#auto-arrange-button").disabled = !active || state.towers.length === 0;
   must<HTMLButtonElement>("#element-upgrade-button").disabled = !active;
-  must<HTMLElement>("#element-upgrade-total").textContent = `총 ${Object.values(state.elementUpgrades).reduce((sum, level) => sum + level, 0)}단계`;
-  const nextElementUpgradeRenderKey = `${state.phase}:${state.gold}:${WUXING_ORDER.map((wuxing) => state.elementUpgrades[wuxing]).join(":")}`;
+  must<HTMLElement>("#element-upgrade-total").textContent = `총 ${totalGlobalUpgradeLevels() + totalElementUpgradeLevels()}단계`;
+  const nextElementUpgradeRenderKey = upgradeStateSignature();
   if (elementUpgradeDialog.open && elementUpgradeRenderKey !== nextElementUpgradeRenderKey) renderElementUpgrades();
   const earlyButton = must<HTMLButtonElement>("#early-button");
   earlyButton.disabled = state.phase !== "prep";
@@ -1058,8 +1107,9 @@ function renderSelected(): void {
   if (!definition) return;
   const style = ELEMENT_STYLES[tower.wuxing];
   const concentrationDamage = 1 + concentration * (concentrationPath === "potent" ? 0.12 : 0.055);
-  const damage = Math.round(definition.combat.baseDamage * STAGE_MULTIPLIERS[tower.stage] * definition.combat.budgetMultiplier * (1 + engine.idiomBonus("damage")) * (1 + engine.elementDamageBonus(tower.wuxing)) * concentrationDamage);
-  const range = definition.combat.range + engine.idiomBonus("range") + concentration * 4;
+  const damage = Math.round(definition.combat.baseDamage * STAGE_MULTIPLIERS[tower.stage] * definition.combat.budgetMultiplier * (1 + engine.idiomBonus("damage")) * (1 + engine.combinedUpgradeBonus(tower.wuxing, "damage")) * concentrationDamage);
+  const range = definition.combat.range + engine.idiomBonus("range") + concentration * 4 + engine.combinedUpgradeBonus(tower.wuxing, "range");
+  const attacksPerSecond = 1 / engine.towerAttackCooldown(tower);
   const learning = learningInfo(engine.state.region, tower.char);
   const abilities = definition.combat.abilities;
   const abilityList = [abilities.semantic, abilities.element, abilities.role, abilities.graph, abilities.lineage].filter((ability): ability is AbilitySpec => Boolean(ability));
@@ -1083,7 +1133,7 @@ function renderSelected(): void {
     <div class="selected-copy">
       <div><span>${STAGE_NAMES[tower.stage]} · ${style.name}행 · ${ROLE_LABELS[tower.combatRole]}</span><h3>${tower.char} <small>${GRAPH_ROLE_LABELS[tower.graphRole]}</small><i class="selected-radical">${displayMode === "spirit" ? `${learning.readingLabel} ${escapeHtml(learning.reading)}` : `부수 ${radicalGlyph(tower.char)}`}</i></h3></div>
       <p class="selected-learning"><b>${learning.readingLabel}</b> ${escapeHtml(learning.reading)} · <em>${learning.meaningSource === "en" ? "뜻(영)" : "뜻"} ${escapeHtml(learning.meaning)}</em></p>
-      <p><b>${stored ? "배치 대기" : `공격 ${damage}`}</b> · ${stored ? "찬 칸을 누르면 즉시 교체" : `사거리 ${range} · 파생 합성 ${branches.length}`}</p>
+      <p><b>${stored ? "배치 대기" : `공격 ${damage}`}</b> · ${stored ? "찬 칸을 누르면 즉시 교체" : `공속 ${attacksPerSecond.toFixed(2)}/초 · 사거리 ${Math.round(range)} · 파생 합성 ${branches.length}`}</p>
       <small class="cleanup-reason ${cleanup?.protected ? "is-protected" : "is-candidate"}">${escapeHtml(cleanupLabel)} · ${escapeHtml(concentrationPayment)}</small>
     </div>
     <div class="selected-actions">
@@ -1757,7 +1807,7 @@ function drawSelection(): void {
   context.lineWidth = 1.5;
   context.setLineDash([7, 7]);
   context.beginPath();
-  context.arc(cell.x, cell.y, definition.combat.range + (selected.stage - 1) * 7 + engine.idiomBonus("range") + (selected.concentration ?? 0) * 4, 0, Math.PI * 2);
+  context.arc(cell.x, cell.y, definition.combat.range + (selected.stage - 1) * 7 + engine.idiomBonus("range") + (selected.concentration ?? 0) * 4 + engine.combinedUpgradeBonus(selected.wuxing, "range"), 0, Math.PI * 2);
   context.fill();
   context.stroke();
   context.restore();
@@ -2390,11 +2440,18 @@ must<HTMLButtonElement>("#research-button").addEventListener("click", () => { so
 must<HTMLButtonElement>("#auto-arrange-button").addEventListener("click", () => { sound.unlock(); handleAction(engine.autoArrangeTowers()); });
 must<HTMLButtonElement>("#element-upgrade-button").addEventListener("click", () => { renderElementUpgrades(); elementUpgradeDialog.showModal(); });
 must<HTMLButtonElement>("#element-upgrade-close").addEventListener("click", () => elementUpgradeDialog.close());
-must<HTMLElement>("#element-upgrade-list").addEventListener("click", (event) => {
-  const wuxing = (event.target as HTMLElement).closest<HTMLButtonElement>("[data-upgrade-element]")?.dataset.upgradeElement as Wuxing | undefined;
-  if (!wuxing) return;
+elementUpgradeDialog.addEventListener("click", (event) => {
+  const button = (event.target as HTMLElement).closest<HTMLButtonElement>("[data-upgrade-scope][data-upgrade-stat]");
+  const stat = button?.dataset.upgradeStat as UpgradeStat | undefined;
+  const scope = button?.dataset.upgradeScope;
+  if (!button || !stat || (scope !== "global" && scope !== "element")) return;
   sound.unlock();
-  handleAction(engine.upgradeElement(wuxing));
+  if (scope === "global") handleAction(engine.upgradeGlobal(stat));
+  else {
+    const wuxing = button.dataset.upgradeElement as Wuxing | undefined;
+    if (!wuxing) return;
+    handleAction(engine.upgradeElement(wuxing, stat));
+  }
   renderElementUpgrades();
 });
 must<HTMLButtonElement>("#early-button").addEventListener("click", () => { sound.unlock(); handleAction(engine.startWaveEarly()); });

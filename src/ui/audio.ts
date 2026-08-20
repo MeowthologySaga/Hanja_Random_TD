@@ -31,7 +31,7 @@ export class SoundManager {
         this.tone(420, 0.08, "triangle", 0.025, 1.3);
         window.setTimeout(() => this.tone(610, 0.11, "triangle", 0.02, 1.15), 55);
         break;
-      case "elementUpgrade":
+      case "statUpgrade":
         this.tone(280, 0.1, "triangle", 0.03, 1.45);
         window.setTimeout(() => this.tone(560, 0.14, "triangle", 0.025, 1.18), 70);
         break;

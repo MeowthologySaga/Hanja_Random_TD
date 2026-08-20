@@ -3,7 +3,7 @@ import type { EnemyArchetype, Point, WavePlan, Wuxing } from "./types";
 
 export const WORLD_WIDTH = 880;
 export const WORLD_HEIGHT = 720;
-export const MAX_ENEMIES = 40;
+export const MAX_ENEMIES = 80;
 export const WAVE_REINFORCEMENT_DELAY = 16;
 export const BOSS_TIME_LIMITS: Readonly<Record<number, number>> = Object.freeze({ 10: 60, 20: 85 });
 export const FORMATION_COLUMNS = 4;
@@ -170,7 +170,7 @@ export function wavePlan(wave: number): WavePlan {
     wave,
     count: Math.max(1, Math.round(baseCount * countFactor)),
     hp: baseHp * hpFactor,
-    speed: (0.036 + Math.min(0.014, wave * 0.00055)) * speedFactor,
+    speed: (0.026 + Math.min(0.01, wave * 0.0004)) * speedFactor,
     interval: archetype === "swarm" ? 0.34 : boss ? 0.9 : Math.max(0.4, 0.82 - wave * 0.01),
     reward: boss ? 32 + wave : 2 + Math.floor(wave / 5),
     boss,
