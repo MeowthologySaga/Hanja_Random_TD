@@ -2,6 +2,8 @@ export type RegionCode = "KR" | "JP" | "CN";
 export type Wuxing = "木" | "火" | "土" | "金" | "水";
 export type ElementKind = "wood" | "fire" | "earth" | "metal" | "water";
 export type Stage = 1 | 2 | 3 | 4 | 5;
+export type GameMode = "standard" | "casual";
+export type CasualStar = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
 export type RunPhase = "title" | "prep" | "combat" | "victory" | "defeat";
 export type AutomationMode = "manual" | "semi" | "goal";
 export type SummonIntent = "balanced" | "discovery" | "lineage" | "concentration";
@@ -167,6 +169,8 @@ export interface Tower {
   locked: boolean;
   concentration?: ConcentrationLevel;
   concentrationPath?: ConcentrationPath | null;
+  naturalStar?: CasualStar;
+  casualStar?: CasualStar;
 }
 
 export interface Enemy {
@@ -259,6 +263,7 @@ export interface IdiomSeal {
 export interface GameState {
   seed: string;
   region: RegionCode;
+  mode: GameMode;
   phase: RunPhase;
   wave: number;
   maxWaves: number;
@@ -270,6 +275,7 @@ export interface GameState {
   summonCount: number;
   killCount: number;
   evolutionCount: number;
+  casualFusionCount: number;
   interestEarned: number;
   elementEssence: Record<Wuxing, number>;
   elementDismantleScore: Record<Wuxing, number>;
@@ -315,6 +321,7 @@ export type GameEvent =
   | { type: "statUpgrade"; scope: "global" | "element"; wuxing: Wuxing | null; stat: UpgradeStat; level: number; cost: number; bonus: number }
   | { type: "traitUpgrade"; wuxing: Wuxing; traitIndex: number; level: number; cost: number }
   | { type: "evolve"; at: Point; tower: Tower; parents: string[]; targetCompleted: boolean }
+  | { type: "casualFuse"; at: Point; tower: Tower; consumed: Tower[]; fromStar: CasualStar; toStar: CasualStar }
   | { type: "ability"; at: Point; source: Point; towerId: number; name: string; glyph: string; color: string; kind: AbilityFxKind; targets: number; effect: string; persistent?: boolean }
   | { type: "goal"; char: string; reward: number }
   | { type: "idiom"; idiomId: string; chars: string; reading: string; meaning: string; bonus: string; color: string; cells: number[] }
@@ -329,12 +336,14 @@ export interface ActionResult {
 export interface SimulationResult {
   seed: string;
   region: RegionCode;
+  mode: GameMode;
   result: "victory" | "defeat" | "timeout";
   wave: number;
   elapsed: number;
   summons: number;
   peakTowerCount: number;
   evolutions: number;
+  casualFusions: number;
   discoveries: number;
   goals: number;
   idioms: number;
@@ -358,6 +367,7 @@ export interface SimulationCheckpoint {
   inventory: number;
   summons: number;
   evolutions: number;
+  casualFusions: number;
   discoveries: number;
   goals: number;
   idioms: number;

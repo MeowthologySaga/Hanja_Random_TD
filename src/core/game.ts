@@ -18,6 +18,12 @@ import {
   wavePlan
 } from "./content";
 import { hasActiveSkills } from "./abilities";
+import {
+  CASUAL_STAR_POWER,
+  casualNaturalStar,
+  casualStarAfterFusion,
+  casualStrokeCount
+} from "./casual";
 import { EvolutionService } from "./evolution";
 import {
   ELEMENT_TRAIT_MAX_LEVEL,
@@ -74,6 +80,8 @@ import type {
   HanziDefinition,
   AbilitySpec,
   AbilityZone,
+  CasualStar,
+  GameMode,
   Point,
   RegionCode,
   SimulationCheckpoint,
@@ -189,6 +197,29 @@ export interface ConcentrationQuote {
   next: ConcentrationCombatSnapshot;
 }
 
+export interface CasualFusionIssue {
+  towerId: number | null;
+  text: string;
+}
+
+export interface CasualFusionQuote {
+  coreId: number;
+  materialIds: number[];
+  fromStar: CasualStar | null;
+  toStar: CasualStar | null;
+  wuxing: Wuxing | null;
+  blocked: CasualFusionIssue[];
+  warnings: CasualFusionIssue[];
+}
+
+export interface CasualAutoFusionGroup {
+  coreId: number;
+  materialIds: [number, number];
+  fromStar: CasualStar;
+  toStar: CasualStar;
+  warnings: CasualFusionIssue[];
+}
+
 const REGION_ENEMY_HP_CURVE: Record<RegionCode, { base: number; chapterGrowth: number }> = {
   // Five 4x4 elemental formations expose eighty active tower positions.
   // The 80-slot field produces far more sustained fire than the former 20-slot
@@ -199,6 +230,7 @@ const REGION_ENEMY_HP_CURVE: Record<RegionCode, { base: number; chapterGrowth: n
   JP: { base: 23.8, chapterGrowth: 1.04 },
   CN: { base: 24.2, chapterGrowth: 0.97 }
 };
+const CASUAL_ENEMY_HP_SCALE = 2.2;
 
 // The center formation overlaps more of the loop than the east formation.
 // These small route-coverage coefficients make "which element appeared first"
@@ -206,10 +238,11 @@ const REGION_ENEMY_HP_CURVE: Record<RegionCode, { base: number; chapterGrowth: n
 // five formations are open their bonuses nearly cancel out.
 const FORMATION_ROUTE_COVERAGE_MULTIPLIER = Object.freeze([0.995, 0.995, 0.95, 1.05, 1.01] as const);
 
-function regionEnemyHpMultiplier(region: RegionCode, wave: number): number {
+function regionEnemyHpMultiplier(region: RegionCode, wave: number, mode: GameMode): number {
   const curve = REGION_ENEMY_HP_CURVE[region];
   const completedChapters = Math.max(0, Math.floor((wave - 1) / 10));
-  return curve.base + completedChapters * curve.chapterGrowth;
+  const regional = curve.base + completedChapters * curve.chapterGrowth;
+  return regional * (mode === "casual" ? CASUAL_ENEMY_HP_SCALE : 1);
 }
 
 function weightedPick(rng: SeededRng, entries: readonly HanziDefinition[], weights: readonly number[]): HanziDefinition {
@@ -241,7 +274,8 @@ export class GameEngine {
   private readonly combatFormationBonuses = [0, 0, 0, 0, 0];
   private combatDistinctElements = 0;
 
-  constructor(seed: string, region: RegionCode = "KR") {
+  constructor(seed: string, region: RegionCode = "KR", mode: GameMode = "standard") {
+    if (mode === "casual" && region !== "KR") throw new Error("캐주얼 8성전은 천자문 한국 지역에서만 지원됩니다.");
     this.catalog = getCatalog(region);
     this.evolution = new EvolutionService(this.catalog);
     this.rng = new SeededRng(seed);
@@ -249,6 +283,7 @@ export class GameEngine {
     this.state = {
       seed,
       region,
+      mode,
       phase: "title",
       wave: 0,
       maxWaves: GAME_CONFIG.maxWaves,
@@ -260,6 +295,7 @@ export class GameEngine {
       summonCount: 0,
       killCount: 0,
       evolutionCount: 0,
+      casualFusionCount: 0,
       interestEarned: 0,
       elementEssence: emptyElementEssence(),
       elementDismantleScore: emptyElementEssence(),
@@ -315,6 +351,7 @@ export class GameEngine {
       summonCount: 0,
       killCount: 0,
       evolutionCount: 0,
+      casualFusionCount: 0,
       interestEarned: 0,
       elementEssence: emptyElementEssence(),
       elementDismantleScore: emptyElementEssence(),
@@ -360,7 +397,7 @@ export class GameEngine {
     if (this.state.phase === "prep" && this.state.summonCount === 0) return;
     this.state.elapsed += delta;
     this.autoEvolutionCooldown -= delta;
-    if (this.state.automationMode === "goal" && this.autoEvolutionCooldown <= 0) {
+    if (this.state.mode === "standard" && this.state.automationMode === "goal" && this.autoEvolutionCooldown <= 0) {
       const option = this.availableEvolutions().find((candidate) => candidate.onTargetPath);
       if (option) this.evolve(option.recipeId);
       this.autoEvolutionCooldown = option ? 0.24 : 0.48;
@@ -419,7 +456,7 @@ export class GameEngine {
     const isBoss = plan.boss && this.state.spawned === plan.count - 1;
     const bossFactor = bossHpFactorForWave(plan.wave);
     const hpJitter = 0.94 + this.rng.next() * 0.12;
-    const hp = plan.hp * (isBoss || !plan.boss ? 1 : 1 / bossFactor) * hpJitter * regionEnemyHpMultiplier(this.state.region, this.state.wave);
+    const hp = plan.hp * (isBoss || !plan.boss ? 1 : 1 / bossFactor) * hpJitter * regionEnemyHpMultiplier(this.state.region, this.state.wave, this.state.mode);
     const archetype = isBoss ? "boss" : plan.boss ? "normal" : plan.archetype;
     this.state.enemies.push({
       id: this.nextEnemyId++,
@@ -519,8 +556,9 @@ export class GameEngine {
     const radiusTraitIndex = tower.wuxing === "木" || tower.wuxing === "水" ? 0 : tower.wuxing === "火" ? 1 : tower.wuxing === "土" ? 2 : -1;
     const radiusMultiplier = radiusTraitIndex >= 0 ? 1 + this.elementTraitLevel(tower.wuxing, radiusTraitIndex) * 0.02 : 1;
     const damageMultiplier = tower.wuxing === "火" ? 1 + this.elementTraitLevel("火", 0) * 0.025 : 1;
-    const duration = (spec.duration + tower.stage * 0.22) * durationMultiplier;
-    const radius = (spec.radius + tower.stage * 5) * radiusMultiplier;
+    const progressionRank = this.state.mode === "casual" ? tower.casualStar ?? tower.naturalStar ?? 1 : tower.stage;
+    const duration = (spec.duration + progressionRank * 0.22) * durationMultiplier;
+    const radius = (spec.radius + progressionRank * 5) * radiusMultiplier;
     const damagePerSecond = damage * spec.damageRatio * potency * abilityPower * damageMultiplier;
     const existing = this.state.abilityZones.find((zone) => zone.towerId === tower.id);
     const zone: AbilityZone = {
@@ -554,7 +592,7 @@ export class GameEngine {
   private findTarget(tower: Tower): Enemy | undefined {
     const origin = BOARD_CELLS[tower.cell] as Point;
     const definition = definitionForTower(this.catalog, tower.definitionId);
-    const range = definition.combat.range + (tower.stage - 1) * 7 + this.idiomBonus("range") + (tower.concentration ?? 0) * 4 + this.combinedUpgradeBonus(tower.wuxing, "range");
+    const range = definition.combat.range + this.towerRangeBonus(tower) + this.idiomBonus("range") + (tower.concentration ?? 0) * 4 + this.combinedUpgradeBonus(tower.wuxing, "range");
     const candidates = this.targetCandidates;
     candidates.length = 0;
     for (const enemy of this.state.enemies) if (distance(origin, this.enemyPoint(enemy)) <= range) candidates.push(enemy);
@@ -595,7 +633,7 @@ export class GameEngine {
     tower.shotCount += 1;
     const concentration = tower.concentration ?? 0;
     const concentrationPath = tower.concentrationPath ?? null;
-    const activeSkills = hasActiveSkills(definition);
+    const activeSkills = this.towerHasActiveSkills(tower);
     const abilityPower = 1 + this.combinedUpgradeBonus(tower.wuxing, "abilityPower");
     const statusPower = 1 + this.combinedUpgradeBonus(tower.wuxing, "statusPower");
     const semanticEvery = Math.max(7, tuning.semanticEvery - (concentration >= 3 ? 1 : 0));
@@ -606,7 +644,7 @@ export class GameEngine {
     const lineageTrigger = activeSkills && !semanticTrigger && !signature
       && Boolean(abilities.lineage && tower.shotCount % tuning.lineageEvery === 0);
     const signatureControlBonus = signature && profile.role === "control" ? tuning.roleControlBonus : 0;
-    let damage = profile.baseDamage * STAGE_MULTIPLIERS[tower.stage] * profile.budgetMultiplier;
+    let damage = profile.baseDamage * this.towerPowerMultiplier(tower) * profile.budgetMultiplier;
     damage *= 1 + concentration * (concentrationPath === "potent" ? 0.12 : 0.055);
     damage *= 1 + this.combinedUpgradeBonus(tower.wuxing, "damage");
     damage *= 1 + this.idiomBonus("damage");
@@ -927,15 +965,21 @@ export class GameEngine {
     const cost = summonCost(this.state.summonCount);
     if (this.state.gold < cost) return { ok: false, message: "엽전이 " + String(cost - this.state.gold) + " 부족합니다." };
     if (this.runSummonPool.length === 0) return { ok: false, message: "이 지역의 활성 소환 풀이 비어 있습니다." };
-    const maxStage = maxSummonStageForWave(this.state.wave);
-    const summonPool = this.runSummonPool.filter((definition) => definition.stage <= maxStage);
+    const maxStage = this.state.mode === "casual" ? 5 : maxSummonStageForWave(this.state.wave);
+    const summonPool = this.state.mode === "casual"
+      ? [...this.runSummonPool]
+      : this.runSummonPool.filter((definition) => definition.stage <= maxStage);
     if (summonPool.length === 0) return { ok: false, message: "현재 장에서 소환 가능한 자령이 없습니다." };
 
     const ownedTowers = [...this.state.towers, ...this.state.inventoryTowers];
-    const helpfulChars = this.evolution.getHelpfulDirectCharacters(ownedTowers, this.state.targetChar);
+    const helpfulChars = this.state.mode === "casual"
+      ? new Set([this.state.targetChar])
+      : this.evolution.getHelpfulDirectCharacters(ownedTowers, this.state.targetChar);
     const idiomTarget = this.currentIdiomTarget();
     const idiomHelpfulChars = idiomTarget
-      ? helpfulDirectCharsForIdiom(this.catalog, ownedTowers, idiomTarget)
+      ? this.state.mode === "casual"
+        ? new Set([...idiomTarget.chars])
+        : helpfulDirectCharsForIdiom(this.catalog, ownedTowers, idiomTarget)
       : new Set<string>();
     const connectionBonus = researchConnectionBonus(this.state.researchLevel);
     // The Korean playable-preview pool is much wider than the original
@@ -957,9 +1001,11 @@ export class GameEngine {
           : GAME_CONFIG.undiscoveredWeight;
       const featuredPoolOnly = !this.catalog.activePool.some((candidate) => candidate.char === definition.char);
       const baseWeight = featuredPoolOnly
-        ? onboarding ? 0 : 0.25
-        : onboarding ? activePoolBaseWeight(this.state.region, definition.char) : 1;
-      const stageWeight = onboarding && definition.stage > 1 ? 0 : SUMMON_STAGE_WEIGHTS[definition.stage];
+        ? onboarding && this.state.mode === "standard" ? 0 : 0.25
+        : onboarding && this.state.mode === "standard" ? activePoolBaseWeight(this.state.region, definition.char) : 1;
+      const stageWeight = this.state.mode === "casual"
+        ? 1
+        : onboarding && definition.stage > 1 ? 0 : SUMMON_STAGE_WEIGHTS[definition.stage];
       let weight = baseWeight * exposureWeight;
       if (helpfulChars.has(definition.char)) weight += (GAME_CONFIG.targetWeightBase + connectionBonus * 3.2) * pityMultiplier * focusPoolScale * 0.65;
       if (definition.char === this.state.targetChar) weight += GAME_CONFIG.targetWeightBase * 1.4 * pityMultiplier * focusPoolScale;
@@ -1089,7 +1135,218 @@ export class GameEngine {
     return { ok: true, message: this.state.lastMessage };
   }
 
+  casualFusionQuote(coreId: number, materialIds: readonly number[]): CasualFusionQuote {
+    const quote: CasualFusionQuote = {
+      coreId,
+      materialIds: [...materialIds],
+      fromStar: null,
+      toStar: null,
+      wuxing: null,
+      blocked: [],
+      warnings: []
+    };
+    if (this.state.mode !== "casual") {
+      quote.blocked.push({ towerId: null, text: "캐주얼 8성전에서만 같은 오행 3체 조합을 사용할 수 있습니다." });
+      return quote;
+    }
+    if (materialIds.length !== 2) {
+      quote.blocked.push({ towerId: null, text: "본체 1기와 재료 2기를 정확히 선택하세요." });
+      return quote;
+    }
+    const uniqueIds = new Set([coreId, ...materialIds]);
+    if (uniqueIds.size !== 3) {
+      quote.blocked.push({ towerId: null, text: "서로 다른 자령 3기를 선택해야 합니다." });
+      return quote;
+    }
+    const all = [...this.state.towers, ...this.state.inventoryTowers];
+    const core = all.find((tower) => tower.id === coreId);
+    const materials = materialIds
+      .map((id) => all.find((tower) => tower.id === id))
+      .filter((tower): tower is Tower => Boolean(tower));
+    if (!core) quote.blocked.push({ towerId: coreId, text: "남길 본체 자령이 이동했거나 사라졌습니다." });
+    for (const id of materialIds) {
+      if (!materials.some((tower) => tower.id === id)) quote.blocked.push({ towerId: id, text: `재료 #${id}이 이동했거나 사라졌습니다.` });
+    }
+    if (!core || materials.length !== 2) return quote;
+
+    const fromStar = core.casualStar ?? core.naturalStar ?? null;
+    quote.fromStar = fromStar;
+    quote.toStar = fromStar === null ? null : casualStarAfterFusion(fromStar);
+    quote.wuxing = core.wuxing;
+    if (fromStar === null || materials.some((tower) => (tower.casualStar ?? tower.naturalStar) === undefined)) {
+      quote.blocked.push({ towerId: null, text: "선택한 자령의 별 정보를 확인할 수 없습니다." });
+    } else if (fromStar >= 8) {
+      quote.blocked.push({ towerId: core.id, text: `${core.char}은 이미 최고 8★입니다.` });
+    }
+    for (const material of materials) {
+      if (material.locked) quote.blocked.push({ towerId: material.id, text: `${material.char}은 잠겨 있어 재료로 쓸 수 없습니다.` });
+      if (material.wuxing !== core.wuxing) quote.blocked.push({ towerId: material.id, text: `${material.char}은 ${core.wuxing}행이 아닙니다.` });
+      if ((material.casualStar ?? material.naturalStar) !== fromStar) {
+        quote.blocked.push({ towerId: material.id, text: `${material.char}의 현재 별이 본체와 다릅니다.` });
+      }
+    }
+    if (quote.blocked.length > 0) return quote;
+
+    const assessmentById = new Map(this.cleanupAssessments().map((assessment) => [assessment.towerId, assessment]));
+    const standardMaterialIds = new Set(
+      this.evolution.getAvailableRecipes(all, this.state.targetChar, null, "semi")
+        .flatMap((option) => option.materialTowerIds)
+    );
+    const warningKeys = new Set<string>();
+    for (const material of materials) {
+      const assessment = assessmentById.get(material.id);
+      for (const reason of assessment?.protectedReasons ?? []) {
+        if (reason === "잠금 자령") continue;
+        const key = `${material.id}:${reason}`;
+        if (warningKeys.has(key)) continue;
+        warningKeys.add(key);
+        quote.warnings.push({ towerId: material.id, text: `${material.char} · ${reason}` });
+      }
+      if (standardMaterialIds.has(material.id)) {
+        const key = `${material.id}:standard-recipe`;
+        if (!warningKeys.has(key)) quote.warnings.push({ towerId: material.id, text: `${material.char} · 일반 모드 합성식에 바로 쓸 수 있는 재료` });
+        warningKeys.add(key);
+      }
+      if (material.cell >= 0) {
+        const key = `${material.id}:deployed`;
+        if (!warningKeys.has(key)) quote.warnings.push({ towerId: material.id, text: `${material.char} · 현재 전장에 배치됨` });
+        warningKeys.add(key);
+      }
+    }
+    return quote;
+  }
+
+  fuseCasual(coreId: number, materialIds: readonly number[], allowWarnings = false): ActionResult {
+    if (!this.isRunActive()) return { ok: false, message: "진행 중인 수비전이 없습니다." };
+    const quote = this.casualFusionQuote(coreId, materialIds);
+    if (quote.blocked.length > 0) return { ok: false, message: `조합 중단 · ${quote.blocked[0]?.text ?? "조건을 다시 확인하세요."}` };
+    if (!allowWarnings && quote.warnings.length > 0) {
+      return { ok: false, message: `확인 필요 · ${quote.warnings[0]?.text ?? "보호 대상이 포함되어 있습니다."}` };
+    }
+    return this.performCasualFusion(quote);
+  }
+
+  casualAutoFusionPlan(wuxing: Wuxing): CasualAutoFusionGroup[] {
+    if (this.state.mode !== "casual") return [];
+    const owned = [...this.state.towers, ...this.state.inventoryTowers]
+      .filter((tower) => tower.wuxing === wuxing && (tower.casualStar ?? 8) < 8);
+    const targetPath = this.state.mode === "casual" ? new Set([this.state.targetChar]) : this.evolution.getTargetPath(this.state.targetChar);
+    const unfinishedIdiomChars = new Set(
+      this.idioms()
+        .filter((idiom) => !this.state.idiomSeals.some((seal) => seal.idiomId === idiom.id))
+        .flatMap((idiom) => [...idiom.chars])
+    );
+    const standardMaterialIds = new Set(
+      this.evolution.getAvailableRecipes([...this.state.towers, ...this.state.inventoryTowers], this.state.targetChar, null, "semi")
+        .flatMap((option) => option.materialTowerIds)
+    );
+    const isPreferredCore = (tower: Tower): boolean => tower.locked
+      || (tower.concentration ?? 0) > 0
+      || targetPath.has(tower.char)
+      || unfinishedIdiomChars.has(tower.char)
+      || standardMaterialIds.has(tower.id)
+      || tower.cell >= 0;
+    const isSafeMaterial = (tower: Tower): boolean => !tower.locked
+      && (tower.concentration ?? 0) === 0
+      && !targetPath.has(tower.char)
+      && !unfinishedIdiomChars.has(tower.char)
+      && !standardMaterialIds.has(tower.id);
+    const value = (tower: Tower): number => {
+      const definition = definitionForTower(this.catalog, tower.definitionId);
+      return definition.combat.baseDamage * this.towerPowerMultiplier(tower) * definition.combat.budgetMultiplier / this.towerAttackCooldown(tower);
+    };
+    const groups: CasualAutoFusionGroup[] = [];
+    for (let star = 1 as CasualStar; star <= 7; star = (star + 1) as CasualStar) {
+      const available = owned
+        .filter((tower) => (tower.casualStar ?? tower.naturalStar) === star)
+        .sort((left, right) => value(right) - value(left) || left.id - right.id);
+      while (available.length >= 3) {
+        const safeMaterials = available.filter(isSafeMaterial);
+        if (safeMaterials.length < 2) break;
+        const preferredCore = available.filter(isPreferredCore)[0];
+        const core = preferredCore ?? available[0];
+        if (!core) break;
+        const materialPool = available
+          .filter((tower) => tower.id !== core.id && isSafeMaterial(tower))
+          .sort((left, right) => Number(left.cell >= 0) - Number(right.cell >= 0) || value(left) - value(right) || right.id - left.id);
+        const materials = materialPool.slice(0, 2);
+        if (materials.length !== 2) break;
+        const quote = this.casualFusionQuote(core.id, materials.map((tower) => tower.id));
+        if (quote.blocked.length > 0 || quote.toStar === null) break;
+        groups.push({
+          coreId: core.id,
+          materialIds: [materials[0]?.id ?? -1, materials[1]?.id ?? -1],
+          fromStar: star,
+          toStar: quote.toStar,
+          warnings: quote.warnings
+        });
+        const usedIds = new Set([core.id, ...materials.map((tower) => tower.id)]);
+        for (let index = available.length - 1; index >= 0; index -= 1) {
+          if (usedIds.has(available[index]?.id ?? -1)) available.splice(index, 1);
+        }
+      }
+    }
+    return groups;
+  }
+
+  autoFuseCasualElement(wuxing: Wuxing, allowWarnings = false): ActionResult {
+    if (!this.isRunActive()) return { ok: false, message: "진행 중인 수비전이 없습니다." };
+    const groups = this.casualAutoFusionPlan(wuxing);
+    if (groups.length === 0) return { ok: false, message: `${wuxing}행 인벤토리에 안전하게 묶을 같은 별 자령 3기가 없습니다.` };
+    const firstWarning = groups.flatMap((group) => group.warnings)[0];
+    if (!allowWarnings && firstWarning) return { ok: false, message: `확인 필요 · ${firstWarning.text}` };
+    for (const group of groups) {
+      const quote = this.casualFusionQuote(group.coreId, group.materialIds);
+      if (quote.blocked.length > 0) return { ok: false, message: `자동조합 중단 · ${quote.blocked[0]?.text ?? "대상이 바뀌었습니다."}` };
+      if (!allowWarnings && quote.warnings.length > 0) return { ok: false, message: `확인 필요 · ${quote.warnings[0]?.text ?? "보호 대상이 포함되었습니다."}` };
+    }
+    for (const group of groups) {
+      const quote = this.casualFusionQuote(group.coreId, group.materialIds);
+      const result = this.performCasualFusion(quote);
+      if (!result.ok) return result;
+    }
+    this.state.lastMessage = `${wuxing}행 자동조합 ${groups.length}회 완료 · 각 본체의 배치 위치는 유지됩니다.`;
+    return { ok: true, message: this.state.lastMessage };
+  }
+
+  private performCasualFusion(quote: CasualFusionQuote): ActionResult {
+    if (quote.fromStar === null || quote.toStar === null || quote.wuxing === null) {
+      return { ok: false, message: "조합 별 정보를 다시 확인하세요." };
+    }
+    const all = [...this.state.towers, ...this.state.inventoryTowers];
+    const core = all.find((tower) => tower.id === quote.coreId);
+    const consumed = quote.materialIds
+      .map((id) => all.find((tower) => tower.id === id))
+      .filter((tower): tower is Tower => Boolean(tower));
+    if (!core || consumed.length !== 2) return { ok: false, message: "조합 대상이 바뀌었습니다. 다시 선택하세요." };
+    const consumedIds = new Set(consumed.map((tower) => tower.id));
+    const refunds = emptyElementEssence();
+    for (const tower of consumed) refunds[tower.wuxing] += concentrationEssenceRefund(tower.concentration ?? 0);
+    this.state.towers = this.state.towers.filter((tower) => !consumedIds.has(tower.id));
+    this.state.inventoryTowers = this.state.inventoryTowers.filter((tower) => !consumedIds.has(tower.id));
+    for (const wuxing of Object.keys(refunds) as Wuxing[]) this.state.elementEssence[wuxing] += refunds[wuxing];
+    core.casualStar = quote.toStar;
+    core.pulse = 1;
+    core.abilityFlash = 1;
+    this.state.selectedTowerId = core.id;
+    this.state.casualFusionCount += 1;
+    const stroke = casualStrokeCount(core.char);
+    const natural = core.naturalStar ?? quote.fromStar;
+    const baseLabel = stroke === null ? "" : ` · 기본 ${natural}★(${stroke}획)`;
+    this.state.lastMessage = `${core.wuxing}행 3체 조합 · ${core.char} ${quote.fromStar}★→${quote.toStar}★${baseLabel}`;
+    this.events.push({
+      type: "casualFuse",
+      at: core.cell >= 0 ? BOARD_CELLS[core.cell] as Point : { x: 440, y: 360 },
+      tower: { ...core },
+      consumed: consumed.map((tower) => ({ ...tower })),
+      fromStar: quote.fromStar,
+      toStar: quote.toStar
+    });
+    return { ok: true, message: this.state.lastMessage };
+  }
+
   availableEvolutions(): EvolutionOption[] {
+    if (this.state.mode === "casual") return [];
     return this.evolution.getAvailableRecipes(
       [...this.state.towers, ...this.state.inventoryTowers],
       this.state.targetChar,
@@ -1099,6 +1356,7 @@ export class GameEngine {
   }
 
   compositionBranchesForSelected(): CompositionBranchPreview[] {
+    if (this.state.mode === "casual") return [];
     const selected = this.selectedTower();
     if (!selected) return [];
     return this.evolution.getDerivativeRecipes(
@@ -1111,6 +1369,7 @@ export class GameEngine {
 
   evolve(recipeId: string): ActionResult {
     if (!this.isRunActive()) return { ok: false, message: "진행 중인 수비전이 없습니다." };
+    if (this.state.mode === "casual") return { ok: false, message: "캐주얼 8성전에서는 같은 오행·같은 별 자령 3기를 선택해 조합합니다." };
     const option = this.availableEvolutions().find((candidate) => candidate.recipeId === recipeId);
     if (!option) return { ok: false, message: "현재 보유한 자령으로 그 합성을 만들 수 없습니다." };
     const ownedTowers = [...this.state.towers, ...this.state.inventoryTowers];
@@ -1170,10 +1429,22 @@ export class GameEngine {
   }
 
   goalProgress(): GoalProgress {
-    return this.evolution.getGoalProgress([...this.state.towers, ...this.state.inventoryTowers], this.state.targetChar);
+    return this.goalProgressFor(this.state.targetChar);
   }
 
   goalProgressFor(char: string): GoalProgress {
+    if (this.state.mode === "casual") {
+      const target = this.catalog.definitions.get(char);
+      if (!target) return this.evolution.getGoalProgress([...this.state.towers, ...this.state.inventoryTowers], this.state.targetChar);
+      const owned = [...this.state.towers, ...this.state.inventoryTowers].filter((tower) => tower.char === char).length;
+      return {
+        target,
+        directMaterials: [{ char, owned, needed: 1 }],
+        ownedNodes: owned > 0 ? [char] : [],
+        craftableNodes: [],
+        progress: Math.min(1, owned)
+      };
+    }
     return this.evolution.getGoalProgress([...this.state.towers, ...this.state.inventoryTowers], char);
   }
 
@@ -1371,7 +1642,43 @@ export class GameEngine {
     const concentration = tower.concentration ?? 0;
     const concentrationHaste = tower.concentrationPath === "swift" ? concentration * 0.075 : concentration * 0.02;
     const upgradeHaste = this.combinedUpgradeBonus(tower.wuxing, "attackSpeed");
-    return Math.max(0.28, profile.cooldown * (1 - (tower.stage - 1) * 0.035) * (1 - concentrationHaste) / (1 + upgradeHaste));
+    const progressionHaste = this.state.mode === "casual"
+      ? ((tower.casualStar ?? tower.naturalStar ?? 1) - 1) * 0.02
+      : (tower.stage - 1) * 0.035;
+    return Math.max(0.28, profile.cooldown * (1 - progressionHaste) * (1 - concentrationHaste) / (1 + upgradeHaste));
+  }
+
+  towerPowerMultiplier(tower: Tower): number {
+    return this.state.mode === "casual"
+      ? CASUAL_STAR_POWER[tower.casualStar ?? tower.naturalStar ?? 1]
+      : STAGE_MULTIPLIERS[tower.stage];
+  }
+
+  towerRangeBonus(tower: Tower): number {
+    return this.state.mode === "casual"
+      ? ((tower.casualStar ?? tower.naturalStar ?? 1) - 1) * 3
+      : (tower.stage - 1) * 7;
+  }
+
+  towerHasActiveSkills(tower: Tower): boolean {
+    if (this.state.mode === "casual") return (tower.casualStar ?? tower.naturalStar ?? 1) >= 2;
+    return hasActiveSkills(definitionForTower(this.catalog, tower.definitionId));
+  }
+
+  towerDismantleEssenceValue(tower: Tower): number {
+    if (this.state.mode === "standard") return dismantleEssenceValue(tower.stage, tower.concentration ?? 0);
+    const base = [0, 1, 1, 2, 3, 5, 7, 10, 14][tower.casualStar ?? tower.naturalStar ?? 1] ?? 1;
+    return base + concentrationEssenceRefund(tower.concentration ?? 0);
+  }
+
+  towerDismantleScore(tower: Tower): number {
+    if (this.state.mode === "standard") return dismantleScoreForStage(tower.stage);
+    return [0, 1, 1, 3, 3, 6, 6, 10, 15][tower.casualStar ?? tower.naturalStar ?? 1] ?? 1;
+  }
+
+  towerSellValue(tower: Tower): number {
+    if (this.state.mode === "standard") return sellValue(tower.stage);
+    return [0, 3, 4, 5, 7, 9, 12, 16, 22][tower.casualStar ?? tower.naturalStar ?? 1] ?? 3;
   }
 
   elementDamageBonus(wuxing: Wuxing): number {
@@ -1533,8 +1840,8 @@ export class GameEngine {
         .sort((left, right) => {
           const leftDefinition = definitionForTower(this.catalog, left.definitionId);
           const rightDefinition = definitionForTower(this.catalog, right.definitionId);
-          const leftPower = leftDefinition.combat.baseDamage * STAGE_MULTIPLIERS[left.stage] * leftDefinition.combat.budgetMultiplier / leftDefinition.combat.cooldown * (1 + (left.concentration ?? 0) * 0.1);
-          const rightPower = rightDefinition.combat.baseDamage * STAGE_MULTIPLIERS[right.stage] * rightDefinition.combat.budgetMultiplier / rightDefinition.combat.cooldown * (1 + (right.concentration ?? 0) * 0.1);
+          const leftPower = leftDefinition.combat.baseDamage * this.towerPowerMultiplier(left) * leftDefinition.combat.budgetMultiplier / this.towerAttackCooldown(left) * (1 + (left.concentration ?? 0) * 0.1);
+          const rightPower = rightDefinition.combat.baseDamage * this.towerPowerMultiplier(right) * rightDefinition.combat.budgetMultiplier / this.towerAttackCooldown(right) * (1 + (right.concentration ?? 0) * 0.1);
           return rightPower - leftPower || left.id - right.id;
         })
         .slice(0, CELLS_PER_FORMATION);
@@ -1568,7 +1875,7 @@ export class GameEngine {
     const all = [...this.state.towers, ...this.state.inventoryTowers];
     const counts = new Map<string, number>();
     for (const tower of all) counts.set(tower.char, (counts.get(tower.char) ?? 0) + 1);
-    const targetPath = this.evolution.getTargetPath(this.state.targetChar);
+    const targetPath = this.state.mode === "casual" ? new Set([this.state.targetChar]) : this.evolution.getTargetPath(this.state.targetChar);
     const unfinishedIdiomChars = new Set(
       this.idioms()
         .filter((idiom) => !this.state.idiomSeals.some((seal) => seal.idiomId === idiom.id))
@@ -1609,8 +1916,9 @@ export class GameEngine {
         if (formation && formation.preferredWuxing !== tower.wuxing) reasons.push(`${formation.label} 비선호 오행`);
       }
 
-      const dps = definition.combat.baseDamage * STAGE_MULTIPLIERS[tower.stage] * definition.combat.budgetMultiplier / definition.combat.cooldown;
-      const score = dps + tower.stage * 70 + concentration * 90 + (stored ? -35 : 28) - Math.max(0, count - 1) * 22;
+      const dps = definition.combat.baseDamage * this.towerPowerMultiplier(tower) * definition.combat.budgetMultiplier / this.towerAttackCooldown(tower);
+      const progressionRank = this.state.mode === "casual" ? tower.casualStar ?? tower.naturalStar ?? 1 : tower.stage;
+      const score = dps + progressionRank * 70 + concentration * 90 + (stored ? -35 : 28) - Math.max(0, count - 1) * 22;
       return { towerId: tower.id, protected: protectedReasons.length > 0, score, reasons, protectedReasons };
     });
   }
@@ -1655,8 +1963,8 @@ export class GameEngine {
         continue;
       }
       eligibleIds.push(tower.id);
-      gains[tower.wuxing] += dismantleEssenceValue(tower.stage, tower.concentration ?? 0);
-      scoreGains[tower.wuxing] += dismantleScoreForStage(tower.stage);
+      gains[tower.wuxing] += this.towerDismantleEssenceValue(tower);
+      scoreGains[tower.wuxing] += this.towerDismantleScore(tower);
     }
     return { ids: eligibleIds, gains, scoreGains, blocked };
   }
@@ -1673,10 +1981,10 @@ export class GameEngine {
     if (removed.length !== quote.ids.length) return { ok: false, message: "분해 대상 위치가 바뀌었습니다. 다시 선택하세요." };
     this.state.inventoryTowers = this.state.inventoryTowers.filter((tower) => !selectedIds.has(tower.id));
     for (const tower of removed) {
-      const essence = dismantleEssenceValue(tower.stage, tower.concentration ?? 0);
+      const essence = this.towerDismantleEssenceValue(tower);
       this.state.elementEssence[tower.wuxing] += essence;
       this.state.elementEssenceGenerated[tower.wuxing] += essence;
-      this.state.elementDismantleScore[tower.wuxing] += dismantleScoreForStage(tower.stage);
+      this.state.elementDismantleScore[tower.wuxing] += this.towerDismantleScore(tower);
       this.state.dismantledTowerCount += 1;
       this.events.push({ type: "dismantle", tower: { ...tower }, wuxing: tower.wuxing, essence });
     }
@@ -1726,16 +2034,19 @@ export class GameEngine {
 
   private concentrationCombatSnapshot(tower: Tower, path: ConcentrationPath, level: ConcentrationLevel): ConcentrationCombatSnapshot {
     const profile = definitionForTower(this.catalog, tower.definitionId).combat;
-    const damage = profile.baseDamage * STAGE_MULTIPLIERS[tower.stage] * profile.budgetMultiplier
+    const damage = profile.baseDamage * this.towerPowerMultiplier(tower) * profile.budgetMultiplier
       * (1 + level * (path === "potent" ? 0.12 : 0.055))
       * (1 + this.combinedUpgradeBonus(tower.wuxing, "damage"));
     const concentrationHaste = level * (path === "swift" ? 0.075 : 0.02);
-    const cooldown = Math.max(0.28, profile.cooldown * (1 - (tower.stage - 1) * 0.035) * (1 - concentrationHaste)
+    const progressionHaste = this.state.mode === "casual"
+      ? ((tower.casualStar ?? tower.naturalStar ?? 1) - 1) * 0.02
+      : (tower.stage - 1) * 0.035;
+    const cooldown = Math.max(0.28, profile.cooldown * (1 - progressionHaste) * (1 - concentrationHaste)
       / (1 + this.combinedUpgradeBonus(tower.wuxing, "attackSpeed")));
     return {
       damage,
       attacksPerSecond: 1 / cooldown,
-      range: profile.range + (tower.stage - 1) * 7 + level * 4 + this.combinedUpgradeBonus(tower.wuxing, "range"),
+      range: profile.range + this.towerRangeBonus(tower) + level * 4 + this.combinedUpgradeBonus(tower.wuxing, "range"),
       abilityEffect: 1 + (path === "potent" ? level * 0.035 : 0)
     };
   }
@@ -1794,7 +2105,7 @@ export class GameEngine {
     const selected = this.selectedTower();
     if (!selected) return { ok: false, message: "판매할 자령을 선택하세요." };
     if (selected.locked) return { ok: false, message: "잠긴 자령입니다. 잠금을 해제한 뒤 판매하세요." };
-    const value = sellValue(selected.stage);
+    const value = this.towerSellValue(selected);
     const essenceRefund = concentrationEssenceRefund(selected.concentration ?? 0);
     this.state.towers = this.state.towers.filter((tower) => tower.id !== selected.id);
     this.state.inventoryTowers = this.state.inventoryTowers.filter((tower) => tower.id !== selected.id);
@@ -1942,6 +2253,10 @@ export class GameEngine {
   }
 
   private createTower(definition: HanziDefinition, cell: number): Tower {
+    const naturalStar = this.state.mode === "casual" ? casualNaturalStar(definition.char) : null;
+    if (this.state.mode === "casual" && naturalStar === null) {
+      throw new Error(`${definition.char}의 천자문 획수·별 데이터가 없습니다.`);
+    }
     return {
       id: this.nextTowerId++,
       definitionId: definition.id,
@@ -1957,7 +2272,9 @@ export class GameEngine {
       abilityFlash: 0,
       locked: false,
       concentration: 0,
-      concentrationPath: null
+      concentrationPath: null,
+      naturalStar: naturalStar ?? undefined,
+      casualStar: naturalStar ?? undefined
     };
   }
 
@@ -2017,8 +2334,8 @@ export class GameEngine {
   }
 }
 
-export function runAutoplay(seed: string, region: RegionCode = "KR", maxSeconds = 5_400): SimulationResult {
-  const engine = new GameEngine(seed, region);
+export function runAutoplay(seed: string, region: RegionCode = "KR", maxSeconds = 5_400, mode: GameMode = "standard"): SimulationResult {
+  const engine = new GameEngine(seed, region, mode);
   engine.begin();
   engine.setAutomationMode("semi");
   engine.setSummonIntent("lineage");
@@ -2037,6 +2354,7 @@ export function runAutoplay(seed: string, region: RegionCode = "KR", maxSeconds 
       inventory: engine.state.inventoryTowers.length,
       summons: engine.state.summonCount,
       evolutions: engine.state.evolutionCount,
+      casualFusions: engine.state.casualFusionCount,
       discoveries: engine.state.discoveredChars.length,
       goals: engine.state.goalsCompleted.length,
       idioms: engine.state.idiomSeals.length,
@@ -2059,12 +2377,18 @@ export function runAutoplay(seed: string, region: RegionCode = "KR", maxSeconds 
       continue;
     }
 
-    let evolutionGuard = 0;
-    while (evolutionGuard < 8) {
-      const option = autoplayEvolutionOption(engine);
-      if (!option || !engine.evolve(option.recipeId).ok) break;
-      arrangeAvailableAutoplayIdioms(engine);
-      evolutionGuard += 1;
+    if (engine.state.mode === "standard") {
+      let evolutionGuard = 0;
+      while (evolutionGuard < 8) {
+        const option = autoplayEvolutionOption(engine);
+        if (!option || !engine.evolve(option.recipeId).ok) break;
+        arrangeAvailableAutoplayIdioms(engine);
+        evolutionGuard += 1;
+      }
+    } else {
+      for (const wuxing of ["木", "火", "土", "金", "水"] as const) {
+        if (engine.casualAutoFusionPlan(wuxing).length > 0) engine.autoFuseCasualElement(wuxing, true);
+      }
     }
 
     let desiredResearch = 0;
@@ -2095,7 +2419,7 @@ export function runAutoplay(seed: string, region: RegionCode = "KR", maxSeconds 
       engine.summon();
       arrangeAvailableAutoplayIdioms(engine);
       attempts += 1;
-      const option = autoplayEvolutionOption(engine);
+      const option = engine.state.mode === "standard" ? autoplayEvolutionOption(engine) : undefined;
       if (option) {
         engine.evolve(option.recipeId);
         arrangeAvailableAutoplayIdioms(engine);
@@ -2144,7 +2468,11 @@ export function runAutoplay(seed: string, region: RegionCode = "KR", maxSeconds 
       const protectedChars = autoplayProtectedChars(engine);
       const disposable = [...engine.state.towers]
         .filter((tower) => !tower.locked && (tower.concentration ?? 0) === 0 && !protectedChars.has(tower.char))
-        .sort((left, right) => left.stage - right.stage || left.id - right.id)[0];
+        .sort((left, right) => {
+          const leftRank = engine.state.mode === "casual" ? left.casualStar ?? 1 : left.stage;
+          const rightRank = engine.state.mode === "casual" ? right.casualStar ?? 1 : right.stage;
+          return leftRank - rightRank || left.id - right.id;
+        })[0];
       if (disposable) {
         engine.selectTower(disposable.id);
         engine.sellSelected();
@@ -2161,12 +2489,14 @@ export function runAutoplay(seed: string, region: RegionCode = "KR", maxSeconds 
   return {
     seed,
     region,
+    mode,
     result: engine.state.phase === "victory" ? "victory" : engine.state.phase === "defeat" ? "defeat" : "timeout",
     wave: engine.state.wave,
     elapsed: engine.state.elapsed,
     summons: engine.state.summonCount,
     peakTowerCount,
     evolutions: engine.state.evolutionCount,
+    casualFusions: engine.state.casualFusionCount,
     discoveries: engine.state.discoveredChars.length,
     goals: engine.state.goalsCompleted.length,
     idioms: engine.state.idiomSeals.length,

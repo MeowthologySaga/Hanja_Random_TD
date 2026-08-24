@@ -1,8 +1,8 @@
 {
   "name": "hanzi-random-tower-defense",
-  "version": "0.30.0",
+  "version": "0.31.0",
   "private": true,
-  "description": "지역별 실제 한자 조합식으로 합성하는 100웨이브 랜덤 타워 디펜스",
+  "description": "전략 조합전과 획수 기반 캐주얼 8성전을 갖춘 100웨이브 한자 랜덤 타워 디펜스",
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1 --port 4437",
@@ -11,6 +11,7 @@
     "validate:data": "tsx scripts/validate-data.ts",
     "generate:learning": "node scripts/build-learning-readings.mjs",
     "generate:radicals": "node scripts/build-hanzi-radicals.mjs",
+    "generate:strokes": "node scripts/build-hanzi-strokes.mjs",
     "integrate:jaryeongs": "tsx scripts/integrate-generated-jaryeongs.ts",
     "simulate": "tsx scripts/simulate.ts",
     "test:e2e": "playwright test",

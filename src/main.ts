@@ -15,11 +15,20 @@ import {
 } from "./core/content";
 import { hasActiveSkills } from "./core/abilities";
 import {
+  CASUAL_STAR_COLORS,
+  CASUAL_STAR_NAMES,
+  CASUAL_STAR_POWER,
+  casualNaturalStar,
+  casualStarRangeLabel,
+  casualStrokeCount
+} from "./core/casual";
+import {
+  type CasualAutoFusionGroup,
+  type CasualFusionQuote,
   GameEngine,
   FIRST_PREP_SECONDS,
   MAX_CONCENTRATION_LEVEL,
   concentrationEssenceCost,
-  dismantleEssenceValue,
   interestForGold
 } from "./core/game";
 import {
@@ -64,7 +73,6 @@ import {
   maxSummonStageForWave,
   researchCost,
   researchUnlockWave,
-  sellValue,
   summonStageUnlockWave,
   summonCost
 } from "./core/hanzi";
@@ -74,11 +82,13 @@ import type {
   AbilityFxKind,
   AbilitySpec,
   AutomationMode,
+  CasualStar,
   CompositionBranchPreview,
   ConcentrationPath,
   Enemy,
   EvolutionOption,
   GameEvent,
+  GameMode,
   HanziDefinition,
   Point,
   RegionCode,
@@ -116,7 +126,7 @@ const initialDisplayMode = loadDisplayMode();
 const initialAutoPlaceSummons = loadAutoPlaceSummons();
 
 app.innerHTML = `
-  <main class="game-shell" data-phase="title" data-display-mode="${initialDisplayMode}">
+  <main class="game-shell" data-phase="title" data-display-mode="${initialDisplayMode}" data-game-mode="standard">
     <section class="battle-stage" aria-label="한자 랜덤 타워 디펜스 전장">
       <canvas id="battle-canvas" width="${WORLD_WIDTH}" height="${WORLD_HEIGHT}"></canvas>
       <button id="map-zoom-reset" class="map-zoom-control" type="button" title="지도 확대/축소 초기화">
@@ -228,7 +238,7 @@ app.innerHTML = `
               </button>
             </div>
             <button id="evolve-button" class="action-button action-button--evolve" type="button" data-testid="evolve-button">
-              <span class="hotkey">2</span><b>합성</b><small><em id="evolve-ready-count">0</em>개 조합 확인</small>
+              <span class="hotkey">2</span><b id="evolve-action-label">합성</b><small><em id="evolve-ready-count">0</em><span id="evolve-action-detail">개 조합 확인</span></small>
             </button>
             <button id="research-button" class="action-button action-button--research" type="button" data-testid="research-button">
               <span class="hotkey">3</span><b>인연 연구</b><small><em id="research-cost">10W 개방</em> · <i id="research-level">0</i>/5</small>
@@ -249,13 +259,17 @@ app.innerHTML = `
 
         <section class="evolution-workbench panel-view" data-panel-view="evolution" aria-label="한자 합성">
           <div class="evolution-heading">
-            <div><span>조합 서책</span><strong>현재 가능한 합성 <b id="evolution-count">0</b></strong></div>
-            <div class="mode-tabs" role="group" aria-label="합성 방식">
+            <div><span id="evolution-kicker">조합 서책</span><strong><span id="evolution-heading-label">현재 가능한 합성</span> <b id="evolution-count">0</b></strong></div>
+            <div id="standard-evolution-modes" class="mode-tabs" role="group" aria-label="합성 방식">
               <button type="button" data-mode="manual">수동</button>
               <button type="button" data-mode="semi" class="is-active">반자동</button>
               <button type="button" data-mode="goal">목표 자동</button>
             </div>
           </div>
+          <section id="casual-fusion-toolbar" class="casual-fusion-toolbar" hidden>
+            <div class="casual-rule-copy"><b>같은 오행 · 같은 현재 별 3기</b><span>첫 칸은 남길 본체, 뒤 두 칸은 소모 재료입니다. 잠금 자령은 재료가 되지 않습니다.</span></div>
+            <div id="casual-auto-buttons" class="casual-auto-buttons" aria-label="오행별 자동조합"></div>
+          </section>
           <div id="evolution-options" class="evolution-options">
             <div class="empty-evolution"><b>재료를 모으는 중</b><span>목표 재료는 소환 확률이 서서히 보정됩니다.</span></div>
           </div>
@@ -321,7 +335,7 @@ app.innerHTML = `
               <div class="subheading"><b>분해·문기</b><small>인벤토리만 · 보호 규칙 적용</small></div>
               <div class="growth-filters">
                 <select id="dismantle-element-filter" aria-label="분해 오행 필터"><option value="all">모든 오행</option><option>木</option><option>火</option><option>土</option><option>金</option><option>水</option></select>
-                <select id="dismantle-stage-filter" aria-label="분해 단계 필터"><option value="all">모든 단계</option><option value="1">1성</option><option value="2">2성</option><option value="3">3성</option><option value="4">4성</option><option value="5">5성</option></select>
+                <select id="dismantle-stage-filter" aria-label="분해 단계 필터"><option value="all">모든 단계</option><option value="1">1성</option><option value="2">2성</option><option value="3">3성</option><option value="4">4성</option><option value="5">5성</option><option value="6">6성</option><option value="7">7성</option><option value="8">8성</option></select>
                 <select id="dismantle-status-filter" aria-label="분해 보호 필터"><option value="all">전체 상태</option><option value="eligible">분해 가능</option><option value="protected">보호됨</option></select>
               </div>
               <div class="dismantle-toolbar"><button id="dismantle-recommend-button" type="button">추천 후보 선택</button><button id="dismantle-clear-button" type="button">선택 해제</button></div>
@@ -352,7 +366,7 @@ app.innerHTML = `
         <button id="shop-tab" type="button" class="is-active" data-panel-tab="shop" role="tab" aria-selected="true">상점 <small id="shop-pool-count">0</small></button>
         <button type="button" data-panel-tab="unit" role="tab" aria-selected="false">자령</button>
         <button id="run-inventory-tab" type="button" data-panel-tab="inventory" role="tab" aria-selected="false">인벤 <small id="run-inventory-count">0</small></button>
-        <button type="button" data-panel-tab="evolution" role="tab" aria-selected="false">합성</button>
+        <button type="button" data-panel-tab="evolution" role="tab" aria-selected="false"><span id="evolution-tab-label">합성</span></button>
         <button id="concentration-tab" type="button" data-panel-tab="concentration" role="tab" aria-selected="false">농축</button>
         <button id="growth-tab" type="button" data-panel-tab="growth" role="tab" aria-selected="false">강화</button>
         <button id="goal-tab" type="button" data-panel-tab="goal" role="tab" aria-selected="false">목표 <small id="goal-tab-progress">0%</small></button>
@@ -374,7 +388,11 @@ app.innerHTML = `
         <p class="eyebrow">REGIONAL HANZI COMPOSITION DEFENSE</p>
         <div class="title-seal" aria-hidden="true"><i>木</i><i>林</i><i>森</i></div>
         <h2 id="title-heading">한자 운명진</h2>
-        <p class="title-lead">운으로 글자를 부르고, 실제 구성 원리로 합성하라.<br />열 개의 장과 백 번의 망령 행렬을 넘어 대봉인을 완성하세요.</p>
+        <p id="title-lead" class="title-lead">운으로 글자를 부르고, 실제 구성 원리로 합성하라.<br />열 개의 장과 백 번의 망령 행렬을 넘어 대봉인을 완성하세요.</p>
+        <div class="game-mode-picker" role="radiogroup" aria-label="게임 모드">
+          <button type="button" class="game-mode-option is-selected" data-game-mode-option="standard" role="radio" aria-checked="true"><i>策</i><span><b>전략 조합전</b><small>실제 한자 구성식 · 목표 계보</small></span><em>STANDARD</em></button>
+          <button type="button" class="game-mode-option" data-game-mode-option="casual" role="radio" aria-checked="false"><i>八</i><span><b>캐주얼 8성전</b><small>같은 오행 3체 · 획수 희귀도</small></span><em>NEW</em></button>
+        </div>
         <div class="region-picker" role="radiogroup" aria-label="지역 한자 체계">
           <button type="button" class="region-option is-selected" data-region="KR" role="radio" aria-checked="true"><b>韓</b><span>한국</span><small>천자문 1000</small></button>
           <button type="button" class="region-option" data-region="JP" role="radio" aria-checked="false"><b>日</b><span>일본</span><small>상용한자 2136</small></button>
@@ -383,7 +401,7 @@ app.innerHTML = `
         <label class="seed-field">런 시드<input id="seed-input" maxlength="24" spellcheck="false" /></label>
         <button id="start-button" class="start-button" type="button" data-testid="start-run">봉인전 시작</button>
         <div class="title-link-row"><button id="title-settings-button" class="title-help-button" type="button">화면 모드 설정</button><button id="title-help-button" class="title-help-button" type="button">게임 방법 보기</button></div>
-        <p class="title-note">100웨이브 · 10장 보스전 · 천자문 자령 1,000종</p>
+        <p id="title-note" class="title-note">100웨이브 · 10장 보스전 · 천자문 자령 1,000종</p>
       </div>
     </section>
 
@@ -408,6 +426,7 @@ app.innerHTML = `
           <li><b>목적 소환</b><span>균형·탐색·계보·중복 수집 중 원하는 목적을 고릅니다. 중복 수집은 농축과 분해에 쓸 보유 한자를 다시 부릅니다.</span></li>
           <li><b>10연 소환</b><span>10웨이브를 지키면 개방됩니다. Q키 또는 10연 버튼으로 현재 소환 비용 10회를 한 번에 지불합니다.</span></li>
           <li><b>합성</b><span>실제 구성식의 재료를 모두 보유하면 조합 서책에 카드가 열립니다. 木+木처럼 같은 글자 두 개도 각각 필요합니다.</span></li>
+          <li><b>캐주얼 8성전</b><span>천자문 실제 획수로 기본 별이 정해집니다. 같은 오행·같은 현재 별 자령 3기를 고르면 남길 본체가 1성 오르며 최고 8성입니다. 속성별 자동조합도 소모 목록을 먼저 확인합니다.</span></li>
           <li><b>방식</b><span>반자동은 가능한 조합만 제안합니다. 목표 자동은 목표 경로의 조합만 자동 실행하며, 수동은 선택한 한자가 포함된 조합만 봅니다.</span></li>
           <li><b>사자성어</b><span>이웃한 네 칸에 글자를 올바른 순서로 배치하면 자동 봉인됩니다. 직접 선을 그을 필요가 없으며, 보너스는 그 런 동안 계속 유지됩니다.</span></li>
           <li><b>첫 오행진</b><span>열린 진 없이 상점에서 시작합니다. 첫 소환 자령과 같은 오행진이 무료로 열리고, 나머지는 원하는 순서로 18·32·52·78엽전에 개방합니다.</span></li>
@@ -474,6 +493,15 @@ app.innerHTML = `
       <div id="ability-guide-content" class="ability-guide-content"></div>
     </dialog>
 
+    <dialog id="casual-fusion-confirm-dialog" class="casual-fusion-confirm-dialog" aria-labelledby="casual-fusion-confirm-title">
+      <div class="dialog-heading">
+        <div><p class="eyebrow">THREE SPIRITS · ONE ASCENSION</p><h2 id="casual-fusion-confirm-title">3체 조합 확인</h2></div>
+        <button id="casual-fusion-confirm-close" type="button" aria-label="조합 확인 닫기">×</button>
+      </div>
+      <div id="casual-fusion-confirm-content" class="casual-fusion-confirm-content"></div>
+      <div class="casual-fusion-confirm-actions"><button id="casual-fusion-cancel" type="button">취소</button><button id="casual-fusion-execute" type="button">소모 확인 · 조합</button></div>
+    </dialog>
+
     <dialog id="codex-dialog" class="codex-dialog">
       <div class="dialog-heading codex-heading">
         <div><p id="codex-kicker" class="eyebrow">REGIONAL CHARACTER CODEX</p><h2><span id="codex-region">한국</span><span id="codex-title-label"> 한자 도감</span></h2></div>
@@ -526,14 +554,16 @@ const helpDialog = must<HTMLDialogElement>("#help-dialog");
 const settingsDialog = must<HTMLDialogElement>("#settings-dialog");
 const elementUpgradeDialog = must<HTMLDialogElement>("#element-upgrade-dialog");
 const abilityGuideDialog = must<HTMLDialogElement>("#ability-guide-dialog");
+const casualFusionConfirmDialog = must<HTMLDialogElement>("#casual-fusion-confirm-dialog");
 const codexDialog = must<HTMLDialogElement>("#codex-dialog");
 const summonReveal = must<HTMLElement>("#summon-reveal");
 const sound = new SoundManager();
 const initialSeed = new URLSearchParams(window.location.search).get("seed")?.slice(0, 24) || createRunSeed();
 seedInput.value = initialSeed;
 let selectedRegion: RegionCode = "KR";
+let selectedGameMode: GameMode = "standard";
 let displayMode: DisplayMode = initialDisplayMode;
-let engine = new GameEngine(initialSeed, selectedRegion);
+let engine = new GameEngine(initialSeed, selectedRegion, selectedGameMode);
 let mapSynthesisDepths = buildSynthesisDepths(engine.catalog.definitions.values());
 let mapUncombinableStageOne = buildUncombinableStageOneChars(engine.catalog.definitions.values());
 engine.state.autoPlaceSummons = initialAutoPlaceSummons;
@@ -583,6 +613,11 @@ let concentrationPath: ConcentrationPath = "swift";
 let concentrationPayment: "essence" | number = "essence";
 let growthElement: Wuxing = "木";
 const dismantleSelection = new Set<number>();
+let casualFusionSelection: number[] = [];
+type PendingCasualFusion =
+  | { kind: "manual"; coreId: number; materialIds: [number, number]; quote: CasualFusionQuote }
+  | { kind: "auto"; wuxing: Wuxing; groups: CasualAutoFusionGroup[] };
+let pendingCasualFusion: PendingCasualFusion | null = null;
 let projectileSpriteDrawTotal = 0;
 let abilityZoneSpriteDrawTotal = 0;
 
@@ -771,6 +806,35 @@ function syncAutoPlaceControl(): void {
   must<HTMLElement>("#auto-place-toggle i em").textContent = enabled ? "ON" : "OFF";
 }
 
+function syncTitleModeSelection(): void {
+  document.querySelectorAll<HTMLButtonElement>("[data-game-mode-option]").forEach((button) => {
+    const selected = button.dataset.gameModeOption === selectedGameMode;
+    button.classList.toggle("is-selected", selected);
+    button.setAttribute("aria-checked", String(selected));
+  });
+  if (selectedGameMode === "casual") selectedRegion = "KR";
+  document.querySelectorAll<HTMLButtonElement>(".region-option").forEach((button) => {
+    const region = button.dataset.region as RegionCode;
+    const disabled = selectedGameMode === "casual" && region !== "KR";
+    button.disabled = disabled;
+    button.setAttribute("aria-disabled", String(disabled));
+    const selected = region === selectedRegion;
+    button.classList.toggle("is-selected", selected);
+    button.setAttribute("aria-checked", String(selected));
+  });
+  must<HTMLElement>("#title-lead").innerHTML = selectedGameMode === "casual"
+    ? "획수가 희귀도를 정하고, 같은 오행 세 자령이 한 별을 올립니다.<br />남길 본체를 직접 골라 8성 대봉인까지 성장시키세요."
+    : "운으로 글자를 부르고, 실제 구성 원리로 합성하라.<br />열 개의 장과 백 번의 망령 행렬을 넘어 대봉인을 완성하세요.";
+  must<HTMLElement>("#title-note").textContent = selectedGameMode === "casual"
+    ? "한국 천자문 전용 · 실제 획수 8단 희귀도 · 안전 3체 조합 · 100웨이브"
+    : "100웨이브 · 10장 보스전 · 천자문 자령 1,000종";
+}
+
+function setSelectedGameMode(mode: GameMode): void {
+  selectedGameMode = mode;
+  syncTitleModeSelection();
+}
+
 function setDisplayMode(mode: DisplayMode, announce = true): void {
   displayMode = mode;
   shell.dataset.displayMode = mode;
@@ -805,7 +869,8 @@ function showIdiomResult(reading: string, meaning: string, bonus: string, color:
 function startRun(useNewSeed = false): void {
   const seed = useNewSeed ? createRunSeed() : seedInput.value.trim() || createRunSeed();
   seedInput.value = seed;
-  engine = new GameEngine(seed, selectedRegion);
+  engine = new GameEngine(seed, selectedRegion, selectedGameMode);
+  shell.dataset.gameMode = selectedGameMode;
   mapSynthesisDepths = buildSynthesisDepths(engine.catalog.definitions.values());
   mapUncombinableStageOne = buildUncombinableStageOneChars(engine.catalog.definitions.values());
   engine.state.autoPlaceSummons = loadAutoPlaceSummons();
@@ -837,6 +902,9 @@ function startRun(useNewSeed = false): void {
   concentrationPayment = "essence";
   growthElement = "木";
   dismantleSelection.clear();
+  casualFusionSelection = [];
+  pendingCasualFusion = null;
+  if (casualFusionConfirmDialog.open) casualFusionConfirmDialog.close();
   setPanelTab("shop");
   window.clearTimeout(comboTimer);
   evolutionRenderKey = "";
@@ -851,7 +919,7 @@ function startRun(useNewSeed = false): void {
   towerDragTowerId = null;
   towerDragStart = null;
   towerDragMoved = false;
-  showToast(engine.catalog.title + " 봉인전을 시작합니다.");
+  showToast(`${engine.catalog.title} · ${engine.state.mode === "casual" ? "캐주얼 8성전" : "전략 조합전"}을 시작합니다.`);
   syncPanel();
 }
 
@@ -927,7 +995,7 @@ function showSummonReveal(events: Array<Extract<GameEvent, { type: "summon" }>>)
   const openingResult = firstSummon && startingFormation
     ? `<strong>${events[0]?.tower.wuxing ?? "?"} 자령 출현 → ${startingFormation.label} 무료 개방</strong>`
     : "";
-  must<HTMLElement>("#summon-reveal-summary").innerHTML = `${openingResult}<b>새 발견 ${newCount}</b><span>합성 재료 ${helpfulCount}</span><span>농축 재료 ${concentrationCount}</span><em>${placementLabel}</em>`;
+  must<HTMLElement>("#summon-reveal-summary").innerHTML = `${openingResult}<b>새 발견 ${newCount}</b><span>${engine.state.mode === "casual" ? "목표·성어" : "합성 재료"} ${helpfulCount}</span><span>중복 ${concentrationCount}</span><em>${placementLabel}</em>`;
   must<HTMLElement>("#summon-reveal-list").innerHTML = events.map((event, index) => {
     const tower = event.tower;
     const definition = definitionForTower(engine.catalog, tower.definitionId);
@@ -935,12 +1003,13 @@ function showSummonReveal(events: Array<Extract<GameEvent, { type: "summon" }>>)
     const visual = jaryeongVisualFor(tower.char, tower.wuxing, engine.state.region);
     const learning = learningInfo(engine.state.region, tower.char);
     const helpfulLabel = event.helpfulReason === "both" ? "목표·성어" : event.helpfulReason === "goal" ? "목표 재료" : event.helpfulReason === "idiom" ? "성어 재료" : "";
-    const utilityLabel = event.utility === "new" ? "NEW" : event.utility === "synthesis" ? "합성" : event.utility === "concentration" ? "농축" : "교체 후보";
-    return `<article class="summon-result-card ${event.newDiscovery ? "is-new" : ""} ${event.helpful ? "is-helpful" : ""}" style="--summon:${style.color};--summon-delay:${index * 45}ms">
+    const utilityLabel = event.utility === "new" ? "NEW" : event.utility === "synthesis" ? engine.state.mode === "casual" ? "목표" : "합성" : event.utility === "concentration" ? "중복" : "교체 후보";
+    const star = casualStarOf(tower);
+    return `<article class="summon-result-card ${event.newDiscovery ? "is-new" : ""} ${event.helpful ? "is-helpful" : ""}" style="--summon:${style.color};--summon-star:${CASUAL_STAR_COLORS[star]};--summon-delay:${index * 45}ms">
       <span class="summon-result-spirit" style="${visualBackgroundStyle(visual)}" aria-hidden="true"></span>
       <strong>${tower.char}</strong>
       <b>${escapeHtml(learning.short)}</b>
-      <small>${style.name}행 · ${escapeHtml(definition.combat.roleLabel)}</small>
+      <small>${style.name}행 · ${engine.state.mode === "casual" ? `${star}★ ${CASUAL_STAR_NAMES[star]} · ${casualStrokeCount(tower.char) ?? "?"}획` : escapeHtml(definition.combat.roleLabel)}</small>
       <div><em>${utilityLabel}</em>${helpfulLabel ? `<mark>${helpfulLabel}</mark>` : ""}</div>
     </article>`;
   }).join("");
@@ -1031,13 +1100,13 @@ function renderConcentration(): void {
     const maxed = level >= MAX_CONCENTRATION_LEVEL;
     const actionable = !maxed && (duplicateCount > 0 || engine.state.elementEssence[tower.wuxing] >= cost);
     return { tower, level, duplicateCount, cost, maxed, actionable, rank: maxed ? 2 : actionable ? 0 : 1 };
-  }).sort((left, right) => left.rank - right.rank || right.level - left.level || right.tower.stage - left.tower.stage || left.tower.id - right.tower.id);
+  }).sort((left, right) => left.rank - right.rank || right.level - left.level || casualStarOf(right.tower) - casualStarOf(left.tower) || right.tower.stage - left.tower.stage || left.tower.id - right.tower.id);
 
   must<HTMLElement>("#concentration-target-summary").textContent = `${rows.filter((row) => row.actionable).length}기 가능 · 총 ${rows.length}기`;
   must<HTMLElement>("#concentration-target-list").innerHTML = rows.length > 0 ? rows.map(({ tower, level, duplicateCount, cost, maxed, actionable }) => {
     const stateLabel = maxed ? "최대 단계" : actionable ? "농축 가능" : "재료 부족";
     return `<button type="button" data-concentration-target="${tower.id}" class="${tower.id === concentrationTargetId ? "is-selected" : ""} ${actionable ? "is-ready" : ""}" style="--element:${ELEMENT_STYLES[tower.wuxing].color}">
-      <b>${escapeHtml(tower.char)}</b><span><strong>${tower.wuxing}행 · ${STAGE_NAMES[tower.stage]} · 濃 ${level}/3</strong><small>${tower.cell < 0 ? "인벤토리" : `${BOARD_FORMATIONS[Math.floor(tower.cell / CELLS_PER_FORMATION)]?.label ?? "전장"} 배치`} · ${duplicateCount > 0 ? `중복 ${duplicateCount}기` : `문기 ${cost}`}</small></span><em>${stateLabel}</em>
+      <b>${escapeHtml(tower.char)}</b><span><strong>${tower.wuxing}행 · ${towerProgressionLabel(tower)} · 濃 ${level}/3</strong><small>${tower.cell < 0 ? "인벤토리" : `${BOARD_FORMATIONS[Math.floor(tower.cell / CELLS_PER_FORMATION)]?.label ?? "전장"} 배치`} · ${duplicateCount > 0 ? `중복 ${duplicateCount}기` : `문기 ${cost}`}</small></span><em>${stateLabel}</em>
     </button>`;
   }).join("") : `<div class="workbench-empty"><b>농축할 자령이 없습니다</b><span>상점에서 자령을 먼저 소환하세요.</span></div>`;
 
@@ -1055,7 +1124,7 @@ function renderConcentration(): void {
   const swiftSelected = concentrationPath === "swift";
   const currentLevel = target.concentration ?? 0;
   if (!quote) {
-    detail.innerHTML = `<article class="concentration-max-card" style="--element:${ELEMENT_STYLES[target.wuxing].color}"><b>${escapeHtml(target.char)}</b><div><span>${target.wuxing}행 · ${STAGE_NAMES[target.stage]}</span><strong>濃 ${currentLevel}/3 · ${fixedPath === "potent" ? "심화" : "연속"} 농축 완성</strong><small>더 이상 재료를 소모하지 않습니다.</small></div></article>`;
+    detail.innerHTML = `<article class="concentration-max-card" style="--element:${ELEMENT_STYLES[target.wuxing].color}"><b>${escapeHtml(target.char)}</b><div><span>${target.wuxing}행 · ${towerProgressionLabel(target)}</span><strong>濃 ${currentLevel}/3 · ${fixedPath === "potent" ? "심화" : "연속"} 농축 완성</strong><small>더 이상 재료를 소모하지 않습니다.</small></div></article>`;
     return;
   }
   const essenceAvailable = engine.state.elementEssence[target.wuxing] >= quote.essenceCost;
@@ -1068,7 +1137,7 @@ function renderConcentration(): void {
   }).join("");
   detail.innerHTML = `
     <article class="concentration-focus" style="--element:${ELEMENT_STYLES[target.wuxing].color}">
-      <header><b>${escapeHtml(target.char)}</b><div><span>${target.wuxing}행 · ${STAGE_NAMES[target.stage]} · ${target.cell < 0 ? "인벤토리" : "전장"}</span><strong>濃 ${quote.currentLevel} → ${quote.nextLevel}</strong><small>${pathLocked ? "선택한 분기는 영구 고정" : "첫 분기 선택 후 변경 불가"}</small></div></header>
+      <header><b>${escapeHtml(target.char)}</b><div><span>${target.wuxing}행 · ${towerProgressionLabel(target)} · ${target.cell < 0 ? "인벤토리" : "전장"}</span><strong>濃 ${quote.currentLevel} → ${quote.nextLevel}</strong><small>${pathLocked ? "선택한 분기는 영구 고정" : "첫 분기 선택 후 변경 불가"}</small></div></header>
       <div class="concentration-paths" role="radiogroup" aria-label="농축 분기">
         <button type="button" data-concentration-path="swift" class="${swiftSelected ? "is-selected" : ""}" ${pathLocked && !swiftSelected ? "disabled" : ""}><b>迅 연속 농축</b><span>단계당 피해 +5.5%</span><span>공격 대기 -7.5% · 사거리 +4</span></button>
         <button type="button" data-concentration-path="potent" class="${!swiftSelected ? "is-selected" : ""}" ${pathLocked && swiftSelected ? "disabled" : ""}><b>深 심화 농축</b><span>단계당 피해 +12%</span><span>대기 -2% · 의미 기술 +3.5% · 사거리 +4</span></button>
@@ -1088,11 +1157,11 @@ function renderConcentration(): void {
 }
 
 function growthStateSignature(): string {
-  const inventory = engine.state.inventoryTowers.map((tower) => `${tower.id}:${tower.char}:${tower.wuxing}:${tower.stage}:${tower.locked ? 1 : 0}:${tower.concentration ?? 0}`).join("|");
+  const inventory = engine.state.inventoryTowers.map((tower) => `${tower.id}:${tower.char}:${tower.wuxing}:${tower.stage}:${tower.casualStar ?? 0}:${tower.locked ? 1 : 0}:${tower.concentration ?? 0}`).join("|");
   const traits = WUXING_ORDER.map((wuxing) => engine.state.elementTraits[wuxing].join(",")).join("|");
   const scores = WUXING_ORDER.map((wuxing) => engine.state.elementDismantleScore[wuxing]).join(",");
   const filters = `${must<HTMLSelectElement>("#dismantle-element-filter").value}:${must<HTMLSelectElement>("#dismantle-stage-filter").value}:${must<HTMLSelectElement>("#dismantle-status-filter").value}`;
-  return `${upgradeStateSignature()}:${inventory}:${traits}:${scores}:${filters}:${[...dismantleSelection].sort((a, b) => a - b).join(",")}:${growthElement}`;
+  return `${engine.state.mode}:${upgradeStateSignature()}:${inventory}:${traits}:${scores}:${filters}:${[...dismantleSelection].sort((a, b) => a - b).join(",")}:${growthElement}`;
 }
 
 function upgradeAmountLabel(scope: "global" | "element" | "trait", stat: UpgradeStat | null, traitIndex: number | null, amount: number | "max"): string {
@@ -1118,18 +1187,18 @@ function renderGrowth(): void {
   const rows = engine.state.inventoryTowers
     .map((tower) => ({ tower, assessment: assessmentMap.get(tower.id) }))
     .filter(({ tower }) => elementFilter === "all" || tower.wuxing === elementFilter)
-    .filter(({ tower }) => stageFilter === "all" || String(tower.stage) === stageFilter)
+    .filter(({ tower }) => stageFilter === "all" || String(engine.state.mode === "casual" ? casualStarOf(tower) : tower.stage) === stageFilter)
     .filter(({ assessment }) => statusFilter === "all" || (statusFilter === "eligible" ? !assessment?.protected : assessment?.protected))
-    .sort((left, right) => Number(Boolean(left.assessment?.protected)) - Number(Boolean(right.assessment?.protected)) || left.tower.stage - right.tower.stage || left.tower.id - right.tower.id);
+    .sort((left, right) => Number(Boolean(left.assessment?.protected)) - Number(Boolean(right.assessment?.protected)) || (engine.state.mode === "casual" ? casualStarOf(left.tower) - casualStarOf(right.tower) : left.tower.stage - right.tower.stage) || left.tower.id - right.tower.id);
 
   must<HTMLElement>("#growth-resource-summary").textContent = "문기 " + WUXING_ORDER.map((wuxing) => `${wuxing}${engine.state.elementEssence[wuxing]}`).join(" ");
   must<HTMLElement>("#growth-dismantle-list").innerHTML = rows.length > 0 ? rows.map(({ tower, assessment }) => {
     const protectedReasons = assessment?.protectedReasons ?? ["보호 상태 확인 필요"];
     const protectedState = assessment?.protected ?? true;
-    const essence = dismantleEssenceValue(tower.stage, tower.concentration ?? 0);
+    const essence = engine.towerDismantleEssenceValue(tower);
     return `<label class="dismantle-row ${protectedState ? "is-protected" : ""}" style="--element:${ELEMENT_STYLES[tower.wuxing].color}">
       <input type="checkbox" data-dismantle-id="${tower.id}" ${dismantleSelection.has(tower.id) ? "checked" : ""} ${protectedState || !active ? "disabled" : ""}>
-      <b>${escapeHtml(tower.char)}</b><span><strong>${tower.wuxing}행 · ${STAGE_NAMES[tower.stage]} · #${tower.id}</strong><small>${protectedState ? protectedReasons.map(escapeHtml).join(" · ") : (assessment?.reasons ?? []).map(escapeHtml).join(" · ") || "분해 가능"}</small></span><em>${protectedState ? "보호" : `${tower.wuxing}+${essence}`}</em>
+      <b>${escapeHtml(tower.char)}</b><span><strong>${tower.wuxing}행 · ${towerProgressionLabel(tower)} · #${tower.id}</strong><small>${protectedState ? protectedReasons.map(escapeHtml).join(" · ") : (assessment?.reasons ?? []).map(escapeHtml).join(" · ") || "분해 가능"}</small></span><em>${protectedState ? "보호" : `${tower.wuxing}+${essence}`}</em>
     </label>`;
   }).join("") : `<div class="workbench-empty"><b>조건에 맞는 인벤토리 자령이 없습니다</b><span>필터를 바꾸거나 소환 자령을 인벤토리에 보관하세요.</span></div>`;
 
@@ -1254,6 +1323,13 @@ function processEvent(event: GameEvent): void {
         addCombatFeed(event.tower.char, "새 능력 획득", detail, STAGE_COLORS[event.tower.stage]);
       }
       break;
+    case "casualFuse": {
+      const color = CASUAL_STAR_COLORS[event.toStar];
+      pushPooled(rings, ringPool, takeRing(event.at, color, 1.05), 32);
+      pushPooled(floaters, floaterPool, takeFloater(event.at, `${event.fromStar}★→${event.toStar}★`, color, 1.15, true), 48);
+      addCombatFeed(event.tower.char, `${event.tower.wuxing}행 3체 조합`, `${event.consumed.map((tower) => tower.char).join("+")} 소모 · ${event.toStar}★ 승급`, color);
+      break;
+    }
     case "ability": {
       const towerGap = engine.state.elapsed - (lastAbilityFxByTower.get(event.towerId) ?? -10);
       const globalGap = engine.state.elapsed - lastGlobalAbilityFxAt;
@@ -1303,9 +1379,10 @@ function showEndScreen(phase: "victory" | "defeat"): void {
   must<HTMLElement>("#end-heading").textContent = victory ? "천자문 대봉인 완성" : "수비에 실패했습니다";
   must<HTMLElement>("#end-message").textContent = state.lastMessage;
   must<HTMLElement>("#end-stats").innerHTML = `
+    <div><span>게임 모드</span><b>${state.mode === "casual" ? "캐주얼 8성전" : "전략 조합전"}</b></div>
     <div><span>도달 웨이브</span><b>${state.wave} / ${state.maxWaves}</b></div>
     <div><span>처치한 망령</span><b>${state.killCount}</b></div>
-    <div><span>한자 합성</span><b>${state.evolutionCount}</b></div>
+    <div><span>${state.mode === "casual" ? "3체 조합" : "한자 합성"}</span><b>${state.mode === "casual" ? state.casualFusionCount : state.evolutionCount}</b></div>
     <div><span>목표 완성</span><b>${state.goalsCompleted.length}</b></div>
     <div><span>사자성어 봉인</span><b>${state.idiomSeals.length} / ${engine.idioms().length}</b></div>
     <div><span>은행 이자</span><b>${state.interestEarned}엽전</b></div>
@@ -1319,7 +1396,7 @@ function showEndScreen(phase: "victory" | "defeat"): void {
 
 function saveBestWave(wave: number): void {
   try {
-    const key = "hanzi-random-defense-best-" + engine.state.region;
+    const key = `hanzi-random-defense-best-${engine.state.mode}-${engine.state.region}`;
     const previous = Number(window.localStorage.getItem(key) ?? 0);
     if (wave > previous) window.localStorage.setItem(key, String(wave));
   } catch {
@@ -1379,11 +1456,12 @@ function syncPanel(): void {
   const plan = engine.getCurrentPlan();
   const preview = state.phase === "prep" ? wavePlan(Math.min(state.maxWaves, state.wave + 1)) : plan;
   shell.dataset.phase = state.phase;
+  shell.dataset.gameMode = state.mode;
   must<HTMLElement>("#stage-wave").textContent = String(state.wave) + " / " + String(state.maxWaves);
   const displayWave = Math.max(1, Math.min(state.maxWaves, state.phase === "prep" ? state.wave + 1 : state.wave));
   const chapter = Math.ceil(displayWave / 10);
   must<HTMLElement>("#stage-chapter").textContent = `${chapter} / 10`;
-  must<HTMLElement>("#stage-region").textContent = REGION_META[state.region].title.split(" · ")[0] ?? state.region;
+  must<HTMLElement>("#stage-region").textContent = `${REGION_META[state.region].title.split(" · ")[0] ?? state.region}${state.mode === "casual" ? " · 8성" : ""}`;
   must<HTMLElement>("#stage-phase").textContent = phaseLabel(state.phase);
   must<HTMLElement>("#stage-enemies").textContent = String(state.enemies.length) + " / " + String(MAX_ENEMIES);
   must<HTMLElement>("#enemy-limit-chip").classList.toggle("is-danger", state.enemies.length >= MAX_ENEMIES * 0.75);
@@ -1501,12 +1579,12 @@ function renderGoal(): void {
   goalRenderKey = key;
 
   const pool = engine.summonDefinitions();
-  const stageCounts = new Map<number, number>();
-  for (const definition of pool) stageCounts.set(definition.stage, (stageCounts.get(definition.stage) ?? 0) + 1);
   must<HTMLElement>("#shop-pool-count").textContent = pool.length.toLocaleString("ko-KR");
   const maxSummonStage = maxSummonStageForWave(engine.state.wave);
   const nextStage = maxSummonStage < 5 ? (maxSummonStage + 1) as 2 | 3 | 4 | 5 : null;
-  must<HTMLElement>("#summon-pool-summary").innerHTML = `<b>천자문 ${pool.length.toLocaleString("ko-KR")}종</b><span>${STAGE_NAMES[maxSummonStage]}까지 등장${nextStage ? ` · ${summonStageUnlockWave(nextStage)}W 다음 단계` : " · 전 단계 개방"}</span>`;
+  must<HTMLElement>("#summon-pool-summary").innerHTML = engine.state.mode === "casual"
+    ? `<b>천자문 ${pool.length.toLocaleString("ko-KR")}종</b><span>전 자령 직접 등장 · 획수별 1★–8★</span>`
+    : `<b>천자문 ${pool.length.toLocaleString("ko-KR")}종</b><span>${STAGE_NAMES[maxSummonStage]}까지 등장${nextStage ? ` · ${summonStageUnlockWave(nextStage)}W 다음 단계` : " · 전 단계 개방"}</span>`;
 
   const goalPanel = must<HTMLElement>("#goal-panel");
   goalPanel.dataset.currentGoalMode = goalPanelMode;
@@ -1519,9 +1597,14 @@ function renderGoal(): void {
   must<HTMLElement>("#goal-glyph").textContent = progress.target.char;
   must<HTMLElement>("#goal-glyph").style.setProperty("--goal-color", ELEMENT_STYLES[progress.target.wuxing].color);
   const targetUnlockWave = summonStageUnlockWave(progress.target.stage);
-  const targetDirectLocked = progress.target.acquisition === "direct" && engine.state.wave < targetUnlockWave;
-  must<HTMLElement>("#goal-stage").textContent = STAGE_NAMES[progress.target.stage] + " · " + (targetDirectLocked ? `${targetUnlockWave}W 직접 소환 개방` : progress.target.acquisition === "direct" ? "직접 소환 가능" : progress.target.combat.abilities.role.name);
-  must<HTMLElement>("#goal-recipe").textContent = progress.target.acquisition === "direct"
+  const targetDirectLocked = engine.state.mode === "standard" && progress.target.acquisition === "direct" && engine.state.wave < targetUnlockWave;
+  const targetNaturalStar = casualNaturalStar(progress.target.char);
+  must<HTMLElement>("#goal-stage").textContent = engine.state.mode === "casual"
+    ? `${targetNaturalStar ?? 1}★ · ${casualStrokeCount(progress.target.char) ?? "?"}획 · 직접 소환 가능`
+    : STAGE_NAMES[progress.target.stage] + " · " + (targetDirectLocked ? `${targetUnlockWave}W 직접 소환 개방` : progress.target.acquisition === "direct" ? "직접 소환 가능" : progress.target.combat.abilities.role.name);
+  must<HTMLElement>("#goal-recipe").textContent = engine.state.mode === "casual"
+    ? `${progress.target.char} 자령을 한 번 소환하면 달성`
+    : progress.target.acquisition === "direct"
     ? `${progress.target.char} 자령을 소환하면 달성`
     : progress.target.parents.join(" + ") + " → " + progress.target.char;
   const learning = learningInfo(engine.state.region, progress.target.char);
@@ -1608,10 +1691,15 @@ function renderHanziGoalChoices(definitions: readonly HanziDefinition[], ownedCo
             ? "재료 완성"
             : percent > 0
               ? `재료 ${percent}%`
-              : definition.acquisition === "direct" ? "직접 소환" : `${STAGE_NAMES[definition.stage]} 합성`;
+              : engine.state.mode === "casual"
+                ? `${casualNaturalStar(definition.char) ?? 1}★ 직접 소환`
+                : definition.acquisition === "direct" ? "직접 소환" : `${STAGE_NAMES[definition.stage]} 합성`;
     const unlockWave = summonStageUnlockWave(definition.stage);
-    const directLocked = definition.acquisition === "direct" && engine.state.wave < unlockWave;
-    const materialLabel = definition.acquisition === "direct"
+    const directLocked = engine.state.mode === "standard" && definition.acquisition === "direct" && engine.state.wave < unlockWave;
+    const naturalStar = casualNaturalStar(definition.char);
+    const materialLabel = engine.state.mode === "casual"
+      ? `직접 등장 · ${naturalStar ?? 1}★ · ${casualStrokeCount(definition.char) ?? "?"}획`
+      : definition.acquisition === "direct"
       ? directLocked ? `${unlockWave}웨이브부터 직접 등장` : "현재 소환 풀에서 직접 등장"
       : missing.length === 0
         ? "필요 재료를 모두 보유"
@@ -1657,11 +1745,23 @@ function renderIdiomGoalChoices(idioms: readonly IdiomDefinition[], ownedCounts:
 }
 
 function renderEvolutions(): void {
+  if (engine.state.mode === "casual") {
+    renderCasualFusion();
+    return;
+  }
   const options = engine.availableEvolutions();
   const key = engine.state.automationMode + "|" + String(engine.state.selectedTowerId) + "|" + options.map((option) => option.recipeId + ":" + option.materialTowerIds.join(",")).join("|");
   must<HTMLElement>("#evolution-count").textContent = String(options.length);
   must<HTMLElement>("#evolve-ready-count").textContent = String(options.length);
   const evolveButton = must<HTMLButtonElement>("#evolve-button");
+  must<HTMLElement>("#evolve-action-label").textContent = "합성";
+  must<HTMLElement>("#evolve-action-detail").textContent = "개 조합 확인";
+  must<HTMLElement>("#evolution-tab-label").textContent = "합성";
+  must<HTMLElement>("#evolution-kicker").textContent = "조합 서책";
+  must<HTMLElement>("#evolution-heading-label").textContent = "현재 가능한 합성";
+  must<HTMLElement>("#standard-evolution-modes").hidden = false;
+  must<HTMLElement>("#casual-fusion-toolbar").hidden = true;
+  must<HTMLElement>("#evolution-options").classList.remove("is-casual");
   const active = engine.state.phase === "prep" || engine.state.phase === "combat";
   evolveButton.disabled = !active || options.length === 0;
   evolveButton.classList.toggle("has-ready", options.length > 0);
@@ -1674,6 +1774,188 @@ function renderEvolutions(): void {
     return;
   }
   container.innerHTML = options.slice(0, 3).map((option, index) => evolutionCard(option, index)).join("");
+}
+
+function casualStarOf(tower: Tower): CasualStar {
+  return tower.casualStar ?? tower.naturalStar ?? 1;
+}
+
+function towerProgressionLabel(tower: Tower): string {
+  const star = casualStarOf(tower);
+  return engine.state.mode === "casual" ? `${star}★ ${CASUAL_STAR_NAMES[star]}` : STAGE_NAMES[tower.stage];
+}
+
+function casualFusionReadyCount(towers: readonly Tower[]): number {
+  const groups = new Map<string, Tower[]>();
+  for (const tower of towers) {
+    const star = casualStarOf(tower);
+    if (star >= 8) continue;
+    const key = `${tower.wuxing}:${star}`;
+    const group = groups.get(key) ?? [];
+    group.push(tower);
+    groups.set(key, group);
+  }
+  let totalGroups = 0;
+  for (const group of groups.values()) {
+    let total = group.length;
+    let unlocked = group.filter((tower) => !tower.locked).length;
+    let protectedCores = total - unlocked;
+    while (total >= 3 && unlocked >= 2) {
+      if (protectedCores > 0) protectedCores -= 1;
+      else unlocked -= 1;
+      unlocked -= 2;
+      total -= 3;
+      totalGroups += 1;
+    }
+  }
+  return totalGroups;
+}
+
+function casualFusionTowerMarkup(tower: Tower, role: "core" | "material" | "candidate", disabled: boolean): string {
+  const star = casualStarOf(tower);
+  const natural = tower.naturalStar ?? casualNaturalStar(tower.char) ?? star;
+  const strokes = casualStrokeCount(tower.char);
+  const selectedIndex = casualFusionSelection.indexOf(tower.id);
+  const selectedRole = selectedIndex === 0 ? "본체" : selectedIndex > 0 ? `재료 ${selectedIndex}` : "";
+  const location = tower.cell < 0 ? "인벤" : BOARD_FORMATIONS[Math.floor(tower.cell / CELLS_PER_FORMATION)]?.label ?? "전장";
+  const visual = jaryeongVisualFor(tower.char, tower.wuxing, engine.state.region);
+  return `<button type="button" class="casual-fusion-tower ${selectedIndex >= 0 ? "is-selected" : ""} ${role === "core" ? "is-core" : role === "material" ? "is-material" : ""}" data-casual-fusion-tower="${tower.id}" style="--element:${ELEMENT_STYLES[tower.wuxing].color};--star:${CASUAL_STAR_COLORS[star]}" aria-pressed="${String(selectedIndex >= 0)}" ${disabled ? "disabled" : ""}>
+    <i class="casual-fusion-sprite" style="${visualBackgroundStyle(visual)}" aria-hidden="true"></i>
+    <b>${escapeHtml(tower.char)}</b>
+    <span><strong>${tower.wuxing}행 · ${star}★ ${CASUAL_STAR_NAMES[star]}</strong><small>${strokes ?? "?"}획 · 기본 ${natural}★ · ${location}${tower.locked ? " · 鎖 잠금" : ""}</small></span>
+    <em>${selectedRole || (star >= 8 ? "최고" : "선택")}</em>
+  </button>`;
+}
+
+function renderCasualFusion(): void {
+  const allTowers = [...engine.state.towers, ...engine.state.inventoryTowers];
+  const ids = new Set(allTowers.map((tower) => tower.id));
+  casualFusionSelection = casualFusionSelection.filter((id, index) => ids.has(id) && casualFusionSelection.indexOf(id) === index).slice(0, 3);
+  const core = allTowers.find((tower) => tower.id === casualFusionSelection[0]);
+  if (core && casualStarOf(core) >= 8) casualFusionSelection = [];
+  const selectedTowers = casualFusionSelection.map((id) => allTowers.find((tower) => tower.id === id)).filter((tower): tower is Tower => Boolean(tower));
+  const quote = selectedTowers.length === 3
+    ? engine.casualFusionQuote(selectedTowers[0]?.id ?? -1, [selectedTowers[1]?.id ?? -1, selectedTowers[2]?.id ?? -1])
+    : null;
+  const readyCount = casualFusionReadyCount(allTowers);
+  const active = engine.state.phase === "prep" || engine.state.phase === "combat";
+  const plans = new Map(WUXING_ORDER.map((wuxing) => [wuxing, engine.casualAutoFusionPlan(wuxing)] as const));
+  const inventorySignature = allTowers.map((tower) => `${tower.id}:${tower.wuxing}:${casualStarOf(tower)}:${tower.cell}:${tower.locked ? 1 : 0}:${tower.concentration ?? 0}`).join("|");
+  const key = `${inventorySignature}|S${casualFusionSelection.join(",")}|R${readyCount}`;
+
+  must<HTMLElement>("#evolution-count").textContent = String(readyCount);
+  must<HTMLElement>("#evolve-ready-count").textContent = String(readyCount);
+  must<HTMLElement>("#evolve-action-label").textContent = "3체 조합";
+  must<HTMLElement>("#evolve-action-detail").textContent = "회 가능";
+  must<HTMLElement>("#evolution-tab-label").textContent = "3체 조합";
+  must<HTMLElement>("#evolution-kicker").textContent = "팔성 승급소";
+  must<HTMLElement>("#evolution-heading-label").textContent = "현재 가능한 조합";
+  must<HTMLElement>("#standard-evolution-modes").hidden = true;
+  must<HTMLElement>("#casual-fusion-toolbar").hidden = false;
+  const evolveButton = must<HTMLButtonElement>("#evolve-button");
+  evolveButton.disabled = !active;
+  evolveButton.classList.toggle("has-ready", readyCount > 0);
+  const container = must<HTMLElement>("#evolution-options");
+  container.classList.add("is-casual");
+  must<HTMLElement>("#casual-auto-buttons").innerHTML = WUXING_ORDER.map((wuxing) => {
+    const groups = plans.get(wuxing) ?? [];
+    return `<button type="button" data-casual-auto="${wuxing}" style="--element:${ELEMENT_STYLES[wuxing].color}" ${!active || groups.length === 0 ? "disabled" : ""}><b>${wuxing}</b><span>자동조합</span><em>${groups.length}회</em></button>`;
+  }).join("");
+  if (key === evolutionRenderKey) return;
+  evolutionRenderKey = key;
+
+  const slotMarkup = [0, 1, 2].map((index) => {
+    const tower = selectedTowers[index];
+    const label = index === 0 ? "① 남길 본체" : `0${index + 1} 소모 재료`;
+    return `<button type="button" class="casual-fusion-slot ${tower ? "is-filled" : ""} ${index === 0 ? "is-core" : ""}" data-casual-fusion-slot="${index}" ${tower ? "" : "disabled"} style="--element:${tower ? ELEMENT_STYLES[tower.wuxing].color : "#526274"};--star:${tower ? CASUAL_STAR_COLORS[casualStarOf(tower)] : "#526274"}"><span>${label}</span>${tower ? `<b>${escapeHtml(tower.char)}</b><strong>${tower.wuxing} · ${casualStarOf(tower)}★</strong><small>${index === 0 ? "이 자령은 남습니다" : "확정하면 사라집니다"}</small>` : `<b>＋</b><small>${index === 0 ? "먼저 본체 선택" : "같은 오행·별 선택"}</small>`}</button>`;
+  }).join("");
+  const selectedIds = new Set(casualFusionSelection);
+  const candidates = allTowers
+    .filter((tower) => {
+      if (!core || selectedIds.has(tower.id)) return true;
+      return tower.wuxing === core.wuxing && casualStarOf(tower) === casualStarOf(core);
+    })
+    .sort((left, right) => Number(selectedIds.has(right.id)) - Number(selectedIds.has(left.id)) || casualStarOf(right) - casualStarOf(left) || left.wuxing.localeCompare(right.wuxing) || left.id - right.id);
+  const candidateMarkup = candidates.length > 0 ? candidates.map((tower) => {
+    const selectionIndex = casualFusionSelection.indexOf(tower.id);
+    const role = selectionIndex === 0 ? "core" : selectionIndex > 0 ? "material" : "candidate";
+    const incompatible = Boolean(core) && selectionIndex < 0 && (tower.wuxing !== core?.wuxing || casualStarOf(tower) !== casualStarOf(core));
+    const disabled = !active
+      || casualFusionSelection.length >= 3 && selectionIndex < 0
+      || selectionIndex < 0 && casualFusionSelection.length > 0 && tower.locked
+      || selectionIndex < 0 && incompatible
+      || !core && casualStarOf(tower) >= 8;
+    return casualFusionTowerMarkup(tower, role, disabled);
+  }).join("") : `<div class="empty-evolution"><b>소환한 자령이 없습니다</b><span>상점에서 첫 자령을 소환하면 획수에 따른 기본 별이 표시됩니다.</span></div>`;
+  const status = quote?.blocked.length
+    ? `<p class="casual-fusion-status is-blocked"><b>조합 불가</b><span>${quote.blocked.map((issue) => escapeHtml(issue.text)).join(" · ")}</span></p>`
+    : quote
+      ? `<p class="casual-fusion-status ${quote.warnings.length > 0 ? "has-warning" : "is-ready"}"><b>${quote.fromStar}★ → ${quote.toStar}★ 준비</b><span>${quote.warnings.length > 0 ? `${quote.warnings.length}개 보호 경고를 확인하세요.` : "두 재료만 소모되고 본체·잠금·배치는 유지됩니다."}</span></p>`
+      : `<p class="casual-fusion-status"><b>${selectedTowers.length}/3 선택</b><span>${selectedTowers.length === 0 ? "남길 본체부터 선택하세요." : "같은 오행·같은 현재 별 재료를 고르세요."}</span></p>`;
+  const selectedStar = core ? casualStarOf(core) : null;
+  container.innerHTML = `
+    <div class="casual-rarity-rule"><span><b>획수 기본 별</b><small>실제 Unicode kTotalStrokes</small></span>${([1, 2, 3, 4, 5, 6, 7, 8] as CasualStar[]).map((star) => `<i style="--star:${CASUAL_STAR_COLORS[star]}"><b>${star}★</b><small>${casualStarRangeLabel(star)}</small></i>`).join("")}</div>
+    <div class="casual-fusion-slots">${slotMarkup}<i aria-hidden="true">→</i><div class="casual-fusion-result" style="--star:${selectedStar ? CASUAL_STAR_COLORS[Math.min(8, selectedStar + 1) as CasualStar] : "#526274"}"><span>결과</span><b>${core ? `${Math.min(8, selectedStar as number + 1)}★` : "?★"}</b><small>${core ? `피해 배율 ×${CASUAL_STAR_POWER[Math.min(8, selectedStar as number + 1) as CasualStar].toFixed(2)}` : "본체 선택 필요"}</small></div></div>
+    ${status}
+    <button id="casual-fusion-review" class="workbench-primary casual-fusion-review" type="button" ${!quote || quote.blocked.length > 0 ? "disabled" : ""}>소모 목록 확인 후 ${quote?.toStar ?? "?"}★ 조합</button>
+    <div class="casual-candidate-heading"><div><b>보유 자령</b><small>${core ? `${core.wuxing}행 ${casualStarOf(core)}★만 표시` : "본체를 고르면 맞는 재료만 남습니다"}</small></div><em>클릭 순서: 본체 → 재료 → 재료</em></div>
+    <div class="casual-fusion-candidates">${candidateMarkup}</div>`;
+}
+
+function casualConfirmTowerRow(tower: Tower, role: "core" | "material"): string {
+  const star = casualStarOf(tower);
+  const strokes = casualStrokeCount(tower.char);
+  return `<article class="casual-confirm-tower ${role === "core" ? "is-core" : "is-material"}" style="--element:${ELEMENT_STYLES[tower.wuxing].color};--star:${CASUAL_STAR_COLORS[star]}"><b>${escapeHtml(tower.char)}</b><span><strong>${role === "core" ? "유지 · 승급 본체" : "소모 · 복구 불가"}</strong><small>${tower.wuxing}행 · ${star}★ · ${strokes ?? "?"}획 · ${tower.cell < 0 ? "인벤" : "전장"}${tower.locked ? " · 잠금" : ""}</small></span><em>${role === "core" ? "KEEP" : "USE"}</em></article>`;
+}
+
+function openCasualManualReview(): void {
+  if (casualFusionSelection.length !== 3) return;
+  const [coreId, firstId, secondId] = casualFusionSelection;
+  if (coreId === undefined || firstId === undefined || secondId === undefined) return;
+  const quote = engine.casualFusionQuote(coreId, [firstId, secondId]);
+  if (quote.blocked.length > 0 || quote.fromStar === null || quote.toStar === null) {
+    showToast(quote.blocked[0]?.text ?? "조합 조건을 다시 확인하세요.", true);
+    return;
+  }
+  const all = [...engine.state.towers, ...engine.state.inventoryTowers];
+  const core = all.find((tower) => tower.id === coreId);
+  const materials = [firstId, secondId].map((id) => all.find((tower) => tower.id === id)).filter((tower): tower is Tower => Boolean(tower));
+  if (!core || materials.length !== 2) return;
+  pendingCasualFusion = { kind: "manual", coreId, materialIds: [firstId, secondId], quote };
+  must<HTMLElement>("#casual-fusion-confirm-title").textContent = `${core.wuxing}행 ${quote.fromStar}★ → ${quote.toStar}★`;
+  must<HTMLElement>("#casual-fusion-confirm-content").innerHTML = `
+    <section class="casual-confirm-summary"><b>${escapeHtml(core.char)}만 남고 두 자령은 사라집니다</b><span>본체의 위치·잠금·농축은 유지됩니다. 이 조합은 되돌릴 수 없습니다.</span><div><i>현재 피해 ×${CASUAL_STAR_POWER[quote.fromStar].toFixed(2)}</i><em>→</em><strong>승급 피해 ×${CASUAL_STAR_POWER[quote.toStar].toFixed(2)}</strong></div></section>
+    <div class="casual-confirm-towers">${casualConfirmTowerRow(core, "core")}${materials.map((tower) => casualConfirmTowerRow(tower, "material")).join("")}</div>
+    ${quote.warnings.length > 0 ? `<section class="casual-confirm-warnings"><b>보호 경고 ${quote.warnings.length}개</b><ul>${quote.warnings.map((warning) => `<li>${escapeHtml(warning.text)}</li>`).join("")}</ul></section>` : `<p class="casual-confirm-safe">잠금·목표·성어·농축 충돌이 없습니다.</p>`}`;
+  must<HTMLButtonElement>("#casual-fusion-execute").textContent = `두 자령 소모 · ${quote.toStar}★ 조합`;
+  casualFusionConfirmDialog.showModal();
+}
+
+function openCasualAutoReview(wuxing: Wuxing): void {
+  const groups = engine.casualAutoFusionPlan(wuxing);
+  if (groups.length === 0) {
+    showToast(`${wuxing}행 인벤토리에 안전한 자동조합 묶음이 없습니다.`, true);
+    return;
+  }
+  pendingCasualFusion = { kind: "auto", wuxing, groups };
+  const all = [...engine.state.towers, ...engine.state.inventoryTowers];
+  const warningTexts = [...new Set(groups.flatMap((group) => group.warnings.map((warning) => warning.text)))];
+  must<HTMLElement>("#casual-fusion-confirm-title").textContent = `${wuxing}행 자동조합 ${groups.length}회`;
+  must<HTMLElement>("#casual-fusion-confirm-content").innerHTML = `
+    <section class="casual-confirm-summary"><b>전장·인벤토리에서 ${groups.length * 2}기를 소모합니다</b><span>잠금·농축·현재 목표·성어·즉시 일반 합성 재료는 자동 소모에서 제외했습니다. 인벤토리의 약한 재료를 먼저 쓰고, 전장 재료가 포함되면 아래에 경고합니다. 이번 미리보기는 연쇄 승급하지 않습니다.</span></section>
+    <div class="casual-auto-preview">${groups.map((group, index) => {
+      const core = all.find((tower) => tower.id === group.coreId);
+      const materials = group.materialIds.map((id) => all.find((tower) => tower.id === id)).filter((tower): tower is Tower => Boolean(tower));
+      return `<article><em>${index + 1}</em><b>${core ? escapeHtml(core.char) : "?"}</b><span>${materials.map((tower) => escapeHtml(tower.char)).join(" + ")} <i>소모</i></span><strong>${group.fromStar}★→${group.toStar}★</strong></article>`;
+    }).join("")}</div>
+    ${warningTexts.length > 0 ? `<section class="casual-confirm-warnings"><b>마지막 보유 등 확인 ${warningTexts.length}개</b><ul>${warningTexts.map((warning) => `<li>${escapeHtml(warning)}</li>`).join("")}</ul></section>` : `<p class="casual-confirm-safe">보호 충돌이 없습니다.</p>`}`;
+  must<HTMLButtonElement>("#casual-fusion-execute").textContent = `${groups.length * 2}기 소모 · ${groups.length}회 자동조합`;
+  casualFusionConfirmDialog.showModal();
+}
+
+function closeCasualFusionReview(): void {
+  pendingCasualFusion = null;
+  if (casualFusionConfirmDialog.open) casualFusionConfirmDialog.close();
 }
 
 function evolutionCard(option: EvolutionOption, index: number): string {
@@ -1733,7 +2015,8 @@ function openAbilityGuide(focusedAbilityId?: string): void {
   const definition = definitionForTower(engine.catalog, tower.definitionId);
   const learning = learningInfo(engine.state.region, tower.char);
   const abilities = definition.combat.abilities;
-  const activeSkills = hasActiveSkills(definition);
+  const activeSkills = engine.towerHasActiveSkills(tower);
+  const skillUnlockLabel = engine.state.mode === "casual" ? "2★ 승급" : "2단 합성";
   const periodicAbilities = activeSkills
     ? [abilities.semantic, abilities.role, abilities.lineage].filter((ability): ability is AbilitySpec => Boolean(ability))
     : [];
@@ -1746,7 +2029,7 @@ function openAbilityGuide(focusedAbilityId?: string): void {
       <h3>${activeSkills ? "직접 누르는 기술은 없습니다" : "현재는 기본 공격만 수행합니다"}</h3>
       <p>${activeSkills
         ? `고유·역할·계승 기술의 주기가 같은 공격에 겹치면 <b>고유 → 역할 → 계승</b> 순서로 하나만 발동합니다. 오행 효과와 진법 특성은 각 조건을 만족하면 그 공격에 함께 적용됩니다.`
-        : `진법 특성은 조건을 만족하면 자동 적용됩니다. <b>2단 합성</b>부터 고유·역할 기술과 오행 효과가 해금됩니다.`}</p>
+        : `진법 특성은 조건을 만족하면 자동 적용됩니다. <b>${skillUnlockLabel}</b>부터 고유·역할 기술과 오행 효과가 해금됩니다.`}</p>
       <div><b>주기 자동 ${periodicAbilities.length}</b><b>공격 연동 ${activeSkills ? 1 : 0}</b><b>조건 특성 1</b></div>
     </section>
     <div class="ability-guide-list">
@@ -1756,9 +2039,9 @@ function openAbilityGuide(focusedAbilityId?: string): void {
   abilityGuideDialog.showModal();
 }
 
-function syncSelectedCharge(card: HTMLElement, definition: HanziDefinition, chargeStep: number): void {
+function syncSelectedCharge(card: HTMLElement, tower: Tower, definition: HanziDefinition, chargeStep: number): void {
   const holder = card.querySelector<HTMLElement>(".ability-charge");
-  if (!hasActiveSkills(definition) || holder?.classList.contains("ability-charge--locked")) return;
+  if (!engine.towerHasActiveSkills(tower) || holder?.classList.contains("ability-charge--locked")) return;
   const ability = definition.combat.abilities.role;
   const signatureEvery = definition.combat.abilities.tuning.signatureEvery;
   const charge = chargeStep / signatureEvery;
@@ -1781,9 +2064,9 @@ function renderSelected(): void {
   const concentrationPath = tower?.concentrationPath ?? null;
   const duplicateCount = tower ? engine.state.inventoryTowers.filter((candidate) => candidate.id !== tower.id && candidate.char === tower.char && !candidate.locked).length : 0;
   const branchKey = branches.map((branch) => `${branch.recipeId}:${branch.ready ? "R" : branch.materials.map((material) => material.location).join(",")}`).join("|");
-  const key = tower ? tower.definitionId + "|" + String(tower.id) + "|" + String(tower.locked) + "|" + String(stored) + "|" + String(engine.isSynergyActive(tower.wuxing)) + "|" + branchKey + `|C${concentration}:${concentrationPath ?? "none"}:D${duplicateCount}:E${engine.state.elementEssence[tower.wuxing]}` : "none";
+  const key = tower ? tower.definitionId + "|" + String(tower.id) + "|" + String(tower.locked) + "|" + String(stored) + "|" + String(engine.isSynergyActive(tower.wuxing)) + "|" + branchKey + `|M${engine.state.mode}:S${tower.casualStar ?? 0}|C${concentration}:${concentrationPath ?? "none"}:D${duplicateCount}:E${engine.state.elementEssence[tower.wuxing]}` : "none";
   if (key === selectedRenderKey) {
-    if (tower && definition) syncSelectedCharge(card, definition, chargeStep);
+    if (tower && definition) syncSelectedCharge(card, tower, definition, chargeStep);
     return;
   }
   selectedRenderKey = key;
@@ -1794,12 +2077,12 @@ function renderSelected(): void {
   if (!definition) return;
   const style = ELEMENT_STYLES[tower.wuxing];
   const concentrationDamage = 1 + concentration * (concentrationPath === "potent" ? 0.12 : 0.055);
-  const damage = Math.round(definition.combat.baseDamage * STAGE_MULTIPLIERS[tower.stage] * definition.combat.budgetMultiplier * (1 + engine.idiomBonus("damage")) * (1 + engine.combinedUpgradeBonus(tower.wuxing, "damage")) * concentrationDamage);
-  const range = definition.combat.range + engine.idiomBonus("range") + concentration * 4 + engine.combinedUpgradeBonus(tower.wuxing, "range");
+  const damage = Math.round(definition.combat.baseDamage * engine.towerPowerMultiplier(tower) * definition.combat.budgetMultiplier * (1 + engine.idiomBonus("damage")) * (1 + engine.combinedUpgradeBonus(tower.wuxing, "damage")) * concentrationDamage);
+  const range = definition.combat.range + engine.towerRangeBonus(tower) + engine.idiomBonus("range") + concentration * 4 + engine.combinedUpgradeBonus(tower.wuxing, "range");
   const attacksPerSecond = 1 / engine.towerAttackCooldown(tower);
   const learning = learningInfo(engine.state.region, tower.char);
   const abilities = definition.combat.abilities;
-  const activeSkills = hasActiveSkills(definition);
+  const activeSkills = engine.towerHasActiveSkills(tower);
   const periodicAbilities = activeSkills
     ? [abilities.semantic, abilities.role, abilities.lineage].filter((ability): ability is AbilitySpec => Boolean(ability))
     : [];
@@ -1816,10 +2099,14 @@ function renderSelected(): void {
   const cleanupLabel = cleanup?.protected
     ? `보호 · ${cleanup.protectedReasons[0] ?? "전략 재료"}`
     : `정리 후보 · ${cleanup?.reasons[0] ?? "직접 판단"}`;
+  const casualStar = casualStarOf(tower);
+  const progressionLabel = engine.state.mode === "casual" ? `${casualStar}★ ${CASUAL_STAR_NAMES[casualStar]}` : STAGE_NAMES[tower.stage];
+  const progressionColor = engine.state.mode === "casual" ? CASUAL_STAR_COLORS[casualStar] : STAGE_COLORS[tower.stage];
+  const skillUnlockLabel = engine.state.mode === "casual" ? "2★ 승급" : "2단 합성";
   card.innerHTML = `
-    <div class="selected-glyph" style="--unit:${style.color};--stage:${STAGE_COLORS[tower.stage]}">${tower.char}${concentration > 0 ? `<small>濃 ${concentration}</small>` : ""}</div>
+    <div class="selected-glyph" style="--unit:${style.color};--stage:${progressionColor}">${tower.char}${engine.state.mode === "casual" ? `<small>${casualStar}★ · ${casualStrokeCount(tower.char) ?? "?"}획</small>` : concentration > 0 ? `<small>濃 ${concentration}</small>` : ""}</div>
     <div class="selected-copy">
-      <div><span>${STAGE_NAMES[tower.stage]} · ${style.name}행 · ${ROLE_LABELS[tower.combatRole]}</span><h3>${tower.char} <small>${GRAPH_ROLE_LABELS[tower.graphRole]}</small><i class="selected-radical">${displayMode === "spirit" ? `${learning.readingLabel} ${escapeHtml(learning.reading)}` : `부수 ${radicalGlyph(tower.char)}`}</i></h3></div>
+      <div><span>${progressionLabel} · ${style.name}행 · ${ROLE_LABELS[tower.combatRole]}</span><h3>${tower.char} <small>${GRAPH_ROLE_LABELS[tower.graphRole]}</small><i class="selected-radical">${displayMode === "spirit" ? `${learning.readingLabel} ${escapeHtml(learning.reading)}` : `부수 ${radicalGlyph(tower.char)}`}</i></h3></div>
       <p class="selected-learning"><b>${learning.readingLabel}</b> ${escapeHtml(learning.reading)} · <em>${learning.meaningSource === "en" ? "뜻(영)" : "뜻"} ${escapeHtml(learning.meaning)}</em></p>
       <p><b>${stored ? "배치 대기" : `공격 ${damage}`}</b> · ${stored ? "찬 칸을 누르면 즉시 교체" : `공속 ${attacksPerSecond.toFixed(2)}/초 · 사거리 ${Math.round(range)} · 파생 합성 ${branches.length}`}</p>
       <small class="cleanup-reason ${cleanup?.protected ? "is-protected" : "is-candidate"}">${escapeHtml(cleanupLabel)} · ${escapeHtml(concentrationStatus)}</small>
@@ -1827,8 +2114,8 @@ function renderSelected(): void {
     <div class="selected-actions">
       <button id="lock-button" class="${tower.locked ? "is-locked" : ""}" type="button" data-testid="lock-tower">${tower.locked ? "鎖 잠금됨" : "잠금"}</button>
       <button id="store-button" type="button" data-testid="store-tower" ${stored ? "disabled" : ""}>${stored ? "인벤 보관 중" : "인벤 넣기"}</button>
-      <button id="derivative-button" class="${readyBranches > 0 ? "has-ready" : ""}" type="button" data-testid="derivative-composition">파생 합성 ${readyBranches}</button>
-      <button id="sell-button" type="button" ${tower.locked ? "disabled" : ""}>판매 +${sellValue(tower.stage)}</button>
+      <button id="derivative-button" class="${readyBranches > 0 ? "has-ready" : ""}" type="button" data-testid="derivative-composition">${engine.state.mode === "casual" ? casualStar >= 8 ? "8★ 최고 단계" : "3체 조합 ›" : `파생 합성 ${readyBranches}`}</button>
+      <button id="sell-button" type="button" ${tower.locked ? "disabled" : ""}>판매 +${engine.towerSellValue(tower)}</button>
       <button id="open-growth-button" type="button">강화·분해 탭 ›</button>
       <button id="open-concentration-button" type="button" ${concentration >= MAX_CONCENTRATION_LEVEL ? "disabled" : ""}>농축 공방 ›</button>
     </div>
@@ -1840,10 +2127,10 @@ function renderSelected(): void {
         </div>
         <div class="ability-charge" title="다음 역할 기술 ${abilities.role.name}까지 ${remaining}회"><i style="width:${Math.round(charge * 100)}%;--charge:${abilities.role.color}"></i><small>역할 기술 충전 · ${abilities.role.glyph} ${abilities.role.name} ${chargeStep}/${abilities.tuning.signatureEvery}</small></div>`
       : `<div class="ability-loadout is-locked">
-          <div class="ability-overview"><span><b>2단 합성부터 고유·역할 기술과 오행 효과 해금</b></span><button type="button" data-ability-guide>규칙 설명</button></div>
+          <div class="ability-overview"><span><b>${skillUnlockLabel}부터 고유·역할 기술과 오행 효과 해금</b></span><button type="button" data-ability-guide>규칙 설명</button></div>
           <div class="ability-pills ability-pills--locked"><button type="button" class="ability-card is-basic" data-ability-id="basic-attack" style="--ability:#aeb9cc"><i>合</i><span><em>기본 행동 · 자동</em><b>기본 공격</b><small>단일 대상 · 합성 재료</small></span></button>${supportingAbilities.map(selectedAbilityCard).join("")}</div>
         </div>
-        <div class="ability-charge ability-charge--locked"><i style="width:0%;--charge:#aeb9cc"></i><small>2단 합성 시 고유 기술 해금</small></div>`}
+        <div class="ability-charge ability-charge--locked"><i style="width:0%;--charge:#aeb9cc"></i><small>${skillUnlockLabel} 시 고유 기술 해금</small></div>`}
   `;
 }
 
@@ -2128,6 +2415,20 @@ function renderCodexSynthesisFilters(
     return;
   }
   filters.hidden = false;
+  if (engine.state.mode === "casual" && codexMode !== "recipes") {
+    filters.setAttribute("aria-label", "획수 기본 별 분류");
+    const counts = new Map<CasualStar, number>();
+    for (const definition of definitions) {
+      const star = casualNaturalStar(definition.char) ?? 1;
+      counts.set(star, (counts.get(star) ?? 0) + 1);
+    }
+    if (codexSynthesisDepth !== "all" && (typeof codexSynthesisDepth !== "number" || !counts.has(codexSynthesisDepth as CasualStar))) codexSynthesisDepth = "all";
+    filters.innerHTML = [
+      `<button type="button" data-synthesis-depth="all" class="${codexSynthesisDepth === "all" ? "is-active" : ""}" aria-pressed="${String(codexSynthesisDepth === "all")}">전체 <small>${definitions.length}</small></button>`,
+      ...([...counts.entries()].sort(([left], [right]) => left - right).map(([star, count]) => `<button type="button" data-synthesis-depth="${star}" class="${codexSynthesisDepth === star ? "is-active" : ""}" aria-pressed="${String(codexSynthesisDepth === star)}" style="--codex-star:${CASUAL_STAR_COLORS[star]}">${star}★ <small>${count}</small></button>`))
+    ].join("");
+    return;
+  }
   const counts = new Map<number | typeof UNCOMBINABLE_STAGE_ONE, number>();
   for (const definition of definitions) {
     const depth = depths.get(definition.char) ?? 0;
@@ -2178,11 +2479,15 @@ function renderCodex(query = ""): void {
     definitions = definitions.filter((definition) => owned.has(definition.char));
   }
   renderCodexSynthesisFilters(definitions, synthesisDepths, uncombinableStageOne);
-  if (codexSynthesisDepth !== "all") definitions = definitions.filter((definition) =>
-    synthesisTierKey(definition, synthesisDepths.get(definition.char) ?? 1, uncombinableStageOne) === codexSynthesisDepth
+  if (codexSynthesisDepth !== "all") definitions = definitions.filter((definition) => engine.state.mode === "casual" && codexMode !== "recipes"
+    ? casualNaturalStar(definition.char) === codexSynthesisDepth
+    : synthesisTierKey(definition, synthesisDepths.get(definition.char) ?? 1, uncombinableStageOne) === codexSynthesisDepth
   );
   definitions = definitions.filter((definition) => definitionMatches(definition, normalized));
-  definitions.sort((a, b) => (synthesisDepths.get(a.char) ?? 0) - (synthesisDepths.get(b.char) ?? 0) || a.stage - b.stage || a.char.localeCompare(b.char, "ko"));
+  definitions.sort((a, b) => engine.state.mode === "casual" && codexMode !== "recipes"
+    ? (casualNaturalStar(a.char) ?? 1) - (casualNaturalStar(b.char) ?? 1) || (casualStrokeCount(a.char) ?? 0) - (casualStrokeCount(b.char) ?? 0) || a.char.localeCompare(b.char, "ko")
+    : (synthesisDepths.get(a.char) ?? 0) - (synthesisDepths.get(b.char) ?? 0) || a.stage - b.stage || a.char.localeCompare(b.char, "ko")
+  );
   list.className = codexMode === "recipes" ? "codex-list codex-list--recipes" : codexMode === "inventory" ? "codex-list codex-list--inventory" : "codex-list";
 
   if (codexMode === "recipes") {
@@ -2194,15 +2499,18 @@ function renderCodex(query = ""): void {
     list.innerHTML = definitions.map((definition) => {
       const entry = counts.get(definition.char);
       const tier = synthesisTierKey(definition, synthesisDepths.get(definition.char) ?? 1, uncombinableStageOne);
-      return `<button type="button" data-codex-char="${definition.char}" class="is-discovered inventory-card" style="--codex:${ELEMENT_STYLES[definition.wuxing].color}"><i class="codex-spirit" style="${spriteStyle(definition)}"></i><b>${definition.char}</b><span>${escapeHtml(learningInfo(engine.state.region, definition.char).short)}</span><small>${synthesisTierBadge(tier)} · 소환 ${entry?.summons ?? 0} · 합성 ${entry?.evolutions ?? 0}</small></button>`;
+      const naturalStar = casualNaturalStar(definition.char) ?? 1;
+      return `<button type="button" data-codex-char="${definition.char}" class="is-discovered inventory-card" style="--codex:${ELEMENT_STYLES[definition.wuxing].color}"><i class="codex-spirit" style="${spriteStyle(definition)}"></i><b>${definition.char}</b><span>${escapeHtml(learningInfo(engine.state.region, definition.char).short)}</span><small>${engine.state.mode === "casual" ? `${naturalStar}★ · ${casualStrokeCount(definition.char) ?? "?"}획` : synthesisTierBadge(tier)} · 소환 ${entry?.summons ?? 0} · 합성 ${entry?.evolutions ?? 0}</small></button>`;
     }).join("");
   } else {
-    must<HTMLElement>("#codex-summary").textContent = `${definitions.length.toLocaleString("ko-KR")}/${engine.catalog.definitions.size.toLocaleString("ko-KR")}자 · ${codexSynthesisDepth === "all" ? "전체 단계" : synthesisTierFilterLabel(codexSynthesisDepth)}`;
+    must<HTMLElement>("#codex-summary").textContent = `${definitions.length.toLocaleString("ko-KR")}/${engine.catalog.definitions.size.toLocaleString("ko-KR")}자 · ${engine.state.mode === "casual" ? codexSynthesisDepth === "all" ? "전체 기본 별" : `${codexSynthesisDepth}★ 획수 구간` : codexSynthesisDepth === "all" ? "전체 단계" : synthesisTierFilterLabel(codexSynthesisDepth)}`;
     list.innerHTML = definitions.map((definition) => {
       const discovered = engine.state.discoveredChars.includes(definition.char);
       const learning = learningInfo(engine.state.region, definition.char);
       const tier = synthesisTierKey(definition, synthesisDepths.get(definition.char) ?? 1, uncombinableStageOne);
-      return `<button type="button" data-codex-char="${definition.char}" class="${discovered ? "is-discovered" : ""}" style="--codex:${ELEMENT_STYLES[definition.wuxing].color}"><b>${definition.char}</b><span>${escapeHtml(learning.short)}</span><small>${synthesisTierBadge(tier)} · ${STAGE_NAMES[definition.stage]} · ${hasActiveSkills(definition) ? definition.combat.abilities.role.name : "기본 공격"} · ${definition.parents.length ? definition.parents.join("+") : "직접"}</small></button>`;
+      const naturalStar = casualNaturalStar(definition.char) ?? 1;
+      const casualSkill = naturalStar >= 2 ? definition.combat.abilities.role.name : "기본 공격·2★ 해금";
+      return `<button type="button" data-codex-char="${definition.char}" class="${discovered ? "is-discovered" : ""}" style="--codex:${ELEMENT_STYLES[definition.wuxing].color}"><b>${definition.char}</b><span>${escapeHtml(learning.short)}</span><small>${engine.state.mode === "casual" ? `${naturalStar}★ ${CASUAL_STAR_NAMES[naturalStar]} · ${casualStrokeCount(definition.char) ?? "?"}획 · ${casualSkill} · 직접` : `${synthesisTierBadge(tier)} · ${STAGE_NAMES[definition.stage]} · ${hasActiveSkills(definition) ? definition.combat.abilities.role.name : "기본 공격"} · ${definition.parents.length ? definition.parents.join("+") : "직접"}`}</small></button>`;
     }).join("");
   }
   if (definitions.length === 0) list.innerHTML = '<p class="codex-empty">검색 결과가 없습니다.</p>';
@@ -2233,7 +2541,8 @@ function renderCodexDetail(definition: HanziDefinition | undefined): void {
   const discovered = engine.state.discoveredChars.includes(definition.char);
   const learning = learningInfo(engine.state.region, definition.char);
   const abilities = definition.combat.abilities;
-  const activeSkills = hasActiveSkills(definition);
+  const naturalStar = casualNaturalStar(definition.char) ?? 1;
+  const activeSkills = engine.state.mode === "casual" ? naturalStar >= 2 : hasActiveSkills(definition);
   const abilityList = activeSkills
     ? [abilities.semantic, abilities.role, abilities.lineage].filter((ability): ability is AbilitySpec => Boolean(ability))
     : [];
@@ -2245,51 +2554,58 @@ function renderCodexDetail(definition: HanziDefinition | undefined): void {
   const uncombinableStageOne = buildUncombinableStageOneChars(engine.catalog.definitions.values());
   const synthesisTier = synthesisTierKey(definition, synthesisDepth, uncombinableStageOne);
   const visual = jaryeongVisualFor(definition.char, definition.wuxing, engine.state.region);
+  const progressionHeading = engine.state.mode === "casual"
+    ? `${naturalStar}★ ${CASUAL_STAR_NAMES[naturalStar]} · ${casualStrokeCount(definition.char) ?? "?"}획`
+    : `${synthesisTierBadge(synthesisTier)} · ${STAGE_NAMES[definition.stage]}`;
+  const codexPower = engine.state.mode === "casual" ? CASUAL_STAR_POWER[naturalStar] : STAGE_MULTIPLIERS[definition.stage];
   detail.innerHTML = `
     <div class="codex-detail-hero" style="--codex:${ELEMENT_STYLES[definition.wuxing].color}">
       <i class="codex-detail-spirit" style="${visualBackgroundStyle(visual)}"></i>
       <div class="codex-detail-glyph">${definition.char}</div>
     </div>
     <p class="eyebrow">${definition.id}</p>
-    <h3>${synthesisTierBadge(synthesisTier)} · ${STAGE_NAMES[definition.stage]} · ${definition.wuxing}행 · ${definition.combat.roleLabel}</h3>
-    <div class="codex-stats"><span><small>공격</small><b>${Math.round(definition.combat.baseDamage * STAGE_MULTIPLIERS[definition.stage] * definition.combat.budgetMultiplier)}</b></span><span><small>사거리</small><b>${definition.combat.range}</b></span><span><small>공속</small><b>${definition.combat.cooldown.toFixed(2)}초</b></span><span><small>하위</small><b>${definition.graph.directChildCount}</b></span></div>
+    <h3>${progressionHeading} · ${definition.wuxing}행 · ${definition.combat.roleLabel}</h3>
+    <div class="codex-stats"><span><small>공격</small><b>${Math.round(definition.combat.baseDamage * codexPower * definition.combat.budgetMultiplier)}</b></span><span><small>사거리</small><b>${definition.combat.range}</b></span><span><small>공속</small><b>${definition.combat.cooldown.toFixed(2)}초</b></span><span><small>${engine.state.mode === "casual" ? "희귀도" : "하위"}</small><b>${engine.state.mode === "casual" ? `${naturalStar}★` : definition.graph.directChildCount}</b></span></div>
     <article class="strategy-note"><b>전략 운용</b><span>${ROLE_STRATEGY[definition.combat.role]} ${definition.combat.description}</span></article>
     <dl>
       <div class="learning-row"><dt>${learning.readingLabel}</dt><dd>${escapeHtml(learning.reading)}</dd></div>
       <div class="learning-row"><dt>${learning.meaningSource === "en" ? "뜻(영)" : "뜻"}</dt><dd>${escapeHtml(learning.meaning)}</dd></div>
       <div class="learning-row"><dt>부수</dt><dd>${radicalLearningLabel(definition.char)}</dd></div>
-      <div><dt>획득</dt><dd>${definition.acquisition === "direct" ? "직접 소환" : definition.parents.join(" + ") + " → " + definition.char}</dd></div>
-      <div><dt>단계</dt><dd>${synthesisTierBadge(synthesisTier)}${synthesisDepth > 1 ? " · 가장 긴 선행 조합 기준" : uncombinableStageOne.has(definition.char) ? " · 상위 조합식 없음" : " · 상위 조합 재료"}</dd></div>
+      <div><dt>획득</dt><dd>${engine.state.mode === "casual" ? "전 천자문 자령 직접 소환" : definition.acquisition === "direct" ? "직접 소환" : definition.parents.join(" + ") + " → " + definition.char}</dd></div>
+      <div><dt>${engine.state.mode === "casual" ? "기본 별" : "단계"}</dt><dd>${engine.state.mode === "casual" ? `${naturalStar}★ · ${casualStrokeCount(definition.char) ?? "?"}획 · ${casualStarRangeLabel(naturalStar)}` : `${synthesisTierBadge(synthesisTier)}${synthesisDepth > 1 ? " · 가장 긴 선행 조합 기준" : uncombinableStageOne.has(definition.char) ? " · 상위 조합식 없음" : " · 상위 조합 재료"}`}</dd></div>
       <div><dt>전투</dt><dd>${definition.combat.roleLabel} · ${definition.combat.effectLabel}</dd></div>
       <div><dt>조합망</dt><dd>${GRAPH_ROLE_LABELS[definition.graph.graphRole]} · 직접 하위 ${definition.graph.directChildCount}자</dd></div>
       <div><dt>보유 기록</dt><dd>${inventoryEntry ? `소환 ${inventoryEntry.summons}회 · 합성 획득 ${inventoryEntry.evolutions}회 · 자동 저장됨` : "아직 획득 기록 없음"}</dd></div>
       <div><dt>발견 기록</dt><dd>${discovered ? "이번 런에서 만남" : "아직 만나지 못함"}</dd></div>
     </dl>
     <div class="codex-abilities">
-      ${activeSkills ? "" : `<article class="is-locked" style="--ability:#aeb9cc"><b>合</b><span><strong>1단 기본 공격</strong><small>조합 가능한 재료 · 능력 미보유</small><em>이 자령은 상위 조합 재료입니다. 2단으로 합성하면 의미 기술과 역할 기술이 해금됩니다.</em></span></article>`}
+      ${activeSkills ? "" : `<article class="is-locked" style="--ability:#aeb9cc"><b>合</b><span><strong>${engine.state.mode === "casual" ? "1★ 기본 공격" : "1단 기본 공격"}</strong><small>${engine.state.mode === "casual" ? "3체 조합으로 기술 해금" : "조합 가능한 재료 · 능력 미보유"}</small><em>${engine.state.mode === "casual" ? "같은 오행·같은 별 자령 두 기를 재료로 써 2★가 되면 의미 기술과 역할 기술이 해금됩니다." : "이 자령은 상위 조합 재료입니다. 2단으로 합성하면 의미 기술과 역할 기술이 해금됩니다."}</em></span></article>`}
       ${abilityList.map((ability) => `<article style="--ability:${ability.color}"><b>${ability.glyph}</b><span><strong>${ability.name}</strong><small>${ability.trigger} · ${ability.summary}</small><em>${ability.description}</em></span></article>`).join("")}
       ${passiveList.map((ability) => `<article class="is-passive" style="--ability:${ability.color}"><b>${ability.glyph}</b><span><strong>${ability.name}</strong><small>상시 특성 · ${ability.summary}</small><em>${ability.description}</em></span></article>`).join("")}
     </div>
     <section class="recipe-guide">
-      <h4>조합표</h4>
-      <div class="recipe-guide-main">${definition.acquisition === "direct" ? `<span><b>${definition.char}</b><small>직접 소환</small></span>` : `${definition.parents.map((parent) => `<span><b>${parent}</b><small>${escapeHtml(learningInfo(engine.state.region, parent).short)}</small></span>`).join("<em>+</em>")}<em>→</em><span class="is-result"><b>${definition.char}</b><small>${escapeHtml(learning.short)}</small></span>`}</div>
-      ${recipeSteps.length ? `<ol>${recipeSteps.map((step, index) => `<li><b>${index + 1}</b><span>${step.parents.join(" + ")} → <strong>${step.char}</strong></span></li>`).join("")}</ol>` : ""}
-      <p><b>이 글자로 이어지는 조합</b> ${children.length ? children.map((child) => `<button type="button" data-codex-char="${child.char}">${definition.char} → ${child.char}</button>`).join("") : "현재 직접 하위 조합 없음"}</p>
+      <h4>${engine.state.mode === "casual" ? "캐주얼 3체 조합" : "조합표"}</h4>
+      ${engine.state.mode === "casual"
+        ? `<div class="recipe-guide-main"><span><b>${definition.wuxing}</b><small>${naturalStar}★ 본체</small></span><em>+</em><span><b>${definition.wuxing}</b><small>${naturalStar}★ 재료</small></span><em>+</em><span><b>${definition.wuxing}</b><small>${naturalStar}★ 재료</small></span><em>→</em><span class="is-result"><b>${Math.min(8, naturalStar + 1)}★</b><small>본체 유지</small></span></div><p><b>안전 규칙</b> 잠금 자령은 재료 제외 · 자동조합은 인벤토리만 · 소모 목록 사전 확인</p>`
+        : `<div class="recipe-guide-main">${definition.acquisition === "direct" ? `<span><b>${definition.char}</b><small>직접 소환</small></span>` : `${definition.parents.map((parent) => `<span><b>${parent}</b><small>${escapeHtml(learningInfo(engine.state.region, parent).short)}</small></span>`).join("<em>+</em>")}<em>→</em><span class="is-result"><b>${definition.char}</b><small>${escapeHtml(learning.short)}</small></span>`}</div>${recipeSteps.length ? `<ol>${recipeSteps.map((step, index) => `<li><b>${index + 1}</b><span>${step.parents.join(" + ")} → <strong>${step.char}</strong></span></li>`).join("")}</ol>` : ""}<p><b>이 글자로 이어지는 조합</b> ${children.length ? children.map((child) => `<button type="button" data-codex-char="${child.char}">${definition.char} → ${child.char}</button>`).join("") : "현재 직접 하위 조합 없음"}</p>`}
     </section>
     <p class="combo-key">능력 조합 코드 · ${abilities.comboKey}</p>
-    ${definition.acquisition === "craft" ? `<button id="set-target-button" type="button" data-target-char="${definition.char}">이 한자를 목표로 지정</button>` : ""}
+    ${engine.state.mode === "casual" || definition.acquisition === "craft" ? `<button id="set-target-button" type="button" data-target-char="${definition.char}">이 한자를 목표로 지정</button>` : ""}
   `;
 }
 
 function renderRunInventory(): void {
   const selectedId = engine.state.selectedTowerId;
-  const key = engine.state.inventoryTowers.map((tower) => `${tower.id}:${tower.locked}:C${tower.concentration ?? 0}:${tower.concentrationPath ?? "-"}`).join("|") + `|${selectedId ?? "none"}|${engine.state.phase}`;
+  const key = engine.state.inventoryTowers.map((tower) => `${tower.id}:${tower.locked}:S${tower.casualStar ?? 0}:C${tower.concentration ?? 0}:${tower.concentrationPath ?? "-"}`).join("|") + `|${selectedId ?? "none"}|${engine.state.phase}|${engine.state.mode}`;
   must<HTMLElement>("#run-inventory-count").textContent = String(engine.state.inventoryTowers.length);
   if (key === runInventoryRenderKey) return;
   runInventoryRenderKey = key;
   const list = must<HTMLElement>("#run-inventory-list");
   const grouped = new Map<string, Tower[]>();
-  for (const tower of engine.state.inventoryTowers) grouped.set(tower.char, [...(grouped.get(tower.char) ?? []), tower]);
+  for (const tower of engine.state.inventoryTowers) {
+    const groupKey = engine.state.mode === "casual" ? `${tower.char}:${casualStarOf(tower)}` : tower.char;
+    grouped.set(groupKey, [...(grouped.get(groupKey) ?? []), tower]);
+  }
   must<HTMLElement>("#run-inventory-heading-count").textContent = `${engine.state.inventoryTowers.length}개 · ${grouped.size}종`;
   const cleanupAssessments = new Map(engine.cleanupAssessments().map((assessment) => [assessment.towerId, assessment]));
   const cleanupCandidates = engine.cleanupCandidates(8, true);
@@ -2306,17 +2622,19 @@ function renderRunInventory(): void {
     const rightCandidate = right.some((tower) => cleanupAssessments.get(tower.id)?.protected === false) ? 0 : 1;
     return leftCandidate - rightCandidate || right.length - left.length || left[0]!.char.localeCompare(right[0]!.char);
   }).map((stack) => {
-    const tower = selectedTower && selectedTower.char === stack[0]?.char ? selectedTower : stack.find((candidate) => !candidate.locked) ?? stack[0]!;
-    const definition = definitionForTower(engine.catalog, tower.definitionId);
+    const tower = selectedTower && stack.some((candidate) => candidate.id === selectedTower.id) ? selectedTower : stack.find((candidate) => !candidate.locked) ?? stack[0]!;
     const visual = jaryeongVisualFor(tower.char, tower.wuxing, engine.state.region);
     const learning = learningInfo(engine.state.region, tower.char);
     const selected = tower.id === selectedId;
     const candidates = stack.filter((candidate) => cleanupAssessments.get(candidate.id)?.protected === false).length;
     const concentration = Math.max(...stack.map((candidate) => candidate.concentration ?? 0));
-    return `<button class="run-inventory-card ${selected ? "is-selected" : ""} ${candidates > 0 ? "is-cleanup-candidate" : "is-protected-stack"}" type="button" data-run-inventory-id="${tower.id}" style="--inventory-element:${ELEMENT_STYLES[tower.wuxing].color}">
+    const star = casualStarOf(tower);
+    const progression = engine.state.mode === "casual" ? `${star}★ ${CASUAL_STAR_NAMES[star]}` : STAGE_NAMES[tower.stage];
+    const skill = engine.towerHasActiveSkills(tower) ? definitionForTower(engine.catalog, tower.definitionId).combat.abilities.semantic.name : engine.state.mode === "casual" ? "기본 공격·2★ 해금" : "기본 공격·합성 재료";
+    return `<button class="run-inventory-card ${selected ? "is-selected" : ""} ${candidates > 0 ? "is-cleanup-candidate" : "is-protected-stack"}" type="button" data-run-inventory-id="${tower.id}" style="--inventory-element:${ELEMENT_STYLES[tower.wuxing].color};--inventory-star:${engine.state.mode === "casual" ? CASUAL_STAR_COLORS[star] : STAGE_COLORS[tower.stage]}">
       <span class="run-inventory-spirit" style="${visualBackgroundStyle(visual)}" aria-hidden="true"></span>
       <b>${tower.char}</b>
-      <span><strong>${escapeHtml(learning.short)} <i>×${stack.length}</i></strong><small>${STAGE_NAMES[tower.stage]} · ${hasActiveSkills(definition) ? definition.combat.abilities.semantic.name : "기본 공격·합성 재료"}${concentration > 0 ? ` · 濃 ${concentration}` : ""}</small></span>
+      <span><strong>${escapeHtml(learning.short)} <i>×${stack.length}</i></strong><small>${progression} · ${skill}${concentration > 0 ? ` · 濃 ${concentration}` : ""}</small></span>
       <em>${selected ? "찬 칸 교체" : candidates > 0 ? `정리 ${candidates}` : "보호"}</em>
     </button>`;
   }).join("");
@@ -2349,7 +2667,7 @@ function drawWorld(delta: number): void {
   const state = engine.state;
   const selectedTower = engine.selectedTower();
   canvas.dataset.selectedTowerId = selectedTower ? String(selectedTower.id) : "";
-  canvas.dataset.selectedSynthesisTier = selectedTower ? String(mapSynthesisDepths.get(selectedTower.char) ?? 1) : "";
+  canvas.dataset.selectedSynthesisTier = selectedTower ? String(engine.state.mode === "casual" ? casualStarOf(selectedTower) : mapSynthesisDepths.get(selectedTower.char) ?? 1) : "";
   const materialIds = hoveredMaterialIds();
   const synergyElements = new Set(engine.activeSynergies());
   drawPaperBackdrop();
@@ -2700,7 +3018,7 @@ function drawTowerRange(tower: Tower, hovered: boolean): void {
   context.lineWidth = hovered ? 2.2 : 1.5;
   context.setLineDash(hovered ? [10, 6] : [7, 7]);
   context.beginPath();
-  context.arc(cell.x, cell.y, definition.combat.range + (tower.stage - 1) * 7 + engine.idiomBonus("range") + (tower.concentration ?? 0) * 4 + engine.combinedUpgradeBonus(tower.wuxing, "range"), 0, Math.PI * 2);
+  context.arc(cell.x, cell.y, definition.combat.range + engine.towerRangeBonus(tower) + engine.idiomBonus("range") + (tower.concentration ?? 0) * 4 + engine.combinedUpgradeBonus(tower.wuxing, "range"), 0, Math.PI * 2);
   context.fill();
   context.stroke();
   context.restore();
@@ -2712,6 +3030,7 @@ function drawChargeRing(
   tower: Tower,
   abilities: HanziDefinition["combat"]["abilities"]
 ): void {
+  if (!engine.towerHasActiveSkills(tower)) return;
   const charge = (tower.shotCount % abilities.tuning.signatureEvery) / abilities.tuning.signatureEvery;
   context.strokeStyle = "rgba(255,255,255,0.1)";
   context.lineWidth = 1.5;
@@ -2732,17 +3051,19 @@ function drawChargeRing(
 function drawStudyTower(tower: Tower, cell: Point, definition: HanziDefinition, selected: boolean, material: boolean): void {
   const abilities = definition.combat.abilities;
   const style = ELEMENT_STYLES[tower.wuxing];
+  const progressionRank = engine.state.mode === "casual" ? casualStarOf(tower) : tower.stage;
+  const progressionColor = engine.state.mode === "casual" ? CASUAL_STAR_COLORS[casualStarOf(tower)] : STAGE_COLORS[tower.stage];
   const pulse = 1 + tower.pulse * 0.09;
-  const radius = (16 + (tower.stage - 1) * 0.8) * pulse;
+  const radius = (16 + (progressionRank - 1) * 0.55) * pulse;
   context.shadowColor = material ? "#ffe7a3" : style.glow;
-  context.shadowBlur = material ? 28 : selected ? 22 : 10 + tower.stage * 2;
+  context.shadowBlur = material ? 28 : selected ? 22 : 10 + progressionRank * 1.5;
   const gradient = context.createRadialGradient(cell.x - 3, cell.y - 4, 2, cell.x, cell.y, radius);
   gradient.addColorStop(0, style.color + "ee");
   gradient.addColorStop(0.28, style.color + "88");
   gradient.addColorStop(1, "#111925");
   context.fillStyle = gradient;
-  context.strokeStyle = material ? "#fff0b7" : selected ? "#ffffff" : STAGE_COLORS[tower.stage];
-  context.lineWidth = material || selected ? 2 : 1 + tower.stage * 0.15;
+  context.strokeStyle = material ? "#fff0b7" : selected ? "#ffffff" : progressionColor;
+  context.lineWidth = material || selected ? 2 : 1 + progressionRank * 0.11;
   context.beginPath();
   context.arc(cell.x, cell.y, radius, 0, Math.PI * 2);
   context.fill();
@@ -2752,7 +3073,7 @@ function drawStudyTower(tower: Tower, cell: Point, definition: HanziDefinition, 
   context.fillStyle = "#fbfdff";
   context.textAlign = "center";
   context.textBaseline = "middle";
-  context.font = '900 ' + String(17 + tower.stage) + 'px "Malgun Gothic", "Noto Sans CJK KR", serif';
+  context.font = '900 ' + String(17 + Math.min(6, progressionRank)) + 'px "Malgun Gothic", "Noto Sans CJK KR", serif';
   context.fillText(tower.char, cell.x, cell.y - 2);
   context.textBaseline = "alphabetic";
   context.font = '900 8px "Malgun Gothic", sans-serif';
@@ -2836,8 +3157,10 @@ function drawSpiritTower(tower: Tower, cell: Point, definition: HanziDefinition,
   const style = ELEMENT_STYLES[tower.wuxing];
   const visual = jaryeongVisualFor(tower.char, tower.wuxing, engine.state.region);
   const image = jaryeongSpriteImage(visual);
+  const progressionRank = engine.state.mode === "casual" ? casualStarOf(tower) : tower.stage;
+  const progressionColor = engine.state.mode === "casual" ? CASUAL_STAR_COLORS[casualStarOf(tower)] : STAGE_COLORS[tower.stage];
   const pulse = 1 + tower.pulse * 0.055;
-  const auraRadius = 17 + (tower.stage - 1) * 0.6;
+  const auraRadius = 17 + (progressionRank - 1) * 0.45;
 
   context.save();
   context.translate(cell.x, cell.y + 15);
@@ -2854,7 +3177,7 @@ function drawSpiritTower(tower: Tower, cell: Point, definition: HanziDefinition,
   context.fill();
   context.restore();
 
-  context.strokeStyle = material ? "#fff0b7" : selected ? "#ffffff" : STAGE_COLORS[tower.stage];
+  context.strokeStyle = material ? "#fff0b7" : selected ? "#ffffff" : progressionColor;
   context.lineWidth = material || selected ? 3 : 1.5;
   context.shadowColor = material ? "#fff0b7" : style.glow;
   context.shadowBlur = material ? 12 : selected ? 9 : 4;
@@ -2865,7 +3188,7 @@ function drawSpiritTower(tower: Tower, cell: Point, definition: HanziDefinition,
   drawChargeRing({ x: cell.x, y: cell.y + 1 }, 20, tower, abilities);
 
   if (image.complete && image.naturalWidth > 0 && image.naturalHeight > 0) {
-    const drawSize = (42 + tower.stage) * pulse;
+    const drawSize = (42 + Math.min(7, progressionRank)) * pulse;
     context.shadowColor = style.glow;
     context.shadowBlur = selected ? 13 : 5;
     if (jaryeongFrameLayout(visual) === "single") {
@@ -2920,9 +3243,12 @@ function drawTowerAbilityPopup(tower: Tower, cell: Point): void {
 }
 
 function drawTowerTierMarker(tower: Tower, cell: Point): void {
-  const tier = Math.max(1, Math.min(5, mapSynthesisDepths.get(tower.char) ?? 1)) as 1 | 2 | 3 | 4 | 5;
-  const uncombinable = tier === 1 && mapUncombinableStageOne.has(tower.char);
-  const color = uncombinable ? UNCOMBINABLE_STAGE_ONE_COLOR : STAGE_COLORS[tier];
+  const casual = engine.state.mode === "casual";
+  const tier = casual
+    ? casualStarOf(tower)
+    : Math.max(1, Math.min(5, mapSynthesisDepths.get(tower.char) ?? 1)) as 1 | 2 | 3 | 4 | 5;
+  const uncombinable = !casual && tier === 1 && mapUncombinableStageOne.has(tower.char);
+  const color = casual ? CASUAL_STAR_COLORS[tier as CasualStar] : uncombinable ? UNCOMBINABLE_STAGE_ONE_COLOR : STAGE_COLORS[tier as 1 | 2 | 3 | 4 | 5];
   const stars = "★".repeat(tier);
   const y = cell.y + 19;
   context.save();
@@ -3081,7 +3407,7 @@ function drawHoveredTowerCard(): void {
   context.fillText(learning.short, x + 72, y + 26, width - 82);
   context.fillStyle = style.color;
   context.font = '900 12px "Malgun Gothic", sans-serif';
-  context.fillText(`${style.name}행 · ${ROLE_LABELS[tower.combatRole]}`, x + 72, y + 48, width - 82);
+  context.fillText(`${style.name}행 · ${towerProgressionLabel(tower)}`, x + 72, y + 48, width - 82);
   context.fillStyle = "#b9c8d9";
   context.font = '800 11px "Malgun Gothic", sans-serif';
   context.fillText(definition.combat.effectLabel, x + 72, y + 69, width - 82);
@@ -3552,6 +3878,7 @@ must<HTMLButtonElement>("#speed-button").addEventListener("click", cycleGameSpee
 
 document.querySelectorAll<HTMLButtonElement>(".region-option").forEach((button) => {
   button.addEventListener("click", () => {
+    if (button.disabled) return;
     selectedRegion = button.dataset.region as RegionCode;
     document.querySelectorAll<HTMLButtonElement>(".region-option").forEach((option) => {
       const selected = option === button;
@@ -3566,8 +3893,50 @@ document.querySelectorAll<HTMLButtonElement>("[data-mode]").forEach((button) => 
 });
 
 must<HTMLElement>("#evolution-options").addEventListener("click", (event) => {
-  const button = (event.target as HTMLElement).closest<HTMLButtonElement>("[data-recipe]");
+  const target = event.target as HTMLElement;
+  const casualTowerButton = target.closest<HTMLButtonElement>("[data-casual-fusion-tower]");
+  if (casualTowerButton) {
+    const id = Number(casualTowerButton.dataset.casualFusionTower);
+    if (!Number.isInteger(id)) return;
+    const index = casualFusionSelection.indexOf(id);
+    if (index >= 0) {
+      casualFusionSelection = index === 0 ? [] : casualFusionSelection.filter((towerId) => towerId !== id);
+    } else {
+      const tower = [...engine.state.towers, ...engine.state.inventoryTowers].find((candidate) => candidate.id === id);
+      const core = [...engine.state.towers, ...engine.state.inventoryTowers].find((candidate) => candidate.id === casualFusionSelection[0]);
+      if (!tower || casualFusionSelection.length >= 3) return;
+      if (casualFusionSelection.length > 0 && tower.locked) {
+        showToast("잠금 자령은 소모 재료가 될 수 없습니다. 본체로 먼저 선택하세요.", true);
+        return;
+      }
+      if (core && (tower.wuxing !== core.wuxing || casualStarOf(tower) !== casualStarOf(core))) {
+        showToast(`본체와 같은 ${core.wuxing}행 ${casualStarOf(core)}★ 자령을 선택하세요.`, true);
+        return;
+      }
+      casualFusionSelection.push(id);
+    }
+    evolutionRenderKey = "";
+    renderCasualFusion();
+    return;
+  }
+  const slot = target.closest<HTMLButtonElement>("[data-casual-fusion-slot]");
+  if (slot) {
+    const index = Number(slot.dataset.casualFusionSlot);
+    casualFusionSelection = index === 0 ? [] : casualFusionSelection.filter((_, itemIndex) => itemIndex !== index);
+    evolutionRenderKey = "";
+    renderCasualFusion();
+    return;
+  }
+  if (target.closest("#casual-fusion-review")) {
+    openCasualManualReview();
+    return;
+  }
+  const button = target.closest<HTMLButtonElement>("[data-recipe]");
   if (button?.dataset.recipe) handleAction(engine.evolve(button.dataset.recipe));
+});
+must<HTMLElement>("#casual-auto-buttons").addEventListener("click", (event) => {
+  const wuxing = (event.target as HTMLElement).closest<HTMLButtonElement>("[data-casual-auto]")?.dataset.casualAuto as Wuxing | undefined;
+  if (wuxing) openCasualAutoReview(wuxing);
 });
 must<HTMLElement>("#evolution-options").addEventListener("pointerover", (event) => {
   hoveredRecipeId = (event.target as HTMLElement).closest<HTMLButtonElement>("[data-recipe]")?.dataset.recipe ?? null;
@@ -3601,6 +3970,21 @@ must<HTMLButtonElement>("#auto-arrange-button").addEventListener("click", () => 
 must<HTMLButtonElement>("#element-upgrade-button").addEventListener("click", () => setPanelTab("growth"));
 must<HTMLButtonElement>("#element-upgrade-close").addEventListener("click", () => elementUpgradeDialog.close());
 must<HTMLButtonElement>("#ability-guide-close").addEventListener("click", () => abilityGuideDialog.close());
+must<HTMLButtonElement>("#casual-fusion-confirm-close").addEventListener("click", closeCasualFusionReview);
+must<HTMLButtonElement>("#casual-fusion-cancel").addEventListener("click", closeCasualFusionReview);
+must<HTMLButtonElement>("#casual-fusion-execute").addEventListener("click", () => {
+  const pending = pendingCasualFusion;
+  if (!pending) return;
+  sound.unlock();
+  const result = pending.kind === "manual"
+    ? engine.fuseCasual(pending.coreId, pending.materialIds, true)
+    : engine.autoFuseCasualElement(pending.wuxing, true);
+  if (result.ok) casualFusionSelection = [];
+  closeCasualFusionReview();
+  evolutionRenderKey = "";
+  handleAction(result);
+  if (result.ok) setPanelTab("evolution");
+});
 elementUpgradeDialog.addEventListener("click", (event) => {
   const button = (event.target as HTMLElement).closest<HTMLButtonElement>("[data-upgrade-scope][data-upgrade-stat]");
   const stat = button?.dataset.upgradeStat as UpgradeStat | undefined;
@@ -3662,6 +4046,10 @@ document.querySelectorAll<HTMLButtonElement>("[data-display-mode-option]").forEa
     setDisplayMode(button.dataset.displayModeOption as DisplayMode);
     settingsDialog.close();
   });
+});
+
+document.querySelectorAll<HTMLButtonElement>("[data-game-mode-option]").forEach((button) => {
+  button.addEventListener("click", () => setSelectedGameMode(button.dataset.gameModeOption as GameMode));
 });
 must<HTMLButtonElement>("#auto-place-toggle").addEventListener("click", () => {
   const enabled = !engine.state.autoPlaceSummons;
@@ -3795,7 +4183,7 @@ must<HTMLButtonElement>("#dismantle-confirm-button").addEventListener("click", (
   const quote = engine.quoteDismantle([...dismantleSelection]);
   if (quote.ids.length === 0 || quote.blocked.length > 0) return;
   const towers = quote.ids.map((id) => engine.state.inventoryTowers.find((tower) => tower.id === id)).filter((tower): tower is Tower => Boolean(tower));
-  const towerLabel = towers.map((tower) => `${tower.char}(${tower.wuxing}${tower.stage}성)`).join(" · ");
+  const towerLabel = towers.map((tower) => `${tower.char}(${tower.wuxing} ${towerProgressionLabel(tower)})`).join(" · ");
   const gainLabel = (Object.entries(quote.gains) as Array<[Wuxing, number]>).filter(([, amount]) => amount > 0).map(([wuxing, amount]) => `${wuxing}+${amount}`).join(" · ");
   if (!window.confirm(`${towers.length}기를 한 번에 분해합니다.\n${towerLabel}\n획득: ${gainLabel}`)) return;
   const result = engine.dismantleTowers(quote.ids);
@@ -3883,7 +4271,14 @@ must<HTMLElement>("#selected-card").addEventListener("click", (event) => {
   const abilityId = target.closest<HTMLButtonElement>("[data-ability-id]")?.dataset.abilityId;
   if (abilityId) openAbilityGuide(abilityId);
   else if (target.closest("[data-ability-guide]")) openAbilityGuide();
-  else if (target.closest("#derivative-button")) openCompositionDrawer();
+  else if (target.closest("#derivative-button")) {
+    if (engine.state.mode === "casual") {
+      const selected = engine.selectedTower();
+      casualFusionSelection = selected && casualStarOf(selected) < 8 ? [selected.id] : [];
+      evolutionRenderKey = "";
+      setPanelTab("evolution");
+    } else openCompositionDrawer();
+  }
   else if (target.closest("#lock-button")) handleAction(engine.toggleSelectedLock());
   else if (target.closest("#store-button")) {
     const result = engine.storeSelectedTower();
@@ -3902,12 +4297,15 @@ must<HTMLElement>("#selected-card").addEventListener("click", (event) => {
 });
 
 window.addEventListener("keydown", (event) => {
-  if (event.target instanceof HTMLInputElement || helpDialog.open || settingsDialog.open || elementUpgradeDialog.open || abilityGuideDialog.open || codexDialog.open) return;
+  if (event.target instanceof HTMLInputElement || helpDialog.open || settingsDialog.open || elementUpgradeDialog.open || abilityGuideDialog.open || casualFusionConfirmDialog.open || codexDialog.open) return;
   if (event.code === "Digit1") summonAndFocus();
   else if (event.code === "KeyQ") summonAndFocus(10);
   else if (event.code === "Digit2") {
-    const option = engine.availableEvolutions()[0];
-    handleAction(option ? engine.evolve(option.recipeId) : { ok: false, message: "현재 가능한 합성이 없습니다." });
+    if (engine.state.mode === "casual") setPanelTab("evolution");
+    else {
+      const option = engine.availableEvolutions()[0];
+      handleAction(option ? engine.evolve(option.recipeId) : { ok: false, message: "현재 가능한 합성이 없습니다." });
+    }
   } else if (event.code === "Digit3") handleAction(engine.upgradeResearch());
   else if (event.code === "Space") {
     event.preventDefault();
@@ -3957,6 +4355,7 @@ window.addEventListener("resize", fitShell);
 syncMapZoomControl();
 setGameSpeed(1);
 setDisplayMode(initialDisplayMode, false);
+syncTitleModeSelection();
 drawWorld(0);
 syncPanel();
 window.requestAnimationFrame(frame);

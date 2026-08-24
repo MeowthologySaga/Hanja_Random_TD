@@ -2,7 +2,7 @@
 
 ## Unicode Unihan 17.0.0
 
-`src/data/learning-readings.json` is generated from `Unihan_Readings.txt`, and `src/data/hanzi-radicals.json` is generated from the `kRSUnicode` fields in `Unihan_IRGSources.txt` in the Unicode 17.0.0 Unihan data archive.
+`src/data/learning-readings.json` is generated from `Unihan_Readings.txt`. `src/data/hanzi-radicals.json` and `src/data/cheonjamun-strokes.json` are generated from the `kRSUnicode` and `kTotalStrokes` fields in `Unihan_IRGSources.txt` in the Unicode 17.0.0 Unihan data archive.
 
 - Source: https://www.unicode.org/Public/17.0.0/ucd/Unihan.zip
 - Data guide: https://www.unicode.org/reports/tr38/

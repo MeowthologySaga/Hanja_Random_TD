@@ -39,6 +39,11 @@ export class SoundManager {
         this.tone(330, 0.1, "sine", 0.035, 1.5);
         window.setTimeout(() => this.tone(660, 0.18, "sine", 0.03, 1.3), 75);
         break;
+      case "casualFuse":
+        this.tone(310, 0.09, "triangle", 0.032, 1.65);
+        window.setTimeout(() => this.tone(520, 0.12, "triangle", 0.03, 1.38), 70);
+        window.setTimeout(() => this.tone(820, 0.2, "sine", 0.026, 1.12), 145);
+        break;
       case "goal":
         [0, 90, 180].forEach((delay, index) => {
           window.setTimeout(() => this.tone([440, 554, 659][index] as number, 0.28, "triangle", 0.028, 1.08), delay);

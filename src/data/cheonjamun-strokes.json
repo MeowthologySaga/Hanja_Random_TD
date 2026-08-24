@@ -1,0 +1,5061 @@
+{
+  "schema": "cheonjamun-strokes-v1",
+  "scope": "KR_1000",
+  "unicodeVersion": "17.0.0",
+  "sourceFile": "Unihan_IRGSources.txt",
+  "sourceSha256": "D1C817DD7DB84295DAB0643C277D97C2FA742C245F8824E6736C2A0935095325",
+  "total": 1000,
+  "designRule": "natural-star-by-kTotalStrokes",
+  "bins": [
+    {
+      "star": 1,
+      "minStrokes": 1,
+      "maxStrokes": 8,
+      "count": 332
+    },
+    {
+      "star": 2,
+      "minStrokes": 9,
+      "maxStrokes": 11,
+      "count": 252
+    },
+    {
+      "star": 3,
+      "minStrokes": 12,
+      "maxStrokes": 13,
+      "count": 167
+    },
+    {
+      "star": 4,
+      "minStrokes": 14,
+      "maxStrokes": 15,
+      "count": 105
+    },
+    {
+      "star": 5,
+      "minStrokes": 16,
+      "maxStrokes": 17,
+      "count": 68
+    },
+    {
+      "star": 6,
+      "minStrokes": 18,
+      "maxStrokes": 19,
+      "count": 33
+    },
+    {
+      "star": 7,
+      "minStrokes": 20,
+      "maxStrokes": 21,
+      "count": 25
+    },
+    {
+      "star": 8,
+      "minStrokes": 22,
+      "maxStrokes": 29,
+      "count": 18
+    }
+  ],
+  "entries": [
+    {
+      "hanja": "天",
+      "strokes": 4,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "地",
+      "strokes": 6,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "玄",
+      "strokes": 5,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "黃",
+      "strokes": 12,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "宇",
+      "strokes": 6,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "宙",
+      "strokes": 8,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "洪",
+      "strokes": 9,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "荒",
+      "strokes": 9,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "日",
+      "strokes": 4,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "月",
+      "strokes": 4,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "盈",
+      "strokes": 9,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "昃",
+      "strokes": 8,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "辰",
+      "strokes": 7,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "宿",
+      "strokes": 11,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "列",
+      "strokes": 6,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "張",
+      "strokes": 11,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "寒",
+      "strokes": 12,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "來",
+      "strokes": 8,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "暑",
+      "strokes": 12,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "往",
+      "strokes": 8,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "秋",
+      "strokes": 9,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "收",
+      "strokes": 6,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "冬",
+      "strokes": 5,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "藏",
+      "strokes": 17,
+      "naturalStar": 5
+    },
+    {
+      "hanja": "閏",
+      "strokes": 12,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "餘",
+      "strokes": 15,
+      "naturalStar": 4
+    },
+    {
+      "hanja": "成",
+      "strokes": 6,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "歲",
+      "strokes": 13,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "律",
+      "strokes": 9,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "呂",
+      "strokes": 7,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "調",
+      "strokes": 15,
+      "naturalStar": 4
+    },
+    {
+      "hanja": "陽",
+      "strokes": 11,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "雲",
+      "strokes": 12,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "騰",
+      "strokes": 20,
+      "naturalStar": 7
+    },
+    {
+      "hanja": "致",
+      "strokes": 10,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "雨",
+      "strokes": 8,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "露",
+      "strokes": 21,
+      "naturalStar": 7
+    },
+    {
+      "hanja": "結",
+      "strokes": 12,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "爲",
+      "strokes": 12,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "霜",
+      "strokes": 17,
+      "naturalStar": 5
+    },
+    {
+      "hanja": "金",
+      "strokes": 8,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "生",
+      "strokes": 5,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "麗",
+      "strokes": 19,
+      "naturalStar": 6
+    },
+    {
+      "hanja": "水",
+      "strokes": 4,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "玉",
+      "strokes": 5,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "出",
+      "strokes": 5,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "崑",
+      "strokes": 11,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "岡",
+      "strokes": 8,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "劍",
+      "strokes": 15,
+      "naturalStar": 4
+    },
+    {
+      "hanja": "號",
+      "strokes": 13,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "巨",
+      "strokes": 4,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "闕",
+      "strokes": 18,
+      "naturalStar": 6
+    },
+    {
+      "hanja": "珠",
+      "strokes": 10,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "稱",
+      "strokes": 14,
+      "naturalStar": 4
+    },
+    {
+      "hanja": "夜",
+      "strokes": 8,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "光",
+      "strokes": 6,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "果",
+      "strokes": 8,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "珍",
+      "strokes": 9,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "李",
+      "strokes": 7,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "柰",
+      "strokes": 9,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "菜",
+      "strokes": 11,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "重",
+      "strokes": 9,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "芥",
+      "strokes": 7,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "薑",
+      "strokes": 16,
+      "naturalStar": 5
+    },
+    {
+      "hanja": "海",
+      "strokes": 10,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "鹹",
+      "strokes": 20,
+      "naturalStar": 7
+    },
+    {
+      "hanja": "河",
+      "strokes": 8,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "淡",
+      "strokes": 11,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "鱗",
+      "strokes": 23,
+      "naturalStar": 8
+    },
+    {
+      "hanja": "潛",
+      "strokes": 15,
+      "naturalStar": 4
+    },
+    {
+      "hanja": "羽",
+      "strokes": 6,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "翔",
+      "strokes": 12,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "龍",
+      "strokes": 16,
+      "naturalStar": 5
+    },
+    {
+      "hanja": "師",
+      "strokes": 10,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "火",
+      "strokes": 4,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "帝",
+      "strokes": 9,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "鳥",
+      "strokes": 11,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "官",
+      "strokes": 8,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "人",
+      "strokes": 2,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "皇",
+      "strokes": 9,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "始",
+      "strokes": 8,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "制",
+      "strokes": 8,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "文",
+      "strokes": 4,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "字",
+      "strokes": 6,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "乃",
+      "strokes": 2,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "服",
+      "strokes": 8,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "衣",
+      "strokes": 6,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "裳",
+      "strokes": 14,
+      "naturalStar": 4
+    },
+    {
+      "hanja": "推",
+      "strokes": 11,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "位",
+      "strokes": 7,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "讓",
+      "strokes": 24,
+      "naturalStar": 8
+    },
+    {
+      "hanja": "國",
+      "strokes": 11,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "有",
+      "strokes": 6,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "虞",
+      "strokes": 13,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "陶",
+      "strokes": 10,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "唐",
+      "strokes": 10,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "弔",
+      "strokes": 4,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "民",
+      "strokes": 5,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "伐",
+      "strokes": 6,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "罪",
+      "strokes": 13,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "周",
+      "strokes": 8,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "發",
+      "strokes": 12,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "殷",
+      "strokes": 10,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "湯",
+      "strokes": 12,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "坐",
+      "strokes": 7,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "朝",
+      "strokes": 12,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "問",
+      "strokes": 11,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "道",
+      "strokes": 12,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "垂",
+      "strokes": 8,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "拱",
+      "strokes": 9,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "平",
+      "strokes": 5,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "章",
+      "strokes": 11,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "愛",
+      "strokes": 13,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "育",
+      "strokes": 8,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "黎",
+      "strokes": 15,
+      "naturalStar": 4
+    },
+    {
+      "hanja": "首",
+      "strokes": 9,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "臣",
+      "strokes": 6,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "伏",
+      "strokes": 6,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "戎",
+      "strokes": 6,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "羌",
+      "strokes": 7,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "遐",
+      "strokes": 12,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "邇",
+      "strokes": 17,
+      "naturalStar": 5
+    },
+    {
+      "hanja": "壹",
+      "strokes": 12,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "體",
+      "strokes": 22,
+      "naturalStar": 8
+    },
+    {
+      "hanja": "率",
+      "strokes": 11,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "賓",
+      "strokes": 14,
+      "naturalStar": 4
+    },
+    {
+      "hanja": "歸",
+      "strokes": 18,
+      "naturalStar": 6
+    },
+    {
+      "hanja": "王",
+      "strokes": 4,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "鳴",
+      "strokes": 14,
+      "naturalStar": 4
+    },
+    {
+      "hanja": "鳳",
+      "strokes": 14,
+      "naturalStar": 4
+    },
+    {
+      "hanja": "在",
+      "strokes": 6,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "樹",
+      "strokes": 16,
+      "naturalStar": 5
+    },
+    {
+      "hanja": "白",
+      "strokes": 5,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "駒",
+      "strokes": 15,
+      "naturalStar": 4
+    },
+    {
+      "hanja": "食",
+      "strokes": 9,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "場",
+      "strokes": 12,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "化",
+      "strokes": 4,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "被",
+      "strokes": 10,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "草",
+      "strokes": 9,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "木",
+      "strokes": 4,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "賴",
+      "strokes": 16,
+      "naturalStar": 5
+    },
+    {
+      "hanja": "及",
+      "strokes": 3,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "萬",
+      "strokes": 12,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "方",
+      "strokes": 4,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "蓋",
+      "strokes": 13,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "此",
+      "strokes": 6,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "身",
+      "strokes": 7,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "髮",
+      "strokes": 15,
+      "naturalStar": 4
+    },
+    {
+      "hanja": "四",
+      "strokes": 5,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "大",
+      "strokes": 3,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "五",
+      "strokes": 4,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "常",
+      "strokes": 11,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "恭",
+      "strokes": 10,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "惟",
+      "strokes": 11,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "鞠",
+      "strokes": 17,
+      "naturalStar": 5
+    },
+    {
+      "hanja": "養",
+      "strokes": 14,
+      "naturalStar": 4
+    },
+    {
+      "hanja": "豈",
+      "strokes": 10,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "敢",
+      "strokes": 11,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "毀",
+      "strokes": 13,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "傷",
+      "strokes": 13,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "女",
+      "strokes": 3,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "慕",
+      "strokes": 14,
+      "naturalStar": 4
+    },
+    {
+      "hanja": "貞",
+      "strokes": 9,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "絜",
+      "strokes": 12,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "男",
+      "strokes": 7,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "效",
+      "strokes": 10,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "才",
+      "strokes": 3,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "良",
+      "strokes": 7,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "知",
+      "strokes": 8,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "過",
+      "strokes": 11,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "必",
+      "strokes": 5,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "改",
+      "strokes": 7,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "得",
+      "strokes": 11,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "能",
+      "strokes": 10,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "莫",
+      "strokes": 10,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "忘",
+      "strokes": 7,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "罔",
+      "strokes": 8,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "談",
+      "strokes": 15,
+      "naturalStar": 4
+    },
+    {
+      "hanja": "彼",
+      "strokes": 8,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "短",
+      "strokes": 12,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "靡",
+      "strokes": 19,
+      "naturalStar": 6
+    },
+    {
+      "hanja": "恃",
+      "strokes": 9,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "己",
+      "strokes": 3,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "長",
+      "strokes": 8,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "信",
+      "strokes": 9,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "使",
+      "strokes": 8,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "可",
+      "strokes": 5,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "覆",
+      "strokes": 18,
+      "naturalStar": 6
+    },
+    {
+      "hanja": "器",
+      "strokes": 16,
+      "naturalStar": 5
+    },
+    {
+      "hanja": "欲",
+      "strokes": 11,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "難",
+      "strokes": 19,
+      "naturalStar": 6
+    },
+    {
+      "hanja": "量",
+      "strokes": 12,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "墨",
+      "strokes": 15,
+      "naturalStar": 4
+    },
+    {
+      "hanja": "悲",
+      "strokes": 12,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "絲",
+      "strokes": 12,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "染",
+      "strokes": 9,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "詩",
+      "strokes": 13,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "讃",
+      "strokes": 22,
+      "naturalStar": 8
+    },
+    {
+      "hanja": "羔",
+      "strokes": 10,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "羊",
+      "strokes": 6,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "景",
+      "strokes": 12,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "行",
+      "strokes": 6,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "維",
+      "strokes": 14,
+      "naturalStar": 4
+    },
+    {
+      "hanja": "賢",
+      "strokes": 15,
+      "naturalStar": 4
+    },
+    {
+      "hanja": "克",
+      "strokes": 7,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "念",
+      "strokes": 8,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "作",
+      "strokes": 7,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "聖",
+      "strokes": 13,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "德",
+      "strokes": 15,
+      "naturalStar": 4
+    },
+    {
+      "hanja": "建",
+      "strokes": 8,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "名",
+      "strokes": 6,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "立",
+      "strokes": 5,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "形",
+      "strokes": 7,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "端",
+      "strokes": 14,
+      "naturalStar": 4
+    },
+    {
+      "hanja": "表",
+      "strokes": 8,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "正",
+      "strokes": 5,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "空",
+      "strokes": 8,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "谷",
+      "strokes": 7,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "傳",
+      "strokes": 13,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "聲",
+      "strokes": 17,
+      "naturalStar": 5
+    },
+    {
+      "hanja": "虛",
+      "strokes": 12,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "堂",
+      "strokes": 11,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "習",
+      "strokes": 11,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "聽",
+      "strokes": 22,
+      "naturalStar": 8
+    },
+    {
+      "hanja": "禍",
+      "strokes": 12,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "因",
+      "strokes": 6,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "惡",
+      "strokes": 12,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "積",
+      "strokes": 16,
+      "naturalStar": 5
+    },
+    {
+      "hanja": "福",
+      "strokes": 13,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "緣",
+      "strokes": 15,
+      "naturalStar": 4
+    },
+    {
+      "hanja": "善",
+      "strokes": 12,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "慶",
+      "strokes": 15,
+      "naturalStar": 4
+    },
+    {
+      "hanja": "尺",
+      "strokes": 4,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "璧",
+      "strokes": 18,
+      "naturalStar": 6
+    },
+    {
+      "hanja": "非",
+      "strokes": 8,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "寶",
+      "strokes": 20,
+      "naturalStar": 7
+    },
+    {
+      "hanja": "寸",
+      "strokes": 3,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "陰",
+      "strokes": 10,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "是",
+      "strokes": 9,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "競",
+      "strokes": 20,
+      "naturalStar": 7
+    },
+    {
+      "hanja": "資",
+      "strokes": 13,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "父",
+      "strokes": 4,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "事",
+      "strokes": 8,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "君",
+      "strokes": 7,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "曰",
+      "strokes": 4,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "嚴",
+      "strokes": 19,
+      "naturalStar": 6
+    },
+    {
+      "hanja": "與",
+      "strokes": 13,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "敬",
+      "strokes": 12,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "孝",
+      "strokes": 7,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "當",
+      "strokes": 13,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "竭",
+      "strokes": 14,
+      "naturalStar": 4
+    },
+    {
+      "hanja": "力",
+      "strokes": 2,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "忠",
+      "strokes": 8,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "則",
+      "strokes": 9,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "盡",
+      "strokes": 14,
+      "naturalStar": 4
+    },
+    {
+      "hanja": "命",
+      "strokes": 8,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "臨",
+      "strokes": 17,
+      "naturalStar": 5
+    },
+    {
+      "hanja": "深",
+      "strokes": 11,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "履",
+      "strokes": 15,
+      "naturalStar": 4
+    },
+    {
+      "hanja": "薄",
+      "strokes": 16,
+      "naturalStar": 5
+    },
+    {
+      "hanja": "夙",
+      "strokes": 6,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "興",
+      "strokes": 16,
+      "naturalStar": 5
+    },
+    {
+      "hanja": "溫",
+      "strokes": 13,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "凊",
+      "strokes": 10,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "似",
+      "strokes": 6,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "蘭",
+      "strokes": 20,
+      "naturalStar": 7
+    },
+    {
+      "hanja": "斯",
+      "strokes": 12,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "馨",
+      "strokes": 20,
+      "naturalStar": 7
+    },
+    {
+      "hanja": "如",
+      "strokes": 6,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "松",
+      "strokes": 8,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "之",
+      "strokes": 3,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "盛",
+      "strokes": 11,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "川",
+      "strokes": 3,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "流",
+      "strokes": 10,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "不",
+      "strokes": 4,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "息",
+      "strokes": 10,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "淵",
+      "strokes": 12,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "澄",
+      "strokes": 15,
+      "naturalStar": 4
+    },
+    {
+      "hanja": "取",
+      "strokes": 8,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "映",
+      "strokes": 9,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "容",
+      "strokes": 10,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "止",
+      "strokes": 4,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "若",
+      "strokes": 8,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "思",
+      "strokes": 9,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "言",
+      "strokes": 7,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "辭",
+      "strokes": 19,
+      "naturalStar": 6
+    },
+    {
+      "hanja": "安",
+      "strokes": 6,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "定",
+      "strokes": 8,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "篤",
+      "strokes": 16,
+      "naturalStar": 5
+    },
+    {
+      "hanja": "初",
+      "strokes": 7,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "誠",
+      "strokes": 13,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "美",
+      "strokes": 9,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "慎",
+      "strokes": 13,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "終",
+      "strokes": 11,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "宜",
+      "strokes": 8,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "令",
+      "strokes": 5,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "榮",
+      "strokes": 14,
+      "naturalStar": 4
+    },
+    {
+      "hanja": "業",
+      "strokes": 13,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "所",
+      "strokes": 8,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "基",
+      "strokes": 11,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "籍",
+      "strokes": 20,
+      "naturalStar": 7
+    },
+    {
+      "hanja": "甚",
+      "strokes": 9,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "無",
+      "strokes": 12,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "竟",
+      "strokes": 11,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "學",
+      "strokes": 16,
+      "naturalStar": 5
+    },
+    {
+      "hanja": "優",
+      "strokes": 17,
+      "naturalStar": 5
+    },
+    {
+      "hanja": "登",
+      "strokes": 12,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "仕",
+      "strokes": 5,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "攝",
+      "strokes": 21,
+      "naturalStar": 7
+    },
+    {
+      "hanja": "職",
+      "strokes": 18,
+      "naturalStar": 6
+    },
+    {
+      "hanja": "從",
+      "strokes": 11,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "政",
+      "strokes": 9,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "存",
+      "strokes": 6,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "以",
+      "strokes": 4,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "甘",
+      "strokes": 5,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "棠",
+      "strokes": 12,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "去",
+      "strokes": 5,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "而",
+      "strokes": 6,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "益",
+      "strokes": 10,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "詠",
+      "strokes": 12,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "樂",
+      "strokes": 15,
+      "naturalStar": 4
+    },
+    {
+      "hanja": "殊",
+      "strokes": 10,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "貴",
+      "strokes": 12,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "賤",
+      "strokes": 15,
+      "naturalStar": 4
+    },
+    {
+      "hanja": "禮",
+      "strokes": 17,
+      "naturalStar": 5
+    },
+    {
+      "hanja": "別",
+      "strokes": 7,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "尊",
+      "strokes": 12,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "卑",
+      "strokes": 8,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "上",
+      "strokes": 3,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "咊",
+      "strokes": 8,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "下",
+      "strokes": 3,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "睦",
+      "strokes": 13,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "夫",
+      "strokes": 4,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "唱",
+      "strokes": 11,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "婦",
+      "strokes": 11,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "隨",
+      "strokes": 14,
+      "naturalStar": 4
+    },
+    {
+      "hanja": "外",
+      "strokes": 5,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "受",
+      "strokes": 8,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "傅",
+      "strokes": 12,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "訓",
+      "strokes": 10,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "入",
+      "strokes": 2,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "奉",
+      "strokes": 8,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "母",
+      "strokes": 5,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "儀",
+      "strokes": 15,
+      "naturalStar": 4
+    },
+    {
+      "hanja": "諸",
+      "strokes": 15,
+      "naturalStar": 4
+    },
+    {
+      "hanja": "姑",
+      "strokes": 8,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "伯",
+      "strokes": 7,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "叔",
+      "strokes": 8,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "猶",
+      "strokes": 12,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "子",
+      "strokes": 3,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "比",
+      "strokes": 4,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "兒",
+      "strokes": 8,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "孔",
+      "strokes": 4,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "懷",
+      "strokes": 19,
+      "naturalStar": 6
+    },
+    {
+      "hanja": "兄",
+      "strokes": 5,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "弟",
+      "strokes": 7,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "同",
+      "strokes": 6,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "气",
+      "strokes": 4,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "連",
+      "strokes": 10,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "枝",
+      "strokes": 8,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "交",
+      "strokes": 6,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "友",
+      "strokes": 4,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "投",
+      "strokes": 7,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "分",
+      "strokes": 4,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "切",
+      "strokes": 4,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "磨",
+      "strokes": 16,
+      "naturalStar": 5
+    },
+    {
+      "hanja": "箴",
+      "strokes": 15,
+      "naturalStar": 4
+    },
+    {
+      "hanja": "規",
+      "strokes": 11,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "仁",
+      "strokes": 4,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "慈",
+      "strokes": 13,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "隱",
+      "strokes": 16,
+      "naturalStar": 5
+    },
+    {
+      "hanja": "惻",
+      "strokes": 12,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "造",
+      "strokes": 10,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "次",
+      "strokes": 6,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "弗",
+      "strokes": 5,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "離",
+      "strokes": 18,
+      "naturalStar": 6
+    },
+    {
+      "hanja": "節",
+      "strokes": 13,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "義",
+      "strokes": 13,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "廉",
+      "strokes": 13,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "退",
+      "strokes": 9,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "顛",
+      "strokes": 19,
+      "naturalStar": 6
+    },
+    {
+      "hanja": "沛",
+      "strokes": 7,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "匪",
+      "strokes": 10,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "虧",
+      "strokes": 17,
+      "naturalStar": 5
+    },
+    {
+      "hanja": "性",
+      "strokes": 8,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "靜",
+      "strokes": 16,
+      "naturalStar": 5
+    },
+    {
+      "hanja": "情",
+      "strokes": 11,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "逸",
+      "strokes": 11,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "心",
+      "strokes": 4,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "動",
+      "strokes": 11,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "神",
+      "strokes": 9,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "疲",
+      "strokes": 10,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "守",
+      "strokes": 6,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "眞",
+      "strokes": 10,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "志",
+      "strokes": 7,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "滿",
+      "strokes": 14,
+      "naturalStar": 4
+    },
+    {
+      "hanja": "逐",
+      "strokes": 10,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "物",
+      "strokes": 8,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "意",
+      "strokes": 13,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "移",
+      "strokes": 11,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "堅",
+      "strokes": 11,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "持",
+      "strokes": 9,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "雅",
+      "strokes": 12,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "操",
+      "strokes": 16,
+      "naturalStar": 5
+    },
+    {
+      "hanja": "好",
+      "strokes": 6,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "爵",
+      "strokes": 17,
+      "naturalStar": 5
+    },
+    {
+      "hanja": "自",
+      "strokes": 6,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "縻",
+      "strokes": 17,
+      "naturalStar": 5
+    },
+    {
+      "hanja": "都",
+      "strokes": 10,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "邑",
+      "strokes": 7,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "華",
+      "strokes": 10,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "夏",
+      "strokes": 10,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "東",
+      "strokes": 8,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "西",
+      "strokes": 6,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "二",
+      "strokes": 2,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "京",
+      "strokes": 8,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "背",
+      "strokes": 9,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "邙",
+      "strokes": 5,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "面",
+      "strokes": 9,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "洛",
+      "strokes": 9,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "浮",
+      "strokes": 10,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "渭",
+      "strokes": 12,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "據",
+      "strokes": 16,
+      "naturalStar": 5
+    },
+    {
+      "hanja": "涇",
+      "strokes": 10,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "宮",
+      "strokes": 10,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "殿",
+      "strokes": 13,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "盤",
+      "strokes": 15,
+      "naturalStar": 4
+    },
+    {
+      "hanja": "鬱",
+      "strokes": 29,
+      "naturalStar": 8
+    },
+    {
+      "hanja": "樓",
+      "strokes": 15,
+      "naturalStar": 4
+    },
+    {
+      "hanja": "觀",
+      "strokes": 24,
+      "naturalStar": 8
+    },
+    {
+      "hanja": "飛",
+      "strokes": 9,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "驚",
+      "strokes": 22,
+      "naturalStar": 8
+    },
+    {
+      "hanja": "圖",
+      "strokes": 14,
+      "naturalStar": 4
+    },
+    {
+      "hanja": "寫",
+      "strokes": 15,
+      "naturalStar": 4
+    },
+    {
+      "hanja": "禽",
+      "strokes": 12,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "獸",
+      "strokes": 19,
+      "naturalStar": 6
+    },
+    {
+      "hanja": "畫",
+      "strokes": 12,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "彩",
+      "strokes": 11,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "仙",
+      "strokes": 5,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "靈",
+      "strokes": 24,
+      "naturalStar": 8
+    },
+    {
+      "hanja": "丙",
+      "strokes": 5,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "舍",
+      "strokes": 8,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "傍",
+      "strokes": 12,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "啟",
+      "strokes": 11,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "甲",
+      "strokes": 5,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "帳",
+      "strokes": 11,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "對",
+      "strokes": 14,
+      "naturalStar": 4
+    },
+    {
+      "hanja": "楹",
+      "strokes": 13,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "肆",
+      "strokes": 13,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "筵",
+      "strokes": 12,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "設",
+      "strokes": 11,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "席",
+      "strokes": 10,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "鼓",
+      "strokes": 13,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "瑟",
+      "strokes": 13,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "吹",
+      "strokes": 7,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "笙",
+      "strokes": 11,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "升",
+      "strokes": 4,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "階",
+      "strokes": 11,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "納",
+      "strokes": 10,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "陛",
+      "strokes": 9,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "弁",
+      "strokes": 5,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "轉",
+      "strokes": 18,
+      "naturalStar": 6
+    },
+    {
+      "hanja": "疑",
+      "strokes": 14,
+      "naturalStar": 4
+    },
+    {
+      "hanja": "星",
+      "strokes": 9,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "右",
+      "strokes": 5,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "通",
+      "strokes": 10,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "廣",
+      "strokes": 14,
+      "naturalStar": 4
+    },
+    {
+      "hanja": "內",
+      "strokes": 4,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "左",
+      "strokes": 5,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "達",
+      "strokes": 12,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "承",
+      "strokes": 8,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "明",
+      "strokes": 8,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "既",
+      "strokes": 9,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "集",
+      "strokes": 12,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "墳",
+      "strokes": 15,
+      "naturalStar": 4
+    },
+    {
+      "hanja": "典",
+      "strokes": 8,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "亦",
+      "strokes": 6,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "聚",
+      "strokes": 14,
+      "naturalStar": 4
+    },
+    {
+      "hanja": "羣",
+      "strokes": 13,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "英",
+      "strokes": 8,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "杜",
+      "strokes": 7,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "稾",
+      "strokes": 15,
+      "naturalStar": 4
+    },
+    {
+      "hanja": "鍾",
+      "strokes": 17,
+      "naturalStar": 5
+    },
+    {
+      "hanja": "隸",
+      "strokes": 17,
+      "naturalStar": 5
+    },
+    {
+      "hanja": "漆",
+      "strokes": 14,
+      "naturalStar": 4
+    },
+    {
+      "hanja": "書",
+      "strokes": 10,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "壁",
+      "strokes": 16,
+      "naturalStar": 5
+    },
+    {
+      "hanja": "經",
+      "strokes": 13,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "府",
+      "strokes": 8,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "羅",
+      "strokes": 19,
+      "naturalStar": 6
+    },
+    {
+      "hanja": "將",
+      "strokes": 11,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "相",
+      "strokes": 9,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "路",
+      "strokes": 13,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "俠",
+      "strokes": 9,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "槐",
+      "strokes": 13,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "卿",
+      "strokes": 10,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "戶",
+      "strokes": 4,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "封",
+      "strokes": 9,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "八",
+      "strokes": 2,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "縣",
+      "strokes": 16,
+      "naturalStar": 5
+    },
+    {
+      "hanja": "家",
+      "strokes": 10,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "給",
+      "strokes": 12,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "千",
+      "strokes": 3,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "兵",
+      "strokes": 7,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "高",
+      "strokes": 10,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "冠",
+      "strokes": 9,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "陪",
+      "strokes": 10,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "輦",
+      "strokes": 15,
+      "naturalStar": 4
+    },
+    {
+      "hanja": "驅",
+      "strokes": 21,
+      "naturalStar": 7
+    },
+    {
+      "hanja": "轂",
+      "strokes": 17,
+      "naturalStar": 5
+    },
+    {
+      "hanja": "振",
+      "strokes": 10,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "纓",
+      "strokes": 23,
+      "naturalStar": 8
+    },
+    {
+      "hanja": "世",
+      "strokes": 5,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "祿",
+      "strokes": 12,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "侈",
+      "strokes": 8,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "富",
+      "strokes": 12,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "車",
+      "strokes": 7,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "駕",
+      "strokes": 15,
+      "naturalStar": 4
+    },
+    {
+      "hanja": "肥",
+      "strokes": 8,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "輕",
+      "strokes": 14,
+      "naturalStar": 4
+    },
+    {
+      "hanja": "策",
+      "strokes": 12,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "功",
+      "strokes": 5,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "茂",
+      "strokes": 8,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "實",
+      "strokes": 14,
+      "naturalStar": 4
+    },
+    {
+      "hanja": "勒",
+      "strokes": 11,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "碑",
+      "strokes": 13,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "刻",
+      "strokes": 8,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "銘",
+      "strokes": 14,
+      "naturalStar": 4
+    },
+    {
+      "hanja": "磻",
+      "strokes": 17,
+      "naturalStar": 5
+    },
+    {
+      "hanja": "溪",
+      "strokes": 13,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "伊",
+      "strokes": 6,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "尹",
+      "strokes": 4,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "佐",
+      "strokes": 7,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "時",
+      "strokes": 10,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "阿",
+      "strokes": 7,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "衡",
+      "strokes": 16,
+      "naturalStar": 5
+    },
+    {
+      "hanja": "奄",
+      "strokes": 8,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "宅",
+      "strokes": 6,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "曲",
+      "strokes": 6,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "阜",
+      "strokes": 8,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "微",
+      "strokes": 13,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "旦",
+      "strokes": 5,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "孰",
+      "strokes": 11,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "營",
+      "strokes": 16,
+      "naturalStar": 5
+    },
+    {
+      "hanja": "桓",
+      "strokes": 10,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "公",
+      "strokes": 4,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "匡",
+      "strokes": 6,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "合",
+      "strokes": 6,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "濟",
+      "strokes": 17,
+      "naturalStar": 5
+    },
+    {
+      "hanja": "弱",
+      "strokes": 10,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "扶",
+      "strokes": 7,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "傾",
+      "strokes": 13,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "綺",
+      "strokes": 14,
+      "naturalStar": 4
+    },
+    {
+      "hanja": "迴",
+      "strokes": 9,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "漢",
+      "strokes": 14,
+      "naturalStar": 4
+    },
+    {
+      "hanja": "惠",
+      "strokes": 12,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "說",
+      "strokes": 14,
+      "naturalStar": 4
+    },
+    {
+      "hanja": "感",
+      "strokes": 13,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "武",
+      "strokes": 8,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "丁",
+      "strokes": 2,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "俊",
+      "strokes": 9,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "乂",
+      "strokes": 2,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "密",
+      "strokes": 11,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "勿",
+      "strokes": 4,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "多",
+      "strokes": 6,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "士",
+      "strokes": 3,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "寔",
+      "strokes": 12,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "寧",
+      "strokes": 14,
+      "naturalStar": 4
+    },
+    {
+      "hanja": "晉",
+      "strokes": 10,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "楚",
+      "strokes": 13,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "更",
+      "strokes": 7,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "霸",
+      "strokes": 21,
+      "naturalStar": 7
+    },
+    {
+      "hanja": "趙",
+      "strokes": 14,
+      "naturalStar": 4
+    },
+    {
+      "hanja": "魏",
+      "strokes": 17,
+      "naturalStar": 5
+    },
+    {
+      "hanja": "困",
+      "strokes": 7,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "橫",
+      "strokes": 16,
+      "naturalStar": 5
+    },
+    {
+      "hanja": "假",
+      "strokes": 11,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "途",
+      "strokes": 10,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "滅",
+      "strokes": 13,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "虢",
+      "strokes": 15,
+      "naturalStar": 4
+    },
+    {
+      "hanja": "踐",
+      "strokes": 15,
+      "naturalStar": 4
+    },
+    {
+      "hanja": "土",
+      "strokes": 3,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "會",
+      "strokes": 13,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "盟",
+      "strokes": 13,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "何",
+      "strokes": 7,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "遵",
+      "strokes": 15,
+      "naturalStar": 4
+    },
+    {
+      "hanja": "約",
+      "strokes": 9,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "法",
+      "strokes": 8,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "韓",
+      "strokes": 17,
+      "naturalStar": 5
+    },
+    {
+      "hanja": "弊",
+      "strokes": 14,
+      "naturalStar": 4
+    },
+    {
+      "hanja": "煩",
+      "strokes": 13,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "刑",
+      "strokes": 6,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "起",
+      "strokes": 10,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "翦",
+      "strokes": 15,
+      "naturalStar": 4
+    },
+    {
+      "hanja": "頗",
+      "strokes": 14,
+      "naturalStar": 4
+    },
+    {
+      "hanja": "牧",
+      "strokes": 8,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "用",
+      "strokes": 5,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "軍",
+      "strokes": 9,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "最",
+      "strokes": 12,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "精",
+      "strokes": 14,
+      "naturalStar": 4
+    },
+    {
+      "hanja": "宣",
+      "strokes": 9,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "威",
+      "strokes": 9,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "沙",
+      "strokes": 7,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "漠",
+      "strokes": 13,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "馳",
+      "strokes": 13,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "譽",
+      "strokes": 20,
+      "naturalStar": 7
+    },
+    {
+      "hanja": "丹",
+      "strokes": 4,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "青",
+      "strokes": 8,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "九",
+      "strokes": 2,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "州",
+      "strokes": 6,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "禹",
+      "strokes": 9,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "跡",
+      "strokes": 13,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "百",
+      "strokes": 6,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "郡",
+      "strokes": 9,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "秦",
+      "strokes": 10,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "并",
+      "strokes": 6,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "嶽",
+      "strokes": 17,
+      "naturalStar": 5
+    },
+    {
+      "hanja": "宗",
+      "strokes": 8,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "恆",
+      "strokes": 9,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "岱",
+      "strokes": 8,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "禪",
+      "strokes": 16,
+      "naturalStar": 5
+    },
+    {
+      "hanja": "主",
+      "strokes": 5,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "云",
+      "strokes": 4,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "亭",
+      "strokes": 9,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "雁",
+      "strokes": 12,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "門",
+      "strokes": 8,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "紫",
+      "strokes": 12,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "塞",
+      "strokes": 13,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "雞",
+      "strokes": 18,
+      "naturalStar": 6
+    },
+    {
+      "hanja": "田",
+      "strokes": 5,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "赤",
+      "strokes": 7,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "城",
+      "strokes": 9,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "昆",
+      "strokes": 8,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "池",
+      "strokes": 6,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "碣",
+      "strokes": 14,
+      "naturalStar": 4
+    },
+    {
+      "hanja": "石",
+      "strokes": 5,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "鉅",
+      "strokes": 12,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "野",
+      "strokes": 11,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "洞",
+      "strokes": 9,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "庭",
+      "strokes": 9,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "曠",
+      "strokes": 18,
+      "naturalStar": 6
+    },
+    {
+      "hanja": "遠",
+      "strokes": 13,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "緜",
+      "strokes": 15,
+      "naturalStar": 4
+    },
+    {
+      "hanja": "邈",
+      "strokes": 17,
+      "naturalStar": 5
+    },
+    {
+      "hanja": "巖",
+      "strokes": 22,
+      "naturalStar": 8
+    },
+    {
+      "hanja": "岫",
+      "strokes": 8,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "杳",
+      "strokes": 8,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "冥",
+      "strokes": 10,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "治",
+      "strokes": 8,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "本",
+      "strokes": 5,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "於",
+      "strokes": 8,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "農",
+      "strokes": 13,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "務",
+      "strokes": 10,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "茲",
+      "strokes": 9,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "稼",
+      "strokes": 15,
+      "naturalStar": 4
+    },
+    {
+      "hanja": "穡",
+      "strokes": 18,
+      "naturalStar": 6
+    },
+    {
+      "hanja": "俶",
+      "strokes": 10,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "載",
+      "strokes": 13,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "南",
+      "strokes": 9,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "畝",
+      "strokes": 10,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "我",
+      "strokes": 7,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "藝",
+      "strokes": 18,
+      "naturalStar": 6
+    },
+    {
+      "hanja": "黍",
+      "strokes": 12,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "稷",
+      "strokes": 15,
+      "naturalStar": 4
+    },
+    {
+      "hanja": "稅",
+      "strokes": 12,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "熟",
+      "strokes": 15,
+      "naturalStar": 4
+    },
+    {
+      "hanja": "貢",
+      "strokes": 10,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "新",
+      "strokes": 13,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "勸",
+      "strokes": 19,
+      "naturalStar": 6
+    },
+    {
+      "hanja": "賞",
+      "strokes": 15,
+      "naturalStar": 4
+    },
+    {
+      "hanja": "黜",
+      "strokes": 17,
+      "naturalStar": 5
+    },
+    {
+      "hanja": "陟",
+      "strokes": 9,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "孟",
+      "strokes": 8,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "軻",
+      "strokes": 12,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "敦",
+      "strokes": 12,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "素",
+      "strokes": 10,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "史",
+      "strokes": 5,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "魚",
+      "strokes": 11,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "秉",
+      "strokes": 8,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "直",
+      "strokes": 8,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "庶",
+      "strokes": 11,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "幾",
+      "strokes": 12,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "中",
+      "strokes": 4,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "庸",
+      "strokes": 11,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "勞",
+      "strokes": 12,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "謙",
+      "strokes": 17,
+      "naturalStar": 5
+    },
+    {
+      "hanja": "謹",
+      "strokes": 18,
+      "naturalStar": 6
+    },
+    {
+      "hanja": "敕",
+      "strokes": 11,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "聆",
+      "strokes": 11,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "音",
+      "strokes": 9,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "察",
+      "strokes": 14,
+      "naturalStar": 4
+    },
+    {
+      "hanja": "理",
+      "strokes": 11,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "鑑",
+      "strokes": 22,
+      "naturalStar": 8
+    },
+    {
+      "hanja": "皃",
+      "strokes": 7,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "辧",
+      "strokes": 16,
+      "naturalStar": 5
+    },
+    {
+      "hanja": "色",
+      "strokes": 6,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "貽",
+      "strokes": 12,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "厥",
+      "strokes": 12,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "嘉",
+      "strokes": 14,
+      "naturalStar": 4
+    },
+    {
+      "hanja": "猷",
+      "strokes": 13,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "勉",
+      "strokes": 9,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "其",
+      "strokes": 8,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "祗",
+      "strokes": 9,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "植",
+      "strokes": 12,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "省",
+      "strokes": 9,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "躬",
+      "strokes": 10,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "譏",
+      "strokes": 19,
+      "naturalStar": 6
+    },
+    {
+      "hanja": "誡",
+      "strokes": 14,
+      "naturalStar": 4
+    },
+    {
+      "hanja": "寵",
+      "strokes": 19,
+      "naturalStar": 6
+    },
+    {
+      "hanja": "增",
+      "strokes": 15,
+      "naturalStar": 4
+    },
+    {
+      "hanja": "抗",
+      "strokes": 7,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "極",
+      "strokes": 12,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "殆",
+      "strokes": 9,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "辱",
+      "strokes": 10,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "近",
+      "strokes": 7,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "恥",
+      "strokes": 10,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "林",
+      "strokes": 8,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "皋",
+      "strokes": 10,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "幸",
+      "strokes": 8,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "即",
+      "strokes": 7,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "兩",
+      "strokes": 8,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "疏",
+      "strokes": 12,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "見",
+      "strokes": 7,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "機",
+      "strokes": 16,
+      "naturalStar": 5
+    },
+    {
+      "hanja": "解",
+      "strokes": 13,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "組",
+      "strokes": 11,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "誰",
+      "strokes": 15,
+      "naturalStar": 4
+    },
+    {
+      "hanja": "逼",
+      "strokes": 12,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "索",
+      "strokes": 10,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "居",
+      "strokes": 8,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "閒",
+      "strokes": 12,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "處",
+      "strokes": 11,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "沈",
+      "strokes": 7,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "默",
+      "strokes": 16,
+      "naturalStar": 5
+    },
+    {
+      "hanja": "寂",
+      "strokes": 11,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "寥",
+      "strokes": 14,
+      "naturalStar": 4
+    },
+    {
+      "hanja": "求",
+      "strokes": 7,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "古",
+      "strokes": 5,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "尋",
+      "strokes": 12,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "論",
+      "strokes": 15,
+      "naturalStar": 4
+    },
+    {
+      "hanja": "散",
+      "strokes": 12,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "慮",
+      "strokes": 15,
+      "naturalStar": 4
+    },
+    {
+      "hanja": "逍",
+      "strokes": 10,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "遙",
+      "strokes": 13,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "欣",
+      "strokes": 8,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "奏",
+      "strokes": 9,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "累",
+      "strokes": 11,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "遣",
+      "strokes": 13,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "慼",
+      "strokes": 15,
+      "naturalStar": 4
+    },
+    {
+      "hanja": "謝",
+      "strokes": 17,
+      "naturalStar": 5
+    },
+    {
+      "hanja": "歡",
+      "strokes": 21,
+      "naturalStar": 7
+    },
+    {
+      "hanja": "招",
+      "strokes": 8,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "渠",
+      "strokes": 11,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "荷",
+      "strokes": 10,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "的",
+      "strokes": 8,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "歷",
+      "strokes": 16,
+      "naturalStar": 5
+    },
+    {
+      "hanja": "園",
+      "strokes": 13,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "莽",
+      "strokes": 10,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "抽",
+      "strokes": 8,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "條",
+      "strokes": 10,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "枇",
+      "strokes": 8,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "杷",
+      "strokes": 8,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "晚",
+      "strokes": 11,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "翠",
+      "strokes": 14,
+      "naturalStar": 4
+    },
+    {
+      "hanja": "梧",
+      "strokes": 11,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "桐",
+      "strokes": 10,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "早",
+      "strokes": 6,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "凋",
+      "strokes": 10,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "陳",
+      "strokes": 10,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "根",
+      "strokes": 10,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "委",
+      "strokes": 8,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "翳",
+      "strokes": 17,
+      "naturalStar": 5
+    },
+    {
+      "hanja": "落",
+      "strokes": 12,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "葉",
+      "strokes": 12,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "飄",
+      "strokes": 20,
+      "naturalStar": 7
+    },
+    {
+      "hanja": "颻",
+      "strokes": 19,
+      "naturalStar": 6
+    },
+    {
+      "hanja": "游",
+      "strokes": 12,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "鯤",
+      "strokes": 19,
+      "naturalStar": 6
+    },
+    {
+      "hanja": "獨",
+      "strokes": 16,
+      "naturalStar": 5
+    },
+    {
+      "hanja": "運",
+      "strokes": 12,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "夌",
+      "strokes": 8,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "摩",
+      "strokes": 15,
+      "naturalStar": 4
+    },
+    {
+      "hanja": "絳",
+      "strokes": 12,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "霄",
+      "strokes": 15,
+      "naturalStar": 4
+    },
+    {
+      "hanja": "耽",
+      "strokes": 10,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "讀",
+      "strokes": 22,
+      "naturalStar": 8
+    },
+    {
+      "hanja": "翫",
+      "strokes": 15,
+      "naturalStar": 4
+    },
+    {
+      "hanja": "市",
+      "strokes": 5,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "寓",
+      "strokes": 12,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "目",
+      "strokes": 5,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "囊",
+      "strokes": 22,
+      "naturalStar": 8
+    },
+    {
+      "hanja": "箱",
+      "strokes": 15,
+      "naturalStar": 4
+    },
+    {
+      "hanja": "易",
+      "strokes": 8,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "輶",
+      "strokes": 16,
+      "naturalStar": 5
+    },
+    {
+      "hanja": "攸",
+      "strokes": 7,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "畏",
+      "strokes": 9,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "屬",
+      "strokes": 21,
+      "naturalStar": 7
+    },
+    {
+      "hanja": "耳",
+      "strokes": 6,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "垣",
+      "strokes": 9,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "牆",
+      "strokes": 17,
+      "naturalStar": 5
+    },
+    {
+      "hanja": "具",
+      "strokes": 8,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "膳",
+      "strokes": 16,
+      "naturalStar": 5
+    },
+    {
+      "hanja": "喰",
+      "strokes": 12,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "飯",
+      "strokes": 12,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "適",
+      "strokes": 14,
+      "naturalStar": 4
+    },
+    {
+      "hanja": "口",
+      "strokes": 3,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "充",
+      "strokes": 6,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "腸",
+      "strokes": 13,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "飽",
+      "strokes": 13,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "飫",
+      "strokes": 12,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "亯",
+      "strokes": 9,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "宰",
+      "strokes": 10,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "飢",
+      "strokes": 10,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "厭",
+      "strokes": 14,
+      "naturalStar": 4
+    },
+    {
+      "hanja": "糟",
+      "strokes": 17,
+      "naturalStar": 5
+    },
+    {
+      "hanja": "糠",
+      "strokes": 17,
+      "naturalStar": 5
+    },
+    {
+      "hanja": "親",
+      "strokes": 16,
+      "naturalStar": 5
+    },
+    {
+      "hanja": "戚",
+      "strokes": 11,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "故",
+      "strokes": 9,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "舊",
+      "strokes": 17,
+      "naturalStar": 5
+    },
+    {
+      "hanja": "老",
+      "strokes": 6,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "少",
+      "strokes": 4,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "異",
+      "strokes": 11,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "糧",
+      "strokes": 18,
+      "naturalStar": 6
+    },
+    {
+      "hanja": "妾",
+      "strokes": 8,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "御",
+      "strokes": 12,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "績",
+      "strokes": 17,
+      "naturalStar": 5
+    },
+    {
+      "hanja": "紡",
+      "strokes": 10,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "侍",
+      "strokes": 8,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "巾",
+      "strokes": 3,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "帷",
+      "strokes": 11,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "房",
+      "strokes": 8,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "紈",
+      "strokes": 9,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "扇",
+      "strokes": 10,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "圓",
+      "strokes": 13,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "潔",
+      "strokes": 15,
+      "naturalStar": 4
+    },
+    {
+      "hanja": "銀",
+      "strokes": 14,
+      "naturalStar": 4
+    },
+    {
+      "hanja": "燭",
+      "strokes": 17,
+      "naturalStar": 5
+    },
+    {
+      "hanja": "煒",
+      "strokes": 13,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "煌",
+      "strokes": 13,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "晝",
+      "strokes": 11,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "瞑",
+      "strokes": 15,
+      "naturalStar": 4
+    },
+    {
+      "hanja": "夕",
+      "strokes": 3,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "寐",
+      "strokes": 12,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "籃",
+      "strokes": 20,
+      "naturalStar": 7
+    },
+    {
+      "hanja": "筍",
+      "strokes": 12,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "象",
+      "strokes": 11,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "牀",
+      "strokes": 8,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "弦",
+      "strokes": 8,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "歌",
+      "strokes": 14,
+      "naturalStar": 4
+    },
+    {
+      "hanja": "酒",
+      "strokes": 10,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "讌",
+      "strokes": 23,
+      "naturalStar": 8
+    },
+    {
+      "hanja": "接",
+      "strokes": 11,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "杯",
+      "strokes": 8,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "舉",
+      "strokes": 16,
+      "naturalStar": 5
+    },
+    {
+      "hanja": "觴",
+      "strokes": 18,
+      "naturalStar": 6
+    },
+    {
+      "hanja": "矯",
+      "strokes": 17,
+      "naturalStar": 5
+    },
+    {
+      "hanja": "手",
+      "strokes": 4,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "頓",
+      "strokes": 13,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "足",
+      "strokes": 7,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "悅",
+      "strokes": 10,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "豫",
+      "strokes": 15,
+      "naturalStar": 4
+    },
+    {
+      "hanja": "且",
+      "strokes": 5,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "康",
+      "strokes": 11,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "嫡",
+      "strokes": 14,
+      "naturalStar": 4
+    },
+    {
+      "hanja": "後",
+      "strokes": 9,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "嗣",
+      "strokes": 13,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "續",
+      "strokes": 21,
+      "naturalStar": 7
+    },
+    {
+      "hanja": "祭",
+      "strokes": 11,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "祀",
+      "strokes": 7,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "烝",
+      "strokes": 10,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "嘗",
+      "strokes": 14,
+      "naturalStar": 4
+    },
+    {
+      "hanja": "稽",
+      "strokes": 15,
+      "naturalStar": 4
+    },
+    {
+      "hanja": "顙",
+      "strokes": 19,
+      "naturalStar": 6
+    },
+    {
+      "hanja": "再",
+      "strokes": 6,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "拜",
+      "strokes": 9,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "悚",
+      "strokes": 10,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "懼",
+      "strokes": 21,
+      "naturalStar": 7
+    },
+    {
+      "hanja": "恐",
+      "strokes": 10,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "惶",
+      "strokes": 12,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "箋",
+      "strokes": 14,
+      "naturalStar": 4
+    },
+    {
+      "hanja": "牒",
+      "strokes": 13,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "簡",
+      "strokes": 18,
+      "naturalStar": 6
+    },
+    {
+      "hanja": "要",
+      "strokes": 9,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "顧",
+      "strokes": 21,
+      "naturalStar": 7
+    },
+    {
+      "hanja": "答",
+      "strokes": 12,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "審",
+      "strokes": 15,
+      "naturalStar": 4
+    },
+    {
+      "hanja": "詳",
+      "strokes": 13,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "骸",
+      "strokes": 15,
+      "naturalStar": 4
+    },
+    {
+      "hanja": "垢",
+      "strokes": 9,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "想",
+      "strokes": 13,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "浴",
+      "strokes": 10,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "執",
+      "strokes": 11,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "熱",
+      "strokes": 15,
+      "naturalStar": 4
+    },
+    {
+      "hanja": "願",
+      "strokes": 19,
+      "naturalStar": 6
+    },
+    {
+      "hanja": "涼",
+      "strokes": 11,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "驢",
+      "strokes": 26,
+      "naturalStar": 8
+    },
+    {
+      "hanja": "騾",
+      "strokes": 21,
+      "naturalStar": 7
+    },
+    {
+      "hanja": "犢",
+      "strokes": 19,
+      "naturalStar": 6
+    },
+    {
+      "hanja": "特",
+      "strokes": 10,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "駭",
+      "strokes": 16,
+      "naturalStar": 5
+    },
+    {
+      "hanja": "躍",
+      "strokes": 21,
+      "naturalStar": 7
+    },
+    {
+      "hanja": "超",
+      "strokes": 12,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "驤",
+      "strokes": 27,
+      "naturalStar": 8
+    },
+    {
+      "hanja": "誅",
+      "strokes": 13,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "斬",
+      "strokes": 11,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "賊",
+      "strokes": 13,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "盜",
+      "strokes": 12,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "捕",
+      "strokes": 10,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "獲",
+      "strokes": 16,
+      "naturalStar": 5
+    },
+    {
+      "hanja": "叛",
+      "strokes": 9,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "亡",
+      "strokes": 3,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "布",
+      "strokes": 5,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "射",
+      "strokes": 10,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "遼",
+      "strokes": 15,
+      "naturalStar": 4
+    },
+    {
+      "hanja": "丸",
+      "strokes": 3,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "嵇",
+      "strokes": 12,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "琴",
+      "strokes": 12,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "阮",
+      "strokes": 6,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "嘯",
+      "strokes": 16,
+      "naturalStar": 5
+    },
+    {
+      "hanja": "恬",
+      "strokes": 9,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "筆",
+      "strokes": 12,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "倫",
+      "strokes": 10,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "紙",
+      "strokes": 10,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "鈞",
+      "strokes": 12,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "巧",
+      "strokes": 5,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "任",
+      "strokes": 6,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "釣",
+      "strokes": 11,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "釋",
+      "strokes": 20,
+      "naturalStar": 7
+    },
+    {
+      "hanja": "紛",
+      "strokes": 10,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "利",
+      "strokes": 7,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "俗",
+      "strokes": 9,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "並",
+      "strokes": 8,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "皆",
+      "strokes": 9,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "佳",
+      "strokes": 8,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "妙",
+      "strokes": 7,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "毛",
+      "strokes": 4,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "施",
+      "strokes": 9,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "淑",
+      "strokes": 11,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "姿",
+      "strokes": 9,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "工",
+      "strokes": 3,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "顰",
+      "strokes": 24,
+      "naturalStar": 8
+    },
+    {
+      "hanja": "妍",
+      "strokes": 7,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "笑",
+      "strokes": 10,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "秊",
+      "strokes": 8,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "矢",
+      "strokes": 5,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "每",
+      "strokes": 7,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "催",
+      "strokes": 13,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "曦",
+      "strokes": 20,
+      "naturalStar": 7
+    },
+    {
+      "hanja": "暉",
+      "strokes": 13,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "朗",
+      "strokes": 10,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "耀",
+      "strokes": 20,
+      "naturalStar": 7
+    },
+    {
+      "hanja": "琁",
+      "strokes": 11,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "璣",
+      "strokes": 16,
+      "naturalStar": 5
+    },
+    {
+      "hanja": "懸",
+      "strokes": 20,
+      "naturalStar": 7
+    },
+    {
+      "hanja": "斡",
+      "strokes": 14,
+      "naturalStar": 4
+    },
+    {
+      "hanja": "晦",
+      "strokes": 11,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "魄",
+      "strokes": 14,
+      "naturalStar": 4
+    },
+    {
+      "hanja": "環",
+      "strokes": 17,
+      "naturalStar": 5
+    },
+    {
+      "hanja": "照",
+      "strokes": 13,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "指",
+      "strokes": 9,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "薪",
+      "strokes": 16,
+      "naturalStar": 5
+    },
+    {
+      "hanja": "脩",
+      "strokes": 10,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "祜",
+      "strokes": 9,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "永",
+      "strokes": 5,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "綏",
+      "strokes": 13,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "吉",
+      "strokes": 6,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "劭",
+      "strokes": 7,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "矩",
+      "strokes": 9,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "步",
+      "strokes": 7,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "引",
+      "strokes": 4,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "領",
+      "strokes": 14,
+      "naturalStar": 4
+    },
+    {
+      "hanja": "俯",
+      "strokes": 10,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "仰",
+      "strokes": 6,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "廊",
+      "strokes": 11,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "廟",
+      "strokes": 15,
+      "naturalStar": 4
+    },
+    {
+      "hanja": "束",
+      "strokes": 7,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "帶",
+      "strokes": 11,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "矜",
+      "strokes": 9,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "莊",
+      "strokes": 10,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "徘",
+      "strokes": 11,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "徊",
+      "strokes": 9,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "瞻",
+      "strokes": 18,
+      "naturalStar": 6
+    },
+    {
+      "hanja": "眺",
+      "strokes": 11,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "孤",
+      "strokes": 8,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "陋",
+      "strokes": 8,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "寡",
+      "strokes": 14,
+      "naturalStar": 4
+    },
+    {
+      "hanja": "聞",
+      "strokes": 14,
+      "naturalStar": 4
+    },
+    {
+      "hanja": "愚",
+      "strokes": 13,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "蒙",
+      "strokes": 13,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "等",
+      "strokes": 12,
+      "naturalStar": 3
+    },
+    {
+      "hanja": "誚",
+      "strokes": 14,
+      "naturalStar": 4
+    },
+    {
+      "hanja": "謂",
+      "strokes": 16,
+      "naturalStar": 5
+    },
+    {
+      "hanja": "語",
+      "strokes": 14,
+      "naturalStar": 4
+    },
+    {
+      "hanja": "助",
+      "strokes": 7,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "者",
+      "strokes": 8,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "焉",
+      "strokes": 11,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "哉",
+      "strokes": 9,
+      "naturalStar": 2
+    },
+    {
+      "hanja": "乎",
+      "strokes": 5,
+      "naturalStar": 1
+    },
+    {
+      "hanja": "也",
+      "strokes": 3,
+      "naturalStar": 1
+    }
+  ]
+}
