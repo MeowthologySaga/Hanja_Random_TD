@@ -1,6 +1,8 @@
 import { defineConfig } from "@playwright/test";
 
-const port = Number(process.env.E2E_PORT ?? 4437);
+// Keep browser QA isolated from the user's launcher/dev server. Reusing port 4437
+// previously allowed an older checkout to satisfy the readiness probe.
+const port = Number(process.env.E2E_PORT ?? 44437);
 
 export default defineConfig({
   testDir: "./e2e",
@@ -20,7 +22,7 @@ export default defineConfig({
   webServer: {
     command: `npm run dev -- --port ${port} --strictPort`,
     url: `http://127.0.0.1:${port}`,
-    reuseExistingServer: true,
+    reuseExistingServer: false,
     timeout: 30_000
   }
 });

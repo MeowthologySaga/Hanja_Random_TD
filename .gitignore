@@ -16,6 +16,14 @@ artifacts/
 *.sqlite*
 *.db
 *.log
+SIMULATION_REPORT*.json
+asset-production/
+deliverables/
+outputs/
+reports/
+public/review-assets/
+open-cheonjamun-*.html
+scripts/__pycache__/
 handoff_source/*
 !handoff_source/manifest.json
 !handoff_source/data/

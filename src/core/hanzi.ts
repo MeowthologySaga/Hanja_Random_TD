@@ -3,11 +3,14 @@ import jpRuntime from "../../handoff_source/data/JP_2136.prelim.runtime.json";
 import cnRuntime from "../../handoff_source/data/CN_3500.prelim.runtime.json";
 import { composeAbilityLoadout } from "./abilities";
 import {
-  CHEONJAMUN_JARYEONG_CHARS,
-  CHEONJAMUN_JARYEONG_ROSTER,
   CHEONJAMUN_SUPPLEMENTAL_CHARACTERS,
   CHEONJAMUN_WUXING_BY_CHAR
 } from "./cheonjamun-roster";
+import {
+  CHEONJAMUN_RUNTIME_JARYEONG_CHARS,
+  CHEONJAMUN_RUNTIME_JARYEONGS,
+  CHEONJAMUN_RUNTIME_WUXING_BY_CHAR
+} from "./cheonjamun-runtime";
 import type {
   CombatProfile,
   CombatRole,
@@ -145,9 +148,12 @@ export const REGION_META: Record<RegionCode, { title: string; short: string; sco
 export const GAME_CONFIG = {
   maxBoardSize: 80,
   maxTowerCount: 80,
-  maxWaves: 20,
+  maxWaves: 100,
+  startingGold: 42,
   prepSeconds: 8,
-  goalReward: 28,
+  bossPrepSeconds: 12,
+  goalReward: 18,
+  goalRewardPerChapter: 4,
   synergyBonus: 0.1,
   weaknessMultiplier: 1.3,
   targetWeightBase: 1.45,
@@ -225,15 +231,18 @@ function buildCombatProfile(
   const roleRange: Record<CombatRole, number> = { rapid: 238, burst: 226, splash: 242, control: 258, support: 264, economy: 246 };
   const style = ELEMENT_STYLES[wuxing];
   const abilities = composeAbilityLoadout({ char, wuxing, stage, role, graphRole, parents, parentWuxing });
+  const activeSkills = stage > 1 || childCount === 0;
   return {
     role,
     baseDamage: (17 + (hash % 5)) * roleDamage[role],
     range: roleRange[role] + (hash % 13),
     cooldown: roleCooldown[role],
     budgetMultiplier,
-    effectLabel: style.effectLabel,
+    effectLabel: activeSkills ? style.effectLabel : "기본 타격",
     roleLabel: ROLE_LABELS[role],
-    description: `${abilities.semantic.name} · ${abilities.element.name} · ${abilities.role.name} · ${abilities.graph.name}`,
+    description: activeSkills
+      ? `${abilities.semantic.name} · ${abilities.element.name} · ${abilities.role.name} · ${abilities.graph.name}`
+      : `조합 가능한 1단 재료 · 기본 공격 · ${abilities.graph.name}`,
     abilities
   };
 }
@@ -259,7 +268,9 @@ export function getCatalog(region: RegionCode): HanziCatalog {
   const runtime = RUNTIME[region];
   const runtimeChars: RuntimeCharacter[] = runtime.chars.map((entry) => ({
     ...entry,
-    e: region === "KR" ? CHEONJAMUN_WUXING_BY_CHAR.get(entry.c) ?? entry.e : entry.e,
+    e: region === "KR"
+      ? CHEONJAMUN_WUXING_BY_CHAR.get(entry.c) ?? CHEONJAMUN_RUNTIME_WUXING_BY_CHAR.get(entry.c) ?? entry.e
+      : entry.e,
     p: [...entry.p]
   }));
   if (region === "KR") {
@@ -324,11 +335,11 @@ export function getCatalog(region: RegionCode): HanziCatalog {
   }
   const recipes = [...definitions.values()].filter((definition) => definition.acquisition === "craft" && definition.parents.length > 0);
   const activePoolCharacters = region === "KR"
-    ? [...new Set([...ACTIVE_POOL_CHARS.KR, ...CHEONJAMUN_JARYEONG_ROSTER.map((entry) => entry.hanja)])]
+    ? [...new Set([...ACTIVE_POOL_CHARS.KR, ...CHEONJAMUN_RUNTIME_JARYEONGS.map((entry) => entry.hanja)])]
     : ACTIVE_POOL_CHARS[region];
   const activePool = activePoolCharacters
     .map((char) => definitions.get(char))
-    .filter((definition): definition is HanziDefinition => Boolean(definition?.acquisition === "direct" && definition.stage === 1));
+    .filter((definition): definition is HanziDefinition => Boolean(definition));
   const goalOrder = GOAL_ORDER[region].filter((char) => definitions.has(char));
   const catalog: HanziCatalog = {
     region,
@@ -344,7 +355,7 @@ export function getCatalog(region: RegionCode): HanziCatalog {
 }
 
 export function activePoolBaseWeight(region: RegionCode, char: string): number {
-  if (region === "KR" && CHEONJAMUN_JARYEONG_CHARS.has(char) && !BASE_ACTIVE_POOL_CHAR_SET.has(char)) {
+  if (region === "KR" && CHEONJAMUN_RUNTIME_JARYEONG_CHARS.has(char) && !BASE_ACTIVE_POOL_CHAR_SET.has(char)) {
     return GAME_CONFIG.expansionPoolWeight;
   }
   return 1;
@@ -358,7 +369,7 @@ export function definitionForTower(catalog: HanziCatalog, definitionId: string):
 }
 
 export function summonCost(summonCount: number): number {
-  return Math.min(12, 6 + Math.floor(summonCount / 20));
+  return Math.min(24, 7 + Math.floor(Math.max(0, summonCount) / 12));
 }
 
 export function multiSummonCost(summonCount: number, amount = 10): number {
@@ -399,7 +410,38 @@ export function elementUpgradeCost(level: number): number {
 }
 
 export function researchCost(level: number): number {
-  return level >= 5 ? 0 : 32 + level * 22;
+  return [40, 70, 110, 160, 220][Math.max(0, Math.floor(level))] ?? 0;
+}
+
+export const RESEARCH_UNLOCK_WAVES = Object.freeze([10, 25, 45, 65, 85] as const);
+
+export function researchUnlockWave(level: number): number {
+  return RESEARCH_UNLOCK_WAVES[Math.max(0, Math.floor(level))] ?? Number.POSITIVE_INFINITY;
+}
+
+export const SUMMON_STAGE_UNLOCK_WAVES: Readonly<Record<Stage, number>> = Object.freeze({
+  1: 0,
+  2: 10,
+  3: 30,
+  4: 50,
+  5: 70
+});
+
+export function summonStageUnlockWave(stage: Stage): number {
+  return SUMMON_STAGE_UNLOCK_WAVES[stage];
+}
+
+export function maxSummonStageForWave(wave: number): Stage {
+  if (wave >= SUMMON_STAGE_UNLOCK_WAVES[5]) return 5;
+  if (wave >= SUMMON_STAGE_UNLOCK_WAVES[4]) return 4;
+  if (wave >= SUMMON_STAGE_UNLOCK_WAVES[3]) return 3;
+  if (wave >= SUMMON_STAGE_UNLOCK_WAVES[2]) return 2;
+  return 1;
+}
+
+export function goalRewardForWave(wave: number): number {
+  const chapter = Math.max(0, Math.min(10, Math.ceil(Math.max(0, wave) / 10)));
+  return GAME_CONFIG.goalReward + chapter * GAME_CONFIG.goalRewardPerChapter;
 }
 
 export function researchConnectionBonus(level: number): number {

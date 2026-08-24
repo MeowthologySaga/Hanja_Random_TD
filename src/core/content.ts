@@ -4,14 +4,35 @@ import type { EnemyArchetype, Point, WavePlan, Wuxing } from "./types";
 export const WORLD_WIDTH = 880;
 export const WORLD_HEIGHT = 720;
 export const MAX_ENEMIES = 80;
-export const WAVE_REINFORCEMENT_DELAY = 16;
-export const BOSS_TIME_LIMITS: Readonly<Record<number, number>> = Object.freeze({ 10: 60, 20: 85 });
+export const WAVE_REINFORCEMENT_DELAY = 20;
+export const BOSS_TIME_LIMITS: Readonly<Record<number, number>> = Object.freeze(
+  Object.fromEntries(Array.from({ length: 10 }, (_, index) => {
+    const chapter = index + 1;
+    // The opening formation sits in a different part of the route for each
+    // element. A slightly wider first-chapter limit keeps that positional
+    // choice from deciding the run before the remaining formations open.
+    return [chapter * 10, 72 + (chapter - 1) * 6];
+  }))
+);
 export const FORMATION_COLUMNS = 4;
 export const FORMATION_ROWS = 4;
 export const CELLS_PER_FORMATION = FORMATION_COLUMNS * FORMATION_ROWS;
+// A run begins with every formation sealed. The first successful summon opens
+// the matching elemental formation for free.
+export const INITIAL_UNLOCKED_FORMATIONS = Object.freeze([] as const);
+export const FORMATION_PURCHASE_COSTS = Object.freeze([18, 32, 52, 78] as const);
 
 export function bossTimeLimitForWave(wave: number): number | null {
   return BOSS_TIME_LIMITS[wave] ?? null;
+}
+
+export function bossHpFactorForWave(wave: number): number {
+  const chapter = Math.max(1, Math.min(10, Math.ceil(wave / 10)));
+  return 6.5 + chapter * 1.25;
+}
+
+export function waveClearReward(wave: number): number {
+  return 8 + Math.floor(Math.max(0, wave - 1) / 5) * 2;
 }
 
 export interface BoardFormation {
@@ -36,6 +57,25 @@ export const BOARD_FORMATIONS: readonly BoardFormation[] = FORMATION_DEFINITIONS
   ...formation,
   startCell: index * CELLS_PER_FORMATION
 }));
+
+export function nextFormationUnlockCost(unlockedFormationCount: number): number | null {
+  // The first unlocked formation is always the free, summon-determined start.
+  const purchasedCount = Math.max(0, Math.floor(unlockedFormationCount) - 1);
+  return FORMATION_PURCHASE_COSTS[purchasedCount] ?? null;
+}
+
+export function isFormationUnlocked(formationIndex: number, unlockedFormations: readonly number[]): boolean {
+  return unlockedFormations.includes(formationIndex);
+}
+
+export function isBoardCellUnlocked(cell: number, unlockedFormations: readonly number[]): boolean {
+  if (cell < 0 || cell >= BOARD_CELLS.length) return false;
+  return isFormationUnlocked(Math.floor(cell / CELLS_PER_FORMATION), unlockedFormations);
+}
+
+export function unlockedTowerCapacity(unlockedFormations: readonly number[]): number {
+  return BOARD_FORMATIONS.reduce((total, _, index) => total + (isFormationUnlocked(index, unlockedFormations) ? CELLS_PER_FORMATION : 0), 0);
+}
 
 export const BOARD_CELLS: readonly Point[] = BOARD_FORMATIONS.flatMap((formation) =>
   Array.from({ length: CELLS_PER_FORMATION }, (_, localIndex) => ({
@@ -93,7 +133,7 @@ const ARCHETYPE_LABEL: Record<EnemyArchetype, string> = {
   normal: "망령 행렬",
   swarm: "백귀야행",
   swift: "질풍 아귀",
-  armored: "철갑 강시",
+  armored: "정예 철갑 강시",
   regenerator: "회생 요괴",
   boss: "봉인 파괴자"
 };
@@ -108,7 +148,7 @@ const ARCHETYPE_BRIEFING: Record<EnemyArchetype, string> = {
 };
 
 function archetypeForWave(wave: number): EnemyArchetype {
-  if (wave === 10 || wave === 20) return "boss";
+  if (wave > 0 && wave % 10 === 0) return "boss";
   if (wave % 5 === 0) return "armored";
   if (wave % 4 === 0) return "swift";
   if (wave % 3 === 0) return "swarm";
@@ -145,15 +185,15 @@ export function wavePlan(wave: number): WavePlan {
     swift: 0.82,
     armored: 1.25,
     regenerator: 1.08,
-    boss: wave === 10 ? 7.5 : 11.5
+    boss: bossHpFactorForWave(wave)
   }[archetype];
   const countFactor = {
     normal: 1,
-    swarm: 1.65,
-    swift: 1.12,
+    swarm: 1.45,
+    swift: 1.05,
     armored: 0.82,
-    regenerator: 0.92,
-    boss: 0.4
+    regenerator: 0.9,
+    boss: 0.28 + Math.min(0.1, Math.ceil(wave / 10) * 0.01)
   }[archetype];
   const speedFactor = {
     normal: 1,
@@ -163,21 +203,22 @@ export function wavePlan(wave: number): WavePlan {
     regenerator: 0.92,
     boss: 0.68
   }[archetype];
-  const baseCount = 9 + Math.floor(wave * 0.92);
-  const baseHp = 34 * Math.pow(1.17, wave - 1);
+  const baseCount = 8 + Math.floor(wave * 0.42);
+  const baseHp = 34 * Math.pow(1.03, wave - 1);
+  const chapter = Math.max(1, Math.min(10, Math.ceil(wave / 10)));
 
   return {
     wave,
     count: Math.max(1, Math.round(baseCount * countFactor)),
     hp: baseHp * hpFactor,
-    speed: (0.026 + Math.min(0.01, wave * 0.0004)) * speedFactor,
-    interval: archetype === "swarm" ? 0.34 : boss ? 0.9 : Math.max(0.4, 0.82 - wave * 0.01),
-    reward: boss ? 32 + wave : 2 + Math.floor(wave / 5),
+    speed: (0.025 + Math.min(0.015, wave * 0.00015)) * speedFactor,
+    interval: archetype === "swarm" ? 0.38 : boss ? 0.72 : Math.max(0.42, 0.9 - wave * 0.0048),
+    reward: boss ? 24 + chapter * 6 : 1 + Math.floor((wave - 1) / 25),
     boss,
     archetype,
     weakness,
-    armor: archetype === "armored" ? 0.38 : boss ? 0.16 : 0,
-    regen: archetype === "regenerator" ? baseHp * 0.018 : boss ? baseHp * 0.0025 : 0,
+    armor: archetype === "armored" ? Math.min(0.48, 0.28 + chapter * 0.018) : boss ? 0.1 + chapter * 0.012 : 0,
+    regen: archetype === "regenerator" ? baseHp * 0.026 : boss ? baseHp * 0.004 : 0,
     label: ARCHETYPE_LABEL[archetype] + " " + wave,
     briefing: ARCHETYPE_BRIEFING[archetype]
   };

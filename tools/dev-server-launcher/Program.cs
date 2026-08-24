@@ -19,7 +19,6 @@ namespace HanziFateFormation.DevServerLauncher
         private const string StandardErrorLog = ".vite-dev.stderr.log";
         private const string StartScriptName = ".vite-dev-launch.cmd";
         private const string ExpectedPackageName = "\"name\": \"hanzi-random-tower-defense\"";
-        private const string DefenseWorkspaceRelativePath = @".codex_tmp\worktrees\hanzi-rtd-semantic-sprites-v09";
 
         private enum ProbeState
         {
@@ -124,11 +123,7 @@ namespace HanziFateFormation.DevServerLauncher
 
         private static string FindProjectRoot(string startDirectory)
         {
-            string launcherDirectory = Path.GetFullPath(startDirectory);
-            string nearbyDefenseWorkspace = Path.Combine(launcherDirectory, DefenseWorkspaceRelativePath);
-            if (IsDefenseProject(nearbyDefenseWorkspace)) return Path.GetFullPath(nearbyDefenseWorkspace);
-
-            DirectoryInfo directory = new DirectoryInfo(launcherDirectory);
+            DirectoryInfo directory = new DirectoryInfo(Path.GetFullPath(startDirectory));
             for (int depth = 0; directory != null && depth < 7; depth += 1, directory = directory.Parent)
             {
                 if (IsDefenseProject(directory.FullName)) return directory.FullName;

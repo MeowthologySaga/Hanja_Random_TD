@@ -1,5 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { CHEONJAMUN_JARYEONG_META, CHEONJAMUN_JARYEONG_ROSTER, CHEONJAMUN_SUPPLEMENTAL_CHARACTERS } from "../src/core/cheonjamun-roster";
+import { CHEONJAMUN_JARYEONG_DEX_ENTRIES, CHEONJAMUN_JARYEONG_DEX_META } from "../src/core/cheonjamun-jaryeong-dex";
+import { CHEONJAMUN_RUNTIME_JARYEONGS, CHEONJAMUN_RUNTIME_META } from "../src/core/cheonjamun-runtime";
 import { getCatalog } from "../src/core/hanzi";
 import { JARYEONG_VISUALS, jaryeongVisualFor } from "../src/core/jaryeongs";
 import { RADICAL_DATA_META } from "../src/core/radicals";
@@ -92,7 +94,11 @@ for (const region of regions) {
   const catalog = getCatalog(region);
   const supplementalCount = region === "KR" ? CHEONJAMUN_SUPPLEMENTAL_CHARACTERS.length : 0;
   assert(catalog.definitions.size === expected.scope + supplementalCount, region + " catalog size mismatch");
-  assert(catalog.activePool.length >= 12 && catalog.activePool.length <= 150, region + " active pool out of recommended range");
+  if (region === "KR") {
+    assert(catalog.activePool.length === CHEONJAMUN_RUNTIME_META.total, "KR active pool must expose all 1,000 Cheonjamun Jaryeongs");
+  } else {
+    assert(catalog.activePool.length >= 12 && catalog.activePool.length <= 150, region + " active pool out of recommended range");
+  }
   const abilityComboKeys = new Set<string>();
   for (const definition of catalog.definitions.values()) {
     const loadout = definition.combat.abilities;
@@ -126,12 +132,22 @@ assert(CHEONJAMUN_JARYEONG_META.entries === 50, "Thousand Character Classic Jary
 assert(CHEONJAMUN_JARYEONG_META.semanticOverrides === 18, "semantic Wuxing override count changed");
 assert(CHEONJAMUN_JARYEONG_META.supplementalCharacters === 1, "supplemental character count changed");
 assert(CHEONJAMUN_JARYEONG_META.sourceEdgeWarnings === 7, "source-edge warning count changed");
-assert(JARYEONG_VISUALS.length === 80, "combined Jaryeong visual catalog must contain 80 entries");
-assert(new Set(JARYEONG_VISUALS.map((visual) => visual.id)).size === JARYEONG_VISUALS.length, "Jaryeong visual ids are duplicated");
-assert(new Set(JARYEONG_VISUALS.map((visual) => visual.hanja)).size === JARYEONG_VISUALS.length, "Jaryeong visual Hanja are duplicated");
-for (const visual of JARYEONG_VISUALS) {
-  const spriteUrl = new URL(`../public/assets/jaryeongs/${visual.id}/sheet-transparent.png`, import.meta.url);
-  assert(existsSync(spriteUrl), `missing existing Jaryeong sprite: ${visual.id}`);
+assert(CHEONJAMUN_RUNTIME_META.total === 1000, "Cheonjamun runtime must contain 1,000 Jaryeongs");
+assert(CHEONJAMUN_RUNTIME_JARYEONGS.length === CHEONJAMUN_RUNTIME_META.total, "Cheonjamun runtime entry count mismatch");
+assert(new Set(CHEONJAMUN_RUNTIME_JARYEONGS.map((entry) => entry.id)).size === CHEONJAMUN_RUNTIME_META.total, "Cheonjamun runtime ids are duplicated");
+assert(new Set(CHEONJAMUN_RUNTIME_JARYEONGS.map((entry) => entry.hanja)).size === CHEONJAMUN_RUNTIME_META.total, "Cheonjamun runtime Hanja are duplicated");
+for (const entry of CHEONJAMUN_RUNTIME_JARYEONGS) {
+  const spriteUrl = new URL(`../public/${entry.assetPath}`, import.meta.url);
+  assert(existsSync(spriteUrl), `missing Cheonjamun runtime sprite: ${entry.id}`);
+}
+
+assert(CHEONJAMUN_JARYEONG_DEX_META.total === 1000, "player Jaryeong dex must contain 1,000 entries");
+assert(CHEONJAMUN_JARYEONG_DEX_ENTRIES.length === CHEONJAMUN_JARYEONG_DEX_META.total, "player Jaryeong dex entry count mismatch");
+for (const entry of CHEONJAMUN_JARYEONG_DEX_ENTRIES) {
+  assert(!/review|qc|pending/iu.test(entry.imagePath), `player dex references a production-review path: ${entry.id}`);
+  assert(entry.dexText.trim().length > 0 && entry.traitDescription.trim().length > 0, `player dex description is incomplete: ${entry.id}`);
+  const imageUrl = new URL(`../public/${entry.imagePath}`, import.meta.url);
+  assert(existsSync(imageUrl), `missing player dex image: ${entry.id}`);
 }
 const krCatalog = getCatalog("KR");
 const krIdiomCatalog = idiomsForRegion("KR");
@@ -148,7 +164,14 @@ for (const entry of CHEONJAMUN_JARYEONG_ROSTER) {
   assert(krCatalog.definitions.get(entry.hanja)?.wuxing === entry.wuxing, `semantic Wuxing overlay failed: ${entry.hanja}`);
   assert(jaryeongVisualFor(entry.hanja, entry.wuxing).id === entry.id, `exact Jaryeong mapping failed: ${entry.hanja}`);
 }
-report.visuals = { jaryeongs: JARYEONG_VISUALS.length, radicals: RADICAL_DATA_META.coveredCharacters, idioms: krIdiomCatalog.length, cheonjamunPhrases: CHEONJAMUN_PHRASES.length };
+report.visuals = {
+  layeredJaryeongs: JARYEONG_VISUALS.length,
+  runtimeJaryeongs: CHEONJAMUN_RUNTIME_META.total,
+  playerDexEntries: CHEONJAMUN_JARYEONG_DEX_META.total,
+  radicals: RADICAL_DATA_META.coveredCharacters,
+  idioms: krIdiomCatalog.length,
+  cheonjamunPhrases: CHEONJAMUN_PHRASES.length
+};
 
 process.stdout.write(JSON.stringify({ ok: errors.length === 0, regions: report, errors }, null, 2) + "\n");
 if (errors.length > 0) process.exitCode = 1;

@@ -2,6 +2,7 @@ import "./styles.css";
 import {
   BOARD_CELLS,
   BOARD_FORMATIONS,
+  CELLS_PER_FORMATION,
   ENEMY_PATH_POINTS,
   ENEMY_SPAWN_PROGRESS,
   MAX_ENEMIES,
@@ -12,15 +13,35 @@ import {
   positionOnPath,
   wavePlan
 } from "./core/content";
+import { hasActiveSkills } from "./core/abilities";
 import {
   GameEngine,
+  FIRST_PREP_SECONDS,
   MAX_CONCENTRATION_LEVEL,
   concentrationEssenceCost,
   dismantleEssenceValue,
   interestForGold
 } from "./core/game";
-import { idiomById } from "./core/idioms";
-import { enemyJaryeongVisualFor, jaryeongVisualFor } from "./core/jaryeongs";
+import {
+  ELEMENT_TRAITS,
+  ELEMENT_TRAIT_MAX_LEVEL,
+  elementTraitUnlockScore,
+  elementTraitUpgradeCost
+} from "./core/growth";
+import { idiomById, type IdiomDefinition } from "./core/idioms";
+import {
+  enemyJaryeongVisualFor,
+  jaryeongAssetPath,
+  jaryeongFrameLayout,
+  jaryeongVisualFor,
+  type JaryeongVisual
+} from "./core/jaryeongs";
+import {
+  CHEONJAMUN_JARYEONG_DEX_BY_ID,
+  CHEONJAMUN_JARYEONG_DEX_ENTRIES,
+  CHEONJAMUN_JARYEONG_DEX_META,
+  type CheonjamunJaryeongDexEntry
+} from "./core/cheonjamun-jaryeong-dex";
 import { LEARNING_DATA_META, learningInfo } from "./core/learning";
 import { radicalGlyph, radicalLearningLabel } from "./core/radicals";
 import {
@@ -40,8 +61,11 @@ import {
   elementUpgradeCost,
   globalUpgradeCost,
   multiSummonCost,
+  maxSummonStageForWave,
   researchCost,
+  researchUnlockWave,
   sellValue,
+  summonStageUnlockWave,
   summonCost
 } from "./core/hanzi";
 import { createRunSeed } from "./core/rng";
@@ -65,6 +89,7 @@ import type {
   Wuxing
 } from "./core/types";
 import { SoundManager } from "./ui/audio";
+import { elementProjectileImage, elementZoneImage, preloadCombatFxSprites } from "./ui/combat-fx-sprites";
 import { loadDisplayMode, saveDisplayMode, type DisplayMode } from "./ui/display-mode";
 import { jaryeongSpriteImage } from "./ui/jaryeong-sprites";
 import { loadAutoPlaceSummons, saveAutoPlaceSummons } from "./ui/summon-placement";
@@ -74,7 +99,16 @@ import {
   recordJaryeongAcquisition,
   saveJaryeongInventory
 } from "./ui/jaryeong-inventory";
-import { buildSynthesisDepths, synthesisDepthLabel } from "./ui/codex-synthesis";
+import {
+  UNCOMBINABLE_STAGE_ONE,
+  UNCOMBINABLE_STAGE_ONE_COLOR,
+  buildSynthesisDepths,
+  buildUncombinableStageOneChars,
+  synthesisTierAccessibleLabel,
+  synthesisTierFilterLabel,
+  synthesisTierKey,
+  type SynthesisTierFilter
+} from "./ui/codex-synthesis";
 
 const app = document.querySelector<HTMLDivElement>("#app");
 if (!app) throw new Error("#app element is missing.");
@@ -88,12 +122,13 @@ app.innerHTML = `
       <button id="map-zoom-reset" class="map-zoom-control" type="button" title="지도 확대/축소 초기화">
         <span>지도</span><strong id="map-zoom-value">100%</strong><small>휠 확대·축소</small>
       </button>
-      <button id="hanja-emphasis-toggle" class="hanja-emphasis-control is-on" type="button" aria-pressed="true" title="전장 한자 표찰 강조 전환">
+      <button id="hanja-emphasis-toggle" class="hanja-emphasis-control is-on" type="button" aria-pressed="true" title="전장 한자 표찰 강조 전환 (Space)">
         <span>한자 강조</span><strong>ON</strong>
       </button>
       <div class="stage-topbar" aria-live="polite">
-        <div class="stage-chip"><span>웨이브</span><strong id="stage-wave">0 / 20</strong></div>
+        <div class="stage-chip"><span>웨이브</span><strong id="stage-wave">0 / ${GAME_CONFIG.maxWaves}</strong></div>
         <div class="stage-chip stage-chip--region"><span>지역</span><strong id="stage-region">한국</strong></div>
+        <div class="stage-chip stage-chip--chapter"><span>봉인장</span><strong id="stage-chapter">1 / 10</strong></div>
         <div class="stage-chip stage-chip--phase"><i id="phase-dot"></i><strong id="stage-phase">준비 전</strong></div>
         <div id="enemy-limit-chip" class="stage-chip"><span>적 한계</span><strong id="stage-enemies">0 / ${MAX_ENEMIES}</strong></div>
       </div>
@@ -119,9 +154,9 @@ app.innerHTML = `
       </header>
 
       <section class="resource-grid" aria-label="현재 자원">
-        <div><span>엽전 <em id="interest-preview">이자 +6</em></span><strong id="gold-value">64</strong></div>
+        <div><span>엽전 <em id="interest-preview">이자 +2</em></span><strong id="gold-value">${GAME_CONFIG.startingGold}</strong></div>
         <div><span>적 한계</span><strong id="enemy-cap-value">${MAX_ENEMIES}체</strong></div>
-        <div><span>진법</span><strong id="tower-count-value">0 / 80</strong></div>
+        <div><span>진법</span><strong id="tower-count-value">0 / 16</strong></div>
         <div><span>완성</span><strong id="goal-count-value">0</strong></div>
       </section>
 
@@ -131,48 +166,84 @@ app.innerHTML = `
         <button id="early-button" class="small-button" type="button" data-testid="early-wave">즉시 시작</button>
       </section>
 
-      <section class="goal-card" aria-label="목표 한자">
-        <div class="goal-glyph" id="goal-glyph">相</div>
-        <div class="goal-copy">
-          <div class="section-heading"><span>현재 봉인 목표</span><b id="goal-stage">2단계</b></div>
-          <strong id="goal-recipe">木 + 目 → 相</strong>
-          <span id="goal-reading" class="goal-reading">훈음 · 서로 상</span>
-          <div id="goal-materials" class="goal-materials"></div>
-          <div class="goal-progress"><i id="goal-progress-fill"></i></div>
-        </div>
-      </section>
-
-      <section class="action-row" aria-label="핵심 행동">
-        <div class="summon-action-group">
-          <div id="summon-intent-tabs" class="summon-intent-tabs" role="group" aria-label="소환 목적">
-            <button type="button" data-summon-intent="balanced" class="is-active" title="기본 확률">균형</button>
-            <button type="button" data-summon-intent="discovery" title="처음 보는 한자 가중">탐색</button>
-            <button type="button" data-summon-intent="lineage" title="목표 합성과 성어 재료 가중">계보</button>
-            <button type="button" data-summon-intent="concentration" title="보유 자령 중복 가중">농축</button>
-          </div>
-          <button id="summon-button" class="action-button action-button--summon" type="button" data-testid="summon-button">
-            <span class="hotkey">1</span><b>자령 소환</b><small><em id="summon-cost">9</em> 엽전</small>
-          </button>
-          <button id="multi-summon-button" class="action-button action-button--multi-summon" type="button" data-testid="multi-summon-button">
-            <span class="hotkey">Q</span><b>10연 소환</b><small><em id="multi-summon-cost">60</em> 엽전</small>
-          </button>
-        </div>
-        <button id="evolve-button" class="action-button action-button--evolve" type="button" data-testid="evolve-button">
-          <span class="hotkey">2</span><b>합성</b><small><em id="evolve-ready-count">0</em>개 조합 확인</small>
-        </button>
-        <button id="research-button" class="action-button action-button--research" type="button" data-testid="research-button">
-          <span class="hotkey">3</span><b>인연 연구</b><small><em id="research-cost">32</em> 엽전 · <i id="research-level">0</i>/5</small>
-        </button>
-        <button id="auto-arrange-button" class="action-button action-button--auto-arrange" type="button" data-testid="auto-arrange-button" title="발동 가능한 사자성어를 봉인하고 오행진 공명을 최적화합니다">
-          <b>자동배치</b><small>성어·오행 최적화</small>
-        </button>
-        <button id="element-upgrade-button" class="action-button action-button--element-upgrade" type="button" data-testid="element-upgrade-button">
-          <b>능력 강화</b><small id="element-upgrade-total">총 0단계</small>
-        </button>
-      </section>
-
       <div class="context-deck">
-        <section id="selected-card" class="selected-card panel-view is-active" data-panel-view="unit" aria-live="polite">
+        <section id="goal-panel" class="goal-workbench panel-view" data-panel-view="goal" aria-label="목표 선택 서책">
+          <header class="goal-workbench-heading">
+            <div><span>OWNED-AWARE TARGETING</span><strong>목표 서책</strong></div>
+            <div class="goal-mode-tabs" role="tablist" aria-label="목표 종류">
+              <button type="button" class="is-active" data-goal-mode="hanzi" role="tab" aria-selected="true">한자 목표</button>
+              <button type="button" data-goal-mode="idiom" role="tab" aria-selected="false">성어 목표</button>
+            </div>
+          </header>
+
+          <section class="goal-card" aria-label="현재 목표 한자">
+            <div class="goal-glyph" id="goal-glyph">相</div>
+            <div class="goal-copy">
+              <div class="section-heading"><span>현재 한자 목표</span><b id="goal-stage">2단계</b></div>
+              <strong id="goal-recipe">木 + 目 → 相</strong>
+              <span id="goal-reading" class="goal-reading">훈음 · 서로 상</span>
+              <div id="goal-materials" class="goal-materials"></div>
+              <div class="goal-progress"><i id="goal-progress-fill"></i></div>
+            </div>
+          </section>
+
+          <section id="idiom-target-card" class="idiom-target-card" aria-label="현재 성어 목표"></section>
+
+          <div class="goal-selector-tools">
+            <label><span>目</span><input id="goal-search" type="search" placeholder="원하는 한자·훈음·성어를 검색" autocomplete="off" /></label>
+            <div id="goal-owned-summary" class="goal-owned-summary"></div>
+          </div>
+          <div id="goal-selector-list" class="goal-selector-list" aria-live="polite"></div>
+        </section>
+
+        <section id="shop-panel" class="shop-workbench panel-view is-active" data-panel-view="shop" aria-label="자령 상점과 운영 행동">
+          <header class="shop-workbench-heading">
+            <div><span>SUMMON &amp; OPERATIONS</span><strong>봉인 상점</strong></div>
+            <p id="summon-pool-summary"><b>천자문 1,000종</b><span>단계별 희귀도 적용</span></p>
+          </header>
+          <section id="opening-guide" class="opening-guide" aria-label="초반 진행 안내">
+            <div data-opening-step="1"><b>① 자령 소환</b><span>첫 자령이 시작 오행을 정합니다.</span></div>
+            <i>→</i>
+            <div data-opening-step="2"><b>② 첫 진 자동 개방</b><span>추가 소환 2기를 권장합니다.</span></div>
+            <i>→</i>
+            <div data-opening-step="3"><b>③ 웨이브 시작</b><span>첫 소환 뒤 준비 15초가 흐릅니다.</span></div>
+          </section>
+          <section class="formation-unlock-bar" aria-label="오행진 엽전 해금">
+            <div><b>오행진 해금</b><small id="formation-unlock-summary">첫 소환 오행진 무료 개방</small></div>
+            <div id="formation-unlock-list" class="formation-unlock-list"></div>
+          </section>
+          <section class="action-row" aria-label="핵심 행동">
+            <div class="summon-action-group">
+              <div id="summon-intent-tabs" class="summon-intent-tabs" role="group" aria-label="소환 목적">
+                <button type="button" data-summon-intent="balanced" class="is-active" title="기본 확률">균형</button>
+                <button type="button" data-summon-intent="discovery" title="처음 보는 한자 가중">탐색</button>
+                <button type="button" data-summon-intent="lineage" title="목표 합성과 성어 재료 가중">계보</button>
+                <button type="button" data-summon-intent="concentration" title="보유 자령 중복 가중">중복 수집</button>
+              </div>
+              <button id="summon-button" class="action-button action-button--summon" type="button" data-testid="summon-button">
+                <span class="hotkey">1</span><b>자령 소환</b><small><em id="summon-cost">9</em> 엽전</small>
+              </button>
+              <button id="multi-summon-button" class="action-button action-button--multi-summon" type="button" data-testid="multi-summon-button">
+                <span class="hotkey">Q</span><b>10연 소환</b><small><em id="multi-summon-cost">10W 개방</em></small>
+              </button>
+            </div>
+            <button id="evolve-button" class="action-button action-button--evolve" type="button" data-testid="evolve-button">
+              <span class="hotkey">2</span><b>합성</b><small><em id="evolve-ready-count">0</em>개 조합 확인</small>
+            </button>
+            <button id="research-button" class="action-button action-button--research" type="button" data-testid="research-button">
+              <span class="hotkey">3</span><b>인연 연구</b><small><em id="research-cost">10W 개방</em> · <i id="research-level">0</i>/5</small>
+            </button>
+            <button id="auto-arrange-button" class="action-button action-button--auto-arrange" type="button" data-testid="auto-arrange-button" title="발동 가능한 사자성어를 봉인하고 오행진 공명을 최적화합니다">
+              <b>자동배치</b><small>성어·오행 최적화</small>
+            </button>
+            <button id="element-upgrade-button" class="action-button action-button--element-upgrade" type="button" data-testid="element-upgrade-button">
+              <b>강화 탭</b><small id="element-upgrade-total">총 0단계</small>
+            </button>
+          </section>
+          <div class="shop-help-strip"><b>소환 목적</b><span><i>균형</i> 전체</span><span><i>탐색</i> 새 한자</span><span><i>계보</i> 목표·성어 재료</span><span><i>중복 수집</i> 보유 중복</span></div>
+        </section>
+
+        <section id="selected-card" class="selected-card panel-view" data-panel-view="unit" aria-live="polite">
           <div class="empty-selection"><b>전장의 자령을 선택하세요</b><span>한자의 훈음·부수와 현재 능력 효과를 크게 확인할 수 있습니다.</span></div>
         </section>
 
@@ -228,6 +299,42 @@ app.innerHTML = `
             <div class="empty-run-inventory"><b>대기 중인 자령이 없습니다</b><span>설정에서 자동 배치를 끄거나 전장 자령을 보관하세요.</span></div>
           </div>
         </section>
+
+        <section id="concentration-panel" class="concentration-workbench panel-view" data-panel-view="concentration" aria-label="자령 농축 공방">
+          <header class="workbench-heading">
+            <div><span>DUPLICATE OR ESSENCE · EXPLICIT PAYMENT</span><strong>농축 공방</strong></div>
+            <p>대상·분기·재료를 직접 고른 뒤 수치 변화를 확인합니다.</p>
+          </header>
+          <div class="concentration-layout">
+            <aside><div class="subheading"><b>농축 대상</b><small id="concentration-target-summary">0기</small></div><div id="concentration-target-list" class="concentration-target-list"></div></aside>
+            <div id="concentration-detail" class="concentration-detail"></div>
+          </div>
+        </section>
+
+        <section id="growth-panel" class="growth-workbench panel-view" data-panel-view="growth" aria-label="분해 문기와 오행 강화">
+          <header class="workbench-heading">
+            <div><span>DISMANTLE → ESSENCE → ELEMENT GROWTH</span><strong>강화 제련소</strong></div>
+            <p id="growth-resource-summary">문기 木0 火0 土0 金0 水0</p>
+          </header>
+          <div class="growth-layout">
+            <section class="dismantle-workbench">
+              <div class="subheading"><b>분해·문기</b><small>인벤토리만 · 보호 규칙 적용</small></div>
+              <div class="growth-filters">
+                <select id="dismantle-element-filter" aria-label="분해 오행 필터"><option value="all">모든 오행</option><option>木</option><option>火</option><option>土</option><option>金</option><option>水</option></select>
+                <select id="dismantle-stage-filter" aria-label="분해 단계 필터"><option value="all">모든 단계</option><option value="1">1성</option><option value="2">2성</option><option value="3">3성</option><option value="4">4성</option><option value="5">5성</option></select>
+                <select id="dismantle-status-filter" aria-label="분해 보호 필터"><option value="all">전체 상태</option><option value="eligible">분해 가능</option><option value="protected">보호됨</option></select>
+              </div>
+              <div class="dismantle-toolbar"><button id="dismantle-recommend-button" type="button">추천 후보 선택</button><button id="dismantle-clear-button" type="button">선택 해제</button></div>
+              <div id="growth-dismantle-list" class="growth-dismantle-list"></div>
+              <footer class="dismantle-quote"><span id="dismantle-selection-summary">0기 선택</span><strong id="dismantle-gain-summary">예상 문기 없음</strong><button id="dismantle-confirm-button" type="button" disabled>선택 분해</button></footer>
+            </section>
+            <section class="element-growth-workbench">
+              <div class="subheading"><b>오행 강화</b><small>모든 투자는 이번 런에만 적용</small></div>
+              <div id="growth-element-tabs" class="growth-element-tabs"></div>
+              <div id="growth-upgrade-list" class="growth-upgrade-list"></div>
+            </section>
+          </div>
+        </section>
       </div>
 
       <section id="composition-drawer" class="composition-drawer" aria-label="선택 자령 파생 합성" aria-hidden="true">
@@ -242,9 +349,13 @@ app.innerHTML = `
       </section>
 
       <nav class="panel-tabs" role="tablist" aria-label="상세 정보">
-        <button type="button" class="is-active" data-panel-tab="unit" role="tab" aria-selected="true">자령</button>
+        <button id="shop-tab" type="button" class="is-active" data-panel-tab="shop" role="tab" aria-selected="true">상점 <small id="shop-pool-count">0</small></button>
+        <button type="button" data-panel-tab="unit" role="tab" aria-selected="false">자령</button>
         <button id="run-inventory-tab" type="button" data-panel-tab="inventory" role="tab" aria-selected="false">인벤 <small id="run-inventory-count">0</small></button>
         <button type="button" data-panel-tab="evolution" role="tab" aria-selected="false">합성</button>
+        <button id="concentration-tab" type="button" data-panel-tab="concentration" role="tab" aria-selected="false">농축</button>
+        <button id="growth-tab" type="button" data-panel-tab="growth" role="tab" aria-selected="false">강화</button>
+        <button id="goal-tab" type="button" data-panel-tab="goal" role="tab" aria-selected="false">목표 <small id="goal-tab-progress">0%</small></button>
         <button id="idiom-tab" type="button" data-panel-tab="idiom" role="tab" aria-selected="false">성어 <small id="idiom-tab-count">0/5</small></button>
         <button id="codex-button" type="button" aria-label="한자 도감과 보유 자령 열기"><b>도감</b><small><em id="discover-count">0</em></small></button>
         <button type="button" data-panel-tab="record" role="tab" aria-selected="false">기록</button>
@@ -263,7 +374,7 @@ app.innerHTML = `
         <p class="eyebrow">REGIONAL HANZI COMPOSITION DEFENSE</p>
         <div class="title-seal" aria-hidden="true"><i>木</i><i>林</i><i>森</i></div>
         <h2 id="title-heading">한자 운명진</h2>
-        <p class="title-lead">운으로 글자를 부르고, 실제 구성 원리로 합성하라.<br />스무 번의 망령 행렬을 막아 봉인을 완성하세요.</p>
+        <p class="title-lead">운으로 글자를 부르고, 실제 구성 원리로 합성하라.<br />열 개의 장과 백 번의 망령 행렬을 넘어 대봉인을 완성하세요.</p>
         <div class="region-picker" role="radiogroup" aria-label="지역 한자 체계">
           <button type="button" class="region-option is-selected" data-region="KR" role="radio" aria-checked="true"><b>韓</b><span>한국</span><small>천자문 1000</small></button>
           <button type="button" class="region-option" data-region="JP" role="radio" aria-checked="false"><b>日</b><span>일본</span><small>상용한자 2136</small></button>
@@ -272,7 +383,7 @@ app.innerHTML = `
         <label class="seed-field">런 시드<input id="seed-input" maxlength="24" spellcheck="false" /></label>
         <button id="start-button" class="start-button" type="button" data-testid="start-run">봉인전 시작</button>
         <div class="title-link-row"><button id="title-settings-button" class="title-help-button" type="button">화면 모드 설정</button><button id="title-help-button" class="title-help-button" type="button">게임 방법 보기</button></div>
-        <p class="title-note">지역별 조합식 6,637자를 포함한 독립 로컬 프로토타입</p>
+        <p class="title-note">100웨이브 · 10장 보스전 · 천자문 자령 1,000종</p>
       </div>
     </section>
 
@@ -294,26 +405,27 @@ app.innerHTML = `
         <div class="dialog-heading"><div><p class="eyebrow">HOW TO PLAY</p><h2>봉인술 입문</h2></div><button aria-label="도움말 닫기">×</button></div>
         <ol>
           <li><b>소환</b><span>지역별 1단계 한자를 품은 자령이 무작위로 나옵니다. 목표의 부족한 재료는 소프트 천장으로 조금씩 유리해집니다.</span></li>
-          <li><b>목적 소환</b><span>균형·탐색·계보·농축 중 원하는 목적을 고릅니다. 10연 마지막 결과는 가능한 경우 선택 목적에 맞는 한자를 보장합니다.</span></li>
-          <li><b>10연 소환</b><span>Q키 또는 10연 버튼으로 현재 소환 비용 10회를 한 번에 지불합니다. 결과판에서 새 발견·합성·농축·교체 후보를 즉시 분류합니다.</span></li>
+          <li><b>목적 소환</b><span>균형·탐색·계보·중복 수집 중 원하는 목적을 고릅니다. 중복 수집은 농축과 분해에 쓸 보유 한자를 다시 부릅니다.</span></li>
+          <li><b>10연 소환</b><span>10웨이브를 지키면 개방됩니다. Q키 또는 10연 버튼으로 현재 소환 비용 10회를 한 번에 지불합니다.</span></li>
           <li><b>합성</b><span>실제 구성식의 재료를 모두 보유하면 조합 서책에 카드가 열립니다. 木+木처럼 같은 글자 두 개도 각각 필요합니다.</span></li>
           <li><b>방식</b><span>반자동은 가능한 조합만 제안합니다. 목표 자동은 목표 경로의 조합만 자동 실행하며, 수동은 선택한 한자가 포함된 조합만 봅니다.</span></li>
           <li><b>사자성어</b><span>이웃한 네 칸에 글자를 올바른 순서로 배치하면 자동 봉인됩니다. 직접 선을 그을 필요가 없으며, 보너스는 그 런 동안 계속 유지됩니다.</span></li>
-          <li><b>자동배치</b><span>전장 자령만 재배치해 지금 완성할 수 있는 사자성어를 먼저 봉인한 뒤, 남은 배치를 다섯 오행진 공명 단계가 가장 높아지도록 정리합니다. 런 인벤토리 자령은 꺼내지 않습니다.</span></li>
-          <li><b>은행 이자</b><span>웨이브가 끝나거나 잔존 적을 둔 채 다음 웨이브가 합류할 때, 현재 보유 엽전 10개당 1엽전을 한 번 지급합니다. 기본 웨이브 보상을 받은 뒤 이자를 계산합니다.</span></li>
+          <li><b>첫 오행진</b><span>열린 진 없이 상점에서 시작합니다. 첫 소환 자령과 같은 오행진이 무료로 열리고, 나머지는 원하는 순서로 18·32·52·78엽전에 개방합니다.</span></li>
+          <li><b>자동배치</b><span>런 인벤토리 자령을 현재 개방된 오행진에 투입하고, 완성 가능한 사자성어와 오행 공명을 함께 정리합니다.</span></li>
+          <li><b>은행 이자</b><span>웨이브 종료 시 보유 엽전 20개당 1엽전을 지급하며, 한 번에 최대 20엽전까지만 받을 수 있습니다.</span></li>
           <li><b>훈·독</b><span>기본 자령 모드는 머리 위 한자·훈음을 표시합니다. 설정의 공부 모드는 전장에 큰 한자와 짧은 읽기를 표시하며, 선택 카드와 도감에서는 자세한 훈음·음독·훈독·병음과 뜻을 확인합니다.</span></li>
           <li><b>전투</b><span>웨이브 약점 오행은 피해가 30% 증가합니다. 水→木→火→土→金→水 상생을 함께 배치하면 추가 피해를 줍니다.</span></li>
-          <li><b>능력 강화</b><span>엽전으로 모든 자령의 공격력·공격 속도·사거리·능력 위력·효과 지속을, 분해 문기로 해당 오행의 같은 다섯 능력치를 각각 99단계까지 강화합니다.</span></li>
+          <li><b>강화 탭</b><span>인벤토리 자령을 보호 규칙 아래 일괄 분해하고, 공용·오행 5능력치×99단계와 오행별 고유 특성 3종×10단계를 한 화면에서 투자합니다.</span></li>
           <li><b>능력 조합</b><span>모든 한자는 오행 효과·전투 역할·조합망 패시브를 가집니다. 합성 한자는 재료의 오행도 계승해 주기 추가타를 얻습니다.</span></li>
           <li><b>잠금</b><span>선택한 자령을 잠그면 공격·이동은 유지되지만 합성 재료와 판매 대상에서는 제외됩니다.</span></li>
           <li><b>보유 자령</b><span>소환·합성으로 획득한 자령은 지역별 횟수와 함께 브라우저에 자동 저장됩니다. 도감의 보유 자령 탭에서 확인합니다.</span></li>
           <li><b>런 인벤토리</b><span>동일한 한자는 한 스택으로 묶입니다. 인벤토리 자령을 고른 뒤 빈 칸을 누르면 배치하고, 찬 칸을 누르면 기존 자령을 인벤토리로 보내며 즉시 교체합니다.</span></li>
-          <li><b>정리와 농축</b><span>판매는 엽전을, 분해는 해당 오행 문기를 줍니다. 동일 한자 중복 또는 오행 문기로 최대 濃 3까지 연속·심화 농축할 수 있습니다. 자동 정리는 잠금·유일 보유·성어·합성·오행진 임계치를 보호합니다.</span></li>
+          <li><b>농축 공방</b><span>같은 한자 중복 1기 또는 같은 오행 문기 4·6·8을 직접 고릅니다. 최초 연속·심화 분기는 영구 고정되며 실행 전 전후 전투 수치를 비교합니다.</span></li>
           <li><b>지도 배율</b><span>기존 260% 크기를 새 100% 기준으로 사용합니다. 휠로 약 28%~200% 확대·축소하고, 빈 칸·길에서 좌클릭 드래그하거나 휠 버튼을 누른 채 드래그하면 지도를 이동합니다. 왼쪽 아래 배율 버튼은 중앙 정렬된 100%로 돌아갑니다.</span></li>
           <li><b>게임 배속</b><span>오른쪽 위 배속 버튼이나 F키로 1×·2×·3×를 순환합니다.</span></li>
           <li><b>게임오버</b><span>적은 경로 끝에서 사라지지 않고 계속 순환합니다. 전장에 ${MAX_ENEMIES}체가 쌓이거나 보스를 제한시간 안에 처치하지 못하면 즉시 실패합니다. 제어 능력은 적을 뒤로 밀지 않고 현재 공격권 안에서 감속·봉쇄합니다.</span></li>
         </ol>
-        <div class="key-guide"><span><kbd>1</kbd> 소환</span><span><kbd>Q</kbd> 10연</span><span><kbd>2</kbd> 첫 합성</span><span><kbd>3</kbd> 연구</span><span><kbd>Space</kbd> 출전</span><span><kbd>F</kbd> 배속</span><span><kbd>C</kbd> 도감</span><span><kbd>M</kbd> 음소거</span></div>
+        <div class="key-guide"><span><kbd>1</kbd> 소환</span><span><kbd>Q</kbd> 10연</span><span><kbd>2</kbd> 첫 합성</span><span><kbd>3</kbd> 연구</span><span><kbd>Space</kbd> 한자 강조</span><span><kbd>F</kbd> 배속</span><span><kbd>C</kbd> 도감</span><span><kbd>M</kbd> 음소거</span></div>
         <p>장갑·질풍·군집·회생 적의 특성을 미리 확인하세요. 놓친 적도 사라지지 않고 다음 바퀴를 돌기 때문에 누적 수를 계속 관리해야 합니다.</p>
       </form>
     </dialog>
@@ -354,21 +466,30 @@ app.innerHTML = `
       <p class="element-upgrade-note">공격 속도 보너스는 기본 공격 주기를 나누는 방식으로 적용해 고단계에서도 폭주하지 않습니다. 사거리를 제외한 수치는 누적 보너스입니다.</p>
     </dialog>
 
+    <dialog id="ability-guide-dialog" class="ability-guide-dialog" aria-labelledby="ability-guide-title">
+      <div class="dialog-heading">
+        <div><p class="eyebrow">AUTOMATIC ABILITY GUIDE</p><h2 id="ability-guide-title">자령 기술 안내</h2></div>
+        <button id="ability-guide-close" type="button" aria-label="기술 안내 닫기">×</button>
+      </div>
+      <div id="ability-guide-content" class="ability-guide-content"></div>
+    </dialog>
+
     <dialog id="codex-dialog" class="codex-dialog">
       <div class="dialog-heading codex-heading">
-        <div><p class="eyebrow">REGIONAL CHARACTER CODEX</p><h2><span id="codex-region">한국</span> 한자 도감</h2></div>
+        <div><p id="codex-kicker" class="eyebrow">REGIONAL CHARACTER CODEX</p><h2><span id="codex-region">한국</span><span id="codex-title-label"> 한자 도감</span></h2></div>
         <button id="codex-close" type="button" aria-label="도감 닫기">×</button>
       </div>
       <div class="codex-toolbar">
         <div class="codex-mode-tabs" role="tablist" aria-label="도감 분류">
           <button type="button" class="is-active" data-codex-mode="hanzi" role="tab" aria-selected="true">전체 한자</button>
+          <button type="button" data-codex-mode="jaryeongs" role="tab" aria-selected="false">천자문 자령 <small>${CHEONJAMUN_JARYEONG_DEX_META.total}</small></button>
           <button type="button" data-codex-mode="inventory" role="tab" aria-selected="false">보유 자령 <small id="inventory-count">0</small></button>
           <button type="button" data-codex-mode="recipes" role="tab" aria-selected="false">조합표</button>
           <button type="button" data-codex-mode="idioms" role="tab" aria-selected="false">사자성어</button>
         </div>
         <div id="codex-synthesis-filters" class="codex-synthesis-filters" role="group" aria-label="합성 단계 분류"></div>
         <div class="codex-search-row">
-          <input id="codex-search" type="search" maxlength="12" placeholder="한자·훈음·능력 검색" />
+          <input id="codex-search" type="search" maxlength="40" placeholder="한자·훈음·능력 검색" />
           <span id="codex-summary"></span>
         </div>
       </div>
@@ -376,7 +497,7 @@ app.innerHTML = `
         <div id="codex-list" class="codex-list"></div>
         <aside id="codex-detail" class="codex-detail"></aside>
       </div>
-      <p class="codex-note">지역 독음은 Unicode Unihan ${LEARNING_DATA_META.version}, 한국어 훈음은 libhangul 사전 기반입니다. 한국어 훈이 없는 글자는 뜻(영)을 구분해 표시하며, 검토 표시는 후속 교정 대상입니다.</p>
+      <p id="codex-note" class="codex-note">지역 독음은 Unicode Unihan ${LEARNING_DATA_META.version}, 한국어 훈음은 libhangul 사전 기반입니다. 한국어 훈이 없는 글자는 뜻(영)으로 구분해 표시합니다.</p>
     </dialog>
   </main>
 `;
@@ -404,6 +525,7 @@ const idiomTab = must<HTMLButtonElement>("#idiom-tab");
 const helpDialog = must<HTMLDialogElement>("#help-dialog");
 const settingsDialog = must<HTMLDialogElement>("#settings-dialog");
 const elementUpgradeDialog = must<HTMLDialogElement>("#element-upgrade-dialog");
+const abilityGuideDialog = must<HTMLDialogElement>("#ability-guide-dialog");
 const codexDialog = must<HTMLDialogElement>("#codex-dialog");
 const summonReveal = must<HTMLElement>("#summon-reveal");
 const sound = new SoundManager();
@@ -412,6 +534,8 @@ seedInput.value = initialSeed;
 let selectedRegion: RegionCode = "KR";
 let displayMode: DisplayMode = initialDisplayMode;
 let engine = new GameEngine(initialSeed, selectedRegion);
+let mapSynthesisDepths = buildSynthesisDepths(engine.catalog.definitions.values());
+let mapUncombinableStageOne = buildUncombinableStageOneChars(engine.catalog.definitions.values());
 engine.state.autoPlaceSummons = initialAutoPlaceSummons;
 let jaryeongInventory = loadJaryeongInventory();
 let inventoryRevision = 0;
@@ -434,14 +558,33 @@ let selectedRenderKey = "";
 let runInventoryRenderKey = "";
 let idiomRenderKey = "";
 let elementUpgradeRenderKey = "";
+let formationRenderKey = "";
+let concentrationRenderKey = "";
+let growthRenderKey = "";
 let comboTimer = 0;
 let comboCount = 0;
 let lastKillAt = 0;
 const feedCooldowns = new Map<string, number>();
-type PanelTab = "unit" | "inventory" | "evolution" | "idiom" | "record";
-type CodexMode = "hanzi" | "inventory" | "recipes" | "idioms";
+const lastAbilityFxByTower = new Map<number, number>();
+let lastGlobalAbilityFxAt = -10;
+type PanelTab = "shop" | "unit" | "inventory" | "evolution" | "concentration" | "growth" | "goal" | "idiom" | "record";
+type GoalPanelMode = "hanzi" | "idiom";
+type CodexMode = "hanzi" | "jaryeongs" | "inventory" | "recipes" | "idioms";
+type JaryeongDexFilter = "all" | Wuxing;
 let codexMode: CodexMode = "hanzi";
-let codexSynthesisDepth: number | "all" = "all";
+let codexSynthesisDepth: SynthesisTierFilter = "all";
+let jaryeongDexFilter: JaryeongDexFilter = "all";
+let selectedJaryeongDexId = CHEONJAMUN_JARYEONG_DEX_ENTRIES[0]?.id ?? "";
+let goalPanelMode: GoalPanelMode = "hanzi";
+let goalSearchQuery = "";
+let activePanelTab: PanelTab = "shop";
+let concentrationTargetId: number | null = null;
+let concentrationPath: ConcentrationPath = "swift";
+let concentrationPayment: "essence" | number = "essence";
+let growthElement: Wuxing = "木";
+const dismantleSelection = new Set<number>();
+let projectileSpriteDrawTotal = 0;
+let abilityZoneSpriteDrawTotal = 0;
 
 interface ProjectileFx {
   from: Point;
@@ -450,6 +593,7 @@ interface ProjectileFx {
   age: number;
   duration: number;
   critical: boolean;
+  wuxing: Wuxing;
 }
 
 interface FloatFx {
@@ -489,7 +633,60 @@ const projectiles: ProjectileFx[] = [];
 const floaters: FloatFx[] = [];
 const rings: RingFx[] = [];
 const abilityBursts: AbilityBurstFx[] = [];
+const projectilePool: ProjectileFx[] = [];
+const floaterPool: FloatFx[] = [];
+const ringPool: RingFx[] = [];
+const abilityBurstPool: AbilityBurstFx[] = [];
 const towerAbilityPopups = new Map<number, TowerAbilityPopup>();
+
+function pushPooled<T>(active: T[], pool: T[], item: T, limit: number): void {
+  if (active.length >= limit) {
+    const recycled = active.shift();
+    if (recycled && pool.length < limit) pool.push(recycled);
+  }
+  active.push(item);
+}
+
+function takeProjectile(event: Extract<GameEvent, { type: "shot" }>): ProjectileFx {
+  const item = projectilePool.pop() ?? { from: event.from, to: event.to, color: event.color, age: 0, duration: 0.1, critical: false, wuxing: event.wuxing };
+  item.from = event.from;
+  item.to = event.to;
+  item.color = event.color;
+  item.age = 0;
+  // Combat simulation may run at 2x/3x, but projectile readability is a
+  // presentation concern. `frame()` advances these FX with real time, and a
+  // slightly longer flight keeps the raster silhouette visible without
+  // turning the battlefield into a persistent particle layer.
+  item.duration = event.critical ? 0.36 : 0.28;
+  item.critical = event.critical;
+  item.wuxing = event.wuxing;
+  return item;
+}
+
+function takeFloater(at: Point, text: string, color: string, duration: number, large: boolean): FloatFx {
+  const item = floaterPool.pop() ?? { at, text, color, age: 0, duration, large };
+  Object.assign(item, { at, text, color, age: 0, duration, large });
+  return item;
+}
+
+function takeRing(at: Point, color: string, duration: number): RingFx {
+  const item = ringPool.pop() ?? { at, color, age: 0, duration };
+  Object.assign(item, { at, color, age: 0, duration });
+  return item;
+}
+
+function takeAbilityBurst(event: Extract<GameEvent, { type: "ability" }>): AbilityBurstFx {
+  const item = abilityBurstPool.pop() ?? { at: event.at, source: event.source, glyph: event.glyph, color: event.color, kind: event.kind, age: 0, duration: 0.42 };
+  Object.assign(item, { at: event.at, source: event.source, glyph: event.glyph, color: event.color, kind: event.kind, age: 0, duration: 0.42 });
+  return item;
+}
+
+function recycleAll<T>(active: T[], pool: T[], limit: number): void {
+  while (active.length > 0) {
+    const item = active.pop();
+    if (item && pool.length < limit) pool.push(item);
+  }
+}
 const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 let towerDragPointerId: number | null = null;
 let towerDragTowerId: number | null = null;
@@ -505,6 +702,9 @@ let hoveredTowerId: number | null = null;
 let hanjaEmphasis = true;
 const MIN_MAP_ZOOM = 0.72;
 const BASE_MAP_ZOOM = 2.6;
+// v0.28 rendered the legacy horizontal label at map zoom 1.15. Preserve
+// that on-screen size at the current 100% camera while retaining zoom scaling.
+const LEGACY_BASE_MAP_ZOOM = 1.15;
 const DEFAULT_MAP_ZOOM = BASE_MAP_ZOOM;
 const MAX_MAP_ZOOM = BASE_MAP_ZOOM * 2;
 const DEFAULT_MAP_FOCUS: Point = { x: WORLD_WIDTH / 2, y: WORLD_HEIGHT / 2 };
@@ -531,9 +731,11 @@ const INK_ELEMENT_COLORS: Record<Wuxing, string> = {
   "金": "#766126",
   "水": "#285d73"
 };
+preloadCombatFxSprites();
 
 function setPanelTab(tab: PanelTab): void {
   if (tab !== "unit") closeCompositionDrawer();
+  activePanelTab = tab;
   document.querySelectorAll<HTMLElement>("[data-panel-view]").forEach((view) => {
     view.classList.toggle("is-active", view.dataset.panelView === tab);
   });
@@ -542,6 +744,15 @@ function setPanelTab(tab: PanelTab): void {
     button.classList.toggle("is-active", selected);
     button.setAttribute("aria-selected", String(selected));
   });
+  if (tab === "concentration") {
+    const selected = engine.selectedTower();
+    if (selected) concentrationTargetId = selected.id;
+    concentrationRenderKey = "";
+    renderConcentration();
+  } else if (tab === "growth") {
+    growthRenderKey = "";
+    renderGrowth();
+  }
 }
 
 function syncDisplayModeControls(): void {
@@ -595,17 +806,25 @@ function startRun(useNewSeed = false): void {
   const seed = useNewSeed ? createRunSeed() : seedInput.value.trim() || createRunSeed();
   seedInput.value = seed;
   engine = new GameEngine(seed, selectedRegion);
+  mapSynthesisDepths = buildSynthesisDepths(engine.catalog.definitions.values());
+  mapUncombinableStageOne = buildUncombinableStageOneChars(engine.catalog.definitions.values());
   engine.state.autoPlaceSummons = loadAutoPlaceSummons();
   engine.begin();
   previousPhase = "prep";
   titleOverlay.classList.remove("modal-layer--visible");
   endOverlay.classList.remove("modal-layer--visible");
   sound.unlock();
-  projectiles.length = 0;
-  floaters.length = 0;
-  rings.length = 0;
-  abilityBursts.length = 0;
+  recycleAll(projectiles, projectilePool, 48);
+  recycleAll(floaters, floaterPool, 48);
+  recycleAll(rings, ringPool, 32);
+  recycleAll(abilityBursts, abilityBurstPool, 12);
+  projectileSpriteDrawTotal = 0;
+  abilityZoneSpriteDrawTotal = 0;
+  canvas.dataset.projectileSpriteDrawTotal = "0";
+  canvas.dataset.abilityZoneSpriteDrawTotal = "0";
   towerAbilityPopups.clear();
+  lastAbilityFxByTower.clear();
+  lastGlobalAbilityFxAt = -10;
   combatFeed.replaceChildren();
   feedCooldowns.clear();
   comboCount = 0;
@@ -613,7 +832,12 @@ function startRun(useNewSeed = false): void {
   resetIdiomResult();
   hideSummonReveal();
   closeCompositionDrawer();
-  setPanelTab("unit");
+  concentrationTargetId = null;
+  concentrationPath = "swift";
+  concentrationPayment = "essence";
+  growthElement = "木";
+  dismantleSelection.clear();
+  setPanelTab("shop");
   window.clearTimeout(comboTimer);
   evolutionRenderKey = "";
   goalRenderKey = "";
@@ -621,6 +845,8 @@ function startRun(useNewSeed = false): void {
   runInventoryRenderKey = "";
   idiomRenderKey = "";
   elementUpgradeRenderKey = "";
+  concentrationRenderKey = "";
+  growthRenderKey = "";
   towerDragPointerId = null;
   towerDragTowerId = null;
   towerDragStart = null;
@@ -635,6 +861,8 @@ function handleAction(result: ActionResult): void {
   goalRenderKey = "";
   selectedRenderKey = "";
   runInventoryRenderKey = "";
+  concentrationRenderKey = "";
+  growthRenderKey = "";
   syncPanel();
 }
 
@@ -671,7 +899,7 @@ function addCombatFeed(glyph: string, name: string, detail: string, color: strin
 function showTowerAbilityPopup(towerId: number, glyph: string, name: string, color: string): void {
   const current = towerAbilityPopups.get(towerId);
   // Frequent procs still happen mechanically, but the same tower cannot flood the screen.
-  if (current && current.age < 0.45) return;
+  if (current && current.age < 0.8) return;
   towerAbilityPopups.set(towerId, { text: glyph + " " + name, color, age: 0, duration: 0.82 });
 }
 
@@ -694,17 +922,22 @@ function showSummonReveal(events: Array<Extract<GameEvent, { type: "summon" }>>)
       ? "런 인벤토리 보관"
       : `전장 ${events.length - storedCount} · 인벤 ${storedCount}`;
   must<HTMLElement>("#summon-reveal-title").textContent = events.length > 1 ? `${events.length}연 소환 결과` : `${events[0]?.tower.char ?? "?"} 자령 출현`;
-  must<HTMLElement>("#summon-reveal-summary").innerHTML = `<b>새 발견 ${newCount}</b><span>합성 재료 ${helpfulCount}</span><span>농축 재료 ${concentrationCount}</span><em>${placementLabel}</em>`;
+  const firstSummon = engine.state.summonCount === events.length && engine.state.startingFormationIndex !== null;
+  const startingFormation = firstSummon ? BOARD_FORMATIONS[engine.state.startingFormationIndex ?? -1] : undefined;
+  const openingResult = firstSummon && startingFormation
+    ? `<strong>${events[0]?.tower.wuxing ?? "?"} 자령 출현 → ${startingFormation.label} 무료 개방</strong>`
+    : "";
+  must<HTMLElement>("#summon-reveal-summary").innerHTML = `${openingResult}<b>새 발견 ${newCount}</b><span>합성 재료 ${helpfulCount}</span><span>농축 재료 ${concentrationCount}</span><em>${placementLabel}</em>`;
   must<HTMLElement>("#summon-reveal-list").innerHTML = events.map((event, index) => {
     const tower = event.tower;
     const definition = definitionForTower(engine.catalog, tower.definitionId);
     const style = ELEMENT_STYLES[tower.wuxing];
-    const visual = jaryeongVisualFor(tower.char, tower.wuxing);
+    const visual = jaryeongVisualFor(tower.char, tower.wuxing, engine.state.region);
     const learning = learningInfo(engine.state.region, tower.char);
     const helpfulLabel = event.helpfulReason === "both" ? "목표·성어" : event.helpfulReason === "goal" ? "목표 재료" : event.helpfulReason === "idiom" ? "성어 재료" : "";
     const utilityLabel = event.utility === "new" ? "NEW" : event.utility === "synthesis" ? "합성" : event.utility === "concentration" ? "농축" : "교체 후보";
     return `<article class="summon-result-card ${event.newDiscovery ? "is-new" : ""} ${event.helpful ? "is-helpful" : ""}" style="--summon:${style.color};--summon-delay:${index * 45}ms">
-      <span class="summon-result-spirit" style="background-image:url('${import.meta.env.BASE_URL}assets/jaryeongs/${visual.id}/sheet-transparent.png')" aria-hidden="true"></span>
+      <span class="summon-result-spirit" style="${visualBackgroundStyle(visual)}" aria-hidden="true"></span>
       <strong>${tower.char}</strong>
       <b>${escapeHtml(learning.short)}</b>
       <small>${style.name}행 · ${escapeHtml(definition.combat.roleLabel)}</small>
@@ -776,6 +1009,166 @@ function renderElementUpgrades(): void {
   elementUpgradeRenderKey = upgradeStateSignature();
 }
 
+function concentrationStateSignature(): string {
+  const towers = [...engine.state.towers, ...engine.state.inventoryTowers]
+    .map((tower) => `${tower.id}:${tower.char}:${tower.cell}:${tower.locked ? 1 : 0}:${tower.concentration ?? 0}:${tower.concentrationPath ?? "-"}`)
+    .join("|");
+  return `${engine.state.phase}:${towers}:${WUXING_ORDER.map((wuxing) => engine.state.elementEssence[wuxing]).join(",")}:${concentrationTargetId ?? "-"}:${concentrationPath}:${concentrationPayment}`;
+}
+
+function renderConcentration(): void {
+  const allTowers = [...engine.state.towers, ...engine.state.inventoryTowers];
+  if (concentrationTargetId === null || !allTowers.some((tower) => tower.id === concentrationTargetId)) {
+    concentrationTargetId = engine.selectedTower()?.id ?? allTowers[0]?.id ?? null;
+  }
+  const key = concentrationStateSignature();
+  if (key === concentrationRenderKey) return;
+  concentrationRenderKey = key;
+  const rows = allTowers.map((tower) => {
+    const level = tower.concentration ?? 0;
+    const duplicateCount = engine.state.inventoryTowers.filter((candidate) => candidate.id !== tower.id && candidate.char === tower.char && !candidate.locked).length;
+    const cost = concentrationEssenceCost(level);
+    const maxed = level >= MAX_CONCENTRATION_LEVEL;
+    const actionable = !maxed && (duplicateCount > 0 || engine.state.elementEssence[tower.wuxing] >= cost);
+    return { tower, level, duplicateCount, cost, maxed, actionable, rank: maxed ? 2 : actionable ? 0 : 1 };
+  }).sort((left, right) => left.rank - right.rank || right.level - left.level || right.tower.stage - left.tower.stage || left.tower.id - right.tower.id);
+
+  must<HTMLElement>("#concentration-target-summary").textContent = `${rows.filter((row) => row.actionable).length}기 가능 · 총 ${rows.length}기`;
+  must<HTMLElement>("#concentration-target-list").innerHTML = rows.length > 0 ? rows.map(({ tower, level, duplicateCount, cost, maxed, actionable }) => {
+    const stateLabel = maxed ? "최대 단계" : actionable ? "농축 가능" : "재료 부족";
+    return `<button type="button" data-concentration-target="${tower.id}" class="${tower.id === concentrationTargetId ? "is-selected" : ""} ${actionable ? "is-ready" : ""}" style="--element:${ELEMENT_STYLES[tower.wuxing].color}">
+      <b>${escapeHtml(tower.char)}</b><span><strong>${tower.wuxing}행 · ${STAGE_NAMES[tower.stage]} · 濃 ${level}/3</strong><small>${tower.cell < 0 ? "인벤토리" : `${BOARD_FORMATIONS[Math.floor(tower.cell / CELLS_PER_FORMATION)]?.label ?? "전장"} 배치`} · ${duplicateCount > 0 ? `중복 ${duplicateCount}기` : `문기 ${cost}`}</small></span><em>${stateLabel}</em>
+    </button>`;
+  }).join("") : `<div class="workbench-empty"><b>농축할 자령이 없습니다</b><span>상점에서 자령을 먼저 소환하세요.</span></div>`;
+
+  const detail = must<HTMLElement>("#concentration-detail");
+  const target = allTowers.find((tower) => tower.id === concentrationTargetId);
+  if (!target) {
+    detail.innerHTML = `<div class="workbench-empty"><b>대상을 선택하세요</b><span>전장과 인벤토리 자령을 모두 확인할 수 있습니다.</span></div>`;
+    return;
+  }
+  const fixedPath = target.concentrationPath ?? null;
+  if (fixedPath) concentrationPath = fixedPath;
+  const quote = engine.concentrationQuote(target.id, concentrationPath);
+  if (quote && typeof concentrationPayment === "number" && !quote.duplicateIds.includes(concentrationPayment)) concentrationPayment = "essence";
+  const pathLocked = fixedPath !== null;
+  const swiftSelected = concentrationPath === "swift";
+  const currentLevel = target.concentration ?? 0;
+  if (!quote) {
+    detail.innerHTML = `<article class="concentration-max-card" style="--element:${ELEMENT_STYLES[target.wuxing].color}"><b>${escapeHtml(target.char)}</b><div><span>${target.wuxing}행 · ${STAGE_NAMES[target.stage]}</span><strong>濃 ${currentLevel}/3 · ${fixedPath === "potent" ? "심화" : "연속"} 농축 완성</strong><small>더 이상 재료를 소모하지 않습니다.</small></div></article>`;
+    return;
+  }
+  const essenceAvailable = engine.state.elementEssence[target.wuxing] >= quote.essenceCost;
+  const duplicatePaymentAvailable = typeof concentrationPayment === "number" && quote.duplicateIds.includes(concentrationPayment);
+  const paymentReady = concentrationPayment === "essence" ? essenceAvailable : duplicatePaymentAvailable;
+  const paymentRows = quote.duplicateIds.map((id) => {
+    const duplicate = engine.state.inventoryTowers.find((tower) => tower.id === id);
+    if (!duplicate) return "";
+    return `<label class="payment-option ${concentrationPayment === id ? "is-selected" : ""}"><input type="radio" name="concentration-payment" value="${id}" ${concentrationPayment === id ? "checked" : ""}><b>${escapeHtml(duplicate.char)}</b><span>인벤 중복 #${id}</span><small>잠금 없음 · 명시적 소모</small></label>`;
+  }).join("");
+  detail.innerHTML = `
+    <article class="concentration-focus" style="--element:${ELEMENT_STYLES[target.wuxing].color}">
+      <header><b>${escapeHtml(target.char)}</b><div><span>${target.wuxing}행 · ${STAGE_NAMES[target.stage]} · ${target.cell < 0 ? "인벤토리" : "전장"}</span><strong>濃 ${quote.currentLevel} → ${quote.nextLevel}</strong><small>${pathLocked ? "선택한 분기는 영구 고정" : "첫 분기 선택 후 변경 불가"}</small></div></header>
+      <div class="concentration-paths" role="radiogroup" aria-label="농축 분기">
+        <button type="button" data-concentration-path="swift" class="${swiftSelected ? "is-selected" : ""}" ${pathLocked && !swiftSelected ? "disabled" : ""}><b>迅 연속 농축</b><span>단계당 피해 +5.5%</span><span>공격 대기 -7.5% · 사거리 +4</span></button>
+        <button type="button" data-concentration-path="potent" class="${!swiftSelected ? "is-selected" : ""}" ${pathLocked && swiftSelected ? "disabled" : ""}><b>深 심화 농축</b><span>단계당 피해 +12%</span><span>대기 -2% · 의미 기술 +3.5% · 사거리 +4</span></button>
+      </div>
+      <div class="concentration-compare">
+        <div><span>공격력</span><b>${quote.current.damage.toFixed(1)}</b><i>→</i><strong>${quote.next.damage.toFixed(1)}</strong></div>
+        <div><span>초당 공격</span><b>${quote.current.attacksPerSecond.toFixed(2)}</b><i>→</i><strong>${quote.next.attacksPerSecond.toFixed(2)}</strong></div>
+        <div><span>사거리</span><b>${quote.current.range.toFixed(1)}</b><i>→</i><strong>${quote.next.range.toFixed(1)}</strong></div>
+        <div><span>기술 효과</span><b>${((quote.current.abilityEffect - 1) * 100).toFixed(1)}%</b><i>→</i><strong>${((quote.next.abilityEffect - 1) * 100).toFixed(1)}%</strong></div>
+      </div>
+      <section class="concentration-payment"><div class="subheading"><b>재료 선택</b><small>전장 자령과 잠긴 자령은 후보에서 제외</small></div><div class="payment-grid">
+        ${paymentRows}
+        <label class="payment-option is-essence ${concentrationPayment === "essence" ? "is-selected" : ""} ${essenceAvailable ? "" : "is-unavailable"}"><input type="radio" name="concentration-payment" value="essence" ${concentrationPayment === "essence" ? "checked" : ""} ${essenceAvailable ? "" : "disabled"}><b>${target.wuxing}</b><span>${target.wuxing} 문기 ${quote.essenceCost}</span><small>보유 ${engine.state.elementEssence[target.wuxing]}</small></label>
+      </div></section>
+      <button id="concentration-confirm-button" class="workbench-primary" type="button" ${paymentReady ? "" : "disabled"}>${pathLocked ? "다음 단계 농축" : "분기 고정 후 농축"}</button>
+    </article>`;
+}
+
+function growthStateSignature(): string {
+  const inventory = engine.state.inventoryTowers.map((tower) => `${tower.id}:${tower.char}:${tower.wuxing}:${tower.stage}:${tower.locked ? 1 : 0}:${tower.concentration ?? 0}`).join("|");
+  const traits = WUXING_ORDER.map((wuxing) => engine.state.elementTraits[wuxing].join(",")).join("|");
+  const scores = WUXING_ORDER.map((wuxing) => engine.state.elementDismantleScore[wuxing]).join(",");
+  const filters = `${must<HTMLSelectElement>("#dismantle-element-filter").value}:${must<HTMLSelectElement>("#dismantle-stage-filter").value}:${must<HTMLSelectElement>("#dismantle-status-filter").value}`;
+  return `${upgradeStateSignature()}:${inventory}:${traits}:${scores}:${filters}:${[...dismantleSelection].sort((a, b) => a - b).join(",")}:${growthElement}`;
+}
+
+function upgradeAmountLabel(scope: "global" | "element" | "trait", stat: UpgradeStat | null, traitIndex: number | null, amount: number | "max"): string {
+  const quote = scope === "global" && stat
+    ? engine.quoteGlobalUpgrade(stat, amount)
+    : scope === "element" && stat
+      ? engine.quoteElementUpgrade(growthElement, stat, amount)
+      : engine.quoteElementTraitUpgrade(growthElement, traitIndex ?? 0, amount);
+  if (amount !== "max") return `${amount}회 · ${quote.cost}`;
+  return quote.levels > 0 ? `최대 +${quote.levels} · ${quote.cost}` : "투자 불가";
+}
+
+function renderGrowth(): void {
+  const key = growthStateSignature();
+  if (key === growthRenderKey) return;
+  growthRenderKey = key;
+  const active = engine.state.phase === "prep" || engine.state.phase === "combat";
+  const assessmentMap = new Map(engine.cleanupAssessments().map((assessment) => [assessment.towerId, assessment]));
+  const elementFilter = must<HTMLSelectElement>("#dismantle-element-filter").value;
+  const stageFilter = must<HTMLSelectElement>("#dismantle-stage-filter").value;
+  const statusFilter = must<HTMLSelectElement>("#dismantle-status-filter").value;
+  for (const id of [...dismantleSelection]) if (!engine.state.inventoryTowers.some((tower) => tower.id === id)) dismantleSelection.delete(id);
+  const rows = engine.state.inventoryTowers
+    .map((tower) => ({ tower, assessment: assessmentMap.get(tower.id) }))
+    .filter(({ tower }) => elementFilter === "all" || tower.wuxing === elementFilter)
+    .filter(({ tower }) => stageFilter === "all" || String(tower.stage) === stageFilter)
+    .filter(({ assessment }) => statusFilter === "all" || (statusFilter === "eligible" ? !assessment?.protected : assessment?.protected))
+    .sort((left, right) => Number(Boolean(left.assessment?.protected)) - Number(Boolean(right.assessment?.protected)) || left.tower.stage - right.tower.stage || left.tower.id - right.tower.id);
+
+  must<HTMLElement>("#growth-resource-summary").textContent = "문기 " + WUXING_ORDER.map((wuxing) => `${wuxing}${engine.state.elementEssence[wuxing]}`).join(" ");
+  must<HTMLElement>("#growth-dismantle-list").innerHTML = rows.length > 0 ? rows.map(({ tower, assessment }) => {
+    const protectedReasons = assessment?.protectedReasons ?? ["보호 상태 확인 필요"];
+    const protectedState = assessment?.protected ?? true;
+    const essence = dismantleEssenceValue(tower.stage, tower.concentration ?? 0);
+    return `<label class="dismantle-row ${protectedState ? "is-protected" : ""}" style="--element:${ELEMENT_STYLES[tower.wuxing].color}">
+      <input type="checkbox" data-dismantle-id="${tower.id}" ${dismantleSelection.has(tower.id) ? "checked" : ""} ${protectedState || !active ? "disabled" : ""}>
+      <b>${escapeHtml(tower.char)}</b><span><strong>${tower.wuxing}행 · ${STAGE_NAMES[tower.stage]} · #${tower.id}</strong><small>${protectedState ? protectedReasons.map(escapeHtml).join(" · ") : (assessment?.reasons ?? []).map(escapeHtml).join(" · ") || "분해 가능"}</small></span><em>${protectedState ? "보호" : `${tower.wuxing}+${essence}`}</em>
+    </label>`;
+  }).join("") : `<div class="workbench-empty"><b>조건에 맞는 인벤토리 자령이 없습니다</b><span>필터를 바꾸거나 소환 자령을 인벤토리에 보관하세요.</span></div>`;
+
+  const quote = engine.quoteDismantle([...dismantleSelection]);
+  const gainLabel = (Object.entries(quote.gains) as Array<[Wuxing, number]>).filter(([, amount]) => amount > 0).map(([wuxing, amount]) => `${wuxing}+${amount}`).join(" · ");
+  const scoreLabel = (Object.entries(quote.scoreGains) as Array<[Wuxing, number]>).filter(([, amount]) => amount > 0).map(([wuxing, amount]) => `${wuxing}점수+${amount}`).join(" · ");
+  must<HTMLElement>("#dismantle-selection-summary").textContent = `${dismantleSelection.size}기 선택${quote.blocked.length > 0 ? ` · 보호 충돌 ${quote.blocked.length}` : ""}`;
+  must<HTMLElement>("#dismantle-gain-summary").textContent = gainLabel ? `${gainLabel}${scoreLabel ? ` · ${scoreLabel}` : ""}` : "예상 문기 없음";
+  must<HTMLButtonElement>("#dismantle-confirm-button").disabled = !active || quote.ids.length === 0 || quote.blocked.length > 0;
+
+  must<HTMLElement>("#growth-element-tabs").innerHTML = WUXING_ORDER.map((wuxing) => `<button type="button" data-growth-element="${wuxing}" class="${growthElement === wuxing ? "is-selected" : ""}" style="--element:${ELEMENT_STYLES[wuxing].color}"><b>${wuxing}</b><span>문기 ${engine.state.elementEssence[wuxing]}</span><small>분해 점수 ${engine.state.elementDismantleScore[wuxing]}</small></button>`).join("");
+
+  const batchButtons = (scope: "global" | "element", stat: UpgradeStat): string => ([1, 5, "max"] as const).map((amount) => {
+    const quoteForAmount = scope === "global" ? engine.quoteGlobalUpgrade(stat, amount) : engine.quoteElementUpgrade(growthElement, stat, amount);
+    return `<button type="button" data-growth-upgrade-scope="${scope}" data-growth-stat="${stat}" data-growth-amount="${amount}" ${!active || quoteForAmount.levels <= 0 || !quoteForAmount.affordable ? "disabled" : ""}>${upgradeAmountLabel(scope, stat, null, amount)}${scope === "global" ? " 엽전" : ` ${growthElement}`}</button>`;
+  }).join("");
+  const globalRows = UPGRADE_STAT_ORDER.map((stat) => {
+    const meta = UPGRADE_STAT_META[stat];
+    const level = engine.state.globalUpgrades[stat];
+    return `<article class="growth-stat-row"><i>${meta.glyph}</i><div><b>공용 ${meta.label} <em>Lv.${level}/99</em></b><small>${meta.description} · 현재 ${formatStatBonus(stat, engine.globalUpgradeBonus(stat))}</small></div><span>${batchButtons("global", stat)}</span></article>`;
+  }).join("");
+  const elementRows = UPGRADE_STAT_ORDER.map((stat) => {
+    const meta = UPGRADE_STAT_META[stat];
+    const level = engine.state.elementUpgrades[growthElement][stat];
+    return `<article class="growth-stat-row is-element" style="--element:${ELEMENT_STYLES[growthElement].color}"><i>${meta.glyph}</i><div><b>${growthElement}행 ${meta.label} <em>Lv.${level}/99</em></b><small>현재 ${formatStatBonus(stat, engine.elementUpgradeBonus(growthElement, stat))} · 단계당 ${formatStatBonus(stat, meta.elementPerLevel)}</small></div><span>${batchButtons("element", stat)}</span></article>`;
+  }).join("");
+  const traitRows = ELEMENT_TRAITS[growthElement].map((trait, traitIndex) => {
+    const level = engine.elementTraitLevel(growthElement, traitIndex);
+    const unlockScore = elementTraitUnlockScore(traitIndex) ?? 0;
+    const unlocked = engine.state.elementDismantleScore[growthElement] >= unlockScore;
+    const buttons = ([1, 5, "max"] as const).map((amount) => {
+      const traitQuote = engine.quoteElementTraitUpgrade(growthElement, traitIndex, amount);
+      return `<button type="button" data-growth-upgrade-scope="trait" data-growth-trait="${traitIndex}" data-growth-amount="${amount}" ${!active || !unlocked || traitQuote.levels <= 0 || !traitQuote.affordable ? "disabled" : ""}>${upgradeAmountLabel("trait", null, traitIndex, amount)} ${growthElement}</button>`;
+    }).join("");
+    return `<article class="growth-trait-row ${unlocked ? "is-unlocked" : "is-locked"}" style="--element:${ELEMENT_STYLES[growthElement].color}"><div class="trait-seal"><b>${traitIndex + 1}</b><small>${unlocked ? "개방" : `${unlockScore}점`}</small></div><div><strong>${trait.name} <em>Lv.${level}/${ELEMENT_TRAIT_MAX_LEVEL}</em></strong><span>${trait.summary} +${trait.perLevel}${trait.unit}/단계${trait.milestone ? ` · ${trait.milestone}` : ""}</span><small>${unlocked ? `다음 비용 ${elementTraitUpgradeCost(level) ?? "최고"} 문기` : `분해 점수 ${engine.state.elementDismantleScore[growthElement]}/${unlockScore}`}</small></div><nav>${buttons}</nav></article>`;
+  }).join("");
+  must<HTMLElement>("#growth-upgrade-list").innerHTML = `<section class="growth-upgrade-section"><header><b>공용 능력 강화</b><small>엽전 투자 · 5능력치×99단계</small></header>${globalRows}</section><section class="growth-upgrade-section"><header><b>${growthElement}행 능력 강화</b><small>문기 투자 · 1회·5회·최대</small></header>${elementRows}</section><section class="growth-upgrade-section"><header><b>${growthElement}행 고유 특성</b><small>분해 점수 5·15·30 순차 개방</small></header>${traitRows}</section>`;
+}
+
 function registerKillCombo(): void {
   const now = performance.now();
   comboCount = now - lastKillAt <= 1450 ? comboCount + 1 : 1;
@@ -806,17 +1199,16 @@ function processEvent(event: GameEvent): void {
   sound.handle(event);
   switch (event.type) {
     case "shot":
-      projectiles.push({ ...event, age: 0, duration: event.critical ? 0.18 : 0.12 });
-      if (projectiles.length > 90) projectiles.shift();
+      pushPooled(projectiles, projectilePool, takeProjectile(event), 48);
       break;
     case "damage":
       if (event.critical || event.weakness || event.amount >= 50) {
         const prefix = event.critical ? "치명 " : event.weakness ? "약점 " : "";
-        floaters.push({ at: event.at, text: prefix + String(Math.round(event.amount)), color: event.critical ? "#ffe06e" : event.weakness ? "#8ff5c6" : "#f6f0ff", age: 0, duration: 0.64, large: event.critical });
+        pushPooled(floaters, floaterPool, takeFloater(event.at, prefix + String(Math.round(event.amount)), event.critical ? "#ffe06e" : event.weakness ? "#8ff5c6" : "#f6f0ff", 0.64, event.critical), 48);
       }
       break;
     case "kill":
-      floaters.push({ at: event.at, text: "+" + String(event.reward), color: "#ffd86d", age: 0, duration: 0.72, large: false });
+      pushPooled(floaters, floaterPool, takeFloater(event.at, "+" + String(event.reward), "#ffd86d", 0.72, false), 48);
       registerKillCombo();
       break;
     case "interest":
@@ -825,10 +1217,10 @@ function processEvent(event: GameEvent): void {
       break;
     case "summon":
       rememberJaryeong(event.tower.char, "summon");
-      if (!event.stored) rings.push({ at: event.at, color: ELEMENT_STYLES[event.tower.wuxing].color, age: 0, duration: 0.52 });
+      if (!event.stored) pushPooled(rings, ringPool, takeRing(event.at, ELEMENT_STYLES[event.tower.wuxing].color, 0.52), 32);
       if (event.helpful && !event.stored) {
         const label = event.helpfulReason === "both" ? "목표·성어 +1" : event.helpfulReason === "idiom" ? "성어 +1" : "목표 +1";
-        floaters.push({ at: event.at, text: label, color: event.helpfulReason === "idiom" ? "#c9a8ff" : "#ffd979", age: 0, duration: 0.68, large: false });
+        pushPooled(floaters, floaterPool, takeFloater(event.at, label, event.helpfulReason === "idiom" ? "#c9a8ff" : "#ffd979", 0.68, false), 48);
       }
       break;
     case "dismantle":
@@ -837,8 +1229,8 @@ function processEvent(event: GameEvent): void {
     case "concentrate":
       if (event.tower.cell >= 0) {
         const at = BOARD_CELLS[event.tower.cell] as Point;
-        rings.push({ at, color: ELEMENT_STYLES[event.tower.wuxing].color, age: 0, duration: 0.9 });
-        floaters.push({ at, text: `濃 ${event.level}/3`, color: ELEMENT_STYLES[event.tower.wuxing].color, age: 0, duration: 1.05, large: true });
+        pushPooled(rings, ringPool, takeRing(at, ELEMENT_STYLES[event.tower.wuxing].color, 0.9), 32);
+        pushPooled(floaters, floaterPool, takeFloater(at, `濃 ${event.level}/3`, ELEMENT_STYLES[event.tower.wuxing].color, 1.05, true), 48);
       }
       addCombatFeed("濃", `${event.tower.char} ${event.path === "swift" ? "연속" : "심화"} 농축`, event.usedDuplicate ? "동일 한자 중복 소비" : `${event.tower.wuxing} 문기 ${event.essenceCost} 소비`, ELEMENT_STYLES[event.tower.wuxing].color);
       break;
@@ -853,8 +1245,8 @@ function processEvent(event: GameEvent): void {
     }
     case "evolve":
       rememberJaryeong(event.tower.char, "evolution");
-      rings.push({ at: event.at, color: STAGE_COLORS[event.tower.stage], age: 0, duration: 0.9 });
-      floaters.push({ at: event.at, text: event.parents.join("+") + "→" + event.tower.char, color: STAGE_COLORS[event.tower.stage], age: 0, duration: 1.05, large: true });
+      pushPooled(rings, ringPool, takeRing(event.at, STAGE_COLORS[event.tower.stage], 0.9), 32);
+      pushPooled(floaters, floaterPool, takeFloater(event.at, event.parents.join("+") + "→" + event.tower.char, STAGE_COLORS[event.tower.stage], 1.05, true), 48);
       {
         const evolved = definitionForTower(engine.catalog, event.tower.definitionId);
         const lineage = evolved.combat.abilities.lineage;
@@ -863,8 +1255,13 @@ function processEvent(event: GameEvent): void {
       }
       break;
     case "ability": {
-      abilityBursts.push({ at: event.at, source: event.source, glyph: event.glyph, color: event.color, kind: event.kind, age: 0, duration: 0.58 });
-      if (abilityBursts.length > 48) abilityBursts.shift();
+      const towerGap = engine.state.elapsed - (lastAbilityFxByTower.get(event.towerId) ?? -10);
+      const globalGap = engine.state.elapsed - lastGlobalAbilityFxAt;
+      if (!event.persistent && towerGap >= 0.75 && globalGap >= 0.12) {
+        pushPooled(abilityBursts, abilityBurstPool, takeAbilityBurst(event), 12);
+        lastAbilityFxByTower.set(event.towerId, engine.state.elapsed);
+        lastGlobalAbilityFxAt = engine.state.elapsed;
+      }
       const detail = event.effect;
       showTowerAbilityPopup(event.towerId, event.glyph, event.name, event.color);
       addCombatFeed(event.glyph, event.name, detail, event.color);
@@ -876,9 +1273,9 @@ function processEvent(event: GameEvent): void {
     case "idiom": {
       const points = event.cells.map((cell) => BOARD_CELLS[cell] as Point);
       const center = points.reduce((total, point) => ({ x: total.x + point.x / points.length, y: total.y + point.y / points.length }), { x: 0, y: 0 });
-      for (const point of points) rings.push({ at: point, color: event.color, age: 0, duration: 1.05 });
+      for (const point of points) pushPooled(rings, ringPool, takeRing(point, event.color, 1.05), 32);
       const flourishAt = { x: center.x, y: Math.min(WORLD_HEIGHT - 100, center.y + 115) };
-      floaters.push({ at: flourishAt, text: event.reading + " 자동 봉인!", color: event.color, age: 0, duration: 1.25, large: true });
+      pushPooled(floaters, floaterPool, takeFloater(flourishAt, event.reading + " 자동 봉인!", event.color, 1.25, true), 48);
       showIdiomResult(event.reading, event.meaning, event.bonus, event.color);
       addCombatFeed("四", event.reading, event.bonus, event.color);
       idiomRenderKey = "";
@@ -903,7 +1300,7 @@ function showEndScreen(phase: "victory" | "defeat"): void {
   const state = engine.state;
   const victory = phase === "victory";
   must<HTMLElement>("#end-kicker").textContent = victory ? "SEAL COMPLETE" : "DEFENSE FAILED";
-  must<HTMLElement>("#end-heading").textContent = victory ? "스무 봉인 완성" : "수비에 실패했습니다";
+  must<HTMLElement>("#end-heading").textContent = victory ? "천자문 대봉인 완성" : "수비에 실패했습니다";
   must<HTMLElement>("#end-message").textContent = state.lastMessage;
   must<HTMLElement>("#end-stats").innerHTML = `
     <div><span>도달 웨이브</span><b>${state.wave} / ${state.maxWaves}</b></div>
@@ -939,6 +1336,13 @@ function escapeHtml(value: string): string {
   return value.replace(/[&<>"']/gu, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[character] ?? character);
 }
 
+function visualBackgroundStyle(visual: JaryeongVisual): string {
+  const framing = jaryeongFrameLayout(visual) === "single"
+    ? "background-size:contain;background-position:center"
+    : "background-size:200% 200%;background-position:left top";
+  return `background-image:url('${import.meta.env.BASE_URL}${jaryeongAssetPath(visual)}');${framing}`;
+}
+
 function phaseLabel(phase: RunPhase): string {
   if (phase === "title") return "준비 전";
   if (phase === "prep") return "소환 준비";
@@ -947,12 +1351,38 @@ function phaseLabel(phase: RunPhase): string {
   return "수비 실패";
 }
 
+function renderFormationUnlocks(): void {
+  const state = engine.state;
+  const cost = engine.nextFormationUnlockCost();
+  const active = state.phase === "prep" || state.phase === "combat";
+  const key = `${state.unlockedFormations.join(",")}|${state.startingFormationIndex ?? "none"}|${state.gold}|${state.phase}|${cost ?? "done"}`;
+  if (key === formationRenderKey) return;
+  formationRenderKey = key;
+  const remaining = BOARD_FORMATIONS.length - state.unlockedFormations.length;
+  must<HTMLElement>("#formation-unlock-summary").textContent = state.startingFormationIndex === null
+    ? "첫 소환 자령의 오행진을 무료로 개방합니다"
+    : remaining > 0
+      ? `${state.unlockedFormations.length}진 개방 · 다음 ${cost}엽전 · 원하는 오행 선택`
+      : "오행진 5개 전부 개방";
+  must<HTMLElement>("#formation-unlock-list").innerHTML = BOARD_FORMATIONS.map((formation, index) => {
+    const unlocked = engine.isFormationUnlocked(index);
+    const disabled = unlocked || !active || cost === null || state.gold < cost;
+    const status = unlocked
+      ? index === state.startingFormationIndex ? "시작 진" : "개방"
+      : state.startingFormationIndex === null ? "첫 소환 대기" : `${cost}엽전`;
+    return `<button type="button" data-formation-index="${index}" class="${unlocked ? "is-unlocked" : ""}" style="--formation:${ELEMENT_STYLES[formation.preferredWuxing].color}" ${disabled ? "disabled" : ""}><b>${formation.preferredWuxing}</b><span>${formation.label}</span><small>${status}</small></button>`;
+  }).join("");
+}
+
 function syncPanel(): void {
   const state = engine.state;
   const plan = engine.getCurrentPlan();
   const preview = state.phase === "prep" ? wavePlan(Math.min(state.maxWaves, state.wave + 1)) : plan;
   shell.dataset.phase = state.phase;
   must<HTMLElement>("#stage-wave").textContent = String(state.wave) + " / " + String(state.maxWaves);
+  const displayWave = Math.max(1, Math.min(state.maxWaves, state.phase === "prep" ? state.wave + 1 : state.wave));
+  const chapter = Math.ceil(displayWave / 10);
+  must<HTMLElement>("#stage-chapter").textContent = `${chapter} / 10`;
   must<HTMLElement>("#stage-region").textContent = REGION_META[state.region].title.split(" · ")[0] ?? state.region;
   must<HTMLElement>("#stage-phase").textContent = phaseLabel(state.phase);
   must<HTMLElement>("#stage-enemies").textContent = String(state.enemies.length) + " / " + String(MAX_ENEMIES);
@@ -960,15 +1390,19 @@ function syncPanel(): void {
   must<HTMLElement>("#gold-value").textContent = String(state.gold);
   must<HTMLElement>("#interest-preview").textContent = "이자 +" + String(interestForGold(state.gold));
   must<HTMLElement>("#enemy-cap-value").textContent = String(MAX_ENEMIES) + "체";
-  must<HTMLElement>("#tower-count-value").textContent = String(state.towers.length) + " / " + String(GAME_CONFIG.maxTowerCount);
+  must<HTMLElement>("#tower-count-value").textContent = String(state.towers.length) + " / " + String(engine.deployedTowerCapacity());
   must<HTMLElement>("#goal-count-value").textContent = String(state.goalsCompleted.length) + " / " + String(engine.catalog.goalOrder.length);
   must<HTMLElement>("#seed-value").textContent = state.seed;
   must<HTMLElement>("#message-value").textContent = state.lastMessage;
+  renderFormationUnlocks();
   must<HTMLElement>("#summon-cost").textContent = String(summonCost(state.summonCount));
   const tenSummonCost = multiSummonCost(state.summonCount, 10);
-  must<HTMLElement>("#multi-summon-cost").textContent = String(tenSummonCost);
+  const multiUnlocked = state.wave >= 10;
+  must<HTMLElement>("#multi-summon-cost").textContent = multiUnlocked ? `${tenSummonCost} 엽전` : "10W 개방";
   must<HTMLElement>("#research-level").textContent = String(state.researchLevel);
-  must<HTMLElement>("#research-cost").textContent = state.researchLevel >= 5 ? "최고" : String(researchCost(state.researchLevel));
+  const nextResearchWave = researchUnlockWave(state.researchLevel);
+  const researchUnlocked = state.researchLevel < 5 && state.wave >= nextResearchWave;
+  must<HTMLElement>("#research-cost").textContent = state.researchLevel >= 5 ? "최고" : researchUnlocked ? `${researchCost(state.researchLevel)} 엽전` : `${nextResearchWave}W 개방`;
   must<HTMLElement>("#discover-count").textContent = String(state.discoveredChars.length);
   must<HTMLElement>("#essence-summary").textContent = "문기 " + WUXING_ORDER.map((wuxing) => `${wuxing}${state.elementEssence[wuxing]}`).join(" ");
   document.querySelectorAll<HTMLButtonElement>("[data-summon-intent]").forEach((button) => {
@@ -979,30 +1413,45 @@ function syncPanel(): void {
 
   const active = state.phase === "prep" || state.phase === "combat";
   must<HTMLButtonElement>("#summon-button").disabled = !active || state.gold < summonCost(state.summonCount);
-  must<HTMLButtonElement>("#multi-summon-button").disabled = !active || state.gold < tenSummonCost;
-  must<HTMLButtonElement>("#research-button").disabled = !active || state.researchLevel >= 5 || state.gold < researchCost(state.researchLevel);
+  must<HTMLButtonElement>("#multi-summon-button").disabled = !active || !multiUnlocked || state.gold < tenSummonCost;
+  must<HTMLButtonElement>("#research-button").disabled = !active || !researchUnlocked || state.gold < researchCost(state.researchLevel);
   must<HTMLButtonElement>("#auto-arrange-button").disabled = !active || state.towers.length === 0;
   must<HTMLButtonElement>("#element-upgrade-button").disabled = !active;
   must<HTMLElement>("#element-upgrade-total").textContent = `총 ${totalGlobalUpgradeLevels() + totalElementUpgradeLevels()}단계`;
   const nextElementUpgradeRenderKey = upgradeStateSignature();
   if (elementUpgradeDialog.open && elementUpgradeRenderKey !== nextElementUpgradeRenderKey) renderElementUpgrades();
   const earlyButton = must<HTMLButtonElement>("#early-button");
-  earlyButton.disabled = state.phase !== "prep";
-  earlyButton.textContent = state.phase === "prep" ? "즉시 +" + String(Math.floor(state.prepRemaining / 2)) : "교전 중";
+  earlyButton.disabled = state.phase !== "prep" || state.summonCount === 0;
+  earlyButton.textContent = state.phase === "prep"
+    ? state.summonCount === 0 ? "첫 소환 필요" : "즉시 +" + String(Math.floor(state.prepRemaining / 2))
+    : "교전 중";
+  const openingGuide = must<HTMLElement>("#opening-guide");
+  openingGuide.classList.toggle("is-collapsed", state.wave >= 1);
+  const openingStep = state.summonCount === 0 ? 1 : state.summonCount < 3 ? 2 : 3;
+  openingGuide.querySelectorAll<HTMLElement>("[data-opening-step]").forEach((step) => {
+    const index = Number(step.dataset.openingStep);
+    step.classList.toggle("is-current", state.wave === 0 && index === openingStep);
+    step.classList.toggle("is-complete", state.wave > 0 || index < openingStep);
+  });
   const bossRemaining = engine.bossTimeRemaining();
   const nextWaveRemaining = state.phase === "combat" ? state.nextWaveRemaining : null;
   const previewBossLimit = preview?.boss ? bossTimeLimitForWave(preview.wave) : null;
   must<HTMLElement>(".wave-card").classList.toggle("is-boss", bossRemaining !== null || previewBossLimit !== null);
   must<HTMLElement>("#wave-kicker").textContent = state.phase === "prep"
-    ? previewBossLimit !== null ? "보스전 · 제한 " + String(previewBossLimit) + "초" : "준비 " + state.prepRemaining.toFixed(1) + "초"
+    ? state.summonCount === 0 ? "첫 소환 전 · 시간 정지" : previewBossLimit !== null ? "보스전 · 제한 " + String(previewBossLimit) + "초" : "준비 " + state.prepRemaining.toFixed(1) + "초"
     : bossRemaining !== null
       ? "보스 제한 " + bossRemaining.toFixed(1) + "초"
       : nextWaveRemaining !== null
         ? "다음 웨이브 " + nextWaveRemaining.toFixed(1) + "초"
         : state.phase === "combat" ? formatTime(state.waveElapsed) + " 경과" : "봉인전 종료";
-  must<HTMLElement>("#wave-label").textContent = state.phase === "prep" ? String(state.wave + 1) + "웨이브 · " + (preview?.label ?? "") : plan?.label ?? state.lastMessage;
-  must<HTMLElement>("#wave-briefing").textContent = preview
+  must<HTMLElement>("#wave-label").textContent = state.phase === "prep"
+    ? state.summonCount === 0 ? "① 상점에서 첫 자령을 소환하세요" : String(state.wave + 1) + "웨이브 · " + (preview?.label ?? "")
+    : plan?.label ?? state.lastMessage;
+  must<HTMLElement>("#wave-briefing").textContent = state.summonCount === 0
+    ? "첫 자령의 오행에 맞는 4×4 진이 무료로 열립니다. 소환 전에는 준비 시간과 런 시간이 흐르지 않습니다."
+    : preview
     ? preview.briefing
+      + ` · 제${Math.ceil(preview.wave / 10)}장 · 다음 장 보스 ${Math.ceil(preview.wave / 10) * 10}웨이브`
       + (previewBossLimit !== null ? " · 제한시간 내 보스 처치 필수" : "")
       + (nextWaveRemaining !== null ? ` · 잔존 ${state.enemies.length}체와 함께 다음 웨이브가 합류합니다.` : "")
     : "적 " + String(MAX_ENEMIES) + "체 도달 시 즉시 게임오버";
@@ -1014,7 +1463,7 @@ function syncPanel(): void {
     ? nextWaveRemaining !== null
       ? 1 - nextWaveRemaining / WAVE_REINFORCEMENT_DELAY
       : Math.min(1, state.spawned / Math.max(1, plan.count))
-    : state.phase === "prep" ? 1 - state.prepRemaining / GAME_CONFIG.prepSeconds : 0;
+    : state.phase === "prep" ? 1 - state.prepRemaining / (state.wave === 0 ? FIRST_PREP_SECONDS : state.wave % 10 === 0 ? GAME_CONFIG.bossPrepSeconds : GAME_CONFIG.prepSeconds) : 0;
   must<HTMLElement>("#wave-progress-fill").style.width = String(Math.max(0, progress) * 100) + "%";
   must<HTMLElement>("#phase-dot").className = state.phase === "combat" ? "phase-dot--combat" : state.phase === "prep" ? "phase-dot--prep" : "";
   document.querySelectorAll<HTMLButtonElement>("[data-mode]").forEach((button) => button.classList.toggle("is-active", button.dataset.mode === state.automationMode));
@@ -1023,26 +1472,188 @@ function syncPanel(): void {
   renderSelected();
   renderCompositionDrawer();
   renderRunInventory();
+  if (activePanelTab === "concentration") renderConcentration();
+  if (activePanelTab === "growth") renderGrowth();
   renderSynergies();
   renderIdiomHud();
 }
 
 function renderGoal(): void {
   const progress = engine.goalProgress();
-  const key = engine.state.targetChar + "|" + progress.directMaterials.map((item) => item.char + ":" + String(item.owned) + "/" + String(item.needed)).join(",") + "|" + String(engine.state.goalsCompleted.length);
+  const ownedTowers = [...engine.state.towers, ...engine.state.inventoryTowers];
+  const ownedCounts = new Map<string, number>();
+  for (const tower of ownedTowers) ownedCounts.set(tower.char, (ownedCounts.get(tower.char) ?? 0) + 1);
+  const ownedSignature = [...ownedCounts.entries()].sort(([left], [right]) => left.localeCompare(right, "ko")).map(([char, count]) => `${char}:${count}`).join(",");
+  const key = [
+    goalPanelMode,
+    goalSearchQuery,
+    engine.state.targetChar,
+    progress.directMaterials.map((item) => item.char + ":" + String(item.owned) + "/" + String(item.needed)).join(","),
+    engine.state.goalsCompleted.join(""),
+    engine.state.featuredIdiomIds.join(","),
+    engine.state.idiomSeals.map((seal) => seal.idiomId).join(","),
+    engine.state.wave,
+    engine.state.lineageClueProgress,
+    engine.state.lineageTargetProgress,
+    ownedSignature
+  ].join("|");
   if (key === goalRenderKey) return;
   goalRenderKey = key;
+
+  const pool = engine.summonDefinitions();
+  const stageCounts = new Map<number, number>();
+  for (const definition of pool) stageCounts.set(definition.stage, (stageCounts.get(definition.stage) ?? 0) + 1);
+  must<HTMLElement>("#shop-pool-count").textContent = pool.length.toLocaleString("ko-KR");
+  const maxSummonStage = maxSummonStageForWave(engine.state.wave);
+  const nextStage = maxSummonStage < 5 ? (maxSummonStage + 1) as 2 | 3 | 4 | 5 : null;
+  must<HTMLElement>("#summon-pool-summary").innerHTML = `<b>천자문 ${pool.length.toLocaleString("ko-KR")}종</b><span>${STAGE_NAMES[maxSummonStage]}까지 등장${nextStage ? ` · ${summonStageUnlockWave(nextStage)}W 다음 단계` : " · 전 단계 개방"}</span>`;
+
+  const goalPanel = must<HTMLElement>("#goal-panel");
+  goalPanel.dataset.currentGoalMode = goalPanelMode;
+  document.querySelectorAll<HTMLButtonElement>("[data-goal-mode]").forEach((button) => {
+    const selected = button.dataset.goalMode === goalPanelMode;
+    button.classList.toggle("is-active", selected);
+    button.setAttribute("aria-selected", String(selected));
+  });
+
   must<HTMLElement>("#goal-glyph").textContent = progress.target.char;
   must<HTMLElement>("#goal-glyph").style.setProperty("--goal-color", ELEMENT_STYLES[progress.target.wuxing].color);
-  must<HTMLElement>("#goal-stage").textContent = STAGE_NAMES[progress.target.stage] + " · " + progress.target.combat.abilities.role.name;
-  must<HTMLElement>("#goal-recipe").textContent = progress.target.parents.join(" + ") + " → " + progress.target.char;
+  const targetUnlockWave = summonStageUnlockWave(progress.target.stage);
+  const targetDirectLocked = progress.target.acquisition === "direct" && engine.state.wave < targetUnlockWave;
+  must<HTMLElement>("#goal-stage").textContent = STAGE_NAMES[progress.target.stage] + " · " + (targetDirectLocked ? `${targetUnlockWave}W 직접 소환 개방` : progress.target.acquisition === "direct" ? "직접 소환 가능" : progress.target.combat.abilities.role.name);
+  must<HTMLElement>("#goal-recipe").textContent = progress.target.acquisition === "direct"
+    ? `${progress.target.char} 자령을 소환하면 달성`
+    : progress.target.parents.join(" + ") + " → " + progress.target.char;
   const learning = learningInfo(engine.state.region, progress.target.char);
   must<HTMLElement>("#goal-reading").textContent = learning.readingLabel + " · " + learning.short;
   must<HTMLElement>("#goal-materials").innerHTML = progress.directMaterials.map((material) => {
     const complete = material.owned >= material.needed;
-    return `<span class="${complete ? "is-complete" : ""}"><b>${material.char}</b> ${material.owned}/${material.needed}</span>`;
+    return `<span class="${complete ? "is-complete" : ""}"><b>${escapeHtml(material.char)}</b> ${material.owned}/${material.needed}</span>`;
+  }).join("") + `<span class="goal-clue"><b>단서</b> ${engine.state.lineageClueProgress}/12</span><span class="goal-clue"><b>확정</b> ${engine.state.lineageTargetProgress}/30</span>`;
+  const goalPercent = Math.round(progress.progress * 100);
+  must<HTMLElement>("#goal-progress-fill").style.width = String(goalPercent) + "%";
+
+  const idiom = engine.currentIdiomTarget();
+  const idiomProgress = idiom ? engine.idiomProgress(idiom.id) : null;
+  const idiomCard = must<HTMLElement>("#idiom-target-card");
+  if (idiom && idiomProgress) {
+    const glyphs = ownedIdiomGlyphMarkup(idiom.chars, ownedCounts);
+    idiomCard.style.setProperty("--idiom-accent", idiom.color);
+    idiomCard.innerHTML = `
+      <div class="idiom-target-glyphs">${glyphs}</div>
+      <div class="idiom-target-copy"><span>현재 성어 목표 · ${idiomProgress.owned}/${idiomProgress.total}자 보유</span><strong>${escapeHtml(idiom.reading)}</strong><small>${escapeHtml(idiom.meaning)}</small><em>${escapeHtml(idiom.bonus.label)}</em></div>
+      <div class="idiom-target-status"><b>${Math.round(idiomProgress.readiness * 100)}%</b><span>${idiomProgress.missingChars.length > 0 ? `부족 ${idiomProgress.missingChars.map(escapeHtml).join("·")}` : "배치 준비"}</span></div>`;
+  } else {
+    idiomCard.removeAttribute("style");
+    idiomCard.innerHTML = `<div class="goal-selector-empty"><b>이번 판 성어 목표를 모두 봉인했습니다</b><span>성어 목록에서 다음 목표를 선택할 수 있습니다.</span></div>`;
+  }
+
+  const modePercent = goalPanelMode === "idiom" && idiomProgress ? Math.round(idiomProgress.readiness * 100) : goalPercent;
+  must<HTMLElement>("#goal-tab-progress").textContent = `${modePercent}%`;
+  const boardUnique = new Set(engine.state.towers.map((tower) => tower.char)).size;
+  const storedUnique = new Set(engine.state.inventoryTowers.map((tower) => tower.char)).size;
+  must<HTMLElement>("#goal-owned-summary").innerHTML = `<b>${ownedCounts.size}자 · ${ownedTowers.length}기 보유</b><span>전장 ${boardUnique}자 · 인벤 ${storedUnique}자</span>`;
+
+  const search = must<HTMLInputElement>("#goal-search");
+  search.placeholder = goalPanelMode === "hanzi" ? "원하는 한자·훈음·뜻 검색" : "원하는 성어·읽기·뜻 검색";
+  const selector = must<HTMLElement>("#goal-selector-list");
+  selector.innerHTML = goalPanelMode === "hanzi"
+    ? renderHanziGoalChoices(pool, ownedCounts)
+    : renderIdiomGoalChoices(engine.allIdioms(), ownedCounts);
+}
+
+function ownedIdiomGlyphMarkup(chars: string, ownedCounts: ReadonlyMap<string, number>): string {
+  const available = new Map(ownedCounts);
+  return [...chars].map((char) => {
+    const count = available.get(char) ?? 0;
+    if (count > 0) available.set(char, count - 1);
+    return `<i class="${count > 0 ? "is-owned" : ""}">${escapeHtml(char)}</i>`;
   }).join("");
-  must<HTMLElement>("#goal-progress-fill").style.width = String(Math.round(progress.progress * 100)) + "%";
+}
+
+function renderHanziGoalChoices(definitions: readonly HanziDefinition[], ownedCounts: ReadonlyMap<string, number>): string {
+  const query = goalSearchQuery.trim().toLowerCase();
+  const rows = definitions
+    .map((definition, order) => {
+      const learning = learningInfo(engine.state.region, definition.char);
+      const progress = engine.goalProgressFor(definition.char);
+      const owned = ownedCounts.get(definition.char) ?? 0;
+      const selected = definition.char === engine.state.targetChar;
+      const completed = engine.state.goalsCompleted.includes(definition.char);
+      const searchText = `${definition.char} ${learning.readingLabel} ${learning.short} ${definition.parents.join(" ")}`.toLowerCase();
+      const score = (selected ? 100_000 : 0)
+        + (completed ? -10_000 : 0)
+        + (owned > 0 ? -1_000 : 0)
+        + (definition.acquisition === "craft" && progress.progress >= 1 ? 2_000 : 0)
+        + progress.progress * 1_000
+        + (6 - definition.stage) * 12
+        - order / 10_000;
+      return { definition, learning, progress, owned, selected, completed, searchText, score };
+    })
+    .filter((row) => !query || row.searchText.includes(query))
+    .sort((left, right) => right.score - left.score)
+    .slice(0, query ? 72 : 28);
+
+  if (rows.length === 0) return `<div class="goal-selector-empty"><b>검색 결과가 없습니다</b><span>한자 한 글자나 훈음을 다시 입력해 보세요.</span></div>`;
+  return rows.map(({ definition, learning, progress, owned, selected, completed }) => {
+    const percent = Math.round(progress.progress * 100);
+    const missing = progress.directMaterials.filter((material) => material.owned < material.needed);
+    const status = selected
+      ? "추적 중"
+      : completed
+        ? "달성 기록"
+        : owned > 0
+          ? `보유 ${owned}기`
+          : definition.acquisition === "craft" && percent >= 100
+            ? "재료 완성"
+            : percent > 0
+              ? `재료 ${percent}%`
+              : definition.acquisition === "direct" ? "직접 소환" : `${STAGE_NAMES[definition.stage]} 합성`;
+    const unlockWave = summonStageUnlockWave(definition.stage);
+    const directLocked = definition.acquisition === "direct" && engine.state.wave < unlockWave;
+    const materialLabel = definition.acquisition === "direct"
+      ? directLocked ? `${unlockWave}웨이브부터 직접 등장` : "현재 소환 풀에서 직접 등장"
+      : missing.length === 0
+        ? "필요 재료를 모두 보유"
+        : `부족 ${missing.slice(0, 5).map((material) => `${material.char}${material.needed - material.owned}`).join(" · ")}`;
+    const classes = [selected ? "is-current" : "", owned > 0 ? "is-owned" : "", completed ? "is-complete" : "", percent >= 100 ? "is-ready" : ""].filter(Boolean).join(" ");
+    return `<button type="button" class="goal-choice-card ${classes}" data-goal-char="${escapeHtml(definition.char)}" style="--goal-accent:${ELEMENT_STYLES[definition.wuxing].color}" aria-pressed="${String(selected)}">
+      <span class="goal-choice-spirit" style="${spriteStyle(definition)}" aria-hidden="true"></span>
+      <b class="goal-choice-glyph">${escapeHtml(definition.char)}</b>
+      <span class="goal-choice-copy"><strong>${escapeHtml(learning.readingLabel)}</strong><small>${escapeHtml(learning.short)}</small><em>${escapeHtml(materialLabel)}</em></span>
+      <mark>${escapeHtml(status)}</mark>
+    </button>`;
+  }).join("");
+}
+
+function renderIdiomGoalChoices(idioms: readonly IdiomDefinition[], ownedCounts: ReadonlyMap<string, number>): string {
+  const query = goalSearchQuery.trim().toLowerCase();
+  const currentId = engine.currentIdiomTarget()?.id;
+  const sealedIds = new Set(engine.state.idiomSeals.map((seal) => seal.idiomId));
+  const rows = idioms
+    .map((idiom, order) => {
+      const progress = engine.idiomProgress(idiom.id);
+      const selected = idiom.id === currentId;
+      const sealed = sealedIds.has(idiom.id);
+      const searchText = `${idiom.chars} ${idiom.name} ${idiom.reading} ${idiom.meaning}`.toLowerCase();
+      const score = (selected ? 100_000 : 0) + (sealed ? -10_000 : 0) + progress.owned * 2_000 + progress.readiness * 1_000 - order / 10_000;
+      return { idiom, progress, selected, sealed, searchText, score };
+    })
+    .filter((row) => !query || row.searchText.includes(query))
+    .sort((left, right) => right.score - left.score)
+    .slice(0, query ? 72 : 28);
+
+  if (rows.length === 0) return `<div class="goal-selector-empty"><b>검색 결과가 없습니다</b><span>네 글자나 성어 읽기를 다시 입력해 보세요.</span></div>`;
+  return rows.map(({ idiom, progress, selected, sealed }) => {
+    const classes = [selected ? "is-current" : "", sealed ? "is-complete" : "", progress.owned === progress.total ? "is-ready" : ""].filter(Boolean).join(" ");
+    const glyphs = ownedIdiomGlyphMarkup(idiom.chars, ownedCounts);
+    const status = selected ? "추적 중" : sealed ? "봉인 완료" : progress.owned === progress.total ? "배치 준비" : `${progress.owned}/${progress.total}자`;
+    return `<button type="button" class="goal-choice-card goal-choice-card--idiom ${classes}" data-goal-idiom="${escapeHtml(idiom.id)}" style="--goal-accent:${idiom.color}" aria-pressed="${String(selected)}" ${sealed ? "disabled" : ""}>
+      <span class="goal-choice-idiom-glyphs">${glyphs}</span>
+      <span class="goal-choice-copy"><strong>${escapeHtml(idiom.reading)}</strong><small>${escapeHtml(idiom.meaning)}</small><em>${escapeHtml(idiom.bonus.label)} · ${progress.missingChars.length > 0 ? `부족 ${progress.missingChars.map(escapeHtml).join("·")}` : "네 글자 보유"}</em></span>
+      <mark>${escapeHtml(status)}</mark>
+    </button>`;
+  }).join("");
 }
 
 function renderEvolutions(): void {
@@ -1067,7 +1678,7 @@ function renderEvolutions(): void {
 
 function evolutionCard(option: EvolutionOption, index: number): string {
   const style = ELEMENT_STYLES[option.result.wuxing];
-  const visual = jaryeongVisualFor(option.result.char, option.result.wuxing);
+  const visual = jaryeongVisualFor(option.result.char, option.result.wuxing, engine.state.region);
   const abilities = option.result.combat.abilities;
   const abilitySummary = abilities.role.glyph + " " + abilities.role.name + (abilities.lineage ? " · " + abilities.lineage.glyph + " 계승" : "");
   return `
@@ -1075,7 +1686,7 @@ function evolutionCard(option: EvolutionOption, index: number): string {
       <span class="evolution-index">${index + 1}</span>
       <span class="recipe-parents">${option.parents.map((parent) => "<i>" + parent + "</i>").join("<em>+</em>")}</span>
       <span class="recipe-arrow">→</span>
-      <span class="evolution-spirit" style="background-image:url('${import.meta.env.BASE_URL}assets/jaryeongs/${visual.id}/sheet-transparent.png')" aria-hidden="true"></span>
+      <span class="evolution-spirit" style="${visualBackgroundStyle(visual)}" aria-hidden="true"></span>
       <b class="recipe-result">${option.result.char}</b>
       <small>${STAGE_NAMES[option.result.stage]} · <b>${abilitySummary}</b></small>
       ${option.onTargetPath ? '<mark>목표 경로</mark>' : ""}
@@ -1083,17 +1694,80 @@ function evolutionCard(option: EvolutionOption, index: number): string {
   `;
 }
 
+const ABILITY_CATEGORY_LABELS: Record<AbilitySpec["category"], { label: string; mode: string }> = {
+  semantic: { label: "고유 기술", mode: "주기 자동" },
+  role: { label: "역할 기술", mode: "주기 자동" },
+  lineage: { label: "계승 기술", mode: "주기 자동" },
+  element: { label: "오행 효과", mode: "공격 연동" },
+  graph: { label: "진법 특성", mode: "조건 적용" }
+};
+
+function readableAbilityTrigger(trigger: string): string {
+  if (trigger === "공격 적중") return "공격 적중마다";
+  return trigger.replace(/(\d+번째 공격)$/u, "$1마다");
+}
+
+function selectedAbilityCard(ability: AbilitySpec): string {
+  const meta = ABILITY_CATEGORY_LABELS[ability.category];
+  const behaviorClass = ability.category === "element" ? "is-attack-linked" : ability.category === "graph" ? "is-conditional" : "is-periodic";
+  const trigger = readableAbilityTrigger(ability.trigger);
+  return `<button type="button" class="ability-card ${behaviorClass}" data-ability-id="${ability.id}" style="--ability:${ability.color}" title="${escapeHtml(`${meta.label} · ${trigger} · ${ability.description}`)}" aria-label="${escapeHtml(`${meta.label} ${ability.name}. ${trigger}. 자세한 설명 열기`)}">
+    <i aria-hidden="true">${ability.glyph}</i><span><em>${meta.label} · ${meta.mode}</em><b>${ability.name}</b><small>${escapeHtml(trigger)} · ${escapeHtml(ability.summary)}</small></span>
+  </button>`;
+}
+
+function abilityGuideArticle(ability: AbilitySpec, focusedAbilityId: string | undefined): string {
+  const meta = ABILITY_CATEGORY_LABELS[ability.category];
+  const focused = ability.id === focusedAbilityId;
+  return `<article class="ability-guide-card ${focused ? "is-focused" : ""}" data-guide-ability-id="${ability.id}" style="--ability:${ability.color}">
+    <i aria-hidden="true">${ability.glyph}</i>
+    <div><span>${meta.label}</span><h3>${escapeHtml(ability.name)}</h3><em>${meta.mode}</em></div>
+    <dl><div><dt>발동</dt><dd>${escapeHtml(readableAbilityTrigger(ability.trigger))}</dd></div><div><dt>효과</dt><dd>${escapeHtml(ability.summary)}</dd></div></dl>
+    <p>${escapeHtml(ability.description)}</p>
+  </article>`;
+}
+
+function openAbilityGuide(focusedAbilityId?: string): void {
+  const tower = engine.selectedTower();
+  if (!tower) return;
+  const definition = definitionForTower(engine.catalog, tower.definitionId);
+  const learning = learningInfo(engine.state.region, tower.char);
+  const abilities = definition.combat.abilities;
+  const activeSkills = hasActiveSkills(definition);
+  const periodicAbilities = activeSkills
+    ? [abilities.semantic, abilities.role, abilities.lineage].filter((ability): ability is AbilitySpec => Boolean(ability))
+    : [];
+  const supportingAbilities = activeSkills ? [abilities.element, abilities.graph] : [abilities.graph];
+  const loadout = [...periodicAbilities, ...supportingAbilities];
+  must<HTMLElement>("#ability-guide-title").textContent = `${tower.char} ${learning.short} · 기술 구성`;
+  must<HTMLElement>("#ability-guide-content").innerHTML = `
+    <section class="ability-guide-rule ${activeSkills ? "" : "is-locked"}">
+      <span>${activeSkills ? `기술 ${loadout.length}개 모두 자동 판정` : "1단 재료 자령 · 기술 해금 전"}</span>
+      <h3>${activeSkills ? "직접 누르는 기술은 없습니다" : "현재는 기본 공격만 수행합니다"}</h3>
+      <p>${activeSkills
+        ? `고유·역할·계승 기술의 주기가 같은 공격에 겹치면 <b>고유 → 역할 → 계승</b> 순서로 하나만 발동합니다. 오행 효과와 진법 특성은 각 조건을 만족하면 그 공격에 함께 적용됩니다.`
+        : `진법 특성은 조건을 만족하면 자동 적용됩니다. <b>2단 합성</b>부터 고유·역할 기술과 오행 효과가 해금됩니다.`}</p>
+      <div><b>주기 자동 ${periodicAbilities.length}</b><b>공격 연동 ${activeSkills ? 1 : 0}</b><b>조건 특성 1</b></div>
+    </section>
+    <div class="ability-guide-list">
+      ${activeSkills ? "" : `<article class="ability-guide-card is-basic ${focusedAbilityId === "basic-attack" ? "is-focused" : ""}" data-guide-ability-id="basic-attack" style="--ability:#aeb9cc"><i aria-hidden="true">合</i><div><span>기본 행동</span><h3>기본 공격</h3><em>자동</em></div><dl><div><dt>발동</dt><dd>적이 사거리 안에 있을 때</dd></div><div><dt>효과</dt><dd>단일 대상 공격</dd></div></dl><p>조합 가능한 1단 자령은 상위 글자의 재료 역할을 하며, 합성 전에는 고유 기술을 사용하지 않습니다.</p></article>`}
+      ${loadout.map((ability) => abilityGuideArticle(ability, focusedAbilityId)).join("")}
+    </div>`;
+  abilityGuideDialog.showModal();
+}
+
 function syncSelectedCharge(card: HTMLElement, definition: HanziDefinition, chargeStep: number): void {
+  const holder = card.querySelector<HTMLElement>(".ability-charge");
+  if (!hasActiveSkills(definition) || holder?.classList.contains("ability-charge--locked")) return;
   const ability = definition.combat.abilities.role;
   const signatureEvery = definition.combat.abilities.tuning.signatureEvery;
   const charge = chargeStep / signatureEvery;
   const remaining = signatureEvery - chargeStep;
   const meter = card.querySelector<HTMLElement>(".ability-charge i");
   const label = card.querySelector<HTMLElement>(".ability-charge small");
-  const holder = card.querySelector<HTMLElement>(".ability-charge");
   if (meter) meter.style.width = `${Math.round(charge * 100)}%`;
-  if (label) label.textContent = `${ability.glyph} ${ability.name} · ${chargeStep}/${signatureEvery}`;
-  if (holder) holder.title = `${ability.name}까지 ${remaining}회`;
+  if (label) label.textContent = `역할 기술 충전 · ${ability.glyph} ${ability.name} ${chargeStep}/${signatureEvery}`;
+  if (holder) holder.title = `다음 역할 기술 ${ability.name}까지 ${remaining}회`;
 }
 
 function renderSelected(): void {
@@ -1125,18 +1799,19 @@ function renderSelected(): void {
   const attacksPerSecond = 1 / engine.towerAttackCooldown(tower);
   const learning = learningInfo(engine.state.region, tower.char);
   const abilities = definition.combat.abilities;
-  const abilityList = [abilities.semantic, abilities.element, abilities.role, abilities.graph, abilities.lineage].filter((ability): ability is AbilitySpec => Boolean(ability));
+  const activeSkills = hasActiveSkills(definition);
+  const periodicAbilities = activeSkills
+    ? [abilities.semantic, abilities.role, abilities.lineage].filter((ability): ability is AbilitySpec => Boolean(ability))
+    : [];
+  const supportingAbilities = activeSkills ? [abilities.element, abilities.graph] : [abilities.graph];
+  const abilityLoadout = [...periodicAbilities, ...supportingAbilities];
   const readyBranches = branches.filter((branch) => branch.ready).length;
   const charge = chargeStep / abilities.tuning.signatureEvery;
   const remaining = abilities.tuning.signatureEvery - chargeStep;
-  const essenceCost = concentrationEssenceCost(concentration);
-  const canUseDuplicate = duplicateCount > 0;
-  const concentrationPayment = canUseDuplicate ? `중복 ${duplicateCount}기` : `${tower.wuxing} 문기 ${engine.state.elementEssence[tower.wuxing]}/${essenceCost}`;
-  const concentrationControls = concentration >= MAX_CONCENTRATION_LEVEL
-    ? '<button id="concentrate-max-button" type="button" disabled>濃 3/3 완성</button>'
-    : concentrationPath
-      ? `<button id="concentrate-${concentrationPath}-button" type="button">濃 ${concentration + 1}/3 · ${concentrationPath === "swift" ? "연속" : "심화"}</button>`
-      : '<button id="concentrate-swift-button" type="button">연속 농축</button><button id="concentrate-potent-button" type="button">심화 농축</button>';
+  const nextEssenceCost = concentrationEssenceCost(concentration);
+  const concentrationStatus = concentration >= MAX_CONCENTRATION_LEVEL
+    ? `濃 3/3 완성 · ${concentrationPath === "potent" ? "심화" : "연속"}`
+    : duplicateCount > 0 ? `중복 ${duplicateCount}기 사용 가능` : `${tower.wuxing} 문기 ${engine.state.elementEssence[tower.wuxing]}/${nextEssenceCost}`;
   const cleanup = engine.cleanupAssessments().find((assessment) => assessment.towerId === tower.id);
   const cleanupLabel = cleanup?.protected
     ? `보호 · ${cleanup.protectedReasons[0] ?? "전략 재료"}`
@@ -1147,18 +1822,28 @@ function renderSelected(): void {
       <div><span>${STAGE_NAMES[tower.stage]} · ${style.name}행 · ${ROLE_LABELS[tower.combatRole]}</span><h3>${tower.char} <small>${GRAPH_ROLE_LABELS[tower.graphRole]}</small><i class="selected-radical">${displayMode === "spirit" ? `${learning.readingLabel} ${escapeHtml(learning.reading)}` : `부수 ${radicalGlyph(tower.char)}`}</i></h3></div>
       <p class="selected-learning"><b>${learning.readingLabel}</b> ${escapeHtml(learning.reading)} · <em>${learning.meaningSource === "en" ? "뜻(영)" : "뜻"} ${escapeHtml(learning.meaning)}</em></p>
       <p><b>${stored ? "배치 대기" : `공격 ${damage}`}</b> · ${stored ? "찬 칸을 누르면 즉시 교체" : `공속 ${attacksPerSecond.toFixed(2)}/초 · 사거리 ${Math.round(range)} · 파생 합성 ${branches.length}`}</p>
-      <small class="cleanup-reason ${cleanup?.protected ? "is-protected" : "is-candidate"}">${escapeHtml(cleanupLabel)} · ${escapeHtml(concentrationPayment)}</small>
+      <small class="cleanup-reason ${cleanup?.protected ? "is-protected" : "is-candidate"}">${escapeHtml(cleanupLabel)} · ${escapeHtml(concentrationStatus)}</small>
     </div>
     <div class="selected-actions">
       <button id="lock-button" class="${tower.locked ? "is-locked" : ""}" type="button" data-testid="lock-tower">${tower.locked ? "鎖 잠금됨" : "잠금"}</button>
       <button id="store-button" type="button" data-testid="store-tower" ${stored ? "disabled" : ""}>${stored ? "인벤 보관 중" : "인벤 넣기"}</button>
       <button id="derivative-button" class="${readyBranches > 0 ? "has-ready" : ""}" type="button" data-testid="derivative-composition">파생 합성 ${readyBranches}</button>
       <button id="sell-button" type="button" ${tower.locked ? "disabled" : ""}>판매 +${sellValue(tower.stage)}</button>
-      <button id="dismantle-button" type="button" ${tower.locked ? "disabled" : ""}>분해 ${tower.wuxing}+${dismantleEssenceValue(tower.stage, concentration)}</button>
-      ${concentrationControls}
+      <button id="open-growth-button" type="button">강화·분해 탭 ›</button>
+      <button id="open-concentration-button" type="button" ${concentration >= MAX_CONCENTRATION_LEVEL ? "disabled" : ""}>농축 공방 ›</button>
     </div>
-    <div class="ability-pills">${abilityList.map((ability) => `<span style="--ability:${ability.color}" title="${ability.trigger} · ${ability.description}"><i>${ability.glyph}</i><b>${ability.name}<small>${ability.summary}</small></b></span>`).join("")}</div>
-    <div class="ability-charge" title="${abilities.role.name}까지 ${remaining}회"><i style="width:${Math.round(charge * 100)}%;--charge:${abilities.role.color}"></i><small>${abilities.role.glyph} ${abilities.role.name} · ${chargeStep}/${abilities.tuning.signatureEvery}</small></div>
+    <button type="button" class="selected-ability-summary" data-ability-guide><b>${activeSkills ? `技 기술 ${abilityLoadout.length}개 · 모두 자동 판정` : "技 기술 해금 전"}</b><span>${activeSkills ? `주기 ${periodicAbilities.length} · 공격 연동 1 · 조건 특성 1` : "현재 기본 공격 · 2단 합성 필요"}</span><em>설명 ›</em></button>
+    ${activeSkills
+      ? `<div class="ability-loadout">
+          <div class="ability-overview"><span><b>주기 겹침: 고유 → 역할 → 계승 중 1개 발동</b></span><button type="button" data-ability-guide>전체 설명</button></div>
+          <div class="ability-pills">${abilityLoadout.map(selectedAbilityCard).join("")}</div>
+        </div>
+        <div class="ability-charge" title="다음 역할 기술 ${abilities.role.name}까지 ${remaining}회"><i style="width:${Math.round(charge * 100)}%;--charge:${abilities.role.color}"></i><small>역할 기술 충전 · ${abilities.role.glyph} ${abilities.role.name} ${chargeStep}/${abilities.tuning.signatureEvery}</small></div>`
+      : `<div class="ability-loadout is-locked">
+          <div class="ability-overview"><span><b>2단 합성부터 고유·역할 기술과 오행 효과 해금</b></span><button type="button" data-ability-guide>규칙 설명</button></div>
+          <div class="ability-pills ability-pills--locked"><button type="button" class="ability-card is-basic" data-ability-id="basic-attack" style="--ability:#aeb9cc"><i>合</i><span><em>기본 행동 · 자동</em><b>기본 공격</b><small>단일 대상 · 합성 재료</small></span></button>${supportingAbilities.map(selectedAbilityCard).join("")}</div>
+        </div>
+        <div class="ability-charge ability-charge--locked"><i style="width:0%;--charge:#aeb9cc"></i><small>2단 합성 시 고유 기술 해금</small></div>`}
   `;
 }
 
@@ -1173,11 +1858,11 @@ function compositionMaterialChip(material: CompositionBranchPreview["materials"]
 
 function compositionBranchCard(branch: CompositionBranchPreview): string {
   const style = ELEMENT_STYLES[branch.result.wuxing];
-  const visual = jaryeongVisualFor(branch.result.char, branch.result.wuxing);
+  const visual = jaryeongVisualFor(branch.result.char, branch.result.wuxing, engine.state.region);
   const missing = branch.materials.filter((material) => material.towerId === null).map((material) => material.char);
   return `
     <button class="composition-branch ${branch.ready ? "is-ready" : "is-missing"} ${branch.onTargetPath ? "is-target" : ""}" type="button" data-composition-recipe="${branch.recipeId}" aria-disabled="${String(!branch.ready)}" style="--branch:${style.color}">
-      <i class="composition-result-spirit" style="background-image:url('${import.meta.env.BASE_URL}assets/jaryeongs/${visual.id}/sheet-transparent.png')" aria-hidden="true"></i>
+      <i class="composition-result-spirit" style="${visualBackgroundStyle(visual)}" aria-hidden="true"></i>
       <span class="composition-branch-copy">
         <strong>${branch.parents.join(" + ")} <em>→</em> <b>${branch.result.char}</b></strong>
         <small>${STAGE_NAMES[branch.result.stage]} · ${escapeHtml(learningInfo(engine.state.region, branch.result.char).short)}</small>
@@ -1310,39 +1995,151 @@ function definitionMatches(definition: HanziDefinition, normalized: string): boo
 }
 
 function spriteStyle(definition: HanziDefinition): string {
-  const visual = jaryeongVisualFor(definition.char, definition.wuxing);
-  return `background-image:url('${import.meta.env.BASE_URL}assets/jaryeongs/${visual.id}/sheet-transparent.png')`;
+  const visual = jaryeongVisualFor(definition.char, definition.wuxing, engine.state.region);
+  return visualBackgroundStyle(visual);
+}
+
+function synthesisTierBadge(tier: Exclude<SynthesisTierFilter, "all">): string {
+  const uncombinable = tier === UNCOMBINABLE_STAGE_ONE;
+  const accessible = synthesisTierAccessibleLabel(tier, uncombinable);
+  return `<span class="codex-tier-stars${uncombinable ? " is-uncombinable" : ""}" aria-label="${accessible}" title="${accessible}">${synthesisTierFilterLabel(tier)}</span>`;
 }
 
 function setCodexMode(mode: CodexMode): void {
   codexMode = mode;
+  const jaryeongMode = mode === "jaryeongs";
+  codexDialog.classList.toggle("is-jaryeong-dex", jaryeongMode);
   document.querySelectorAll<HTMLButtonElement>("[data-codex-mode]").forEach((button) => {
     const selected = button.dataset.codexMode === mode;
     button.classList.toggle("is-active", selected);
     button.setAttribute("aria-selected", String(selected));
   });
   const search = must<HTMLInputElement>("#codex-search");
-  search.placeholder = mode === "inventory" ? "보유 자령 검색" : mode === "recipes" ? "결과·재료·능력 검색" : mode === "idioms" ? "사자성어·효과 검색" : "한자·훈음·능력 검색";
+  must<HTMLElement>("#codex-kicker").textContent = jaryeongMode ? "CHEONJAMUN JARYEONG ARCHIVE" : "REGIONAL CHARACTER CODEX";
+  must<HTMLElement>("#codex-title-label").textContent = jaryeongMode ? " 자령 도감" : " 한자 도감";
+  search.placeholder = jaryeongMode ? "한자·훈음·오행·서식 검색" : mode === "inventory" ? "보유 자령 검색" : mode === "recipes" ? "결과·재료·능력 검색" : mode === "idioms" ? "사자성어·효과 검색" : "한자·훈음·능력 검색";
+  must<HTMLElement>("#codex-note").textContent = jaryeongMode
+    ? "한자의 뜻이 자령의 성질과 모습으로 발현됩니다. 카드를 선택해 서식과 관찰 기록을 확인하세요."
+    : `지역 독음은 Unicode Unihan ${LEARNING_DATA_META.version}, 한국어 훈음은 libhangul 사전 기반입니다. 한국어 훈이 없는 글자는 뜻(영)으로 구분해 표시합니다.`;
   renderCodex(search.value);
 }
 
-function renderCodexSynthesisFilters(definitions: HanziDefinition[], depths: Map<string, number>): void {
+function jaryeongDexEntryMatches(entry: CheonjamunJaryeongDexEntry, query: string): boolean {
+  const normalized = query.trim().toLowerCase();
+  if (!normalized) return true;
+  return [
+    entry.hanja,
+    entry.huneum,
+    entry.meaning,
+    entry.wuxing,
+    entry.elementName,
+    entry.category,
+    entry.dexText,
+    entry.habitat,
+    entry.temperament,
+    entry.traitName,
+    entry.traitDescription
+  ].join(" ").toLowerCase().includes(normalized);
+}
+
+function jaryeongDexImageUrl(entry: CheonjamunJaryeongDexEntry): string {
+  return `${import.meta.env.BASE_URL}${entry.imagePath}`;
+}
+
+function renderJaryeongDexFilters(): void {
   const filters = must<HTMLElement>("#codex-synthesis-filters");
+  filters.hidden = false;
+  filters.setAttribute("aria-label", "천자문 자령 오행 분류");
+  const options: Array<{ value: JaryeongDexFilter; label: string; count: number }> = [
+    { value: "all", label: "전체", count: CHEONJAMUN_JARYEONG_DEX_META.total },
+    ...WUXING_ORDER.map((wuxing) => ({ value: wuxing, label: `${wuxing} · ${ELEMENT_STYLES[wuxing].name}`, count: CHEONJAMUN_JARYEONG_DEX_META.elementCounts[wuxing] }))
+  ];
+  filters.innerHTML = options.map((option) => `<button type="button" data-jaryeong-filter="${option.value}" class="${jaryeongDexFilter === option.value ? "is-active" : ""}" aria-pressed="${String(jaryeongDexFilter === option.value)}">${option.label} <small>${option.count}</small></button>`).join("");
+}
+
+function renderJaryeongDex(query = ""): void {
+  renderJaryeongDexFilters();
+  let entries = [...CHEONJAMUN_JARYEONG_DEX_ENTRIES];
+  if (jaryeongDexFilter !== "all") entries = entries.filter((entry) => entry.wuxing === jaryeongDexFilter);
+  entries = entries.filter((entry) => jaryeongDexEntryMatches(entry, query)).sort((left, right) => left.number - right.number);
+  const selected = entries.find((entry) => entry.id === selectedJaryeongDexId) ?? entries[0];
+  selectedJaryeongDexId = selected?.id ?? "";
+
+  must<HTMLElement>("#codex-region").textContent = "한국 · 천자문";
+  must<HTMLElement>("#codex-summary").textContent = `기록 ${entries.length.toLocaleString("ko-KR")}/${CHEONJAMUN_JARYEONG_DEX_META.total.toLocaleString("ko-KR")} · 오행 5계열`;
+  const list = must<HTMLElement>("#codex-list");
+  list.className = "codex-list codex-list--jaryeong";
+  list.innerHTML = entries.map((entry) => {
+    const isSelected = entry.id === selectedJaryeongDexId;
+    return `<button type="button" data-jaryeong-id="${entry.id}" class="codex-jaryeong-card ${isSelected ? "is-selected" : ""}" style="--codex:${ELEMENT_STYLES[entry.wuxing].color}" aria-current="${String(isSelected)}" aria-label="${escapeHtml(`천자문 도감 ${entry.number}번 ${entry.hanja} ${entry.huneum} ${entry.wuxing}행`)}">
+      <span class="codex-jaryeong-number">No.${String(entry.number).padStart(3, "0")}</span>
+      <img src="${jaryeongDexImageUrl(entry)}" alt="${escapeHtml(`${entry.hanja} ${entry.huneum} 자령`)}" width="104" height="104" loading="lazy">
+      <span class="codex-jaryeong-copy"><span class="codex-jaryeong-identity"><b>${entry.hanja}</b><strong>${escapeHtml(entry.huneum)}</strong><i>${entry.wuxing}</i></span><span class="codex-jaryeong-category">${escapeHtml(entry.category)}</span><small>${escapeHtml(entry.traitName)} · ${escapeHtml(entry.habitat)}</small></span>
+    </button>`;
+  }).join("") || '<p class="codex-empty">일치하는 자령 기록이 없습니다.</p>';
+  renderJaryeongDexDetail(selected);
+}
+
+function renderJaryeongDexDetail(entry: CheonjamunJaryeongDexEntry | undefined): void {
+  const detail = must<HTMLElement>("#codex-detail");
+  if (!entry) {
+    detail.innerHTML = '<p class="codex-empty">자령 카드를 선택하세요.</p>';
+    return;
+  }
+  const color = ELEMENT_STYLES[entry.wuxing].color;
+  detail.innerHTML = `
+    <div class="codex-jaryeong-detail" style="--codex:${color}">
+      <div class="codex-jaryeong-detail-hero">
+        <div class="codex-jaryeong-portrait">
+          <img src="${jaryeongDexImageUrl(entry)}" alt="${escapeHtml(`${entry.hanja} ${entry.huneum} 자령`)}" width="214" height="214">
+          <span>${entry.wuxing}</span>
+        </div>
+        <div class="codex-jaryeong-identity-panel">
+          <p class="eyebrow">CHEONJAMUN No.${String(entry.number).padStart(3, "0")}</p>
+          <div class="codex-jaryeong-name"><strong>${entry.hanja}</strong><div><h3>${escapeHtml(entry.huneum)}</h3><p>${escapeHtml(entry.category)}</p></div></div>
+          <div class="codex-jaryeong-tags"><span>${entry.wuxing} · ${escapeHtml(entry.elementName)}</span><span>뜻 · ${escapeHtml(entry.meaning)}</span></div>
+        </div>
+      </div>
+      <article class="codex-jaryeong-entry"><span>도감 기록</span><p>${escapeHtml(entry.dexText)}</p></article>
+      <div class="codex-jaryeong-facts">
+        <div><span>분류</span><b>${escapeHtml(entry.category)}</b></div>
+        <div><span>오행</span><b>${entry.wuxing} · ${escapeHtml(entry.elementName)}</b></div>
+        <div><span>주요 서식</span><b>${escapeHtml(entry.habitat)}</b></div>
+        <div><span>기질</span><b>${escapeHtml(entry.temperament)}</b></div>
+      </div>
+      <article class="codex-jaryeong-trait"><span>기운 특성</span><h4>${escapeHtml(entry.traitName)}</h4><p>${escapeHtml(entry.traitDescription)}</p></article>
+      <div class="codex-jaryeong-observation">
+        <article><span>관찰 메모</span><p>${escapeHtml(entry.observation)}</p></article>
+        <article><span>외형 표식</span><p>${escapeHtml(entry.appearance)}</p></article>
+      </div>
+    </div>
+  `;
+}
+
+function renderCodexSynthesisFilters(
+  definitions: HanziDefinition[],
+  depths: Map<string, number>,
+  uncombinableStageOne: ReadonlySet<string>
+): void {
+  const filters = must<HTMLElement>("#codex-synthesis-filters");
+  filters.setAttribute("aria-label", "합성 단계 분류");
   if (codexMode === "idioms") {
     filters.hidden = true;
     return;
   }
   filters.hidden = false;
-  const counts = new Map<number, number>();
+  const counts = new Map<number | typeof UNCOMBINABLE_STAGE_ONE, number>();
   for (const definition of definitions) {
     const depth = depths.get(definition.char) ?? 0;
-    counts.set(depth, (counts.get(depth) ?? 0) + 1);
+    const key = synthesisTierKey(definition, depth, uncombinableStageOne);
+    counts.set(key, (counts.get(key) ?? 0) + 1);
   }
   if (codexSynthesisDepth !== "all" && !counts.has(codexSynthesisDepth)) codexSynthesisDepth = "all";
-  const options = [...counts.entries()].sort(([left], [right]) => left - right);
+  const sortValue = (key: number | typeof UNCOMBINABLE_STAGE_ONE): number => key === UNCOMBINABLE_STAGE_ONE ? 1.5 : key;
+  const options = [...counts.entries()].sort(([left], [right]) => sortValue(left) - sortValue(right));
   filters.innerHTML = [
     `<button type="button" data-synthesis-depth="all" class="${codexSynthesisDepth === "all" ? "is-active" : ""}" aria-pressed="${String(codexSynthesisDepth === "all")}">전체 <small>${definitions.length}</small></button>`,
-    ...options.map(([depth, count]) => `<button type="button" data-synthesis-depth="${depth}" class="${codexSynthesisDepth === depth ? "is-active" : ""}" aria-pressed="${String(codexSynthesisDepth === depth)}">${synthesisDepthLabel(depth)} <small>${count}</small></button>`)
+    ...options.map(([depth, count]) => `<button type="button" data-synthesis-depth="${depth}" class="${codexSynthesisDepth === depth ? "is-active" : ""}" aria-pressed="${String(codexSynthesisDepth === depth)}">${synthesisTierBadge(depth)} <small>${count}</small></button>`)
   ].join("");
 }
 
@@ -1353,8 +2150,13 @@ function renderCodex(query = ""): void {
   must<HTMLElement>("#codex-region").textContent = REGION_META[engine.state.region].title;
   must<HTMLElement>("#inventory-count").textContent = String(regionalInventory.length);
 
+  if (codexMode === "jaryeongs") {
+    renderJaryeongDex(normalized);
+    return;
+  }
+
   if (codexMode === "idioms") {
-    renderCodexSynthesisFilters([], new Map());
+    renderCodexSynthesisFilters([], new Map(), new Set());
     const activeIds = new Set(engine.idioms().map((idiom) => idiom.id));
     const idioms = engine.allIdioms().filter((idiom) => !normalized || [idiom.chars, idiom.reading, idiom.meaning, idiom.bonus.label].join(" ").includes(normalized));
     must<HTMLElement>("#codex-summary").textContent = `성어 ${idioms.length}/${engine.allIdioms().length} · 이번 런 목표 ${engine.idioms().length}개`;
@@ -1369,33 +2171,38 @@ function renderCodex(query = ""): void {
   }
 
   const synthesisDepths = buildSynthesisDepths(engine.catalog.definitions.values());
+  const uncombinableStageOne = buildUncombinableStageOneChars(engine.catalog.definitions.values());
   let definitions = codexMode === "recipes" ? [...engine.catalog.recipes] : [...engine.catalog.definitions.values()];
   if (codexMode === "inventory") {
     const owned = new Set(regionalInventory.map((entry) => entry.char));
     definitions = definitions.filter((definition) => owned.has(definition.char));
   }
-  renderCodexSynthesisFilters(definitions, synthesisDepths);
-  if (codexSynthesisDepth !== "all") definitions = definitions.filter((definition) => (synthesisDepths.get(definition.char) ?? 0) === codexSynthesisDepth);
+  renderCodexSynthesisFilters(definitions, synthesisDepths, uncombinableStageOne);
+  if (codexSynthesisDepth !== "all") definitions = definitions.filter((definition) =>
+    synthesisTierKey(definition, synthesisDepths.get(definition.char) ?? 1, uncombinableStageOne) === codexSynthesisDepth
+  );
   definitions = definitions.filter((definition) => definitionMatches(definition, normalized));
   definitions.sort((a, b) => (synthesisDepths.get(a.char) ?? 0) - (synthesisDepths.get(b.char) ?? 0) || a.stage - b.stage || a.char.localeCompare(b.char, "ko"));
   list.className = codexMode === "recipes" ? "codex-list codex-list--recipes" : codexMode === "inventory" ? "codex-list codex-list--inventory" : "codex-list";
 
   if (codexMode === "recipes") {
-    must<HTMLElement>("#codex-summary").textContent = `조합 ${definitions.length.toLocaleString("ko-KR")}/${engine.catalog.recipes.length.toLocaleString("ko-KR")}식 · 재료 → 결과 순서 · ${codexSynthesisDepth === "all" ? "전체 단계" : synthesisDepthLabel(codexSynthesisDepth)}`;
-    list.innerHTML = definitions.map((definition) => `<button type="button" data-codex-recipe="${definition.char}" class="codex-recipe-card" style="--codex:${ELEMENT_STYLES[definition.wuxing].color}"><span class="codex-recipe-formula">${definition.parents.map((parent) => `<i>${parent}</i>`).join("<em>+</em>")}<em>→</em><b>${definition.char}</b></span><span>${escapeHtml(learningInfo(engine.state.region, definition.char).short)}</span><small>${synthesisDepthLabel(synthesisDepths.get(definition.char) ?? 0)} · ${STAGE_NAMES[definition.stage]} · ${definition.combat.abilities.role.name}</small></button>`).join("");
+    must<HTMLElement>("#codex-summary").textContent = `조합 ${definitions.length.toLocaleString("ko-KR")}/${engine.catalog.recipes.length.toLocaleString("ko-KR")}식 · 재료 → 결과 순서 · ${codexSynthesisDepth === "all" ? "전체 단계" : synthesisTierFilterLabel(codexSynthesisDepth)}`;
+    list.innerHTML = definitions.map((definition) => { const tier = synthesisTierKey(definition, synthesisDepths.get(definition.char) ?? 1, uncombinableStageOne); return `<button type="button" data-codex-recipe="${definition.char}" class="codex-recipe-card" style="--codex:${ELEMENT_STYLES[definition.wuxing].color}"><span class="codex-recipe-formula">${definition.parents.map((parent) => `<i>${parent}</i>`).join("<em>+</em>")}<em>→</em><b>${definition.char}</b></span><span>${escapeHtml(learningInfo(engine.state.region, definition.char).short)}</span><small>${synthesisTierBadge(tier)} · ${STAGE_NAMES[definition.stage]} · ${hasActiveSkills(definition) ? definition.combat.abilities.role.name : "기본 공격"}</small></button>`; }).join("");
   } else if (codexMode === "inventory") {
     const counts = new Map(regionalInventory.map((entry) => [entry.char, entry]));
     must<HTMLElement>("#codex-summary").textContent = `보유 ${definitions.length}종 · 브라우저 자동 저장 · 기록 ${inventoryRevision}`;
     list.innerHTML = definitions.map((definition) => {
       const entry = counts.get(definition.char);
-      return `<button type="button" data-codex-char="${definition.char}" class="is-discovered inventory-card" style="--codex:${ELEMENT_STYLES[definition.wuxing].color}"><i class="codex-spirit" style="${spriteStyle(definition)}"></i><b>${definition.char}</b><span>${escapeHtml(learningInfo(engine.state.region, definition.char).short)}</span><small>${synthesisDepthLabel(synthesisDepths.get(definition.char) ?? 0)} · 소환 ${entry?.summons ?? 0} · 합성 ${entry?.evolutions ?? 0}</small></button>`;
+      const tier = synthesisTierKey(definition, synthesisDepths.get(definition.char) ?? 1, uncombinableStageOne);
+      return `<button type="button" data-codex-char="${definition.char}" class="is-discovered inventory-card" style="--codex:${ELEMENT_STYLES[definition.wuxing].color}"><i class="codex-spirit" style="${spriteStyle(definition)}"></i><b>${definition.char}</b><span>${escapeHtml(learningInfo(engine.state.region, definition.char).short)}</span><small>${synthesisTierBadge(tier)} · 소환 ${entry?.summons ?? 0} · 합성 ${entry?.evolutions ?? 0}</small></button>`;
     }).join("");
   } else {
-    must<HTMLElement>("#codex-summary").textContent = `${definitions.length.toLocaleString("ko-KR")}/${engine.catalog.definitions.size.toLocaleString("ko-KR")}자 · ${codexSynthesisDepth === "all" ? "전체 단계" : synthesisDepthLabel(codexSynthesisDepth)}`;
+    must<HTMLElement>("#codex-summary").textContent = `${definitions.length.toLocaleString("ko-KR")}/${engine.catalog.definitions.size.toLocaleString("ko-KR")}자 · ${codexSynthesisDepth === "all" ? "전체 단계" : synthesisTierFilterLabel(codexSynthesisDepth)}`;
     list.innerHTML = definitions.map((definition) => {
       const discovered = engine.state.discoveredChars.includes(definition.char);
       const learning = learningInfo(engine.state.region, definition.char);
-      return `<button type="button" data-codex-char="${definition.char}" class="${discovered ? "is-discovered" : ""}" style="--codex:${ELEMENT_STYLES[definition.wuxing].color}"><b>${definition.char}</b><span>${escapeHtml(learning.short)}</span><small>${synthesisDepthLabel(synthesisDepths.get(definition.char) ?? 0)} · ${STAGE_NAMES[definition.stage]} · ${definition.combat.abilities.role.name} · ${definition.parents.length ? definition.parents.join("+") : "직접"}</small></button>`;
+      const tier = synthesisTierKey(definition, synthesisDepths.get(definition.char) ?? 1, uncombinableStageOne);
+      return `<button type="button" data-codex-char="${definition.char}" class="${discovered ? "is-discovered" : ""}" style="--codex:${ELEMENT_STYLES[definition.wuxing].color}"><b>${definition.char}</b><span>${escapeHtml(learning.short)}</span><small>${synthesisTierBadge(tier)} · ${STAGE_NAMES[definition.stage]} · ${hasActiveSkills(definition) ? definition.combat.abilities.role.name : "기본 공격"} · ${definition.parents.length ? definition.parents.join("+") : "직접"}</small></button>`;
     }).join("");
   }
   if (definitions.length === 0) list.innerHTML = '<p class="codex-empty">검색 결과가 없습니다.</p>';
@@ -1426,19 +2233,25 @@ function renderCodexDetail(definition: HanziDefinition | undefined): void {
   const discovered = engine.state.discoveredChars.includes(definition.char);
   const learning = learningInfo(engine.state.region, definition.char);
   const abilities = definition.combat.abilities;
-  const abilityList = [abilities.semantic, abilities.element, abilities.role, abilities.graph, abilities.lineage].filter((ability): ability is AbilitySpec => Boolean(ability));
+  const activeSkills = hasActiveSkills(definition);
+  const abilityList = activeSkills
+    ? [abilities.semantic, abilities.role, abilities.lineage].filter((ability): ability is AbilitySpec => Boolean(ability))
+    : [];
+  const passiveList = activeSkills ? [abilities.element, abilities.graph] : [abilities.graph];
   const inventoryEntry = jaryeongInventory.entries[`${engine.state.region}:${definition.char}`];
   const children = engine.catalog.recipes.filter((candidate) => candidate.parents.includes(definition.char)).sort((a, b) => a.stage - b.stage).slice(0, 12);
   const recipeSteps = recipeStepsFor(definition.char);
-  const synthesisDepth = buildSynthesisDepths(engine.catalog.definitions.values()).get(definition.char) ?? 0;
-  const visual = jaryeongVisualFor(definition.char, definition.wuxing);
+  const synthesisDepth = buildSynthesisDepths(engine.catalog.definitions.values()).get(definition.char) ?? 1;
+  const uncombinableStageOne = buildUncombinableStageOneChars(engine.catalog.definitions.values());
+  const synthesisTier = synthesisTierKey(definition, synthesisDepth, uncombinableStageOne);
+  const visual = jaryeongVisualFor(definition.char, definition.wuxing, engine.state.region);
   detail.innerHTML = `
     <div class="codex-detail-hero" style="--codex:${ELEMENT_STYLES[definition.wuxing].color}">
-      <i class="codex-detail-spirit" style="background-image:url('${import.meta.env.BASE_URL}assets/jaryeongs/${visual.id}/sheet-transparent.png')"></i>
+      <i class="codex-detail-spirit" style="${visualBackgroundStyle(visual)}"></i>
       <div class="codex-detail-glyph">${definition.char}</div>
     </div>
     <p class="eyebrow">${definition.id}</p>
-    <h3>${synthesisDepthLabel(synthesisDepth)} · ${STAGE_NAMES[definition.stage]} · ${definition.wuxing}행 · ${definition.combat.roleLabel}</h3>
+    <h3>${synthesisTierBadge(synthesisTier)} · ${STAGE_NAMES[definition.stage]} · ${definition.wuxing}행 · ${definition.combat.roleLabel}</h3>
     <div class="codex-stats"><span><small>공격</small><b>${Math.round(definition.combat.baseDamage * STAGE_MULTIPLIERS[definition.stage] * definition.combat.budgetMultiplier)}</b></span><span><small>사거리</small><b>${definition.combat.range}</b></span><span><small>공속</small><b>${definition.combat.cooldown.toFixed(2)}초</b></span><span><small>하위</small><b>${definition.graph.directChildCount}</b></span></div>
     <article class="strategy-note"><b>전략 운용</b><span>${ROLE_STRATEGY[definition.combat.role]} ${definition.combat.description}</span></article>
     <dl>
@@ -1446,14 +2259,16 @@ function renderCodexDetail(definition: HanziDefinition | undefined): void {
       <div class="learning-row"><dt>${learning.meaningSource === "en" ? "뜻(영)" : "뜻"}</dt><dd>${escapeHtml(learning.meaning)}</dd></div>
       <div class="learning-row"><dt>부수</dt><dd>${radicalLearningLabel(definition.char)}</dd></div>
       <div><dt>획득</dt><dd>${definition.acquisition === "direct" ? "직접 소환" : definition.parents.join(" + ") + " → " + definition.char}</dd></div>
-      <div><dt>합성 단계</dt><dd>${synthesisDepthLabel(synthesisDepth)}${synthesisDepth > 0 ? " · 가장 긴 선행 조합 기준" : " · 합성 재료 불필요"}</dd></div>
+      <div><dt>단계</dt><dd>${synthesisTierBadge(synthesisTier)}${synthesisDepth > 1 ? " · 가장 긴 선행 조합 기준" : uncombinableStageOne.has(definition.char) ? " · 상위 조합식 없음" : " · 상위 조합 재료"}</dd></div>
       <div><dt>전투</dt><dd>${definition.combat.roleLabel} · ${definition.combat.effectLabel}</dd></div>
       <div><dt>조합망</dt><dd>${GRAPH_ROLE_LABELS[definition.graph.graphRole]} · 직접 하위 ${definition.graph.directChildCount}자</dd></div>
       <div><dt>보유 기록</dt><dd>${inventoryEntry ? `소환 ${inventoryEntry.summons}회 · 합성 획득 ${inventoryEntry.evolutions}회 · 자동 저장됨` : "아직 획득 기록 없음"}</dd></div>
-      <div><dt>상태</dt><dd>${discovered ? "이번 런 발견" : "이번 런 미발견"}${definition.needsReview ? " · 초벌 검토 대상" : ""}</dd></div>
+      <div><dt>발견 기록</dt><dd>${discovered ? "이번 런에서 만남" : "아직 만나지 못함"}</dd></div>
     </dl>
     <div class="codex-abilities">
+      ${activeSkills ? "" : `<article class="is-locked" style="--ability:#aeb9cc"><b>合</b><span><strong>1단 기본 공격</strong><small>조합 가능한 재료 · 능력 미보유</small><em>이 자령은 상위 조합 재료입니다. 2단으로 합성하면 의미 기술과 역할 기술이 해금됩니다.</em></span></article>`}
       ${abilityList.map((ability) => `<article style="--ability:${ability.color}"><b>${ability.glyph}</b><span><strong>${ability.name}</strong><small>${ability.trigger} · ${ability.summary}</small><em>${ability.description}</em></span></article>`).join("")}
+      ${passiveList.map((ability) => `<article class="is-passive" style="--ability:${ability.color}"><b>${ability.glyph}</b><span><strong>${ability.name}</strong><small>상시 특성 · ${ability.summary}</small><em>${ability.description}</em></span></article>`).join("")}
     </div>
     <section class="recipe-guide">
       <h4>조합표</h4>
@@ -1493,15 +2308,15 @@ function renderRunInventory(): void {
   }).map((stack) => {
     const tower = selectedTower && selectedTower.char === stack[0]?.char ? selectedTower : stack.find((candidate) => !candidate.locked) ?? stack[0]!;
     const definition = definitionForTower(engine.catalog, tower.definitionId);
-    const visual = jaryeongVisualFor(tower.char, tower.wuxing);
+    const visual = jaryeongVisualFor(tower.char, tower.wuxing, engine.state.region);
     const learning = learningInfo(engine.state.region, tower.char);
     const selected = tower.id === selectedId;
     const candidates = stack.filter((candidate) => cleanupAssessments.get(candidate.id)?.protected === false).length;
     const concentration = Math.max(...stack.map((candidate) => candidate.concentration ?? 0));
     return `<button class="run-inventory-card ${selected ? "is-selected" : ""} ${candidates > 0 ? "is-cleanup-candidate" : "is-protected-stack"}" type="button" data-run-inventory-id="${tower.id}" style="--inventory-element:${ELEMENT_STYLES[tower.wuxing].color}">
-      <span class="run-inventory-spirit" style="background-image:url('${import.meta.env.BASE_URL}assets/jaryeongs/${visual.id}/sheet-transparent.png')" aria-hidden="true"></span>
+      <span class="run-inventory-spirit" style="${visualBackgroundStyle(visual)}" aria-hidden="true"></span>
       <b>${tower.char}</b>
-      <span><strong>${escapeHtml(learning.short)} <i>×${stack.length}</i></strong><small>${STAGE_NAMES[tower.stage]} · ${definition.combat.abilities.semantic.name}${concentration > 0 ? ` · 濃 ${concentration}` : ""}</small></span>
+      <span><strong>${escapeHtml(learning.short)} <i>×${stack.length}</i></strong><small>${STAGE_NAMES[tower.stage]} · ${hasActiveSkills(definition) ? definition.combat.abilities.semantic.name : "기본 공격·합성 재료"}${concentration > 0 ? ` · 濃 ${concentration}` : ""}</small></span>
       <em>${selected ? "찬 칸 교체" : candidates > 0 ? `정리 ${candidates}` : "보호"}</em>
     </button>`;
   }).join("");
@@ -1532,20 +2347,76 @@ function renderIdiomCodexDetail(idiom: ReturnType<GameEngine["idioms"]>[number] 
 
 function drawWorld(delta: number): void {
   const state = engine.state;
+  const selectedTower = engine.selectedTower();
+  canvas.dataset.selectedTowerId = selectedTower ? String(selectedTower.id) : "";
+  canvas.dataset.selectedSynthesisTier = selectedTower ? String(mapSynthesisDepths.get(selectedTower.char) ?? 1) : "";
+  const materialIds = hoveredMaterialIds();
+  const synergyElements = new Set(engine.activeSynergies());
   drawPaperBackdrop();
   context.save();
   context.translate(mapOffset.x, mapOffset.y);
   context.scale(mapZoom, mapZoom);
   drawTrack();
   drawBoard();
+  drawAbilityZones();
   drawCompositionMaterialLinks();
   drawIdiomSeals();
   drawSelection();
-  for (const enemy of state.enemies) drawEnemy(enemy);
-  for (const tower of [...state.towers].sort((a, b) => a.cell - b.cell)) drawTower(tower);
+  for (const enemy of state.enemies) {
+    const point = positionOnPath(enemy.progress);
+    if (isWorldPointVisible(point, enemy.boss ? 90 : 55)) drawEnemy(enemy, point);
+  }
+  for (const tower of [...state.towers].sort((a, b) => a.cell - b.cell)) {
+    if (isWorldPointVisible(BOARD_CELLS[tower.cell] as Point, 65)) drawTower(tower, materialIds, synergyElements);
+  }
+  // Keep combat sprites in the foreground so their raster silhouettes are not
+  // hidden by the enemy/tower bodies. Their alpha and size remain restrained
+  // so the learning labels stay readable.
   updateAndDrawFx(delta);
   context.restore();
   drawHoveredTowerCard();
+}
+
+function isWorldPointVisible(point: Point, margin = 0): boolean {
+  const x = mapOffset.x + point.x * mapZoom;
+  const y = mapOffset.y + point.y * mapZoom;
+  const screenMargin = margin * mapZoom;
+  return x >= -screenMargin && x <= WORLD_WIDTH + screenMargin && y >= -screenMargin && y <= WORLD_HEIGHT + screenMargin;
+}
+
+function drawAbilityZones(): void {
+  let spriteDrawnThisFrame = false;
+  for (const zone of engine.state.abilityZones) {
+    const point = positionOnPath(zone.progress);
+    if (!isWorldPointVisible(point, zone.radius)) continue;
+    const remaining = Math.max(0, zone.expiresAt - engine.state.elapsed);
+    const life = Math.min(1, remaining / 1.2);
+    const image = elementZoneImage(zone.wuxing);
+    const pulse = reducedMotion ? 1 : 1 + Math.sin(engine.state.elapsed * 1.45 + zone.id) * 0.018;
+    const width = zone.radius * 1.48 * pulse;
+    const height = zone.radius * 0.62 * pulse;
+    context.save();
+    context.globalAlpha = 0.58 * life;
+    if (image.complete && image.naturalWidth > 0) {
+      context.drawImage(image, point.x - width / 2, point.y - height / 2 + 4, width, height);
+      abilityZoneSpriteDrawTotal += 1;
+      spriteDrawnThisFrame = true;
+    } else {
+      context.fillStyle = zone.color;
+      context.beginPath();
+      context.ellipse(point.x, point.y + 3, zone.radius, zone.radius * 0.34, 0, 0, Math.PI * 2);
+      context.fill();
+    }
+    context.globalAlpha = 0.88 * life;
+    context.fillStyle = zone.kind === "rain" ? "#d9f2ff" : zone.color;
+    context.font = '900 10px "Malgun Gothic", sans-serif';
+    context.textAlign = "center";
+    context.fillText(`${zone.wuxing} ${remaining.toFixed(1)}초`, point.x, point.y + zone.radius * 0.34 + 15);
+    context.restore();
+  }
+  canvas.dataset.abilityZoneCount = String(engine.state.abilityZones.length);
+  canvas.dataset.abilityZoneSpriteDraw = String(spriteDrawnThisFrame);
+  canvas.dataset.abilityZoneSpriteDrawTotal = String(abilityZoneSpriteDrawTotal);
 }
 
 function drawPaperBackdrop(): void {
@@ -1685,39 +2556,42 @@ function drawBoard(): void {
   const occupied = new Set(engine.state.towers.map((tower) => tower.cell));
   for (let formationIndex = 0; formationIndex < BOARD_FORMATIONS.length; formationIndex += 1) {
     const formation = BOARD_FORMATIONS[formationIndex] as (typeof BOARD_FORMATIONS)[number];
+    const unlocked = engine.isFormationUnlocked(formationIndex);
     const resonance = engine.formationResonance(formationIndex);
     const inkColor = INK_ELEMENT_COLORS[formation.preferredWuxing];
-    context.fillStyle = formation.color + (resonance.tier > 0 ? "2b" : "1c");
+    context.fillStyle = unlocked ? formation.color + (resonance.tier > 0 ? "2b" : "1c") : "rgba(18, 20, 24, 0.42)";
     context.strokeStyle = "rgba(65, 48, 31, 0.48)";
     context.lineWidth = formation.id === "center" ? 2.2 : 1.5;
     context.beginPath();
     context.roundRect(formation.center.x - 91, formation.center.y - 91, 182, 182, 13);
     context.fill();
     context.stroke();
-    context.strokeStyle = formation.color + "66";
+    context.strokeStyle = unlocked ? formation.color + "66" : "rgba(90, 75, 55, 0.46)";
     context.lineWidth = 1;
     context.stroke();
-    context.fillStyle = inkColor + (resonance.tier > 0 ? "b8" : "88");
+    context.fillStyle = unlocked ? inkColor + (resonance.tier > 0 ? "b8" : "88") : "rgba(86, 78, 68, 0.72)";
     context.font = '900 25px "Batang", serif';
     context.fillText(formation.preferredWuxing, formation.center.x, formation.center.y + 7);
     context.fillStyle = inkColor;
     context.font = '900 9px "Malgun Gothic", sans-serif';
     const bonusLabel = resonance.damageBonus > 0 ? ` · 피해 +${Math.round(resonance.damageBonus * 100)}%` : "";
-    context.fillText(`${formation.label} ${resonance.matching}/16${bonusLabel}`, formation.center.x, formation.center.y - 78);
+    const unlockCost = engine.nextFormationUnlockCost();
+    context.fillText(unlocked ? `${formation.label} ${resonance.matching}/16${bonusLabel}` : `${formation.label} · ${unlockCost ?? 0}엽전 해금`, formation.center.x, formation.center.y - 78);
   }
   for (let index = 0; index < BOARD_CELLS.length; index += 1) {
     const cell = BOARD_CELLS[index] as Point;
-    context.fillStyle = occupied.has(index) ? "rgba(255, 251, 229, 0.3)" : "rgba(255, 251, 229, 0.13)";
-    context.strokeStyle = occupied.has(index) ? "rgba(58, 43, 29, 0.42)" : "rgba(65, 50, 33, 0.24)";
+    const unlocked = engine.isCellUnlocked(index);
+    context.fillStyle = !unlocked ? "rgba(12, 14, 18, 0.48)" : occupied.has(index) ? "rgba(255, 251, 229, 0.3)" : "rgba(255, 251, 229, 0.13)";
+    context.strokeStyle = !unlocked ? "rgba(93, 76, 55, 0.26)" : occupied.has(index) ? "rgba(58, 43, 29, 0.42)" : "rgba(65, 50, 33, 0.24)";
     context.lineWidth = 1;
     context.beginPath();
     context.roundRect(cell.x - 19, cell.y - 19, 38, 38, 6);
     context.fill();
     context.stroke();
     if (!occupied.has(index)) {
-      context.fillStyle = "rgba(67, 49, 31, 0.23)";
+      context.fillStyle = unlocked ? "rgba(67, 49, 31, 0.23)" : "rgba(134, 110, 78, 0.32)";
       context.font = '700 11px "Malgun Gothic", serif';
-      context.fillText("·", cell.x, cell.y + 4);
+      context.fillText(unlocked ? "·" : "封", cell.x, cell.y + 4);
     }
   }
   context.restore();
@@ -1889,32 +2763,61 @@ function drawStudyTower(tower: Tower, cell: Point, definition: HanziDefinition, 
 function drawSpiritTowerLabel(tower: Tower, cell: Point, selected: boolean, material: boolean): void {
   const style = ELEMENT_STYLES[tower.wuxing];
   const learning = learningInfo(engine.state.region, tower.char);
+  if (!hanjaEmphasis) {
+    context.save();
+    context.translate(cell.x, cell.y);
+    context.scale(LEGACY_BASE_MAP_ZOOM / BASE_MAP_ZOOM, LEGACY_BASE_MAP_ZOOM / BASE_MAP_ZOOM);
+    const labelX = -22;
+    const labelY = -24;
+    context.fillStyle = "rgba(4, 10, 18, 0.94)";
+    context.strokeStyle = selected || material ? "#fff1bf" : style.color;
+    context.lineWidth = selected || material ? 2 : 1.25;
+    context.shadowColor = selected || material ? "rgba(255, 231, 164, 0.5)" : "rgba(0, 0, 0, 0.35)";
+    context.shadowBlur = selected || material ? 8 : 3;
+    context.beginPath();
+    context.roundRect(labelX, labelY, 44, 16, 5);
+    context.fill();
+    context.stroke();
+    context.shadowBlur = 0;
+    context.fillStyle = "rgba(221, 232, 246, 0.22)";
+    context.fillRect(-6, labelY + 3, 1, 10);
+    context.fillStyle = "#fff8e8";
+    context.textAlign = "center";
+    context.textBaseline = "middle";
+    context.font = '900 13px "Malgun Gothic", "Noto Sans CJK KR", serif';
+    context.fillText(tower.char, -14, labelY + 9);
+    context.fillStyle = "#f2e7cc";
+    context.font = '900 7.4px "Malgun Gothic", sans-serif';
+    context.fillText(learning.short, 8, labelY + 9.5, 28);
+    context.restore();
+    return;
+  }
+
   const glyphOnly = mapZoom / BASE_MAP_ZOOM < 0.6;
-  const emphasized = hanjaEmphasis;
-  const width = glyphOnly ? 36 : emphasized ? 56 : 44;
-  const height = glyphOnly ? 36 : emphasized ? 54 : 22;
-  const top = glyphOnly ? -52 : emphasized ? -70 : -39;
+  const width = glyphOnly ? 36 : 56;
+  const height = glyphOnly ? 36 : 54;
+  const top = glyphOnly ? -52 : -70;
 
   context.save();
   context.translate(cell.x, cell.y);
   // Counter-scale the label so Hanja stays readable while the map zooms and pans.
   context.scale(1 / mapZoom, 1 / mapZoom);
-  context.fillStyle = emphasized ? "rgba(4, 9, 16, 0.96)" : "rgba(4, 10, 18, 0.92)";
+  context.fillStyle = "rgba(4, 9, 16, 0.96)";
   context.strokeStyle = selected || material ? "#fff1bf" : style.color;
-  context.lineWidth = selected || material ? 2.4 : emphasized ? 1.7 : 1.25;
+  context.lineWidth = selected || material ? 2.4 : 1.7;
   context.shadowColor = selected || material ? "rgba(255, 231, 164, 0.55)" : "rgba(0, 0, 0, 0.4)";
   context.shadowBlur = selected || material ? 12 : 6;
   context.beginPath();
-  context.roundRect(-width / 2, top, width, height, emphasized ? 8 : 5);
+  context.roundRect(-width / 2, top, width, height, 8);
   context.fill();
   context.stroke();
   context.shadowBlur = 0;
   context.textAlign = "center";
   context.textBaseline = "middle";
   context.fillStyle = "#fff8e8";
-  context.font = `900 ${glyphOnly ? 26 : emphasized ? 28 : 17}px "Malgun Gothic", "Noto Sans CJK KR", serif`;
-  context.fillText(tower.char, !glyphOnly && !emphasized ? -13 : 0, top + (glyphOnly ? 19 : emphasized ? 19 : 11), emphasized || glyphOnly ? width - 8 : 16);
-  if (!glyphOnly && emphasized) {
+  context.font = `900 ${glyphOnly ? 26 : 28}px "Malgun Gothic", "Noto Sans CJK KR", serif`;
+  context.fillText(tower.char, 0, top + 19, width - 8);
+  if (!glyphOnly) {
     context.strokeStyle = "rgba(225, 236, 248, 0.16)";
     context.lineWidth = 1;
     context.beginPath();
@@ -1924,10 +2827,6 @@ function drawSpiritTowerLabel(tower: Tower, cell: Point, selected: boolean, mate
     context.fillStyle = "#f1e5c8";
     context.font = '900 13px "Malgun Gothic", sans-serif';
     context.fillText(learning.short, 0, top + 46, width - 7);
-  } else if (!glyphOnly) {
-    context.fillStyle = "#f2e7cc";
-    context.font = '900 8px "Malgun Gothic", sans-serif';
-    context.fillText(learning.short, 12, top + 12, 24);
   }
   context.restore();
 }
@@ -1935,8 +2834,8 @@ function drawSpiritTowerLabel(tower: Tower, cell: Point, selected: boolean, mate
 function drawSpiritTower(tower: Tower, cell: Point, definition: HanziDefinition, selected: boolean, material: boolean): void {
   const abilities = definition.combat.abilities;
   const style = ELEMENT_STYLES[tower.wuxing];
-  const visual = jaryeongVisualFor(tower.char, tower.wuxing);
-  const image = jaryeongSpriteImage(visual.id);
+  const visual = jaryeongVisualFor(tower.char, tower.wuxing, engine.state.region);
+  const image = jaryeongSpriteImage(visual);
   const pulse = 1 + tower.pulse * 0.055;
   const auraRadius = 17 + (tower.stage - 1) * 0.6;
 
@@ -1966,23 +2865,27 @@ function drawSpiritTower(tower: Tower, cell: Point, definition: HanziDefinition,
   drawChargeRing({ x: cell.x, y: cell.y + 1 }, 20, tower, abilities);
 
   if (image.complete && image.naturalWidth > 0 && image.naturalHeight > 0) {
-    const frame = tower.abilityFlash > 0.08 ? 2 : reducedMotion ? 0 : Math.floor((engine.state.elapsed + tower.id * 0.31) * 1.15) % 2;
-    const frameWidth = image.naturalWidth / 2;
-    const frameHeight = image.naturalHeight / 2;
     const drawSize = (42 + tower.stage) * pulse;
     context.shadowColor = style.glow;
     context.shadowBlur = selected ? 13 : 5;
-    context.drawImage(
-      image,
-      frame % 2 * frameWidth,
-      Math.floor(frame / 2) * frameHeight,
-      frameWidth,
-      frameHeight,
-      cell.x - drawSize / 2,
-      cell.y - drawSize / 2 + 3,
-      drawSize,
-      drawSize
-    );
+    if (jaryeongFrameLayout(visual) === "single") {
+      context.drawImage(image, cell.x - drawSize / 2, cell.y - drawSize / 2 + 3, drawSize, drawSize);
+    } else {
+      const frame = tower.abilityFlash > 0.08 ? 2 : reducedMotion ? 0 : Math.floor((engine.state.elapsed + tower.id * 0.31) * 1.15) % 2;
+      const frameWidth = image.naturalWidth / 2;
+      const frameHeight = image.naturalHeight / 2;
+      context.drawImage(
+        image,
+        frame % 2 * frameWidth,
+        Math.floor(frame / 2) * frameHeight,
+        frameWidth,
+        frameHeight,
+        cell.x - drawSize / 2,
+        cell.y - drawSize / 2 + 3,
+        drawSize,
+        drawSize
+      );
+    }
     context.shadowBlur = 0;
   }
 
@@ -2016,26 +2919,84 @@ function drawTowerAbilityPopup(tower: Tower, cell: Point): void {
   context.restore();
 }
 
-function drawTower(tower: Tower): void {
+function drawTowerTierMarker(tower: Tower, cell: Point): void {
+  const tier = Math.max(1, Math.min(5, mapSynthesisDepths.get(tower.char) ?? 1)) as 1 | 2 | 3 | 4 | 5;
+  const uncombinable = tier === 1 && mapUncombinableStageOne.has(tower.char);
+  const color = uncombinable ? UNCOMBINABLE_STAGE_ONE_COLOR : STAGE_COLORS[tier];
+  const stars = "★".repeat(tier);
+  const y = cell.y + 19;
+  context.save();
+  context.fillStyle = "rgba(3, 8, 14, 0.96)";
+  context.strokeStyle = color;
+  context.lineWidth = 1.15;
+  context.shadowColor = "rgba(0, 0, 0, 0.7)";
+  context.shadowBlur = 4;
+  context.beginPath();
+  const width = Math.max(18, 6 + stars.length * 4.2);
+  context.roundRect(cell.x - width / 2, y - 5, width, 10, 4);
+  context.fill();
+  context.stroke();
+  context.shadowBlur = 0;
+  context.fillStyle = color;
+  context.textAlign = "center";
+  context.textBaseline = "middle";
+  context.font = '900 6px "Malgun Gothic", sans-serif';
+  context.fillText(stars, cell.x, y + 0.3, width - 2);
+  context.restore();
+}
+
+function drawSelectedTowerMarker(cell: Point): void {
+  const left = cell.x - 25;
+  const right = cell.x + 25;
+  const top = cell.y - 27;
+  const bottom = cell.y + 25;
+  const corner = 8;
+  context.save();
+  context.fillStyle = "rgba(255, 211, 104, 0.1)";
+  context.strokeStyle = "#2a1703";
+  context.lineWidth = 5;
+  context.beginPath();
+  context.ellipse(cell.x, cell.y + 15, 24, 9, 0, 0, Math.PI * 2);
+  context.fill();
+  context.stroke();
+  context.strokeStyle = "#fff3bd";
+  context.lineWidth = 2.4;
+  context.shadowColor = "#ffc95c";
+  context.shadowBlur = 8;
+  context.beginPath();
+  context.ellipse(cell.x, cell.y + 15, 24, 9, 0, 0, Math.PI * 2);
+  context.stroke();
+  context.beginPath();
+  context.moveTo(left + corner, top); context.lineTo(left, top); context.lineTo(left, top + corner);
+  context.moveTo(right - corner, top); context.lineTo(right, top); context.lineTo(right, top + corner);
+  context.moveTo(left, bottom - corner); context.lineTo(left, bottom); context.lineTo(left + corner, bottom);
+  context.moveTo(right - corner, bottom); context.lineTo(right, bottom); context.lineTo(right, bottom - corner);
+  context.stroke();
+  context.restore();
+}
+
+function drawTower(tower: Tower, materialIds: ReadonlySet<number>, synergyElements: ReadonlySet<Wuxing>): void {
   const cell = BOARD_CELLS[tower.cell] as Point;
   const definition = definitionForTower(engine.catalog, tower.definitionId);
   const selected = tower.id === engine.state.selectedTowerId;
-  const material = hoveredMaterialIds().has(tower.id);
+  const material = materialIds.has(tower.id);
   context.save();
   if (displayMode === "study") drawStudyTower(tower, cell, definition, selected, material);
   else drawSpiritTower(tower, cell, definition, selected, material);
+  if (selected) drawSelectedTowerMarker(cell);
+  drawTowerTierMarker(tower, cell);
   context.textAlign = "center";
   context.textBaseline = "alphabetic";
-  if (engine.isSynergyActive(tower.wuxing)) {
+  if (synergyElements.has(tower.wuxing)) {
     if (displayMode === "spirit") {
       context.fillStyle = "rgba(5, 12, 19, 0.88)";
       context.beginPath();
-      context.roundRect(cell.x + 5, cell.y + 14, 18, 9, 4);
+      context.roundRect(cell.x + 10, cell.y + 14, 16, 9, 4);
       context.fill();
     }
     context.fillStyle = "#fff2b5";
     context.font = "900 6px sans-serif";
-    context.fillText("相生", cell.x + 14, cell.y + 21);
+    context.fillText("相生", cell.x + 18, cell.y + 21);
   }
   if ((tower.concentration ?? 0) > 0) {
     context.fillStyle = "rgba(6, 10, 17, 0.94)";
@@ -2132,13 +3093,12 @@ function drawHoveredTowerCard(): void {
   context.restore();
 }
 
-function drawEnemy(enemy: Enemy): void {
-  const point = positionOnPath(enemy.progress);
+function drawEnemy(enemy: Enemy, point = positionOnPath(enemy.progress)): void {
   const colors: Record<Enemy["archetype"], string> = { normal: "#7770d9", swarm: "#bd78e8", swift: "#5bcde1", armored: "#b69b76", regenerator: "#64c489", boss: "#ff627d" };
   const color = colors[enemy.archetype];
   const weaknessColor = ELEMENT_STYLES[enemy.weakness].color;
   const visual = enemyJaryeongVisualFor(enemy.archetype, enemy.id + enemy.wave);
-  const image = jaryeongSpriteImage(visual.id);
+  const image = jaryeongSpriteImage(visual);
   const drawSize = enemy.boss ? 70 : enemy.archetype === "swarm" ? 32 : enemy.archetype === "armored" ? 46 : 40;
   const top = point.y - drawSize * 0.43;
   context.save();
@@ -2226,27 +3186,37 @@ function updateAndDrawFx(delta: number): void {
   for (const ring of rings) ring.age += delta;
   for (const burst of abilityBursts) burst.age += delta;
   for (const popup of towerAbilityPopups.values()) popup.age += delta;
+  let projectileSpriteDrawnThisFrame = false;
   for (const projectile of projectiles) {
     const ratio = Math.min(1, projectile.age / projectile.duration);
     const x = projectile.from.x + (projectile.to.x - projectile.from.x) * ratio;
     const y = projectile.from.y + (projectile.to.y - projectile.from.y) * ratio;
+    if (!isWorldPointVisible({ x, y }, 32)) continue;
+    const angle = Math.atan2(projectile.to.y - projectile.from.y, projectile.to.x - projectile.from.x);
+    const image = elementProjectileImage(projectile.wuxing);
+    const width = projectile.critical ? 40 : 30;
+    const height = projectile.critical ? 23 : 17;
     context.save();
-    context.globalAlpha = 1 - ratio * 0.45;
+    context.globalAlpha = (1 - ratio * 0.42) * 0.84;
     context.strokeStyle = projectile.color;
-    context.lineWidth = projectile.critical ? 4 : 2;
-    context.shadowColor = projectile.color;
-    context.shadowBlur = projectile.critical ? 7 : 3;
+    context.lineWidth = projectile.critical ? 1.8 : 1;
     context.beginPath();
-    context.moveTo(projectile.from.x, projectile.from.y);
+    context.moveTo(projectile.from.x + (x - projectile.from.x) * 0.58, projectile.from.y + (y - projectile.from.y) * 0.58);
     context.lineTo(x, y);
     context.stroke();
-    context.fillStyle = projectile.color;
-    context.beginPath();
-    context.arc(x, y, projectile.critical ? 5 : 3, 0, Math.PI * 2);
-    context.fill();
+    context.translate(x, y);
+    context.rotate(angle);
+    if (image.complete && image.naturalWidth > 0) {
+      context.drawImage(image, -width / 2, -height / 2, width, height);
+      projectileSpriteDrawTotal += 1;
+      projectileSpriteDrawnThisFrame = true;
+    }
     context.restore();
   }
+  canvas.dataset.projectileSpriteDraw = String(projectileSpriteDrawnThisFrame);
+  canvas.dataset.projectileSpriteDrawTotal = String(projectileSpriteDrawTotal);
   for (const ring of rings) {
+    if (!isWorldPointVisible(ring.at, 90)) continue;
     const ratio = Math.min(1, ring.age / ring.duration);
     context.save();
     context.globalAlpha = 1 - ratio;
@@ -2263,35 +3233,32 @@ function updateAndDrawFx(delta: number): void {
     const ratio = Math.min(1, burst.age / burst.duration);
     const sourceBased = ["support", "coin", "resonance", "solo"].includes(burst.kind);
     const point = sourceBased ? burst.source : burst.at;
-    const spread = ["blast", "burst", "spread"].includes(burst.kind) ? 62 : 42;
+    if (!isWorldPointVisible(point, 64)) continue;
     context.save();
-    context.globalAlpha = 1 - ratio;
+    context.globalAlpha = (1 - ratio) * 0.42;
     context.strokeStyle = burst.color;
     context.fillStyle = burst.color;
-    context.shadowColor = burst.color;
-    context.shadowBlur = 14;
-    context.lineWidth = burst.kind === "burst" || burst.kind === "critical" ? 4 : 2;
-    context.setLineDash(burst.kind === "chain" || burst.kind === "lineage" ? [5, 5] : []);
+    context.lineWidth = burst.kind === "burst" || burst.kind === "critical" ? 2.4 : 1.4;
+    context.setLineDash(burst.kind === "chain" || burst.kind === "lineage" ? [4, 7] : []);
     context.beginPath();
-    context.arc(point.x, point.y, 12 + ratio * spread, 0, Math.PI * 2);
+    context.ellipse(point.x, point.y + 8, 13 + ratio * 31, 5 + ratio * 11, 0, 0, Math.PI * 2);
     context.stroke();
     context.setLineDash([]);
-    for (let ray = 0; ray < 8; ray += 1) {
-      const angle = ray / 8 * Math.PI * 2 + ratio * 0.5;
-      const inner = 16 + ratio * 15;
-      const outer = inner + 9 + (burst.kind === "blast" ? 10 : 0);
+    for (let mark = -1; mark <= 1; mark += 1) {
+      const offset = mark * 10;
       context.beginPath();
-      context.moveTo(point.x + Math.cos(angle) * inner, point.y + Math.sin(angle) * inner);
-      context.lineTo(point.x + Math.cos(angle) * outer, point.y + Math.sin(angle) * outer);
+      context.moveTo(point.x + offset - 5, point.y + 5 + ratio * 6);
+      context.quadraticCurveTo(point.x + offset, point.y - 2 - ratio * 5, point.x + offset + 6, point.y + 4 + ratio * 5);
       context.stroke();
     }
-    context.shadowBlur = 5;
-    context.font = '900 ' + String(17 + Math.round(ratio * 8)) + 'px "Malgun Gothic", serif';
+    context.globalAlpha = (1 - ratio) * 0.68;
+    context.font = '900 13px "Malgun Gothic", serif';
     context.textAlign = "center";
-    context.fillText(burst.glyph, point.x, point.y - 22 - ratio * 17);
+    context.fillText(burst.glyph, point.x, point.y - 12 - ratio * 8);
     context.restore();
   }
   for (const floater of floaters) {
+    if (!isWorldPointVisible(floater.at, 60)) continue;
     const ratio = Math.min(1, floater.age / floater.duration);
     context.save();
     context.globalAlpha = 1 - ratio;
@@ -2303,19 +3270,23 @@ function updateAndDrawFx(delta: number): void {
     context.fillText(floater.text, floater.at.x, floater.at.y - 25 - ratio * 28);
     context.restore();
   }
-  removeExpired(projectiles);
-  removeExpired(floaters);
-  removeExpired(rings);
-  removeExpired(abilityBursts);
+  recycleExpired(projectiles, projectilePool, 48);
+  recycleExpired(floaters, floaterPool, 48);
+  recycleExpired(rings, ringPool, 32);
+  recycleExpired(abilityBursts, abilityBurstPool, 12);
   for (const [towerId, popup] of towerAbilityPopups) {
     if (popup.age >= popup.duration || !engine.state.towers.some((tower) => tower.id === towerId)) towerAbilityPopups.delete(towerId);
   }
 }
 
-function removeExpired<T extends { age: number; duration: number }>(items: T[]): void {
+function recycleExpired<T extends { age: number; duration: number }>(items: T[], pool: T[], poolLimit: number): void {
   for (let index = items.length - 1; index >= 0; index -= 1) {
     const item = items[index];
-    if (item && item.age >= item.duration) items.splice(index, 1);
+    if (!item || item.age < item.duration) continue;
+    const removed = item;
+    const last = items.pop();
+    if (index < items.length && last) items[index] = last;
+    if (pool.length < poolLimit) pool.push(removed);
   }
 }
 
@@ -2382,7 +3353,12 @@ function setMapZoom(nextZoom: number, anchor: Point = { x: WORLD_WIDTH / 2, y: W
 
 function focusMapOnSelectedTower(): void {
   const tower = engine.selectedTower();
-  const cell = tower && tower.cell >= 0 ? BOARD_CELLS[tower.cell] : undefined;
+  const startingFormation = engine.state.startingFormationIndex === null
+    ? undefined
+    : BOARD_FORMATIONS[engine.state.startingFormationIndex];
+  const cell = tower && tower.cell >= 0
+    ? BOARD_CELLS[tower.cell]
+    : engine.state.summonCount === 1 ? startingFormation?.center : undefined;
   if (!cell) return;
   mapOffset = {
     x: WORLD_WIDTH / 2 - cell.x * mapZoom,
@@ -2419,7 +3395,7 @@ function toggleHanjaEmphasis(): void {
   button.setAttribute("aria-pressed", String(hanjaEmphasis));
   must<HTMLElement>("#hanja-emphasis-toggle strong").textContent = hanjaEmphasis ? "ON" : "OFF";
   syncMapZoomControl();
-  showToast(hanjaEmphasis ? "한자 강조 ON · 큰 한자와 훈독을 고정 크기로 표시" : "한자 강조 OFF · 자령 중심의 간결한 표찰");
+  showToast(hanjaEmphasis ? "한자 강조 ON · 큰 한자와 훈독을 고정 크기로 표시" : "한자 강조 OFF · 기존 한자·훈음 가로 표기로 복귀");
 }
 
 function cellAtPoint(point: Point): number {
@@ -2544,7 +3520,8 @@ function finishMapPan(event: PointerEvent, applyClick: boolean): boolean {
       selectedRenderKey = "";
       syncPanel();
     } else {
-      handleAction(engine.moveSelectedToCell(clickCell));
+      if (!engine.isCellUnlocked(clickCell)) handleAction(engine.unlockFormation(Math.floor(clickCell / CELLS_PER_FORMATION)));
+      else handleAction(engine.moveSelectedToCell(clickCell));
     }
   }
   return true;
@@ -2614,9 +3591,16 @@ document.addEventListener("pointerdown", () => {
 });
 must<HTMLButtonElement>("#evolve-button").addEventListener("click", () => setPanelTab("evolution"));
 must<HTMLButtonElement>("#research-button").addEventListener("click", () => { sound.unlock(); handleAction(engine.upgradeResearch()); });
+must<HTMLElement>("#formation-unlock-list").addEventListener("click", (event) => {
+  const button = (event.target as HTMLElement).closest<HTMLButtonElement>("[data-formation-index]");
+  if (!button) return;
+  sound.unlock();
+  handleAction(engine.unlockFormation(Number(button.dataset.formationIndex)));
+});
 must<HTMLButtonElement>("#auto-arrange-button").addEventListener("click", () => { sound.unlock(); handleAction(engine.autoArrangeTowers()); });
-must<HTMLButtonElement>("#element-upgrade-button").addEventListener("click", () => { renderElementUpgrades(); elementUpgradeDialog.showModal(); });
+must<HTMLButtonElement>("#element-upgrade-button").addEventListener("click", () => setPanelTab("growth"));
 must<HTMLButtonElement>("#element-upgrade-close").addEventListener("click", () => elementUpgradeDialog.close());
+must<HTMLButtonElement>("#ability-guide-close").addEventListener("click", () => abilityGuideDialog.close());
 elementUpgradeDialog.addEventListener("click", (event) => {
   const button = (event.target as HTMLElement).closest<HTMLButtonElement>("[data-upgrade-scope][data-upgrade-stat]");
   const stat = button?.dataset.upgradeStat as UpgradeStat | undefined;
@@ -2696,6 +3680,32 @@ must<HTMLButtonElement>("#codex-close").addEventListener("click", () => codexDia
 document.querySelectorAll<HTMLButtonElement>("[data-panel-tab]").forEach((button) => {
   button.addEventListener("click", () => setPanelTab(button.dataset.panelTab as PanelTab));
 });
+document.querySelectorAll<HTMLButtonElement>("[data-goal-mode]").forEach((button) => {
+  button.addEventListener("click", () => {
+    goalPanelMode = button.dataset.goalMode as GoalPanelMode;
+    goalSearchQuery = "";
+    must<HTMLInputElement>("#goal-search").value = "";
+    goalRenderKey = "";
+    renderGoal();
+  });
+});
+must<HTMLInputElement>("#goal-search").addEventListener("input", (event) => {
+  goalSearchQuery = (event.target as HTMLInputElement).value;
+  goalRenderKey = "";
+  renderGoal();
+});
+must<HTMLElement>("#goal-selector-list").addEventListener("click", (event) => {
+  const target = event.target as HTMLElement;
+  const char = target.closest<HTMLButtonElement>("[data-goal-char]")?.dataset.goalChar;
+  const idiomId = target.closest<HTMLButtonElement>("[data-goal-idiom]")?.dataset.goalIdiom;
+  if (char) {
+    handleAction(engine.setTarget(char));
+    setPanelTab("goal");
+  } else if (idiomId) {
+    handleAction(engine.setIdiomTarget(idiomId));
+    setPanelTab("goal");
+  }
+});
 must<HTMLElement>("#run-inventory-list").addEventListener("click", (event) => {
   const id = Number((event.target as HTMLElement).closest<HTMLButtonElement>("[data-run-inventory-id]")?.dataset.runInventoryId);
   if (!Number.isInteger(id)) return;
@@ -2708,18 +3718,132 @@ must<HTMLElement>("#run-inventory-list").addEventListener("click", (event) => {
 must<HTMLButtonElement>("#cleanup-recommended-button").addEventListener("click", () => {
   const candidates = engine.cleanupCandidates(8, true);
   if (candidates.length === 0) return;
-  const chars = candidates.map((candidate) => engine.state.inventoryTowers.find((tower) => tower.id === candidate.towerId)?.char).filter(Boolean).join("·");
-  if (!window.confirm(`보호 규칙을 통과한 정리 후보 ${candidates.length}기(${chars})를 문기로 분해할까요?`)) return;
-  handleAction(engine.dismantleRecommended(8));
+  dismantleSelection.clear();
+  for (const candidate of candidates) dismantleSelection.add(candidate.towerId);
+  growthRenderKey = "";
+  setPanelTab("growth");
+});
+
+must<HTMLElement>("#concentration-panel").addEventListener("click", (event) => {
+  const target = event.target as HTMLElement;
+  const targetId = Number(target.closest<HTMLButtonElement>("[data-concentration-target]")?.dataset.concentrationTarget);
+  if (Number.isInteger(targetId)) {
+    concentrationTargetId = targetId;
+    engine.selectTower(targetId);
+    concentrationPayment = "essence";
+    concentrationRenderKey = "";
+    renderConcentration();
+    return;
+  }
+  const path = target.closest<HTMLButtonElement>("[data-concentration-path]")?.dataset.concentrationPath as ConcentrationPath | undefined;
+  if (path) {
+    concentrationPath = path;
+    concentrationPayment = "essence";
+    concentrationRenderKey = "";
+    renderConcentration();
+    return;
+  }
+  if (!target.closest("#concentration-confirm-button") || concentrationTargetId === null) return;
+  const selected = engine.selectedTower();
+  if (!selected || selected.id !== concentrationTargetId) return;
+  if (!selected.concentrationPath) {
+    const label = concentrationPath === "swift" ? "연속 농축" : "심화 농축";
+    if (!window.confirm(`${selected.char}의 분기를 ${label}으로 고정할까요? 이후 분기 변경과 재설정은 불가능합니다.`)) return;
+  }
+  const payment = concentrationPayment === "essence"
+    ? { kind: "essence" as const }
+    : { kind: "duplicate" as const, towerId: concentrationPayment };
+  handleAction(engine.concentrateTower(concentrationTargetId, concentrationPath, payment));
+});
+must<HTMLElement>("#concentration-panel").addEventListener("change", (event) => {
+  const input = (event.target as HTMLElement).closest<HTMLInputElement>('input[name="concentration-payment"]');
+  if (!input) return;
+  concentrationPayment = input.value === "essence" ? "essence" : Number(input.value);
+  concentrationRenderKey = "";
+  renderConcentration();
+});
+
+for (const selector of ["#dismantle-element-filter", "#dismantle-stage-filter", "#dismantle-status-filter"] as const) {
+  must<HTMLSelectElement>(selector).addEventListener("change", () => {
+    growthRenderKey = "";
+    renderGrowth();
+  });
+}
+must<HTMLElement>("#growth-dismantle-list").addEventListener("change", (event) => {
+  const input = (event.target as HTMLElement).closest<HTMLInputElement>("[data-dismantle-id]");
+  if (!input) return;
+  const id = Number(input.dataset.dismantleId);
+  if (!Number.isInteger(id)) return;
+  if (input.checked) dismantleSelection.add(id);
+  else dismantleSelection.delete(id);
+  growthRenderKey = "";
+  renderGrowth();
+});
+must<HTMLButtonElement>("#dismantle-recommend-button").addEventListener("click", () => {
+  dismantleSelection.clear();
+  const visibleEligible = [...must<HTMLElement>("#growth-dismantle-list").querySelectorAll<HTMLInputElement>("[data-dismantle-id]:not(:disabled)")];
+  for (const input of visibleEligible.slice(0, 12)) dismantleSelection.add(Number(input.dataset.dismantleId));
+  growthRenderKey = "";
+  renderGrowth();
+});
+must<HTMLButtonElement>("#dismantle-clear-button").addEventListener("click", () => {
+  dismantleSelection.clear();
+  growthRenderKey = "";
+  renderGrowth();
+});
+must<HTMLButtonElement>("#dismantle-confirm-button").addEventListener("click", () => {
+  const quote = engine.quoteDismantle([...dismantleSelection]);
+  if (quote.ids.length === 0 || quote.blocked.length > 0) return;
+  const towers = quote.ids.map((id) => engine.state.inventoryTowers.find((tower) => tower.id === id)).filter((tower): tower is Tower => Boolean(tower));
+  const towerLabel = towers.map((tower) => `${tower.char}(${tower.wuxing}${tower.stage}성)`).join(" · ");
+  const gainLabel = (Object.entries(quote.gains) as Array<[Wuxing, number]>).filter(([, amount]) => amount > 0).map(([wuxing, amount]) => `${wuxing}+${amount}`).join(" · ");
+  if (!window.confirm(`${towers.length}기를 한 번에 분해합니다.\n${towerLabel}\n획득: ${gainLabel}`)) return;
+  const result = engine.dismantleTowers(quote.ids);
+  if (result.ok) dismantleSelection.clear();
+  handleAction(result);
+});
+must<HTMLElement>("#growth-element-tabs").addEventListener("click", (event) => {
+  const wuxing = (event.target as HTMLElement).closest<HTMLButtonElement>("[data-growth-element]")?.dataset.growthElement as Wuxing | undefined;
+  if (!wuxing) return;
+  growthElement = wuxing;
+  growthRenderKey = "";
+  renderGrowth();
+});
+must<HTMLElement>("#growth-upgrade-list").addEventListener("click", (event) => {
+  const button = (event.target as HTMLElement).closest<HTMLButtonElement>("[data-growth-upgrade-scope]");
+  if (!button) return;
+  const scope = button.dataset.growthUpgradeScope;
+  const amountRaw = button.dataset.growthAmount ?? "1";
+  const amount: number | "max" = amountRaw === "max" ? "max" : Number(amountRaw);
+  const stat = button.dataset.growthStat as UpgradeStat | undefined;
+  const traitIndex = Number(button.dataset.growthTrait);
+  const quote = scope === "global" && stat
+    ? engine.quoteGlobalUpgrade(stat, amount)
+    : scope === "element" && stat
+      ? engine.quoteElementUpgrade(growthElement, stat, amount)
+      : engine.quoteElementTraitUpgrade(growthElement, traitIndex, amount);
+  if (amount === "max" && !window.confirm(`실제 누적 비용 ${quote.cost}을 사용해 ${quote.levels}단계 강화할까요? (${quote.fromLevel} → ${quote.toLevel})`)) return;
+  const result = scope === "global" && stat
+    ? engine.upgradeGlobal(stat, amount)
+    : scope === "element" && stat
+      ? engine.upgradeElement(growthElement, stat, amount)
+      : engine.upgradeElementTrait(growthElement, traitIndex, amount);
+  handleAction(result);
 });
 document.querySelectorAll<HTMLButtonElement>("[data-codex-mode]").forEach((button) => {
   button.addEventListener("click", () => setCodexMode(button.dataset.codexMode as CodexMode));
 });
 must<HTMLInputElement>("#codex-search").addEventListener("input", (event) => renderCodex((event.target as HTMLInputElement).value));
 must<HTMLElement>("#codex-synthesis-filters").addEventListener("click", (event) => {
+  const jaryeongFilterValue = (event.target as HTMLElement).closest<HTMLButtonElement>("[data-jaryeong-filter]")?.dataset.jaryeongFilter;
+  if (jaryeongFilterValue) {
+    jaryeongDexFilter = jaryeongFilterValue as JaryeongDexFilter;
+    renderCodex(must<HTMLInputElement>("#codex-search").value);
+    return;
+  }
   const value = (event.target as HTMLElement).closest<HTMLButtonElement>("[data-synthesis-depth]")?.dataset.synthesisDepth;
   if (!value) return;
-  codexSynthesisDepth = value === "all" ? "all" : Number(value);
+  codexSynthesisDepth = value === "all" || value === UNCOMBINABLE_STAGE_ONE ? value : Number(value);
   renderCodex(must<HTMLInputElement>("#codex-search").value);
 });
 must<HTMLElement>("#codex-list").addEventListener("click", (event) => {
@@ -2727,7 +3851,17 @@ must<HTMLElement>("#codex-list").addEventListener("click", (event) => {
   const char = target.closest<HTMLButtonElement>("[data-codex-char]")?.dataset.codexChar
     ?? target.closest<HTMLButtonElement>("[data-codex-recipe]")?.dataset.codexRecipe;
   const idiomId = target.closest<HTMLButtonElement>("[data-codex-idiom]")?.dataset.codexIdiom;
-  if (char) renderCodexDetail(engine.catalog.definitions.get(char));
+  const jaryeongId = target.closest<HTMLButtonElement>("[data-jaryeong-id]")?.dataset.jaryeongId;
+  if (jaryeongId) {
+    selectedJaryeongDexId = jaryeongId;
+    document.querySelectorAll<HTMLButtonElement>("[data-jaryeong-id]").forEach((button) => {
+      const selected = button.dataset.jaryeongId === jaryeongId;
+      button.classList.toggle("is-selected", selected);
+      button.setAttribute("aria-current", String(selected));
+    });
+    renderJaryeongDexDetail(CHEONJAMUN_JARYEONG_DEX_BY_ID.get(jaryeongId));
+  }
+  else if (char) renderCodexDetail(engine.catalog.definitions.get(char));
   else if (idiomId) renderIdiomCodexDetail(engine.allIdioms().find((idiom) => idiom.id === idiomId));
 });
 must<HTMLElement>("#codex-detail").addEventListener("click", (event) => {
@@ -2745,21 +3879,30 @@ must<HTMLButtonElement>("#sound-button").addEventListener("click", () => {
   showToast(muted ? "효과음 꺼짐" : "효과음 켜짐");
 });
 must<HTMLElement>("#selected-card").addEventListener("click", (event) => {
-  if ((event.target as HTMLElement).closest("#derivative-button")) openCompositionDrawer();
-  else if ((event.target as HTMLElement).closest("#lock-button")) handleAction(engine.toggleSelectedLock());
-  else if ((event.target as HTMLElement).closest("#store-button")) {
+  const target = event.target as HTMLElement;
+  const abilityId = target.closest<HTMLButtonElement>("[data-ability-id]")?.dataset.abilityId;
+  if (abilityId) openAbilityGuide(abilityId);
+  else if (target.closest("[data-ability-guide]")) openAbilityGuide();
+  else if (target.closest("#derivative-button")) openCompositionDrawer();
+  else if (target.closest("#lock-button")) handleAction(engine.toggleSelectedLock());
+  else if (target.closest("#store-button")) {
     const result = engine.storeSelectedTower();
     if (result.ok) setPanelTab("inventory");
     handleAction(result);
   }
-  else if ((event.target as HTMLElement).closest("#sell-button")) handleAction(engine.sellSelected());
-  else if ((event.target as HTMLElement).closest("#dismantle-button")) handleAction(engine.dismantleSelected());
-  else if ((event.target as HTMLElement).closest("#concentrate-swift-button")) handleAction(engine.concentrateSelected("swift" as ConcentrationPath));
-  else if ((event.target as HTMLElement).closest("#concentrate-potent-button")) handleAction(engine.concentrateSelected("potent" as ConcentrationPath));
+  else if (target.closest("#sell-button")) handleAction(engine.sellSelected());
+  else if (target.closest("#open-growth-button")) {
+    growthElement = engine.selectedTower()?.wuxing ?? growthElement;
+    setPanelTab("growth");
+  }
+  else if (target.closest("#open-concentration-button")) {
+    concentrationTargetId = engine.selectedTower()?.id ?? null;
+    setPanelTab("concentration");
+  }
 });
 
 window.addEventListener("keydown", (event) => {
-  if (event.target instanceof HTMLInputElement || helpDialog.open || settingsDialog.open || elementUpgradeDialog.open || codexDialog.open) return;
+  if (event.target instanceof HTMLInputElement || helpDialog.open || settingsDialog.open || elementUpgradeDialog.open || abilityGuideDialog.open || codexDialog.open) return;
   if (event.code === "Digit1") summonAndFocus();
   else if (event.code === "KeyQ") summonAndFocus(10);
   else if (event.code === "Digit2") {
@@ -2768,7 +3911,7 @@ window.addEventListener("keydown", (event) => {
   } else if (event.code === "Digit3") handleAction(engine.upgradeResearch());
   else if (event.code === "Space") {
     event.preventDefault();
-    handleAction(engine.startWaveEarly());
+    toggleHanjaEmphasis();
   } else if (event.code === "KeyC") must<HTMLButtonElement>("#codex-button").click();
   else if (event.code === "KeyM") must<HTMLButtonElement>("#sound-button").click();
   else if (event.code === "KeyF") cycleGameSpeed();
@@ -2786,7 +3929,10 @@ function frame(now: number): void {
     previousPhase = engine.state.phase;
     if (previousPhase === "victory" || previousPhase === "defeat") showEndScreen(previousPhase);
   }
-  drawWorld(simulationDelta);
+  // Simulation respects the selected speed, while visual feedback keeps a
+  // stable real-time duration so 2x/3x does not make projectiles and skill
+  // labels flash for only a few frames.
+  drawWorld(delta);
   syncPanel();
   window.requestAnimationFrame(frame);
 }

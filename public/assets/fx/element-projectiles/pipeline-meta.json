@@ -1,0 +1,219 @@
+{
+  "target": "asset",
+  "mode": "prop_pack_2x3",
+  "prompt": "",
+  "role": "",
+  "input": "public\\assets\\fx\\element-projectiles\\raw-sheet.png",
+  "threshold": 145,
+  "edge_threshold": 205,
+  "duration": 130,
+  "rows": 2,
+  "cols": 3,
+  "cell_size": 256,
+  "fit_scale": 0.82,
+  "trim_border": 4,
+  "edge_clean_depth": 3,
+  "align": "center",
+  "shared_scale": false,
+  "component_mode": "all",
+  "component_padding": 5,
+  "min_component_area": 12,
+  "edge_touch_margin": 3,
+  "frame_labels": [
+    "projectile-1",
+    "projectile-2",
+    "projectile-3",
+    "projectile-4",
+    "projectile-5",
+    "projectile-6"
+  ],
+  "frames": [
+    {
+      "grid": [
+        0,
+        0
+      ],
+      "source_box": [
+        0,
+        0,
+        512,
+        512
+      ],
+      "component_mode": "all",
+      "component_count": 2,
+      "selected_component_area": null,
+      "selected_component_bbox": null,
+      "crop_bbox": [
+        74,
+        251,
+        487,
+        396
+      ],
+      "edge_touch": false,
+      "output_size": [
+        209,
+        73
+      ],
+      "paste_position": [
+        23,
+        91
+      ]
+    },
+    {
+      "grid": [
+        0,
+        1
+      ],
+      "source_box": [
+        512,
+        0,
+        1024,
+        512
+      ],
+      "component_mode": "all",
+      "component_count": 4,
+      "selected_component_area": null,
+      "selected_component_bbox": null,
+      "crop_bbox": [
+        55,
+        237,
+        434,
+        411
+      ],
+      "edge_touch": false,
+      "output_size": [
+        209,
+        96
+      ],
+      "paste_position": [
+        23,
+        80
+      ]
+    },
+    {
+      "grid": [
+        0,
+        2
+      ],
+      "source_box": [
+        1024,
+        0,
+        1536,
+        512
+      ],
+      "component_mode": "all",
+      "component_count": 5,
+      "selected_component_area": null,
+      "selected_component_bbox": null,
+      "crop_bbox": [
+        17,
+        241,
+        430,
+        414
+      ],
+      "edge_touch": false,
+      "output_size": [
+        209,
+        87
+      ],
+      "paste_position": [
+        23,
+        84
+      ]
+    },
+    {
+      "grid": [
+        1,
+        0
+      ],
+      "source_box": [
+        0,
+        512,
+        512,
+        1024
+      ],
+      "component_mode": "all",
+      "component_count": 4,
+      "selected_component_area": null,
+      "selected_component_bbox": null,
+      "crop_bbox": [
+        74,
+        148,
+        482,
+        283
+      ],
+      "edge_touch": false,
+      "output_size": [
+        209,
+        69
+      ],
+      "paste_position": [
+        23,
+        93
+      ]
+    },
+    {
+      "grid": [
+        1,
+        1
+      ],
+      "source_box": [
+        512,
+        512,
+        1024,
+        1024
+      ],
+      "component_mode": "all",
+      "component_count": 3,
+      "selected_component_area": null,
+      "selected_component_bbox": null,
+      "crop_bbox": [
+        60,
+        148,
+        407,
+        303
+      ],
+      "edge_touch": false,
+      "output_size": [
+        209,
+        93
+      ],
+      "paste_position": [
+        23,
+        81
+      ]
+    },
+    {
+      "grid": [
+        1,
+        2
+      ],
+      "source_box": [
+        1024,
+        512,
+        1536,
+        1024
+      ],
+      "component_mode": "all",
+      "component_count": 10,
+      "selected_component_area": null,
+      "selected_component_bbox": null,
+      "crop_bbox": [
+        16,
+        159,
+        428,
+        283
+      ],
+      "edge_touch": false,
+      "output_size": [
+        209,
+        63
+      ],
+      "paste_position": [
+        23,
+        96
+      ]
+    }
+  ],
+  "edge_touch_frames": []
+}

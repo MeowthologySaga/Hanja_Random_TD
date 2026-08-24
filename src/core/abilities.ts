@@ -3,6 +3,7 @@ import type {
   AbilitySpec,
   CombatRole,
   GraphRole,
+  HanziDefinition,
   SemanticFamily,
   Stage,
   TargetPriority,
@@ -105,7 +106,7 @@ const semanticPattern = (
 export const SEMANTIC_ABILITY_TABLE: Record<SemanticFamily, SemanticPattern> = {
   sight: semanticPattern("sight", "strongest", 5, 1.34, "간파의 눈", "見", "critical", "5번째 공격", "강적 약점 노출", "체력이 가장 높은 적을 간파해 강한 일격을 가합니다.", "#f4e28b"),
   gate: semanticPattern("gate", "front", 7, 0.72, "문맥 전이", "門", "chain", "7번째 공격", "먼 적에게 전이", "공격을 길 반대편의 적에게 전이해 두 구간을 동시에 압박합니다.", "#b7a5ff"),
-  weather: semanticPattern("weather", "cluster", 6, 0.46, "천후 범람", "雨", "spread", "적 5기 이상 · 6번째 공격", "밀집 구간 강하", "가장 붐비는 길목에 기운을 내려 여러 적을 함께 공격합니다.", "#77d8ff"),
+  weather: semanticPattern("weather", "cluster", 6, 0.46, "비구름 강하", "雨", "spread", "적 5기 이상 · 충전 발동", "경로 비구름 장판", "가장 붐비는 길목에 비구름을 남겨 일정 시간 장판 피해를 줍니다.", "#77d8ff"),
   mountain: semanticPattern("mountain", "front", 7, 0.3, "산맥 진압", "山", "stun", "7번째 공격", "제자리 봉쇄", "길을 울려 선두 적의 발을 묶고 그 자리에서 화력을 집중합니다.", "#d8ab74"),
   speech: semanticPattern("speech", "cluster", 6, 0.18, "언령 메아리", "言", "support", "6번째 공격", "주변 능력 가속", "같은 진의 자령에게 언령을 퍼뜨려 공격 대기를 줄입니다.", "#dda4ff"),
   motion: semanticPattern("motion", "fastest", 5, 0.27, "추행 봉쇄", "行", "control", "5번째 공격", "최고속 추적", "가장 빠른 적을 추적해 이동력을 크게 낮추고 공격권 안에 붙잡습니다.", "#7ee7d5"),
@@ -256,12 +257,12 @@ export const GRAPH_ABILITY_TABLE: Record<GraphRole, AbilitySpec> = {
 };
 
 const ROLE_CADENCE: Record<CombatRole, number> = {
-  rapid: 5,
-  burst: 4,
-  splash: 5,
-  control: 5,
-  support: 6,
-  economy: 6
+  rapid: 9,
+  burst: 10,
+  splash: 11,
+  control: 11,
+  support: 12,
+  economy: 13
 };
 
 const ROLE_MULTIPLIER: Record<CombatRole, number> = {
@@ -283,6 +284,12 @@ export interface AbilityComposeInput {
   parentWuxing: Wuxing[];
 }
 
+export function hasActiveSkills(definition: Pick<HanziDefinition, "stage" | "graph">): boolean {
+  // Recipe materials stay visually quiet and teach the value of combining.
+  // A direct tier-1 leaf keeps slow skills so a dead-end pull still has a use.
+  return definition.stage > 1 || definition.graph.directChildCount === 0;
+}
+
 function lineageAbility(wuxing: Wuxing, every: number): AbilitySpec {
   return {
     id: "lineage-" + wuxing,
@@ -299,12 +306,12 @@ function lineageAbility(wuxing: Wuxing, every: number): AbilitySpec {
 
 export function composeAbilityLoadout(input: AbilityComposeInput): AbilityLoadout {
   const stageStep = Math.floor((input.stage - 1) / 2);
-  const signatureEvery = Math.max(3, ROLE_CADENCE[input.role] - stageStep);
+  const signatureEvery = Math.max(7, ROLE_CADENCE[input.role] - stageStep);
   const lineageWuxing = input.parentWuxing.find((wuxing) => wuxing !== input.wuxing) ?? input.parentWuxing[0];
-  const lineageEvery = Math.max(4, 10 - input.stage - (input.graphRole === "bridge" ? 2 : 0));
+  const lineageEvery = Math.max(10, 16 - input.stage - (input.graphRole === "bridge" ? 2 : 0));
   const role = { ...ROLE_ABILITY_TABLE[input.role], trigger: signatureEvery + "번째 공격" };
   const semantic = semanticPatternFor(input.char, input.wuxing);
-  const semanticEvery = Math.max(3, semantic.every - Math.floor((input.stage - 1) / 2));
+  const semanticEvery = Math.max(7, semantic.every + 4 - Math.floor((input.stage - 1) / 2));
   const lineage = input.parents.length > 0 && lineageWuxing ? lineageAbility(lineageWuxing, lineageEvery) : undefined;
   const tuning = {
     semanticEvery,

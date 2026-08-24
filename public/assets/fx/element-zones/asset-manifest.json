@@ -1,0 +1,16 @@
+{
+  "source": "Codex image generation",
+  "grid": "2x3",
+  "cellSize": 256,
+  "runtimeAssets": {
+    "木": "wood-roots.png",
+    "火": "fire-lava.png",
+    "土": "earth-quicksand.png",
+    "金": "metal-caltrops.png",
+    "水": "water-rain.png"
+  },
+  "qc": {
+    "runtimeFrames": "PASS 5/5",
+    "excludedSourceCell": "row 2 column 3 neutral ink ripple; unused because a detached fleck touched its source-cell margin"
+  }
+}

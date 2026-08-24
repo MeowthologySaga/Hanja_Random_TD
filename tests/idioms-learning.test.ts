@@ -59,6 +59,7 @@ describe("four-character idiom formation", () => {
   it("rechecks automatically after moving the final character into place", () => {
     const engine = new GameEngine("idiom-move", "KR");
     engine.begin();
+    engine.state.unlockedFormations = [0, 2];
     engine.state.towers = [..."以心傳心"].map((char, index) => towerFor(engine, char, [0, 1, 2, 4][index] as number, index + 1));
 
     expect(engine.resolveIdiomFormations()).toBe(0);
@@ -71,6 +72,7 @@ describe("four-character idiom formation", () => {
   it("rechecks automatically after swapping two occupied cells", () => {
     const engine = new GameEngine("idiom-swap", "KR");
     engine.begin();
+    engine.state.unlockedFormations = [0, 2];
     engine.state.towers = [..."心以傳心"].map((char, index) => towerFor(engine, char, index, index + 1));
 
     engine.selectTower(2);
@@ -83,6 +85,8 @@ describe("four-character idiom formation", () => {
   it("auto-arranges disconnected owned characters to seal an available idiom", () => {
     const engine = new GameEngine("idiom-auto-arrange", "KR");
     engine.begin();
+    engine.state.startingFormationIndex = 2;
+    engine.state.unlockedFormations = [0, 1, 2, 3, 4];
     engine.state.towers = [..."以心傳心"].map((char, index) => towerFor(engine, char, [0, 18, 37, 71][index] as number, index + 1));
 
     expect(engine.resolveIdiomFormations()).toBe(0);
@@ -91,16 +95,18 @@ describe("four-character idiom formation", () => {
     expect(engine.state.lastMessage).toContain("성어 1개 봉인");
   });
 
-  it("does not pull a missing idiom character out of the run inventory during auto-arrange", () => {
+  it("pulls a missing idiom character out of the run inventory during auto-arrange", () => {
     const engine = new GameEngine("idiom-auto-arrange-inventory", "KR");
     engine.begin();
+    engine.state.startingFormationIndex = 2;
+    engine.state.unlockedFormations = [0, 1, 2, 3, 4];
     engine.state.towers = [..."以心傳"].map((char, index) => towerFor(engine, char, [0, 18, 37][index] as number, index + 1));
     engine.state.inventoryTowers = [towerFor(engine, "心", -1, 9)];
 
     expect(engine.autoArrangeTowers()).toMatchObject({ ok: true });
-    expect(engine.state.idiomSeals.some((seal) => seal.idiomId === "heart")).toBe(false);
-    expect(engine.state.inventoryTowers).toHaveLength(1);
-    expect(engine.state.inventoryTowers[0]).toMatchObject({ char: "心", cell: -1 });
+    expect(engine.state.idiomSeals.some((seal) => seal.idiomId === "heart")).toBe(true);
+    expect(engine.state.inventoryTowers).toHaveLength(0);
+    expect(engine.state.lastMessage).toContain("인벤토리 1기 투입");
   });
 });
 

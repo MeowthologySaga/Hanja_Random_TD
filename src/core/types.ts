@@ -7,8 +7,12 @@ export type AutomationMode = "manual" | "semi" | "goal";
 export type SummonIntent = "balanced" | "discovery" | "lineage" | "concentration";
 export type ConcentrationPath = "swift" | "potent";
 export type ConcentrationLevel = 0 | 1 | 2 | 3;
+export type ConcentrationPayment =
+  | { kind: "duplicate"; towerId: number }
+  | { kind: "essence" };
 export type UpgradeStat = "damage" | "attackSpeed" | "range" | "abilityPower" | "statusPower";
 export type StatUpgradeLevels = Record<UpgradeStat, number>;
+export type ElementTraitLevels = Record<Wuxing, [number, number, number]>;
 export type CombatRole = "rapid" | "burst" | "splash" | "control" | "support" | "economy";
 export type GraphRole = "hub" | "bridge" | "finisher" | "independent";
 export type SemanticFamily =
@@ -186,6 +190,18 @@ export interface Enemy {
   flash: number;
 }
 
+export interface AbilityZone {
+  id: number;
+  towerId: number;
+  kind: "roots" | "lava" | "quicksand" | "caltrops" | "rain";
+  wuxing: Wuxing;
+  progress: number;
+  radius: number;
+  damagePerSecond: number;
+  expiresAt: number;
+  color: string;
+}
+
 export interface WavePlan {
   wave: number;
   count: number;
@@ -250,11 +266,16 @@ export interface GameState {
   researchLevel: number;
   globalUpgrades: StatUpgradeLevels;
   elementUpgrades: Record<Wuxing, StatUpgradeLevels>;
+  elementTraits: ElementTraitLevels;
   summonCount: number;
   killCount: number;
   evolutionCount: number;
   interestEarned: number;
   elementEssence: Record<Wuxing, number>;
+  elementDismantleScore: Record<Wuxing, number>;
+  elementEssenceGenerated: Record<Wuxing, number>;
+  elementEssenceSpent: Record<Wuxing, number>;
+  dismantledTowerCount: number;
   prepRemaining: number;
   elapsed: number;
   waveElapsed: number;
@@ -270,16 +291,21 @@ export interface GameState {
   featuredIdiomIds: string[];
   discoveredChars: string[];
   softPity: number;
+  lineageClueProgress: number;
+  lineageTargetProgress: number;
+  unlockedFormations: number[];
+  startingFormationIndex: number | null;
   lastMessage: string;
   autoPlaceSummons: boolean;
   summonIntent: SummonIntent;
   towers: Tower[];
   inventoryTowers: Tower[];
   enemies: Enemy[];
+  abilityZones: AbilityZone[];
 }
 
 export type GameEvent =
-  | { type: "shot"; from: Point; to: Point; color: string; critical: boolean }
+  | { type: "shot"; from: Point; to: Point; color: string; critical: boolean; wuxing: Wuxing }
   | { type: "damage"; at: Point; amount: number; critical: boolean; weakness: boolean }
   | { type: "kill"; at: Point; reward: number }
   | { type: "interest"; amount: number; gold: number }
@@ -287,8 +313,9 @@ export type GameEvent =
   | { type: "dismantle"; tower: Tower; wuxing: Wuxing; essence: number }
   | { type: "concentrate"; tower: Tower; level: ConcentrationLevel; path: ConcentrationPath; usedDuplicate: boolean; essenceCost: number }
   | { type: "statUpgrade"; scope: "global" | "element"; wuxing: Wuxing | null; stat: UpgradeStat; level: number; cost: number; bonus: number }
+  | { type: "traitUpgrade"; wuxing: Wuxing; traitIndex: number; level: number; cost: number }
   | { type: "evolve"; at: Point; tower: Tower; parents: string[]; targetCompleted: boolean }
-  | { type: "ability"; at: Point; source: Point; towerId: number; name: string; glyph: string; color: string; kind: AbilityFxKind; targets: number; effect: string }
+  | { type: "ability"; at: Point; source: Point; towerId: number; name: string; glyph: string; color: string; kind: AbilityFxKind; targets: number; effect: string; persistent?: boolean }
   | { type: "goal"; char: string; reward: number }
   | { type: "idiom"; idiomId: string; chars: string; reading: string; meaning: string; bonus: string; color: string; cells: number[] }
   | { type: "wave"; wave: number; boss: boolean; archetype: EnemyArchetype; weakness: Wuxing }
@@ -312,5 +339,29 @@ export interface SimulationResult {
   goals: number;
   idioms: number;
   researchLevel: number;
+  startingFormationIndex: number | null;
+  startingWuxing: Wuxing | null;
+  dismantles: number;
+  essenceGenerated: number;
+  essenceSpent: number;
+  essenceSpendRate: number;
+  elementTraitLevels: ElementTraitLevels;
   endReason: string;
+  checkpoints: SimulationCheckpoint[];
+}
+
+export interface SimulationCheckpoint {
+  wave: number;
+  gold: number;
+  formations: number;
+  towers: number;
+  inventory: number;
+  summons: number;
+  evolutions: number;
+  discoveries: number;
+  goals: number;
+  idioms: number;
+  dismantles: number;
+  essenceGenerated: number;
+  essenceSpent: number;
 }

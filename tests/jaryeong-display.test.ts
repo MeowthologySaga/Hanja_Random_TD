@@ -10,11 +10,12 @@ describe("Jaryeong battlefield visuals", () => {
     expect(jaryeongVisualFor("雨", "水").id).toBe("water-rain");
   });
 
-  it("keeps unmatched characters on a stable existing elemental visual", () => {
+  it("uses the exact new Cheonjamun sprite where one is available", () => {
     const first = jaryeongVisualFor("相", "木");
     const second = jaryeongVisualFor("相", "木");
     expect(first).toEqual(second);
-    expect(first.id).toMatch(/^wood-/u);
+    expect(first.id).toBe("kr-76f8");
+    expect(first.frameLayout).toBe("single");
     expect(jaryeongVisualFor("矢", "金").id).not.toBe("metal-chain");
   });
 

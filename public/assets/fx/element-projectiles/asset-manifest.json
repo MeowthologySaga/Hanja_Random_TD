@@ -1,0 +1,16 @@
+{
+  "source": "Codex image generation",
+  "grid": "2x3",
+  "cellSize": 256,
+  "runtimeAssets": {
+    "木": "wood.png",
+    "火": "fire.png",
+    "土": "earth.png",
+    "金": "metal.png",
+    "水": "water.png"
+  },
+  "qc": {
+    "runtimeFrames": "PASS 5/5",
+    "sourceEdgeTouchFrames": []
+  }
+}

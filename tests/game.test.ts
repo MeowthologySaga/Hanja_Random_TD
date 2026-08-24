@@ -1,7 +1,15 @@
 import { describe, expect, it } from "vitest";
 import { MAX_ENEMIES, WAVE_REINFORCEMENT_DELAY } from "../src/core/content";
 import { GameEngine, dismantleEssenceValue, interestForGold, runAutoplay } from "../src/core/game";
-import { elementUpgradeCost, getCatalog, globalUpgradeCost, multiSummonCost } from "../src/core/hanzi";
+import {
+  elementUpgradeCost,
+  getCatalog,
+  globalUpgradeCost,
+  maxSummonStageForWave,
+  multiSummonCost,
+  researchUnlockWave,
+  summonStageUnlockWave
+} from "../src/core/hanzi";
 import type { Enemy, RegionCode, Tower } from "../src/core/types";
 
 function tower(region: RegionCode, char: string, id: number, cell: number): Tower {
@@ -47,39 +55,123 @@ function enemy(id: number): Enemy {
   };
 }
 
+function unlockFormations(engine: GameEngine, ...indices: number[]): void {
+  engine.state.summonCount = Math.max(1, engine.state.summonCount);
+  engine.state.startingFormationIndex ??= 2;
+  engine.state.unlockedFormations = [...new Set([2, ...indices])].sort((left, right) => left - right);
+}
+
+function enableWaveStart(engine: GameEngine): void {
+  engine.state.summonCount = Math.max(1, engine.state.summonCount);
+  engine.state.startingFormationIndex ??= 2;
+  if (engine.state.unlockedFormations.length === 0) engine.state.unlockedFormations = [2];
+}
+
 describe("regional recipe defense run", () => {
-  it("calculates one coin of bank interest for every ten held coins", () => {
+  it("calculates capped five-percent bank interest", () => {
     expect(interestForGold(0)).toBe(0);
-    expect(interestForGold(9)).toBe(0);
-    expect(interestForGold(10)).toBe(1);
-    expect(interestForGold(19)).toBe(1);
-    expect(interestForGold(100)).toBe(10);
+    expect(interestForGold(19)).toBe(0);
+    expect(interestForGold(20)).toBe(1);
+    expect(interestForGold(100)).toBe(5);
+    expect(interestForGold(1_000)).toBe(20);
   });
 
   it("calculates and performs an atomic ten-summon using the current escalating costs", () => {
-    expect(multiSummonCost(0, 10)).toBe(60);
-    expect(multiSummonCost(18, 10)).toBe(68);
+    expect(multiSummonCost(0, 10)).toBe(70);
+    expect(multiSummonCost(18, 10)).toBe(84);
     const engine = new GameEngine("ten-summon", "KR");
     engine.begin();
+    engine.state.wave = 10;
+    engine.state.gold = 70;
     expect(engine.summonMany(10)).toMatchObject({ ok: true });
-    expect(engine.state.gold).toBe(4);
+    expect(engine.state.gold).toBe(0);
     expect(engine.state.summonCount).toBe(10);
     expect(engine.state.towers).toHaveLength(10);
     expect(engine.consumeEvents().filter((event) => event.type === "summon")).toHaveLength(10);
 
     const poor = new GameEngine("ten-summon-poor", "KR");
     poor.begin();
-    poor.state.gold = 59;
-    expect(poor.summonMany(10)).toMatchObject({ ok: false, message: "연속 소환에 엽전 60이 필요합니다." });
+    poor.state.wave = 10;
+    poor.state.gold = 69;
+    expect(poor.summonMany(10)).toMatchObject({ ok: false, message: "연속 소환에 엽전 70이 필요합니다." });
     expect(poor.state.towers).toHaveLength(0);
     expect(poor.state.summonCount).toBe(0);
 
     const manual = new GameEngine("ten-summon-inventory", "KR");
     manual.setAutoPlaceSummons(false);
     manual.begin();
+    manual.state.wave = 10;
+    manual.state.gold = 70;
     expect(manual.summonMany(10)).toMatchObject({ ok: true });
     expect(manual.state.towers).toHaveLength(0);
     expect(manual.state.inventoryTowers).toHaveLength(10);
+
+    const locked = new GameEngine("ten-summon-locked", "KR");
+    locked.begin();
+    locked.state.gold = 70;
+    expect(locked.summonMany(10)).toMatchObject({ ok: false, message: expect.stringContaining("10웨이브") });
+  });
+
+  it("opens summon stages and lineage research only at their 100-wave milestones", () => {
+    expect([0, 9, 10, 29, 30, 49, 50, 69, 70, 100].map(maxSummonStageForWave)).toEqual([1, 1, 2, 2, 3, 3, 4, 4, 5, 5]);
+    expect(([1, 2, 3, 4, 5] as const).map(summonStageUnlockWave)).toEqual([0, 10, 30, 50, 70]);
+    expect([0, 1, 2, 3, 4].map(researchUnlockWave)).toEqual([10, 25, 45, 65, 85]);
+
+    const engine = new GameEngine("research-milestones", "KR");
+    engine.begin();
+    engine.state.gold = 1_000;
+    expect(engine.upgradeResearch()).toMatchObject({ ok: false, message: expect.stringContaining("10웨이브") });
+    engine.state.wave = 10;
+    expect(engine.upgradeResearch()).toMatchObject({ ok: true });
+    expect(engine.state.researchLevel).toBe(1);
+    expect(engine.upgradeResearch()).toMatchObject({ ok: false, message: expect.stringContaining("25웨이브") });
+  });
+
+  it("lets the player buy any sealed elemental formation with escalating coins", () => {
+    const engine = new GameEngine("formation-shop", "KR");
+    engine.begin();
+    expect(engine.state.unlockedFormations).toEqual([]);
+    expect(engine.unlockFormation(4)).toMatchObject({ ok: false, message: expect.stringContaining("첫 자령") });
+    expect(engine.summon()).toMatchObject({ ok: true });
+    expect(engine.deployedTowerCapacity()).toBe(16);
+    expect(engine.nextFormationUnlockCost()).toBe(18);
+    const lockedIndex = [4, 3, 2, 1, 0].find((index) => !engine.isFormationUnlocked(index)) as number;
+    const lockedLabel = ["수진", "금진", "토진", "목진", "화진"][lockedIndex];
+    expect(engine.unlockFormation(lockedIndex)).toMatchObject({ ok: true, message: expect.stringContaining(`${lockedLabel} 해금`) });
+    expect(engine.state.gold).toBe(17);
+    expect(engine.state.unlockedFormations).toHaveLength(2);
+    expect(engine.deployedTowerCapacity()).toBe(32);
+    expect(engine.nextFormationUnlockCost()).toBe(32);
+    const nextLockedIndex = [0, 1, 2, 3, 4].find((index) => !engine.isFormationUnlocked(index)) as number;
+    expect(engine.unlockFormation(nextLockedIndex)).toMatchObject({ ok: false, message: expect.stringContaining("32") });
+    engine.state.gold = 32;
+    expect(engine.unlockFormation(nextLockedIndex)).toMatchObject({ ok: true });
+    expect(engine.deployedTowerCapacity()).toBe(48);
+  });
+
+  it("guarantees a lineage clue on pull 12 and the chosen direct target on pull 30", () => {
+    const clue = new GameEngine("lineage-clue-guarantee", "KR");
+    clue.setAutoPlaceSummons(false);
+    clue.begin();
+    clue.state.gold = 1_000;
+    clue.setTarget("林");
+    clue.setSummonIntent("lineage");
+    clue.state.lineageClueProgress = 11;
+    expect(clue.summon()).toMatchObject({ ok: true });
+    expect(clue.state.inventoryTowers.at(-1)?.char).toBe("木");
+    expect(clue.state.lineageClueProgress).toBe(0);
+
+    const exact = new GameEngine("lineage-target-guarantee", "KR");
+    exact.setAutoPlaceSummons(false);
+    exact.begin();
+    exact.state.gold = 1_000;
+    exact.setTarget("天");
+    exact.setSummonIntent("lineage");
+    exact.state.lineageTargetProgress = 29;
+    expect(exact.summon()).toMatchObject({ ok: true });
+    expect(exact.state.inventoryTowers.at(-1)?.char).toBe("天");
+    expect(exact.state.lineageClueProgress).toBe(0);
+    expect(exact.state.lineageTargetProgress).toBe(0);
   });
 
   it("splits repeatable gold and elemental essence upgrades by stat", () => {
@@ -121,6 +213,59 @@ describe("regional recipe defense run", () => {
     );
   });
 
+  it("opens the complete thousand-character Korean pool while keeping onboarding summons at stage one", () => {
+    const engine = new GameEngine("cheonjamun-1000-pool", "KR");
+    const pool = engine.summonDefinitions();
+    expect(pool).toHaveLength(1000);
+    expect(new Set(pool.map((definition) => definition.char)).size).toBe(1000);
+    expect(pool.map((definition) => definition.char)).toEqual(expect.arrayContaining(["天", "地", "玄", "黃"]));
+    engine.begin();
+    for (let index = 0; index < 4; index += 1) expect(engine.summon()).toMatchObject({ ok: true });
+    expect(engine.state.towers).toHaveLength(4);
+    expect(engine.state.towers.every((unit) => unit.stage === 1)).toBe(true);
+  });
+
+  it("tracks a chosen direct Hanja or idiom and can force a newly integrated Hanja from the pool", () => {
+    const engine = new GameEngine("owned-aware-targets", "KR");
+    engine.setAutoPlaceSummons(false);
+    engine.begin();
+    expect(engine.setTarget("天")).toMatchObject({ ok: true });
+    expect(engine.state.targetChar).toBe("天");
+    engine.state.discoveredChars = engine.summonDefinitions().filter((definition) => definition.char !== "天").map((definition) => definition.char);
+    expect(engine.setSummonIntent("discovery")).toMatchObject({ ok: true });
+    expect(engine.summon(true)).toMatchObject({ ok: true });
+    expect(engine.state.inventoryTowers.at(-1)?.char).toBe("天");
+    expect(engine.state.goalsCompleted).toContain("天");
+
+    const currentId = engine.currentIdiomTarget()?.id;
+    const desired = engine.allIdioms().find((idiom) => idiom.id !== currentId);
+    expect(desired).toBeDefined();
+    expect(engine.setIdiomTarget(desired!.id)).toMatchObject({ ok: true });
+    expect(engine.currentIdiomTarget()?.id).toBe(desired!.id);
+    expect(engine.idiomProgress(desired!.id)).toMatchObject({ total: 4 });
+  });
+
+  it("makes a chosen Hanja materially more likely in the thousand-character pool", () => {
+    let balancedHeaven = 0;
+    let focusedHeaven = 0;
+    for (let index = 0; index < 80; index += 1) {
+      const seed = `target-weight-${index}`;
+      const balanced = new GameEngine(seed, "KR");
+      balanced.begin();
+      expect(balanced.summon()).toMatchObject({ ok: true });
+      if (balanced.state.towers[0]?.char === "天") balancedHeaven += 1;
+
+      const focused = new GameEngine(seed, "KR");
+      focused.begin();
+      focused.setTarget("天");
+      focused.setSummonIntent("lineage");
+      expect(focused.summon()).toMatchObject({ ok: true });
+      if (focused.state.towers[0]?.char === "天") focusedHeaven += 1;
+    }
+    expect(focusedHeaven).toBeGreaterThanOrEqual(12);
+    expect(focusedHeaven).toBeGreaterThan(balancedHeaven + 10);
+  });
+
   it("preserves duplicate parents and consumes two different 木 towers", () => {
     const engine = new GameEngine("duplicate-parent", "KR");
     engine.begin();
@@ -159,6 +304,7 @@ describe("regional recipe defense run", () => {
   it("uses occupied cells for selection and empty cells for movement", () => {
     const engine = new GameEngine("move-case", "KR");
     engine.begin();
+    unlockFormations(engine, 0);
     engine.state.towers = [tower("KR", "木", 7, 0), tower("KR", "目", 8, 1)];
     engine.selectTower(7);
     expect(engine.moveSelectedToCell(5)).toMatchObject({ ok: true });
@@ -185,19 +331,21 @@ describe("regional recipe defense run", () => {
     expect(engine.state.towers).toHaveLength(0);
     expect(engine.state.inventoryTowers).toHaveLength(1);
     expect(engine.state.inventoryTowers[0]?.cell).toBe(-1);
-    expect(engine.state.selectedTowerId).toBeNull();
+    expect(engine.state.selectedTowerId).toBe(engine.state.inventoryTowers[0]?.id);
 
     const storedId = engine.state.inventoryTowers[0]?.id ?? -1;
     engine.selectTower(storedId);
-    expect(engine.moveSelectedToCell(37)).toMatchObject({ ok: true });
+    const targetCell = (engine.state.startingFormationIndex ?? 0) * 16 + 5;
+    expect(engine.moveSelectedToCell(targetCell)).toMatchObject({ ok: true });
     expect(engine.state.inventoryTowers).toHaveLength(0);
     expect(engine.state.towers).toHaveLength(1);
-    expect(engine.state.towers[0]).toMatchObject({ id: storedId, cell: 37 });
+    expect(engine.state.towers[0]).toMatchObject({ id: storedId, cell: targetCell });
   });
 
   it("atomically swaps a stored unit into an occupied board cell", () => {
     const engine = new GameEngine("inventory-atomic-swap", "KR");
     engine.begin();
+    unlockFormations(engine, 0);
     engine.state.towers = [tower("KR", "木", 601, 0)];
     engine.state.inventoryTowers = [tower("KR", "目", 602, -1)];
     engine.selectTower(602);
@@ -211,6 +359,7 @@ describe("regional recipe defense run", () => {
     const engine = new GameEngine("unbounded-stacked-bench", "KR");
     engine.setAutoPlaceSummons(false);
     engine.begin();
+    engine.state.wave = 100;
     engine.state.gold = 1_000_000;
     expect(engine.summonMany(90)).toMatchObject({ ok: true });
     expect(engine.state.inventoryTowers).toHaveLength(90);
@@ -246,6 +395,7 @@ describe("regional recipe defense run", () => {
   it("dismantles weak units into their element essence and protects resonance thresholds", () => {
     const engine = new GameEngine("cleanup-protection", "KR");
     engine.begin();
+    unlockFormations(engine, 0);
     engine.state.towers = Array.from({ length: 4 }, (_, index) => tower("KR", "雨", 800 + index, index));
     const assessments = engine.cleanupAssessments();
     expect(assessments.every((assessment) => assessment.protectedReasons.some((reason) => reason.includes("공명 임계치")))).toBe(true);
@@ -284,6 +434,8 @@ describe("regional recipe defense run", () => {
   it("fills the remaining board cells before sending ten-summon overflow to inventory", () => {
     const engine = new GameEngine("full-board-ten-overflow", "KR");
     engine.begin();
+    engine.state.wave = 100;
+    unlockFormations(engine, 0, 1, 3, 4);
     engine.state.gold = 1_000_000;
     const base = engine.catalog.activePool[0];
     expect(base).toBeDefined();
@@ -360,6 +512,8 @@ describe("regional recipe defense run", () => {
   it("raises each elemental formation bonus at 4, 8, 12, and 16 matching towers", () => {
     const engine = new GameEngine("formation-resonance", "KR");
     engine.begin();
+    engine.state.wave = 100;
+    unlockFormations(engine, 0, 1, 3, 4);
     const water = engine.catalog.activePool.find((definition) => definition.wuxing === "水");
     expect(water).toBeDefined();
     engine.state.towers = Array.from({ length: 16 }, (_, index) => tower("KR", water!.char, 700 + index, index));
@@ -373,6 +527,8 @@ describe("regional recipe defense run", () => {
   it("auto-arranges deployed towers into their matching elemental formations", () => {
     const engine = new GameEngine("auto-arrange-elements", "KR");
     engine.begin();
+    engine.state.wave = 100;
+    unlockFormations(engine, 0, 1, 3, 4);
     const water = engine.catalog.activePool.find((definition) => definition.wuxing === "水");
     const fire = engine.catalog.activePool.find((definition) => definition.wuxing === "火");
     expect(water).toBeDefined();
@@ -389,9 +545,41 @@ describe("regional recipe defense run", () => {
     expect(engine.state.lastMessage).toContain("오행 공명 0→2단계");
   });
 
+  it("deploys run-inventory towers into empty cells before auto-arranging the board", () => {
+    const engine = new GameEngine("auto-arrange-inventory", "KR");
+    engine.begin();
+    unlockFormations(engine);
+    engine.state.towers = [tower("KR", "木", 1_300, 0)];
+    engine.state.inventoryTowers = [
+      tower("KR", "目", 1_301, -1),
+      tower("KR", "火", 1_302, -1),
+      tower("KR", "水", 1_303, -1)
+    ];
+
+    expect(engine.autoArrangeTowers()).toMatchObject({ ok: true });
+    expect(engine.state.towers).toHaveLength(4);
+    expect(engine.state.inventoryTowers).toHaveLength(0);
+    expect(engine.state.towers.every((unit) => unit.cell >= 0)).toBe(true);
+    expect(new Set(engine.state.towers.map((unit) => unit.cell)).size).toBe(4);
+    expect(engine.state.lastMessage).toContain("인벤토리 3기 투입");
+  });
+
+  it("can auto-arrange directly from an inventory-only board state", () => {
+    const engine = new GameEngine("auto-arrange-inventory-only", "KR");
+    engine.begin();
+    unlockFormations(engine);
+    engine.state.inventoryTowers = [tower("KR", "木", 1_310, -1), tower("KR", "目", 1_311, -1)];
+
+    expect(engine.autoArrangeTowers()).toMatchObject({ ok: true });
+    expect(engine.state.towers).toHaveLength(2);
+    expect(engine.state.inventoryTowers).toHaveLength(0);
+  });
+
   it("fills all eighty formation cells while prioritizing unseen Hanja", () => {
     const engine = new GameEngine("full-board-diversity", "KR");
     engine.begin();
+    engine.state.wave = 100;
+    unlockFormations(engine, 0, 1, 3, 4);
     engine.state.gold = 1_000_000;
     for (let index = 0; index < 80; index += 1) expect(engine.summon().ok).toBe(true);
 
@@ -405,6 +593,7 @@ describe("regional recipe defense run", () => {
   it("ends the run when the active enemy limit is reached", () => {
     const engine = new GameEngine("enemy-cap", "KR");
     engine.begin();
+    enableWaveStart(engine);
     engine.startWaveEarly();
     engine.state.spawned = engine.getCurrentPlan()?.count ?? 0;
     engine.state.enemies = Array.from({ length: MAX_ENEMIES }, (_, index) => enemy(index + 1));
@@ -416,6 +605,7 @@ describe("regional recipe defense run", () => {
   it("keeps surviving enemies on the same route for another lap", () => {
     const engine = new GameEngine("circulation-case", "KR");
     engine.begin();
+    enableWaveStart(engine);
     engine.startWaveEarly();
     const loopingEnemy = enemy(900);
     loopingEnemy.progress = 0.99;
@@ -433,6 +623,7 @@ describe("regional recipe defense run", () => {
   it("starts the next wave on schedule while surviving enemies keep circulating", () => {
     const engine = new GameEngine("reinforcement-pressure", "KR");
     engine.begin();
+    enableWaveStart(engine);
     engine.startWaveEarly();
     const survivor = enemy(901);
     survivor.hp = survivor.maxHp = 1_000_000;
@@ -448,16 +639,17 @@ describe("regional recipe defense run", () => {
     expect(engine.state.enemies).toContain(survivor);
     expect(engine.state.nextWaveRemaining).toBeNull();
     expect(engine.state.lastMessage).toContain("잔존 1체");
-    expect(engine.state.gold).toBe(104);
-    expect(engine.state.interestEarned).toBe(9);
-    expect(engine.state.lastMessage).toContain("은행 이자 +9엽전");
-    expect(engine.consumeEvents()).toContainEqual({ type: "interest", amount: 9, gold: 104 });
-    expect(WAVE_REINFORCEMENT_DELAY).toBe(16);
+    expect(engine.state.gold).toBe(99);
+    expect(engine.state.interestEarned).toBe(4);
+    expect(engine.state.lastMessage).toContain("은행 이자 +4엽전");
+    expect(engine.consumeEvents()).toContainEqual({ type: "interest", amount: 4, gold: 99 });
+    expect(WAVE_REINFORCEMENT_DELAY).toBe(20);
   });
 
   it("adds the clear reward before calculating end-of-wave bank interest", () => {
     const engine = new GameEngine("clear-interest", "KR");
     engine.begin();
+    enableWaveStart(engine);
     engine.startWaveEarly();
     engine.state.gold = 95;
     engine.state.spawned = engine.getCurrentPlan()?.count ?? 0;
@@ -466,38 +658,57 @@ describe("regional recipe defense run", () => {
     engine.update(0.01);
 
     expect(engine.state.phase).toBe("prep");
-    expect(engine.state.gold).toBe(119);
-    expect(engine.state.interestEarned).toBe(10);
-    expect(engine.state.lastMessage).toContain("보상 14엽전 · 은행 이자 +10엽전");
-    expect(engine.consumeEvents()).toContainEqual({ type: "interest", amount: 10, gold: 119 });
+    expect(engine.state.gold).toBe(108);
+    expect(engine.state.interestEarned).toBe(5);
+    expect(engine.state.lastMessage).toContain("보상 8엽전 · 은행 이자 +5엽전");
+    expect(engine.consumeEvents()).toContainEqual({ type: "interest", amount: 5, gold: 108 });
   });
 
   it("ends a boss wave when the boss timer expires", () => {
     const engine = new GameEngine("boss-timeout", "KR");
     engine.begin();
+    enableWaveStart(engine);
     engine.state.wave = 9;
     expect(engine.startWaveEarly()).toMatchObject({ ok: true });
-    expect(engine.bossTimeRemaining()).toBe(60);
-    engine.state.waveElapsed = 59.95;
+    expect(engine.bossTimeRemaining()).toBe(72);
+    engine.state.waveElapsed = 71.95;
     engine.update(0.1);
     expect(engine.state.phase).toBe("defeat");
-    expect(engine.state.lastMessage).toContain("60초");
+    expect(engine.state.lastMessage).toContain("72초");
+  });
+
+  it("ends with the Cheonjamun great seal only after clearing wave 100", () => {
+    const engine = new GameEngine("hundred-wave-ending", "KR");
+    engine.begin();
+    enableWaveStart(engine);
+    engine.state.wave = 99;
+    expect(engine.startWaveEarly()).toMatchObject({ ok: true });
+    expect(engine.state.wave).toBe(100);
+    expect(engine.getCurrentPlan()?.boss).toBe(true);
+    engine.state.spawned = engine.getCurrentPlan()?.count ?? 0;
+    engine.state.enemies = [];
+    engine.state.bossDefeated = true;
+    engine.update(0.01);
+    expect(engine.state.phase).toBe("victory");
+    expect(engine.state.lastMessage).toContain("백 번째 봉인");
+    expect(engine.state.lastMessage).toContain("천자문");
   });
 
   it("starts the next wave and grants the early-start bonus", () => {
     const engine = new GameEngine("early-case", "JP");
     engine.begin();
+    enableWaveStart(engine);
     const before = engine.state.gold;
     expect(engine.startWaveEarly().ok).toBe(true);
     expect(engine.state.phase).toBe("combat");
     expect(engine.state.wave).toBe(1);
-    expect(engine.state.gold).toBe(before + 4);
+    expect(engine.state.gold).toBe(before + 7);
     expect(engine.state.interestEarned).toBe(0);
   });
 
   it("settles automated runs in every region without an infinite loop", () => {
     for (const region of ["KR", "JP", "CN"] as const) {
-      const result = runAutoplay("smoke-" + region, region, 1_200);
+      const result = runAutoplay("smoke-" + region, region, 5_400);
       expect(result.result).not.toBe("timeout");
       expect(result.region).toBe(region);
     }

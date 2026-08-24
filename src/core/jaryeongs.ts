@@ -1,11 +1,15 @@
 import { CHEONJAMUN_JARYEONG_ROSTER } from "./cheonjamun-roster";
-import type { EnemyArchetype, Wuxing } from "./types";
+import { CHEONJAMUN_RUNTIME_JARYEONGS } from "./cheonjamun-runtime";
+import generatedCnData from "../data/cn3500-generated-jaryeongs.json";
+import type { EnemyArchetype, RegionCode, Wuxing } from "./types";
 
 export interface JaryeongVisual {
   id: string;
   hanja: string;
   name: string;
   wuxing: Wuxing;
+  assetPath?: string;
+  frameLayout?: "2x2" | "single";
 }
 
 const BASE_JARYEONG_VISUALS: readonly JaryeongVisual[] = Object.freeze([
@@ -50,12 +54,37 @@ export const CHEONJAMUN_JARYEONG_VISUALS: readonly JaryeongVisual[] = Object.fre
   }))
 );
 
+export const CHEONJAMUN_RUNTIME_JARYEONG_VISUALS: readonly JaryeongVisual[] = Object.freeze(
+  CHEONJAMUN_RUNTIME_JARYEONGS.map((entry) => ({
+    id: entry.id,
+    hanja: entry.hanja,
+    name: `${entry.huneum} 자령`,
+    wuxing: entry.wuxing,
+    assetPath: entry.assetPath,
+    frameLayout: entry.frameLayout
+  }))
+);
+
+export const CN3500_GENERATED_JARYEONG_VISUALS: readonly JaryeongVisual[] = Object.freeze(
+  generatedCnData.entries.map((entry) => ({
+    id: entry.id,
+    hanja: entry.hanja,
+    name: `${entry.reading}령`,
+    wuxing: entry.wuxing as Wuxing
+  }))
+);
+
 export const JARYEONG_VISUALS: readonly JaryeongVisual[] = Object.freeze([
   ...BASE_JARYEONG_VISUALS,
-  ...CHEONJAMUN_JARYEONG_VISUALS
+  ...CHEONJAMUN_JARYEONG_VISUALS,
+  ...CHEONJAMUN_RUNTIME_JARYEONG_VISUALS,
+  ...CN3500_GENERATED_JARYEONG_VISUALS
 ]);
 
-const exactVisuals = new Map(JARYEONG_VISUALS.map((visual) => [visual.hanja, visual]));
+const legacyExactVisuals = new Map(BASE_JARYEONG_VISUALS.map((visual) => [visual.hanja, visual]));
+const approvedKrExactVisuals = new Map(CHEONJAMUN_JARYEONG_VISUALS.map((visual) => [visual.hanja, visual]));
+const krRuntimeExactVisuals = new Map(CHEONJAMUN_RUNTIME_JARYEONG_VISUALS.map((visual) => [visual.hanja, visual]));
+const cnExactVisuals = new Map(CN3500_GENERATED_JARYEONG_VISUALS.map((visual) => [visual.hanja, visual]));
 const visualsById = new Map(JARYEONG_VISUALS.map((visual) => [visual.id, visual]));
 const fallbackVisualIds = new Set([
   "wood-mok", "wood-tree", "wood-life", "wood-forest",
@@ -80,13 +109,27 @@ function stableHash(value: string): number {
   return hash >>> 0;
 }
 
-export function jaryeongVisualFor(char: string, wuxing: Wuxing): JaryeongVisual {
-  const exact = exactVisuals.get(char);
-  if (exact) return exact;
+export function jaryeongVisualFor(char: string, wuxing: Wuxing, region: RegionCode = "KR"): JaryeongVisual {
+  const legacyExact = legacyExactVisuals.get(char);
+  if (legacyExact) return legacyExact;
+  const approvedKrExact = region === "KR" ? approvedKrExactVisuals.get(char) : undefined;
+  if (approvedKrExact) return approvedKrExact;
+  const krRuntimeExact = region === "KR" ? krRuntimeExactVisuals.get(char) : undefined;
+  if (krRuntimeExact?.wuxing === wuxing) return krRuntimeExact;
+  const cnExact = region === "CN" ? cnExactVisuals.get(char) : undefined;
+  if (cnExact?.wuxing === wuxing) return cnExact;
   const family = visualsByWuxing.get(wuxing) ?? [];
   const visual = family[stableHash(char) % family.length];
   if (!visual) throw new Error(`Missing Jaryeong visual family: ${wuxing}`);
   return visual;
+}
+
+export function jaryeongAssetPath(visual: JaryeongVisual): string {
+  return visual.assetPath ?? `assets/jaryeongs/${visual.id}/sheet-transparent.png`;
+}
+
+export function jaryeongFrameLayout(visual: JaryeongVisual): "2x2" | "single" {
+  return visual.frameLayout ?? "2x2";
 }
 
 const ENEMY_VISUAL_IDS: Readonly<Record<EnemyArchetype, readonly string[]>> = Object.freeze({

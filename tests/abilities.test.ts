@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { ELEMENT_ABILITY_TABLE, GRAPH_ABILITY_TABLE, ROLE_ABILITY_TABLE, SEMANTIC_ABILITY_TABLE, composeAbilityLoadout } from "../src/core/abilities";
-import { GameEngine } from "../src/core/game";
+import { ELEMENT_ABILITY_TABLE, GRAPH_ABILITY_TABLE, ROLE_ABILITY_TABLE, SEMANTIC_ABILITY_TABLE, composeAbilityLoadout, hasActiveSkills } from "../src/core/abilities";
+import { GameEngine, elementZoneKind } from "../src/core/game";
 import { getCatalog } from "../src/core/hanzi";
 
 describe("combinatorial Hanzi ability table", () => {
@@ -25,9 +25,9 @@ describe("combinatorial Hanzi ability table", () => {
       expect(loadout.semantic.category).toBe("semantic");
       expect(loadout.role.category).toBe("role");
       expect(loadout.graph.category).toBe("graph");
-      expect(loadout.tuning.signatureEvery).toBeGreaterThanOrEqual(3);
-      expect(loadout.tuning.semanticEvery).toBeGreaterThanOrEqual(3);
-      expect(loadout.tuning.lineageEvery).toBeGreaterThanOrEqual(4);
+      expect(loadout.tuning.signatureEvery).toBeGreaterThanOrEqual(7);
+      expect(loadout.tuning.semanticEvery).toBeGreaterThanOrEqual(7);
+      expect(loadout.tuning.lineageEvery).toBeGreaterThanOrEqual(10);
       expect(loadout.comboKey).toContain("S" + String(definition.stage));
       if (definition.acquisition === "craft") expect(loadout.lineage?.category).toBe("lineage");
       else expect(loadout.lineage).toBeUndefined();
@@ -70,11 +70,29 @@ describe("combinatorial Hanzi ability table", () => {
   it("emits named ability events during a real wave", () => {
     const engine = new GameEngine("ability-event", "KR");
     engine.begin();
-    for (let index = 0; index < 6; index += 1) expect(engine.summon().ok).toBe(true);
+    const definition = [...engine.catalog.definitions.values()].find((candidate) => candidate.stage >= 2 && candidate.combat.abilities.semanticFamily !== "weather")!;
+    engine.state.towers = [{
+      id: 9001,
+      definitionId: definition.id,
+      char: definition.char,
+      wuxing: definition.wuxing,
+      stage: definition.stage,
+      combatRole: definition.combat.role,
+      graphRole: definition.graph.graphRole,
+      cell: 0,
+      cooldownLeft: 0,
+      pulse: 0,
+      shotCount: definition.combat.abilities.tuning.semanticEvery - 1,
+      abilityFlash: 0,
+      locked: false
+    }];
+    engine.state.summonCount = 1;
+    engine.state.startingFormationIndex = 0;
+    engine.state.unlockedFormations = [0];
     engine.consumeEvents();
     engine.startWaveEarly();
     let abilityEvent = engine.consumeEvents().find((event) => event.type === "ability");
-    for (let step = 0; step < 240 && !abilityEvent; step += 1) {
+    for (let step = 0; step < 600 && !abilityEvent; step += 1) {
       engine.update(0.1);
       abilityEvent = engine.consumeEvents().find((event) => event.type === "ability");
     }
@@ -86,5 +104,47 @@ describe("combinatorial Hanzi ability table", () => {
       expect(abilityEvent.effect.length).toBeGreaterThan(4);
       expect(abilityEvent.effect).not.toBe("능력 발동");
     }
+  });
+
+  it("keeps combinable tier-1 materials on basic attacks until they are synthesized", () => {
+    const catalog = getCatalog("KR");
+    const material = [...catalog.definitions.values()].find((definition) => definition.stage === 1 && definition.graph.directChildCount > 0)!;
+    const leaf = [...catalog.definitions.values()].find((definition) => definition.stage === 1 && definition.graph.directChildCount === 0)!;
+    expect(hasActiveSkills(material)).toBe(false);
+    expect(hasActiveSkills(leaf)).toBe(true);
+  });
+
+  it("turns a weather meaning skill into a persistent rain-cloud damage zone", () => {
+    const engine = new GameEngine("weather-zone", "KR");
+    engine.begin();
+    const definition = [...engine.catalog.definitions.values()].find((candidate) => candidate.stage >= 2 && candidate.combat.abilities.semanticFamily === "weather")!;
+    engine.state.towers = [{
+      id: 9002,
+      definitionId: definition.id,
+      char: definition.char,
+      wuxing: definition.wuxing,
+      stage: definition.stage,
+      combatRole: definition.combat.role,
+      graphRole: definition.graph.graphRole,
+      cell: 0,
+      cooldownLeft: 0,
+      pulse: 0,
+      shotCount: definition.combat.abilities.tuning.semanticEvery - 1,
+      abilityFlash: 0,
+      locked: false
+    }];
+    engine.state.summonCount = 1;
+    engine.state.startingFormationIndex = 0;
+    engine.state.unlockedFormations = [0];
+    engine.startWaveEarly();
+    for (let step = 0; step < 800 && engine.state.abilityZones.length === 0; step += 1) engine.update(0.1);
+    expect(engine.state.abilityZones[0]).toMatchObject({ towerId: 9002, kind: elementZoneKind(definition.wuxing) });
+    expect(engine.state.abilityZones[0]?.damagePerSecond).toBeGreaterThan(0);
+  });
+
+  it("gives every element its own persistent path-zone identity", () => {
+    expect((["木", "火", "土", "金", "水"] as const).map(elementZoneKind)).toEqual([
+      "roots", "lava", "quicksand", "caltrops", "rain"
+    ]);
   });
 });

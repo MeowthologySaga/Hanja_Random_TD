@@ -5,8 +5,12 @@ import {
   CELLS_PER_FORMATION,
   ENEMY_PATH_POINTS,
   ENEMY_SPAWN_PROGRESS,
+  bossTimeLimitForWave,
+  isFormationUnlocked,
+  nextFormationUnlockCost,
   positionOnPath,
   spawnProgressForEnemy,
+  unlockedTowerCapacity,
   wavePlan
 } from "../src/core/content";
 import { GAME_CONFIG, getCatalog } from "../src/core/hanzi";
@@ -35,14 +39,20 @@ describe("regional catalog and wave content", () => {
     expect(getCatalog("KR").activePool.length).toBeGreaterThanOrEqual(12);
   });
 
-  it("marks only waves 10 and 20 as bosses and rotates enemy types", () => {
+  it("marks every tenth wave through 100 as a boss and rotates enemy types", () => {
     expect(wavePlan(9).boss).toBe(false);
     expect(wavePlan(10).boss).toBe(true);
     expect(wavePlan(19).boss).toBe(false);
     expect(wavePlan(20).boss).toBe(true);
+    expect(wavePlan(30).boss).toBe(true);
+    expect(wavePlan(100).boss).toBe(true);
+    expect(wavePlan(99).boss).toBe(false);
+    expect(bossTimeLimitForWave(10)).toBe(72);
+    expect(bossTimeLimitForWave(100)).toBe(126);
     expect(wavePlan(3).archetype).toBe("swarm");
     expect(wavePlan(4).archetype).toBe("swift");
     expect(wavePlan(5).archetype).toBe("armored");
+    expect(wavePlan(5).label).toContain("정예");
   });
 
   it("uses one closed route that covers every straight segment of the cross", () => {
@@ -101,5 +111,16 @@ describe("regional catalog and wave content", () => {
     }
     const nearest = BOARD_CELLS.flatMap((cell, index) => BOARD_CELLS.slice(index + 1).map((other) => Math.hypot(cell.x - other.x, cell.y - other.y)));
     expect(Math.min(...nearest)).toBeGreaterThanOrEqual(44);
+  });
+
+  it("opens the center formation first and prices four player-chosen expansions", () => {
+    expect(unlockedTowerCapacity([2])).toBe(16);
+    expect(unlockedTowerCapacity([2, 4])).toBe(32);
+    expect(unlockedTowerCapacity([0, 2, 4])).toBe(48);
+    expect(unlockedTowerCapacity([0, 1, 2, 4])).toBe(64);
+    expect(unlockedTowerCapacity([0, 1, 2, 3, 4])).toBe(80);
+    expect(isFormationUnlocked(2, [2])).toBe(true);
+    expect(isFormationUnlocked(0, [2])).toBe(false);
+    expect([1, 2, 3, 4, 5].map(nextFormationUnlockCost)).toEqual([18, 32, 52, 78, null]);
   });
 });
