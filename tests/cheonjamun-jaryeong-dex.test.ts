@@ -13,7 +13,7 @@ describe("player-facing Cheonjamun Jaryeong dex", () => {
     for (const entry of CHEONJAMUN_JARYEONG_DEX_ENTRIES) {
       expect(entry.dexText.length).toBeGreaterThan(55);
       expect(entry.traitDescription.length).toBeGreaterThan(25);
-      expect(entry.imagePath).toMatch(/^assets\/(?:codex\/cheonjamun-jaryeongs-v1|jaryeongs\/cheonjamun-runtime-v1)\/kr-[0-9a-f]+\.png$/u);
+      expect(entry.imagePath).toMatch(/^assets\/jaryeongs\/cheonjamun-runtime-v1\/kr-[0-9a-f]+\.png$/u);
     }
   });
 
@@ -28,6 +28,10 @@ describe("player-facing Cheonjamun Jaryeong dex", () => {
     for (const entry of CHEONJAMUN_JARYEONG_DEX_ENTRIES) {
       const imagePath = path.join(process.cwd(), "public", ...entry.imagePath.split("/"));
       expect(fs.statSync(imagePath).size).toBeGreaterThan(0);
+      const header = fs.readFileSync(imagePath).subarray(0, 24);
+      expect(header.toString("ascii", 1, 4)).toBe("PNG");
+      expect(header.readUInt32BE(16)).toBe(256);
+      expect(header.readUInt32BE(20)).toBe(256);
     }
   });
 });

@@ -14,6 +14,22 @@ export interface CheonjamunRuntimeJaryeongEntry {
   structureGate: string;
   qc: string;
   integrationStatus: "playable-preview";
+  runtimeQualityRevision: 2;
+  runtimeSourceRoute: "direct-raw" | "catalog-frame" | "processed-fallback";
+  runtimeQualityGate: "PASS_NATIVE_OR_DOWNSCALED";
+}
+
+interface CheonjamunRuntimeQualitySummary {
+  qualityRevision: 2;
+  policy: "preserved-raw-first-single-resample";
+  outputSize: 256;
+  contentLimit: 232;
+  routes: Record<string, number>;
+  qualityGates: Record<string, number>;
+  processedFallbackCount: number;
+  processedFallbackIds: string[];
+  upscaledCount: 0;
+  upscaledIds: [];
 }
 
 interface CheonjamunRuntimeData {
@@ -22,6 +38,9 @@ interface CheonjamunRuntimeData {
   total: 1000;
   approved: 0;
   integrationPolicy: "playable-preview-with-source-qc-preserved";
+  qualityRevision: 2;
+  qualityPolicy: "preserved-raw-first-single-resample";
+  qualitySummary: CheonjamunRuntimeQualitySummary;
   entries: CheonjamunRuntimeJaryeongEntry[];
 }
 
@@ -32,9 +51,13 @@ if (
   || data.scope !== "KR_1000"
   || data.total !== 1000
   || data.approved !== 0
+  || data.qualityRevision !== 2
+  || data.qualitySummary.qualityRevision !== 2
+  || data.qualitySummary.upscaledCount !== 0
   || data.entries.length !== data.total
   || new Set(data.entries.map((entry) => entry.id)).size !== data.total
   || new Set(data.entries.map((entry) => entry.hanja)).size !== data.total
+  || data.entries.some((entry) => entry.runtimeQualityRevision !== 2 || entry.runtimeQualityGate !== "PASS_NATIVE_OR_DOWNSCALED")
 ) {
   throw new Error("Invalid Cheonjamun runtime Jaryeong data.");
 }
@@ -57,4 +80,7 @@ export const CHEONJAMUN_RUNTIME_META = Object.freeze({
   total: data.total,
   approved: data.approved,
   integrationPolicy: data.integrationPolicy,
+  qualityRevision: data.qualityRevision,
+  qualityPolicy: data.qualityPolicy,
+  qualitySummary: Object.freeze({ ...data.qualitySummary }),
 });

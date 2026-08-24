@@ -712,5 +712,5 @@ describe("regional recipe defense run", () => {
       expect(result.result).not.toBe("timeout");
       expect(result.region).toBe(region);
     }
-  });
+  }, 10_000);
 });

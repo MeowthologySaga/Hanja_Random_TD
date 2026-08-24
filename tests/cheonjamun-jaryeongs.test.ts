@@ -30,13 +30,28 @@ describe("Thousand Character Classic Jaryeong import", () => {
   });
 
   it("registers all one thousand Cheonjamun sprites as playable previews without promoting QC", () => {
-    expect(CHEONJAMUN_RUNTIME_META).toMatchObject({ total: 1000, approved: 0, integrationPolicy: "playable-preview-with-source-qc-preserved" });
+    expect(CHEONJAMUN_RUNTIME_META).toMatchObject({
+      total: 1000,
+      approved: 0,
+      integrationPolicy: "playable-preview-with-source-qc-preserved",
+      qualityRevision: 2,
+      qualitySummary: {
+        routes: { "catalog-frame": 101, "direct-raw": 897, "processed-fallback": 2 },
+        qualityGates: { PASS_NATIVE_OR_DOWNSCALED: 1000 },
+        upscaledCount: 0,
+      },
+    });
     expect(CHEONJAMUN_RUNTIME_JARYEONGS).toHaveLength(1000);
     expect(CHEONJAMUN_RUNTIME_JARYEONG_VISUALS).toHaveLength(1000);
     expect(new Set(CHEONJAMUN_RUNTIME_JARYEONG_VISUALS.map((entry) => entry.id)).size).toBe(1000);
     expect(new Set(CHEONJAMUN_RUNTIME_JARYEONG_VISUALS.map((entry) => entry.hanja)).size).toBe(1000);
     const heaven = CHEONJAMUN_RUNTIME_JARYEONGS.find((entry) => entry.hanja === "天");
     expect(heaven).toBeDefined();
+    expect(heaven).toMatchObject({
+      runtimeQualityRevision: 2,
+      runtimeSourceRoute: "direct-raw",
+      runtimeQualityGate: "PASS_NATIVE_OR_DOWNSCALED",
+    });
     expect(jaryeongVisualFor("天", heaven!.wuxing, "KR").id).toBe("kr-5929");
     for (const entry of CHEONJAMUN_RUNTIME_JARYEONGS) {
       expect(fs.existsSync(path.join(process.cwd(), "public", ...entry.assetPath.split("/")))).toBe(true);
