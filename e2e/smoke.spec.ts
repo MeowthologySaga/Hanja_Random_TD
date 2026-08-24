@@ -118,6 +118,89 @@ test("freezes the opening until the first summon opens its matching formation", 
   await page.screenshot({ path: "artifacts/formation-coin-unlock-1280x720.png", fullPage: true });
 });
 
+test("runs the casual eight-star entry and readable KEEP-USE fusion workshop", async ({ page }) => {
+  await page.goto("/?seed=CASUAL-EIGHT-STAR-E2E");
+  await expect(page.getByRole("radio", { name: /전략 조합전/ })).toBeChecked();
+  await page.getByRole("radio", { name: /캐주얼 8성전/ }).click();
+  await expect(page.locator('[data-region="KR"]')).toBeChecked();
+  await expect(page.locator('[data-region="JP"]')).toBeDisabled();
+  await expect(page.locator('[data-region="CN"]')).toBeDisabled();
+  await expect(page.locator("#title-note")).toContainText("실제 획수 8단 희귀도");
+  await page.getByTestId("start-run").click();
+
+  await expect(page.locator(".game-shell")).toHaveAttribute("data-game-mode", "casual");
+  await expect(page.locator(".game-shell")).toHaveAttribute("data-panel-tab", "shop");
+  await expect(page.locator("#shop-panel")).toBeVisible();
+  await expect(page.locator("#shop-pool-count")).toHaveText("1,000");
+  for (let index = 0; index < 4; index += 1) {
+    await page.getByTestId("summon-button").click();
+    await expect(page.locator("#summon-reveal")).toHaveClass(/is-active/u);
+    await expect(page.locator(".summon-result-card")).toContainText(/\d★/u);
+    await page.locator("#summon-reveal-close").click();
+  }
+
+  await page.getByRole("tab", { name: "3체 조합", exact: true }).click();
+  await expect(page.locator(".game-shell")).toHaveAttribute("data-panel-tab", "evolution");
+  await expect(page.locator("#standard-evolution-modes")).toBeHidden();
+  await expect(page.locator("#casual-fusion-toolbar")).toBeVisible();
+  await expect(page.locator(".casual-rarity-rule > i")).toHaveCount(8);
+  await expect(page.locator(".casual-fusion-slot")).toHaveCount(3);
+  await expect(page.locator("#casual-auto-buttons > button")).toHaveCount(5);
+  await expect(page.locator(".casual-fusion-tower")).toHaveCount(4);
+  const eligibleKeeper = page.locator(".casual-fusion-tower:not(:disabled)").first();
+  await expect(eligibleKeeper).toBeEnabled();
+  const keeperChar = await eligibleKeeper.locator("b").first().innerText();
+  await eligibleKeeper.click();
+  await expect(page.locator(".casual-fusion-slot.is-core")).toContainText("KEEP");
+  await expect(page.locator(".casual-fusion-slot.is-core")).toContainText(keeperChar);
+  await expect(page.locator(".casual-fusion-slot.is-core .casual-fusion-slot-sprite")).toHaveCSS("background-image", /assets\/jaryeongs\//u);
+  await expect(page.locator(".casual-fusion-result")).toContainText(keeperChar);
+
+  const desktopLayout = await page.evaluate(() => {
+    const workbench = document.querySelector<HTMLElement>(".evolution-workbench")!.getBoundingClientRect();
+    const panel = document.querySelector<HTMLElement>(".control-panel")!.getBoundingClientRect();
+    const candidates = document.querySelector<HTMLElement>(".casual-fusion-candidates")!;
+    return {
+      workbenchLeft: workbench.left,
+      workbenchWidth: workbench.width,
+      workbenchHeight: workbench.height,
+      panelLeft: panel.left,
+      overflowX: document.body.scrollWidth - window.innerWidth,
+      overflowY: document.body.scrollHeight - window.innerHeight,
+      candidateScrollbar: getComputedStyle(candidates).scrollbarColor
+    };
+  });
+  expect(desktopLayout.workbenchLeft).toBeLessThan(desktopLayout.panelLeft);
+  expect(desktopLayout.workbenchWidth).toBeGreaterThan(650);
+  expect(desktopLayout.workbenchHeight).toBeGreaterThanOrEqual(440);
+  expect(desktopLayout.overflowX).toBeLessThanOrEqual(0);
+  expect(desktopLayout.overflowY).toBeLessThanOrEqual(0);
+  expect(desktopLayout.candidateScrollbar).not.toBe("auto");
+  await page.screenshot({ path: "artifacts/casual-fusion-workshop-1280x720.png", fullPage: true });
+
+  await page.setViewportSize({ width: 1024, height: 720 });
+  const narrowLayout = await page.evaluate(() => {
+    const shell = document.querySelector<HTMLElement>(".game-shell")!.getBoundingClientRect();
+    const candidates = document.querySelector<HTMLElement>(".casual-fusion-candidates")!.getBoundingClientRect();
+    const brand = document.querySelector<HTMLElement>(".brand-row h1")!;
+    return {
+      shellWidth: shell.width,
+      shellHeight: shell.height,
+      candidatesHeight: candidates.height,
+      bodyHeight: document.body.scrollHeight,
+      bodyWidth: document.body.scrollWidth,
+      brandFits: brand.scrollWidth <= brand.clientWidth
+    };
+  });
+  expect(narrowLayout.shellWidth).toBeLessThanOrEqual(1024);
+  expect(narrowLayout.shellHeight).toBeLessThanOrEqual(720);
+  expect(narrowLayout.candidatesHeight).toBeGreaterThanOrEqual(55);
+  expect(narrowLayout.bodyHeight).toBeLessThanOrEqual(720);
+  expect(narrowLayout.bodyWidth).toBeLessThanOrEqual(1024);
+  expect(narrowLayout.brandFits).toBe(true);
+  await page.screenshot({ path: "artifacts/casual-fusion-workshop-1024x720.png", fullPage: true });
+});
+
 test("uses tabbed owned-aware goals and summons from all one thousand Cheonjamun sprites", async ({ page }) => {
   await page.goto("/?seed=EVO-E2E-2");
   await page.getByTestId("start-run").click();
@@ -608,7 +691,7 @@ test("automatically seals four correctly placed towers with readable feedback", 
   await page.screenshot({ path: "artifacts/cheonjamun-idiom-codex-1280x720.png", fullPage: true });
 });
 
-test("stacks the battlefield and panel without shrinking learning text on a narrow viewport", async ({ page }) => {
+test("keeps the full game surface on a small laptop without a browser page scrollbar", async ({ page }) => {
   await page.setViewportSize({ width: 900, height: 700 });
   await page.goto("/?seed=responsive-e2e-01");
   await page.getByTestId("start-run").click();
@@ -627,26 +710,33 @@ test("stacks the battlefield and panel without shrinking learning text on a narr
   expect(workbenchScrollbar).not.toBe("auto");
 
   const layout = await page.evaluate(() => {
+    const shell = document.querySelector<HTMLElement>(".game-shell")?.getBoundingClientRect();
     const stage = document.querySelector<HTMLElement>(".battle-stage")?.getBoundingClientRect();
     const panel = document.querySelector<HTMLElement>(".control-panel")?.getBoundingClientRect();
     const goalGlyph = document.querySelector<HTMLElement>(".goal-glyph");
-    const contextDeck = document.querySelector<HTMLElement>(".context-deck")?.getBoundingClientRect();
     return {
-      stageBottom: stage?.bottom ?? 0,
+      shellWidth: shell?.width ?? 0,
+      shellHeight: shell?.height ?? 0,
+      stageRight: stage?.right ?? 0,
+      panelLeft: panel?.left ?? 0,
+      stageTop: stage?.top ?? 0,
       panelTop: panel?.top ?? 0,
       goalGlyphSize: Number.parseFloat(goalGlyph ? getComputedStyle(goalGlyph).fontSize : "0"),
-      contextHeight: contextDeck?.height ?? 0,
       overflowX: document.documentElement.scrollWidth - window.innerWidth,
-      pageHeight: document.documentElement.scrollHeight
+      overflowY: document.documentElement.scrollHeight - window.innerHeight,
+      pageScrollbar: getComputedStyle(document.documentElement).scrollbarColor
     };
   });
 
-  expect(layout.panelTop).toBeGreaterThanOrEqual(layout.stageBottom - 1);
+  expect(layout.shellWidth).toBeLessThanOrEqual(900);
+  expect(layout.shellHeight).toBeLessThanOrEqual(700);
+  expect(layout.panelLeft).toBeGreaterThanOrEqual(layout.stageRight - 1);
+  expect(Math.abs(layout.panelTop - layout.stageTop)).toBeLessThanOrEqual(1);
   expect(layout.goalGlyphSize).toBeGreaterThanOrEqual(48);
-  expect(layout.contextHeight).toBeGreaterThanOrEqual(390);
   expect(layout.overflowX).toBeLessThanOrEqual(0);
-  expect(layout.pageHeight).toBeGreaterThan(700);
-  await page.screenshot({ path: "artifacts/responsive-900x700.png", fullPage: true });
+  expect(layout.overflowY).toBeLessThanOrEqual(0);
+  expect(layout.pageScrollbar).not.toBe("auto");
+  await page.screenshot({ path: "artifacts/small-laptop-900x700.png", fullPage: true });
 });
 
 test("scales Jaryeong labels and the selected reading cleanly at 1600x900", async ({ page }) => {

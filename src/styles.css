@@ -7497,3 +7497,721 @@ body {
   .casual-fusion-candidates,
   .casual-confirm-towers { grid-template-columns: 1fr; }
 }
+
+/* v0.31 visual-board pass: a game-native, readable three-spirit workshop. */
+.game-shell[data-game-mode="casual"][data-panel-tab="evolution"] .control-panel {
+  overflow: visible;
+}
+
+.game-shell[data-game-mode="casual"][data-panel-tab="evolution"] .context-deck {
+  z-index: 24;
+  overflow: visible;
+}
+
+.game-shell[data-game-mode="casual"][data-panel-tab="evolution"] .evolution-workbench.is-active {
+  position: absolute;
+  z-index: 24;
+  top: -104px;
+  right: 10px;
+  bottom: 0;
+  left: clamp(-340px, -26vw, -260px);
+  display: flex !important;
+  width: auto;
+  height: auto;
+  padding: 11px 12px 10px;
+  overflow: hidden;
+  border: 1px solid rgba(218, 173, 72, 0.55);
+  border-radius: 4px;
+  background:
+    linear-gradient(90deg, rgba(218, 173, 72, 0.28), transparent 2px, transparent calc(100% - 2px), rgba(218, 173, 72, 0.24)),
+    repeating-linear-gradient(0deg, rgba(255, 232, 167, 0.015) 0 1px, transparent 1px 5px),
+    radial-gradient(circle at 52% 0%, rgba(116, 75, 21, 0.18), transparent 42%),
+    #080d14;
+  box-shadow: 0 22px 70px rgba(0, 0, 0, 0.78), inset 0 0 0 3px #05090f, inset 0 0 0 4px rgba(183, 135, 49, 0.2);
+}
+
+.game-shell[data-game-mode="casual"][data-panel-tab="evolution"] .evolution-workbench::before,
+.game-shell[data-game-mode="casual"][data-panel-tab="evolution"] .evolution-workbench::after {
+  position: absolute;
+  z-index: 2;
+  top: 4px;
+  width: 18px;
+  height: 18px;
+  border-top: 2px solid #b98638;
+  content: "";
+  pointer-events: none;
+}
+
+.game-shell[data-game-mode="casual"][data-panel-tab="evolution"] .evolution-workbench::before {
+  left: 4px;
+  border-left: 2px solid #b98638;
+}
+
+.game-shell[data-game-mode="casual"][data-panel-tab="evolution"] .evolution-workbench::after {
+  right: 4px;
+  border-right: 2px solid #b98638;
+}
+
+.game-shell[data-game-mode="casual"][data-panel-tab="evolution"] .evolution-heading {
+  order: 1;
+  flex: 0 0 34px;
+  margin: 0 0 6px;
+  padding: 0 7px 6px;
+  border-bottom: 1px solid rgba(211, 169, 71, 0.24);
+}
+
+.game-shell[data-game-mode="casual"][data-panel-tab="evolution"] .evolution-heading > div:first-child {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.game-shell[data-game-mode="casual"][data-panel-tab="evolution"] #evolution-kicker {
+  color: #e0bd68;
+  font-family: "Noto Serif KR", "Batang", serif;
+  font-size: 17px;
+  letter-spacing: 0.08em;
+}
+
+.game-shell[data-game-mode="casual"][data-panel-tab="evolution"] .evolution-heading strong {
+  color: #8e9daf;
+  font-size: 11px;
+}
+
+.game-shell[data-game-mode="casual"][data-panel-tab="evolution"] .evolution-heading strong b {
+  display: inline-grid;
+  min-width: 24px;
+  height: 24px;
+  margin-left: 4px;
+  place-items: center;
+  color: #171006;
+  border-radius: 50%;
+  background: #e1b94f;
+}
+
+.game-shell[data-game-mode="casual"] #standard-evolution-modes[hidden] {
+  display: none !important;
+}
+
+.game-shell[data-game-mode="casual"][data-panel-tab="evolution"] .evolution-options.is-casual {
+  display: grid;
+  grid-template-rows: auto auto auto auto auto minmax(0, 1fr);
+  order: 2;
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+.game-shell[data-game-mode="casual"][data-panel-tab="evolution"] .casual-fusion-toolbar {
+  grid-template-columns: minmax(180px, 0.75fr) minmax(0, 1.65fr);
+  order: 3;
+  flex: 0 0 51px;
+  gap: 9px;
+  margin: 7px 0 0;
+  padding: 5px 7px;
+  border-color: rgba(195, 145, 52, 0.34);
+  border-radius: 3px;
+  background: linear-gradient(90deg, rgba(65, 44, 15, 0.43), rgba(3, 8, 14, 0.88));
+}
+
+.game-shell[data-game-mode="casual"][data-panel-tab="evolution"] .casual-rule-copy b {
+  color: #ead08c;
+  font-size: 11px;
+}
+
+.game-shell[data-game-mode="casual"][data-panel-tab="evolution"] .casual-rule-copy span {
+  color: #8997a7;
+  font-size: 8px;
+}
+
+.game-shell[data-game-mode="casual"][data-panel-tab="evolution"] .casual-auto-buttons {
+  gap: 5px;
+}
+
+.game-shell[data-game-mode="casual"][data-panel-tab="evolution"] .casual-auto-buttons button {
+  grid-template-columns: 27px minmax(0, 1fr);
+  min-height: 39px;
+  padding: 4px 6px 4px 3px;
+  border-width: 1px 1px 2px;
+  border-radius: 3px;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--element) 11%, rgba(13, 20, 28, 0.95)), rgba(3, 8, 14, 0.96));
+  box-shadow: inset 0 0 0 1px rgba(255, 224, 151, 0.025);
+}
+
+.game-shell[data-game-mode="casual"][data-panel-tab="evolution"] .casual-auto-buttons b {
+  font-family: "Noto Serif KR", "Batang", serif;
+  font-size: 22px;
+}
+
+.game-shell[data-game-mode="casual"][data-panel-tab="evolution"] .casual-auto-buttons span,
+.game-shell[data-game-mode="casual"][data-panel-tab="evolution"] .casual-auto-buttons em {
+  font-size: 8px;
+}
+
+.game-shell[data-game-mode="casual"][data-panel-tab="evolution"] .casual-rarity-rule {
+  grid-template-columns: 108px repeat(8, minmax(0, 1fr));
+  gap: 4px;
+  min-height: 36px;
+  margin: 0 0 6px;
+  padding: 4px 6px;
+  border-color: rgba(177, 139, 65, 0.19);
+  border-radius: 3px;
+  background: rgba(3, 8, 14, 0.82);
+}
+
+.game-shell[data-game-mode="casual"][data-panel-tab="evolution"] .casual-rarity-rule > span b,
+.game-shell[data-game-mode="casual"][data-panel-tab="evolution"] .casual-rarity-rule > i b {
+  font-size: 9px;
+}
+
+.game-shell[data-game-mode="casual"][data-panel-tab="evolution"] .casual-rarity-rule > span small,
+.game-shell[data-game-mode="casual"][data-panel-tab="evolution"] .casual-rarity-rule > i small {
+  font-size: 7px;
+}
+
+.game-shell[data-game-mode="casual"][data-panel-tab="evolution"] .casual-rarity-rule > i {
+  min-height: 26px;
+  border-left-width: 3px;
+  border-radius: 2px;
+}
+
+.game-shell[data-game-mode="casual"][data-panel-tab="evolution"] .casual-fusion-slots {
+  grid-template-columns: repeat(3, minmax(0, 1fr)) 25px minmax(105px, 0.72fr);
+  gap: 6px;
+  min-height: 96px;
+}
+
+.game-shell[data-game-mode="casual"][data-panel-tab="evolution"] .casual-fusion-slot,
+.game-shell[data-game-mode="casual"][data-panel-tab="evolution"] .casual-fusion-result {
+  min-height: 94px;
+  padding: 6px;
+  border-radius: 3px;
+}
+
+.game-shell[data-game-mode="casual"][data-panel-tab="evolution"] .casual-fusion-slot {
+  grid-template-columns: 48px 32px minmax(0, 1fr);
+  grid-template-rows: 20px minmax(0, 1fr);
+  column-gap: 4px;
+  border-style: solid;
+  background:
+    linear-gradient(155deg, color-mix(in srgb, var(--element) 9%, rgba(8, 15, 23, 0.95)), rgba(3, 8, 14, 0.96));
+}
+
+.game-shell[data-game-mode="casual"][data-panel-tab="evolution"] .casual-fusion-slot.is-core {
+  border-color: rgba(73, 211, 172, 0.68);
+  box-shadow: inset 0 0 0 2px rgba(49, 126, 107, 0.13), inset 3px 0 0 #4bd3ab;
+}
+
+.game-shell[data-game-mode="casual"][data-panel-tab="evolution"] .casual-fusion-slot.is-material {
+  border-color: rgba(190, 83, 67, 0.6);
+  box-shadow: inset 0 0 0 2px rgba(139, 55, 43, 0.11), inset 3px 0 0 #b95748;
+}
+
+.game-shell[data-game-mode="casual"][data-panel-tab="evolution"] .casual-fusion-slot > span {
+  grid-column: 1 / -1;
+  grid-row: 1;
+  color: #aeb9c7;
+  font-size: 8px;
+}
+
+.game-shell[data-game-mode="casual"][data-panel-tab="evolution"] .casual-fusion-slot > span em {
+  float: right;
+  color: #65d8b4;
+  font-size: 7px;
+  font-style: normal;
+  letter-spacing: 0.08em;
+}
+
+.game-shell[data-game-mode="casual"][data-panel-tab="evolution"] .casual-fusion-slot.is-material > span em {
+  color: #e37f6d;
+}
+
+.casual-fusion-slot-sprite {
+  grid-column: 1;
+  grid-row: 2;
+  align-self: center;
+  width: 47px;
+  height: 57px;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: contain;
+  filter: drop-shadow(0 3px 5px rgba(0, 0, 0, 0.56));
+}
+
+.game-shell[data-game-mode="casual"][data-panel-tab="evolution"] .casual-fusion-slot > b {
+  grid-column: 2;
+  grid-row: 2;
+  color: var(--star);
+  font-size: 27px;
+}
+
+.game-shell[data-game-mode="casual"][data-panel-tab="evolution"] .casual-fusion-slot > div {
+  display: grid;
+  grid-column: 3;
+  grid-row: 2;
+  align-content: center;
+  min-width: 0;
+  gap: 2px;
+}
+
+.game-shell[data-game-mode="casual"][data-panel-tab="evolution"] .casual-fusion-slot > div strong {
+  overflow: hidden;
+  color: #e0d0a3;
+  font-size: 9px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.game-shell[data-game-mode="casual"][data-panel-tab="evolution"] .casual-fusion-slot > div small {
+  overflow: hidden;
+  color: #8493a5;
+  font-size: 7px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.game-shell[data-game-mode="casual"][data-panel-tab="evolution"] .casual-fusion-slot:not(.is-filled) > b {
+  grid-column: 1 / 3;
+  align-self: center;
+  font-size: 28px;
+}
+
+.game-shell[data-game-mode="casual"][data-panel-tab="evolution"] .casual-fusion-slot:not(.is-filled) > strong,
+.game-shell[data-game-mode="casual"][data-panel-tab="evolution"] .casual-fusion-slot:not(.is-filled) > small {
+  grid-column: 3;
+  align-self: end;
+  color: #7c8b9d;
+  font-size: 8px;
+}
+
+.game-shell[data-game-mode="casual"][data-panel-tab="evolution"] .casual-fusion-slot:not(.is-filled) > small {
+  align-self: start;
+}
+
+.game-shell[data-game-mode="casual"][data-panel-tab="evolution"] .casual-fusion-result {
+  display: grid;
+  grid-template-columns: 1fr;
+  align-content: center;
+  justify-items: center;
+  border-color: color-mix(in srgb, var(--star) 60%, rgba(166, 132, 59, 0.34));
+  background:
+    radial-gradient(circle at 50% 58%, color-mix(in srgb, var(--star) 16%, transparent), transparent 54%),
+    #06101b;
+  box-shadow: inset 0 0 24px rgba(62, 128, 171, 0.08);
+}
+
+.game-shell[data-game-mode="casual"][data-panel-tab="evolution"] .casual-fusion-result > span {
+  grid-column: 1;
+  color: #8b9aad;
+  font-size: 8px;
+}
+
+.game-shell[data-game-mode="casual"][data-panel-tab="evolution"] .casual-fusion-result > b {
+  grid-row: auto;
+  color: #d9e8f7;
+  font-size: 30px;
+}
+
+.game-shell[data-game-mode="casual"][data-panel-tab="evolution"] .casual-fusion-result > strong {
+  color: var(--star);
+  font-size: 18px;
+}
+
+.game-shell[data-game-mode="casual"][data-panel-tab="evolution"] .casual-fusion-result > small {
+  color: #8191a4;
+  font-size: 7px;
+}
+
+.game-shell[data-game-mode="casual"][data-panel-tab="evolution"] .casual-fusion-status {
+  min-height: 28px;
+  margin: 5px 0;
+  padding: 5px 9px;
+  border-radius: 2px;
+}
+
+.game-shell[data-game-mode="casual"][data-panel-tab="evolution"] .casual-fusion-status b {
+  font-size: 10px;
+}
+
+.game-shell[data-game-mode="casual"][data-panel-tab="evolution"] .casual-fusion-status span {
+  font-size: 9px;
+}
+
+.game-shell[data-game-mode="casual"][data-panel-tab="evolution"] .casual-fusion-review {
+  min-height: 30px;
+  margin: 0 0 5px;
+  border-radius: 2px;
+  font-size: 10px;
+  letter-spacing: 0.03em;
+}
+
+.game-shell[data-game-mode="casual"][data-panel-tab="evolution"] .casual-candidate-heading {
+  min-height: 22px;
+  margin: 0;
+}
+
+.game-shell[data-game-mode="casual"][data-panel-tab="evolution"] .casual-candidate-heading b {
+  font-size: 11px;
+}
+
+.game-shell[data-game-mode="casual"][data-panel-tab="evolution"] .casual-candidate-heading small,
+.game-shell[data-game-mode="casual"][data-panel-tab="evolution"] .casual-candidate-heading em {
+  font-size: 8px;
+}
+
+.game-shell[data-game-mode="casual"][data-panel-tab="evolution"] .casual-fusion-candidates {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-content: start;
+  gap: 5px;
+  min-height: 0;
+  padding: 0 10px 4px 0;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+}
+
+.game-shell[data-game-mode="casual"][data-panel-tab="evolution"] .casual-fusion-tower {
+  grid-template-columns: 46px 31px minmax(0, 1fr) auto;
+  min-height: 59px;
+  padding: 4px 6px 4px 3px;
+  border-radius: 3px;
+}
+
+.game-shell[data-game-mode="casual"][data-panel-tab="evolution"] .casual-fusion-sprite {
+  width: 44px;
+  height: 48px;
+}
+
+.game-shell[data-game-mode="casual"][data-panel-tab="evolution"] .casual-fusion-tower > b {
+  font-size: 24px;
+}
+
+.game-shell[data-game-mode="casual"][data-panel-tab="evolution"] .casual-fusion-tower strong {
+  font-size: 9px;
+}
+
+.game-shell[data-game-mode="casual"][data-panel-tab="evolution"] .casual-fusion-tower small,
+.game-shell[data-game-mode="casual"][data-panel-tab="evolution"] .casual-fusion-tower > em {
+  font-size: 8px;
+}
+
+.game-shell[data-game-mode="casual"] .panel-tabs button.is-active[data-panel-tab="evolution"] {
+  color: #ffe6a0;
+  border-color: #d7a73e;
+  background:
+    linear-gradient(180deg, rgba(119, 79, 21, 0.8), rgba(46, 31, 13, 0.92));
+  box-shadow: inset 0 0 0 1px rgba(255, 225, 146, 0.14), 0 0 10px rgba(213, 163, 59, 0.12);
+}
+
+.casual-fusion-confirm-dialog {
+  width: min(760px, calc(100vw - 28px));
+  border-radius: 4px;
+  background:
+    repeating-linear-gradient(0deg, rgba(255, 232, 167, 0.014) 0 1px, transparent 1px 5px),
+    linear-gradient(155deg, #111a25, #050a10 70%);
+  box-shadow: 0 30px 90px rgba(0, 0, 0, 0.78), inset 0 0 0 3px #04080d, inset 0 0 0 4px rgba(212, 167, 66, 0.2);
+}
+
+.casual-confirm-tower {
+  grid-template-columns: 54px 34px minmax(0, 1fr);
+  grid-template-rows: minmax(44px, auto) auto;
+  min-height: 82px;
+  border-radius: 3px;
+}
+
+.casual-confirm-sprite {
+  grid-column: 1;
+  grid-row: 1 / 3;
+  width: 52px;
+  height: 66px;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: contain;
+  filter: drop-shadow(0 3px 5px rgba(0, 0, 0, 0.55));
+}
+
+.casual-confirm-tower > b {
+  grid-column: 2;
+  grid-row: 1 / 3;
+  font-size: 28px;
+}
+
+.casual-confirm-tower > span {
+  grid-column: 3;
+  grid-row: 1;
+}
+
+.casual-confirm-tower > em {
+  grid-column: 3;
+  grid-row: 2;
+}
+
+.casual-confirm-tower.is-core {
+  border-color: rgba(73, 211, 172, 0.5);
+  background: color-mix(in srgb, var(--element) 7%, rgba(4, 16, 19, 0.94));
+}
+
+.casual-confirm-tower.is-material {
+  border-color: rgba(190, 83, 67, 0.48);
+  background: color-mix(in srgb, var(--element) 5%, rgba(22, 8, 8, 0.94));
+}
+
+.casual-fusion-candidates::-webkit-scrollbar,
+.evolution-options.is-casual::-webkit-scrollbar,
+.casual-fusion-confirm-content::-webkit-scrollbar,
+.casual-auto-preview::-webkit-scrollbar {
+  width: 10px;
+}
+
+.casual-fusion-candidates::-webkit-scrollbar-track,
+.evolution-options.is-casual::-webkit-scrollbar-track,
+.casual-fusion-confirm-content::-webkit-scrollbar-track,
+.casual-auto-preview::-webkit-scrollbar-track {
+  border: 1px solid rgba(151, 111, 42, 0.3);
+  border-radius: 2px;
+  background:
+    radial-gradient(circle at 50% 8px, #b9842f 0 2px, transparent 3px),
+    repeating-linear-gradient(0deg, #05090f 0 6px, #0c131c 6px 10px);
+}
+
+.casual-fusion-candidates::-webkit-scrollbar-thumb,
+.evolution-options.is-casual::-webkit-scrollbar-thumb,
+.casual-fusion-confirm-content::-webkit-scrollbar-thumb,
+.casual-auto-preview::-webkit-scrollbar-thumb {
+  min-height: 34px;
+  border: 2px solid #070b10;
+  border-radius: 2px;
+  background: linear-gradient(90deg, #6d4515, #e1b14e 45%, #8a5b1c 58%, #4e3211);
+  box-shadow: inset 0 0 0 1px rgba(255, 231, 158, 0.34), 0 0 5px rgba(214, 157, 55, 0.28);
+}
+
+.casual-fusion-candidates,
+.evolution-options.is-casual,
+.casual-fusion-confirm-content,
+.casual-auto-preview {
+  scrollbar-color: #c89436 #070c12;
+}
+
+.title-card {
+  border-radius: 5px;
+  box-shadow: 0 26px 90px rgba(0, 0, 0, 0.76), inset 0 0 0 3px rgba(3, 7, 12, 0.72), inset 0 0 0 4px rgba(221, 180, 87, 0.12);
+}
+
+.game-mode-option {
+  min-height: 66px;
+  border-radius: 4px;
+}
+
+.game-mode-option::before {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  width: 9px;
+  height: 9px;
+  border-top: 1px solid rgba(225, 184, 88, 0.44);
+  border-left: 1px solid rgba(225, 184, 88, 0.44);
+  content: "";
+}
+
+@media (max-width: 799px), (max-height: 620px) {
+  .game-shell[data-game-mode="casual"][data-panel-tab="evolution"] .control-panel {
+    overflow: hidden;
+  }
+
+  .game-shell[data-game-mode="casual"][data-panel-tab="evolution"] .context-deck {
+    z-index: 2;
+    overflow: hidden;
+  }
+
+  .game-shell[data-game-mode="casual"][data-panel-tab="evolution"] .evolution-workbench.is-active {
+    position: relative;
+    inset: auto;
+    z-index: auto;
+    width: 100%;
+    height: 100%;
+    padding: 8px;
+    border-radius: 5px;
+  }
+
+  .game-shell[data-game-mode="casual"][data-panel-tab="evolution"] .casual-fusion-toolbar {
+    grid-template-columns: 1fr;
+    flex-basis: auto;
+  }
+
+  .game-shell[data-game-mode="casual"][data-panel-tab="evolution"] .casual-rule-copy {
+    display: none;
+  }
+
+  .game-shell[data-game-mode="casual"][data-panel-tab="evolution"] .casual-rarity-rule {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .game-shell[data-game-mode="casual"][data-panel-tab="evolution"] .casual-rarity-rule > span {
+    grid-column: 1 / -1;
+  }
+
+  .game-shell[data-game-mode="casual"][data-panel-tab="evolution"] .casual-fusion-slots {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .game-shell[data-game-mode="casual"][data-panel-tab="evolution"] .casual-fusion-slots > i {
+    display: none;
+  }
+
+  .game-shell[data-game-mode="casual"][data-panel-tab="evolution"] .casual-fusion-result {
+    display: none;
+  }
+
+  .game-shell[data-game-mode="casual"][data-panel-tab="evolution"] .casual-fusion-candidates {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* Desktop and small-laptop viewports stay a single 16:9 game surface. */
+@media (min-width: 800px) {
+  html,
+  body,
+  #app {
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  body {
+    min-width: 0;
+  }
+
+  .game-shell {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    display: grid;
+    flex-direction: row;
+    grid-template-columns: 68.75% 31.25%;
+    width: min(100vw, 177.7778vh);
+    min-width: 0;
+    height: auto;
+    max-height: 100vh;
+    aspect-ratio: 16 / 9;
+    overflow: hidden;
+    transform: translate(-50%, -50%);
+  }
+
+  .battle-stage {
+    width: 100%;
+    height: 100%;
+    aspect-ratio: auto;
+    margin: 0;
+    border-right: 1px solid rgba(218, 193, 134, 0.2);
+    border-bottom: 0;
+  }
+
+  .control-panel {
+    width: 100%;
+    height: 100%;
+    margin: 0;
+  }
+}
+
+@media (min-width: 800px) and (max-width: 1099px) {
+  .brand-row .eyebrow {
+    display: none;
+  }
+
+  .brand-row h1 {
+    overflow: hidden;
+    font-size: 21px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .header-actions {
+    gap: 3px;
+  }
+
+  .icon-button {
+    width: 29px;
+    height: 29px;
+    font-size: 13px;
+  }
+
+  .speed-button {
+    min-width: 39px;
+    height: 29px;
+    padding: 0 6px;
+  }
+
+  .game-shell[data-game-mode="casual"][data-panel-tab="evolution"] .casual-rarity-rule {
+    display: none;
+  }
+
+  .game-shell[data-game-mode="casual"][data-panel-tab="evolution"] .evolution-workbench.is-active {
+    top: -180px;
+  }
+
+  .game-shell[data-game-mode="casual"][data-panel-tab="evolution"] .casual-fusion-toolbar {
+    grid-template-columns: 1fr;
+    flex-basis: 30px;
+    margin-top: 4px;
+    padding: 2px 5px;
+  }
+
+  .game-shell[data-game-mode="casual"][data-panel-tab="evolution"] .casual-rule-copy {
+    display: none;
+  }
+
+  .game-shell[data-game-mode="casual"][data-panel-tab="evolution"] .casual-auto-buttons button {
+    grid-template-columns: 1fr;
+    min-height: 25px;
+    padding: 1px 3px;
+    text-align: center;
+  }
+
+  .game-shell[data-game-mode="casual"][data-panel-tab="evolution"] .casual-auto-buttons b {
+    grid-row: auto;
+    font-size: 15px;
+  }
+
+  .game-shell[data-game-mode="casual"][data-panel-tab="evolution"] .casual-auto-buttons span {
+    display: none;
+  }
+
+  .game-shell[data-game-mode="casual"][data-panel-tab="evolution"] .casual-auto-buttons em {
+    font-size: 7px;
+    text-align: center;
+  }
+}
+
+html,
+body {
+  scrollbar-width: thin;
+  scrollbar-color: #c89436 #050a10;
+}
+
+html::-webkit-scrollbar,
+body::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+
+html::-webkit-scrollbar-track,
+body::-webkit-scrollbar-track {
+  border-left: 1px solid rgba(170, 127, 48, 0.26);
+  background: repeating-linear-gradient(0deg, #04080d 0 7px, #0b121a 7px 11px);
+}
+
+html::-webkit-scrollbar-thumb,
+body::-webkit-scrollbar-thumb {
+  min-height: 42px;
+  border: 3px solid #05090e;
+  border-radius: 2px;
+  background: linear-gradient(90deg, #5c3b15, #dda946 46%, #704716);
+  box-shadow: inset 0 0 0 1px rgba(255, 229, 151, 0.3);
+}
+
+html::-webkit-scrollbar-corner,
+body::-webkit-scrollbar-corner {
+  background: #05090e;
+}

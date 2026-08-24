@@ -1292,7 +1292,7 @@ export class GameEngine {
   autoFuseCasualElement(wuxing: Wuxing, allowWarnings = false): ActionResult {
     if (!this.isRunActive()) return { ok: false, message: "진행 중인 수비전이 없습니다." };
     const groups = this.casualAutoFusionPlan(wuxing);
-    if (groups.length === 0) return { ok: false, message: `${wuxing}행 인벤토리에 안전하게 묶을 같은 별 자령 3기가 없습니다.` };
+    if (groups.length === 0) return { ok: false, message: `${wuxing}행 보유 자령 중 안전하게 묶을 같은 별 자령 3기가 없습니다.` };
     const firstWarning = groups.flatMap((group) => group.warnings)[0];
     if (!allowWarnings && firstWarning) return { ok: false, message: `확인 필요 · ${firstWarning.text}` };
     for (const group of groups) {
