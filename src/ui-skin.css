@@ -5914,3 +5914,8 @@ dialog,
 .s00-stage.is-3d .s00-showcase {
   display: none;
 }
+
+/* 62. 3D 모드에서 서갈피가 책 위로 겹치지 않게 왼쪽으로 물린다 */
+.s00-stage.is-3d .s00-modes .s00-mode:nth-of-type(1) { left: 8px; top: 168px; }
+.s00-stage.is-3d .s00-modes .s00-mode:nth-of-type(2) { left: 8px; top: 268px; }
+.s00-stage.is-3d .s00-mode-label { top: 138px; }

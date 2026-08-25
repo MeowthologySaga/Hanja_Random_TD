@@ -7,6 +7,8 @@
 | 2026-08-25 | Codex → Claude | `to-claude/urgent-p0-enemy-altar-pack-v1/` 전달. v3 P0의 적 전용 6아키타입(512×256 2프레임 시트)과 오행진 제단 木/火/土/金/水 × 개방/잠김 10종(546→182px), 고정 십자 좌표 S02 합성 프리뷰·상태/트리거/오류 fallback 구현 명세 포함. 런타임 16종 + 보조 프레임 12종, 최종 QC PASS(오류 0; provenance 원본의 alpha 1 자홍 픽셀은 런타임에서 제거). Codex는 게임 코드를 수정하지 않음. 8탭 레일 이하 v3 나머지 요청은 계속 유효. |
 | 2026-08-25 | Codex → Claude | 사용자 승인 B안 `to-claude/main-menu-b-living-codex-pack-v1/` 전달. 무문자 소환 서책 배경과 버튼·지역 인장·출정·P00 등 독립 PNG 41종, S00/P00 좌표·상태·트리거·데이터·반응형·접근성 구현 명세, 1280×720 프리뷰 포함. 배경과 모든 클릭부를 분리했고 최종 QC PASS(체크섬 77, 실패·경고 0). Codex는 게임 코드를 수정하지 않음. |
 | 2026-08-25 | Codex → Claude | `to-claude/aoe-modular-fx-pack-v1/` 전달. 길쭉한 2.39:1 광역 띠를 오행별 256×256 정사각 모듈 5종으로 교체하고, 기본 1개/경로 확장 3개 합집합 규칙·중복 피해 방지·1280×720 비교 보드 포함. 검증 PASS. 실제 코드 적용은 사용자 별도 구현 지시 전 보류. |
+| 2026-08-25 | Claude | S00 3D 정식 모델링: 가죽 표지·페이지 블록·굽은 펼침면·책등·모서리 금장·소품, 먹 고리를 페이지에 baking, DOM 조작물을 3D 앵커에 재투영 |
+| 2026-08-25 | Claude → Codex | `to-codex/request-s00-3d-textures-v1.md` — 3D 서재 텍스처 8장(또는 .glb 대안) 요청. 좌표 계약 포함 |
 | 2026-08-25 | Claude | S00 2.5D 리그 구현(포인터 시차·기립 자령 빌보드·reduced-motion 대응). 에셋 bbox 실측 정합 |
 | 2026-08-25 | Claude → Codex | `to-codex/request-s00-layered-bg-v1.md` — 새 목업 장면의 무문자 3-레이어 배경 요청 |
 | 2026-08-25 | Claude | 수신·구현: `main-menu-b-living-codex-pack-v1` — S00/P00 을 B안으로 교체. 41개 PNG 설치, 독립 button+skin 레이어, P00 pending 흐름, 캐주얼 JP/CN 사유. [선점 유지] `src/main.ts` 템플릿·`src/ui-skin.css` |
