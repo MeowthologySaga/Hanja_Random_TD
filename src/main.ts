@@ -5212,15 +5212,20 @@ function syncCoachProgress(): void {
  * 자령이 서 있는" 깊이감을 만든다. 좌표는 CSS 변수로만 전달하므로
  * 버튼 히트 영역은 움직이지 않고, prefers-reduced-motion 이면 껐다.
  */
-// ?menu3d=1 실험: 책·책상을 실제 지오메트리로, 자령은 기립 빌보드로.
-if (new URLSearchParams(window.location.search).get("menu3d") === "1") {
+// 3D 서재가 기본 메인 메뉴다. ?menu3d=0 으로 2D 그림 배경으로 되돌릴 수
+// 있고, WebGL 초기화가 실패하면 자동으로 2D 로 폴백한다.
+if (new URLSearchParams(window.location.search).get("menu3d") !== "0") {
   const stage = document.querySelector<HTMLElement>(".s00-stage");
   if (stage) {
     stage.classList.add("is-3d");
-    void import("./ui/menu3d").then(({ startMenu3d }) => {
-      const handle = startMenu3d(stage);
-      must<HTMLButtonElement>("#start-button").addEventListener("click", () => handle.dispose(), { once: true });
-    });
+    void import("./ui/menu3d")
+      .then(({ startMenu3d }) => {
+        const handle = startMenu3d(stage);
+        must<HTMLButtonElement>("#start-button").addEventListener("click", () => handle.dispose(), { once: true });
+      })
+      .catch(() => {
+        stage.classList.remove("is-3d");
+      });
   }
 }
 
