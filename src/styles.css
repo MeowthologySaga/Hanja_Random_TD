@@ -2848,6 +2848,117 @@ body {
   color: #614912;
 }
 
+.audio-settings {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+  padding: 12px;
+  border: 1px solid rgba(139, 174, 211, 0.2);
+  border-radius: 13px;
+  background: linear-gradient(145deg, rgba(8, 17, 29, 0.9), rgba(4, 9, 16, 0.72));
+}
+
+.audio-settings-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  color: #f3e6c2;
+}
+
+.audio-settings-heading b {
+  font-size: 14px;
+}
+
+.audio-settings-heading small {
+  color: #7f91a8;
+  font-size: 10px;
+}
+
+.audio-setting-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(150px, 210px) 48px;
+  align-items: center;
+  gap: 10px;
+  min-height: 50px;
+  padding: 8px 9px;
+  border-radius: 10px;
+  background: rgba(16, 27, 41, 0.75);
+}
+
+.audio-setting-row > span {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.audio-setting-row > span b {
+  color: #eaf1fa;
+  font-size: 13px;
+}
+
+.audio-setting-row > span small {
+  overflow: hidden;
+  color: #8495aa;
+  font-size: 9px;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.audio-setting-row label {
+  display: grid;
+  grid-template-columns: auto minmax(80px, 1fr) 34px;
+  align-items: center;
+  gap: 7px;
+  color: #93a6bd;
+  font-size: 9px;
+  font-weight: 800;
+}
+
+.audio-setting-row input[type="range"] {
+  width: 100%;
+  accent-color: #e8c86f;
+}
+
+.audio-setting-row output {
+  color: #f0d98f;
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.audio-mute-button {
+  min-width: 48px;
+  height: 30px;
+  padding: 0 8px;
+  color: #73869c;
+  font-size: 9px;
+  font-weight: 900;
+  border: 1px solid rgba(134, 157, 188, 0.26);
+  border-radius: 999px;
+  background: #202c3c;
+}
+
+.audio-mute-button.is-on {
+  color: #382b0f;
+  border-color: #d8b957;
+  background: #e8c86f;
+  box-shadow: 0 0 14px rgba(232, 200, 111, 0.16);
+}
+
+@media (max-width: 620px) {
+  .audio-setting-row {
+    grid-template-columns: minmax(0, 1fr) 48px;
+  }
+
+  .audio-setting-row label {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+}
+
 .run-inventory-panel.panel-view.is-active {
   display: flex !important;
 }

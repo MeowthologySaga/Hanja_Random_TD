@@ -1,0 +1,173 @@
+{
+  "generatedAt": "2026-08-25T11:03:58+09:00",
+  "rawSources": ".codex_tmp/suno-audio-v033/raw (local, Git-ignored)",
+  "targets": {
+    "bgm": "ffmpeg two-pass loudnorm I=-20:TP=-1.5:LRA=11",
+    "sfx": "ffmpeg peak normalization approximately -1 dBFS"
+  },
+  "assets": [
+    {
+      "id": "early",
+      "kind": "bgm",
+      "file": "assets/audio/bgm/dawn-formation-loop.mp3",
+      "durationSeconds": 77.734,
+      "integratedLufs": -20.26,
+      "truePeakDbtp": -8.82,
+      "loudnessRangeLu": 4.9,
+      "bytes": 1953706,
+      "sha256": "03a65a2a4344bde6ab9f42c3bad7fc29f9441e1c2a918b916801585c889c2142"
+    },
+    {
+      "id": "mid",
+      "kind": "bgm",
+      "file": "assets/audio/bgm/five-elements-march-loop.mp3",
+      "durationSeconds": 53.414,
+      "integratedLufs": -20.26,
+      "truePeakDbtp": -7.67,
+      "loudnessRangeLu": 6.6,
+      "bytes": 1382979,
+      "sha256": "fa9ce7eeaa5ca87b506ff97c58077fa33a9e23d8261b4687fb64870a88660bd7"
+    },
+    {
+      "id": "late",
+      "kind": "bgm",
+      "file": "assets/audio/bgm/inkstorm-siege-loop.mp3",
+      "durationSeconds": 51.774,
+      "integratedLufs": -20.26,
+      "truePeakDbtp": -8.55,
+      "loudnessRangeLu": 8.5,
+      "bytes": 1348890,
+      "sha256": "423924a844428ae6fd1d1a8045bef8a0f30841d308ecce6cb60f6197774b5906"
+    },
+    {
+      "id": "boss",
+      "kind": "bgm",
+      "file": "assets/audio/bgm/seal-guardian-boss-loop.mp3",
+      "durationSeconds": 159.214,
+      "integratedLufs": -20.26,
+      "truePeakDbtp": -9.02,
+      "loudnessRangeLu": 3.8,
+      "bytes": 3942774,
+      "sha256": "dc1e750ddddc19f9d61952eb6d8993e6f479218ea2d45fb190ee30bb4431217c"
+    },
+    {
+      "id": "final",
+      "kind": "bgm",
+      "file": "assets/audio/bgm/heavenly-seal-final-loop.mp3",
+      "durationSeconds": 107.734,
+      "integratedLufs": -20.27,
+      "truePeakDbtp": -9.26,
+      "loudnessRangeLu": 5.0,
+      "bytes": 2637568,
+      "sha256": "e4b13b43f6aa6410a9dba951dcb9f0bcb8ca26f561ee608248986a396ed3569f"
+    },
+    {
+      "id": "ui-confirm",
+      "kind": "sfx",
+      "file": "assets/audio/sfx/ui-confirm.mp3",
+      "durationSeconds": 2.414,
+      "maxPeakDbfs": -0.9,
+      "bytes": 110241,
+      "sha256": "72b810e69135337c1deab0b48b5f873aab57b7ff437dbd2af524bc8c4d5206c5"
+    },
+    {
+      "id": "summon",
+      "kind": "sfx",
+      "file": "assets/audio/sfx/jaryeong-summon.mp3",
+      "durationSeconds": 2.014,
+      "maxPeakDbfs": -1.1,
+      "bytes": 133410,
+      "sha256": "ea0806d6dbb510d1761f7564499ffb42e41a6537dd912678322dafe0aae9ca35"
+    },
+    {
+      "id": "fusion-strategy",
+      "kind": "sfx",
+      "file": "assets/audio/sfx/strategy-fusion.mp3",
+      "durationSeconds": 2.4,
+      "maxPeakDbfs": -0.9,
+      "bytes": 110018,
+      "sha256": "646c65d059e5bcdaf38c209e1f9bdae0ff5c25f8dfea38c487976d665ff0ff6b"
+    },
+    {
+      "id": "fusion-casual",
+      "kind": "sfx",
+      "file": "assets/audio/sfx/casual-fusion.mp3",
+      "durationSeconds": 3.974,
+      "maxPeakDbfs": -0.9,
+      "bytes": 177335,
+      "sha256": "d0432b356a1f26d301155d2760df0065009cb5cf0afc1b579bcace6851e88a0c"
+    },
+    {
+      "id": "concentration",
+      "kind": "sfx",
+      "file": "assets/audio/sfx/concentration.mp3",
+      "durationSeconds": 2.414,
+      "maxPeakDbfs": -1.2,
+      "bytes": 231213,
+      "sha256": "1bc6b97850b1015e323d5ac60bd8318209757a33aea3843357aeb6de55fe32aa"
+    },
+    {
+      "id": "upgrade",
+      "kind": "sfx",
+      "file": "assets/audio/sfx/tower-upgrade.mp3",
+      "durationSeconds": 1.974,
+      "maxPeakDbfs": -1.1,
+      "bytes": 93324,
+      "sha256": "254497a44c2ed78e34c1ad0eeff2cc1808b40b2d366734ed3fae95a003af3dc1"
+    },
+    {
+      "id": "dismantle",
+      "kind": "sfx",
+      "file": "assets/audio/sfx/spirit-dismantle.mp3",
+      "durationSeconds": 2.774,
+      "maxPeakDbfs": -0.9,
+      "bytes": 189178,
+      "sha256": "f791ec6237fbd98e2d52332710059554b2568db3a69965eef170b2f5e5753f43"
+    },
+    {
+      "id": "goal-complete",
+      "kind": "sfx",
+      "file": "assets/audio/sfx/goal-complete.mp3",
+      "durationSeconds": 2.414,
+      "maxPeakDbfs": -1.0,
+      "bytes": 138553,
+      "sha256": "9920c1b19cc3d49899567c75422437cad8c15ee9fb589ac4389509a384e54f25"
+    },
+    {
+      "id": "wave-start",
+      "kind": "sfx",
+      "file": "assets/audio/sfx/wave-start.mp3",
+      "durationSeconds": 2.414,
+      "maxPeakDbfs": -1.1,
+      "bytes": 171600,
+      "sha256": "758f4865f91fb3e8c8d85aa718440d13110a8b9884446706cd426e407168c40a"
+    },
+    {
+      "id": "boss-warning",
+      "kind": "sfx",
+      "file": "assets/audio/sfx/boss-warning.mp3",
+      "durationSeconds": 3.574,
+      "maxPeakDbfs": -1.1,
+      "bytes": 208494,
+      "sha256": "1bd00d57135c90deff7f224bad368b4a1910ba7863b1e2d2f39c204b072f9725"
+    },
+    {
+      "id": "victory",
+      "kind": "sfx",
+      "file": "assets/audio/sfx/victory.mp3",
+      "durationSeconds": 4.014,
+      "maxPeakDbfs": -1.0,
+      "bytes": 231310,
+      "sha256": "a8cd638e980712c069a422c623b769236993c82f23818d830ebf3acd6a080289"
+    },
+    {
+      "id": "defeat",
+      "kind": "sfx",
+      "file": "assets/audio/sfx/defeat.mp3",
+      "durationSeconds": 4.414,
+      "maxPeakDbfs": -0.9,
+      "bytes": 190717,
+      "sha256": "ff01b5d837ee6f8048784a8078b6390acdd0a2da2b4a38e665ff59ddd89595d1"
+    }
+  ]
+}

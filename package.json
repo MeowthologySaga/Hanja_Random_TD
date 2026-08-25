@@ -1,6 +1,6 @@
 {
   "name": "hanzi-random-tower-defense",
-  "version": "0.32.0",
+  "version": "0.33.0",
   "private": true,
   "description": "전략 조합전과 획수 기반 캐주얼 8성전을 갖춘 100웨이브 한자 랜덤 타워 디펜스",
   "type": "module",

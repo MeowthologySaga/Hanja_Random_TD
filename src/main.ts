@@ -454,7 +454,7 @@ app.innerHTML = `
         <div><p class="eyebrow">DISPLAY SETTINGS</p><h2>전장 표시 모드</h2></div>
         <button id="settings-close" type="button" aria-label="설정 닫기">×</button>
       </div>
-      <p class="settings-intro">게임 규칙은 그대로 유지되고 전장 자령의 표시 방식만 바뀝니다.</p>
+      <p class="settings-intro">게임 규칙은 그대로 유지됩니다. 전장 표시와 배경음악·효과음 믹스를 기기에 맞게 저장합니다.</p>
       <div class="display-mode-options" role="radiogroup" aria-label="전장 표시 모드">
         <button type="button" class="display-mode-option" data-display-mode-option="spirit" role="radio" data-testid="spirit-mode">
           <span class="mode-preview mode-preview--spirit" style="background-image:url('${import.meta.env.BASE_URL}assets/jaryeongs/wood-mok/sheet-transparent.png')" aria-hidden="true"></span>
@@ -469,6 +469,19 @@ app.innerHTML = `
         <span><b>뽑기 후 자동 배치</b><small>켜면 현재처럼 빈 오행진 칸에 즉시 배치합니다. 끄면 런 인벤토리에서 원하는 칸을 고릅니다.</small></span>
         <i aria-hidden="true"><em>ON</em></i>
       </button>
+      <section class="audio-settings" aria-labelledby="audio-settings-title">
+        <div class="audio-settings-heading"><b id="audio-settings-title">오디오 믹스</b><small>첫 조작 뒤 재생 · 선택은 브라우저에 저장</small></div>
+        <div class="audio-setting-row">
+          <span><b>배경음악</b><small>웨이브 구간·보스 상태에 따라 3초 크로스페이드</small></span>
+          <label for="bgm-volume"><span>음량</span><input id="bgm-volume" type="range" min="0" max="100" step="1" aria-label="배경음악 음량" /><output id="bgm-volume-output" for="bgm-volume">60%</output></label>
+          <button id="bgm-mute-button" class="audio-mute-button" type="button" role="switch" aria-checked="true">ON</button>
+        </div>
+        <div class="audio-setting-row">
+          <span><b>효과음</b><small>핵심 행동은 MP3, 잦은 타격·능력은 저자극 합성음</small></span>
+          <label for="sfx-volume"><span>음량</span><input id="sfx-volume" type="range" min="0" max="100" step="1" aria-label="효과음 음량" /><output id="sfx-volume-output" for="sfx-volume">72%</output></label>
+          <button id="sfx-mute-button" class="audio-mute-button" type="button" role="switch" aria-checked="true">ON</button>
+        </div>
+      </section>
       <p class="settings-source">자령 머리 위에는 짧은 훈음을 표시하고, 자세한 부수 정보는 선택 카드와 도감에서 확인할 수 있습니다.</p>
     </dialog>
 
@@ -558,6 +571,7 @@ const casualFusionConfirmDialog = must<HTMLDialogElement>("#casual-fusion-confir
 const codexDialog = must<HTMLDialogElement>("#codex-dialog");
 const summonReveal = must<HTMLElement>("#summon-reveal");
 const sound = new SoundManager();
+if (import.meta.env.DEV) Object.assign(window, { __HANJA_AUDIO_QA__: sound });
 const initialSeed = new URLSearchParams(window.location.search).get("seed")?.slice(0, 24) || createRunSeed();
 seedInput.value = initialSeed;
 let selectedRegion: RegionCode = "KR";
@@ -807,6 +821,33 @@ function syncAutoPlaceControl(): void {
   must<HTMLElement>("#auto-place-toggle i em").textContent = enabled ? "ON" : "OFF";
 }
 
+function syncAudioControls(): void {
+  const settings = sound.audioSettings;
+  const bgmVolume = must<HTMLInputElement>("#bgm-volume");
+  const sfxVolume = must<HTMLInputElement>("#sfx-volume");
+  bgmVolume.value = String(Math.round(settings.bgmVolume * 100));
+  sfxVolume.value = String(Math.round(settings.sfxVolume * 100));
+  must<HTMLOutputElement>("#bgm-volume-output").value = `${bgmVolume.value}%`;
+  must<HTMLOutputElement>("#sfx-volume-output").value = `${sfxVolume.value}%`;
+
+  const bgmButton = must<HTMLButtonElement>("#bgm-mute-button");
+  const sfxButton = must<HTMLButtonElement>("#sfx-mute-button");
+  bgmButton.textContent = settings.bgmMuted ? "OFF" : "ON";
+  sfxButton.textContent = settings.sfxMuted ? "OFF" : "ON";
+  bgmButton.classList.toggle("is-on", !settings.bgmMuted);
+  sfxButton.classList.toggle("is-on", !settings.sfxMuted);
+  bgmButton.setAttribute("aria-checked", String(!settings.bgmMuted));
+  sfxButton.setAttribute("aria-checked", String(!settings.sfxMuted));
+
+  const masterButton = must<HTMLButtonElement>("#sound-button");
+  masterButton.textContent = settings.masterMuted ? "×" : "♪";
+  masterButton.setAttribute("aria-label", settings.masterMuted ? "전체 소리 켜기" : "전체 소리 끄기");
+  masterButton.title = settings.masterMuted ? "전체 소리 켜기 (M)" : "전체 소리 끄기 (M)";
+  shell.dataset.audioMasterMuted = String(settings.masterMuted);
+  shell.dataset.bgmMuted = String(settings.bgmMuted);
+  shell.dataset.sfxMuted = String(settings.sfxMuted);
+}
+
 function syncTitleModeSelection(): void {
   document.querySelectorAll<HTMLButtonElement>("[data-game-mode-option]").forEach((button) => {
     const selected = button.dataset.gameModeOption === selectedGameMode;
@@ -832,8 +873,10 @@ function syncTitleModeSelection(): void {
 }
 
 function setSelectedGameMode(mode: GameMode): void {
+  sound.unlock();
   selectedGameMode = mode;
   syncTitleModeSelection();
+  sound.playUiConfirm();
 }
 
 function setDisplayMode(mode: DisplayMode, announce = true): void {
@@ -841,7 +884,10 @@ function setDisplayMode(mode: DisplayMode, announce = true): void {
   shell.dataset.displayMode = mode;
   saveDisplayMode(mode);
   syncDisplayModeControls();
-  if (announce) showToast(mode === "spirit" ? "자령 모드 · 한자와 훈음을 머리 위에 표시" : "공부 모드 · 큰 한자와 읽기를 전장에 표시");
+  if (announce) {
+    sound.playUiConfirm();
+    showToast(mode === "spirit" ? "자령 모드 · 한자와 훈음을 머리 위에 표시" : "공부 모드 · 큰 한자와 읽기를 전장에 표시");
+  }
 }
 
 function resetIdiomResult(): void {
@@ -880,6 +926,7 @@ function startRun(useNewSeed = false): void {
   titleOverlay.classList.remove("modal-layer--visible");
   endOverlay.classList.remove("modal-layer--visible");
   sound.unlock();
+  sound.playUiConfirm();
   recycleAll(projectiles, projectilePool, 48);
   recycleAll(floaters, floaterPool, 48);
   recycleAll(rings, ringPool, 32);
@@ -4022,8 +4069,10 @@ must<HTMLButtonElement>("#early-button").addEventListener("click", () => { sound
 must<HTMLButtonElement>("#help-button").addEventListener("click", () => helpDialog.showModal());
 must<HTMLButtonElement>("#title-help-button").addEventListener("click", () => helpDialog.showModal());
 must<HTMLButtonElement>("#settings-button").addEventListener("click", () => {
+  sound.unlock();
   syncDisplayModeControls();
   syncAutoPlaceControl();
+  syncAudioControls();
   settingsDialog.showModal();
 });
 
@@ -4055,8 +4104,10 @@ must<HTMLElement>("#composition-branches").addEventListener("pointerout", (event
 });
 must<HTMLElement>("#composition-branches").addEventListener("pointerleave", () => setCompositionMaterialHighlight());
 must<HTMLButtonElement>("#title-settings-button").addEventListener("click", () => {
+  sound.unlock();
   syncDisplayModeControls();
   syncAutoPlaceControl();
+  syncAudioControls();
   settingsDialog.showModal();
 });
 must<HTMLButtonElement>("#settings-close").addEventListener("click", () => settingsDialog.close());
@@ -4071,10 +4122,34 @@ document.querySelectorAll<HTMLButtonElement>("[data-game-mode-option]").forEach(
   button.addEventListener("click", () => setSelectedGameMode(button.dataset.gameModeOption as GameMode));
 });
 must<HTMLButtonElement>("#auto-place-toggle").addEventListener("click", () => {
+  sound.unlock();
   const enabled = !engine.state.autoPlaceSummons;
   saveAutoPlaceSummons(enabled);
   handleAction(engine.setAutoPlaceSummons(enabled));
   syncAutoPlaceControl();
+  sound.playUiConfirm();
+});
+must<HTMLInputElement>("#bgm-volume").addEventListener("input", (event) => {
+  sound.setBgmVolume(Number((event.target as HTMLInputElement).value) / 100);
+  syncAudioControls();
+});
+must<HTMLInputElement>("#sfx-volume").addEventListener("input", (event) => {
+  sound.setSfxVolume(Number((event.target as HTMLInputElement).value) / 100);
+  syncAudioControls();
+});
+must<HTMLInputElement>("#sfx-volume").addEventListener("change", () => sound.playUiConfirm());
+must<HTMLButtonElement>("#bgm-mute-button").addEventListener("click", () => {
+  sound.unlock();
+  const muted = sound.toggleBgmMuted();
+  syncAudioControls();
+  showToast(muted ? "배경음악 꺼짐" : "배경음악 켜짐");
+});
+must<HTMLButtonElement>("#sfx-mute-button").addEventListener("click", () => {
+  sound.unlock();
+  const muted = sound.toggleSfxMuted();
+  syncAudioControls();
+  if (!muted) sound.playUiConfirm();
+  showToast(muted ? "효과음 꺼짐" : "효과음 켜짐");
 });
 must<HTMLButtonElement>("#codex-button").addEventListener("click", () => {
   const search = must<HTMLInputElement>("#codex-search");
@@ -4280,10 +4355,9 @@ must<HTMLElement>("#codex-detail").addEventListener("click", (event) => {
 });
 must<HTMLButtonElement>("#sound-button").addEventListener("click", () => {
   const muted = sound.toggle();
-  const button = must<HTMLButtonElement>("#sound-button");
-  button.textContent = muted ? "×" : "♪";
-  button.setAttribute("aria-label", muted ? "소리 켜기" : "소리 끄기");
-  showToast(muted ? "효과음 꺼짐" : "효과음 켜짐");
+  syncAudioControls();
+  if (!muted) sound.playUiConfirm();
+  showToast(muted ? "전체 소리 꺼짐" : "전체 소리 켜짐");
 });
 must<HTMLElement>("#selected-card").addEventListener("click", (event) => {
   const target = event.target as HTMLElement;
@@ -4339,6 +4413,15 @@ function frame(now: number): void {
   const simulationDelta = delta * gameSpeed;
   lastFrame = now;
   engine.update(simulationDelta);
+  const audioPlan = engine.getCurrentPlan();
+  sound.syncBgm({
+    phase: engine.state.phase,
+    wave: engine.state.wave,
+    boss: engine.state.phase === "combat" && Boolean(audioPlan?.boss)
+  }, now);
+  const audioDebug = sound.getDebugState();
+  shell.dataset.audioBgm = audioDebug.targetBgmId ?? "none";
+  shell.dataset.audioPlaying = String(audioDebug.bgmPlaying);
   const frameEvents = engine.consumeEvents();
   for (const event of frameEvents) processEvent(event);
   showSummonReveal(frameEvents.filter((event): event is Extract<GameEvent, { type: "summon" }> => event.type === "summon"));
@@ -4375,6 +4458,7 @@ syncMapZoomControl();
 setGameSpeed(1);
 setDisplayMode(initialDisplayMode, false);
 syncTitleModeSelection();
+syncAudioControls();
 drawWorld(0);
 syncPanel();
 window.requestAnimationFrame(frame);
