@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { directionOnPath } from "../src/core/content";
-import { abilityZoneSpriteLayout } from "../src/ui/combat-fx-layout";
+import { abilityZoneSpriteLayout, deterministicZoneRotation } from "../src/ui/combat-fx-layout";
 
 describe("combat effect path layout", () => {
   it("follows vertical and horizontal route segments", () => {
@@ -17,7 +17,16 @@ describe("combat effect path layout", () => {
     expect(abilityZoneSpriteLayout(0.0625, 80).angle).toBeCloseTo(-Math.PI / 4, 5);
   });
 
-  it("keeps the existing zone sprite proportions", () => {
-    expect(abilityZoneSpriteLayout(0.1, 100, 1.02)).toMatchObject({ width: 150.96, height: 63.24 });
+  it("keeps zone modules square (aoe-modular-fx-pack-v1)", () => {
+    expect(abilityZoneSpriteLayout(0.1, 100, 1.02)).toMatchObject({ width: 204, height: 204 });
+  });
+
+  it("bounds deterministic rotation to ±8 degrees and stays stable per seed", () => {
+    const limit = 8 * Math.PI / 180;
+    for (const seed of [1, 7, 42, 999]) {
+      const angle = deterministicZoneRotation(seed);
+      expect(Math.abs(angle)).toBeLessThanOrEqual(limit);
+      expect(deterministicZoneRotation(seed)).toBe(angle);
+    }
   });
 });

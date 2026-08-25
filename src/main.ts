@@ -101,7 +101,7 @@ import type {
   Wuxing
 } from "./core/types";
 import { SoundManager } from "./ui/audio";
-import { abilityZoneSpriteLayout } from "./ui/combat-fx-layout";
+import { abilityZoneSpriteLayout, deterministicZoneRotation } from "./ui/combat-fx-layout";
 import { elementProjectileImage, elementZoneImage, preloadCombatFxSprites } from "./ui/combat-fx-sprites";
 import {
   inkArrowImage,
@@ -1243,10 +1243,10 @@ function renderConcentration(): void {
         <button type="button" data-concentration-path="potent" class="${!swiftSelected ? "is-selected" : ""}" ${pathLocked && swiftSelected ? "disabled" : ""}><b>深 심화 농축</b><span>단계당 피해 +12%</span><span>대기 -2% · 의미 기술 +3.5% · 사거리 +4</span></button>
       </div>
       <div class="concentration-compare">
-        <div><span>공격력</span><b>${quote.current.damage.toFixed(1)}</b><i>→</i><strong>${quote.next.damage.toFixed(1)}</strong></div>
-        <div><span>초당 공격</span><b>${quote.current.attacksPerSecond.toFixed(2)}</b><i>→</i><strong>${quote.next.attacksPerSecond.toFixed(2)}</strong></div>
-        <div><span>사거리</span><b>${quote.current.range.toFixed(1)}</b><i>→</i><strong>${quote.next.range.toFixed(1)}</strong></div>
-        <div><span>기술 효과</span><b>${((quote.current.abilityEffect - 1) * 100).toFixed(1)}%</b><i>→</i><strong>${((quote.next.abilityEffect - 1) * 100).toFixed(1)}%</strong></div>
+        <div><span>공격력</span><b>${Math.round(quote.current.damage)}</b><i>→</i><strong>${Math.round(quote.next.damage)}</strong></div>
+        <div><span>초당 공격</span><b>${quote.current.attacksPerSecond.toFixed(1)}</b><i>→</i><strong>${quote.next.attacksPerSecond.toFixed(1)}</strong></div>
+        <div><span>사거리</span><b>${Math.round(quote.current.range)}</b><i>→</i><strong>${Math.round(quote.next.range)}</strong></div>
+        <div><span>기술 효과</span><b>${Math.round((quote.current.abilityEffect - 1) * 100)}%</b><i>→</i><strong>${Math.round((quote.next.abilityEffect - 1) * 100)}%</strong></div>
       </div>
       <section class="concentration-payment"><div class="subheading"><b>재료 선택</b><small>전장 자령과 잠긴 자령은 후보에서 제외</small></div><div class="payment-grid">
         ${paymentRows}
@@ -2219,11 +2219,11 @@ function renderSelected(): void {
     </div>
     <div class="selected-actions">
       <button id="lock-button" class="${tower.locked ? "is-locked" : ""}" type="button" data-testid="lock-tower">${tower.locked ? "鎖 잠금됨" : "잠금"}</button>
-      <button id="store-button" type="button" data-testid="store-tower" ${stored ? "disabled" : ""}>${stored ? "인벤 보관 중" : "인벤 넣기"}</button>
-      <button id="derivative-button" class="${readyBranches > 0 ? "has-ready" : ""}" type="button" data-testid="derivative-composition">${engine.state.mode === "casual" ? casualStar >= 8 ? "8★ 최고 단계" : "3체 조합 ›" : `파생 합성 ${readyBranches}`}</button>
+      <button id="store-button" type="button" data-testid="store-tower" ${stored ? "disabled" : ""}>${stored ? "보관 중" : "보관"}</button>
+      <button id="derivative-button" class="${readyBranches > 0 ? "has-ready" : ""}" type="button" data-testid="derivative-composition">${engine.state.mode === "casual" ? casualStar >= 8 ? "8★ 최고 단계" : "3체 조합 ›" : `합성 ${readyBranches}`}</button>
       <button id="sell-button" type="button" ${tower.locked ? "disabled" : ""}>판매 +${engine.towerSellValue(tower)}</button>
-      <button id="open-growth-button" type="button">강화·분해 탭 ›</button>
-      <button id="open-concentration-button" type="button" ${concentration >= MAX_CONCENTRATION_LEVEL ? "disabled" : ""}>농축 공방 ›</button>
+      <button id="open-growth-button" type="button">분해 ›</button>
+      <button id="open-concentration-button" type="button" ${concentration >= MAX_CONCENTRATION_LEVEL ? "disabled" : ""}>농축 ›</button>
     </div>
     <button type="button" class="selected-ability-summary" data-ability-guide><b>${activeSkills ? `技 기술 ${abilityLoadout.length}개 · 모두 자동 판정` : "技 기술 해금 전"}</b><span>${activeSkills ? `주기 ${periodicAbilities.length} · 공격 연동 1 · 조건 특성 1` : "현재 기본 공격 · 2단 합성 필요"}</span><em>설명 ›</em></button>
     ${activeSkills
@@ -2852,11 +2852,16 @@ function isWorldPointVisible(point: Point, margin = 0): boolean {
   return x >= -screenMargin && x <= WORLD_WIDTH + screenMargin && y >= -screenMargin && y <= WORLD_HEIGHT + screenMargin;
 }
 
+/** 장판 생성 시각 기록 — 스케일-인 연출과 생성 고리에 쓴다. */
+const zoneSpawnTimes = new Map<number, number>();
+
 function drawAbilityZones(): void {
   let spriteDrawnThisFrame = false;
   let verticalZoneCount = 0;
   let cornerZoneCount = 0;
+  const liveZoneIds = new Set<number>();
   for (const zone of engine.state.abilityZones) {
+    liveZoneIds.add(zone.id);
     const point = positionOnPath(zone.progress);
     if (!isWorldPointVisible(point, zone.radius)) continue;
     const remaining = Math.max(0, zone.expiresAt - engine.state.elapsed);
@@ -2864,31 +2869,100 @@ function drawAbilityZones(): void {
     const image = elementZoneImage(zone.wuxing);
     const pulse = reducedMotion ? 1 : 1 + Math.sin(engine.state.elapsed * 1.45 + zone.id) * 0.018;
     const layout = abilityZoneSpriteLayout(zone.progress, zone.radius, pulse);
+
+    // 생성 순간: 먹 고리 + 0.35초 스케일-인. "기술이 나갔다"를 읽게 한다.
+    let spawnScale = 1;
+    let spawnedAt = zoneSpawnTimes.get(zone.id);
+    if (spawnedAt === undefined) {
+      spawnedAt = engine.state.elapsed;
+      zoneSpawnTimes.set(zone.id, spawnedAt);
+      pushPooled(rings, ringPool, takeRing(point, zone.color, 0.5), 32);
+    }
+    if (!reducedMotion) {
+      const settle = Math.min(1, (engine.state.elapsed - spawnedAt) / 0.35);
+      spawnScale = 0.55 + 0.45 * (1 - (1 - settle) * (1 - settle));
+    }
     const verticalWeight = Math.abs(Math.sin(layout.angle));
     if (verticalWeight >= 0.92) verticalZoneCount += 1;
     else if (verticalWeight >= 0.22) cornerZoneCount += 1;
-    context.save();
-    context.globalAlpha = 0.58 * life;
-    context.translate(layout.point.x, layout.point.y);
-    context.rotate(layout.angle);
-    if (image.complete && image.naturalWidth > 0) {
-      context.drawImage(image, -layout.width / 2, -layout.height / 2 + 4, layout.width, layout.height);
-      abilityZoneSpriteDrawTotal += 1;
-      spriteDrawnThisFrame = true;
+    // aoe-modular-fx-pack-v1: 모듈은 항상 정사각 D×D. 회전은 결정적 ±8°만.
+    // pathTriple 은 경로 앞·중앙·뒤 3모듈(각 D=1.2R, 중심 간 0.82D)로 확장한다.
+    const pattern = (zone as { areaPattern?: string }).areaPattern === "pathTriple" ? "pathTriple" : "single";
+    const centers: Array<{ progress: number; diameter: number; moduleIndex: number }> = [];
+    if (pattern === "pathTriple") {
+      const moduleDiameter = zone.radius * 1.2 * pulse;
+      const progressStep = (moduleDiameter * 0.82) / TOTAL_ENEMY_PATH_LENGTH;
+      centers.push(
+        { progress: zone.progress - progressStep, diameter: moduleDiameter, moduleIndex: 0 },
+        { progress: zone.progress, diameter: moduleDiameter, moduleIndex: 1 },
+        { progress: zone.progress + progressStep, diameter: moduleDiameter, moduleIndex: 2 }
+      );
     } else {
-      context.fillStyle = zone.color;
-      context.beginPath();
-      context.ellipse(0, 3, zone.radius, zone.radius * 0.34, 0, 0, Math.PI * 2);
-      context.fill();
+      // 판정 반경 R 은 아래 붓선 테두리가 담당하므로 그림은 1.6R 로 줄인다.
+      centers.push({ progress: zone.progress, diameter: layout.width * 0.8 * spawnScale, moduleIndex: 0 });
     }
+    for (const moduleCenter of centers) {
+      const at = positionOnPath(moduleCenter.progress);
+      context.save();
+      context.globalAlpha = 0.58 * life;
+      context.translate(at.x, at.y);
+      context.rotate(deterministicZoneRotation(zone.id + moduleCenter.moduleIndex));
+      if (image.complete && image.naturalWidth > 0) {
+        context.drawImage(image, -moduleCenter.diameter / 2, -moduleCenter.diameter / 2, moduleCenter.diameter, moduleCenter.diameter);
+        abilityZoneSpriteDrawTotal += 1;
+        spriteDrawnThisFrame = true;
+      } else {
+        context.fillStyle = zone.color;
+        context.beginPath();
+        context.arc(0, 0, moduleCenter.diameter / 2, 0, Math.PI * 2);
+        context.fill();
+      }
+      context.restore();
+    }
+    // 실제 판정 반경 R: 마른 붓 점선. 그림이 작아져도 범위는 정확히 읽힌다.
+    context.save();
+    context.globalAlpha = 0.4 * life;
+    context.strokeStyle = zone.color;
+    context.lineWidth = 1.6;
+    context.setLineDash([7, 9]);
+    context.lineDashOffset = reducedMotion ? 0 : -engine.state.elapsed * 14;
+    context.beginPath();
+    context.arc(point.x, point.y, zone.radius * spawnScale, 0, Math.PI * 2);
+    context.stroke();
+    context.setLineDash([]);
     context.restore();
+
+    // 판정 안에서 피해를 받는 적 위로 오행색 불티가 튄다.
+    if (!reducedMotion) {
+      for (const enemy of engine.state.enemies) {
+        const enemyPoint = positionOnPath(enemy.progress);
+        const dx = enemyPoint.x - point.x;
+        const dy = enemyPoint.y - point.y;
+        if (dx * dx + dy * dy > zone.radius * zone.radius) continue;
+        for (let sparkIndex = 0; sparkIndex < 3; sparkIndex += 1) {
+          const phase = ((engine.state.elapsed * 1.7 + enemy.id * 0.41 + sparkIndex * 0.33) % 1 + 1) % 1;
+          const sparkX = enemyPoint.x + Math.sin((enemy.id + sparkIndex) * 2.4) * 9;
+          const sparkY = enemyPoint.y - 4 - phase * 22;
+          context.globalAlpha = (1 - phase) * 0.85 * life;
+          context.fillStyle = zone.color;
+          context.beginPath();
+          context.arc(sparkX, sparkY, 1.7 + (1 - phase) * 1.1, 0, Math.PI * 2);
+          context.fill();
+        }
+      }
+      context.globalAlpha = 1;
+    }
+
     context.save();
     context.globalAlpha = 0.88 * life;
     context.fillStyle = zone.kind === "rain" ? "#d9f2ff" : zone.color;
     context.font = '900 10px "Malgun Gothic", sans-serif';
     context.textAlign = "center";
-    context.fillText(`${zone.wuxing} ${remaining.toFixed(1)}초`, point.x, point.y + zone.radius * 0.34 + 15);
+    context.fillText(`${zone.wuxing} ${remaining.toFixed(1)}초`, point.x, point.y + zone.radius + 13);
     context.restore();
+  }
+  for (const id of zoneSpawnTimes.keys()) {
+    if (!liveZoneIds.has(id)) zoneSpawnTimes.delete(id);
   }
   canvas.dataset.abilityZoneCount = String(engine.state.abilityZones.length);
   canvas.dataset.abilityZoneSpriteDraw = String(spriteDrawnThisFrame);
@@ -2911,6 +2985,12 @@ function drawPaperBackdrop(): void {
  * 판정은 그대로 두고 표현만 교체한다. 회색 포장체·양쪽 연석·반복 점선·고속도로형
  * 화살표를 없애고, Codex 한지 팩의 붓길 타일을 구간과 꼭짓점에 stamp한다.
  */
+/** FX_SPEC 3.3 — 경로 총길이는 상수 복사 대신 선분 합산으로 얻는다. */
+const TOTAL_ENEMY_PATH_LENGTH = ENEMY_PATH_POINTS.slice(0, -1).reduce((sum, point, index) => {
+  const next = ENEMY_PATH_POINTS[index + 1] as Point;
+  return sum + Math.hypot(next.x - point.x, next.y - point.y);
+}, 0);
+
 const INK_TILE = 96;
 const INK_STRAIGHT_LEN = 110;
 

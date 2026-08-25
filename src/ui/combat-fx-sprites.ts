@@ -8,12 +8,14 @@ const ELEMENT_ASSET_NAMES: Record<Wuxing, string> = {
   水: "water"
 };
 
+// aoe-modular-fx-pack-v1: 원근 타원 장판을 방사형 정사각 모듈로 교체.
+// 기존 element-zones 자산은 스펙에 따라 덮어쓰지 않고 보존한다.
 const ZONE_ASSET_NAMES: Record<Wuxing, string> = {
-  木: "wood-roots",
-  火: "fire-lava",
-  土: "earth-quicksand",
-  金: "metal-caltrops",
-  水: "water-rain"
+  木: "wood",
+  火: "fire",
+  土: "earth",
+  金: "metal",
+  水: "water"
 };
 
 const images = new Map<string, HTMLImageElement>();
@@ -34,7 +36,7 @@ export function elementProjectileImage(wuxing: Wuxing): HTMLImageElement {
 }
 
 export function elementZoneImage(wuxing: Wuxing): HTMLImageElement {
-  return imageFor(`element-zones/${ZONE_ASSET_NAMES[wuxing]}.png`);
+  return imageFor(`aoe-modular-v1/aoe-${ZONE_ASSET_NAMES[wuxing]}-v1.png`);
 }
 
 export function preloadCombatFxSprites(): void {
