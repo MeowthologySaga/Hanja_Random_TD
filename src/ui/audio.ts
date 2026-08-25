@@ -172,6 +172,7 @@ export class SoundManager {
   private readonly sfxPools = new Map<SfxId, HTMLAudioElement[]>();
   private readonly sfxPoolIndices = new Map<SfxId, number>();
   private readonly bgmNodes = new Map<BgmId, HTMLAudioElement>();
+  private waveSfxPreloadScheduled = false;
   private targetBgmId: BgmId | null = null;
   private activeBgmId: BgmId | null = null;
   private activeBgm: HTMLAudioElement | null = null;
@@ -226,6 +227,7 @@ export class SoundManager {
     this.unlocked = true;
     const context = this.ensureContext();
     if (context?.state === "suspended") void context.resume();
+    this.scheduleWaveSfxPreload();
     if (this.targetBgmId !== this.activeBgmId && this.fadeTimer === 0) this.beginCrossfade(this.targetBgmId);
   }
 
@@ -269,7 +271,8 @@ export class SoundManager {
     if (!this.sfxEnabled()) return;
     const fileSfx = sfxForEvent(event);
     if (fileSfx) {
-      this.playSfx(fileSfx);
+      if (event.type === "wave") this.playSfxAfterPaint(fileSfx);
+      else this.playSfx(fileSfx);
       return;
     }
 
@@ -366,6 +369,23 @@ export class SoundManager {
     void node.play().catch((error: unknown) => {
       this.lastError = error instanceof Error ? error.message : String(error);
     });
+  }
+
+  private playSfxAfterPaint(id: SfxId): void {
+    window.requestAnimationFrame(() => {
+      window.setTimeout(() => this.playSfx(id), 0);
+    });
+  }
+
+  private scheduleWaveSfxPreload(): void {
+    if (this.waveSfxPreloadScheduled) return;
+    this.waveSfxPreloadScheduled = true;
+    window.setTimeout(() => {
+      for (const id of ["wave-start", "boss-warning"] as const) {
+        const rule = SFX_RULES[id];
+        for (const node of this.sfxPool(id, rule.poolSize)) node.load();
+      }
+    }, 0);
   }
 
   private sfxPool(id: SfxId, size: number): HTMLAudioElement[] {

@@ -175,6 +175,31 @@ export function positionOnPath(progress: number): Point {
   return { ...(ENEMY_PATH_POINTS[ENEMY_PATH_POINTS.length - 1] as Point) };
 }
 
+/**
+ * Returns the smoothed travel direction at a point on the closed enemy path.
+ * Sampling on both sides keeps long effects aligned with straight lanes while
+ * turning them diagonally through corners instead of snapping past the track.
+ */
+export function directionOnPath(progress: number, smoothingDistance = 36): Point {
+  const distance = Math.max(1, Math.min(TOTAL_PATH_LENGTH / 8, Math.abs(smoothingDistance)));
+  const progressOffset = distance / TOTAL_PATH_LENGTH;
+  const before = positionOnPath(progress - progressOffset);
+  const after = positionOnPath(progress + progressOffset);
+  const dx = after.x - before.x;
+  const dy = after.y - before.y;
+  const length = Math.hypot(dx, dy);
+  if (length > 0.0001) return { x: dx / length, y: dy / length };
+
+  const fallbackBefore = positionOnPath(progress - 0.0001);
+  const fallbackAfter = positionOnPath(progress + 0.0001);
+  const fallbackX = fallbackAfter.x - fallbackBefore.x;
+  const fallbackY = fallbackAfter.y - fallbackBefore.y;
+  const fallbackLength = Math.hypot(fallbackX, fallbackY);
+  return fallbackLength > 0.0001
+    ? { x: fallbackX / fallbackLength, y: fallbackY / fallbackLength }
+    : { x: 1, y: 0 };
+}
+
 export function wavePlan(wave: number): WavePlan {
   const archetype = archetypeForWave(wave);
   const boss = archetype === "boss";

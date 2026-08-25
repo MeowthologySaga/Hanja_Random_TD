@@ -100,6 +100,7 @@ import type {
   Wuxing
 } from "./core/types";
 import { SoundManager } from "./ui/audio";
+import { abilityZoneSpriteLayout } from "./ui/combat-fx-layout";
 import { elementProjectileImage, elementZoneImage, preloadCombatFxSprites } from "./ui/combat-fx-sprites";
 import { loadDisplayMode, saveDisplayMode, type DisplayMode } from "./ui/display-mode";
 import { jaryeongSpriteImage } from "./ui/jaryeong-sprites";
@@ -576,8 +577,9 @@ let mapUncombinableStageOne = buildUncombinableStageOneChars(engine.catalog.defi
 engine.state.autoPlaceSummons = initialAutoPlaceSummons;
 let previousPhase: RunPhase = "title";
 let lastFrame = performance.now();
-let toastTimer = 0;
 let summonRevealTimer = 0;
+let toastAnimation: Animation | null = null;
+let waveBannerAnimation: Animation | null = null;
 let hoveredRecipeId: string | null = null;
 let hoveredCompositionMaterialIds = new Set<number>();
 let compositionDrawerOpen = false;
@@ -961,14 +963,16 @@ function startRun(useNewSeed = false): void {
   syncPanel();
 }
 
-function handleAction(result: ActionResult): void {
+function handleAction(result: ActionResult, options: { invalidatePanels?: boolean } = {}): void {
   if (!result.ok || !result.message.includes("자동 봉인")) showToast(result.message, !result.ok);
-  evolutionRenderKey = "";
-  goalRenderKey = "";
-  selectedRenderKey = "";
-  runInventoryRenderKey = "";
-  concentrationRenderKey = "";
-  growthRenderKey = "";
+  if (options.invalidatePanels !== false) {
+    evolutionRenderKey = "";
+    goalRenderKey = "";
+    selectedRenderKey = "";
+    runInventoryRenderKey = "";
+    concentrationRenderKey = "";
+    growthRenderKey = "";
+  }
   syncPanel();
 }
 
@@ -976,10 +980,38 @@ function showToast(message: string, warning = false): void {
   toast.textContent = message;
   toast.classList.toggle("toast--warning", warning);
   toast.classList.remove("toast--visible");
-  void toast.offsetWidth;
-  toast.classList.add("toast--visible");
-  window.clearTimeout(toastTimer);
-  toastTimer = window.setTimeout(() => toast.classList.remove("toast--visible"), 1900);
+  toastAnimation?.cancel();
+  toastAnimation = toast.animate(reducedMotion
+    ? [
+        { opacity: 0 },
+        { opacity: 1, offset: 0.12 },
+        { opacity: 1, offset: 0.78 },
+        { opacity: 0 }
+      ]
+    : [
+        { opacity: 0, transform: "translate(-50%, 12px)" },
+        { opacity: 1, transform: "translate(-50%, 0)", offset: 0.12 },
+        { opacity: 1, transform: "translate(-50%, 0)", offset: 0.78 },
+        { opacity: 0, transform: "translate(-50%, -5px)" }
+      ], { duration: 1900, easing: "ease" });
+}
+
+function showWaveBanner(): void {
+  bossBanner.classList.remove("boss-banner--visible");
+  waveBannerAnimation?.cancel();
+  waveBannerAnimation = bossBanner.animate(reducedMotion
+    ? [
+        { opacity: 0 },
+        { opacity: 1, offset: 0.18 },
+        { opacity: 1, offset: 0.7 },
+        { opacity: 0 }
+      ]
+    : [
+        { opacity: 0, transform: "translate(-50%, -12px) scale(0.96)" },
+        { opacity: 1, transform: "translate(-50%, 0) scale(1)", offset: 0.18 },
+        { opacity: 1, transform: "translate(-50%, 0) scale(1)", offset: 0.7 },
+        { opacity: 0, transform: "translate(-50%, 6px) scale(1.02)" }
+      ], { duration: 1200, easing: "ease" });
 }
 
 function addCombatFeed(glyph: string, name: string, detail: string, color: string): void {
@@ -1389,10 +1421,7 @@ function processEvent(event: GameEvent): void {
         ? "⚠ 우두머리 " + String(event.wave) + " · 약점 " + event.weakness + " ⚠"
         : "웨이브 " + String(event.wave) + " · 약점 " + event.weakness;
       bossBanner.classList.toggle("boss-banner--boss", event.boss);
-      bossBanner.classList.remove("boss-banner--visible");
-      void bossBanner.offsetWidth;
-      bossBanner.classList.add("boss-banner--visible");
-      window.setTimeout(() => bossBanner.classList.remove("boss-banner--visible"), event.boss ? 2200 : 1200);
+      showWaveBanner();
       break;
     case "phase":
       break;
@@ -1459,7 +1488,7 @@ function renderFormationUnlocks(): void {
   const state = engine.state;
   const cost = engine.nextFormationUnlockCost();
   const active = state.phase === "prep" || state.phase === "combat";
-  const key = `${state.unlockedFormations.join(",")}|${state.startingFormationIndex ?? "none"}|${state.gold}|${state.phase}|${cost ?? "done"}`;
+  const key = `${state.unlockedFormations.join(",")}|${state.startingFormationIndex ?? "none"}|${state.gold}|${active ? "active" : "inactive"}|${cost ?? "done"}`;
   if (key === formationRenderKey) return;
   formationRenderKey = key;
   const remaining = BOARD_FORMATIONS.length - state.unlockedFormations.length;
@@ -1585,6 +1614,7 @@ function syncPanel(): void {
 
 function renderGoal(): void {
   const progress = engine.goalProgress();
+  const maxSummonStage = maxSummonStageForWave(engine.state.wave);
   const ownedTowers = [...engine.state.towers, ...engine.state.inventoryTowers];
   const ownedCounts = new Map<string, number>();
   for (const tower of ownedTowers) ownedCounts.set(tower.char, (ownedCounts.get(tower.char) ?? 0) + 1);
@@ -1597,7 +1627,7 @@ function renderGoal(): void {
     engine.state.goalsCompleted.join(""),
     engine.state.featuredIdiomIds.join(","),
     engine.state.idiomSeals.map((seal) => seal.idiomId).join(","),
-    engine.state.wave,
+    maxSummonStage,
     engine.state.lineageClueProgress,
     engine.state.lineageTargetProgress,
     ownedSignature
@@ -1607,7 +1637,6 @@ function renderGoal(): void {
 
   const pool = engine.summonDefinitions();
   must<HTMLElement>("#shop-pool-count").textContent = pool.length.toLocaleString("ko-KR");
-  const maxSummonStage = maxSummonStageForWave(engine.state.wave);
   const nextStage = maxSummonStage < 5 ? (maxSummonStage + 1) as 2 | 3 | 4 | 5 : null;
   must<HTMLElement>("#summon-pool-summary").innerHTML = engine.state.mode === "casual"
     ? `<b>천자문 ${pool.length.toLocaleString("ko-KR")}종</b><span>전 자령 직접 등장 · 획수별 1★–8★</span>`
@@ -2686,7 +2715,8 @@ function renderCodexDetail(definition: HanziDefinition | undefined): void {
 }
 function renderRunInventory(): void {
   const selectedId = engine.state.selectedTowerId;
-  const key = engine.state.inventoryTowers.map((tower) => `${tower.id}:${tower.locked}:S${tower.casualStar ?? 0}:C${tower.concentration ?? 0}:${tower.concentrationPath ?? "-"}`).join("|") + `|${selectedId ?? "none"}|${engine.state.phase}|${engine.state.mode}`;
+  const active = engine.state.phase === "prep" || engine.state.phase === "combat";
+  const key = engine.state.inventoryTowers.map((tower) => `${tower.id}:${tower.locked}:S${tower.casualStar ?? 0}:C${tower.concentration ?? 0}:${tower.concentrationPath ?? "-"}`).join("|") + `|${selectedId ?? "none"}|${active ? "active" : "inactive"}|${engine.state.mode}`;
   must<HTMLElement>("#run-inventory-count").textContent = String(engine.state.inventoryTowers.length);
   if (key === runInventoryRenderKey) return;
   runInventoryRenderKey = key;
@@ -2699,7 +2729,6 @@ function renderRunInventory(): void {
   must<HTMLElement>("#run-inventory-heading-count").textContent = `${engine.state.inventoryTowers.length}개 · ${grouped.size}종`;
   const cleanupAssessments = new Map(engine.cleanupAssessments().map((assessment) => [assessment.towerId, assessment]));
   const cleanupCandidates = engine.cleanupCandidates(8, true);
-  const active = engine.state.phase === "prep" || engine.state.phase === "combat";
   must<HTMLButtonElement>("#cleanup-recommended-button").disabled = !active || cleanupCandidates.length === 0;
   must<HTMLButtonElement>("#cleanup-recommended-button").textContent = cleanupCandidates.length > 0 ? `정리 후보 ${cleanupCandidates.length}기 분해` : "보호 완료";
   if (engine.state.inventoryTowers.length === 0) {
@@ -2793,6 +2822,8 @@ function isWorldPointVisible(point: Point, margin = 0): boolean {
 
 function drawAbilityZones(): void {
   let spriteDrawnThisFrame = false;
+  let verticalZoneCount = 0;
+  let cornerZoneCount = 0;
   for (const zone of engine.state.abilityZones) {
     const point = positionOnPath(zone.progress);
     if (!isWorldPointVisible(point, zone.radius)) continue;
@@ -2800,20 +2831,26 @@ function drawAbilityZones(): void {
     const life = Math.min(1, remaining / 1.2);
     const image = elementZoneImage(zone.wuxing);
     const pulse = reducedMotion ? 1 : 1 + Math.sin(engine.state.elapsed * 1.45 + zone.id) * 0.018;
-    const width = zone.radius * 1.48 * pulse;
-    const height = zone.radius * 0.62 * pulse;
+    const layout = abilityZoneSpriteLayout(zone.progress, zone.radius, pulse);
+    const verticalWeight = Math.abs(Math.sin(layout.angle));
+    if (verticalWeight >= 0.92) verticalZoneCount += 1;
+    else if (verticalWeight >= 0.22) cornerZoneCount += 1;
     context.save();
     context.globalAlpha = 0.58 * life;
+    context.translate(layout.point.x, layout.point.y);
+    context.rotate(layout.angle);
     if (image.complete && image.naturalWidth > 0) {
-      context.drawImage(image, point.x - width / 2, point.y - height / 2 + 4, width, height);
+      context.drawImage(image, -layout.width / 2, -layout.height / 2 + 4, layout.width, layout.height);
       abilityZoneSpriteDrawTotal += 1;
       spriteDrawnThisFrame = true;
     } else {
       context.fillStyle = zone.color;
       context.beginPath();
-      context.ellipse(point.x, point.y + 3, zone.radius, zone.radius * 0.34, 0, 0, Math.PI * 2);
+      context.ellipse(0, 3, zone.radius, zone.radius * 0.34, 0, 0, Math.PI * 2);
       context.fill();
     }
+    context.restore();
+    context.save();
     context.globalAlpha = 0.88 * life;
     context.fillStyle = zone.kind === "rain" ? "#d9f2ff" : zone.color;
     context.font = '900 10px "Malgun Gothic", sans-serif';
@@ -2824,6 +2861,8 @@ function drawAbilityZones(): void {
   canvas.dataset.abilityZoneCount = String(engine.state.abilityZones.length);
   canvas.dataset.abilityZoneSpriteDraw = String(spriteDrawnThisFrame);
   canvas.dataset.abilityZoneSpriteDrawTotal = String(abilityZoneSpriteDrawTotal);
+  canvas.dataset.abilityZoneVerticalCount = String(verticalZoneCount);
+  canvas.dataset.abilityZoneCornerCount = String(cornerZoneCount);
 }
 
 function drawPaperBackdrop(): void {
@@ -4118,7 +4157,10 @@ elementUpgradeDialog.addEventListener("click", (event) => {
   }
   renderElementUpgrades();
 });
-must<HTMLButtonElement>("#early-button").addEventListener("click", () => { sound.unlock(); handleAction(engine.startWaveEarly()); });
+must<HTMLButtonElement>("#early-button").addEventListener("click", () => {
+  sound.unlock();
+  handleAction(engine.startWaveEarly(), { invalidatePanels: false });
+});
 must<HTMLButtonElement>("#help-button").addEventListener("click", () => helpDialog.showModal());
 must<HTMLButtonElement>("#title-help-button").addEventListener("click", () => helpDialog.showModal());
 must<HTMLButtonElement>("#settings-button").addEventListener("click", () => {
@@ -4475,6 +4517,7 @@ window.addEventListener("keydown", (event) => {
 });
 
 function frame(now: number): void {
+  const frameWorkStartedAt = performance.now();
   const delta = Math.min(0.1, Math.max(0, (now - lastFrame) / 1000));
   const simulationDelta = delta * gameSpeed;
   lastFrame = now;
@@ -4489,6 +4532,7 @@ function frame(now: number): void {
   shell.dataset.audioBgm = audioDebug.targetBgmId ?? "none";
   shell.dataset.audioPlaying = String(audioDebug.bgmPlaying);
   const frameEvents = engine.consumeEvents();
+  const waveStartedThisFrame = frameEvents.some((event) => event.type === "wave");
   for (const event of frameEvents) processEvent(event);
   showSummonReveal(frameEvents.filter((event): event is Extract<GameEvent, { type: "summon" }> => event.type === "summon"));
   if (engine.state.phase !== previousPhase) {
@@ -4500,6 +4544,7 @@ function frame(now: number): void {
   // labels flash for only a few frames.
   drawWorld(delta);
   syncPanel();
+  if (waveStartedThisFrame) canvas.dataset.waveStartWorkMs = (performance.now() - frameWorkStartedAt).toFixed(2);
   window.requestAnimationFrame(frame);
 }
 
