@@ -1,4 +1,5 @@
 node_modules/
+.claude/
 .codex_tmp/
 dist/
 test-results/

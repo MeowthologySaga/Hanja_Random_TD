@@ -46,11 +46,11 @@ export interface BoardFormation {
 
 const FORMATION_SPACING = 44;
 const FORMATION_DEFINITIONS: readonly Omit<BoardFormation, "startCell">[] = [
-  { id: "north", label: "수진", center: { x: 440, y: 160 }, color: "#76d7ff", preferredWuxing: "水" },
-  { id: "west", label: "금진", center: { x: 240, y: 360 }, color: "#f0d58a", preferredWuxing: "金" },
-  { id: "center", label: "토진", center: { x: 440, y: 360 }, color: "#ffd068", preferredWuxing: "土" },
-  { id: "east", label: "목진", center: { x: 640, y: 360 }, color: "#9be77c", preferredWuxing: "木" },
-  { id: "south", label: "화진", center: { x: 440, y: 560 }, color: "#ff9477", preferredWuxing: "火" }
+  { id: "north", label: "수진", center: { x: 440, y: 160 }, color: "#60c9ff", preferredWuxing: "水" },
+  { id: "west", label: "금진", center: { x: 240, y: 360 }, color: "#d8e2ec", preferredWuxing: "金" },
+  { id: "center", label: "토진", center: { x: 440, y: 360 }, color: "#d9a25f", preferredWuxing: "土" },
+  { id: "east", label: "목진", center: { x: 640, y: 360 }, color: "#70d684", preferredWuxing: "木" },
+  { id: "south", label: "화진", center: { x: 440, y: 560 }, color: "#ff7666", preferredWuxing: "火" }
 ];
 
 export const BOARD_FORMATIONS: readonly BoardFormation[] = FORMATION_DEFINITIONS.map((formation, index) => ({

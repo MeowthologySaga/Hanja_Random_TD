@@ -44,8 +44,8 @@ export const CHEONJAMUN_JARYEONG_DEX_ENTRIES: readonly CheonjamunJaryeongDexEntr
   data.entries.map((entry) => Object.freeze({ ...entry })),
 );
 
-export const CHEONJAMUN_JARYEONG_DEX_BY_ID = new Map(
-  CHEONJAMUN_JARYEONG_DEX_ENTRIES.map((entry) => [entry.id, entry] as const),
+export const CHEONJAMUN_JARYEONG_DEX_BY_HANJA = new Map(
+  CHEONJAMUN_JARYEONG_DEX_ENTRIES.map((entry) => [entry.hanja, entry] as const),
 );
 
 export const CHEONJAMUN_JARYEONG_DEX_META = Object.freeze({

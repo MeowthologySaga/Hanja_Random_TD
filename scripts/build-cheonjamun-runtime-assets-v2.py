@@ -43,6 +43,7 @@ DEFAULT_CATALOG_PATH = (
 )
 DEFAULT_OUTPUT_DIR = ROOT / "public" / "assets" / "jaryeongs" / "cheonjamun-runtime-v1"
 DEFAULT_OUTPUT_DATA = ROOT / "src" / "data" / "cheonjamun-runtime-jaryeongs.json"
+DEFAULT_HUNEUM_OVERRIDES = ROOT / "src" / "data" / "korean-huneum-overrides.json"
 PRODUCTION_ROOT = ROOT / "asset-production" / "jaryeongs"
 VALID_ELEMENTS = {"木", "火", "土", "金", "水"}
 QUADRANTS = {
@@ -379,6 +380,7 @@ def main() -> None:
         quality_report = ROOT / quality_report
 
     catalog = read_json(catalog_path)
+    huneum_overrides = read_json(DEFAULT_HUNEUM_OVERRIDES)
     entries = catalog.get("entries")
     if not isinstance(entries, list) or len(entries) != 1000:
         raise RuntimeError(f"Expected 1,000 catalog entries, received {len(entries or [])}.")
@@ -401,6 +403,8 @@ def main() -> None:
             raise RuntimeError(f"Invalid element for {sprite_id}: {wuxing}")
         seen_ids.add(sprite_id)
         seen_hanja.add(hanja)
+        huneum = str(huneum_overrides.get(hanja, entry["huneum"]))
+        meaning = huneum.rsplit(" ", 1)[0] if hanja in huneum_overrides else str(entry["meaningKo"])
 
         normalized, quality = normalize_frame(entry)
         quality = {"id": sprite_id, "hanja": hanja, **quality}
@@ -417,8 +421,8 @@ def main() -> None:
             {
                 "id": sprite_id,
                 "hanja": hanja,
-                "huneum": str(entry["huneum"]),
-                "meaning": str(entry["meaningKo"]),
+                "huneum": huneum,
+                "meaning": meaning,
                 "wuxing": wuxing,
                 "sequence": int(entry["sequence"]),
                 "assetPath": asset_path,

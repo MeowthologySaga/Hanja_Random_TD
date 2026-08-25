@@ -20,9 +20,9 @@
       "PASS_NATIVE_OR_DOWNSCALED": 1000
     },
     "sourceLongEdge": {
-      "p10": 292.0,
-      "median": 480.0,
-      "p90": 542.0
+      "p10": 292,
+      "median": 480,
+      "p90": 542
     },
     "scale": {
       "p10": 0.428,
@@ -721,8 +721,8 @@
     {
       "id": "kr-91d1",
       "hanja": "金",
-      "huneum": "성 금",
-      "meaning": "성",
+      "huneum": "쇠 금",
+      "meaning": "쇠",
       "wuxing": "金",
       "sequence": 41,
       "assetPath": "assets/jaryeongs/cheonjamun-runtime-v1/kr-91d1.png",
@@ -1435,8 +1435,8 @@
     {
       "id": "kr-6587",
       "hanja": "文",
-      "huneum": "무늬 문",
-      "meaning": "무늬",
+      "huneum": "글월 문",
+      "meaning": "글월",
       "wuxing": "金",
       "sequence": 83,
       "assetPath": "assets/jaryeongs/cheonjamun-runtime-v1/kr-6587.png",
@@ -1758,8 +1758,8 @@
     {
       "id": "kr-767c",
       "hanja": "發",
-      "huneum": "쏠 발",
-      "meaning": "쏠",
+      "huneum": "필 발",
+      "meaning": "필",
       "wuxing": "火",
       "sequence": 102,
       "assetPath": "assets/jaryeongs/cheonjamun-runtime-v1/kr-767c.png",
@@ -2319,8 +2319,8 @@
     {
       "id": "kr-98df",
       "hanja": "食",
-      "huneum": "밥 먹일 사",
-      "meaning": "밥 먹일",
+      "huneum": "먹을 식",
+      "meaning": "먹을",
       "wuxing": "土",
       "sequence": 135,
       "assetPath": "assets/jaryeongs/cheonjamun-runtime-v1/kr-98df.png",
@@ -3441,8 +3441,8 @@
     {
       "id": "kr-666f",
       "hanja": "景",
-      "huneum": "별 경",
-      "meaning": "별",
+      "huneum": "볕 경",
+      "meaning": "볕",
       "wuxing": "火",
       "sequence": 201,
       "assetPath": "assets/jaryeongs/cheonjamun-runtime-v1/kr-666f.png",
@@ -9442,8 +9442,8 @@
     {
       "id": "kr-8ff4",
       "hanja": "迴",
-      "huneum": "回와 同字 회",
-      "meaning": "回와 同字",
+      "huneum": "돌 회",
+      "meaning": "돌",
       "wuxing": "水",
       "sequence": 554,
       "assetPath": "assets/jaryeongs/cheonjamun-runtime-v1/kr-8ff4.png",
@@ -9697,8 +9697,8 @@
     {
       "id": "kr-6649",
       "hanja": "晉",
-      "huneum": "進과 同字 진",
-      "meaning": "進과 同字",
+      "huneum": "나아갈 진",
+      "meaning": "나아갈",
       "wuxing": "火",
       "sequence": 569,
       "assetPath": "assets/jaryeongs/cheonjamun-runtime-v1/kr-6649.png",
@@ -10547,8 +10547,8 @@
     {
       "id": "kr-6046",
       "hanja": "恆",
-      "huneum": "恒의 本字 항",
-      "meaning": "恒의 本字",
+      "huneum": "항상 항",
+      "meaning": "항상",
       "wuxing": "火",
       "sequence": 619,
       "assetPath": "assets/jaryeongs/cheonjamun-runtime-v1/kr-6046.png",
@@ -10649,8 +10649,8 @@
     {
       "id": "kr-96c1",
       "hanja": "雁",
-      "huneum": "鴈과 同字 안",
-      "meaning": "鴈과 同字",
+      "huneum": "기러기 안",
+      "meaning": "기러기",
       "wuxing": "土",
       "sequence": 625,
       "assetPath": "assets/jaryeongs/cheonjamun-runtime-v1/kr-96c1.png",
@@ -11822,8 +11822,8 @@
     {
       "id": "kr-7683",
       "hanja": "皃",
-      "huneum": "貌와 同字 모",
-      "meaning": "貌와 同字",
+      "huneum": "모양 모",
+      "meaning": "모양",
       "wuxing": "木",
       "sequence": 694,
       "assetPath": "assets/jaryeongs/cheonjamun-runtime-v1/kr-7683.png",
@@ -12264,8 +12264,8 @@
     {
       "id": "kr-5373",
       "hanja": "即",
-      "huneum": "卽의 俗字 즉",
-      "meaning": "卽의 俗字",
+      "huneum": "곧 즉",
+      "meaning": "곧",
       "wuxing": "金",
       "sequence": 720,
       "assetPath": "assets/jaryeongs/cheonjamun-runtime-v1/kr-5373.png",
@@ -13913,8 +13913,8 @@
     {
       "id": "kr-89aa",
       "hanja": "親",
-      "huneum": "사랑할 친",
-      "meaning": "사랑할",
+      "huneum": "친할 친",
+      "meaning": "친할",
       "wuxing": "金",
       "sequence": 817,
       "assetPath": "assets/jaryeongs/cheonjamun-runtime-v1/kr-89aa.png",
@@ -14270,8 +14270,8 @@
     {
       "id": "kr-71ed",
       "hanja": "燭",
-      "huneum": "爥의 俗字 촉",
-      "meaning": "爥의 俗字",
+      "huneum": "촛불 촉",
+      "meaning": "촛불",
       "wuxing": "火",
       "sequence": 838,
       "assetPath": "assets/jaryeongs/cheonjamun-runtime-v1/kr-71ed.png",
@@ -15613,8 +15613,8 @@
     {
       "id": "kr-5d47",
       "hanja": "嵇",
-      "huneum": "산이름 혜",
-      "meaning": "산이름",
+      "huneum": "산 이름 혜",
+      "meaning": "산 이름",
       "wuxing": "土",
       "sequence": 917,
       "assetPath": "assets/jaryeongs/cheonjamun-runtime-v1/kr-5d47.png",
@@ -15885,8 +15885,8 @@
     {
       "id": "kr-4e26",
       "hanja": "並",
-      "huneum": "竝과 同字 병",
-      "meaning": "竝과 同字",
+      "huneum": "나란할 병",
+      "meaning": "나란할",
       "wuxing": "木",
       "sequence": 933,
       "assetPath": "assets/jaryeongs/cheonjamun-runtime-v1/kr-4e26.png",
@@ -16089,8 +16089,8 @@
     {
       "id": "kr-79ca",
       "hanja": "秊",
-      "huneum": "年의 本字 년",
-      "meaning": "年의 本字",
+      "huneum": "해 년",
+      "meaning": "해",
       "wuxing": "木",
       "sequence": 945,
       "assetPath": "assets/jaryeongs/cheonjamun-runtime-v1/kr-79ca.png",
@@ -16106,8 +16106,8 @@
     {
       "id": "kr-77e2",
       "hanja": "矢",
-      "huneum": "살 시",
-      "meaning": "살",
+      "huneum": "화살 시",
+      "meaning": "화살",
       "wuxing": "金",
       "sequence": 946,
       "assetPath": "assets/jaryeongs/cheonjamun-runtime-v1/kr-77e2.png",
@@ -17024,8 +17024,8 @@
     {
       "id": "kr-4e5f",
       "hanja": "也",
-      "huneum": "단정의 어조사 야",
-      "meaning": "단정의 어조사",
+      "huneum": "어조사 야",
+      "meaning": "어조사",
       "wuxing": "水",
       "sequence": 1000,
       "assetPath": "assets/jaryeongs/cheonjamun-runtime-v1/kr-4e5f.png",

@@ -27,7 +27,7 @@ describe("codex synthesis depth categories", () => {
     expect(synthesisTierFilterLabel(1)).toBe("★");
     expect(synthesisTierFilterLabel(UNCOMBINABLE_STAGE_ONE)).toBe("★");
     expect(synthesisTierAccessibleLabel(1)).toContain("1단");
-    expect(synthesisTierAccessibleLabel(UNCOMBINABLE_STAGE_ONE)).toContain("조합 불가");
+    expect(synthesisTierAccessibleLabel(UNCOMBINABLE_STAGE_ONE)).toContain("독립 자령");
   });
 
   it("separates direct tier-1 leaves that cannot be used in any recipe", () => {

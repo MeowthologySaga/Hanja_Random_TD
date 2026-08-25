@@ -4315,7 +4315,7 @@ body {
 
 .codex-mode-tabs {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 5px;
 }
 
@@ -4372,6 +4372,35 @@ body {
 .codex-synthesis-filters small {
   margin-left: 4px;
   color: #79dfff;
+}
+
+.codex-filter-label {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  padding: 0 2px;
+  color: #8092a8;
+  font-size: 9px;
+  font-weight: 950;
+  letter-spacing: 0.08em;
+}
+
+.codex-filter-divider {
+  flex: 0 0 1px;
+  height: 20px;
+  align-self: center;
+  margin: 0 3px;
+  background: rgba(160, 181, 207, 0.18);
+}
+
+.codex-synthesis-filters button[style*="--filter-element"] {
+  border-color: color-mix(in srgb, var(--filter-element) 36%, rgba(151, 177, 210, 0.18));
+}
+
+.codex-synthesis-filters button[style*="--filter-element"].is-active {
+  color: #fff8e5;
+  border-color: color-mix(in srgb, var(--filter-element) 75%, #f3d58f 25%);
+  background: color-mix(in srgb, var(--filter-element) 18%, rgba(5, 10, 17, 0.9));
 }
 
 .codex-tier-stars {
@@ -4450,9 +4479,9 @@ body {
   position: relative;
   display: grid;
   grid-template-columns: 106px minmax(0, 1fr);
-  grid-template-rows: 18px 104px;
+  grid-template-rows: 18px 126px;
   gap: 2px 10px;
-  min-height: 132px;
+  min-height: 154px;
   padding: 5px 8px 7px;
   overflow: hidden;
   color: #cad5e2;
@@ -4518,6 +4547,20 @@ body {
   background:
     radial-gradient(circle at 50% 43%, color-mix(in srgb, var(--codex) 13%, transparent), transparent 55%),
     rgba(3, 8, 14, 0.68);
+  filter: drop-shadow(0 7px 7px rgba(0, 0, 0, 0.42));
+}
+
+.codex-jaryeong-card-portrait {
+  display: block;
+  grid-column: 1;
+  grid-row: 2;
+  align-self: center;
+  width: 104px;
+  height: 104px;
+  border: 1px solid color-mix(in srgb, var(--codex) 33%, rgba(128, 151, 180, 0.18));
+  border-radius: 11px;
+  background-color: rgba(3, 8, 14, 0.68);
+  background-repeat: no-repeat;
   filter: drop-shadow(0 7px 7px rgba(0, 0, 0, 0.42));
 }
 
@@ -4587,6 +4630,60 @@ body {
   line-height: 1.3;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.codex-jaryeong-badges {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 5px;
+  margin: 0 0 5px;
+}
+
+.codex-list .codex-jaryeong-badges > .codex-tier-stars {
+  display: inline-block;
+  width: max-content;
+  margin: 0;
+  overflow: visible;
+}
+
+.codex-list .codex-jaryeong-badges > .codex-independent-badge {
+  display: inline-flex;
+  width: max-content;
+  max-width: max-content;
+  margin: 0;
+  overflow: visible;
+}
+
+.codex-jaryeong-badges > em {
+  min-width: 0;
+  margin-left: auto;
+  overflow: hidden;
+  color: #b8c7d9;
+  font-size: 9px;
+  font-style: normal;
+  font-weight: 900;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.codex-independent-badge {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  padding: 2px 6px;
+  color: #8af3ca;
+  font-size: 9px;
+  font-weight: 950;
+  line-height: 1.25;
+  border: 1px solid rgba(99, 230, 181, 0.48);
+  border-radius: 999px;
+  background: rgba(35, 122, 91, 0.22);
+}
+
+.codex-list .codex-jaryeong-recipe {
+  color: #93a6bd;
+  -webkit-line-clamp: 1;
 }
 
 .codex-list .codex-jaryeong-copy small {
@@ -4664,6 +4761,14 @@ body {
   filter: drop-shadow(0 12px 9px rgba(0, 0, 0, 0.52));
 }
 
+.codex-jaryeong-detail-sprite {
+  display: block;
+  width: 204px;
+  height: 204px;
+  background-repeat: no-repeat;
+  filter: drop-shadow(0 12px 9px rgba(0, 0, 0, 0.52));
+}
+
 .codex-jaryeong-portrait > span {
   position: absolute;
   left: 9px;
@@ -4738,6 +4843,70 @@ body {
   border: 1px solid color-mix(in srgb, var(--codex) 30%, rgba(142, 166, 195, 0.19));
   border-radius: 999px;
   background: color-mix(in srgb, var(--codex) 7%, rgba(6, 13, 21, 0.82));
+}
+
+.codex-progression-badges {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 12px;
+}
+
+.codex-progression-badges > span:not(.codex-tier-stars):not(.codex-independent-badge) {
+  padding: 3px 7px;
+  color: #c5d2e1;
+  font-size: 9px;
+  font-weight: 900;
+  border: 1px solid rgba(147, 171, 201, 0.2);
+  border-radius: 999px;
+  background: rgba(6, 13, 21, 0.72);
+}
+
+.codex-meaning-explanation {
+  margin: 0;
+  padding: 11px 12px;
+  border: 1px solid color-mix(in srgb, var(--codex) 34%, rgba(148, 171, 201, 0.15));
+  border-left: 4px solid var(--codex);
+  border-radius: 9px;
+  background: linear-gradient(100deg, color-mix(in srgb, var(--codex) 10%, rgba(7, 14, 23, 0.86)), rgba(5, 11, 18, 0.68));
+}
+
+.codex-meaning-explanation > span {
+  color: color-mix(in srgb, var(--codex) 68%, #edd28f 32%);
+  font-size: 9px;
+  font-weight: 950;
+  letter-spacing: 0.1em;
+}
+
+.codex-meaning-explanation h4 {
+  margin: 5px 0 4px;
+  color: #fff3cf;
+  font-size: 15px;
+}
+
+.codex-meaning-explanation h4 small {
+  margin-left: 5px;
+  color: #9fddeb;
+  font-size: 10px;
+}
+
+.codex-meaning-explanation p {
+  margin: 0;
+  color: #d4deea;
+  font-size: 11px;
+  line-height: 1.58;
+}
+
+.codex-meaning-explanation em {
+  display: block;
+  margin-top: 6px;
+  padding-top: 6px;
+  color: #aebed0;
+  font-size: 10px;
+  font-style: normal;
+  line-height: 1.45;
+  border-top: 1px solid rgba(153, 176, 204, 0.14);
 }
 
 .codex-jaryeong-entry,
@@ -4826,6 +4995,21 @@ body {
 
 .codex-jaryeong-observation article {
   min-width: 0;
+}
+
+.codex-jaryeong-detail .strategy-note,
+.codex-jaryeong-detail .recipe-guide {
+  margin: 0;
+}
+
+.codex-jaryeong-detail .recipe-guide-main > span.is-independent {
+  border-color: rgba(99, 230, 181, 0.42);
+  background: rgba(35, 122, 91, 0.18);
+}
+
+.codex-recipe-card.is-selected {
+  border-color: color-mix(in srgb, var(--codex) 68%, #f3d58f 32%);
+  box-shadow: inset 3px 0 0 var(--codex);
 }
 
 /* Avoid the browser's bright native scrollbars inside the game window. */

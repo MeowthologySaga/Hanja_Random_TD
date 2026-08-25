@@ -46,11 +46,12 @@ import {
   type JaryeongVisual
 } from "./core/jaryeongs";
 import {
-  CHEONJAMUN_JARYEONG_DEX_BY_ID,
+  CHEONJAMUN_JARYEONG_DEX_BY_HANJA,
   CHEONJAMUN_JARYEONG_DEX_ENTRIES,
   CHEONJAMUN_JARYEONG_DEX_META,
   type CheonjamunJaryeongDexEntry
 } from "./core/cheonjamun-jaryeong-dex";
+import { koreanMeaningExplanation } from "./core/korean-meaning-explanations";
 import { LEARNING_DATA_META, learningInfo } from "./core/learning";
 import { radicalGlyph, radicalLearningLabel } from "./core/radicals";
 import {
@@ -103,12 +104,6 @@ import { elementProjectileImage, elementZoneImage, preloadCombatFxSprites } from
 import { loadDisplayMode, saveDisplayMode, type DisplayMode } from "./ui/display-mode";
 import { jaryeongSpriteImage } from "./ui/jaryeong-sprites";
 import { loadAutoPlaceSummons, saveAutoPlaceSummons } from "./ui/summon-placement";
-import {
-  inventoryEntriesForRegion,
-  loadJaryeongInventory,
-  recordJaryeongAcquisition,
-  saveJaryeongInventory
-} from "./ui/jaryeong-inventory";
 import {
   UNCOMBINABLE_STAGE_ONE,
   UNCOMBINABLE_STAGE_ONE_COLOR,
@@ -371,7 +366,7 @@ app.innerHTML = `
         <button id="growth-tab" type="button" data-panel-tab="growth" role="tab" aria-selected="false">강화</button>
         <button id="goal-tab" type="button" data-panel-tab="goal" role="tab" aria-selected="false">목표 <small id="goal-tab-progress">0%</small></button>
         <button id="idiom-tab" type="button" data-panel-tab="idiom" role="tab" aria-selected="false">성어 <small id="idiom-tab-count">0/5</small></button>
-        <button id="codex-button" type="button" aria-label="한자 도감과 보유 자령 열기"><b>도감</b><small><em id="discover-count">0</em></small></button>
+        <button id="codex-button" type="button" aria-label="통합 자령 도감 열기"><b>도감</b><small><em id="discover-count">0</em></small></button>
         <button type="button" data-panel-tab="record" role="tab" aria-selected="false">기록</button>
       </nav>
 
@@ -432,12 +427,12 @@ app.innerHTML = `
           <li><b>첫 오행진</b><span>열린 진 없이 상점에서 시작합니다. 첫 소환 자령과 같은 오행진이 무료로 열리고, 나머지는 원하는 순서로 18·32·52·78엽전에 개방합니다.</span></li>
           <li><b>자동배치</b><span>런 인벤토리 자령을 현재 개방된 오행진에 투입하고, 완성 가능한 사자성어와 오행 공명을 함께 정리합니다.</span></li>
           <li><b>은행 이자</b><span>웨이브 종료 시 보유 엽전 20개당 1엽전을 지급하며, 한 번에 최대 20엽전까지만 받을 수 있습니다.</span></li>
-          <li><b>훈·독</b><span>기본 자령 모드는 머리 위 한자·훈음을 표시합니다. 설정의 공부 모드는 전장에 큰 한자와 짧은 읽기를 표시하며, 선택 카드와 도감에서는 자세한 훈음·음독·훈독·병음과 뜻을 확인합니다.</span></li>
+          <li><b>훈·독</b><span>기본 자령 모드는 머리 위 한자·훈음을 표시합니다. 한자 강조를 끄면 머리 위 표찰은 숨기고 별만 남깁니다. 설정의 공부 모드는 전장에 큰 한자와 짧은 읽기를 표시하며, 선택 카드와 도감에서는 자세한 훈음·음독·훈독·병음과 뜻을 확인합니다.</span></li>
           <li><b>전투</b><span>웨이브 약점 오행은 피해가 30% 증가합니다. 水→木→火→土→金→水 상생을 함께 배치하면 추가 피해를 줍니다.</span></li>
           <li><b>강화 탭</b><span>인벤토리 자령을 보호 규칙 아래 일괄 분해하고, 공용·오행 5능력치×99단계와 오행별 고유 특성 3종×10단계를 한 화면에서 투자합니다.</span></li>
           <li><b>능력 조합</b><span>모든 한자는 오행 효과·전투 역할·조합망 패시브를 가집니다. 합성 한자는 재료의 오행도 계승해 주기 추가타를 얻습니다.</span></li>
           <li><b>잠금</b><span>선택한 자령을 잠그면 공격·이동은 유지되지만 합성 재료와 판매 대상에서는 제외됩니다.</span></li>
-          <li><b>보유 자령</b><span>소환·합성으로 획득한 자령은 지역별 횟수와 함께 브라우저에 자동 저장됩니다. 도감의 보유 자령 탭에서 확인합니다.</span></li>
+          <li><b>자령 도감</b><span>전체 한자와 천자문 자령을 한 화면에서 봅니다. 별·독립 여부·조합표·쉬운 훈 풀이와 자령 초상화를 함께 확인합니다.</span></li>
           <li><b>런 인벤토리</b><span>동일한 한자는 한 스택으로 묶입니다. 인벤토리 자령을 고른 뒤 빈 칸을 누르면 배치하고, 찬 칸을 누르면 기존 자령을 인벤토리로 보내며 즉시 교체합니다.</span></li>
           <li><b>농축 공방</b><span>같은 한자 중복 1기 또는 같은 오행 문기 4·6·8을 직접 고릅니다. 최초 연속·심화 분기는 영구 고정되며 실행 전 전후 전투 수치를 비교합니다.</span></li>
           <li><b>지도 배율</b><span>기존 260% 크기를 새 100% 기준으로 사용합니다. 휠로 약 28%~200% 확대·축소하고, 빈 칸·길에서 좌클릭 드래그하거나 휠 버튼을 누른 채 드래그하면 지도를 이동합니다. 왼쪽 아래 배율 버튼은 중앙 정렬된 100%로 돌아갑니다.</span></li>
@@ -515,16 +510,14 @@ app.innerHTML = `
       <div class="casual-fusion-confirm-actions"><button id="casual-fusion-cancel" type="button">취소</button><button id="casual-fusion-execute" type="button">소모 확인 · 조합</button></div>
     </dialog>
 
-    <dialog id="codex-dialog" class="codex-dialog">
+    <dialog id="codex-dialog" class="codex-dialog is-jaryeong-dex">
       <div class="dialog-heading codex-heading">
-        <div><p id="codex-kicker" class="eyebrow">REGIONAL CHARACTER CODEX</p><h2><span id="codex-region">한국</span><span id="codex-title-label"> 한자 도감</span></h2></div>
+        <div><p id="codex-kicker" class="eyebrow">JARYEONG LEARNING ARCHIVE</p><h2><span id="codex-region">한국</span><span id="codex-title-label"> 통합 자령 도감</span></h2></div>
         <button id="codex-close" type="button" aria-label="도감 닫기">×</button>
       </div>
       <div class="codex-toolbar">
         <div class="codex-mode-tabs" role="tablist" aria-label="도감 분류">
-          <button type="button" class="is-active" data-codex-mode="hanzi" role="tab" aria-selected="true">전체 한자</button>
-          <button type="button" data-codex-mode="jaryeongs" role="tab" aria-selected="false">천자문 자령 <small>${CHEONJAMUN_JARYEONG_DEX_META.total}</small></button>
-          <button type="button" data-codex-mode="inventory" role="tab" aria-selected="false">보유 자령 <small id="inventory-count">0</small></button>
+          <button type="button" class="is-active" data-codex-mode="hanzi" role="tab" aria-selected="true">자령 도감 <small>${CHEONJAMUN_JARYEONG_DEX_META.total}+</small></button>
           <button type="button" data-codex-mode="recipes" role="tab" aria-selected="false">조합표</button>
           <button type="button" data-codex-mode="idioms" role="tab" aria-selected="false">사자성어</button>
         </div>
@@ -538,7 +531,7 @@ app.innerHTML = `
         <div id="codex-list" class="codex-list"></div>
         <aside id="codex-detail" class="codex-detail"></aside>
       </div>
-      <p id="codex-note" class="codex-note">지역 독음은 Unicode Unihan ${LEARNING_DATA_META.version}, 한국어 훈음은 libhangul 사전 기반입니다. 한국어 훈이 없는 글자는 뜻(영)으로 구분해 표시합니다.</p>
+      <p id="codex-note" class="codex-note">훈음의 낯선 옛말은 오늘말 뜻풀이와 용례로 풀어 표시합니다. 별 등급, 독립 자령, 조합 경로는 서로 다른 표식으로 구분합니다.</p>
     </dialog>
   </main>
 `;
@@ -581,8 +574,6 @@ let engine = new GameEngine(initialSeed, selectedRegion, selectedGameMode);
 let mapSynthesisDepths = buildSynthesisDepths(engine.catalog.definitions.values());
 let mapUncombinableStageOne = buildUncombinableStageOneChars(engine.catalog.definitions.values());
 engine.state.autoPlaceSummons = initialAutoPlaceSummons;
-let jaryeongInventory = loadJaryeongInventory();
-let inventoryRevision = 0;
 let previousPhase: RunPhase = "title";
 let lastFrame = performance.now();
 let toastTimer = 0;
@@ -613,12 +604,12 @@ const lastAbilityFxByTower = new Map<number, number>();
 let lastGlobalAbilityFxAt = -10;
 type PanelTab = "shop" | "unit" | "inventory" | "evolution" | "concentration" | "growth" | "goal" | "idiom" | "record";
 type GoalPanelMode = "hanzi" | "idiom";
-type CodexMode = "hanzi" | "jaryeongs" | "inventory" | "recipes" | "idioms";
+type CodexMode = "hanzi" | "recipes" | "idioms";
 type JaryeongDexFilter = "all" | Wuxing;
 let codexMode: CodexMode = "hanzi";
 let codexSynthesisDepth: SynthesisTierFilter = "all";
 let jaryeongDexFilter: JaryeongDexFilter = "all";
-let selectedJaryeongDexId = CHEONJAMUN_JARYEONG_DEX_ENTRIES[0]?.id ?? "";
+let selectedCodexChar = CHEONJAMUN_JARYEONG_DEX_ENTRIES[0]?.hanja ?? "";
 let goalPanelMode: GoalPanelMode = "hanzi";
 let goalSearchQuery = "";
 let activePanelTab: PanelTab = "shop";
@@ -751,9 +742,6 @@ let hoveredTowerId: number | null = null;
 let hanjaEmphasis = true;
 const MIN_MAP_ZOOM = 0.72;
 const BASE_MAP_ZOOM = 2.6;
-// v0.28 rendered the legacy horizontal label at map zoom 1.15. Preserve
-// that on-screen size at the current 100% camera while retaining zoom scaling.
-const LEGACY_BASE_MAP_ZOOM = 1.15;
 const DEFAULT_MAP_ZOOM = BASE_MAP_ZOOM;
 const MAX_MAP_ZOOM = BASE_MAP_ZOOM * 2;
 const DEFAULT_MAP_FOCUS: Point = { x: WORLD_WIDTH / 2, y: WORLD_HEIGHT / 2 };
@@ -773,12 +761,14 @@ canvas.style.backgroundPosition = "center";
 canvas.style.backgroundRepeat = "no-repeat";
 canvas.style.backgroundSize = "cover";
 canvas.dataset.hitFeedback = "ink-local";
+canvas.dataset.formationTileColorMode = "element";
+canvas.dataset.formationTilePalette = BOARD_FORMATIONS.map((formation) => `${formation.preferredWuxing}:${formation.color}`).join("|");
 const INK_ELEMENT_COLORS: Record<Wuxing, string> = {
-  "木": "#315d37",
-  "火": "#9b3829",
-  "土": "#6b5131",
-  "金": "#766126",
-  "水": "#285d73"
+  "木": "#245b35",
+  "火": "#9c3127",
+  "土": "#6f451f",
+  "金": "#4e5964",
+  "水": "#1f5e80"
 };
 preloadCombatFxSprites();
 
@@ -1303,15 +1293,6 @@ function registerKillCombo(): void {
   }, 1750);
 }
 
-function rememberJaryeong(char: string, kind: "summon" | "evolution"): void {
-  jaryeongInventory = recordJaryeongAcquisition(jaryeongInventory, engine.state.region, char, kind);
-  saveJaryeongInventory(jaryeongInventory);
-  inventoryRevision += 1;
-  if (codexDialog.open && codexMode === "inventory") {
-    renderCodex(must<HTMLInputElement>("#codex-search").value);
-  }
-}
-
 function processEvent(event: GameEvent): void {
   sound.handle(event);
   switch (event.type) {
@@ -1333,7 +1314,6 @@ function processEvent(event: GameEvent): void {
       addCombatFeed("財", "은행 이자", `보유 ${event.gold - event.amount}엽전 · 10엽전당 1엽전`, "#f3d47a");
       break;
     case "summon":
-      rememberJaryeong(event.tower.char, "summon");
       if (!event.stored) pushPooled(rings, ringPool, takeRing(event.at, ELEMENT_STYLES[event.tower.wuxing].color, 0.52), 32);
       if (event.helpful && !event.stored) {
         const label = event.helpfulReason === "both" ? "목표·성어 +1" : event.helpfulReason === "idiom" ? "성어 +1" : "목표 +1";
@@ -1361,7 +1341,6 @@ function processEvent(event: GameEvent): void {
       break;
     }
     case "evolve":
-      rememberJaryeong(event.tower.char, "evolution");
       pushPooled(rings, ringPool, takeRing(event.at, STAGE_COLORS[event.tower.stage], 0.9), 32);
       pushPooled(floaters, floaterPool, takeFloater(event.at, event.parents.join("+") + "→" + event.tower.char, STAGE_COLORS[event.tower.stage], 1.05, true), 48);
       {
@@ -1495,7 +1474,7 @@ function renderFormationUnlocks(): void {
     const status = unlocked
       ? index === state.startingFormationIndex ? "시작 진" : "개방"
       : state.startingFormationIndex === null ? "첫 소환 대기" : `${cost}엽전`;
-    return `<button type="button" data-formation-index="${index}" class="${unlocked ? "is-unlocked" : ""}" style="--formation:${ELEMENT_STYLES[formation.preferredWuxing].color}" ${disabled ? "disabled" : ""}><b>${formation.preferredWuxing}</b><span>${formation.label}</span><small>${status}</small></button>`;
+    return `<button type="button" data-formation-index="${index}" class="${unlocked ? "is-unlocked" : ""}" style="--formation:${formation.color}" ${disabled ? "disabled" : ""}><b>${formation.preferredWuxing}</b><span>${formation.label}</span><small>${status}</small></button>`;
   }).join("");
 }
 
@@ -2330,6 +2309,8 @@ const ROLE_STRATEGY: Record<HanziDefinition["combat"]["role"], string> = {
 function definitionMatches(definition: HanziDefinition, normalized: string): boolean {
   if (!normalized) return true;
   const learning = learningInfo(engine.state.region, definition.char);
+  const entry = dexEntryForDefinition(definition);
+  const explanation = koreanMeaningExplanation(definition.char, learning.short, learning.meaning);
   const abilities = definition.combat.abilities;
   const searchable = [
     definition.char,
@@ -2342,7 +2323,15 @@ function definitionMatches(definition: HanziDefinition, normalized: string): boo
     abilities.element.name,
     abilities.role.name,
     abilities.graph.name,
-    abilities.lineage?.name ?? ""
+    abilities.lineage?.name ?? "",
+    explanation.plainMeaning,
+    explanation.short,
+    explanation.body,
+    explanation.example ?? "",
+    entry?.category ?? "",
+    entry?.dexText ?? "",
+    entry?.habitat ?? "",
+    entry?.traitName ?? ""
   ].join(" ").toLowerCase();
   return searchable.includes(normalized.toLowerCase());
 }
@@ -2353,120 +2342,60 @@ function spriteStyle(definition: HanziDefinition): string {
 }
 
 function synthesisTierBadge(tier: Exclude<SynthesisTierFilter, "all">): string {
-  const uncombinable = tier === UNCOMBINABLE_STAGE_ONE;
-  const accessible = synthesisTierAccessibleLabel(tier, uncombinable);
-  return `<span class="codex-tier-stars${uncombinable ? " is-uncombinable" : ""}" aria-label="${accessible}" title="${accessible}">${synthesisTierFilterLabel(tier)}</span>`;
+  const starTier = tier === UNCOMBINABLE_STAGE_ONE ? 1 : tier;
+  const accessible = synthesisTierAccessibleLabel(starTier);
+  return `<span class="codex-tier-stars" aria-label="${accessible}" title="${accessible}">${synthesisTierFilterLabel(starTier)}</span>`;
+}
+
+function independentBadge(independent: boolean): string {
+  return independent ? '<span class="codex-independent-badge" aria-label="상위 조합에 쓰이지 않는 독립 자령" title="상위 조합에 쓰이지 않는 독립 자령">독립</span>' : "";
 }
 
 function setCodexMode(mode: CodexMode): void {
   codexMode = mode;
-  const jaryeongMode = mode === "jaryeongs";
-  codexDialog.classList.toggle("is-jaryeong-dex", jaryeongMode);
+  codexDialog.classList.add("is-jaryeong-dex");
   document.querySelectorAll<HTMLButtonElement>("[data-codex-mode]").forEach((button) => {
     const selected = button.dataset.codexMode === mode;
     button.classList.toggle("is-active", selected);
     button.setAttribute("aria-selected", String(selected));
   });
   const search = must<HTMLInputElement>("#codex-search");
-  must<HTMLElement>("#codex-kicker").textContent = jaryeongMode ? "CHEONJAMUN JARYEONG ARCHIVE" : "REGIONAL CHARACTER CODEX";
-  must<HTMLElement>("#codex-title-label").textContent = jaryeongMode ? " 자령 도감" : " 한자 도감";
-  search.placeholder = jaryeongMode ? "한자·훈음·오행·서식 검색" : mode === "inventory" ? "보유 자령 검색" : mode === "recipes" ? "결과·재료·능력 검색" : mode === "idioms" ? "사자성어·효과 검색" : "한자·훈음·능력 검색";
-  must<HTMLElement>("#codex-note").textContent = jaryeongMode
-    ? "한자의 뜻이 자령의 성질과 모습으로 발현됩니다. 카드를 선택해 서식과 관찰 기록을 확인하세요."
-    : `지역 독음은 Unicode Unihan ${LEARNING_DATA_META.version}, 한국어 훈음은 libhangul 사전 기반입니다. 한국어 훈이 없는 글자는 뜻(영)으로 구분해 표시합니다.`;
+  must<HTMLElement>("#codex-kicker").textContent = mode === "hanzi" ? "JARYEONG LEARNING ARCHIVE" : mode === "recipes" ? "SYNTHESIS ROUTE ARCHIVE" : "FOUR-CHARACTER SEAL ARCHIVE";
+  must<HTMLElement>("#codex-title-label").textContent = mode === "hanzi" ? " 통합 자령 도감" : mode === "recipes" ? " 조합 도감" : " 사자성어 도감";
+  search.placeholder = mode === "recipes" ? "결과·재료·훈음·능력 검색" : mode === "idioms" ? "사자성어·효과 검색" : "한자·훈음·쉬운 뜻·오행 검색";
+  must<HTMLElement>("#codex-note").textContent = mode === "hanzi"
+    ? `한국 1,001자는 국립국어원 한국어기초사전과 글자별 교정표를 바탕으로 모두 쉬운 오늘말 풀이를 제공합니다. 훈음·독음 데이터 ${LEARNING_DATA_META.version}.`
+    : mode === "recipes"
+      ? "별은 합성 깊이를, 독립 표식은 상위 조합 재료로 쓰이지 않는 자령을 뜻합니다. 별과 독립 여부는 별개의 정보입니다."
+      : "네 글자를 순서대로 이웃 배치하면 해당 사자성어의 봉인 효과가 발동합니다.";
   renderCodex(search.value);
-}
-
-function jaryeongDexEntryMatches(entry: CheonjamunJaryeongDexEntry, query: string): boolean {
-  const normalized = query.trim().toLowerCase();
-  if (!normalized) return true;
-  return [
-    entry.hanja,
-    entry.huneum,
-    entry.meaning,
-    entry.wuxing,
-    entry.elementName,
-    entry.category,
-    entry.dexText,
-    entry.habitat,
-    entry.temperament,
-    entry.traitName,
-    entry.traitDescription
-  ].join(" ").toLowerCase().includes(normalized);
 }
 
 function jaryeongDexImageUrl(entry: CheonjamunJaryeongDexEntry): string {
   return `${import.meta.env.BASE_URL}${entry.imagePath}`;
 }
 
-function renderJaryeongDexFilters(): void {
-  const filters = must<HTMLElement>("#codex-synthesis-filters");
-  filters.hidden = false;
-  filters.setAttribute("aria-label", "천자문 자령 오행 분류");
-  const options: Array<{ value: JaryeongDexFilter; label: string; count: number }> = [
-    { value: "all", label: "전체", count: CHEONJAMUN_JARYEONG_DEX_META.total },
-    ...WUXING_ORDER.map((wuxing) => ({ value: wuxing, label: `${wuxing} · ${ELEMENT_STYLES[wuxing].name}`, count: CHEONJAMUN_JARYEONG_DEX_META.elementCounts[wuxing] }))
-  ];
-  filters.innerHTML = options.map((option) => `<button type="button" data-jaryeong-filter="${option.value}" class="${jaryeongDexFilter === option.value ? "is-active" : ""}" aria-pressed="${String(jaryeongDexFilter === option.value)}">${option.label} <small>${option.count}</small></button>`).join("");
+function dexEntryForDefinition(definition: HanziDefinition): CheonjamunJaryeongDexEntry | undefined {
+  return engine.state.region === "KR" ? CHEONJAMUN_JARYEONG_DEX_BY_HANJA.get(definition.char) : undefined;
 }
 
-function renderJaryeongDex(query = ""): void {
-  renderJaryeongDexFilters();
-  let entries = [...CHEONJAMUN_JARYEONG_DEX_ENTRIES];
-  if (jaryeongDexFilter !== "all") entries = entries.filter((entry) => entry.wuxing === jaryeongDexFilter);
-  entries = entries.filter((entry) => jaryeongDexEntryMatches(entry, query)).sort((left, right) => left.number - right.number);
-  const selected = entries.find((entry) => entry.id === selectedJaryeongDexId) ?? entries[0];
-  selectedJaryeongDexId = selected?.id ?? "";
-
-  must<HTMLElement>("#codex-region").textContent = "한국 · 천자문";
-  must<HTMLElement>("#codex-summary").textContent = `기록 ${entries.length.toLocaleString("ko-KR")}/${CHEONJAMUN_JARYEONG_DEX_META.total.toLocaleString("ko-KR")} · 오행 5계열`;
-  const list = must<HTMLElement>("#codex-list");
-  list.className = "codex-list codex-list--jaryeong";
-  list.innerHTML = entries.map((entry) => {
-    const isSelected = entry.id === selectedJaryeongDexId;
-    return `<button type="button" data-jaryeong-id="${entry.id}" class="codex-jaryeong-card ${isSelected ? "is-selected" : ""}" style="--codex:${ELEMENT_STYLES[entry.wuxing].color}" aria-current="${String(isSelected)}" aria-label="${escapeHtml(`천자문 도감 ${entry.number}번 ${entry.hanja} ${entry.huneum} ${entry.wuxing}행`)}">
-      <span class="codex-jaryeong-number">No.${String(entry.number).padStart(3, "0")}</span>
-      <img src="${jaryeongDexImageUrl(entry)}" alt="${escapeHtml(`${entry.hanja} ${entry.huneum} 자령`)}" width="104" height="104" loading="lazy">
-      <span class="codex-jaryeong-copy"><span class="codex-jaryeong-identity"><b>${entry.hanja}</b><strong>${escapeHtml(entry.huneum)}</strong><i>${entry.wuxing}</i></span><span class="codex-jaryeong-category">${escapeHtml(entry.category)}</span><small>${escapeHtml(entry.traitName)} · ${escapeHtml(entry.habitat)}</small></span>
-    </button>`;
-  }).join("") || '<p class="codex-empty">일치하는 자령 기록이 없습니다.</p>';
-  renderJaryeongDexDetail(selected);
+function codexCardPortrait(definition: HanziDefinition, entry: CheonjamunJaryeongDexEntry | undefined): string {
+  const accessible = escapeHtml(`${definition.char} ${learningInfo(engine.state.region, definition.char).short} 자령 초상화`);
+  return entry
+    ? `<img src="${jaryeongDexImageUrl(entry)}" alt="${accessible}" width="104" height="104" loading="lazy">`
+    : `<i class="codex-jaryeong-card-portrait" style="${spriteStyle(definition)}" role="img" aria-label="${accessible}"></i>`;
 }
 
-function renderJaryeongDexDetail(entry: CheonjamunJaryeongDexEntry | undefined): void {
-  const detail = must<HTMLElement>("#codex-detail");
-  if (!entry) {
-    detail.innerHTML = '<p class="codex-empty">자령 카드를 선택하세요.</p>';
-    return;
-  }
-  const color = ELEMENT_STYLES[entry.wuxing].color;
-  detail.innerHTML = `
-    <div class="codex-jaryeong-detail" style="--codex:${color}">
-      <div class="codex-jaryeong-detail-hero">
-        <div class="codex-jaryeong-portrait">
-          <img src="${jaryeongDexImageUrl(entry)}" alt="${escapeHtml(`${entry.hanja} ${entry.huneum} 자령`)}" width="214" height="214">
-          <span>${entry.wuxing}</span>
-        </div>
-        <div class="codex-jaryeong-identity-panel">
-          <p class="eyebrow">CHEONJAMUN No.${String(entry.number).padStart(3, "0")}</p>
-          <div class="codex-jaryeong-name"><strong>${entry.hanja}</strong><div><h3>${escapeHtml(entry.huneum)}</h3><p>${escapeHtml(entry.category)}</p></div></div>
-          <div class="codex-jaryeong-tags"><span>${entry.wuxing} · ${escapeHtml(entry.elementName)}</span><span>뜻 · ${escapeHtml(entry.meaning)}</span></div>
-        </div>
-      </div>
-      <article class="codex-jaryeong-entry"><span>도감 기록</span><p>${escapeHtml(entry.dexText)}</p></article>
-      <div class="codex-jaryeong-facts">
-        <div><span>분류</span><b>${escapeHtml(entry.category)}</b></div>
-        <div><span>오행</span><b>${entry.wuxing} · ${escapeHtml(entry.elementName)}</b></div>
-        <div><span>주요 서식</span><b>${escapeHtml(entry.habitat)}</b></div>
-        <div><span>기질</span><b>${escapeHtml(entry.temperament)}</b></div>
-      </div>
-      <article class="codex-jaryeong-trait"><span>기운 특성</span><h4>${escapeHtml(entry.traitName)}</h4><p>${escapeHtml(entry.traitDescription)}</p></article>
-      <div class="codex-jaryeong-observation">
-        <article><span>관찰 메모</span><p>${escapeHtml(entry.observation)}</p></article>
-        <article><span>외형 표식</span><p>${escapeHtml(entry.appearance)}</p></article>
-      </div>
-    </div>
-  `;
+function codexDetailPortrait(definition: HanziDefinition, entry: CheonjamunJaryeongDexEntry | undefined): string {
+  const accessible = escapeHtml(`${definition.char} ${learningInfo(engine.state.region, definition.char).short} 자령 초상화`);
+  return entry
+    ? `<img src="${jaryeongDexImageUrl(entry)}" alt="${accessible}" width="214" height="214">`
+    : `<i class="codex-jaryeong-detail-sprite" style="${spriteStyle(definition)}" role="img" aria-label="${accessible}"></i>`;
+}
+
+function directAcquisitionLabel(definition: HanziDefinition, independent: boolean): string {
+  if (definition.acquisition === "craft") return `${definition.parents.join(" + ")} → ${definition.char}`;
+  return independent ? "직접 소환 · 독립" : "직접 소환 · 상위 조합 재료";
 }
 
 function renderCodexSynthesisFilters(
@@ -2475,52 +2404,59 @@ function renderCodexSynthesisFilters(
   uncombinableStageOne: ReadonlySet<string>
 ): void {
   const filters = must<HTMLElement>("#codex-synthesis-filters");
-  filters.setAttribute("aria-label", "합성 단계 분류");
   if (codexMode === "idioms") {
     filters.hidden = true;
     return;
   }
   filters.hidden = false;
+  filters.setAttribute("aria-label", codexMode === "hanzi" ? "오행과 별·독립 분류" : "합성 별 분류");
+
+  const elementCounts = new Map<Wuxing, number>(WUXING_ORDER.map((wuxing) => [wuxing, 0]));
+  for (const definition of definitions) elementCounts.set(definition.wuxing, (elementCounts.get(definition.wuxing) ?? 0) + 1);
+  const elementControls = codexMode === "hanzi" ? [
+    '<span class="codex-filter-label">오행</span>',
+    `<button type="button" data-jaryeong-filter="all" class="${jaryeongDexFilter === "all" ? "is-active" : ""}" aria-pressed="${String(jaryeongDexFilter === "all")}">전체 <small>${definitions.length}</small></button>`,
+    ...WUXING_ORDER.map((wuxing) => `<button type="button" data-jaryeong-filter="${wuxing}" class="${jaryeongDexFilter === wuxing ? "is-active" : ""}" aria-pressed="${String(jaryeongDexFilter === wuxing)}" style="--filter-element:${ELEMENT_STYLES[wuxing].color}">${wuxing}<small>${elementCounts.get(wuxing) ?? 0}</small></button>`),
+    '<i class="codex-filter-divider" aria-hidden="true"></i>',
+    '<span class="codex-filter-label">등급</span>'
+  ] : [];
+
   if (engine.state.mode === "casual" && codexMode !== "recipes") {
-    filters.setAttribute("aria-label", "획수 기본 별 분류");
     const counts = new Map<CasualStar, number>();
     for (const definition of definitions) {
       const star = casualNaturalStar(definition.char) ?? 1;
       counts.set(star, (counts.get(star) ?? 0) + 1);
     }
     if (codexSynthesisDepth !== "all" && (typeof codexSynthesisDepth !== "number" || !counts.has(codexSynthesisDepth as CasualStar))) codexSynthesisDepth = "all";
-    filters.innerHTML = [
-      `<button type="button" data-synthesis-depth="all" class="${codexSynthesisDepth === "all" ? "is-active" : ""}" aria-pressed="${String(codexSynthesisDepth === "all")}">전체 <small>${definitions.length}</small></button>`,
+    filters.innerHTML = [...elementControls,
+      `<button type="button" data-synthesis-depth="all" class="${codexSynthesisDepth === "all" ? "is-active" : ""}" aria-pressed="${String(codexSynthesisDepth === "all")}">모든 별 <small>${definitions.length}</small></button>`,
       ...([...counts.entries()].sort(([left], [right]) => left - right).map(([star, count]) => `<button type="button" data-synthesis-depth="${star}" class="${codexSynthesisDepth === star ? "is-active" : ""}" aria-pressed="${String(codexSynthesisDepth === star)}" style="--codex-star:${CASUAL_STAR_COLORS[star]}">${star}★ <small>${count}</small></button>`))
     ].join("");
     return;
   }
-  const counts = new Map<number | typeof UNCOMBINABLE_STAGE_ONE, number>();
+
+  const counts = new Map<number, number>();
   for (const definition of definitions) {
-    const depth = depths.get(definition.char) ?? 0;
-    const key = synthesisTierKey(definition, depth, uncombinableStageOne);
-    counts.set(key, (counts.get(key) ?? 0) + 1);
+    const depth = depths.get(definition.char) ?? 1;
+    counts.set(depth, (counts.get(depth) ?? 0) + 1);
   }
-  if (codexSynthesisDepth !== "all" && !counts.has(codexSynthesisDepth)) codexSynthesisDepth = "all";
-  const sortValue = (key: number | typeof UNCOMBINABLE_STAGE_ONE): number => key === UNCOMBINABLE_STAGE_ONE ? 1.5 : key;
-  const options = [...counts.entries()].sort(([left], [right]) => sortValue(left) - sortValue(right));
-  filters.innerHTML = [
-    `<button type="button" data-synthesis-depth="all" class="${codexSynthesisDepth === "all" ? "is-active" : ""}" aria-pressed="${String(codexSynthesisDepth === "all")}">전체 <small>${definitions.length}</small></button>`,
-    ...options.map(([depth, count]) => `<button type="button" data-synthesis-depth="${depth}" class="${codexSynthesisDepth === depth ? "is-active" : ""}" aria-pressed="${String(codexSynthesisDepth === depth)}">${synthesisTierBadge(depth)} <small>${count}</small></button>`)
+  const independentCount = definitions.filter((definition) => uncombinableStageOne.has(definition.char)).length;
+  const validSelection = codexSynthesisDepth === "all"
+    || codexSynthesisDepth === UNCOMBINABLE_STAGE_ONE && independentCount > 0
+    || typeof codexSynthesisDepth === "number" && counts.has(codexSynthesisDepth);
+  if (!validSelection) codexSynthesisDepth = "all";
+  const options = [...counts.entries()].sort(([left], [right]) => left - right);
+  filters.innerHTML = [...elementControls,
+    `<button type="button" data-synthesis-depth="all" class="${codexSynthesisDepth === "all" ? "is-active" : ""}" aria-pressed="${String(codexSynthesisDepth === "all")}">모든 별 <small>${definitions.length}</small></button>`,
+    ...options.map(([depth, count]) => `<button type="button" data-synthesis-depth="${depth}" class="${codexSynthesisDepth === depth ? "is-active" : ""}" aria-pressed="${String(codexSynthesisDepth === depth)}">${synthesisTierBadge(depth)} <small>${count}</small></button>`),
+    ...(independentCount > 0 ? [`<button type="button" data-synthesis-depth="${UNCOMBINABLE_STAGE_ONE}" class="${codexSynthesisDepth === UNCOMBINABLE_STAGE_ONE ? "is-active" : ""}" aria-pressed="${String(codexSynthesisDepth === UNCOMBINABLE_STAGE_ONE)}">${independentBadge(true)} <small>${independentCount}</small></button>`] : [])
   ].join("");
 }
 
 function renderCodex(query = ""): void {
   const normalized = query.trim();
   const list = must<HTMLElement>("#codex-list");
-  const regionalInventory = inventoryEntriesForRegion(jaryeongInventory, engine.state.region);
-  must<HTMLElement>("#codex-region").textContent = REGION_META[engine.state.region].title;
-  must<HTMLElement>("#inventory-count").textContent = String(regionalInventory.length);
-
-  if (codexMode === "jaryeongs") {
-    renderJaryeongDex(normalized);
-    return;
-  }
+  must<HTMLElement>("#codex-region").textContent = engine.state.region === "KR" ? "한국" : REGION_META[engine.state.region].title;
 
   if (codexMode === "idioms") {
     renderCodexSynthesisFilters([], new Map(), new Set());
@@ -2540,47 +2476,71 @@ function renderCodex(query = ""): void {
   const synthesisDepths = buildSynthesisDepths(engine.catalog.definitions.values());
   const uncombinableStageOne = buildUncombinableStageOneChars(engine.catalog.definitions.values());
   let definitions = codexMode === "recipes" ? [...engine.catalog.recipes] : [...engine.catalog.definitions.values()];
-  if (codexMode === "inventory") {
-    const owned = new Set(regionalInventory.map((entry) => entry.char));
-    definitions = definitions.filter((definition) => owned.has(definition.char));
-  }
   renderCodexSynthesisFilters(definitions, synthesisDepths, uncombinableStageOne);
+  if (codexMode === "hanzi" && jaryeongDexFilter !== "all") definitions = definitions.filter((definition) => definition.wuxing === jaryeongDexFilter);
   if (codexSynthesisDepth !== "all") definitions = definitions.filter((definition) => engine.state.mode === "casual" && codexMode !== "recipes"
     ? casualNaturalStar(definition.char) === codexSynthesisDepth
-    : synthesisTierKey(definition, synthesisDepths.get(definition.char) ?? 1, uncombinableStageOne) === codexSynthesisDepth
+    : codexSynthesisDepth === UNCOMBINABLE_STAGE_ONE
+      ? uncombinableStageOne.has(definition.char)
+      : (synthesisDepths.get(definition.char) ?? 1) === codexSynthesisDepth
   );
   definitions = definitions.filter((definition) => definitionMatches(definition, normalized));
-  definitions.sort((a, b) => engine.state.mode === "casual" && codexMode !== "recipes"
-    ? (casualNaturalStar(a.char) ?? 1) - (casualNaturalStar(b.char) ?? 1) || (casualStrokeCount(a.char) ?? 0) - (casualStrokeCount(b.char) ?? 0) || a.char.localeCompare(b.char, "ko")
-    : (synthesisDepths.get(a.char) ?? 0) - (synthesisDepths.get(b.char) ?? 0) || a.stage - b.stage || a.char.localeCompare(b.char, "ko")
-  );
-  list.className = codexMode === "recipes" ? "codex-list codex-list--recipes" : codexMode === "inventory" ? "codex-list codex-list--inventory" : "codex-list";
+  definitions.sort((left, right) => {
+    if (codexMode === "hanzi" && engine.state.region === "KR") {
+      const leftNumber = CHEONJAMUN_JARYEONG_DEX_BY_HANJA.get(left.char)?.number ?? Number.MAX_SAFE_INTEGER;
+      const rightNumber = CHEONJAMUN_JARYEONG_DEX_BY_HANJA.get(right.char)?.number ?? Number.MAX_SAFE_INTEGER;
+      if (leftNumber !== rightNumber) return leftNumber - rightNumber;
+    }
+    return engine.state.mode === "casual" && codexMode !== "recipes"
+      ? (casualNaturalStar(left.char) ?? 1) - (casualNaturalStar(right.char) ?? 1) || (casualStrokeCount(left.char) ?? 0) - (casualStrokeCount(right.char) ?? 0) || left.char.localeCompare(right.char, "ko")
+      : (synthesisDepths.get(left.char) ?? 0) - (synthesisDepths.get(right.char) ?? 0) || left.stage - right.stage || left.char.localeCompare(right.char, "ko");
+  });
+  const selectedDefinition = definitions.find((definition) => definition.char === normalized)
+    ?? definitions.find((definition) => definition.char === selectedCodexChar)
+    ?? definitions[0]
+    ?? engine.catalog.definitions.get(engine.state.targetChar);
+  selectedCodexChar = selectedDefinition?.char ?? "";
+  list.className = codexMode === "recipes" ? "codex-list codex-list--recipes" : "codex-list codex-list--jaryeong";
 
   if (codexMode === "recipes") {
-    must<HTMLElement>("#codex-summary").textContent = `조합 ${definitions.length.toLocaleString("ko-KR")}/${engine.catalog.recipes.length.toLocaleString("ko-KR")}식 · 재료 → 결과 순서 · ${codexSynthesisDepth === "all" ? "전체 단계" : synthesisTierFilterLabel(codexSynthesisDepth)}`;
-    list.innerHTML = definitions.map((definition) => { const tier = synthesisTierKey(definition, synthesisDepths.get(definition.char) ?? 1, uncombinableStageOne); return `<button type="button" data-codex-recipe="${definition.char}" class="codex-recipe-card" style="--codex:${ELEMENT_STYLES[definition.wuxing].color}"><span class="codex-recipe-formula">${definition.parents.map((parent) => `<i>${parent}</i>`).join("<em>+</em>")}<em>→</em><b>${definition.char}</b></span><span>${escapeHtml(learningInfo(engine.state.region, definition.char).short)}</span><small>${synthesisTierBadge(tier)} · ${STAGE_NAMES[definition.stage]} · ${hasActiveSkills(definition) ? definition.combat.abilities.role.name : "기본 공격"}</small></button>`; }).join("");
-  } else if (codexMode === "inventory") {
-    const counts = new Map(regionalInventory.map((entry) => [entry.char, entry]));
-    must<HTMLElement>("#codex-summary").textContent = `보유 ${definitions.length}종 · 브라우저 자동 저장 · 기록 ${inventoryRevision}`;
+    const depthSummary = codexSynthesisDepth === "all"
+      ? "전체 단계"
+      : codexSynthesisDepth === UNCOMBINABLE_STAGE_ONE
+        ? "독립 자령"
+        : synthesisTierFilterLabel(codexSynthesisDepth);
+    must<HTMLElement>("#codex-summary").textContent = `조합 ${definitions.length.toLocaleString("ko-KR")}/${engine.catalog.recipes.length.toLocaleString("ko-KR")}식 · 재료 → 결과 순서 · ${depthSummary}`;
     list.innerHTML = definitions.map((definition) => {
-      const entry = counts.get(definition.char);
-      const tier = synthesisTierKey(definition, synthesisDepths.get(definition.char) ?? 1, uncombinableStageOne);
-      const naturalStar = casualNaturalStar(definition.char) ?? 1;
-      return `<button type="button" data-codex-char="${definition.char}" class="is-discovered inventory-card" style="--codex:${ELEMENT_STYLES[definition.wuxing].color}"><i class="codex-spirit" style="${spriteStyle(definition)}"></i><b>${definition.char}</b><span>${escapeHtml(learningInfo(engine.state.region, definition.char).short)}</span><small>${engine.state.mode === "casual" ? `${naturalStar}★ · ${casualStrokeCount(definition.char) ?? "?"}획` : synthesisTierBadge(tier)} · 소환 ${entry?.summons ?? 0} · 합성 ${entry?.evolutions ?? 0}</small></button>`;
+      const depth = synthesisDepths.get(definition.char) ?? 1;
+      const selected = definition.char === selectedCodexChar;
+      return `<button type="button" data-codex-recipe="${definition.char}" class="codex-recipe-card ${selected ? "is-selected" : ""}" style="--codex:${ELEMENT_STYLES[definition.wuxing].color}" aria-current="${String(selected)}"><span class="codex-recipe-formula">${definition.parents.map((parent) => `<i>${parent}</i>`).join("<em>+</em>")}<em>→</em><b>${definition.char}</b></span><span>${escapeHtml(learningInfo(engine.state.region, definition.char).short)}</span><small>${synthesisTierBadge(depth)} · ${STAGE_NAMES[definition.stage]} · ${hasActiveSkills(definition) ? definition.combat.abilities.role.name : "기본 공격"}</small></button>`;
     }).join("");
   } else {
-    must<HTMLElement>("#codex-summary").textContent = `${definitions.length.toLocaleString("ko-KR")}/${engine.catalog.definitions.size.toLocaleString("ko-KR")}자 · ${engine.state.mode === "casual" ? codexSynthesisDepth === "all" ? "전체 기본 별" : `${codexSynthesisDepth}★ 획수 구간` : codexSynthesisDepth === "all" ? "전체 단계" : synthesisTierFilterLabel(codexSynthesisDepth)}`;
+    const independentShown = definitions.filter((definition) => uncombinableStageOne.has(definition.char)).length;
+    must<HTMLElement>("#codex-summary").textContent = `자령 ${definitions.length.toLocaleString("ko-KR")}/${engine.catalog.definitions.size.toLocaleString("ko-KR")} · 독립 ${independentShown.toLocaleString("ko-KR")} · 별/조합 정보 통합`;
     list.innerHTML = definitions.map((definition) => {
-      const discovered = engine.state.discoveredChars.includes(definition.char);
       const learning = learningInfo(engine.state.region, definition.char);
-      const tier = synthesisTierKey(definition, synthesisDepths.get(definition.char) ?? 1, uncombinableStageOne);
+      const entry = dexEntryForDefinition(definition);
+      const depth = synthesisDepths.get(definition.char) ?? 1;
+      const independent = uncombinableStageOne.has(definition.char);
       const naturalStar = casualNaturalStar(definition.char) ?? 1;
-      const casualSkill = naturalStar >= 2 ? definition.combat.abilities.role.name : "기본 공격·2★ 해금";
-      return `<button type="button" data-codex-char="${definition.char}" class="${discovered ? "is-discovered" : ""}" style="--codex:${ELEMENT_STYLES[definition.wuxing].color}"><b>${definition.char}</b><span>${escapeHtml(learning.short)}</span><small>${engine.state.mode === "casual" ? `${naturalStar}★ ${CASUAL_STAR_NAMES[naturalStar]} · ${casualStrokeCount(definition.char) ?? "?"}획 · ${casualSkill} · 직접` : `${synthesisTierBadge(tier)} · ${STAGE_NAMES[definition.stage]} · ${hasActiveSkills(definition) ? definition.combat.abilities.role.name : "기본 공격"} · ${definition.parents.length ? definition.parents.join("+") : "직접"}`}</small></button>`;
+      const selected = definition.char === selectedCodexChar;
+      const explanation = koreanMeaningExplanation(definition.char, learning.short, learning.meaning);
+      const numberLabel = entry ? `CHEONJAMUN No.${String(entry.number).padStart(3, "0")}` : "SYNTHESIS EXTRA";
+      const progression = engine.state.mode === "casual" ? `<span class="codex-tier-stars">${"★".repeat(naturalStar)}</span>` : synthesisTierBadge(depth);
+      return `<button type="button" data-codex-char="${definition.char}" class="codex-jaryeong-card ${selected ? "is-selected" : ""}" style="--codex:${ELEMENT_STYLES[definition.wuxing].color}" aria-current="${String(selected)}" aria-label="${escapeHtml(`${numberLabel} ${definition.char} ${learning.short} ${definition.wuxing}행`)}">
+        <span class="codex-jaryeong-number">${numberLabel}</span>
+        ${codexCardPortrait(definition, entry)}
+        <span class="codex-jaryeong-copy">
+          <span class="codex-jaryeong-identity"><b>${definition.char}</b><strong>${escapeHtml(learning.short)}</strong><i>${definition.wuxing}</i></span>
+          <span class="codex-jaryeong-badges">${progression}${engine.state.mode === "standard" ? independentBadge(independent) : ""}<em>${escapeHtml(definition.combat.roleLabel)}</em></span>
+          <span class="codex-jaryeong-category">${escapeHtml(entry?.category ?? `${ELEMENT_STYLES[definition.wuxing].name}행 자령`)} · ${escapeHtml(explanation.plainMeaning)}</span>
+          <small class="codex-jaryeong-recipe">조합 · ${escapeHtml(directAcquisitionLabel(definition, independent))}</small>
+        </span>
+      </button>`;
     }).join("");
   }
   if (definitions.length === 0) list.innerHTML = '<p class="codex-empty">검색 결과가 없습니다.</p>';
-  renderCodexDetail(definitions[0] ?? engine.catalog.definitions.get(engine.state.targetChar));
+  renderCodexDetail(selectedDefinition);
 }
 
 function recipeStepsFor(char: string): HanziDefinition[] {
@@ -2604,8 +2564,10 @@ function renderCodexDetail(definition: HanziDefinition | undefined): void {
     detail.innerHTML = "<p>한자를 선택하세요.</p>";
     return;
   }
-  const discovered = engine.state.discoveredChars.includes(definition.char);
+
   const learning = learningInfo(engine.state.region, definition.char);
+  const explanation = koreanMeaningExplanation(definition.char, learning.short, learning.meaning);
+  const entry = dexEntryForDefinition(definition);
   const abilities = definition.combat.abilities;
   const naturalStar = casualNaturalStar(definition.char) ?? 1;
   const activeSkills = engine.state.mode === "casual" ? naturalStar >= 2 : hasActiveSkills(definition);
@@ -2613,53 +2575,115 @@ function renderCodexDetail(definition: HanziDefinition | undefined): void {
     ? [abilities.semantic, abilities.role, abilities.lineage].filter((ability): ability is AbilitySpec => Boolean(ability))
     : [];
   const passiveList = activeSkills ? [abilities.element, abilities.graph] : [abilities.graph];
-  const inventoryEntry = jaryeongInventory.entries[`${engine.state.region}:${definition.char}`];
-  const children = engine.catalog.recipes.filter((candidate) => candidate.parents.includes(definition.char)).sort((a, b) => a.stage - b.stage).slice(0, 12);
+  const children = engine.catalog.recipes
+    .filter((candidate) => candidate.parents.includes(definition.char))
+    .sort((left, right) => left.stage - right.stage)
+    .slice(0, 12);
   const recipeSteps = recipeStepsFor(definition.char);
-  const synthesisDepth = buildSynthesisDepths(engine.catalog.definitions.values()).get(definition.char) ?? 1;
+  const synthesisDepths = buildSynthesisDepths(engine.catalog.definitions.values());
   const uncombinableStageOne = buildUncombinableStageOneChars(engine.catalog.definitions.values());
+  const synthesisDepth = synthesisDepths.get(definition.char) ?? 1;
+  const independent = uncombinableStageOne.has(definition.char);
   const synthesisTier = synthesisTierKey(definition, synthesisDepth, uncombinableStageOne);
-  const visual = jaryeongVisualFor(definition.char, definition.wuxing, engine.state.region);
-  const progressionHeading = engine.state.mode === "casual"
-    ? `${naturalStar}★ ${CASUAL_STAR_NAMES[naturalStar]} · ${casualStrokeCount(definition.char) ?? "?"}획`
-    : `${synthesisTierBadge(synthesisTier)} · ${STAGE_NAMES[definition.stage]}`;
   const codexPower = engine.state.mode === "casual" ? CASUAL_STAR_POWER[naturalStar] : STAGE_MULTIPLIERS[definition.stage];
+  const progression = engine.state.mode === "casual"
+    ? `<span class="codex-tier-stars" aria-label="${naturalStar}별">${"★".repeat(naturalStar)}</span>`
+    : synthesisTierBadge(synthesisTier);
+  const numberLabel = entry ? `CHEONJAMUN No.${String(entry.number).padStart(3, "0")}` : "SYNTHESIS EXTRA";
+  const acquisitionLabel = engine.state.mode === "casual"
+    ? "전 자령 직접 소환 · 같은 오행/별 3체 조합"
+    : directAcquisitionLabel(definition, independent);
+  const categoryLabel = entry?.category ?? `${ELEMENT_STYLES[definition.wuxing].name}행 자령`;
+  const dexText = entry?.dexText
+    ?? `${definition.char}의 뜻과 ${definition.wuxing}행 기운을 전투 역할로 풀어낸 자령입니다. 쉬운 훈 풀이와 조합 경로를 함께 확인하세요.`;
+  const progressionDetail = engine.state.mode === "casual"
+    ? `${naturalStar}★ · ${casualStrokeCount(definition.char) ?? "?"}획 · ${casualStarRangeLabel(naturalStar)}`
+    : `${synthesisDepth}단 · ${STAGE_NAMES[definition.stage]}`;
+  const recipeMain = engine.state.mode === "casual"
+    ? `<div class="recipe-guide-main"><span><b>${definition.wuxing}</b><small>${naturalStar}★ 본체</small></span><em>+</em><span><b>${definition.wuxing}</b><small>${naturalStar}★ 재료</small></span><em>+</em><span><b>${definition.wuxing}</b><small>${naturalStar}★ 재료</small></span><em>→</em><span class="is-result"><b>${Math.min(8, naturalStar + 1)}★</b><small>본체 유지</small></span></div><p><b>안전 규칙</b> 잠금 자령은 재료에서 제외되고, KEEP 1기와 USE 2기를 미리 확인한 뒤 합성합니다.</p>`
+    : `<div class="recipe-guide-main">${definition.acquisition === "direct"
+      ? `<span class="${independent ? "is-independent" : ""}"><b>${definition.char}</b><small>${independent ? "직접 소환 · 독립" : "직접 소환 · 상위 재료"}</small></span>`
+      : `${definition.parents.map((parent) => `<span><b>${parent}</b><small>${escapeHtml(learningInfo(engine.state.region, parent).short)}</small></span>`).join("<em>+</em>")}<em>→</em><span class="is-result"><b>${definition.char}</b><small>${escapeHtml(learning.short)}</small></span>`}</div>
+      ${recipeSteps.length ? `<ol>${recipeSteps.map((step, index) => `<li><b>${index + 1}</b><span>${step.parents.join(" + ")} → <strong>${step.char}</strong></span></li>`).join("")}</ol>` : ""}
+      <p><b>이 글자로 이어지는 조합</b> ${children.length ? children.map((child) => `<button type="button" data-codex-char="${child.char}">${definition.char} → ${child.char} · ${escapeHtml(learningInfo(engine.state.region, child.char).short)}</button>`).join("") : independent ? "독립 자령이라 상위 조합에 쓰이지 않습니다." : "현재 직접 하위 조합이 없습니다."}</p>`;
+
   detail.innerHTML = `
-    <div class="codex-detail-hero" style="--codex:${ELEMENT_STYLES[definition.wuxing].color}">
-      <i class="codex-detail-spirit" style="${visualBackgroundStyle(visual)}"></i>
-      <div class="codex-detail-glyph">${definition.char}</div>
+    <div class="codex-jaryeong-detail" style="--codex:${ELEMENT_STYLES[definition.wuxing].color}">
+      <div class="codex-jaryeong-detail-hero">
+        <div class="codex-jaryeong-portrait">
+          ${codexDetailPortrait(definition, entry)}
+          <span aria-label="${definition.wuxing}행">${definition.wuxing}</span>
+        </div>
+        <div class="codex-jaryeong-identity-panel">
+          <p class="eyebrow">${numberLabel}</p>
+          <div class="codex-jaryeong-name">
+            <strong>${definition.char}</strong>
+            <div>
+              <h3>${escapeHtml(learning.short)}</h3>
+              <p>${escapeHtml(categoryLabel)} · ${escapeHtml(definition.combat.roleLabel)}</p>
+            </div>
+          </div>
+          <div class="codex-progression-badges">
+            ${progression}
+            ${engine.state.mode === "standard" ? independentBadge(independent) : ""}
+            <span>${escapeHtml(progressionDetail)}</span>
+          </div>
+          <div class="codex-jaryeong-tags">
+            <span>${definition.wuxing}행 · ${ELEMENT_STYLES[definition.wuxing].name}</span>
+            <span>${escapeHtml(explanation.plainMeaning)}</span>
+            <span>${escapeHtml(definition.combat.effectLabel)}</span>
+          </div>
+        </div>
+      </div>
+
+      <article class="codex-meaning-explanation">
+        <span>쉬운 훈 풀이</span>
+        <h4>${escapeHtml(learning.short)} <small>${escapeHtml(explanation.plainMeaning)}</small></h4>
+        <p>${escapeHtml(explanation.body)}</p>
+        ${explanation.example ? `<em>${escapeHtml(explanation.example)}</em>` : ""}
+      </article>
+
+      <article class="codex-jaryeong-entry">
+        <span>자령 기록</span>
+        <p>${escapeHtml(dexText)}</p>
+      </article>
+
+      <div class="codex-jaryeong-facts">
+        <div><span>훈음</span><b>${escapeHtml(learning.short)}</b></div>
+        <div><span>부수</span><b>${radicalLearningLabel(definition.char)}</b></div>
+        <div><span>별 등급</span><b>${progression} · ${escapeHtml(progressionDetail)}</b></div>
+        <div><span>조합 성격</span><b>${escapeHtml(acquisitionLabel)}</b></div>
+      </div>
+
+      <div class="codex-stats">
+        <span><small>공격</small><b>${Math.round(definition.combat.baseDamage * codexPower * definition.combat.budgetMultiplier)}</b></span>
+        <span><small>사거리</small><b>${definition.combat.range}</b></span>
+        <span><small>공속</small><b>${definition.combat.cooldown.toFixed(2)}초</b></span>
+        <span><small>하위 조합</small><b>${definition.graph.directChildCount}</b></span>
+      </div>
+      <article class="strategy-note"><b>전략 운용</b><span>${escapeHtml(`${ROLE_STRATEGY[definition.combat.role]} ${definition.combat.description}`)}</span></article>
+
+      ${entry ? `<article class="codex-jaryeong-trait"><span>고유 특성</span><h4>${escapeHtml(entry.traitName)}</h4><p>${escapeHtml(entry.traitDescription)}</p></article>
+      <div class="codex-jaryeong-observation">
+        <article><span>서식 환경</span><p>${escapeHtml(entry.habitat)}</p></article>
+        <article><span>관찰 기록</span><p>${escapeHtml(entry.observation)}</p></article>
+      </div>` : ""}
+
+      <div class="codex-abilities">
+        ${activeSkills ? "" : `<article class="is-locked" style="--ability:#aeb9cc"><b>合</b><span><strong>${engine.state.mode === "casual" ? "1★ 기본 공격" : independent ? "독립 자령 기본 공격" : "1단 기본 공격"}</strong><small>${independent ? "상위 조합 없음" : "조합으로 기술 해금"}</small><em>${independent ? "별 등급과 독립 여부는 별개의 정보입니다. 이 자령은 1별이면서 상위 조합 재료로 쓰이지 않습니다." : engine.state.mode === "casual" ? "같은 오행·같은 별 자령 두 기를 재료로 써 2★가 되면 의미 기술과 역할 기술이 해금됩니다." : "상위 단계로 합성하면 의미 기술과 역할 기술이 해금됩니다."}</em></span></article>`}
+        ${abilityList.map((ability) => `<article style="--ability:${ability.color}"><b>${ability.glyph}</b><span><strong>${escapeHtml(ability.name)}</strong><small>${escapeHtml(`${ability.trigger} · ${ability.summary}`)}</small><em>${escapeHtml(ability.description)}</em></span></article>`).join("")}
+        ${passiveList.map((ability) => `<article class="is-passive" style="--ability:${ability.color}"><b>${ability.glyph}</b><span><strong>${escapeHtml(ability.name)}</strong><small>상시 특성 · ${escapeHtml(ability.summary)}</small><em>${escapeHtml(ability.description)}</em></span></article>`).join("")}
+      </div>
+
+      <section class="recipe-guide">
+        <h4>${engine.state.mode === "casual" ? "캐주얼 3체 조합" : "조합표 · 별과 독립은 별개"}</h4>
+        ${recipeMain}
+      </section>
+      <p class="combo-key">능력 조합 코드 · ${escapeHtml(abilities.comboKey)}</p>
+      ${engine.state.mode === "casual" || definition.acquisition === "craft" ? `<button id="set-target-button" type="button" data-target-char="${definition.char}">이 한자를 목표로 지정</button>` : ""}
     </div>
-    <p class="eyebrow">${definition.id}</p>
-    <h3>${progressionHeading} · ${definition.wuxing}행 · ${definition.combat.roleLabel}</h3>
-    <div class="codex-stats"><span><small>공격</small><b>${Math.round(definition.combat.baseDamage * codexPower * definition.combat.budgetMultiplier)}</b></span><span><small>사거리</small><b>${definition.combat.range}</b></span><span><small>공속</small><b>${definition.combat.cooldown.toFixed(2)}초</b></span><span><small>${engine.state.mode === "casual" ? "희귀도" : "하위"}</small><b>${engine.state.mode === "casual" ? `${naturalStar}★` : definition.graph.directChildCount}</b></span></div>
-    <article class="strategy-note"><b>전략 운용</b><span>${ROLE_STRATEGY[definition.combat.role]} ${definition.combat.description}</span></article>
-    <dl>
-      <div class="learning-row"><dt>${learning.readingLabel}</dt><dd>${escapeHtml(learning.reading)}</dd></div>
-      <div class="learning-row"><dt>${learning.meaningSource === "en" ? "뜻(영)" : "뜻"}</dt><dd>${escapeHtml(learning.meaning)}</dd></div>
-      <div class="learning-row"><dt>부수</dt><dd>${radicalLearningLabel(definition.char)}</dd></div>
-      <div><dt>획득</dt><dd>${engine.state.mode === "casual" ? "전 천자문 자령 직접 소환" : definition.acquisition === "direct" ? "직접 소환" : definition.parents.join(" + ") + " → " + definition.char}</dd></div>
-      <div><dt>${engine.state.mode === "casual" ? "기본 별" : "단계"}</dt><dd>${engine.state.mode === "casual" ? `${naturalStar}★ · ${casualStrokeCount(definition.char) ?? "?"}획 · ${casualStarRangeLabel(naturalStar)}` : `${synthesisTierBadge(synthesisTier)}${synthesisDepth > 1 ? " · 가장 긴 선행 조합 기준" : uncombinableStageOne.has(definition.char) ? " · 상위 조합식 없음" : " · 상위 조합 재료"}`}</dd></div>
-      <div><dt>전투</dt><dd>${definition.combat.roleLabel} · ${definition.combat.effectLabel}</dd></div>
-      <div><dt>조합망</dt><dd>${GRAPH_ROLE_LABELS[definition.graph.graphRole]} · 직접 하위 ${definition.graph.directChildCount}자</dd></div>
-      <div><dt>보유 기록</dt><dd>${inventoryEntry ? `소환 ${inventoryEntry.summons}회 · 합성 획득 ${inventoryEntry.evolutions}회 · 자동 저장됨` : "아직 획득 기록 없음"}</dd></div>
-      <div><dt>발견 기록</dt><dd>${discovered ? "이번 런에서 만남" : "아직 만나지 못함"}</dd></div>
-    </dl>
-    <div class="codex-abilities">
-      ${activeSkills ? "" : `<article class="is-locked" style="--ability:#aeb9cc"><b>合</b><span><strong>${engine.state.mode === "casual" ? "1★ 기본 공격" : "1단 기본 공격"}</strong><small>${engine.state.mode === "casual" ? "3체 조합으로 기술 해금" : "조합 가능한 재료 · 능력 미보유"}</small><em>${engine.state.mode === "casual" ? "같은 오행·같은 별 자령 두 기를 재료로 써 2★가 되면 의미 기술과 역할 기술이 해금됩니다." : "이 자령은 상위 조합 재료입니다. 2단으로 합성하면 의미 기술과 역할 기술이 해금됩니다."}</em></span></article>`}
-      ${abilityList.map((ability) => `<article style="--ability:${ability.color}"><b>${ability.glyph}</b><span><strong>${ability.name}</strong><small>${ability.trigger} · ${ability.summary}</small><em>${ability.description}</em></span></article>`).join("")}
-      ${passiveList.map((ability) => `<article class="is-passive" style="--ability:${ability.color}"><b>${ability.glyph}</b><span><strong>${ability.name}</strong><small>상시 특성 · ${ability.summary}</small><em>${ability.description}</em></span></article>`).join("")}
-    </div>
-    <section class="recipe-guide">
-      <h4>${engine.state.mode === "casual" ? "캐주얼 3체 조합" : "조합표"}</h4>
-      ${engine.state.mode === "casual"
-        ? `<div class="recipe-guide-main"><span><b>${definition.wuxing}</b><small>${naturalStar}★ 본체</small></span><em>+</em><span><b>${definition.wuxing}</b><small>${naturalStar}★ 재료</small></span><em>+</em><span><b>${definition.wuxing}</b><small>${naturalStar}★ 재료</small></span><em>→</em><span class="is-result"><b>${Math.min(8, naturalStar + 1)}★</b><small>본체 유지</small></span></div><p><b>안전 규칙</b> 잠금 자령은 재료 제외 · 자동조합은 인벤토리만 · 소모 목록 사전 확인</p>`
-        : `<div class="recipe-guide-main">${definition.acquisition === "direct" ? `<span><b>${definition.char}</b><small>직접 소환</small></span>` : `${definition.parents.map((parent) => `<span><b>${parent}</b><small>${escapeHtml(learningInfo(engine.state.region, parent).short)}</small></span>`).join("<em>+</em>")}<em>→</em><span class="is-result"><b>${definition.char}</b><small>${escapeHtml(learning.short)}</small></span>`}</div>${recipeSteps.length ? `<ol>${recipeSteps.map((step, index) => `<li><b>${index + 1}</b><span>${step.parents.join(" + ")} → <strong>${step.char}</strong></span></li>`).join("")}</ol>` : ""}<p><b>이 글자로 이어지는 조합</b> ${children.length ? children.map((child) => `<button type="button" data-codex-char="${child.char}">${definition.char} → ${child.char}</button>`).join("") : "현재 직접 하위 조합 없음"}</p>`}
-    </section>
-    <p class="combo-key">능력 조합 코드 · ${abilities.comboKey}</p>
-    ${engine.state.mode === "casual" || definition.acquisition === "craft" ? `<button id="set-target-button" type="button" data-target-char="${definition.char}">이 한자를 목표로 지정</button>` : ""}
   `;
 }
-
 function renderRunInventory(): void {
   const selectedId = engine.state.selectedTowerId;
   const key = engine.state.inventoryTowers.map((tower) => `${tower.id}:${tower.locked}:S${tower.casualStar ?? 0}:C${tower.concentration ?? 0}:${tower.concentrationPath ?? "-"}`).join("|") + `|${selectedId ?? "none"}|${engine.state.phase}|${engine.state.mode}`;
@@ -2735,7 +2759,6 @@ function drawWorld(delta: number): void {
   canvas.dataset.selectedTowerId = selectedTower ? String(selectedTower.id) : "";
   canvas.dataset.selectedSynthesisTier = selectedTower ? String(engine.state.mode === "casual" ? casualStarOf(selectedTower) : mapSynthesisDepths.get(selectedTower.char) ?? 1) : "";
   const materialIds = hoveredMaterialIds();
-  const synergyElements = new Set(engine.activeSynergies());
   drawPaperBackdrop();
   context.save();
   context.translate(mapOffset.x, mapOffset.y);
@@ -2751,7 +2774,7 @@ function drawWorld(delta: number): void {
     if (isWorldPointVisible(point, enemy.boss ? 90 : 55)) drawEnemy(enemy, point);
   }
   for (const tower of [...state.towers].sort((a, b) => a.cell - b.cell)) {
-    if (isWorldPointVisible(BOARD_CELLS[tower.cell] as Point, 65)) drawTower(tower, materialIds, synergyElements);
+    if (isWorldPointVisible(BOARD_CELLS[tower.cell] as Point, 65)) drawTower(tower, materialIds);
   }
   // Keep combat sprites in the foreground so their raster silhouettes are not
   // hidden by the enemy/tower bodies. Their alpha and size remain restrained
@@ -2943,14 +2966,14 @@ function drawBoard(): void {
     const unlocked = engine.isFormationUnlocked(formationIndex);
     const resonance = engine.formationResonance(formationIndex);
     const inkColor = INK_ELEMENT_COLORS[formation.preferredWuxing];
-    context.fillStyle = unlocked ? formation.color + (resonance.tier > 0 ? "2b" : "1c") : "rgba(18, 20, 24, 0.42)";
-    context.strokeStyle = "rgba(65, 48, 31, 0.48)";
+    context.fillStyle = formation.color + (unlocked ? (resonance.tier > 0 ? "52" : "3d") : "24");
+    context.strokeStyle = unlocked ? formation.color + "d6" : formation.color + "72";
     context.lineWidth = formation.id === "center" ? 2.2 : 1.5;
     context.beginPath();
     context.roundRect(formation.center.x - 91, formation.center.y - 91, 182, 182, 13);
     context.fill();
     context.stroke();
-    context.strokeStyle = unlocked ? formation.color + "66" : "rgba(90, 75, 55, 0.46)";
+    context.strokeStyle = unlocked ? formation.color + "b8" : formation.color + "58";
     context.lineWidth = 1;
     context.stroke();
     context.fillStyle = unlocked ? inkColor + (resonance.tier > 0 ? "b8" : "88") : "rgba(86, 78, 68, 0.72)";
@@ -2965,15 +2988,17 @@ function drawBoard(): void {
   for (let index = 0; index < BOARD_CELLS.length; index += 1) {
     const cell = BOARD_CELLS[index] as Point;
     const unlocked = engine.isCellUnlocked(index);
-    context.fillStyle = !unlocked ? "rgba(12, 14, 18, 0.48)" : occupied.has(index) ? "rgba(255, 251, 229, 0.3)" : "rgba(255, 251, 229, 0.13)";
-    context.strokeStyle = !unlocked ? "rgba(93, 76, 55, 0.26)" : occupied.has(index) ? "rgba(58, 43, 29, 0.42)" : "rgba(65, 50, 33, 0.24)";
+    const formation = BOARD_FORMATIONS[Math.floor(index / CELLS_PER_FORMATION)] as (typeof BOARD_FORMATIONS)[number];
+    const inkColor = INK_ELEMENT_COLORS[formation.preferredWuxing];
+    context.fillStyle = formation.color + (!unlocked ? "2b" : occupied.has(index) ? "78" : "52");
+    context.strokeStyle = formation.color + (!unlocked ? "66" : occupied.has(index) ? "dc" : "aa");
     context.lineWidth = 1;
     context.beginPath();
     context.roundRect(cell.x - 19, cell.y - 19, 38, 38, 6);
     context.fill();
     context.stroke();
     if (!occupied.has(index)) {
-      context.fillStyle = unlocked ? "rgba(67, 49, 31, 0.23)" : "rgba(134, 110, 78, 0.32)";
+      context.fillStyle = inkColor + (unlocked ? "a6" : "78");
       context.font = '700 11px "Malgun Gothic", serif';
       context.fillText(unlocked ? "·" : "封", cell.x, cell.y + 4);
     }
@@ -3150,35 +3175,7 @@ function drawStudyTower(tower: Tower, cell: Point, definition: HanziDefinition, 
 function drawSpiritTowerLabel(tower: Tower, cell: Point, selected: boolean, material: boolean): void {
   const style = ELEMENT_STYLES[tower.wuxing];
   const learning = learningInfo(engine.state.region, tower.char);
-  if (!hanjaEmphasis) {
-    context.save();
-    context.translate(cell.x, cell.y);
-    context.scale(LEGACY_BASE_MAP_ZOOM / BASE_MAP_ZOOM, LEGACY_BASE_MAP_ZOOM / BASE_MAP_ZOOM);
-    const labelX = -22;
-    const labelY = -24;
-    context.fillStyle = "rgba(4, 10, 18, 0.94)";
-    context.strokeStyle = selected || material ? "#fff1bf" : style.color;
-    context.lineWidth = selected || material ? 2 : 1.25;
-    context.shadowColor = selected || material ? "rgba(255, 231, 164, 0.5)" : "rgba(0, 0, 0, 0.35)";
-    context.shadowBlur = selected || material ? 8 : 3;
-    context.beginPath();
-    context.roundRect(labelX, labelY, 44, 16, 5);
-    context.fill();
-    context.stroke();
-    context.shadowBlur = 0;
-    context.fillStyle = "rgba(221, 232, 246, 0.22)";
-    context.fillRect(-6, labelY + 3, 1, 10);
-    context.fillStyle = "#fff8e8";
-    context.textAlign = "center";
-    context.textBaseline = "middle";
-    context.font = '900 13px "Malgun Gothic", "Noto Sans CJK KR", serif';
-    context.fillText(tower.char, -14, labelY + 9);
-    context.fillStyle = "#f2e7cc";
-    context.font = '900 7.4px "Malgun Gothic", sans-serif';
-    context.fillText(learning.short, 8, labelY + 9.5, 28);
-    context.restore();
-    return;
-  }
+  if (!hanjaEmphasis) return;
 
   const glyphOnly = mapZoom / BASE_MAP_ZOOM < 0.6;
   const width = glyphOnly ? 36 : 56;
@@ -3367,7 +3364,7 @@ function drawSelectedTowerMarker(cell: Point): void {
   context.restore();
 }
 
-function drawTower(tower: Tower, materialIds: ReadonlySet<number>, synergyElements: ReadonlySet<Wuxing>): void {
+function drawTower(tower: Tower, materialIds: ReadonlySet<number>): void {
   const cell = BOARD_CELLS[tower.cell] as Point;
   const definition = definitionForTower(engine.catalog, tower.definitionId);
   const selected = tower.id === engine.state.selectedTowerId;
@@ -3379,17 +3376,6 @@ function drawTower(tower: Tower, materialIds: ReadonlySet<number>, synergyElemen
   drawTowerTierMarker(tower, cell);
   context.textAlign = "center";
   context.textBaseline = "alphabetic";
-  if (synergyElements.has(tower.wuxing)) {
-    if (displayMode === "spirit") {
-      context.fillStyle = "rgba(5, 12, 19, 0.88)";
-      context.beginPath();
-      context.roundRect(cell.x + 10, cell.y + 14, 16, 9, 4);
-      context.fill();
-    }
-    context.fillStyle = "#fff2b5";
-    context.font = "900 6px sans-serif";
-    context.fillText("相生", cell.x + 18, cell.y + 21);
-  }
   if ((tower.concentration ?? 0) > 0) {
     context.fillStyle = "rgba(6, 10, 17, 0.94)";
     context.strokeStyle = ELEMENT_STYLES[tower.wuxing].color;
@@ -3420,21 +3406,52 @@ function drawTower(tower: Tower, materialIds: ReadonlySet<number>, synergyElemen
   context.restore();
 }
 
+function canvasWrappedLines(textValue: string, maxWidth: number, maxLines: number): string[] {
+  const words = textValue.trim().split(/\s+/u).filter(Boolean);
+  const lines: string[] = [];
+  let line = "";
+  while (words.length > 0 && lines.length < maxLines) {
+    const word = words.shift() as string;
+    const candidate = line ? `${line} ${word}` : word;
+    if (!line || context.measureText(candidate).width <= maxWidth) {
+      line = candidate;
+      continue;
+    }
+    lines.push(line);
+    line = word;
+  }
+  if (line && lines.length < maxLines) lines.push(line);
+  if (words.length > 0 && lines.length > 0) {
+    let last = lines.at(-1) as string;
+    while (last.length > 1 && context.measureText(`${last}…`).width > maxWidth) last = last.slice(0, -1);
+    lines[lines.length - 1] = `${last}…`;
+  }
+  return lines;
+}
+
 function drawHoveredTowerCard(): void {
+  canvas.dataset.hoveredTowerMeaning = "";
+  canvas.dataset.hoveredTowerPortrait = "";
   const tower = hoveredTowerId === null ? undefined : engine.state.towers.find((candidate) => candidate.id === hoveredTowerId);
   if (!tower || mapPanPointerId !== null || towerDragMoved) return;
   const cell = BOARD_CELLS[tower.cell] as Point;
   const point = { x: mapOffset.x + cell.x * mapZoom, y: mapOffset.y + cell.y * mapZoom };
   if (point.x < -24 || point.x > WORLD_WIDTH + 24 || point.y < -24 || point.y > WORLD_HEIGHT + 24) return;
+
   const definition = definitionForTower(engine.catalog, tower.definitionId);
   const style = ELEMENT_STYLES[tower.wuxing];
   const learning = learningInfo(engine.state.region, tower.char);
-  const width = 178;
-  const height = 112;
+  const explanation = koreanMeaningExplanation(tower.char, learning.short, learning.meaning);
+  const visual = jaryeongVisualFor(tower.char, tower.wuxing, engine.state.region);
+  const image = jaryeongSpriteImage(visual);
+  const width = 284;
+  const height = 176;
   const x = point.x + 36 + width > WORLD_WIDTH - 10 ? point.x - width - 36 : point.x + 36;
   const y = Math.min(WORLD_HEIGHT - height - 18, Math.max(72, point.y - height / 2));
   const anchorX = x > point.x ? x : x + width;
   const anchorY = Math.min(y + height - 18, Math.max(y + 18, point.y));
+  canvas.dataset.hoveredTowerMeaning = explanation.short;
+  canvas.dataset.hoveredTowerPortrait = visual.id;
 
   context.save();
   context.strokeStyle = style.color + "bb";
@@ -3443,10 +3460,10 @@ function drawHoveredTowerCard(): void {
   context.moveTo(point.x, point.y - 14);
   context.lineTo(anchorX, anchorY);
   context.stroke();
-  context.fillStyle = "rgba(4, 10, 18, 0.97)";
+  context.fillStyle = "rgba(4, 10, 18, 0.98)";
   context.strokeStyle = style.color;
   context.lineWidth = 2;
-  context.shadowColor = "rgba(0, 0, 0, 0.55)";
+  context.shadowColor = "rgba(0, 0, 0, 0.58)";
   context.shadowBlur = 18;
   context.beginPath();
   context.roundRect(x, y, width, height, 12);
@@ -3454,37 +3471,73 @@ function drawHoveredTowerCard(): void {
   context.stroke();
   context.shadowBlur = 0;
 
-  context.fillStyle = style.color + "24";
+  const portraitX = x + 10;
+  const portraitY = y + 10;
+  const portraitSize = 78;
+  context.fillStyle = style.color + "20";
   context.beginPath();
-  context.roundRect(x + 9, y + 10, 54, 72, 9);
+  context.roundRect(portraitX, portraitY, portraitSize, portraitSize, 10);
   context.fill();
   context.strokeStyle = style.color + "88";
   context.lineWidth = 1;
   context.stroke();
-  context.fillStyle = "#fff9e8";
+  if (image.complete && image.naturalWidth > 0 && image.naturalHeight > 0) {
+    const single = jaryeongFrameLayout(visual) === "single";
+    const sourceWidth = single ? image.naturalWidth : image.naturalWidth / 2;
+    const sourceHeight = single ? image.naturalHeight : image.naturalHeight / 2;
+    context.drawImage(image, 0, 0, sourceWidth, sourceHeight, portraitX + 3, portraitY + 3, portraitSize - 6, portraitSize - 6);
+  } else {
+    context.fillStyle = "#fff9e8";
+    context.textAlign = "center";
+    context.textBaseline = "middle";
+    context.font = '900 42px "Malgun Gothic", "Noto Sans CJK KR", serif';
+    context.fillText(tower.char, portraitX + portraitSize / 2, portraitY + portraitSize / 2, portraitSize - 12);
+  }
+
+  context.fillStyle = "rgba(4, 10, 18, 0.94)";
+  context.strokeStyle = style.color;
+  context.lineWidth = 1.2;
+  context.beginPath();
+  context.arc(portraitX + portraitSize - 8, portraitY + portraitSize - 8, 13, 0, Math.PI * 2);
+  context.fill();
+  context.stroke();
+  context.fillStyle = "#fff6da";
   context.textAlign = "center";
   context.textBaseline = "middle";
-  context.font = '900 38px "Malgun Gothic", "Noto Sans CJK KR", serif';
-  context.fillText(tower.char, x + 36, y + 46, 46);
+  context.font = '900 15px "Batang", "Malgun Gothic", serif';
+  context.fillText(tower.char, portraitX + portraitSize - 8, portraitY + portraitSize - 7);
 
+  const copyX = x + 100;
+  const copyWidth = width - 112;
   context.textAlign = "left";
+  context.textBaseline = "alphabetic";
   context.fillStyle = "#f7edcf";
-  context.font = '900 16px "Malgun Gothic", sans-serif';
-  context.fillText(learning.short, x + 72, y + 26, width - 82);
+  context.font = '900 17px "Malgun Gothic", sans-serif';
+  context.fillText(learning.short, copyX, y + 28, copyWidth);
   context.fillStyle = style.color;
   context.font = '900 12px "Malgun Gothic", sans-serif';
-  context.fillText(`${style.name}행 · ${towerProgressionLabel(tower)}`, x + 72, y + 48, width - 82);
+  context.fillText(`${style.name}행 · ${towerProgressionLabel(tower)}`, copyX, y + 50, copyWidth);
   context.fillStyle = "#b9c8d9";
   context.font = '800 11px "Malgun Gothic", sans-serif';
-  context.fillText(definition.combat.effectLabel, x + 72, y + 69, width - 82);
+  context.fillText(definition.combat.effectLabel, copyX, y + 71, copyWidth);
+
   context.fillStyle = "rgba(218, 229, 241, 0.16)";
-  context.fillRect(x + 10, y + 90, width - 20, 1);
+  context.fillRect(x + 10, y + 98, width - 20, 1);
+  context.fillStyle = style.color;
+  context.font = '950 10px "Malgun Gothic", sans-serif';
+  context.fillText("쉬운 뜻", x + 12, y + 114);
+  context.fillStyle = "#d8e2ed";
+  context.font = '800 11px "Malgun Gothic", sans-serif';
+  const meaningLines = canvasWrappedLines(explanation.short, width - 24, 2);
+  meaningLines.forEach((line, index) => context.fillText(line, x + 12, y + 131 + index * 14, width - 24));
+
+  context.fillStyle = "rgba(218, 229, 241, 0.13)";
+  context.fillRect(x + 10, y + 154, width - 20, 1);
   context.fillStyle = "#8ea1b8";
-  context.font = '800 10px "Malgun Gothic", sans-serif';
-  context.fillText("클릭: 선택 · 끌기: 교환", x + 12, y + 102, width - 24);
+  context.font = '800 9px "Malgun Gothic", sans-serif';
+  context.fillText("클릭: 선택 · 끌기: 교환 · 자세한 뜻은 자령 도감", x + 12, y + 168, width - 24);
   context.restore();
 }
-
 function drawEnemy(enemy: Enemy, point = positionOnPath(enemy.progress)): void {
   const colors: Record<Enemy["archetype"], string> = { normal: "#7770d9", swarm: "#bd78e8", swift: "#5bcde1", armored: "#b69b76", regenerator: "#64c489", boss: "#ff627d" };
   const color = colors[enemy.archetype];
@@ -3787,7 +3840,7 @@ function toggleHanjaEmphasis(): void {
   button.setAttribute("aria-pressed", String(hanjaEmphasis));
   must<HTMLElement>("#hanja-emphasis-toggle strong").textContent = hanjaEmphasis ? "ON" : "OFF";
   syncMapZoomControl();
-  showToast(hanjaEmphasis ? "한자 강조 ON · 큰 한자와 훈독을 고정 크기로 표시" : "한자 강조 OFF · 기존 한자·훈음 가로 표기로 복귀");
+  showToast(hanjaEmphasis ? "한자 강조 ON · 큰 한자와 훈독을 고정 크기로 표시" : "한자 강조 OFF · 머리 위 표찰 숨김 · 별 표시는 유지");
 }
 
 function cellAtPoint(point: Point): number {
@@ -4333,24 +4386,37 @@ must<HTMLElement>("#codex-list").addEventListener("click", (event) => {
   const char = target.closest<HTMLButtonElement>("[data-codex-char]")?.dataset.codexChar
     ?? target.closest<HTMLButtonElement>("[data-codex-recipe]")?.dataset.codexRecipe;
   const idiomId = target.closest<HTMLButtonElement>("[data-codex-idiom]")?.dataset.codexIdiom;
-  const jaryeongId = target.closest<HTMLButtonElement>("[data-jaryeong-id]")?.dataset.jaryeongId;
-  if (jaryeongId) {
-    selectedJaryeongDexId = jaryeongId;
-    document.querySelectorAll<HTMLButtonElement>("[data-jaryeong-id]").forEach((button) => {
-      const selected = button.dataset.jaryeongId === jaryeongId;
+  if (char) {
+    selectedCodexChar = char;
+    document.querySelectorAll<HTMLButtonElement>("[data-codex-char], [data-codex-recipe]").forEach((button) => {
+      const buttonChar = button.dataset.codexChar ?? button.dataset.codexRecipe;
+      const selected = buttonChar === char;
       button.classList.toggle("is-selected", selected);
       button.setAttribute("aria-current", String(selected));
     });
-    renderJaryeongDexDetail(CHEONJAMUN_JARYEONG_DEX_BY_ID.get(jaryeongId));
+    renderCodexDetail(engine.catalog.definitions.get(char));
   }
-  else if (char) renderCodexDetail(engine.catalog.definitions.get(char));
   else if (idiomId) renderIdiomCodexDetail(engine.allIdioms().find((idiom) => idiom.id === idiomId));
 });
 must<HTMLElement>("#codex-detail").addEventListener("click", (event) => {
-  const char = (event.target as HTMLElement).closest<HTMLButtonElement>("[data-target-char]")?.dataset.targetChar;
-  if (char) {
-    handleAction(engine.setTarget(char));
+  const target = event.target as HTMLElement;
+  const targetChar = target.closest<HTMLButtonElement>("[data-target-char]")?.dataset.targetChar;
+  if (targetChar) {
+    handleAction(engine.setTarget(targetChar));
     codexDialog.close();
+    return;
+  }
+  const codexChar = target.closest<HTMLButtonElement>("[data-codex-char]")?.dataset.codexChar;
+  if (codexChar) {
+    selectedCodexChar = codexChar;
+    document.querySelectorAll<HTMLButtonElement>("[data-codex-char], [data-codex-recipe]").forEach((button) => {
+      const buttonChar = button.dataset.codexChar ?? button.dataset.codexRecipe;
+      const selected = buttonChar === codexChar;
+      button.classList.toggle("is-selected", selected);
+      button.setAttribute("aria-current", String(selected));
+    });
+    renderCodexDetail(engine.catalog.definitions.get(codexChar));
+    must<HTMLElement>("#codex-detail").scrollTo({ top: 0, behavior: reducedMotion ? "auto" : "smooth" });
   }
 });
 must<HTMLButtonElement>("#sound-button").addEventListener("click", () => {
