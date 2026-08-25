@@ -1,4 +1,5 @@
 import "./styles.css";
+import "./ui-skin.css";
 import {
   BOARD_CELLS,
   BOARD_FORMATIONS,
@@ -102,6 +103,15 @@ import type {
 import { SoundManager } from "./ui/audio";
 import { abilityZoneSpriteLayout } from "./ui/combat-fx-layout";
 import { elementProjectileImage, elementZoneImage, preloadCombatFxSprites } from "./ui/combat-fx-sprites";
+import {
+  inkArrowImage,
+  inkCornerImage,
+  inkCrossImage,
+  inkStraightImage,
+  preloadInkPathSprites,
+  type InkCorner,
+  type InkDirection
+} from "./ui/ink-path-sprites";
 import { loadDisplayMode, saveDisplayMode, type DisplayMode } from "./ui/display-mode";
 import { jaryeongSpriteImage } from "./ui/jaryeong-sprites";
 import { loadAutoPlaceSummons, saveAutoPlaceSummons } from "./ui/summon-placement";
@@ -142,7 +152,7 @@ app.innerHTML = `
       <div id="boss-banner" class="boss-banner" aria-live="assertive"></div>
       <div id="toast" class="toast" role="status" aria-live="polite"></div>
       <section id="summon-reveal" class="summon-reveal" aria-hidden="true" aria-live="assertive">
-        <header><div><span>SUMMON RESULT</span><strong id="summon-reveal-title">자령 소환</strong></div><button id="summon-reveal-close" type="button" aria-label="소환 결과 닫기">×</button></header>
+        <header><div><span>소환 결과</span><strong id="summon-reveal-title">자령 소환</strong></div><button id="summon-reveal-close" type="button" aria-label="소환 결과 닫기">×</button></header>
         <p id="summon-reveal-summary"></p>
         <div id="summon-reveal-list" class="summon-reveal-list"></div>
       </section>
@@ -150,11 +160,12 @@ app.innerHTML = `
 
     <aside class="control-panel" aria-label="합성과 수비 조작 패널">
       <header class="brand-row">
-        <div><p class="eyebrow">HANZI RANDOM TOWER DEFENSE</p><h1>한자 운명진</h1></div>
+        <div><p class="eyebrow">한자 랜덤 타워 디펜스</p><h1>한자 운명진</h1></div>
         <div class="header-actions">
           <button id="speed-button" class="speed-button" type="button" aria-label="게임 배속 1배" title="게임 배속 전환 (F)">1×</button>
           <button id="settings-button" class="icon-button" type="button" aria-label="화면 설정 열기" title="화면 설정">⚙</button>
           <button id="sound-button" class="icon-button" type="button" aria-label="소리 끄기" title="소리 켜기/끄기 (M)">♪</button>
+          <button id="codex-button" class="icon-button icon-button--codex" type="button" aria-label="통합 자령 도감 열기" title="자령 도감 (C)"><b>도감</b><small><em id="discover-count">0</em></small></button>
           <button id="help-button" class="icon-button" type="button" aria-label="도움말 열기">?</button>
         </div>
       </header>
@@ -175,7 +186,7 @@ app.innerHTML = `
       <div class="context-deck">
         <section id="goal-panel" class="goal-workbench panel-view" data-panel-view="goal" aria-label="목표 선택 서책">
           <header class="goal-workbench-heading">
-            <div><span>OWNED-AWARE TARGETING</span><strong>목표 서책</strong></div>
+            <div><span>보유 기준 목표</span><strong>목표 서책</strong></div>
             <div class="goal-mode-tabs" role="tablist" aria-label="목표 종류">
               <button type="button" class="is-active" data-goal-mode="hanzi" role="tab" aria-selected="true">한자 목표</button>
               <button type="button" data-goal-mode="idiom" role="tab" aria-selected="false">성어 목표</button>
@@ -204,7 +215,7 @@ app.innerHTML = `
 
         <section id="shop-panel" class="shop-workbench panel-view is-active" data-panel-view="shop" aria-label="자령 상점과 운영 행동">
           <header class="shop-workbench-heading">
-            <div><span>SUMMON &amp; OPERATIONS</span><strong>봉인 상점</strong></div>
+            <div><span>소환과 운영</span><strong>봉인 상점</strong></div>
             <p id="summon-pool-summary"><b>천자문 1,000종</b><span>단계별 희귀도 적용</span></p>
           </header>
           <section id="opening-guide" class="opening-guide" aria-label="초반 진행 안내">
@@ -299,7 +310,7 @@ app.innerHTML = `
 
         <section id="run-inventory-panel" class="run-inventory-panel panel-view" data-panel-view="inventory" aria-label="이번 판 자령 인벤토리">
           <div class="run-inventory-heading">
-            <div><span>RUN INVENTORY · STACKED</span><strong>배치 대기 <b id="run-inventory-heading-count">0개 · 0종</b></strong></div>
+            <div><span>런 인벤토리</span><strong>배치 대기 <b id="run-inventory-heading-count">0개 · 0종</b></strong></div>
             <div class="run-inventory-tools">
               <small id="essence-summary">문기 木0 火0 土0 金0 水0</small>
               <button id="cleanup-recommended-button" type="button">정리 후보 분해</button>
@@ -312,7 +323,7 @@ app.innerHTML = `
 
         <section id="concentration-panel" class="concentration-workbench panel-view" data-panel-view="concentration" aria-label="자령 농축 공방">
           <header class="workbench-heading">
-            <div><span>DUPLICATE OR ESSENCE · EXPLICIT PAYMENT</span><strong>농축 공방</strong></div>
+            <div><span>중복 또는 문기 지불</span><strong>농축 공방</strong></div>
             <p>대상·분기·재료를 직접 고른 뒤 수치 변화를 확인합니다.</p>
           </header>
           <div class="concentration-layout">
@@ -323,7 +334,7 @@ app.innerHTML = `
 
         <section id="growth-panel" class="growth-workbench panel-view" data-panel-view="growth" aria-label="분해 문기와 오행 강화">
           <header class="workbench-heading">
-            <div><span>DISMANTLE → ESSENCE → ELEMENT GROWTH</span><strong>강화 제련소</strong></div>
+            <div><span>분해 · 문기 · 오행 강화</span><strong>강화 제련소</strong></div>
             <p id="growth-resource-summary">문기 木0 火0 土0 金0 水0</p>
           </header>
           <div class="growth-layout">
@@ -349,7 +360,7 @@ app.innerHTML = `
 
       <section id="composition-drawer" class="composition-drawer" aria-label="선택 자령 파생 합성" aria-hidden="true">
         <header class="composition-drawer-heading">
-          <div><span>DERIVATIVE COMPOSITION</span><strong><b id="composition-source-glyph">-</b> 파생 합성</strong></div>
+          <div><span>파생 합성</span><strong><b id="composition-source-glyph">-</b> 파생 합성</strong></div>
           <p><em id="composition-ready-count">0</em>개 합성 가능</p>
           <button id="composition-drawer-close" type="button" aria-label="파생 합성 닫기">×</button>
         </header>
@@ -362,26 +373,44 @@ app.innerHTML = `
         <button id="shop-tab" type="button" class="is-active" data-panel-tab="shop" role="tab" aria-selected="true">상점 <small id="shop-pool-count">0</small></button>
         <button type="button" data-panel-tab="unit" role="tab" aria-selected="false">자령</button>
         <button id="run-inventory-tab" type="button" data-panel-tab="inventory" role="tab" aria-selected="false">인벤 <small id="run-inventory-count">0</small></button>
+        <i class="tab-divider" aria-hidden="true"></i>
         <button type="button" data-panel-tab="evolution" role="tab" aria-selected="false"><span id="evolution-tab-label">합성</span></button>
         <button id="concentration-tab" type="button" data-panel-tab="concentration" role="tab" aria-selected="false">농축</button>
         <button id="growth-tab" type="button" data-panel-tab="growth" role="tab" aria-selected="false">강화</button>
+        <i class="tab-divider" aria-hidden="true"></i>
         <button id="goal-tab" type="button" data-panel-tab="goal" role="tab" aria-selected="false">목표 <small id="goal-tab-progress">0%</small></button>
         <button id="idiom-tab" type="button" data-panel-tab="idiom" role="tab" aria-selected="false">성어 <small id="idiom-tab-count">0/5</small></button>
-        <button id="codex-button" type="button" aria-label="통합 자령 도감 열기"><b>도감</b><small><em id="discover-count">0</em></small></button>
-        <button type="button" data-panel-tab="record" role="tab" aria-selected="false">기록</button>
       </nav>
 
+      <div id="record-ticker" class="record-ticker" aria-live="polite" aria-label="최근 발동 기록">
+        <i aria-hidden="true"></i><b id="record-ticker-glyph"></b><span id="record-ticker-text">전투가 시작되면 발동한 능력이 여기에 표시됩니다.</span>
+      </div>
       <section id="synergy-strip" class="synergy-strip" aria-label="오행 상생"></section>
 
       <footer class="panel-footer">
-        <span class="canvas-tip">클릭: 선택·이동 · 자령 끌기: 교환 · 빈 곳 좌클릭/휠 클릭 드래그: 패닝 · 휠: 확대 · 성어 자동 판정</span>
+        <span class="canvas-tip">
+          <i><em>휠</em>확대·축소</i><i><em>끌기</em>화면 이동</i><i><em>클릭</em>선택·이동</i><i><em>자령 끌기</em>자리 교환</i>
+        </span>
         <span><b id="message-value">지역과 목표 한자를 선택하세요.</b> · 시드 <b id="seed-value">-</b></span>
       </footer>
     </aside>
 
+    <div id="coach-layer" class="coach-layer" aria-live="polite" hidden>
+      <div id="coach-ring" class="coach-ring" aria-hidden="true"></div>
+      <div id="coach-bubble" class="coach-bubble" role="dialog" aria-labelledby="coach-title">
+        <p class="coach-step"><span id="coach-index">1</span> / <span id="coach-total">3</span></p>
+        <b id="coach-title"></b>
+        <p id="coach-body"></p>
+        <div class="coach-actions">
+          <button id="coach-skip" type="button" class="coach-skip">건너뛰기</button>
+          <button id="coach-next" type="button" class="coach-next">다음</button>
+        </div>
+      </div>
+    </div>
+
     <section id="title-overlay" class="modal-layer modal-layer--visible" aria-labelledby="title-heading">
       <div class="title-card">
-        <p class="eyebrow">REGIONAL HANZI COMPOSITION DEFENSE</p>
+        <p class="eyebrow">지역 한자 구성 방어전</p>
         <div class="title-seal" aria-hidden="true"><i>木</i><i>林</i><i>森</i></div>
         <h2 id="title-heading">한자 운명진</h2>
         <p id="title-lead" class="title-lead">운으로 글자를 부르고, 실제 구성 원리로 합성하라.<br />열 개의 장과 백 번의 망령 행렬을 넘어 대봉인을 완성하세요.</p>
@@ -403,7 +432,7 @@ app.innerHTML = `
 
     <section id="end-overlay" class="modal-layer" aria-labelledby="end-heading">
       <div class="end-card">
-        <p id="end-kicker" class="eyebrow">RUN COMPLETE</p>
+        <p id="end-kicker" class="eyebrow">봉인 결과</p>
         <h2 id="end-heading">봉인전 종료</h2>
         <p id="end-message"></p>
         <div id="end-stats" class="end-stats"></div>
@@ -416,7 +445,7 @@ app.innerHTML = `
 
     <dialog id="help-dialog" class="help-dialog">
       <form method="dialog">
-        <div class="dialog-heading"><div><p class="eyebrow">HOW TO PLAY</p><h2>봉인술 입문</h2></div><button aria-label="도움말 닫기">×</button></div>
+        <div class="dialog-heading"><div><p class="eyebrow">놀이 방법</p><h2>봉인술 입문</h2></div><button aria-label="도움말 닫기">×</button></div>
         <ol>
           <li><b>소환</b><span>지역별 1단계 한자를 품은 자령이 무작위로 나옵니다. 목표의 부족한 재료는 소프트 천장으로 조금씩 유리해집니다.</span></li>
           <li><b>목적 소환</b><span>균형·탐색·계보·중복 수집 중 원하는 목적을 고릅니다. 중복 수집은 농축과 분해에 쓸 보유 한자를 다시 부릅니다.</span></li>
@@ -447,7 +476,7 @@ app.innerHTML = `
 
     <dialog id="settings-dialog" class="settings-dialog">
       <div class="dialog-heading">
-        <div><p class="eyebrow">DISPLAY SETTINGS</p><h2>전장 표시 모드</h2></div>
+        <div><p class="eyebrow">화면 설정</p><h2>전장 표시 모드</h2></div>
         <button id="settings-close" type="button" aria-label="설정 닫기">×</button>
       </div>
       <p class="settings-intro">게임 규칙은 그대로 유지됩니다. 전장 표시와 배경음악·효과음 믹스를 기기에 맞게 저장합니다.</p>
@@ -483,7 +512,7 @@ app.innerHTML = `
 
     <dialog id="element-upgrade-dialog" class="element-upgrade-dialog">
       <div class="dialog-heading">
-        <div><p class="eyebrow">ENDLESS STAT FORGE</p><h2>공용·오행 능력 강화</h2></div>
+        <div><p class="eyebrow">무한 제련</p><h2>공용·오행 능력 강화</h2></div>
         <button id="element-upgrade-close" type="button" aria-label="오행 강화 닫기">×</button>
       </div>
       <p class="element-upgrade-intro">엽전은 모든 자령의 공용 능력치에, 분해 문기는 해당 오행 능력치에 투자합니다. 각 항목은 최고 99단계이며 이번 런 동안 유지됩니다.</p>
@@ -496,7 +525,7 @@ app.innerHTML = `
 
     <dialog id="ability-guide-dialog" class="ability-guide-dialog" aria-labelledby="ability-guide-title">
       <div class="dialog-heading">
-        <div><p class="eyebrow">AUTOMATIC ABILITY GUIDE</p><h2 id="ability-guide-title">자령 기술 안내</h2></div>
+        <div><p class="eyebrow">자동 발동 기술</p><h2 id="ability-guide-title">자령 기술 안내</h2></div>
         <button id="ability-guide-close" type="button" aria-label="기술 안내 닫기">×</button>
       </div>
       <div id="ability-guide-content" class="ability-guide-content"></div>
@@ -504,7 +533,7 @@ app.innerHTML = `
 
     <dialog id="casual-fusion-confirm-dialog" class="casual-fusion-confirm-dialog" aria-labelledby="casual-fusion-confirm-title">
       <div class="dialog-heading">
-        <div><p class="eyebrow">THREE SPIRITS · ONE ASCENSION</p><h2 id="casual-fusion-confirm-title">3체 조합 확인</h2></div>
+        <div><p class="eyebrow">삼체 일승</p><h2 id="casual-fusion-confirm-title">3체 조합 확인</h2></div>
         <button id="casual-fusion-confirm-close" type="button" aria-label="조합 확인 닫기">×</button>
       </div>
       <div id="casual-fusion-confirm-content" class="casual-fusion-confirm-content"></div>
@@ -513,7 +542,7 @@ app.innerHTML = `
 
     <dialog id="codex-dialog" class="codex-dialog is-jaryeong-dex">
       <div class="dialog-heading codex-heading">
-        <div><p id="codex-kicker" class="eyebrow">JARYEONG LEARNING ARCHIVE</p><h2><span id="codex-region">한국</span><span id="codex-title-label"> 통합 자령 도감</span></h2></div>
+        <div><p id="codex-kicker" class="eyebrow">자령 기록</p><h2><span id="codex-region">한국</span><span id="codex-title-label"> 통합 자령 도감</span></h2></div>
         <button id="codex-close" type="button" aria-label="도감 닫기">×</button>
       </div>
       <div class="codex-toolbar">
@@ -744,7 +773,7 @@ let hoveredTowerId: number | null = null;
 let hanjaEmphasis = true;
 const MIN_MAP_ZOOM = 0.72;
 const BASE_MAP_ZOOM = 2.6;
-const DEFAULT_MAP_ZOOM = BASE_MAP_ZOOM;
+const DEFAULT_MAP_ZOOM = 2;
 const MAX_MAP_ZOOM = BASE_MAP_ZOOM * 2;
 const DEFAULT_MAP_FOCUS: Point = { x: WORLD_WIDTH / 2, y: WORLD_HEIGHT / 2 };
 function defaultMapOffset(): Point {
@@ -765,14 +794,8 @@ canvas.style.backgroundSize = "cover";
 canvas.dataset.hitFeedback = "ink-local";
 canvas.dataset.formationTileColorMode = "element";
 canvas.dataset.formationTilePalette = BOARD_FORMATIONS.map((formation) => `${formation.preferredWuxing}:${formation.color}`).join("|");
-const INK_ELEMENT_COLORS: Record<Wuxing, string> = {
-  "木": "#245b35",
-  "火": "#9c3127",
-  "土": "#6f451f",
-  "金": "#4e5964",
-  "水": "#1f5e80"
-};
 preloadCombatFxSprites();
+preloadInkPathSprites();
 
 function setPanelTab(tab: PanelTab): void {
   if (tab !== "unit") closeCompositionDrawer();
@@ -946,6 +969,7 @@ function startRun(useNewSeed = false): void {
   pendingCasualFusion = null;
   if (casualFusionConfirmDialog.open) casualFusionConfirmDialog.close();
   setPanelTab("shop");
+  startCoach();
   window.clearTimeout(comboTimer);
   evolutionRenderKey = "";
   goalRenderKey = "";
@@ -1019,6 +1043,12 @@ function addCombatFeed(glyph: string, name: string, detail: string, color: strin
   const key = glyph + name;
   if (now - (feedCooldowns.get(key) ?? -10_000) < 1100) return;
   feedCooldowns.set(key, now);
+  // 기록은 더 이상 탭 뒤에 숨지 않는다. 최신 한 건을 패널 바닥에 상시 노출한다.
+  const tickerGlyph = must<HTMLElement>("#record-ticker-glyph");
+  tickerGlyph.textContent = glyph;
+  tickerGlyph.style.color = color;
+  must<HTMLElement>("#record-ticker-text").textContent = name + " · " + detail;
+  must<HTMLElement>("#record-ticker").dataset.active = "1";
   const item = document.createElement("li");
   item.style.setProperty("--feed-color", color);
   const seal = document.createElement("b");
@@ -1339,6 +1369,8 @@ function processEvent(event: GameEvent): void {
       break;
     case "kill":
       pushPooled(floaters, floaterPool, takeFloater(event.at, "+" + String(event.reward), "#ffd86d", 0.72, false), 48);
+      // 처치 순간에 먹이 튀는 고리를 남겨 "정리됐다"가 화면에서 읽히게 한다.
+      pushPooled(rings, ringPool, takeRing(event.at, "#241d16", 0.42), 32);
       registerKillCombo();
       break;
     case "interest":
@@ -2389,7 +2421,7 @@ function setCodexMode(mode: CodexMode): void {
     button.setAttribute("aria-selected", String(selected));
   });
   const search = must<HTMLInputElement>("#codex-search");
-  must<HTMLElement>("#codex-kicker").textContent = mode === "hanzi" ? "JARYEONG LEARNING ARCHIVE" : mode === "recipes" ? "SYNTHESIS ROUTE ARCHIVE" : "FOUR-CHARACTER SEAL ARCHIVE";
+  must<HTMLElement>("#codex-kicker").textContent = mode === "hanzi" ? "자령 기록" : mode === "recipes" ? "SYNTHESIS ROUTE ARCHIVE" : "FOUR-CHARACTER SEAL ARCHIVE";
   must<HTMLElement>("#codex-title-label").textContent = mode === "hanzi" ? " 통합 자령 도감" : mode === "recipes" ? " 조합 도감" : " 사자성어 도감";
   search.placeholder = mode === "recipes" ? "결과·재료·훈음·능력 검색" : mode === "idioms" ? "사자성어·효과 검색" : "한자·훈음·쉬운 뜻·오행 검색";
   must<HTMLElement>("#codex-note").textContent = mode === "hanzi"
@@ -2872,54 +2904,99 @@ function drawPaperBackdrop(): void {
   context.clearRect(0, 0, WORLD_WIDTH, WORLD_HEIGHT);
 }
 
+/**
+ * 먹물 길.
+ *
+ * 경로 좌표(`ENEMY_PATH_POINTS` 17점·16구간·전부 200px 축정렬)와 적 이동·충돌
+ * 판정은 그대로 두고 표현만 교체한다. 회색 포장체·양쪽 연석·반복 점선·고속도로형
+ * 화살표를 없애고, Codex 한지 팩의 붓길 타일을 구간과 꼭짓점에 stamp한다.
+ */
+const INK_TILE = 96;
+const INK_STRAIGHT_LEN = 110;
+
+/** 꼭짓점에서 열린 두 방향. 네 공유 꼭짓점(내부 사각과 외곽이 만나는 곳)은 교차 타일. */
+const INK_VERTEX_KIND: ReadonlyArray<{ at: Point; corner: InkCorner | null }> = [
+  { at: { x: 340, y: 60 }, corner: "rd" },
+  { at: { x: 540, y: 60 }, corner: "dl" },
+  { at: { x: 740, y: 260 }, corner: "dl" },
+  { at: { x: 740, y: 460 }, corner: "lu" },
+  { at: { x: 540, y: 660 }, corner: "lu" },
+  { at: { x: 340, y: 660 }, corner: "ur" },
+  { at: { x: 140, y: 460 }, corner: "ur" },
+  { at: { x: 140, y: 260 }, corner: "rd" },
+  { at: { x: 340, y: 260 }, corner: null },
+  { at: { x: 540, y: 260 }, corner: null },
+  { at: { x: 540, y: 460 }, corner: null },
+  { at: { x: 340, y: 460 }, corner: null }
+];
+
+/** 같은 타일이 반복돼 인쇄물처럼 보이지 않도록 구간마다 미세한 알파 편차를 준다. */
+function inkTileAlpha(seed: number): number {
+  return 0.92 + ((Math.sin(seed * 12.9898) * 43758.5453) % 1 + 1) % 1 * 0.08;
+}
+
 function drawTrack(): void {
+  context.save();
+
+  // 1. 먹이 종이에 밴 자국을 먼저 깔아 붓길의 바닥을 만든다.
   context.save();
   context.lineJoin = "round";
   context.lineCap = "round";
   traceEnemyPath();
-  context.strokeStyle = "rgba(61, 47, 34, 0.18)";
-  context.lineWidth = 38;
-  context.shadowColor = "rgba(47, 35, 24, 0.28)";
-  context.shadowBlur = 5;
+  context.strokeStyle = "rgba(38, 30, 20, 0.13)";
+  context.lineWidth = 74;
   context.stroke();
-  context.shadowBlur = 0;
-  context.strokeStyle = "rgba(24, 23, 19, 0.78)";
-  context.lineWidth = 31;
+  context.strokeStyle = "rgba(28, 22, 15, 0.16)";
+  context.lineWidth = 58;
   context.stroke();
-  context.strokeStyle = "rgba(8, 10, 9, 0.72)";
-  context.lineWidth = 23;
-  context.stroke();
+  context.restore();
 
-  // Fine paper-colored gaps break the perfect vector edge into a dry brush.
-  context.setLineDash([2, 17, 5, 31, 1, 12]);
-  context.lineDashOffset = 7;
-  context.strokeStyle = "rgba(231, 217, 181, 0.2)";
-  context.lineWidth = 2.2;
-  context.stroke();
-  context.setLineDash([]);
-
-  // Calligraphic chevrons sit on exact segment midpoints so every turn remains predictable.
-  context.strokeStyle = "rgba(238, 222, 181, 0.76)";
-  context.lineWidth = 3.2;
+  // 2. 구간별 직선 타일.
   for (let index = 0; index < ENEMY_PATH_POINTS.length - 1; index += 1) {
     const from = ENEMY_PATH_POINTS[index] as Point;
     const to = ENEMY_PATH_POINTS[index + 1] as Point;
-    const x = (from.x + to.x) / 2;
-    const y = (from.y + to.y) / 2;
-    const angle = Math.atan2(to.y - from.y, to.x - from.x);
-    context.save();
-    context.translate(x, y);
-    context.rotate(angle);
-    for (const offset of [-5, 5]) {
-      context.beginPath();
-      context.moveTo(offset - 6, -6);
-      context.quadraticCurveTo(offset - 1, -1, offset + 2, 0);
-      context.quadraticCurveTo(offset - 1, 1, offset - 6, 6);
-      context.stroke();
+    const horizontal = Math.abs(to.x - from.x) > Math.abs(to.y - from.y);
+    const image = inkStraightImage(horizontal ? "h" : "v");
+    if (!image.complete || image.naturalWidth === 0) continue;
+    const length = Math.hypot(to.x - from.x, to.y - from.y);
+    const steps = Math.max(1, Math.round(length / INK_STRAIGHT_LEN));
+    for (let step = 0; step < steps; step += 1) {
+      const t = (step + 0.5) / steps;
+      const cx = from.x + (to.x - from.x) * t;
+      const cy = from.y + (to.y - from.y) * t;
+      // 타일 끝을 살짝 겹쳐 이음매가 끊겨 보이지 않게 한다.
+      const span = length / steps + 18;
+      context.globalAlpha = inkTileAlpha(index * 7 + step);
+      if (horizontal) context.drawImage(image, cx - span / 2, cy - INK_TILE / 2, span, INK_TILE);
+      else context.drawImage(image, cx - INK_TILE / 2, cy - span / 2, INK_TILE, span);
     }
-    context.restore();
   }
 
+  // 3. 꼭짓점 타일. 모서리는 먹이 고이고 교차점은 네 방향이 만난다.
+  for (const vertex of INK_VERTEX_KIND) {
+    const image = vertex.corner === null ? inkCrossImage() : inkCornerImage(vertex.corner);
+    if (!image.complete || image.naturalWidth === 0) continue;
+    context.globalAlpha = 1;
+    context.drawImage(image, vertex.at.x - INK_TILE / 2, vertex.at.y - INK_TILE / 2, INK_TILE, INK_TILE);
+  }
+  context.globalAlpha = 1;
+
+  // 4. 진행 방향은 모든 구간이 아니라 출구 뒤 첫 직선에만 드문드문 둔다.
+  const arrowSpots: ReadonlyArray<{ at: Point; direction: InkDirection }> = [
+    { at: { x: 480, y: 60 }, direction: "r" },
+    { at: { x: 740, y: 380 }, direction: "d" },
+    { at: { x: 400, y: 660 }, direction: "l" },
+    { at: { x: 140, y: 340 }, direction: "u" }
+  ];
+  for (const spot of arrowSpots) {
+    const image = inkArrowImage(spot.direction);
+    if (!image.complete || image.naturalWidth === 0) continue;
+    context.globalAlpha = 0.72;
+    context.drawImage(image, spot.at.x - 19, spot.at.y - 12, 38, 24);
+  }
+  context.globalAlpha = 1;
+
+  // 5. 다음 이동 구간을 읽을 수 있도록 젖은 먹방울이 같은 방향으로 순환한다.
   const currentOffset = reducedMotion ? 0.02 : (engine.state.elapsed * 0.018) % 1;
   canvas.dataset.inkCurrentOffset = currentOffset.toFixed(4);
   for (let index = 0; index < 10; index += 1) {
@@ -2931,20 +3008,20 @@ function drawTrack(): void {
     context.save();
     context.translate(point.x, point.y);
     context.rotate(angle);
-    context.fillStyle = "rgba(3, 5, 4, 0.34)";
+    context.fillStyle = "rgba(6, 8, 6, 0.3)";
     context.beginPath();
     context.ellipse(-7, 0, 12, 3.8, 0, 0, Math.PI * 2);
     context.fill();
     const bead = context.createRadialGradient(-1.5, -2, 0.6, 0, 0, 6.4);
-    bead.addColorStop(0, "rgba(86, 91, 85, 0.88)");
-    bead.addColorStop(0.18, "rgba(22, 27, 24, 0.98)");
-    bead.addColorStop(0.72, "rgba(3, 5, 4, 0.98)");
-    bead.addColorStop(1, "rgba(2, 3, 2, 0.18)");
+    bead.addColorStop(0, "rgba(112, 118, 110, 0.9)");
+    bead.addColorStop(0.18, "rgba(26, 31, 27, 0.98)");
+    bead.addColorStop(0.72, "rgba(4, 6, 5, 0.98)");
+    bead.addColorStop(1, "rgba(3, 4, 3, 0.16)");
     context.fillStyle = bead;
     context.beginPath();
     context.arc(0, 0, 6.2, 0, Math.PI * 2);
     context.fill();
-    context.fillStyle = "rgba(218, 209, 183, 0.24)";
+    context.fillStyle = "rgba(232, 224, 200, 0.28)";
     context.beginPath();
     context.arc(-1.8, -2.1, 1.25, 0, Math.PI * 2);
     context.fill();
@@ -2996,50 +3073,185 @@ function drawSpawnPortals(): void {
   }
 }
 
+/**
+ * 오행진을 평평한 색 사각형이 아니라 한지 위에 놓인 석제 제단으로 그린다.
+ *
+ * 십자 좌표(진 중심, 셀 간격 44, 판 182x182, 셀 38x38)는 `content.ts`가 결정하며
+ * 여기서는 절대 바꾸지 않는다. 판 바깥으로 장식을 넓힐 여유가 없으므로
+ * (판 모서리 91px, 도로 코어 안쪽 가장자리 84.5px) 깊이는 전부 판 안쪽과
+ * 아래로 드리우는 그림자로만 표현한다.
+ */
 function drawBoard(): void {
   context.save();
   context.textAlign = "center";
   const occupied = new Set(engine.state.towers.map((tower) => tower.cell));
+
   for (let formationIndex = 0; formationIndex < BOARD_FORMATIONS.length; formationIndex += 1) {
     const formation = BOARD_FORMATIONS[formationIndex] as (typeof BOARD_FORMATIONS)[number];
     const unlocked = engine.isFormationUnlocked(formationIndex);
     const resonance = engine.formationResonance(formationIndex);
-    const inkColor = INK_ELEMENT_COLORS[formation.preferredWuxing];
-    context.fillStyle = formation.color + (unlocked ? (resonance.tier > 0 ? "52" : "3d") : "24");
-    context.strokeStyle = unlocked ? formation.color + "d6" : formation.color + "72";
-    context.lineWidth = formation.id === "center" ? 2.2 : 1.5;
+    const cx = formation.center.x;
+    const cy = formation.center.y;
+    // 좌상·우하만 크게 깎은 비대칭 모서리가 웹 카드 대신 인장 실루엣으로 읽히게 한다.
+    const plateRadii = [15, 4, 15, 4];
+
+    // 1. 제단이 도로 위에 떠 있도록 아래로 접지 그림자를 드리운다.
+    context.save();
+    context.shadowColor = unlocked ? "rgba(28, 20, 10, 0.62)" : "rgba(12, 11, 10, 0.6)";
+    context.shadowBlur = 17;
+    context.shadowOffsetY = 7;
+    const stone = context.createLinearGradient(0, cy - 91, 0, cy + 91);
+    if (unlocked) {
+      stone.addColorStop(0, "#eae4d4");
+      stone.addColorStop(0.42, "#dcd5c2");
+      stone.addColorStop(1, "#c4bca8");
+    } else {
+      stone.addColorStop(0, "#a8a396");
+      stone.addColorStop(0.42, "#928d82");
+      stone.addColorStop(1, "#77736b");
+    }
+    context.fillStyle = stone;
     context.beginPath();
-    context.roundRect(formation.center.x - 91, formation.center.y - 91, 182, 182, 13);
+    context.roundRect(cx - 91, cy - 91, 182, 182, plateRadii);
     context.fill();
+    context.restore();
+
+    // 2. 오행 기운을 돌 표면에 스미게 한다. 채도는 낮게, 중심에서만 번지게.
+    context.save();
+    context.beginPath();
+    context.roundRect(cx - 91, cy - 91, 182, 182, plateRadii);
+    context.clip();
+    const tint = context.createRadialGradient(cx, cy, 8, cx, cy, 118);
+    tint.addColorStop(0, formation.color + (unlocked ? (resonance.tier > 0 ? "5c" : "3a") : "18"));
+    tint.addColorStop(1, formation.color + "00");
+    context.fillStyle = tint;
+    context.fillRect(cx - 91, cy - 91, 182, 182);
+
+    // 3. 상단 광원 베벨. 위 모서리는 밝게, 아래 모서리는 어둡게.
+    context.strokeStyle = "rgba(255, 253, 244, 0.85)";
+    context.lineWidth = 2;
+    context.beginPath();
+    context.moveTo(cx - 83, cy - 90);
+    context.lineTo(cx + 86, cy - 90);
     context.stroke();
-    context.strokeStyle = unlocked ? formation.color + "b8" : formation.color + "58";
+    context.strokeStyle = "rgba(86, 70, 44, 0.4)";
+    context.beginPath();
+    context.moveTo(cx - 86, cy + 90);
+    context.lineTo(cx + 83, cy + 90);
+    context.stroke();
+    context.restore();
+
+    // 4. 테두리: 바깥 접촉선 + 오행 색 실선.
+    context.strokeStyle = "rgba(52, 40, 22, 0.55)";
     context.lineWidth = 1;
+    context.beginPath();
+    context.roundRect(cx - 91, cy - 91, 182, 182, plateRadii);
     context.stroke();
-    context.fillStyle = unlocked ? inkColor + (resonance.tier > 0 ? "b8" : "88") : "rgba(86, 78, 68, 0.72)";
-    context.font = '900 25px "Batang", serif';
-    context.fillText(formation.preferredWuxing, formation.center.x, formation.center.y + 7);
-    context.fillStyle = inkColor;
-    context.font = '900 9px "Malgun Gothic", sans-serif';
+    context.strokeStyle = unlocked ? formation.color + (resonance.tier > 0 ? "e0" : "9e") : "rgba(88, 84, 79, 0.66)";
+    context.lineWidth = resonance.tier > 0 ? 2 : 1.4;
+    context.beginPath();
+    context.roundRect(cx - 88.5, cy - 88.5, 177, 177, [13, 3, 13, 3]);
+    context.stroke();
+
+    // 5. 공명 단계는 네 모서리 꺾쇠 길이로 알린다. 색만으로 구분하지 않는다.
+    if (unlocked && resonance.tier > 0) {
+      const arm = 8 + resonance.tier * 5;
+      context.strokeStyle = formation.color;
+      context.lineWidth = 2.6;
+      context.lineCap = "round";
+      context.shadowColor = formation.color;
+      context.shadowBlur = 9;
+      for (const [sx, sy] of [[-1, -1], [1, -1], [-1, 1], [1, 1]] as const) {
+        const bx = cx + sx * 84;
+        const by = cy + sy * 84;
+        context.beginPath();
+        context.moveTo(bx - sx * arm, by);
+        context.lineTo(bx, by);
+        context.lineTo(bx, by - sy * arm);
+        context.stroke();
+      }
+      context.shadowBlur = 0;
+      context.lineCap = "butt";
+    }
+
+    // 6. 새겨 넣은 오행 글자. 아래쪽 밝은 획을 먼저 깔아 음각으로 보이게 한다.
+    context.font = '900 44px "Batang", serif';
+    context.fillStyle = "rgba(255, 253, 244, 0.75)";
+    context.fillText(formation.preferredWuxing, cx, cy + 17);
+    context.fillStyle = unlocked ? formation.color + (resonance.tier > 0 ? "5e" : "44") : "rgba(96, 92, 86, 0.26)";
+    context.fillText(formation.preferredWuxing, cx, cy + 16);
+
+    // 7. 진 이름표: 돌에 박힌 작은 명패.
     const bonusLabel = resonance.damageBonus > 0 ? ` · 피해 +${Math.round(resonance.damageBonus * 100)}%` : "";
     const unlockCost = engine.nextFormationUnlockCost();
-    context.fillText(unlocked ? `${formation.label} ${resonance.matching}/16${bonusLabel}` : `${formation.label} · ${unlockCost ?? 0}엽전 해금`, formation.center.x, formation.center.y - 78);
+    const plateText = unlocked
+      ? `${formation.label} ${resonance.matching}/16${bonusLabel}`
+      : `${formation.label} · ${unlockCost ?? 0}엽전 해금`;
+    context.font = '900 10px "Malgun Gothic", sans-serif';
+    const nameWidth = context.measureText(plateText).width + 16;
+    // 판 위 중앙은 윗줄 자령 명패가 차지한다. 좌상단 모서리에 붙인다.
+    const plateLeft = cx - 91;
+    context.fillStyle = "rgba(28, 25, 21, 0.94)";
+    context.beginPath();
+    context.roundRect(plateLeft, cy - 122, nameWidth, 17, [3, 8, 3, 8]);
+    context.fill();
+    context.strokeStyle = unlocked ? formation.color + "8c" : "rgba(112, 108, 102, 0.55)";
+    context.lineWidth = 1;
+    context.stroke();
+    context.fillStyle = unlocked ? "#f6ecd2" : "#a8a29a";
+    context.textAlign = "left";
+    context.fillText(plateText, plateLeft + 8, cy - 113.5);
+    context.textAlign = "center";
   }
+
+  // 8. 셀은 돌판에 파인 소켓으로 그린다. 표 칸처럼 보이지 않게 안쪽 그림자를 준다.
   for (let index = 0; index < BOARD_CELLS.length; index += 1) {
     const cell = BOARD_CELLS[index] as Point;
     const unlocked = engine.isCellUnlocked(index);
+    const filled = occupied.has(index);
     const formation = BOARD_FORMATIONS[Math.floor(index / CELLS_PER_FORMATION)] as (typeof BOARD_FORMATIONS)[number];
-    const inkColor = INK_ELEMENT_COLORS[formation.preferredWuxing];
-    context.fillStyle = formation.color + (!unlocked ? "2b" : occupied.has(index) ? "78" : "52");
-    context.strokeStyle = formation.color + (!unlocked ? "66" : occupied.has(index) ? "dc" : "aa");
+
+    // 소켓 바닥: 위가 어둡고 아래가 밝은 그라디언트가 파인 느낌을 만든다.
+    const socket = context.createLinearGradient(0, cell.y - 19, 0, cell.y + 19);
+    if (!unlocked) {
+      socket.addColorStop(0, "rgba(88, 84, 78, 0.42)");
+      socket.addColorStop(1, "rgba(132, 127, 118, 0.3)");
+    } else if (filled) {
+      socket.addColorStop(0, formation.color + "74");
+      socket.addColorStop(1, formation.color + "3e");
+    } else {
+      socket.addColorStop(0, formation.color + "4c");
+      socket.addColorStop(1, formation.color + "24");
+    }
+    context.fillStyle = socket;
+    context.beginPath();
+    context.roundRect(cell.x - 19, cell.y - 19, 38, 38, 5);
+    context.fill();
+
+    // 아래 가장자리에 얇은 빛을 남겨 파인 깊이를 굳힌다.
+    context.strokeStyle = "rgba(255, 253, 244, 0.7)";
     context.lineWidth = 1;
     context.beginPath();
-    context.roundRect(cell.x - 19, cell.y - 19, 38, 38, 6);
-    context.fill();
+    context.moveTo(cell.x - 14, cell.y + 18.5);
+    context.lineTo(cell.x + 14, cell.y + 18.5);
     context.stroke();
-    if (!occupied.has(index)) {
-      context.fillStyle = inkColor + (unlocked ? "a6" : "78");
-      context.font = '700 11px "Malgun Gothic", serif';
-      context.fillText(unlocked ? "·" : "封", cell.x, cell.y + 4);
+
+    context.strokeStyle = !unlocked
+      ? "rgba(104, 99, 92, 0.7)"
+      : formation.color + (filled ? "d2" : "7e");
+    context.lineWidth = filled ? 1.6 : 1;
+    context.beginPath();
+    context.roundRect(cell.x - 19, cell.y - 19, 38, 38, 5);
+    context.stroke();
+
+    if (!filled) {
+      if (unlocked) {
+        // 빈 칸은 글자 대신 작은 상감 점으로 표시해 격자 소음을 줄인다.
+        context.fillStyle = formation.color + "6a";
+        context.beginPath();
+        context.arc(cell.x, cell.y, 2.4, 0, Math.PI * 2);
+        context.fill();
+      }
     }
   }
   context.restore();
@@ -3217,39 +3429,89 @@ function drawSpiritTowerLabel(tower: Tower, cell: Point, selected: boolean, mate
   if (!hanjaEmphasis) return;
 
   const glyphOnly = mapZoom / BASE_MAP_ZOOM < 0.6;
-  const width = glyphOnly ? 36 : 56;
-  const height = glyphOnly ? 36 : 54;
-  const top = glyphOnly ? -52 : -70;
+  // 세로로 쌓인 56px 검은 상자는 자령 그림을 절반쯤 가렸고, 훈음 최장값
+  // "수레 가기 힘들 가"는 49px 안에서 48%까지 압착되어 읽히지 않았다.
+  // 가로형 명패로 바꿔 그림을 덜 가리면서 훈음에 96px을 준다.
+  const width = glyphOnly ? 34 : 104;
+  const height = glyphOnly ? 34 : 34;
+  const top = glyphOnly ? -50 : -62;
+  const glyphBox = glyphOnly ? width : 34;
 
   context.save();
   context.translate(cell.x, cell.y);
   // Counter-scale the label so Hanja stays readable while the map zooms and pans.
   context.scale(1 / mapZoom, 1 / mapZoom);
-  context.fillStyle = "rgba(4, 9, 16, 0.96)";
-  context.strokeStyle = selected || material ? "#fff1bf" : style.color;
-  context.lineWidth = selected || material ? 2.4 : 1.7;
-  context.shadowColor = selected || material ? "rgba(255, 231, 164, 0.55)" : "rgba(0, 0, 0, 0.4)";
-  context.shadowBlur = selected || material ? 12 : 6;
+
+  const rim = selected || material ? "#ffe9b0" : style.color;
+  const plaque = context.createLinearGradient(0, top, 0, top + height);
+  plaque.addColorStop(0, "rgba(38, 44, 56, 0.97)");
+  plaque.addColorStop(0.5, "rgba(16, 21, 30, 0.97)");
+  plaque.addColorStop(1, "rgba(7, 10, 16, 0.97)");
+  context.fillStyle = plaque;
+  context.shadowColor = selected || material ? "rgba(255, 231, 164, 0.5)" : "rgba(0, 0, 0, 0.55)";
+  context.shadowBlur = selected || material ? 13 : 7;
+  context.shadowOffsetY = 2;
   context.beginPath();
-  context.roundRect(-width / 2, top, width, height, 8);
+  context.roundRect(-width / 2, top, width, height, [3, 11, 3, 11]);
   context.fill();
-  context.stroke();
   context.shadowBlur = 0;
+  context.shadowOffsetY = 0;
+
+  // 한자 칸은 오행 색 바탕으로 구분해 명패가 두 구역으로 읽히게 한다.
+  if (!glyphOnly) {
+    context.save();
+    context.beginPath();
+    context.roundRect(-width / 2, top, width, height, [3, 11, 3, 11]);
+    context.clip();
+    const glyphGround = context.createLinearGradient(0, top, 0, top + height);
+    glyphGround.addColorStop(0, style.color + "44");
+    glyphGround.addColorStop(1, style.color + "18");
+    context.fillStyle = glyphGround;
+    context.fillRect(-width / 2, top, glyphBox, height);
+    context.strokeStyle = "rgba(255, 240, 208, 0.14)";
+    context.lineWidth = 1;
+    context.beginPath();
+    context.moveTo(-width / 2 + glyphBox, top + 4);
+    context.lineTo(-width / 2 + glyphBox, top + height - 4);
+    context.stroke();
+    context.restore();
+  }
+
+  // 상단 광원 베벨
+  context.strokeStyle = "rgba(255, 246, 222, 0.2)";
+  context.lineWidth = 1;
+  context.beginPath();
+  context.moveTo(-width / 2 + 5, top + 0.5);
+  context.lineTo(width / 2 - 5, top + 0.5);
+  context.stroke();
+
+  context.strokeStyle = rim;
+  context.lineWidth = selected || material ? 2 : 1.3;
+  context.beginPath();
+  context.roundRect(-width / 2, top, width, height, [3, 11, 3, 11]);
+  context.stroke();
+
+  // 자령을 가리키는 작은 꼬리
+  context.fillStyle = rim;
+  context.beginPath();
+  context.moveTo(-4, top + height);
+  context.lineTo(4, top + height);
+  context.lineTo(0, top + height + 5);
+  context.closePath();
+  context.fill();
+
   context.textAlign = "center";
   context.textBaseline = "middle";
   context.fillStyle = "#fff8e8";
-  context.font = `900 ${glyphOnly ? 26 : 28}px "Malgun Gothic", "Noto Sans CJK KR", serif`;
-  context.fillText(tower.char, 0, top + 19, width - 8);
+  context.font = `900 ${glyphOnly ? 24 : 23}px "Malgun Gothic", "Noto Sans CJK KR", serif`;
+  context.fillText(tower.char, glyphOnly ? 0 : -width / 2 + glyphBox / 2, top + height / 2 + 1, glyphBox - 4);
   if (!glyphOnly) {
-    context.strokeStyle = "rgba(225, 236, 248, 0.16)";
-    context.lineWidth = 1;
-    context.beginPath();
-    context.moveTo(-width / 2 + 6, top + 36);
-    context.lineTo(width / 2 - 6, top + 36);
-    context.stroke();
-    context.fillStyle = "#f1e5c8";
-    context.font = '900 13px "Malgun Gothic", sans-serif';
-    context.fillText(learning.short, 0, top + 46, width - 7);
+    // 훈음은 명패 오른쪽 칸 전체(96px)를 쓴다. 최장 "수레 가기 힘들 가"도 들어간다.
+    const readingLeft = -width / 2 + glyphBox;
+    const readingWidth = width - glyphBox;
+    context.fillStyle = "#f3e8cd";
+    context.font = '800 12px "Malgun Gothic", sans-serif';
+    context.fillText(learning.short, readingLeft + readingWidth / 2, top + height / 2 + 1, readingWidth - 8);
   }
   context.restore();
 }
@@ -3584,30 +3846,65 @@ function drawEnemy(enemy: Enemy, point = positionOnPath(enemy.progress)): void {
   const visual = enemyJaryeongVisualFor(enemy.archetype, enemy.id + enemy.wave);
   const image = jaryeongSpriteImage(visual);
   const drawSize = enemy.boss ? 70 : enemy.archetype === "swarm" ? 32 : enemy.archetype === "armored" ? 46 : 40;
-  const top = point.y - drawSize * 0.43;
+  // 스프라이트 프레임 위쪽 투명 여백(실측 15~27%)을 보정해 그림 윗변에 맞춘다.
+  const artTop = drawSize * 0.3;
+  const top = point.y - artTop;
   context.save();
   context.translate(point.x, point.y);
   if (enemy.boss) context.rotate(Math.sin(engine.state.elapsed * 2) * 0.025);
 
+  // 적과 아군 자령은 같은 스프라이트 세트를 공유하므로, 그림 자체로는 구분되지
+  // 않는다. 발밑 표식과 테두리 광원으로 위협을 알린다.
+  //   아군: 제단 위 정갈한 타원 고리 + 오행 색 광원
+  //   적  : 번진 먹자국 + 주홍 톱니 고리 + 붉은 테두리
   context.save();
   context.translate(0, drawSize * 0.31);
   context.scale(1, 0.3);
-  context.fillStyle = weaknessColor + "4d";
-  context.shadowColor = weaknessColor;
-  context.shadowBlur = enemy.boss ? 18 : 8;
+  const blot = context.createRadialGradient(0, 0, 1, 0, 0, drawSize * 0.46);
+  blot.addColorStop(0, "rgba(14, 9, 7, 0.72)");
+  blot.addColorStop(0.6, "rgba(20, 12, 9, 0.42)");
+  blot.addColorStop(1, "rgba(20, 12, 9, 0)");
+  context.fillStyle = blot;
   context.beginPath();
-  context.arc(0, 0, drawSize * 0.36, 0, Math.PI * 2);
+  context.arc(0, 0, drawSize * 0.46, 0, Math.PI * 2);
   context.fill();
+
+  // 약점 오행은 톱니 고리의 색으로만 남긴다.
+  const teeth = enemy.boss ? 14 : 9;
+  const outer = drawSize * 0.42;
+  const inner = drawSize * 0.32;
+  context.beginPath();
+  for (let index = 0; index < teeth * 2; index += 1) {
+    const angle = (index / (teeth * 2)) * Math.PI * 2;
+    const radius = index % 2 === 0 ? outer : inner;
+    const px = Math.cos(angle) * radius;
+    const py = Math.sin(angle) * radius;
+    if (index === 0) context.moveTo(px, py);
+    else context.lineTo(px, py);
+  }
+  context.closePath();
+  context.strokeStyle = weaknessColor + "b4";
+  context.lineWidth = enemy.boss ? 3.4 : 2.4;
+  context.shadowColor = weaknessColor;
+  context.shadowBlur = enemy.boss ? 16 : 7;
+  context.stroke();
+  context.shadowBlur = 0;
   context.restore();
 
   if (image.complete && image.naturalWidth > 0 && image.naturalHeight > 0) {
     const frame = reducedMotion ? 0 : Math.floor((engine.state.elapsed * 2.2 + enemy.id * 0.37)) % 2;
     const frameWidth = image.naturalWidth / 2;
     const frameHeight = image.naturalHeight / 2;
-    context.shadowColor = color;
-    context.shadowBlur = enemy.boss ? 12 : 5;
+    context.shadowColor = enemy.boss ? "#ff4a3a" : "#a8341f";
+    context.shadowBlur = enemy.boss ? 16 : 8;
     context.drawImage(image, frame * frameWidth, 0, frameWidth, frameHeight, -drawSize / 2, -drawSize / 2, drawSize, drawSize);
     context.shadowBlur = 0;
+    // 같은 그림이라도 적은 살짝 어둡게 깔아 아군 자령보다 가라앉아 보이게 한다.
+    context.save();
+    context.globalCompositeOperation = "source-atop";
+    context.fillStyle = enemy.boss ? "rgba(46, 8, 6, 0.16)" : "rgba(30, 14, 8, 0.22)";
+    context.fillRect(-drawSize / 2, -drawSize / 2, drawSize, drawSize);
+    context.restore();
   } else {
     context.fillStyle = color;
     context.beginPath();
@@ -3622,14 +3919,21 @@ function drawEnemy(enemy: Enemy, point = positionOnPath(enemy.progress)): void {
 
   if (enemy.flash > 0) {
     const hitStrength = Math.min(1, enemy.flash / 0.09);
-    context.globalAlpha = hitStrength * 0.62;
-    context.strokeStyle = "#30291f";
-    context.lineWidth = 2;
-    context.setLineDash([3, 4]);
+    context.globalAlpha = hitStrength * 0.85;
+    context.strokeStyle = "#241d16";
+    context.lineWidth = 3.4;
+    context.setLineDash([4, 5]);
     context.beginPath();
-    context.arc(0, 0, drawSize * 0.36 + (1 - hitStrength) * 4, 0, Math.PI * 2);
+    context.arc(0, 0, drawSize * 0.36 + (1 - hitStrength) * 7, 0, Math.PI * 2);
     context.stroke();
     context.setLineDash([]);
+    // 전장 전체 밝기 필터는 쓰지 않는다. 맞은 개체 가장자리만 짧게 밝힌다.
+    context.globalAlpha = hitStrength * 0.5;
+    context.strokeStyle = "#fff2d8";
+    context.lineWidth = 1.6;
+    context.beginPath();
+    context.arc(0, 0, drawSize * 0.3, 0, Math.PI * 2);
+    context.stroke();
     context.globalAlpha = 1;
   }
 
@@ -3645,16 +3949,18 @@ function drawEnemy(enemy: Enemy, point = positionOnPath(enemy.progress)): void {
     context.strokeStyle = status.color;
     context.lineWidth = 1;
     context.beginPath();
-    context.arc(x, -drawSize * 0.43 - 14, 6, 0, Math.PI * 2);
+    context.arc(x, -artTop - 14, 6, 0, Math.PI * 2);
     context.fill();
     context.stroke();
     context.fillStyle = status.color;
     context.font = '900 10px "Malgun Gothic", serif';
-    context.fillText(status.glyph, x, -drawSize * 0.43 - 13);
+    context.fillText(status.glyph, x, -artTop - 13);
   }
   context.restore();
   const width = enemy.boss ? 64 : Math.max(30, drawSize * 0.7);
-  context.fillStyle = "rgba(0,0,0,0.72)";
+  context.fillStyle = "rgba(6, 4, 3, 0.86)";
+  context.fillRect(point.x - width / 2 - 1, top - 7, width + 2, 6);
+  context.fillStyle = "rgba(10, 7, 5, 0.9)";
   context.fillRect(point.x - width / 2, top - 6, width, 4);
   context.fillStyle = enemy.poisonUntil > engine.state.elapsed ? "#62db8a" : color;
   context.fillRect(point.x - width / 2, top - 6, width * Math.max(0, enemy.hp / enemy.maxHp), 4);
@@ -3678,12 +3984,14 @@ function updateAndDrawFx(delta: number): void {
     if (!isWorldPointVisible({ x, y }, 32)) continue;
     const angle = Math.atan2(projectile.to.y - projectile.from.y, projectile.to.x - projectile.from.x);
     const image = elementProjectileImage(projectile.wuxing);
-    const width = projectile.critical ? 40 : 30;
-    const height = projectile.critical ? 23 : 17;
+    const width = projectile.critical ? 54 : 42;
+    const height = projectile.critical ? 31 : 24;
     context.save();
-    context.globalAlpha = (1 - ratio * 0.42) * 0.84;
+    context.globalAlpha = (1 - ratio * 0.32) * 0.95;
     context.strokeStyle = projectile.color;
-    context.lineWidth = projectile.critical ? 1.8 : 1;
+    context.lineWidth = projectile.critical ? 3.6 : 2.4;
+    context.shadowColor = projectile.color;
+    context.shadowBlur = projectile.critical ? 12 : 7;
     context.beginPath();
     context.moveTo(projectile.from.x + (x - projectile.from.x) * 0.58, projectile.from.y + (y - projectile.from.y) * 0.58);
     context.lineTo(x, y);
@@ -4022,6 +4330,20 @@ canvas.addEventListener("pointerleave", () => {
 canvas.addEventListener("pointercancel", (event) => {
   if (!finishMapPan(event, false)) finishTowerDrag(event, false);
 });
+// 게임 화면에서는 텍스트 드래그 선택·이미지 끌기·우클릭 메뉴를 막는다.
+// 입력창은 예외로 두어 시드 입력과 검색은 그대로 쓸 수 있다.
+shell.addEventListener("contextmenu", (event) => {
+  const target = event.target as HTMLElement | null;
+  if (target?.closest("input, textarea")) return;
+  event.preventDefault();
+});
+shell.addEventListener("dragstart", (event) => event.preventDefault());
+document.addEventListener("selectstart", (event) => {
+  const target = event.target as HTMLElement | null;
+  if (target?.closest("input, textarea")) return;
+  event.preventDefault();
+});
+
 canvas.addEventListener("auxclick", (event) => {
   if (event.button === 1) event.preventDefault();
 });
@@ -4544,9 +4866,151 @@ function frame(now: number): void {
   // labels flash for only a few frames.
   drawWorld(delta);
   syncPanel();
+  syncCoachProgress();
   if (waveStartedThisFrame) canvas.dataset.waveStartWorkMs = (performance.now() - frameWorkStartedAt).toFixed(2);
   window.requestAnimationFrame(frame);
 }
+
+/*
+ * 첫 실행 조작 안내.
+ *
+ * 소환·휠 확대·패닝은 지금까지 패널 바닥의 10px 한 줄에만 적혀 있어서 사실상
+ * 아무도 읽지 않았다. 실제 조작 대상 위에 스포트라이트를 씌워 한 번만 짚어 준다.
+ * 게임을 막지 않으며, 해당 조작을 실제로 하면 저절로 다음 단계로 넘어간다.
+ */
+interface CoachStep {
+  readonly target: string;
+  readonly title: string;
+  readonly body: string;
+  readonly satisfied: () => boolean;
+}
+
+const COACH_STORAGE_KEY = "hanja-td:coach-seen-v1";
+const COACH_STEPS: readonly CoachStep[] = [
+  {
+    target: "#summon-button",
+    title: "먼저 자령을 소환하세요",
+    body: "엽전을 써서 자령을 뽑습니다. 첫 자령의 오행에 맞는 4×4 진이 무료로 열립니다.",
+    satisfied: () => engine.state.summonCount >= 1
+  },
+  {
+    target: "#battle-canvas",
+    title: "전장을 살펴보세요",
+    body: "휠을 굴려 확대·축소하고, 빈 곳을 끌어 화면을 옮깁니다. 자령을 끌면 자리를 맞바꿉니다.",
+    satisfied: () => false
+  },
+  {
+    target: "#early-button",
+    title: "준비되면 웨이브를 시작합니다",
+    body: "즉시 시작하면 남은 준비 시간만큼 엽전을 더 받습니다.",
+    satisfied: () => engine.state.wave >= 1
+  }
+];
+
+let coachIndex = -1;
+
+function coachAlreadySeen(): boolean {
+  try {
+    return window.localStorage.getItem(COACH_STORAGE_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function markCoachSeen(): void {
+  try {
+    window.localStorage.setItem(COACH_STORAGE_KEY, "1");
+  } catch {
+    // 저장이 막혀 있어도 이번 판 안내는 정상 동작한다.
+  }
+}
+
+function layoutCoach(): void {
+  const step = COACH_STEPS[coachIndex];
+  if (!step) return;
+  const target = document.querySelector<HTMLElement>(step.target);
+  const layer = must<HTMLElement>("#coach-layer");
+  if (!target) {
+    layer.hidden = true;
+    return;
+  }
+  // 셸이 transform: scale 로 확대되므로 화면 좌표를 셸 좌표계로 되돌린다.
+  const shellRect = shell.getBoundingClientRect();
+  const scaleX = shellRect.width / Math.max(1, shell.offsetWidth);
+  const scaleY = shellRect.height / Math.max(1, shell.offsetHeight);
+  const rect = target.getBoundingClientRect();
+  const left = (rect.left - shellRect.left) / scaleX;
+  const top = (rect.top - shellRect.top) / scaleY;
+  const width = rect.width / scaleX;
+  const height = rect.height / scaleY;
+
+  // 전장 전체를 감싸면 스포트라이트가 무의미하므로 가운데 일부만 짚는다.
+  const focusWidth = step.target === "#battle-canvas" ? Math.min(width, 300) : width;
+  const focusHeight = step.target === "#battle-canvas" ? Math.min(height, 240) : height;
+  const focusLeft = left + (width - focusWidth) / 2;
+  const focusTop = top + (height - focusHeight) / 2;
+
+  const ring = must<HTMLElement>("#coach-ring");
+  ring.style.left = `${focusLeft - 6}px`;
+  ring.style.top = `${focusTop - 6}px`;
+  ring.style.width = `${focusWidth + 12}px`;
+  ring.style.height = `${focusHeight + 12}px`;
+
+  const bubble = must<HTMLElement>("#coach-bubble");
+  const bubbleWidth = 258;
+  const below = focusTop + focusHeight + 14;
+  const fitsBelow = below + 132 <= shell.offsetHeight;
+  bubble.style.top = fitsBelow ? `${below}px` : `${Math.max(8, focusTop - 140)}px`;
+  bubble.style.left = `${Math.max(8, Math.min(shell.offsetWidth - bubbleWidth - 8, focusLeft + focusWidth / 2 - bubbleWidth / 2))}px`;
+}
+
+function renderCoach(): void {
+  const layer = must<HTMLElement>("#coach-layer");
+  const step = COACH_STEPS[coachIndex];
+  if (!step) {
+    layer.hidden = true;
+    return;
+  }
+  layer.hidden = false;
+  must<HTMLElement>("#coach-index").textContent = String(coachIndex + 1);
+  must<HTMLElement>("#coach-total").textContent = String(COACH_STEPS.length);
+  must<HTMLElement>("#coach-title").textContent = step.title;
+  must<HTMLElement>("#coach-body").textContent = step.body;
+  must<HTMLElement>("#coach-next").textContent = coachIndex === COACH_STEPS.length - 1 ? "마치기" : "다음";
+  layoutCoach();
+}
+
+function advanceCoach(): void {
+  if (coachIndex < 0) return;
+  if (coachIndex >= COACH_STEPS.length - 1) {
+    endCoach();
+    return;
+  }
+  coachIndex += 1;
+  renderCoach();
+}
+
+function endCoach(): void {
+  coachIndex = -1;
+  must<HTMLElement>("#coach-layer").hidden = true;
+  markCoachSeen();
+}
+
+function startCoach(force = false): void {
+  if (!force && coachAlreadySeen()) return;
+  coachIndex = 0;
+  renderCoach();
+}
+
+/** 해당 조작을 실제로 해내면 안내가 저절로 넘어간다. */
+function syncCoachProgress(): void {
+  if (coachIndex < 0) return;
+  const step = COACH_STEPS[coachIndex];
+  if (step && step.satisfied()) advanceCoach();
+}
+
+must<HTMLButtonElement>("#coach-next").addEventListener("click", advanceCoach);
+must<HTMLButtonElement>("#coach-skip").addEventListener("click", endCoach);
 
 function fitShell(): void {
   shell.style.setProperty("--viewport-height", String(window.innerHeight) + "px");
@@ -4564,7 +5028,10 @@ function fitShell(): void {
 }
 
 fitShell();
-window.addEventListener("resize", fitShell);
+window.addEventListener("resize", () => {
+  fitShell();
+  layoutCoach();
+});
 syncMapZoomControl();
 setGameSpeed(1);
 setDisplayMode(initialDisplayMode, false);

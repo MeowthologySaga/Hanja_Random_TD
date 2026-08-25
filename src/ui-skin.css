@@ -1,0 +1,4397 @@
+/*
+ * 봉인 제단 스킨 v1 — 상용 게임형 표면 재정의
+ *
+ * styles.css 뒤에 로드되어 시각 표면만 덮어쓴다. 레이아웃 구조·패널 전환·
+ * 상태 클래스 계약은 건드리지 않으므로 기존 테스트와 조작 흐름이 그대로 유지된다.
+ *
+ * 방향: 평평한 웹 카드 더미를 "먹빛 옻칠 바탕에 놓인 황동 계기반"으로 바꾼다.
+ *   - 균일한 1px 테두리 -> 상단 광원 베벨 + 금색 실선 + 모서리 꺾쇠
+ *   - 평면 채움 -> 재질 그라디언트 + 미세 결
+ *   - 모든 것이 둥근 사각형 -> 모서리 잘림(clip-path) 실루엣
+ *   - 값·목록은 파인 홈(inset), 조작부는 솟은 판(raised)
+ */
+
+:root {
+  /* ── 먹지 (바탕) — 차가운 남색 대신 따뜻하게 물들인 종이 ───
+     이 프로젝트가 웹 대시보드로 읽히던 가장 큰 원인은 남색 + 차가운 회백색
+     조합이었다. 색상환을 통째로 따뜻한 쪽으로 옮긴다. */
+  --ji-900: #b8a67e;
+  --ji-800: #c9b78f;
+  --ji-700: #ddd0ad;
+  --ji-600: #e9dec2;
+  --ji-500: #f4ead1;
+  --ji-400: #fbf5e6;
+
+  /* ── 흑단 (프레임 목재) ────────────────────────────── */
+  --wood-900: #0f0e0d;
+  --wood-800: #171615;
+  --wood-700: #24211d;
+  --wood-600: #332e27;
+
+  /* ── 금박 ──────────────────────────────────────────── */
+  --gold-100: #2b1d07;
+  --gold-200: #563d13;
+  --gold-300: #9b7137;
+  --gold-400: #b08a45;
+  --gold-500: #7a5a26;
+  --gold-600: #c9b78f;
+  --gold-700: #e0d3b2;
+
+  /* ── 단청 오방색 (크롬 악센트 전용. 오행 속성색과는 별개) ─── */
+  --dan-jang: #9f2f23;   /* 장단 · 주홍 */
+  --dan-noe: #3f7d6e;    /* 뇌록 · 청록 */
+  --dan-sam: #3a5794;    /* 삼청 · 군청 */
+  --dan-chija: #d9a63c;  /* 치자 · 황 */
+  --dan-hobun: #f2e8d5;  /* 호분 · 백 */
+  --seal: #9f2f23;       /* 인주 */
+
+  /* ── 한지 (도감·서책용 밝은 면) ────────────────────── */
+  --hanji-100: #f7f0dd;
+  --hanji-200: #ece0c6;
+  --hanji-300: #d8c8a6;
+  --hanji-ink: #26201a;
+
+  /* ── 글자 — 차가운 회백 대신 따뜻한 상아 ───────────── */
+  --text-100: #17130f;
+  --text-200: #332b22;
+  --text-300: #4f4639;
+  --text-400: #6f6454;
+
+  /* ── 타이포 스케일 (최소 11px) ─────────────────────── */
+  --fs-2xs: 11px;
+  --fs-xs: 12px;
+  --fs-sm: 13px;
+  --fs-md: 15px;
+  --fs-lg: 18px;
+  --fs-xl: 22px;
+  --fs-2xl: 28px;
+
+  /* ── 간격 4px 그리드 ───────────────────────────────── */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 20px;
+
+  /* ── 반경 / 모서리 잘림 ────────────────────────────── */
+  --r-sm: 3px;
+  --r-md: 5px;
+  --r-lg: 8px;
+  --cut-sm: 7px;
+  --cut-md: 10px;
+
+  /* ── 깊이 ──────────────────────────────────────────── */
+  --bevel-up:
+    inset 0 1px 0 rgba(255, 253, 244, 0.9),
+    inset 0 -2px 0 rgba(120, 98, 58, 0.28),
+    inset 1px 0 0 rgba(255, 253, 244, 0.5),
+    inset -1px 0 0 rgba(120, 98, 58, 0.16);
+  --bevel-in:
+    inset 0 2px 6px rgba(96, 76, 40, 0.34),
+    inset 0 -1px 0 rgba(255, 253, 244, 0.6);
+  --lift-1: 0 1px 0 rgba(96, 76, 40, 0.34), 0 3px 9px rgba(58, 44, 22, 0.22);
+  --lift-2: 0 2px 0 rgba(96, 76, 40, 0.4), 0 9px 22px rgba(58, 44, 22, 0.3);
+
+  /* ── 재질 ──────────────────────────────────────────── */
+  --mat-plate: linear-gradient(180deg, #f4ead1 0%, #ece0c3 46%, #dccfae 100%);
+  --mat-well: linear-gradient(180deg, #cdbb92 0%, #ded1b0 100%);
+  --mat-brass: linear-gradient(180deg, #f2e7ca 0%, #e3d5b2 48%, #cfbf99 100%);
+  --mat-brass-hot: linear-gradient(180deg, #fdf6e4 0%, #efe3c6 48%, #dccbA5 100%);
+  --mat-wood: linear-gradient(180deg, #24211d 0%, #191715 52%, #0f0e0d 100%);
+
+  /* 종이결: 아주 가는 사선 섬유 */
+  --grain:
+    repeating-linear-gradient(
+      113deg,
+      rgba(96, 76, 44, 0.05) 0 2px,
+      rgba(0, 0, 0, 0) 2px 5px
+    );
+
+  /* 창호 정자살: 명령부 바탕에 깔리는 격자 문살 */
+  --changho:
+    repeating-linear-gradient(
+      0deg,
+      rgba(120, 96, 52, 0.06) 0 1px,
+      rgba(0, 0, 0, 0) 1px 26px
+    ),
+    repeating-linear-gradient(
+      90deg,
+      rgba(120, 96, 52, 0.06) 0 1px,
+      rgba(0, 0, 0, 0) 1px 26px
+    );
+
+  /* 잘린 모서리 실루엣: 좌상 + 우하 */
+  --clip-cut: polygon(
+    var(--cut-md) 0,
+    100% 0,
+    100% calc(100% - var(--cut-md)),
+    calc(100% - var(--cut-md)) 100%,
+    0 100%,
+    0 var(--cut-md)
+  );
+  --clip-cut-sm: polygon(
+    var(--cut-sm) 0,
+    100% 0,
+    100% calc(100% - var(--cut-sm)),
+    calc(100% - var(--cut-sm)) 100%,
+    0 100%,
+    0 var(--cut-sm)
+  );
+}
+
+/* ══════════════════════════════════════════════════════
+   1. 바탕과 셸
+   ══════════════════════════════════════════════════════ */
+
+body {
+  background:
+    radial-gradient(ellipse 70% 50% at 50% 0%, rgba(150, 112, 50, 0.12), transparent 70%),
+    radial-gradient(ellipse 80% 60% at 50% 100%, rgba(70, 48, 26, 0.14), transparent 70%),
+    var(--ji-900);
+}
+
+.game-shell {
+  background: var(--ji-900);
+  border: 0;
+  box-shadow:
+    0 0 0 1px rgba(122, 90, 42, 0.16),
+    0 0 0 2px rgba(0, 0, 0, 0.8),
+    0 40px 120px rgba(0, 0, 0, 0.8);
+}
+
+/* 전장과 명령부 사이의 웹 구분선을 지우고, 빛이 스며드는 이음매로 바꾼다 */
+.battle-stage {
+  border-right: 0;
+}
+
+.battle-stage::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  pointer-events: none;
+  background:
+    linear-gradient(90deg, rgba(0, 0, 0, 0.5), transparent 5%, transparent 94%, rgba(0, 0, 0, 0.55)),
+    linear-gradient(180deg, rgba(0, 0, 0, 0.55), transparent 7%, transparent 90%, rgba(0, 0, 0, 0.6));
+  box-shadow:
+    inset -1px 0 0 rgba(122, 90, 42, 0.28),
+    inset 0 0 90px rgba(0, 0, 0, 0.55);
+}
+
+/* ══════════════════════════════════════════════════════
+   2. 명령부 — 황동 계기반
+   ══════════════════════════════════════════════════════ */
+
+.control-panel {
+  gap: var(--sp-1);
+  padding: var(--sp-2) var(--sp-3) var(--sp-2);
+  background:
+    var(--changho),
+    var(--grain),
+    linear-gradient(180deg, #241d15 0%, #16110c 34%, #100c08 100%);
+  box-shadow: inset 1px 0 0 rgba(122, 90, 42, 0.16);
+}
+
+/* 세로 예산 재배분: 크롬을 줄이고 작업 영역(context-deck)을 늘린다.
+   기존 40/50/58/1fr/70/26/28 -> 34/56/52/1fr/40/22/24 (크롬 74px 절감) */
+@media (min-width: 800px) {
+  .control-panel {
+    grid-template-rows: 34px 56px 52px minmax(0, 1fr) 40px 22px 24px;
+  }
+}
+
+@media (min-width: 1500px) and (min-height: 850px) {
+  .control-panel {
+    grid-template-rows: 40px 64px 60px minmax(0, 1fr) 46px 26px 28px;
+  }
+}
+
+/* ── 머리글 ── */
+.brand-row {
+  min-height: 0;
+  align-items: center;
+}
+
+.eyebrow {
+  margin: 0;
+  color: var(--gold-500);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.22em;
+}
+
+.brand-row h1 {
+  color: var(--gold-100);
+  font-size: var(--fs-xl);
+  font-weight: 900;
+  letter-spacing: 0.03em;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.9), 0 0 22px rgba(155, 113, 55, 0.28);
+}
+
+/* ── 상단 아이콘 조작 ── */
+.icon-button,
+.speed-button {
+  color: var(--gold-200);
+  border: 0;
+  border-radius: var(--r-sm);
+  background: var(--mat-brass);
+  box-shadow: var(--bevel-up), var(--lift-1);
+  transition: none;
+}
+
+.icon-button:hover,
+.speed-button:hover,
+.speed-button.is-accelerated {
+  color: var(--gold-100);
+  background: var(--mat-brass-hot);
+  box-shadow: var(--bevel-up), var(--lift-1), 0 0 16px rgba(155, 113, 55, 0.4);
+}
+
+.icon-button:active,
+.speed-button:active {
+  box-shadow: var(--bevel-in);
+  transform: translateY(1px);
+}
+
+/* ══════════════════════════════════════════════════════
+   3. 자원 표시 — 파인 홈 + 잘림 방지
+   ══════════════════════════════════════════════════════ */
+
+.resource-grid {
+  overflow: visible;
+  align-items: stretch;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  gap: 2px;
+}
+
+.resource-grid div {
+  display: grid;
+  align-content: center;
+  gap: 1px;
+  min-width: 0;
+  padding: var(--sp-1) 6px;
+  border: 0;
+  border-radius: var(--r-sm);
+  background: var(--mat-well);
+  box-shadow:
+    var(--bevel-in),
+    0 0 0 1px rgba(122, 90, 42, 0.16);
+}
+
+.resource-grid div:first-child {
+  background: linear-gradient(180deg, #231a09 0%, #120d05 100%);
+  box-shadow:
+    var(--bevel-in),
+    0 0 0 1px rgba(155, 113, 55, 0.34),
+    inset 0 0 18px rgba(122, 90, 42, 0.14);
+}
+
+.resource-grid span {
+  overflow: hidden;
+  color: var(--text-400);
+  font-size: var(--fs-2xs);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.resource-grid span em {
+  color: var(--jade);
+  font-size: 10px;
+  font-style: normal;
+}
+
+.resource-grid strong {
+  overflow: hidden;
+  color: var(--text-100);
+  font-size: var(--fs-md);
+  font-weight: 900;
+  line-height: 1.05;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.resource-grid div:first-child strong {
+  color: var(--gold-200);
+  font-size: var(--fs-lg);
+  text-shadow: 0 0 14px rgba(155, 113, 55, 0.45);
+}
+
+/* ══════════════════════════════════════════════════════
+   4. 웨이브 카드 — 경보 판
+   ══════════════════════════════════════════════════════ */
+
+.wave-card {
+  clip-path: var(--clip-cut-sm);
+  align-items: center;
+  padding: 6px var(--sp-2);
+  border: 0;
+  border-radius: 0;
+  background: var(--mat-plate);
+  box-shadow:
+    var(--bevel-up),
+    inset 3px 0 0 var(--seal-red-deep);
+}
+
+.wave-card span,
+.wave-card small {
+  color: var(--text-400);
+  font-size: var(--fs-2xs);
+}
+
+.wave-card strong {
+  color: var(--text-100);
+  font-size: var(--fs-sm);
+  font-weight: 900;
+}
+
+.weakness-seal {
+  padding: 2px 6px;
+  border-radius: var(--r-sm);
+  background: rgba(0, 0, 0, 0.45);
+  box-shadow: inset 0 0 0 1px rgba(122, 90, 42, 0.3);
+}
+
+.weakness-seal span {
+  font-size: 10px;
+}
+
+.weakness-seal b {
+  font-size: var(--fs-lg);
+}
+
+/* ══════════════════════════════════════════════════════
+   5. 작업 영역 — 파인 홈
+   ══════════════════════════════════════════════════════ */
+
+.context-deck {
+  border-radius: var(--r-md);
+  background: var(--mat-well);
+  box-shadow:
+    var(--bevel-in),
+    0 0 0 1px rgba(122, 90, 42, 0.13);
+}
+
+.panel-view {
+  padding: var(--sp-2);
+}
+
+/* 섹션 머리글: 금색 소문자 + 실선 */
+.section-heading,
+.evolution-heading,
+.shop-workbench-heading,
+.goal-workbench-heading {
+  border-bottom: 1px solid rgba(122, 90, 42, 0.18);
+  padding-bottom: 3px;
+}
+
+.section-heading span,
+.evolution-heading span {
+  color: var(--gold-500);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.2em;
+}
+
+.section-heading b,
+.evolution-heading strong {
+  color: var(--gold-100);
+  font-size: var(--fs-md);
+  font-weight: 900;
+}
+
+/* ══════════════════════════════════════════════════════
+   6. 조작부 — 솟은 황동판
+   ══════════════════════════════════════════════════════ */
+
+.action-button {
+  clip-path: var(--clip-cut-sm);
+  border: 0;
+  border-radius: 0;
+  background: var(--mat-brass);
+  box-shadow: var(--bevel-up), var(--lift-1);
+  transition: none;
+}
+
+.action-button:hover:not(:disabled) {
+  background: var(--mat-brass-hot);
+  box-shadow: var(--bevel-up), var(--lift-1), 0 0 18px rgba(155, 113, 55, 0.34);
+}
+
+.action-button:active:not(:disabled) {
+  box-shadow: var(--bevel-in);
+  transform: translateY(1px);
+}
+
+.action-button:disabled {
+  filter: none;
+  opacity: 1;
+  color: var(--text-400);
+  background: linear-gradient(180deg, #1d1811 0%, #120e0a 100%);
+  box-shadow: inset 0 0 0 1px rgba(128, 108, 74, 0.16);
+}
+
+.action-button b {
+  color: var(--gold-100);
+  font-size: var(--fs-sm);
+  font-weight: 900;
+}
+
+.action-button small,
+.action-button em,
+.action-button i {
+  color: var(--gold-300);
+  font-size: var(--fs-2xs);
+}
+
+.action-button:disabled b {
+  color: var(--text-300);
+}
+
+.action-button:disabled small,
+.action-button:disabled em {
+  color: var(--text-400);
+}
+
+.action-button--summon {
+  background: linear-gradient(180deg, #6a5226 0%, #4a3819 48%, #2c210e 100%);
+  box-shadow:
+    var(--bevel-up),
+    var(--lift-1),
+    0 0 22px rgba(155, 113, 55, 0.22);
+}
+
+.hotkey {
+  color: var(--gold-600);
+  background: rgba(0, 0, 0, 0.5);
+  border-radius: var(--r-sm);
+  box-shadow: inset 0 0 0 1px rgba(122, 90, 42, 0.24);
+  font-size: 9px;
+  font-weight: 900;
+}
+
+/* 소형 버튼 */
+.small-button {
+  color: var(--gold-200);
+  border: 0;
+  border-radius: var(--r-sm);
+  background: var(--mat-brass);
+  box-shadow: var(--bevel-up), 0 1px 0 rgba(0, 0, 0, 0.5);
+  font-size: var(--fs-2xs);
+  font-weight: 800;
+}
+
+.small-button:hover:not(:disabled) {
+  color: var(--gold-100);
+  background: var(--mat-brass-hot);
+}
+
+.small-button:active:not(:disabled) {
+  box-shadow: var(--bevel-in);
+  transform: translateY(1px);
+}
+
+.small-button:disabled {
+  opacity: 1;
+  color: var(--text-400);
+  background: linear-gradient(180deg, #1d1811 0%, #120e0a 100%);
+  box-shadow: inset 0 0 0 1px rgba(128, 108, 74, 0.14);
+}
+
+/* ══════════════════════════════════════════════════════
+   7. 탭 — 한 줄 각인 띠
+   ══════════════════════════════════════════════════════ */
+
+.panel-tabs {
+  gap: 2px;
+  padding: 2px;
+  border: 0;
+  border-radius: var(--r-md);
+  background: var(--mat-well);
+  box-shadow: var(--bevel-in), 0 0 0 1px rgba(122, 90, 42, 0.14);
+}
+
+.panel-tabs button {
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 0;
+  padding: 0 2px;
+  color: var(--text-400);
+  border: 0;
+  border-radius: var(--r-sm);
+  background: transparent;
+  box-shadow: none;
+  font-size: var(--fs-2xs);
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+
+.panel-tabs button:hover {
+  color: var(--gold-200);
+  background: rgba(122, 90, 42, 0.1);
+}
+
+.panel-tabs button.is-active,
+.panel-tabs button[aria-selected="true"] {
+  color: var(--gold-100);
+  background: var(--mat-brass-hot);
+  box-shadow:
+    var(--bevel-up),
+    0 0 14px rgba(155, 113, 55, 0.3);
+}
+
+.panel-tabs button small {
+  color: var(--gold-500);
+  font-size: 9px;
+  font-weight: 900;
+}
+
+.panel-tabs button.is-active small,
+.panel-tabs button[aria-selected="true"] small {
+  color: var(--gold-300);
+}
+
+/* 소환 목적 탭 등 내부 소형 탭 */
+.mode-tabs button,
+.summon-intent-tabs button,
+.goal-mode-tabs button {
+  color: var(--text-400);
+  border: 0;
+  border-radius: var(--r-sm);
+  background: rgba(0, 0, 0, 0.4);
+  box-shadow: inset 0 0 0 1px rgba(128, 108, 74, 0.13);
+  font-size: var(--fs-2xs);
+  font-weight: 800;
+}
+
+.mode-tabs button.is-active,
+.summon-intent-tabs button.is-active,
+.goal-mode-tabs button.is-active {
+  color: var(--gold-100);
+  background: var(--mat-brass-hot);
+  box-shadow: var(--bevel-up);
+}
+
+/* ══════════════════════════════════════════════════════
+   8. 카드 — 잘린 모서리 + 재질
+   ══════════════════════════════════════════════════════ */
+
+.selected-card,
+.goal-card,
+.evolution-card,
+.idiom-target-card,
+.opening-guide,
+.formation-unlock-bar,
+.concentration-max-card,
+.growth-trait-row {
+  border: 0;
+  border-radius: var(--r-md);
+  background: var(--mat-plate);
+  box-shadow:
+    var(--bevel-up),
+    0 0 0 1px rgba(122, 90, 42, 0.12);
+}
+
+.evolution-card {
+  clip-path: var(--clip-cut-sm);
+  border-radius: 0;
+}
+
+.evolution-card:hover,
+.evolution-card:focus-visible {
+  background: linear-gradient(180deg, #352b1e 0%, #221a13 100%);
+  box-shadow: var(--bevel-up), 0 0 0 1px rgba(155, 113, 55, 0.4);
+}
+
+.evolution-card.is-target {
+  box-shadow:
+    var(--bevel-up),
+    0 0 0 1px var(--gold-300),
+    0 0 20px rgba(155, 113, 55, 0.3);
+}
+
+/* 자령 초상 자리 */
+.selected-glyph,
+.goal-glyph {
+  border: 0;
+  border-radius: var(--r-md);
+  background:
+    radial-gradient(circle at 50% 34%, rgba(122, 90, 42, 0.16), transparent 68%),
+    var(--mat-well);
+  box-shadow:
+    var(--bevel-in),
+    0 0 0 1px rgba(122, 90, 42, 0.26);
+}
+
+/* 빈 상태 */
+.empty-selection,
+.empty-evolution {
+  border: 1px dashed rgba(122, 90, 42, 0.22);
+  border-radius: var(--r-md);
+  background: rgba(0, 0, 0, 0.3);
+}
+
+.empty-selection b,
+.empty-evolution b {
+  color: var(--gold-300);
+  font-size: var(--fs-sm);
+}
+
+.empty-selection span,
+.empty-evolution span {
+  color: var(--text-400);
+  font-size: var(--fs-2xs);
+}
+
+/* 능력 알약 */
+.ability-pills span,
+.selected-ability-summary {
+  border: 0;
+  border-radius: var(--r-sm);
+  background: rgba(0, 0, 0, 0.42);
+  box-shadow: inset 0 0 0 1px rgba(122, 90, 42, 0.18);
+}
+
+/* 진행 바 */
+.goal-progress,
+.wave-progress {
+  border-radius: 999px;
+  background: var(--ji-900);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.9);
+}
+
+.goal-progress i,
+.wave-progress i {
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--gold-500), var(--gold-200));
+  box-shadow: 0 0 12px rgba(155, 113, 55, 0.55);
+}
+
+/* ══════════════════════════════════════════════════════
+   9. 전장 위 HUD
+   ══════════════════════════════════════════════════════ */
+
+.stage-chip {
+  clip-path: var(--clip-cut-sm);
+  border: 0;
+  border-radius: 0;
+  background: linear-gradient(180deg, rgba(38, 31, 22, 0.94), rgba(14, 11, 8, 0.94));
+  box-shadow:
+    var(--bevel-up),
+    0 0 0 1px rgba(122, 90, 42, 0.2),
+    var(--lift-1);
+  backdrop-filter: blur(6px);
+}
+
+.stage-chip span {
+  color: var(--text-400);
+  font-size: var(--fs-2xs);
+  font-weight: 700;
+}
+
+.stage-chip strong {
+  color: var(--text-100);
+  font-size: var(--fs-sm);
+  font-weight: 900;
+}
+
+.stage-chip--phase {
+  box-shadow:
+    var(--bevel-up),
+    0 0 0 1px rgba(159, 47, 35, 0.42),
+    var(--lift-1);
+}
+
+.map-zoom-control,
+.hanja-emphasis-control {
+  clip-path: var(--clip-cut-sm);
+  border: 0;
+  border-radius: 0;
+  background: linear-gradient(180deg, rgba(38, 31, 22, 0.92), rgba(14, 11, 8, 0.94));
+  box-shadow:
+    var(--bevel-up),
+    0 0 0 1px rgba(122, 90, 42, 0.2),
+    var(--lift-1);
+}
+
+.map-zoom-control span,
+.map-zoom-control small,
+.hanja-emphasis-control span {
+  color: var(--text-400);
+  font-size: var(--fs-2xs);
+}
+
+.map-zoom-control strong,
+.hanja-emphasis-control strong {
+  color: var(--gold-200);
+  font-size: var(--fs-sm);
+}
+
+.hanja-emphasis-control.is-on {
+  box-shadow:
+    var(--bevel-up),
+    0 0 0 1px rgba(155, 113, 55, 0.44),
+    var(--lift-1),
+    0 0 16px rgba(155, 113, 55, 0.22);
+}
+
+/* 토스트 · 경보 */
+.toast {
+  clip-path: var(--clip-cut-sm);
+  border: 0;
+  border-radius: 0;
+  background: linear-gradient(180deg, rgba(44, 36, 25, 0.97), rgba(15, 12, 8, 0.97));
+  box-shadow: var(--bevel-up), 0 0 0 1px rgba(122, 90, 42, 0.28), var(--lift-2);
+  color: var(--text-100);
+  font-size: var(--fs-sm);
+}
+
+.toast--warning {
+  box-shadow: var(--bevel-up), 0 0 0 1px rgba(159, 47, 35, 0.6), var(--lift-2);
+  color: #ffd9d2;
+}
+
+.boss-banner {
+  clip-path: var(--clip-cut);
+  border: 0;
+  border-radius: 0;
+  background: linear-gradient(180deg, rgba(62, 20, 14, 0.96), rgba(20, 8, 6, 0.96));
+  box-shadow:
+    var(--bevel-up),
+    0 0 0 1px rgba(159, 47, 35, 0.68),
+    0 0 40px rgba(159, 47, 35, 0.3),
+    var(--lift-2);
+}
+
+/* 오행 상생 띠 */
+.synergy-strip {
+  gap: 2px;
+}
+
+.synergy-strip span {
+  border: 0;
+  border-radius: var(--r-sm);
+  background: rgba(0, 0, 0, 0.4);
+  box-shadow: inset 0 0 0 1px rgba(128, 108, 74, 0.12);
+  font-size: var(--fs-2xs);
+}
+
+.synergy-strip span.is-active {
+  background: var(--mat-brass-hot);
+  box-shadow: var(--bevel-up);
+}
+
+/* 바닥 안내 */
+.panel-footer {
+  color: var(--text-400);
+  font-size: 10px;
+}
+
+.panel-footer b {
+  color: var(--text-300);
+}
+
+/* ══════════════════════════════════════════════════════
+   10. 모달 · 도감
+   ══════════════════════════════════════════════════════ */
+
+.modal-layer {
+  background:
+    radial-gradient(ellipse at 50% 40%, rgba(0, 0, 0, 0.72), rgba(0, 0, 0, 0.9)),
+    rgba(3, 5, 9, 0.6);
+  backdrop-filter: blur(3px);
+}
+
+.title-card,
+.end-card {
+  clip-path: var(--clip-cut);
+  border: 0;
+  border-radius: 0;
+  background:
+    var(--grain),
+    linear-gradient(180deg, #282016 0%, #1a150e 46%, #100c08 100%);
+  box-shadow:
+    var(--bevel-up),
+    0 0 0 1px rgba(122, 90, 42, 0.34),
+    0 0 60px rgba(0, 0, 0, 0.8);
+}
+
+/* ══════════════════════════════════════════════════════
+   11. 스크롤바 — 각인 홈 + 황동 손잡이
+   ══════════════════════════════════════════════════════ */
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--gold-500) rgba(0, 0, 0, 0.5);
+}
+
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+*::-webkit-scrollbar-track {
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.55);
+  box-shadow: inset 0 0 3px rgba(0, 0, 0, 0.9);
+}
+
+*::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: linear-gradient(180deg, var(--gold-400), var(--gold-600));
+  box-shadow: inset 0 1px 0 rgba(255, 238, 200, 0.3);
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, var(--gold-300), var(--gold-500));
+}
+
+/* ══════════════════════════════════════════════════════
+   12. 접근성 유지
+   ══════════════════════════════════════════════════════ */
+
+button:focus-visible,
+input:focus-visible {
+  outline: 2px solid var(--gold-200);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .action-button,
+  .small-button,
+  .icon-button,
+  .speed-button {
+    transition: none;
+  }
+}
+
+/* ══════════════════════════════════════════════════════
+   13. 레이아웃 교정 — 12절까지의 표면 변경으로 생긴 여파 정리
+   ══════════════════════════════════════════════════════ */
+
+/* 탭 띠는 2줄 유지. 40px는 너무 낮아 두 줄이 겹쳤다. */
+@media (min-width: 800px) {
+  .control-panel {
+    grid-template-rows: 34px 56px 52px minmax(0, 1fr) 56px 22px 24px;
+  }
+}
+
+@media (min-width: 1500px) and (min-height: 850px) {
+  .control-panel {
+    grid-template-rows: 40px 64px 60px minmax(0, 1fr) 64px 26px 28px;
+  }
+}
+
+.panel-tabs button {
+  min-height: 24px;
+  padding: 1px 3px;
+  line-height: 1.1;
+}
+
+/* .action-row 는 flex:1 이라 남는 세로 공간을 전부 흡수해 버튼이 빈 상자가 된다.
+   상한을 두고 남는 공간은 상점 섹션 사이에 고르게 흩어 놓는다. */
+.shop-workbench {
+  justify-content: flex-start;
+  gap: var(--sp-2);
+  border: 0;
+  border-radius: var(--r-md);
+  background: none;
+  box-shadow: none;
+}
+
+.action-row {
+  flex: 0 0 auto;
+  max-height: 132px;
+  min-height: 92px;
+}
+
+.summon-action-group,
+.action-button--evolve {
+  max-height: 132px;
+}
+
+/* 웨이브 브리핑이 잘리지 않게 */
+.wave-card > div:first-child {
+  min-width: 0;
+}
+
+.wave-card small {
+  display: block;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* 상점 내부 판들도 홈/판 구분을 갖게 */
+.opening-guide,
+.formation-unlock-bar {
+  padding: var(--sp-2);
+}
+
+.shop-help-strip {
+  color: var(--text-400);
+  font-size: 10px;
+}
+
+/* ══════════════════════════════════════════════════════
+   14. 줄바꿈으로 깨지던 소형 라벨 정리
+   ══════════════════════════════════════════════════════ */
+
+/* "중복 수 집", "탐색 새 한 자" 처럼 두세 글자에서 끊기던 것을 한 줄로 고정 */
+.summon-intent-tabs button,
+.mode-tabs button,
+.goal-mode-tabs button,
+.synergy-strip span,
+.shop-help-strip b,
+.shop-help-strip span {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.shop-help-strip {
+  display: flex;
+  gap: var(--sp-2);
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+/* 상점 하단에 고이던 빈 공간을 섹션 사이로 흩는다 */
+.shop-workbench {
+  justify-content: space-between;
+}
+
+/* ══════════════════════════════════════════════════════
+   15. 큰 화면에서 상점 패널에 고이던 빈 공간
+   ══════════════════════════════════════════════════════ */
+
+/* space-between 은 섹션 사이마다 틈을 벌려 오히려 성기게 보였다.
+   내용은 위에서부터 쌓고, 안내 띠만 바닥에 고정해 여백을 한 곳으로 모은다. */
+.shop-workbench {
+  justify-content: flex-start;
+}
+
+.shop-help-strip {
+  margin-top: auto;
+}
+
+/* ══════════════════════════════════════════════════════
+   16. 첫 실행 조작 안내 (코치마크)
+   ══════════════════════════════════════════════════════ */
+
+.coach-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 60;
+  pointer-events: none;
+}
+
+.coach-layer[hidden] {
+  display: none;
+}
+
+/* 거대한 spread 그림자로 대상만 남기고 주변을 어둡게 덮는다. */
+.coach-ring {
+  position: absolute;
+  border: 2px solid var(--gold-200);
+  border-radius: var(--r-md);
+  box-shadow:
+    0 0 0 9999px rgba(8, 6, 4, 0.62),
+    0 0 22px rgba(155, 113, 55, 0.55),
+    inset 0 0 18px rgba(155, 113, 55, 0.28);
+  animation: coach-pulse 1.7s ease-in-out infinite;
+}
+
+@keyframes coach-pulse {
+  0%, 100% { border-color: var(--gold-300); }
+  50% { border-color: var(--gold-100); }
+}
+
+.coach-bubble {
+  position: absolute;
+  width: 258px;
+  padding: var(--sp-3) var(--sp-3) var(--sp-2);
+  pointer-events: auto;
+  clip-path: var(--clip-cut-sm);
+  background:
+    var(--grain),
+    linear-gradient(180deg, #33291c 0%, #1d1710 52%, #14100b 100%);
+  box-shadow:
+    var(--bevel-up),
+    0 0 0 1px rgba(122, 90, 42, 0.42),
+    var(--lift-2);
+}
+
+.coach-step {
+  margin: 0 0 2px;
+  color: var(--gold-500);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.16em;
+}
+
+.coach-bubble b {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--gold-100);
+  font-size: var(--fs-md);
+  font-weight: 900;
+}
+
+.coach-bubble p#coach-body {
+  margin: 0 0 var(--sp-2);
+  color: var(--text-200);
+  font-size: var(--fs-xs);
+  line-height: 1.5;
+}
+
+.coach-actions {
+  display: flex;
+  gap: var(--sp-2);
+  justify-content: flex-end;
+}
+
+.coach-skip,
+.coach-next {
+  padding: 5px 12px;
+  border: 0;
+  border-radius: var(--r-sm);
+  font-size: var(--fs-2xs);
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.coach-skip {
+  color: var(--text-300);
+  background: transparent;
+  box-shadow: inset 0 0 0 1px rgba(128, 108, 74, 0.28);
+}
+
+.coach-skip:hover {
+  color: var(--text-100);
+}
+
+.coach-next {
+  color: var(--gold-100);
+  background: var(--mat-brass-hot);
+  box-shadow: var(--bevel-up);
+}
+
+.coach-next:hover {
+  box-shadow: var(--bevel-up), 0 0 14px rgba(155, 113, 55, 0.42);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .coach-ring {
+    animation: none;
+  }
+}
+
+/* ══════════════════════════════════════════════════════
+   17. 바닥 조작 범례 — 한 문장 나열을 칩으로 분해
+   ══════════════════════════════════════════════════════ */
+
+.canvas-tip {
+  display: flex;
+  gap: 5px;
+  overflow: hidden;
+}
+
+.canvas-tip i {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  flex: 0 0 auto;
+  padding: 1px 6px 1px 2px;
+  color: var(--text-300);
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.4);
+  box-shadow: inset 0 0 0 1px rgba(128, 108, 74, 0.18);
+  font-size: 10px;
+  font-style: normal;
+  white-space: nowrap;
+}
+
+.canvas-tip i em {
+  padding: 1px 5px;
+  color: var(--gold-200);
+  border-radius: 999px;
+  background: rgba(122, 90, 42, 0.14);
+  font-size: 9px;
+  font-style: normal;
+  font-weight: 900;
+}
+
+/* ══════════════════════════════════════════════════════
+   18. 소환 결과 — 낱글자로 쪼개지던 요약과 밋밋한 봉투
+   ══════════════════════════════════════════════════════ */
+
+.summon-reveal {
+  clip-path: var(--clip-cut);
+  border: 0;
+  border-radius: 0;
+  background:
+    var(--grain),
+    radial-gradient(ellipse 80% 60% at 50% 0%, rgba(122, 90, 42, 0.12), transparent 70%),
+    linear-gradient(180deg, #2c2318 0%, #1a140e 46%, #100c08 100%);
+  box-shadow:
+    var(--bevel-up),
+    0 0 0 1px rgba(122, 90, 42, 0.42),
+    0 0 70px rgba(0, 0, 0, 0.75);
+}
+
+.summon-reveal > header {
+  align-items: center;
+  padding-bottom: var(--sp-2);
+  border-bottom: 1px solid rgba(122, 90, 42, 0.22);
+}
+
+.summon-reveal > header span {
+  color: var(--gold-500);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.2em;
+}
+
+.summon-reveal > header strong {
+  color: var(--gold-100);
+  font-size: var(--fs-xl);
+  font-weight: 900;
+}
+
+.summon-reveal > header button {
+  color: var(--gold-200);
+  border: 0;
+  border-radius: var(--r-sm);
+  background: var(--mat-brass);
+  box-shadow: var(--bevel-up);
+}
+
+/* "새 발/견 1" 처럼 두 글자에서 끊기던 요약을 칩으로 고정한다. */
+#summon-reveal-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px var(--sp-2);
+  align-items: center;
+  color: var(--text-300);
+  font-size: var(--fs-2xs);
+}
+
+#summon-reveal-summary > b,
+#summon-reveal-summary > span,
+#summon-reveal-summary > em {
+  flex: 0 0 auto;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.42);
+  box-shadow: inset 0 0 0 1px rgba(128, 108, 74, 0.2);
+  font-size: var(--fs-2xs);
+  font-style: normal;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+#summon-reveal-summary > b {
+  color: var(--gold-100);
+  background: rgba(122, 90, 42, 0.16);
+  box-shadow: inset 0 0 0 1px rgba(122, 90, 42, 0.4);
+}
+
+#summon-reveal-summary > em {
+  color: var(--dan-noe);
+  margin-left: auto;
+}
+
+/* 결과 카드: 두루마리에서 뽑아 올린 인장처럼 */
+.summon-reveal-list > * {
+  clip-path: var(--clip-cut-sm);
+  border: 0 !important;
+  border-radius: 0 !important;
+  background:
+    radial-gradient(ellipse 70% 50% at 50% 22%, rgba(122, 90, 42, 0.14), transparent 72%),
+    linear-gradient(180deg, #241d14 0%, #14100b 100%) !important;
+  box-shadow:
+    var(--bevel-up),
+    0 0 0 1px rgba(122, 90, 42, 0.3),
+    var(--lift-1);
+}
+
+/* ══════════════════════════════════════════════════════
+   19. 자령 도감 — 유리판 목록에서 한지 서책으로
+   ══════════════════════════════════════════════════════ */
+
+.codex-dialog {
+  clip-path: var(--clip-cut);
+  border: 0;
+  border-radius: 0;
+  background:
+    var(--changho),
+    var(--grain),
+    radial-gradient(ellipse 90% 50% at 50% 0%, rgba(122, 90, 42, 0.1), transparent 68%),
+    linear-gradient(180deg, #241d15 0%, #17120d 42%, #100c08 100%);
+  box-shadow:
+    var(--bevel-up),
+    0 0 0 1px rgba(122, 90, 42, 0.4),
+    0 0 80px rgba(0, 0, 0, 0.8);
+}
+
+/* 서책 머리 — 금박 제목띠 */
+.codex-dialog > header {
+  padding-bottom: var(--sp-2);
+  border-bottom: 1px solid rgba(122, 90, 42, 0.26);
+}
+
+.codex-dialog > header .eyebrow,
+.codex-dialog > header p {
+  color: var(--gold-500);
+  letter-spacing: 0.2em;
+}
+
+.codex-dialog > header h2,
+.codex-dialog > header h3 {
+  color: var(--gold-100);
+  font-weight: 900;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.9), 0 0 20px rgba(122, 90, 42, 0.24);
+}
+
+/* 갈피 — 상단 큰 탭 */
+.codex-mode-tabs {
+  gap: var(--sp-1);
+  padding: 3px;
+  border: 0;
+  border-radius: var(--r-md);
+  background: var(--mat-well);
+  box-shadow: var(--bevel-in), 0 0 0 1px rgba(122, 90, 42, 0.14);
+}
+
+.codex-mode-tabs button {
+  color: var(--text-400);
+  border: 0;
+  border-radius: var(--r-sm);
+  background: transparent;
+  font-size: var(--fs-sm);
+  font-weight: 800;
+}
+
+.codex-mode-tabs button:hover {
+  color: var(--gold-200);
+  background: rgba(122, 90, 42, 0.09);
+}
+
+.codex-mode-tabs button.is-active,
+.codex-mode-tabs button[aria-selected="true"] {
+  color: var(--gold-100);
+  background: var(--mat-brass-hot);
+  box-shadow: var(--bevel-up), 0 0 14px rgba(155, 113, 55, 0.26);
+}
+
+/* 필터 칩 — 인장 조각 */
+.codex-toolbar,
+.codex-search-row,
+.codex-synthesis-filters {
+  gap: var(--sp-1);
+}
+
+.codex-toolbar button,
+.codex-synthesis-filters button {
+  color: var(--text-300);
+  border: 0;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.4);
+  box-shadow: inset 0 0 0 1px rgba(128, 108, 74, 0.2);
+  font-size: var(--fs-2xs);
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.codex-toolbar button:hover,
+.codex-synthesis-filters button:hover {
+  color: var(--gold-200);
+  box-shadow: inset 0 0 0 1px rgba(122, 90, 42, 0.4);
+}
+
+.codex-toolbar button.is-active,
+.codex-synthesis-filters button.is-active {
+  color: var(--gold-100);
+  background: var(--mat-brass-hot);
+  box-shadow: var(--bevel-up);
+}
+
+.codex-filter-label {
+  color: var(--gold-500);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+}
+
+.codex-filter-divider {
+  background: rgba(122, 90, 42, 0.22);
+}
+
+.codex-search-row input,
+.codex-dialog input[type="search"] {
+  color: var(--text-100);
+  border: 0;
+  border-radius: var(--r-sm);
+  background: var(--mat-well);
+  box-shadow: var(--bevel-in), 0 0 0 1px rgba(128, 108, 74, 0.22);
+  font-size: var(--fs-sm);
+}
+
+.codex-search-row input::placeholder {
+  color: var(--text-400);
+}
+
+.codex-search-row input:focus {
+  box-shadow: var(--bevel-in), 0 0 0 1px rgba(122, 90, 42, 0.55);
+}
+
+/* 목록 홈 */
+.codex-list {
+  border-radius: var(--r-md);
+  background: var(--mat-well);
+  box-shadow: var(--bevel-in), 0 0 0 1px rgba(122, 90, 42, 0.1);
+}
+
+/* 낱장 — 목록 카드 */
+.codex-jaryeong-card,
+.codex-recipe-card,
+.codex-idiom-card,
+.codex-review-card,
+.codex-jaryeong-entry {
+  clip-path: var(--clip-cut-sm);
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: linear-gradient(180deg, #2a2218 0%, #1a150e 100%) !important;
+  box-shadow:
+    var(--bevel-up),
+    0 0 0 1px rgba(122, 90, 42, 0.14);
+}
+
+.codex-jaryeong-card:hover,
+.codex-recipe-card:hover,
+.codex-idiom-card:hover,
+.codex-review-card:hover {
+  background: linear-gradient(180deg, #362b1d 0%, #221b12 100%) !important;
+  box-shadow: var(--bevel-up), 0 0 0 1px rgba(122, 90, 42, 0.42);
+}
+
+.codex-jaryeong-card.is-selected,
+.codex-recipe-card.is-selected,
+.codex-idiom-card.is-selected,
+.codex-review-card.is-selected {
+  box-shadow:
+    var(--bevel-up),
+    0 0 0 2px var(--gold-300),
+    0 0 22px rgba(155, 113, 55, 0.26);
+}
+
+.codex-jaryeong-number {
+  color: var(--gold-500);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+}
+
+.codex-jaryeong-name {
+  color: var(--text-100);
+}
+
+/* 초상 — 감실에 모신 듯 파낸 자리 */
+.codex-jaryeong-portrait,
+.codex-jaryeong-card-portrait,
+.codex-jaryeong-detail-sprite,
+.codex-detail-glyph,
+.codex-review-preview {
+  border: 0 !important;
+  border-radius: var(--r-md) !important;
+  background:
+    radial-gradient(circle at 50% 32%, rgba(122, 90, 42, 0.16), transparent 68%),
+    var(--mat-well) !important;
+  box-shadow:
+    var(--bevel-in),
+    0 0 0 1px rgba(122, 90, 42, 0.24);
+}
+
+/* 상세 — 오른쪽 서책 면 */
+.codex-detail,
+.codex-jaryeong-detail {
+  border: 0;
+  border-radius: var(--r-md);
+  background:
+    var(--grain),
+    linear-gradient(180deg, #2a2218 0%, #191309 100%);
+  box-shadow: var(--bevel-up), 0 0 0 1px rgba(122, 90, 42, 0.2);
+}
+
+.codex-jaryeong-detail-hero,
+.codex-detail-hero,
+.codex-review-detail-hero {
+  border-bottom: 1px solid rgba(122, 90, 42, 0.2);
+}
+
+.codex-jaryeong-facts > *,
+.codex-stats > *,
+.codex-review-metadata > * {
+  border: 0 !important;
+  border-radius: var(--r-sm) !important;
+  background: rgba(0, 0, 0, 0.4) !important;
+  box-shadow: inset 0 0 0 1px rgba(128, 108, 74, 0.18);
+}
+
+.codex-jaryeong-observation,
+.codex-jaryeong-trait,
+.codex-meaning-explanation,
+.codex-note {
+  border: 0;
+  border-left: 3px solid var(--gold-500);
+  border-radius: var(--r-sm);
+  background: rgba(0, 0, 0, 0.34);
+  color: var(--text-200);
+  font-size: var(--fs-xs);
+  line-height: 1.6;
+}
+
+.codex-jaryeong-tags span,
+.codex-jaryeong-badges span,
+.codex-progression-badges span,
+.codex-review-badges span {
+  border: 0 !important;
+  border-radius: 999px !important;
+  background: rgba(0, 0, 0, 0.42) !important;
+  box-shadow: inset 0 0 0 1px rgba(122, 90, 42, 0.26);
+  font-size: var(--fs-2xs);
+  font-weight: 800;
+}
+
+.codex-independent-badge {
+  color: var(--gold-100) !important;
+  background: var(--mat-brass-hot) !important;
+  box-shadow: var(--bevel-up) !important;
+}
+
+.codex-tier-stars {
+  color: var(--gold-200);
+}
+
+.codex-empty {
+  color: var(--text-400);
+  font-size: var(--fs-sm);
+}
+
+/* ══════════════════════════════════════════════════════
+   20. 도감 — 더 구체적인 기존 규칙을 덮는다
+   ══════════════════════════════════════════════════════ */
+
+/* styles.css:4447 의 .codex-dialog.is-jaryeong-dex 가 청록 radial 을 얹어
+   서책 전체를 다시 남색으로 되돌리고 있었다. 같은 특정도로 덮는다. */
+.codex-dialog.is-jaryeong-dex {
+  border-color: rgba(122, 90, 42, 0.5);
+  background:
+    var(--changho),
+    var(--grain),
+    radial-gradient(ellipse 90% 46% at 50% 0%, rgba(122, 90, 42, 0.12), transparent 66%),
+    linear-gradient(160deg, #251e15 0%, #17120d 48%, #100c08 100%);
+  box-shadow:
+    var(--bevel-up),
+    0 0 0 1px rgba(122, 90, 42, 0.4),
+    inset 0 0 70px rgba(6, 4, 3, 0.6),
+    0 28px 90px rgba(0, 0, 0, 0.8);
+}
+
+.codex-dialog.is-jaryeong-dex .codex-heading .eyebrow {
+  color: var(--gold-500);
+  letter-spacing: 0.2em;
+}
+
+.codex-dialog.is-jaryeong-dex .codex-heading h2 {
+  color: var(--gold-100);
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.9), 0 0 20px rgba(122, 90, 42, 0.24);
+}
+
+.codex-dialog.is-jaryeong-dex .codex-detail {
+  border: 0;
+  background:
+    var(--grain),
+    linear-gradient(180deg, #2a2218 0%, #191309 100%);
+  box-shadow: var(--bevel-up), 0 0 0 1px rgba(122, 90, 42, 0.2);
+}
+
+/* 카드 왼쪽 오행 색 띠는 속성 정보이므로 유지하되, 서책 바탕과 어울리게 폭만 정리 */
+.codex-jaryeong-card {
+  border-left: 3px solid var(--codex, var(--gold-400)) !important;
+}
+
+/* ══════════════════════════════════════════════════════
+   21. 폼 컨트롤 — 브라우저 기본 위젯이 웹페이지 인상을 만든다
+   ══════════════════════════════════════════════════════ */
+
+select,
+.growth-filters select,
+.dismantle-toolbar select {
+  appearance: none;
+  padding: 4px 22px 4px 8px;
+  color: var(--text-100);
+  border: 0;
+  border-radius: var(--r-sm);
+  background:
+    linear-gradient(45deg, transparent 50%, var(--gold-300) 50%) calc(100% - 11px) 50% / 5px 5px no-repeat,
+    linear-gradient(135deg, var(--gold-300) 50%, transparent 50%) calc(100% - 6px) 50% / 5px 5px no-repeat,
+    var(--mat-brass);
+  box-shadow: var(--bevel-up);
+  font-size: var(--fs-2xs);
+  font-weight: 800;
+  cursor: pointer;
+}
+
+select:hover {
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--gold-100) 50%),
+    linear-gradient(135deg, var(--gold-100) 50%, transparent 50%),
+    var(--mat-brass-hot);
+}
+
+select option {
+  color: var(--text-100);
+  background: #1b1510;
+}
+
+input[type="text"],
+input[type="search"],
+input[type="number"] {
+  color: var(--text-100);
+  border: 0;
+  border-radius: var(--r-sm);
+  background: var(--mat-well);
+  box-shadow: var(--bevel-in), 0 0 0 1px rgba(128, 108, 74, 0.22);
+  font-size: var(--fs-sm);
+}
+
+input::placeholder {
+  color: var(--text-400);
+}
+
+input:focus {
+  box-shadow: var(--bevel-in), 0 0 0 1px rgba(122, 90, 42, 0.55);
+}
+
+input[type="range"] {
+  appearance: none;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--ji-900);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.9);
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  appearance: none;
+  width: 15px;
+  height: 15px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, var(--gold-200), var(--gold-500));
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.6), 0 0 9px rgba(155, 113, 55, 0.45);
+  cursor: pointer;
+}
+
+input[type="checkbox"] {
+  accent-color: var(--gold-400);
+}
+
+/* ══════════════════════════════════════════════════════
+   22. 남은 패널 탭 공통 — 능력·강화·농축·인벤·성어·기록
+   ══════════════════════════════════════════════════════ */
+
+/* 카드류: 남색 유리판 → 먹지 판 */
+.ability-pills span,
+.ability-guide-card,
+.ability-loadout > *,
+.growth-stat-row,
+.growth-trait-row,
+.growth-upgrade-section,
+.dismantle-row,
+.dismantle-quote,
+.concentration-focus,
+.concentration-paths > *,
+.concentration-payment > *,
+.concentration-compare > *,
+.run-inventory-card,
+.idiom-target-card,
+.idiom-result,
+.idiom-strategy,
+.idiom-material-guide,
+.selected-actions > * {
+  border: 0 !important;
+  border-radius: var(--r-sm) !important;
+  background: linear-gradient(180deg, #241d15 0%, #16110c 100%) !important;
+  box-shadow:
+    var(--bevel-up),
+    0 0 0 1px rgba(122, 90, 42, 0.14);
+}
+
+/* 목록 홈 */
+.growth-upgrade-list,
+.growth-dismantle-list,
+.concentration-target-list,
+.run-inventory-list,
+.evolution-options,
+.combat-feed,
+.ability-guide-list {
+  border-radius: var(--r-md);
+  background: var(--mat-well);
+  box-shadow: var(--bevel-in), 0 0 0 1px rgba(122, 90, 42, 0.1);
+}
+
+/* 오행 탭 (강화 제련소) */
+.growth-element-tabs button {
+  border: 0 !important;
+  border-radius: var(--r-sm) !important;
+  background: rgba(0, 0, 0, 0.42) !important;
+  box-shadow: inset 0 0 0 1px rgba(128, 108, 74, 0.2);
+}
+
+.growth-element-tabs button.is-active {
+  background: var(--mat-brass-hot) !important;
+  box-shadow: var(--bevel-up);
+}
+
+/* 전투 기록 */
+.combat-feed li {
+  border: 0;
+  border-left: 3px solid var(--gold-500);
+  border-radius: var(--r-sm);
+  background: rgba(0, 0, 0, 0.34);
+  font-size: var(--fs-2xs);
+}
+
+.combat-feed li > b {
+  color: var(--gold-100);
+}
+
+/* 성어 진법 */
+.idiom-glyphs i,
+.idiom-target-glyphs i,
+.idiom-codex-glyphs i {
+  border: 0 !important;
+  border-radius: var(--r-sm) !important;
+  background: rgba(0, 0, 0, 0.46) !important;
+  box-shadow: inset 0 0 0 1px rgba(128, 108, 74, 0.24);
+  color: var(--text-300);
+}
+
+.idiom-glyphs i.is-owned,
+.idiom-target-glyphs i.is-owned {
+  color: var(--gold-100);
+  background: var(--mat-brass-hot) !important;
+  box-shadow: var(--bevel-up), 0 0 12px rgba(155, 113, 55, 0.3);
+}
+
+/* 14px 미만으로 남아 읽기 힘들던 본문들 */
+.growth-stat-row span,
+.growth-trait-row span,
+.concentration-focus span,
+.run-inventory-card span,
+.ability-pills span > b small,
+.dismantle-row span {
+  font-size: var(--fs-2xs);
+}
+
+/* 자령 탭 우측 조작 버튼이 말줄임으로 잘리던 문제 */
+.selected-actions {
+  gap: var(--sp-1);
+}
+
+.selected-actions button {
+  padding: 3px 6px;
+  font-size: 10px;
+  letter-spacing: -0.02em;
+}
+
+/* 좁은 3열 격자 안에서 화살표 여백이 글자를 밀어내 "모든 5"처럼 잘렸다. */
+select,
+.growth-filters select,
+.dismantle-toolbar select {
+  min-width: 0;
+  padding: 4px 16px 4px 6px;
+  overflow: hidden;
+  background-position:
+    calc(100% - 9px) 50%,
+    calc(100% - 5px) 50%,
+    0 0;
+  text-overflow: ellipsis;
+  letter-spacing: -0.03em;
+}
+
+/* ══════════════════════════════════════════════════════
+   23. 시작 화면 · 결과 화면
+   ══════════════════════════════════════════════════════ */
+
+.title-seal i {
+  border: 0;
+  border-radius: 999px;
+  background: radial-gradient(circle at 42% 34%, var(--gold-200), var(--gold-500) 62%, var(--gold-700));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 245, 214, 0.5),
+    inset 0 -2px 4px rgba(0, 0, 0, 0.5),
+    0 3px 10px rgba(0, 0, 0, 0.6),
+    0 0 22px rgba(155, 113, 55, 0.28);
+  color: #2b2009;
+  font-weight: 900;
+}
+
+.title-lead {
+  color: var(--text-200);
+  font-size: var(--fs-sm);
+  line-height: 1.7;
+}
+
+.game-mode-option,
+.region-option {
+  clip-path: var(--clip-cut-sm);
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: linear-gradient(180deg, #2a2218 0%, #17120c 100%) !important;
+  box-shadow:
+    var(--bevel-up),
+    0 0 0 1px rgba(122, 90, 42, 0.16);
+}
+
+.game-mode-option:hover,
+.region-option:hover:not(:disabled) {
+  background: linear-gradient(180deg, #3a2e1f 0%, #201911 100%) !important;
+  box-shadow: var(--bevel-up), 0 0 0 1px rgba(122, 90, 42, 0.45);
+}
+
+.game-mode-option.is-selected,
+.region-option.is-selected {
+  background: linear-gradient(180deg, #5c4722 0%, #33270f 100%) !important;
+  box-shadow:
+    var(--bevel-up),
+    0 0 0 2px var(--gold-300),
+    0 0 24px rgba(155, 113, 55, 0.28);
+}
+
+.game-mode-option i,
+.region-option i,
+.region-option > span:first-child {
+  color: var(--gold-100);
+  border-radius: var(--r-sm);
+  background: rgba(0, 0, 0, 0.44);
+  box-shadow: inset 0 0 0 1px rgba(122, 90, 42, 0.34);
+}
+
+.game-mode-option b,
+.region-option b {
+  color: var(--text-100);
+  font-size: var(--fs-md);
+}
+
+.game-mode-option small,
+.region-option small {
+  color: var(--text-300);
+  font-size: var(--fs-2xs);
+}
+
+.game-mode-option em {
+  color: var(--gold-300);
+  border-radius: 999px;
+  background: rgba(122, 90, 42, 0.14);
+  box-shadow: inset 0 0 0 1px rgba(122, 90, 42, 0.32);
+  font-size: 9px;
+  font-style: normal;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+}
+
+.seed-field {
+  color: var(--gold-200);
+  border: 0;
+  border-radius: var(--r-sm);
+  background: var(--mat-well);
+  box-shadow: var(--bevel-in), 0 0 0 1px rgba(122, 90, 42, 0.24);
+  font-weight: 900;
+  letter-spacing: 0.08em;
+}
+
+/* 봉인전 시작 — 화면의 유일한 1차 행동 */
+#start-button {
+  clip-path: var(--clip-cut-sm);
+  color: #2b2009;
+  border: 0;
+  border-radius: 0;
+  background: linear-gradient(180deg, var(--gold-100) 0%, var(--gold-300) 46%, var(--gold-500) 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 252, 240, 0.7),
+    inset 0 -3px 0 rgba(78, 58, 22, 0.55),
+    0 4px 0 rgba(0, 0, 0, 0.55),
+    0 10px 26px rgba(0, 0, 0, 0.55),
+    0 0 34px rgba(155, 113, 55, 0.3);
+  font-weight: 900;
+  letter-spacing: 0.04em;
+}
+
+#start-button:hover {
+  background: linear-gradient(180deg, #fff8e2 0%, var(--gold-200) 46%, var(--gold-400) 100%);
+}
+
+#start-button:active {
+  box-shadow:
+    inset 0 3px 8px rgba(78, 58, 22, 0.6),
+    0 1px 0 rgba(0, 0, 0, 0.5);
+  transform: translateY(2px);
+}
+
+.title-link-row button,
+.title-help-button {
+  color: var(--text-300);
+  background: transparent;
+  font-size: var(--fs-xs);
+}
+
+.title-link-row button:hover,
+.title-help-button:hover {
+  color: var(--gold-200);
+}
+
+.title-note {
+  color: var(--text-400);
+  font-size: var(--fs-2xs);
+}
+
+.end-stats > * {
+  border: 0 !important;
+  border-radius: var(--r-sm) !important;
+  background: linear-gradient(180deg, #241d15 0%, #16110c 100%) !important;
+  box-shadow: var(--bevel-up), 0 0 0 1px rgba(122, 90, 42, 0.14);
+}
+
+/* .seed-field 는 라벨 감싸개라 홈 처리를 하면 줄 전체가 황동판이 된다. 안쪽 입력만 판다. */
+.seed-field {
+  background: none;
+  box-shadow: none;
+  color: var(--text-300);
+  font-weight: 700;
+  letter-spacing: normal;
+}
+
+.seed-field input {
+  color: var(--gold-200);
+  border: 0;
+  border-radius: var(--r-sm);
+  background: var(--mat-well);
+  box-shadow: var(--bevel-in), 0 0 0 1px rgba(122, 90, 42, 0.26);
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-align: center;
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   24. 표면 매핑 감사 반영 — 액자·모달·잔여 규칙
+   (8개 에이전트 실측 지적: 패널 액자 9종과 모달 5종이 미스킨이었다)
+   ══════════════════════════════════════════════════════════════════ */
+
+/* ── 24-A. 9개 패널의 "액자" 자체가 미스킨이었다 ──────────────
+   내용물에만 재질을 입히고 액자는 12px 라운드 + 1px 헤어라인 그대로여서
+   골격이 계속 대시보드로 읽혔다. */
+.goal-workbench,
+.shop-workbench,
+.evolution-workbench,
+.concentration-workbench,
+.growth-workbench,
+.run-inventory-panel,
+.idiom-panel,
+.combat-readout,
+.selected-card {
+  clip-path: var(--clip-cut);
+  border: 0 !important;
+  border-radius: 0 !important;
+  background:
+    var(--grain),
+    linear-gradient(180deg, #221b13 0%, #16110c 46%, #100c08 100%) !important;
+  box-shadow:
+    var(--bevel-up),
+    0 0 0 1px rgba(122, 90, 42, 0.18);
+}
+
+.concentration-layout > aside,
+.dismantle-workbench,
+.element-growth-workbench {
+  border: 0 !important;
+  border-radius: var(--r-md) !important;
+  background: var(--mat-well) !important;
+  box-shadow: var(--bevel-in), 0 0 0 1px rgba(122, 90, 42, 0.12);
+}
+
+/* ── 24-B. 5개 모달이 통째로 미스킨이었다 ─────────────────────
+   실루엣 5가지(16/16/16/17/4px), 액센트 4계열(금·보라·청록·금)이 섞여 있었다. */
+#help-dialog,
+#settings-dialog,
+#element-upgrade-dialog,
+#ability-guide-dialog,
+#casual-fusion-confirm-dialog {
+  clip-path: var(--clip-cut);
+  border: 0;
+  border-radius: 0;
+  background:
+    var(--changho),
+    var(--grain),
+    radial-gradient(ellipse 90% 46% at 50% 0%, rgba(122, 90, 42, 0.11), transparent 66%),
+    linear-gradient(160deg, #251e15 0%, #17120d 48%, #100c08 100%);
+  box-shadow:
+    var(--bevel-up),
+    0 0 0 1px rgba(122, 90, 42, 0.4),
+    0 28px 90px rgba(0, 0, 0, 0.8);
+}
+
+#help-dialog::backdrop,
+#settings-dialog::backdrop,
+#element-upgrade-dialog::backdrop,
+#ability-guide-dialog::backdrop,
+#casual-fusion-confirm-dialog::backdrop,
+#codex-dialog::backdrop {
+  background: rgba(6, 4, 3, 0.8);
+  backdrop-filter: blur(3px);
+}
+
+.display-mode-option {
+  clip-path: var(--clip-cut-sm);
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: linear-gradient(180deg, #2a2218 0%, #17120c 100%) !important;
+  box-shadow: var(--bevel-up), 0 0 0 1px rgba(122, 90, 42, 0.16);
+}
+
+.display-mode-option.is-selected {
+  background: linear-gradient(180deg, #5c4722 0%, #33270f 100%) !important;
+  box-shadow: var(--bevel-up), 0 0 0 2px var(--gold-300), 0 0 20px rgba(155, 113, 55, 0.24);
+}
+
+.mode-preview {
+  border: 0 !important;
+  border-radius: var(--r-sm) !important;
+  box-shadow: var(--bevel-in), 0 0 0 1px rgba(122, 90, 42, 0.2);
+}
+
+/* iOS 토글 스위치는 게임 UI에서 가장 확실한 "웹앱" 신호다.
+   황동 홈에 물리는 걸쇠로 바꾼다. */
+.settings-toggle {
+  border: 0 !important;
+  border-radius: var(--r-sm) !important;
+  background: linear-gradient(180deg, #241d15 0%, #16110c 100%) !important;
+  box-shadow: var(--bevel-up), 0 0 0 1px rgba(122, 90, 42, 0.16);
+}
+
+.settings-toggle > i {
+  border-radius: var(--r-sm) !important;
+  background: var(--ji-900) !important;
+  box-shadow: var(--bevel-in), inset 0 0 0 1px rgba(128, 108, 74, 0.24) !important;
+}
+
+.settings-toggle > i em {
+  border-radius: 2px !important;
+  background: linear-gradient(180deg, var(--gold-200), var(--gold-500)) !important;
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 248, 226, 0.5) !important;
+}
+
+.audio-setting-row {
+  border: 0 !important;
+  border-radius: var(--r-sm) !important;
+  background: linear-gradient(180deg, #241d15 0%, #16110c 100%) !important;
+  box-shadow: var(--bevel-up), 0 0 0 1px rgba(122, 90, 42, 0.14);
+}
+
+.audio-mute-button {
+  border: 0 !important;
+  border-radius: var(--r-sm) !important;
+  background: var(--mat-brass) !important;
+  box-shadow: var(--bevel-up) !important;
+  color: var(--gold-200) !important;
+}
+
+/* ── 24-C. 도감 카드가 특정도(0,2,0)에 밀려 베벨을 못 받고 있었다 ── */
+.codex-list .codex-jaryeong-card,
+.codex-list .codex-recipe-card,
+.codex-list .codex-idiom-card,
+.codex-list .codex-review-card {
+  box-shadow:
+    var(--bevel-up),
+    0 0 0 1px rgba(122, 90, 42, 0.16);
+}
+
+.codex-list .codex-jaryeong-card.is-selected,
+.codex-list .codex-idiom-card.is-selected {
+  box-shadow:
+    var(--bevel-up),
+    0 0 0 2px var(--gold-300),
+    0 0 22px rgba(155, 113, 55, 0.26);
+}
+
+/* 도감 텍스트 104개를 쓸어가던 포괄 규칙(styles.css:2029)의 차가운 회청색 */
+.codex-list span,
+.codex-toolbar span {
+  color: var(--text-300);
+}
+
+.codex-list .codex-jaryeong-card > img,
+.codex-list .codex-jaryeong-identity i,
+.codex-jaryeong-portrait > span,
+.codex-abilities article,
+.codex-jaryeong-observation article {
+  border: 0 !important;
+  box-shadow: inset 0 0 0 1px rgba(122, 90, 42, 0.24) !important;
+}
+
+.codex-independent-badge {
+  border: 0 !important;
+}
+
+/* ── 24-D. 남은 목록 행·칩의 남색 잔재 ───────────────────────── */
+.growth-stat-row button,
+.growth-trait-row button,
+.growth-element-tabs button,
+.trait-seal,
+.dismantle-toolbar button,
+.goal-choice-card,
+.goal-selector-tools label,
+.goal-mode-tabs,
+.concentration-target-list > button,
+.concentration-focus > header,
+.payment-option,
+.formation-unlock-list button,
+.opening-guide > div,
+.shop-help-strip,
+.ability-pills .ability-card,
+.ability-overview > button,
+.selected-copy h3 .selected-radical,
+.mode-tabs,
+.synergy-strip {
+  border-color: rgba(122, 90, 42, 0.2) !important;
+}
+
+.growth-stat-row button,
+.growth-trait-row button,
+.dismantle-toolbar button,
+.formation-unlock-list button,
+.ability-overview > button {
+  background: var(--mat-brass) !important;
+  box-shadow: var(--bevel-up);
+  color: var(--gold-200) !important;
+}
+
+.growth-stat-row button:hover:not(:disabled),
+.growth-trait-row button:hover:not(:disabled),
+.dismantle-toolbar button:hover:not(:disabled),
+.formation-unlock-list button:hover:not(:disabled) {
+  background: var(--mat-brass-hot) !important;
+  color: var(--gold-100) !important;
+}
+
+.goal-choice-card,
+.opening-guide > div,
+.payment-option,
+.concentration-target-list > button {
+  background: linear-gradient(180deg, #241d15 0%, #16110c 100%) !important;
+  box-shadow: var(--bevel-up), 0 0 0 1px rgba(122, 90, 42, 0.14);
+}
+
+/* 7px 까지 떨어져 있던 강화 탭 본문 */
+.growth-stat-row button,
+.growth-trait-row button {
+  font-size: 10px !important;
+}
+
+/* ── 24-E. 한글로 바꾼 소제목의 조판 ─────────────────────────── */
+.eyebrow,
+.section-heading span,
+.evolution-heading span,
+.codex-dialog .eyebrow {
+  text-transform: none;
+  letter-spacing: 0.34em;
+  font-size: 10px;
+}
+
+/* ── 24-F. 유리효과(backdrop blur)는 웹앱의 서명이다 ─────────── */
+.stage-chip,
+.map-zoom-control,
+.hanja-emphasis-control {
+  backdrop-filter: none;
+}
+
+/* ── 24-G. 1차 행동에 압도적 무게를 준다 ─────────────────────
+   모든 버튼이 같은 크기·같은 채도라 시선이 갈 곳이 없었다. */
+.action-button--summon {
+  background: linear-gradient(180deg, var(--gold-300) 0%, var(--gold-400) 44%, var(--gold-600) 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 250, 232, 0.6),
+    inset 0 -3px 0 rgba(60, 44, 16, 0.6),
+    0 3px 0 rgba(0, 0, 0, 0.55),
+    0 8px 20px rgba(0, 0, 0, 0.5),
+    0 0 30px rgba(155, 113, 55, 0.34);
+}
+
+.action-button--summon b {
+  color: #2b2009;
+  font-size: var(--fs-md);
+}
+
+.action-button--summon small,
+.action-button--summon em {
+  color: #4a3712;
+  font-weight: 900;
+}
+
+.action-button--summon .hotkey {
+  color: var(--gold-100);
+  background: rgba(43, 32, 9, 0.42);
+  box-shadow: inset 0 0 0 1px rgba(43, 32, 9, 0.4);
+}
+
+.action-button--summon:hover:not(:disabled) {
+  background: linear-gradient(180deg, var(--gold-200) 0%, var(--gold-300) 44%, var(--gold-500) 100%);
+}
+
+/* ══════════════════════════════════════════════════════
+   25. 드래그 선택 · 우클릭 메뉴 차단
+   UI 글자가 끌려 파랗게 반전되면 게임 화면이 아니라 문서로 보인다.
+   입력창만 예외로 남긴다.
+   ══════════════════════════════════════════════════════ */
+
+.game-shell,
+.game-shell *,
+.modal-layer,
+.modal-layer *,
+dialog,
+dialog * {
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-user-drag: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.game-shell input,
+.game-shell textarea,
+dialog input,
+dialog textarea {
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+.game-shell img,
+dialog img {
+  pointer-events: none;
+  -webkit-user-drag: none;
+}
+
+::selection {
+  background: rgba(122, 90, 42, 0.32);
+  color: var(--gold-100);
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   26. 공모전 제출 전 응급 수정
+   6개 관점 평가단이 공통 지적한 항목 중 스크린샷에 직접 찍히는 것들.
+   ══════════════════════════════════════════════════════════════════ */
+
+/* ── 26-1. 타이틀 뒤로 게임 UI가 비쳐 "임시 창"으로 보였다 ──────
+   심사위원이 보는 첫 프레임이다. 완전히 가린다. */
+#title-overlay,
+#end-overlay {
+  background:
+    var(--changho),
+    var(--grain),
+    radial-gradient(ellipse 70% 50% at 50% 22%, rgba(150, 112, 50, 0.14), transparent 72%),
+    linear-gradient(180deg, #17120d 0%, #0d0a07 52%, #060504 100%);
+  backdrop-filter: none;
+}
+
+/* ── 26-4. 좌하단 칩 겹침 ──────────────────────────────────────
+   지도 배율 칩과 한자 강조 칩이 1024 폭에서 실제로 포개졌고,
+   오행진 해금 배너가 그 위를 지나 글자가 서로 먹혔다. */
+.map-zoom-control {
+  left: 12px;
+  bottom: 12px;
+  z-index: 12;
+  min-width: 118px;
+  padding: 6px 10px;
+}
+
+.hanja-emphasis-control {
+  left: 138px;
+  bottom: 12px;
+  z-index: 12;
+  min-height: 42px;
+  padding: 6px 10px;
+}
+
+.map-zoom-control small {
+  font-size: 9px;
+}
+
+/* 진 해금 배너가 칩 위로 올라오지 않도록 */
+.canvas-tip,
+.boss-banner {
+  z-index: 11;
+}
+
+/* ── 26-5. 조합표 카드가 4번째 줄 글자 중간에서 잘렸다 ─────────
+   140장 전부 같은 지점에서 잘려, "실제 한자 구성 원리" 주장의
+   유일한 증거 화면이 시각적으로 부정되고 있었다. */
+.codex-recipe-card {
+  min-height: 98px;
+}
+
+.codex-recipe-card small,
+.codex-recipe-card p {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* 도감 상세 본문이 하단 고정 안내문에 가려 문장 중간에서 끊겼다 */
+.codex-detail,
+.codex-jaryeong-detail {
+  padding-bottom: 30px;
+}
+
+/* ── 26-6. 되돌릴 수 없는 버튼이 안전 버튼 옆에 섞여 있었다 ────
+   6개 액션 중 온전히 읽히는 것이 하필 비가역 행동인 "판매 +4" 뿐이라
+   시선이 거기로 먼저 갔다. 색과 여백으로 분리한다. */
+#sell-button,
+.selected-actions button[id*="dismantle"],
+.selected-actions button[data-action="sell"] {
+  color: #ffd9d2 !important;
+  background: linear-gradient(180deg, #4a1e16 0%, #2a100c 100%) !important;
+  box-shadow:
+    var(--bevel-up),
+    0 0 0 1px rgba(159, 47, 35, 0.62) !important;
+}
+
+#sell-button:hover:not(:disabled) {
+  background: linear-gradient(180deg, #6a2a1e 0%, #3a1710 100%) !important;
+}
+
+/* ── 26-9. 남은 영문 라벨 ─────────────────────────────────────── */
+.codex-dialog .eyebrow {
+  font-size: 9px;
+}
+
+/* ── 26-8. 1024x640 응급 처치 ──────────────────────────────────
+   완전한 반응형 재설계는 마감 전날에 할 일이 아니다.
+   겹쳐서 글자가 먹히는 것만 막고, 넘치면 스크롤되게 한다. */
+@media (max-height: 700px), (max-width: 1100px) {
+  .context-deck {
+    overflow-y: auto;
+  }
+
+  .panel-view {
+    min-height: 0;
+  }
+
+  /* 텍스트가 안 보이는 빈 상자로 렌더되던 온보딩 칩과 필터 스트립 */
+  .opening-guide,
+  .shop-help-strip {
+    display: none;
+  }
+
+  .action-button b,
+  .action-button small {
+    word-break: keep-all;
+    overflow-wrap: normal;
+  }
+
+  .hanja-emphasis-control {
+    left: 126px;
+  }
+
+  .hanja-emphasis-control span {
+    display: none;
+  }
+}
+
+/* ── 26-E. 빈 탭이 검은 상자로 방치됐다 ────────────────────────
+   탭을 눌렀는데 340px 순수 검정이 나오면 "고장났나"로 읽힌다. */
+.combat-feed:empty::after {
+  content: "아직 기록이 없습니다. 전투가 시작되면 발동한 능력과 대상이 순서대로 쌓입니다.";
+  display: block;
+  padding: var(--sp-4) var(--sp-3);
+  color: var(--text-400);
+  font-size: var(--fs-xs);
+  line-height: 1.7;
+  text-align: center;
+}
+
+/* ── 26-G. 웨이브 브리핑 대비가 3:1 수준이라 획이 뭉갰다 ──────── */
+.wave-card small {
+  color: var(--text-200);
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   27. Codex 한지 UI 팩 v1 — 기능 아이콘 10종 통합
+   출처: handoff/to-claude/hanji-ui-pack-v1/sprites/icons/*-v2.png
+   원본 256x256 RGBA, 어두운 선화(평균 밝기 42/255). 밝은 한지 배경 전제라
+   현재 먹지 패널에서는 보이지 않으므로 반전 후 금박으로 틴트해 쓴다.
+   ══════════════════════════════════════════════════════════════════ */
+
+.panel-tabs button {
+  --tab-icon: none;
+  display: grid;
+  grid-template-rows: 20px auto;
+  justify-items: center;
+  align-content: center;
+  gap: 1px;
+  padding: 2px 2px 3px;
+}
+
+.panel-tabs button::before {
+  content: "";
+  width: 20px;
+  height: 20px;
+  background-image: var(--tab-icon);
+  background-size: contain;
+  background-position: center;
+  background-repeat: no-repeat;
+  /* 어두운 선화 -> 금박. 반전 후 세피아로 색을 얹는다. */
+  filter: invert(0.9) sepia(0.62) saturate(2.6) hue-rotate(349deg) brightness(0.92);
+  opacity: 0.72;
+}
+
+.panel-tabs button:hover::before {
+  opacity: 0.95;
+}
+
+.panel-tabs button.is-active::before,
+.panel-tabs button[aria-selected="true"]::before {
+  opacity: 1;
+  filter: invert(0.96) sepia(0.7) saturate(3.2) hue-rotate(350deg) brightness(1.06);
+}
+
+.panel-tabs button[data-panel-tab="shop"]          { --tab-icon: url("/assets/ui/icons/icon-shop-v2.png"); }
+.panel-tabs button[data-panel-tab="unit"]          { --tab-icon: url("/assets/ui/icons/icon-jaryeong-v2.png"); }
+.panel-tabs button[data-panel-tab="inventory"]     { --tab-icon: url("/assets/ui/icons/icon-inventory-v2.png"); }
+.panel-tabs button[data-panel-tab="evolution"]     { --tab-icon: url("/assets/ui/icons/icon-fusion-v2.png"); }
+.panel-tabs button[data-panel-tab="concentration"] { --tab-icon: url("/assets/ui/icons/icon-concentration-v2.png"); }
+.panel-tabs button[data-panel-tab="growth"]        { --tab-icon: url("/assets/ui/icons/icon-growth-v2.png"); }
+.panel-tabs button[data-panel-tab="goal"]          { --tab-icon: url("/assets/ui/icons/icon-goal-v2.png"); }
+.panel-tabs button[data-panel-tab="idiom"]         { --tab-icon: url("/assets/ui/icons/icon-idiom-v2.png"); }
+.panel-tabs button[data-panel-tab="record"]        { --tab-icon: url("/assets/ui/icons/icon-record-v2.png"); }
+.panel-tabs button#codex-button                    { --tab-icon: url("/assets/ui/icons/icon-codex-v2.png"); }
+
+/* 아이콘이 들어가면서 라벨은 한 줄로 눌린다 */
+.panel-tabs button > b,
+.panel-tabs button > span {
+  font-size: 10px;
+  line-height: 1.1;
+}
+
+.panel-tabs button small {
+  position: absolute;
+  top: 1px;
+  right: 3px;
+  font-size: 8px;
+}
+
+.panel-tabs button {
+  position: relative;
+}
+
+/* 탭 줄이 아이콘 때문에 높아진다 */
+@media (min-width: 800px) {
+  .control-panel {
+    grid-template-rows: 34px 56px 52px minmax(0, 1fr) 74px 22px 24px;
+  }
+}
+
+@media (min-width: 1500px) and (min-height: 850px) {
+  .control-panel {
+    grid-template-rows: 40px 64px 60px minmax(0, 1fr) 82px 26px 28px;
+  }
+}
+
+.panel-tabs button {
+  min-height: 34px;
+}
+
+/* 좁은 화면에서는 아이콘만 남기고 라벨을 숨겨 겹침을 막는다 */
+@media (max-height: 700px), (max-width: 1100px) {
+  .panel-tabs button > b,
+  .panel-tabs button > span {
+    font-size: 9px;
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   28. 한지·먹 전환 — Codex hanji-ui-pack-v1 방향 채택
+   근거: handoff/to-claude/hanji-ui-pack-v1/IMPLEMENTATION_DELTA.md 5절
+   토큰은 27절까지에서 이미 뒤집었고, 여기서는 어두운 값을 직접 박아
+   두었던 규칙들을 종이 위 표현으로 마저 고친다.
+   ══════════════════════════════════════════════════════════════════ */
+
+/* ── 28-1. 셸과 명령 패널 ─────────────────────────────────────── */
+body {
+  background:
+    radial-gradient(ellipse 70% 50% at 50% 0%, rgba(120, 92, 44, 0.16), transparent 70%),
+    #1a1713;
+}
+
+.game-shell {
+  background: var(--ji-800);
+  box-shadow:
+    0 0 0 1px rgba(122, 90, 42, 0.5),
+    0 0 0 3px var(--wood-800),
+    0 40px 120px rgba(0, 0, 0, 0.75);
+}
+
+/* 옻칠 경계: 전장과 패널을 잇는 골조 (DELTA 2절 x880-916) */
+.battle-stage::after {
+  background:
+    linear-gradient(90deg, rgba(23, 22, 21, 0.4), transparent 4%, transparent 96%, rgba(23, 22, 21, 0.5));
+  box-shadow:
+    inset -3px 0 0 var(--wood-800),
+    inset -4px 0 0 rgba(155, 113, 55, 0.5),
+    inset 0 0 70px rgba(90, 70, 40, 0.22);
+}
+
+.control-panel {
+  color: var(--text-100);
+  background:
+    var(--changho),
+    var(--grain),
+    linear-gradient(180deg, #f2e8cd 0%, #e6dabb 34%, #d8c9a4 100%);
+  box-shadow: inset 3px 0 0 var(--wood-800);
+}
+
+/* ── 28-2. 어두운 값을 직접 박아둔 판들 → 종이 판 ──────────────── */
+.goal-workbench,
+.shop-workbench,
+.evolution-workbench,
+.concentration-workbench,
+.growth-workbench,
+.run-inventory-panel,
+.idiom-panel,
+.combat-readout,
+.selected-card {
+  background:
+    var(--grain),
+    linear-gradient(180deg, #f5ecd4 0%, #eadfc1 46%, #ddd0af 100%) !important;
+  box-shadow:
+    var(--bevel-up),
+    0 0 0 1px rgba(122, 90, 42, 0.34);
+}
+
+.selected-card,
+.goal-card,
+.evolution-card,
+.idiom-target-card,
+.opening-guide,
+.formation-unlock-bar,
+.concentration-max-card,
+.growth-trait-row,
+.summon-reveal-list > *,
+.codex-jaryeong-card,
+.codex-recipe-card,
+.codex-idiom-card,
+.codex-review-card,
+.codex-jaryeong-entry,
+.ability-pills span,
+.ability-guide-card,
+.ability-loadout > *,
+.growth-stat-row,
+.growth-upgrade-section,
+.dismantle-row,
+.dismantle-quote,
+.concentration-focus,
+.concentration-paths > *,
+.concentration-payment > *,
+.concentration-compare > *,
+.run-inventory-card,
+.idiom-result,
+.idiom-strategy,
+.idiom-material-guide,
+.selected-actions > *,
+.goal-choice-card,
+.payment-option,
+.concentration-target-list > button,
+.display-mode-option,
+.settings-toggle,
+.audio-setting-row,
+.end-stats > *,
+.game-mode-option,
+.region-option {
+  background: linear-gradient(180deg, #f6eed9 0%, #e7dbbc 100%) !important;
+  box-shadow:
+    var(--bevel-up),
+    0 0 0 1px rgba(122, 90, 42, 0.26);
+}
+
+/* 파인 홈: 종이보다 한 단계 어둡게 */
+.context-deck,
+.resource-grid div,
+.panel-tabs,
+.codex-list,
+.growth-upgrade-list,
+.growth-dismantle-list,
+.concentration-target-list,
+.run-inventory-list,
+.evolution-options,
+.combat-feed,
+.ability-guide-list,
+.codex-mode-tabs,
+.concentration-layout > aside,
+.dismantle-workbench,
+.element-growth-workbench,
+.selected-glyph,
+.goal-glyph,
+.codex-jaryeong-portrait,
+.codex-jaryeong-card-portrait,
+.codex-jaryeong-detail-sprite,
+.codex-detail-glyph,
+.codex-review-preview {
+  background: var(--mat-well) !important;
+  box-shadow:
+    var(--bevel-in),
+    0 0 0 1px rgba(122, 90, 42, 0.3) !important;
+}
+
+/* ── 28-3. 검은 배경을 전제로 쓰던 반투명 어두운 채움 ─────────── */
+.ability-pills span,
+.selected-ability-summary,
+.weakness-seal,
+.synergy-strip span,
+.hotkey,
+.mode-tabs button,
+.summon-intent-tabs button,
+.goal-mode-tabs button,
+.codex-toolbar button,
+.codex-synthesis-filters button,
+.codex-jaryeong-tags span,
+.codex-jaryeong-badges span,
+.codex-progression-badges span,
+.codex-review-badges span,
+.idiom-glyphs i,
+.idiom-target-glyphs i,
+.idiom-codex-glyphs i,
+.growth-element-tabs button,
+.canvas-tip i,
+#summon-reveal-summary > b,
+#summon-reveal-summary > span,
+#summon-reveal-summary > em,
+.codex-jaryeong-facts > *,
+.codex-stats > *,
+.codex-review-metadata > * {
+  color: var(--text-200);
+  background: rgba(201, 183, 143, 0.5) !important;
+  box-shadow: inset 0 0 0 1px rgba(122, 90, 42, 0.28) !important;
+}
+
+.canvas-tip i em,
+.hotkey {
+  color: var(--gold-200);
+  background: rgba(155, 113, 55, 0.2);
+}
+
+.combat-feed li,
+.codex-jaryeong-observation,
+.codex-jaryeong-trait,
+.codex-meaning-explanation,
+.codex-note {
+  color: var(--text-200);
+  background: rgba(201, 183, 143, 0.42);
+  border-left-color: var(--gold-300);
+}
+
+/* ── 28-4. 선택 상태 — 색만 쓰지 않고 주홍 하단선을 함께 (DELTA 6절) ── */
+.panel-tabs button.is-active,
+.panel-tabs button[aria-selected="true"],
+.mode-tabs button.is-active,
+.summon-intent-tabs button.is-active,
+.goal-mode-tabs button.is-active,
+.codex-mode-tabs button.is-active,
+.codex-mode-tabs button[aria-selected="true"],
+.codex-toolbar button.is-active,
+.codex-synthesis-filters button.is-active,
+.growth-element-tabs button.is-active,
+.synergy-strip span.is-active {
+  color: var(--gold-100) !important;
+  background: linear-gradient(180deg, #fdf7e6 0%, #f0e5c9 100%) !important;
+  box-shadow:
+    var(--bevel-up),
+    inset 0 -3px 0 var(--seal),
+    0 0 0 1px rgba(122, 90, 42, 0.4) !important;
+}
+
+.evolution-card.is-target,
+.display-mode-option.is-selected,
+.game-mode-option.is-selected,
+.region-option.is-selected,
+.codex-list .codex-jaryeong-card.is-selected,
+.codex-list .codex-idiom-card.is-selected {
+  background: linear-gradient(180deg, #fdf7e6 0%, #efe3c5 100%) !important;
+  box-shadow:
+    var(--bevel-up),
+    inset 0 -3px 0 var(--seal),
+    0 0 0 1px var(--gold-300) !important;
+}
+
+/* ── 28-5. 1차 행동 — 종이 위 옻칠 판 (S02 시안) ──────────────── */
+.action-button {
+  color: var(--paper-100);
+  background: linear-gradient(180deg, #2a2723 0%, #1b1917 48%, #100f0e 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(233, 222, 194, 0.24),
+    inset 0 -2px 0 rgba(0, 0, 0, 0.6),
+    var(--lift-1),
+    0 0 0 1px rgba(122, 90, 42, 0.44);
+}
+
+.action-button b {
+  color: #f4ead1;
+}
+
+.action-button small,
+.action-button em,
+.action-button i {
+  color: #c9b78f;
+}
+
+.action-button:hover:not(:disabled) {
+  background: linear-gradient(180deg, #3a3630 0%, #26231f 48%, #17150f 100%);
+}
+
+.action-button:disabled {
+  filter: grayscale(1);
+  opacity: 0.42;
+}
+
+.action-button--summon {
+  background: linear-gradient(180deg, #4a3a18 0%, #33270f 48%, #201808 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(233, 200, 130, 0.4),
+    inset 0 -2px 0 rgba(0, 0, 0, 0.6),
+    var(--lift-2),
+    0 0 0 1px var(--gold-300);
+}
+
+.action-button--summon b {
+  color: #ffeec4;
+  font-size: var(--fs-md);
+}
+
+.action-button--summon small,
+.action-button--summon em {
+  color: #dbb96e;
+}
+
+.action-button--summon .hotkey {
+  color: #ffeec4;
+  background: rgba(0, 0, 0, 0.4);
+  box-shadow: inset 0 0 0 1px rgba(219, 185, 110, 0.34);
+}
+
+.small-button,
+.icon-button,
+.speed-button,
+.coach-next,
+.audio-mute-button,
+.growth-stat-row button,
+.growth-trait-row button,
+.dismantle-toolbar button,
+.formation-unlock-list button,
+.ability-overview > button,
+.summon-reveal > header button,
+.codex-dialog > header button {
+  color: var(--gold-100) !important;
+  background: var(--mat-brass) !important;
+  box-shadow: var(--bevel-up), 0 0 0 1px rgba(122, 90, 42, 0.32) !important;
+}
+
+.small-button:hover:not(:disabled),
+.icon-button:hover,
+.speed-button:hover,
+.growth-stat-row button:hover:not(:disabled),
+.growth-trait-row button:hover:not(:disabled),
+.dismantle-toolbar button:hover:not(:disabled),
+.formation-unlock-list button:hover:not(:disabled) {
+  background: var(--mat-brass-hot) !important;
+}
+
+/* 되돌릴 수 없는 행동은 인주로 (DELTA 6절 error/danger) */
+#sell-button,
+.selected-actions button[id*="dismantle"] {
+  color: #fff2ec !important;
+  background: linear-gradient(180deg, #b13a2c 0%, #8a2a20 100%) !important;
+  box-shadow: var(--bevel-up), 0 0 0 1px rgba(110, 32, 24, 0.7) !important;
+}
+
+/* ── 28-6. 모달·서책 ──────────────────────────────────────────── */
+#title-overlay,
+#end-overlay,
+.modal-layer {
+  background:
+    radial-gradient(ellipse 70% 50% at 50% 24%, rgba(60, 46, 24, 0.3), transparent 72%),
+    rgba(18, 16, 14, 0.86);
+}
+
+.title-card,
+.end-card,
+.codex-dialog,
+.codex-dialog.is-jaryeong-dex,
+#help-dialog,
+#settings-dialog,
+#element-upgrade-dialog,
+#ability-guide-dialog,
+#casual-fusion-confirm-dialog,
+.summon-reveal {
+  color: var(--text-100);
+  background:
+    var(--changho),
+    var(--grain),
+    linear-gradient(170deg, #f6eed9 0%, #eadfc1 46%, #dbcdab 100%) !important;
+  box-shadow:
+    var(--bevel-up),
+    0 0 0 2px var(--wood-800),
+    0 0 0 3px rgba(155, 113, 55, 0.6),
+    0 28px 90px rgba(0, 0, 0, 0.72) !important;
+}
+
+.codex-detail,
+.codex-jaryeong-detail,
+.codex-dialog.is-jaryeong-dex .codex-detail {
+  background:
+    var(--grain),
+    linear-gradient(180deg, #f5ecd4 0%, #e5d8b6 100%) !important;
+  box-shadow: var(--bevel-up), 0 0 0 1px rgba(122, 90, 42, 0.3) !important;
+}
+
+/* ── 28-7. 전장 위 HUD — 한지 쪽지 ────────────────────────────── */
+.stage-chip,
+.map-zoom-control,
+.hanja-emphasis-control,
+.toast {
+  color: var(--text-100);
+  background: linear-gradient(180deg, #f4ead1 0%, #ddd0ae 100%);
+  box-shadow:
+    var(--bevel-up),
+    0 0 0 1px rgba(122, 90, 42, 0.4),
+    var(--lift-1);
+}
+
+.stage-chip span,
+.map-zoom-control span,
+.map-zoom-control small,
+.hanja-emphasis-control span {
+  color: var(--text-400);
+}
+
+.stage-chip strong,
+.map-zoom-control strong,
+.hanja-emphasis-control strong {
+  color: var(--text-100);
+}
+
+.hanja-emphasis-control.is-on {
+  box-shadow:
+    var(--bevel-up),
+    inset 0 -3px 0 var(--seal),
+    0 0 0 1px rgba(122, 90, 42, 0.5),
+    var(--lift-1);
+}
+
+.toast--warning {
+  color: #6a1c14;
+  box-shadow: var(--bevel-up), 0 0 0 2px var(--seal), var(--lift-2);
+}
+
+.boss-banner {
+  color: #fff0ea;
+  background: linear-gradient(180deg, #a8352a 0%, #6d1f18 100%);
+  box-shadow:
+    var(--bevel-up),
+    0 0 0 2px var(--wood-800),
+    0 0 34px rgba(159, 47, 35, 0.5),
+    var(--lift-2);
+}
+
+.wave-progress,
+.goal-progress {
+  background: rgba(122, 90, 42, 0.22);
+  box-shadow: inset 0 1px 3px rgba(90, 70, 36, 0.4);
+}
+
+.wave-progress i,
+.goal-progress i {
+  background: linear-gradient(90deg, var(--gold-500), var(--gold-300));
+  box-shadow: 0 0 8px rgba(155, 113, 55, 0.5);
+}
+
+/* ── 28-8. 아이콘은 원래 어두운 선화다. 이제 틴트를 벗긴다 ────── */
+.panel-tabs button::before {
+  filter: none;
+  opacity: 0.62;
+}
+
+.panel-tabs button:hover::before {
+  opacity: 0.88;
+}
+
+.panel-tabs button.is-active::before,
+.panel-tabs button[aria-selected="true"]::before {
+  filter: none;
+  opacity: 1;
+}
+
+/* ── 28-9. 코치마크 ───────────────────────────────────────────── */
+.coach-ring {
+  border-color: var(--seal);
+  box-shadow:
+    0 0 0 9999px rgba(18, 16, 14, 0.58),
+    0 0 22px rgba(159, 47, 35, 0.5);
+}
+
+@keyframes coach-pulse {
+  0%, 100% { border-color: var(--seal); }
+  50% { border-color: #d8503c; }
+}
+
+.coach-bubble {
+  color: var(--text-100);
+  background:
+    var(--grain),
+    linear-gradient(180deg, #f7f0dd 0%, #e5d8b6 100%);
+  box-shadow:
+    var(--bevel-up),
+    0 0 0 2px var(--wood-800),
+    var(--lift-2);
+}
+
+.coach-bubble b {
+  color: var(--gold-100);
+}
+
+.coach-bubble p#coach-body {
+  color: var(--text-300);
+}
+
+.coach-skip {
+  color: var(--text-400);
+  box-shadow: inset 0 0 0 1px rgba(122, 90, 42, 0.34);
+}
+
+.coach-next {
+  color: #f7f0dd !important;
+  background: linear-gradient(180deg, #2a2723 0%, #17150f 100%) !important;
+}
+
+/* ── 28-10. 입력·스크롤바 ─────────────────────────────────────── */
+input[type="text"],
+input[type="search"],
+input[type="number"],
+.codex-search-row input,
+.codex-dialog input[type="search"],
+.seed-field input {
+  color: var(--text-100);
+  background: var(--mat-well);
+  box-shadow: var(--bevel-in), 0 0 0 1px rgba(122, 90, 42, 0.34);
+}
+
+input::placeholder {
+  color: var(--text-400);
+}
+
+select,
+.growth-filters select,
+.dismantle-toolbar select {
+  color: var(--text-100);
+  background:
+    linear-gradient(45deg, transparent 50%, var(--gold-300) 50%) calc(100% - 9px) 50% / 5px 5px no-repeat,
+    linear-gradient(135deg, var(--gold-300) 50%, transparent 50%) calc(100% - 5px) 50% / 5px 5px no-repeat,
+    var(--mat-brass);
+  box-shadow: var(--bevel-up), 0 0 0 1px rgba(122, 90, 42, 0.3);
+}
+
+select option {
+  color: #17130f;
+  background: #f4ead1;
+}
+
+* {
+  scrollbar-color: var(--gold-400) rgba(150, 128, 88, 0.34);
+}
+
+*::-webkit-scrollbar-track {
+  background: rgba(150, 128, 88, 0.3);
+  box-shadow: inset 0 0 3px rgba(90, 70, 36, 0.35);
+}
+
+*::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, var(--gold-400), var(--gold-500));
+  box-shadow: inset 0 1px 0 rgba(255, 250, 232, 0.5);
+}
+
+::selection {
+  background: rgba(159, 47, 35, 0.24);
+  color: var(--gold-100);
+}
+
+/* ── 28-11. 남은 밝은 글자 지정 되돌리기 ──────────────────────── */
+.brand-row h1 {
+  color: var(--gold-100);
+  text-shadow: 0 1px 0 rgba(255, 250, 232, 0.6);
+}
+
+.eyebrow,
+.section-heading span,
+.evolution-heading span,
+.codex-dialog .eyebrow,
+.codex-dialog.is-jaryeong-dex .codex-heading .eyebrow {
+  color: var(--gold-500);
+}
+
+.section-heading b,
+.evolution-heading strong,
+.codex-dialog > header h2,
+.codex-dialog.is-jaryeong-dex .codex-heading h2,
+.summon-reveal > header strong,
+.brand-row h1 {
+  text-shadow: none;
+}
+
+.codex-dialog.is-jaryeong-dex .codex-heading h2,
+.summon-reveal > header strong,
+.codex-list span,
+.codex-toolbar span,
+.panel-footer,
+.panel-footer b,
+.wave-card span,
+.wave-card small,
+.wave-card strong,
+.resource-grid span,
+.resource-grid strong,
+.selected-copy h3,
+.empty-selection b,
+.empty-evolution b {
+  color: var(--text-100);
+}
+
+.resource-grid span,
+.wave-card span,
+.wave-card small,
+.panel-footer,
+.empty-selection span,
+.empty-evolution span,
+.combat-feed:empty::after {
+  color: var(--text-400);
+}
+
+.resource-grid div:first-child {
+  background: linear-gradient(180deg, #fbf2d8 0%, #e9d9ac 100%) !important;
+  box-shadow:
+    var(--bevel-in),
+    0 0 0 1px var(--gold-300),
+    inset 0 0 16px rgba(155, 113, 55, 0.16) !important;
+}
+
+.resource-grid div:first-child strong {
+  color: var(--gold-100);
+  text-shadow: none;
+}
+
+.resource-grid span em {
+  color: #2f6b4a;
+}
+
+/* 진행 중 표식은 인주로 */
+.stage-chip--phase {
+  box-shadow:
+    var(--bevel-up),
+    inset 0 -3px 0 var(--seal),
+    0 0 0 1px rgba(122, 90, 42, 0.4),
+    var(--lift-1);
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   29. 한지 전환 2단계 — 글자
+   28절에서 표면만 뒤집었더니 styles.css 의 밝은 글자 지정이 그대로 남아
+   종이 위에 흰 글씨가 되었다. 종이 영역 전체를 먹색으로 되돌리고,
+   오행 색이 글자로 쓰이는 칩만 어두운 옻칠 판으로 남긴다(S02 시안 방식).
+   ══════════════════════════════════════════════════════════════════ */
+
+/* ── 29-1. 종이 위 기본 글자 = 먹 ─────────────────────────────── */
+.control-panel,
+.control-panel b,
+.control-panel strong,
+.control-panel span,
+.control-panel small,
+.control-panel em,
+.control-panel i,
+.control-panel p,
+.control-panel h1,
+.control-panel h2,
+.control-panel h3,
+.control-panel li,
+.control-panel label,
+.control-panel div,
+.codex-dialog,
+.codex-dialog b,
+.codex-dialog strong,
+.codex-dialog span,
+.codex-dialog small,
+.codex-dialog em,
+.codex-dialog i,
+.codex-dialog p,
+.codex-dialog h2,
+.codex-dialog h3,
+.codex-dialog li,
+.codex-dialog div,
+#help-dialog, #help-dialog *,
+#settings-dialog, #settings-dialog *,
+#element-upgrade-dialog, #element-upgrade-dialog *,
+#ability-guide-dialog, #ability-guide-dialog *,
+#casual-fusion-confirm-dialog, #casual-fusion-confirm-dialog *,
+.title-card, .title-card b, .title-card strong, .title-card span,
+.title-card small, .title-card p, .title-card h2, .title-card div,
+.end-card, .end-card *,
+.summon-reveal, .summon-reveal *,
+.stage-chip, .stage-chip *,
+.map-zoom-control, .map-zoom-control *,
+.hanja-emphasis-control, .hanja-emphasis-control * {
+  color: var(--text-200);
+}
+
+/* 제목·강조는 더 짙게 */
+.control-panel h1,
+.control-panel h2,
+.control-panel h3,
+.control-panel strong,
+.control-panel b,
+.codex-dialog h2,
+.codex-dialog h3,
+.codex-dialog strong,
+.title-card h2,
+.end-card h2,
+.summon-reveal > header strong,
+.stage-chip strong,
+.map-zoom-control strong,
+.hanja-emphasis-control strong,
+.selected-copy h3,
+.brand-row h1 {
+  color: var(--text-100);
+}
+
+/* 소제목·보조는 옅은 먹 */
+.control-panel .eyebrow,
+.control-panel .section-heading span,
+.codex-dialog .eyebrow,
+.panel-footer,
+.panel-footer span,
+.shop-help-strip,
+.shop-help-strip span,
+.canvas-tip,
+.title-note,
+.combat-feed:empty::after {
+  color: var(--text-400);
+}
+
+/* 금색으로 강조하던 자리는 짙은 청동으로 */
+.brand-row h1,
+.section-heading b,
+.evolution-heading strong,
+.resource-grid div:first-child strong,
+.coach-bubble b,
+.summon-reveal > header strong,
+.codex-dialog > header h2,
+.codex-dialog.is-jaryeong-dex .codex-heading h2 {
+  color: var(--gold-100);
+}
+
+.eyebrow,
+.section-heading span,
+.evolution-heading span,
+.codex-dialog.is-jaryeong-dex .codex-heading .eyebrow,
+.codex-filter-label,
+.coach-step {
+  color: var(--gold-500);
+}
+
+/* ── 29-2. 어두운 옻칠 판 안쪽은 밝은 글자를 유지 ─────────────── */
+.action-button,
+.action-button b,
+.action-button small,
+.action-button em,
+.action-button i,
+.action-button span {
+  color: #ede1c4;
+}
+
+.action-button b { color: #f7f0dd; }
+.action-button--summon b { color: #ffeec4; }
+.action-button--summon small,
+.action-button--summon em { color: #dbb96e; }
+
+.boss-banner, .boss-banner * { color: #fff0ea; }
+#sell-button, #sell-button * { color: #fff2ec !important; }
+.coach-next { color: #f7f0dd !important; }
+
+/* ── 29-3. 오행 색이 글자로 쓰이는 칩은 어두운 판으로 (S02 방식) ──
+   #60c9ff 같은 밝은 속성색은 한지 위에서 읽히지 않는다.
+   속성색을 바꾸는 대신 바탕을 옻칠로 깔아 색을 그대로 살린다. */
+.formation-unlock-list button,
+.growth-element-tabs button,
+.synergy-strip span,
+.weakness-seal,
+.concentration-target-list > button {
+  background: linear-gradient(180deg, #2a2723 0%, #17150f 100%) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(233, 222, 194, 0.2),
+    inset 0 -2px 0 rgba(0, 0, 0, 0.55),
+    0 0 0 1px rgba(122, 90, 42, 0.5) !important;
+}
+
+.formation-unlock-list button *,
+.growth-element-tabs button *,
+.synergy-strip span *,
+.weakness-seal * {
+  color: #ddd0ad;
+}
+
+.formation-unlock-list button.is-active,
+.growth-element-tabs button.is-active,
+.synergy-strip span.is-active,
+.concentration-target-list > button.is-selected {
+  background: linear-gradient(180deg, #3b352c 0%, #221f19 100%) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(233, 222, 194, 0.3),
+    inset 0 -3px 0 var(--seal),
+    0 0 0 1px var(--gold-300) !important;
+}
+
+/* 오행 띠 하단 */
+.synergy-strip {
+  background: linear-gradient(180deg, #24211d 0%, #16140f 100%) !important;
+  box-shadow: var(--bevel-in), 0 0 0 1px rgba(122, 90, 42, 0.4) !important;
+}
+
+/* ── 29-4. 아직 어두운 배경이 남아 있던 조각들 ────────────────── */
+.shop-help-strip,
+.opening-guide,
+.goal-selector-tools label,
+.mode-tabs,
+.goal-mode-tabs,
+.summon-intent-tabs,
+.codex-toolbar,
+.codex-search-row,
+.selected-ability-summary,
+.ability-charge,
+.combo-meter,
+.idiom-hud {
+  background: rgba(201, 183, 143, 0.44) !important;
+  box-shadow: inset 0 0 0 1px rgba(122, 90, 42, 0.26) !important;
+}
+
+/* ── 29-5. 자령 초상·도감 초상 자리 ───────────────────────────── */
+.selected-glyph,
+.goal-glyph,
+.codex-jaryeong-portrait,
+.codex-jaryeong-card-portrait,
+.codex-jaryeong-detail-sprite,
+.codex-detail-glyph,
+.codex-review-preview {
+  background:
+    radial-gradient(circle at 50% 32%, rgba(255, 250, 232, 0.6), transparent 70%),
+    linear-gradient(180deg, #cdbb92 0%, #ded1b0 100%) !important;
+}
+
+.selected-glyph,
+.goal-glyph {
+  color: var(--text-100);
+}
+
+/* ── 29-6. 웨이브 카드 좌측 인주선 ────────────────────────────── */
+.wave-card {
+  background: linear-gradient(180deg, #f5ecd4 0%, #e6dabb 100%);
+  box-shadow:
+    var(--bevel-up),
+    inset 4px 0 0 var(--seal),
+    0 0 0 1px rgba(122, 90, 42, 0.3);
+}
+
+/* ── 29-7. 도감 카드 왼쪽 오행 띠는 유지하되 종이 위에서 진하게 ── */
+.codex-jaryeong-card {
+  border-left: 4px solid var(--codex, var(--gold-300)) !important;
+  filter: none;
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   30. 한지 전환 3단계 — 대비 교정
+   브라우저에서 명암비 3:1 미만 텍스트 37건을 실측해 뽑은 목록을 근거로
+   고친다. Codex DELTA 5절: 본문 최소 12px, 보조 10px, 중요 버튼 13px.
+   ══════════════════════════════════════════════════════════════════ */
+
+/* ── 30-1. 종이 위 컨테이너의 모든 자손을 먹색으로 ────────────────
+   styles.css 의 밝은 color 지정이 곳곳에 더 높은 특정도로 남아 있어
+   개별 대응이 불가능했다. 종이 판을 기준으로 일괄 지정하고,
+   어두운 옻칠 판만 아래에서 되돌린다. */
+.shop-workbench *,
+.goal-workbench *,
+.evolution-workbench *,
+.concentration-workbench *,
+.growth-workbench *,
+.run-inventory-panel *,
+.idiom-panel *,
+.combat-readout *,
+.selected-card *,
+.resource-grid *,
+.wave-card *,
+.brand-row *,
+.panel-footer *,
+.panel-tabs *,
+.codex-dialog .codex-layout *,
+.codex-dialog .codex-toolbar *,
+.title-card *,
+.end-card * {
+  color: var(--text-200);
+}
+
+/* 제목 계열은 더 짙게 */
+.shop-workbench b,
+.shop-workbench strong,
+.goal-workbench b,
+.goal-workbench strong,
+.evolution-workbench b,
+.evolution-workbench strong,
+.concentration-workbench b,
+.concentration-workbench strong,
+.growth-workbench b,
+.growth-workbench strong,
+.run-inventory-panel b,
+.run-inventory-panel strong,
+.idiom-panel b,
+.idiom-panel strong,
+.combat-readout b,
+.selected-card b,
+.selected-card strong,
+.resource-grid strong,
+.wave-card strong,
+.title-card b,
+.title-card strong,
+.end-card strong {
+  color: var(--text-100);
+}
+
+/* 실측에서 이름이 잡힌 수치·비용 표시 */
+#summon-cost,
+#multi-summon-cost,
+#evolve-ready-count,
+#evolve-action-detail,
+#research-cost,
+#research-level,
+#element-upgrade-total,
+#shop-pool-count,
+#idiom-tab-count,
+#goal-tab-progress,
+#run-inventory-count,
+#discover-count,
+#formation-unlock-summary,
+#seed-value,
+#message-value {
+  color: var(--text-100);
+}
+
+.shop-workbench-heading b,
+.shop-workbench-heading strong,
+#shop-pool-label,
+.formation-unlock-bar > div b {
+  color: var(--gold-100);
+}
+
+/* ── 30-2. 어두운 옻칠 판 안쪽은 되돌린다 ────────────────────── */
+.action-button,
+.action-button *,
+.formation-unlock-list button,
+.formation-unlock-list button *,
+.growth-element-tabs button,
+.growth-element-tabs button *,
+.synergy-strip span,
+.synergy-strip span *,
+.weakness-seal,
+.weakness-seal *,
+.concentration-target-list > button,
+.concentration-target-list > button * {
+  color: #e4d9bd;
+}
+
+.action-button b { color: #f9f3e2; }
+.action-button--summon b { color: #ffeec4; }
+.action-button--summon small,
+.action-button--summon em { color: #e2c079; }
+.action-button .hotkey,
+.hotkey { color: #e8d5a4; }
+
+.weakness-seal b,
+.formation-unlock-list button b,
+.growth-element-tabs button b,
+.synergy-strip span b {
+  color: #fff4dc;
+}
+
+/* 비활성 버튼은 이유가 읽혀야 한다 (DELTA 6절: disabled 에 이유 필수) */
+.action-button:disabled,
+.action-button:disabled * {
+  color: #7a7264 !important;
+  filter: none;
+  opacity: 1;
+  background: linear-gradient(180deg, #d6c9a8 0%, #c4b491 100%);
+  box-shadow: inset 0 0 0 1px rgba(122, 90, 42, 0.28);
+}
+
+/* ── 30-3. 8~9px 로 남아 있던 글자 (DELTA 5절 최소 규격 위반) ──── */
+.control-panel small,
+.control-panel span,
+.control-panel em,
+.control-panel i,
+.codex-dialog small,
+.codex-dialog span {
+  font-size: max(10px, 1em);
+}
+
+.opening-guide > div b,
+.opening-guide > div span,
+.shop-help-strip,
+.shop-help-strip *,
+#formation-unlock-summary,
+.action-button small,
+.action-button em,
+.panel-tabs button small,
+.map-zoom-control small {
+  font-size: 10px;
+}
+
+.action-button b {
+  font-size: 13px;
+}
+
+.panel-tabs button > b,
+.panel-tabs button > span {
+  font-size: 11px;
+}
+
+/* ── 30-4. 비활성 탭도 읽히게 ─────────────────────────────────── */
+.panel-tabs button {
+  color: var(--text-300);
+}
+
+.panel-tabs button:hover {
+  color: var(--text-100);
+  background: rgba(255, 250, 232, 0.5);
+}
+
+.panel-tabs button.is-active,
+.panel-tabs button[aria-selected="true"],
+.panel-tabs button.is-active *,
+.panel-tabs button[aria-selected="true"] * {
+  color: var(--gold-100) !important;
+}
+
+/* ── 30-5. 상단 HUD 칩 ────────────────────────────────────────── */
+.stage-chip span { color: var(--text-400); }
+.stage-chip strong { color: var(--text-100); }
+
+.stage-chip--phase strong { color: #8a2a1e; }
+
+/* ── 30-6. 소환 결과·코치마크 안쪽 ────────────────────────────── */
+.summon-reveal *,
+#summon-reveal-summary > b,
+#summon-reveal-summary > span,
+#summon-reveal-summary > em {
+  color: var(--text-200);
+}
+
+.summon-reveal > header strong,
+#summon-reveal-summary > b {
+  color: var(--gold-100);
+}
+
+.summon-reveal-list b,
+.summon-reveal-list strong {
+  color: var(--text-100);
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   31. 대비 교정 마무리
+   30절은 특정도가 낮아 styles.css 의 개별 지정을 못 이겼다.
+   테마 전환이므로 종이 영역 텍스트 색은 !important 로 확정한다.
+   ══════════════════════════════════════════════════════════════════ */
+
+/* 그라디언트만 주면 background-color 가 투명으로 남아 대비 계산과
+   폴백이 모두 종이색을 잡는다. 어두운 판에는 실색을 함께 깐다. */
+.action-button,
+.formation-unlock-list button,
+.growth-element-tabs button,
+.synergy-strip,
+.synergy-strip span,
+.weakness-seal,
+.concentration-target-list > button,
+.boss-banner,
+#sell-button,
+.coach-next {
+  background-color: #1b1917;
+}
+
+.action-button--summon { background-color: #33270f; }
+.boss-banner { background-color: #8a2a20; }
+#sell-button { background-color: #9a3125; }
+
+/* 종이 위 글자 확정 */
+.shop-workbench :is(b, strong, span, small, em, i, p, div, label),
+.goal-workbench :is(b, strong, span, small, em, i, p, div, label),
+.evolution-workbench :is(b, strong, span, small, em, i, p, div),
+.concentration-workbench :is(b, strong, span, small, em, i, p, div),
+.growth-workbench :is(b, strong, span, small, em, i, p, div),
+.run-inventory-panel :is(b, strong, span, small, em, i, p, div),
+.idiom-panel :is(b, strong, span, small, em, i, p, div),
+.combat-readout :is(b, strong, span, small, em, i, p, li),
+.selected-card :is(b, strong, span, small, em, i, p, div),
+.resource-grid :is(span, strong, em),
+.wave-card :is(span, small, strong, b),
+.brand-row :is(p, h1),
+.panel-footer :is(span, b),
+.title-card :is(b, strong, span, small, p),
+.end-card :is(b, strong, span, small, p) {
+  color: var(--text-200) !important;
+}
+
+.shop-workbench :is(b, strong),
+.goal-workbench :is(b, strong),
+.evolution-workbench :is(b, strong),
+.concentration-workbench :is(b, strong),
+.growth-workbench :is(b, strong),
+.run-inventory-panel :is(b, strong),
+.idiom-panel :is(b, strong),
+.combat-readout b,
+.selected-card :is(b, strong),
+.resource-grid strong,
+.wave-card strong,
+.title-card :is(b, strong),
+.end-card strong {
+  color: var(--text-100) !important;
+}
+
+/* 화면 제목·수량 강조는 짙은 청동 */
+.shop-workbench-heading :is(b, strong),
+.goal-workbench-heading :is(b, strong),
+.evolution-heading strong,
+.section-heading b,
+.brand-row h1,
+.resource-grid div:first-child strong,
+.title-card h2 {
+  color: var(--gold-100) !important;
+}
+
+.eyebrow,
+.section-heading span,
+.evolution-heading span,
+.shop-workbench-heading span,
+.goal-workbench-heading span {
+  color: var(--gold-500) !important;
+}
+
+.opening-guide > div :is(b, span),
+.shop-help-strip,
+.shop-help-strip *,
+#formation-unlock-summary,
+.panel-footer,
+.panel-footer span,
+.canvas-tip,
+.title-note {
+  color: var(--text-400) !important;
+}
+
+.opening-guide > div.is-current b {
+  color: var(--gold-100) !important;
+}
+
+/* 어두운 판 안쪽 되돌리기 — 위 !important 를 이겨야 한다 */
+.shop-workbench .action-button :is(b, strong, span, small, em, i),
+.shop-workbench .formation-unlock-list button :is(b, strong, span, small, em, i),
+.growth-workbench .growth-element-tabs button :is(b, strong, span, small, em, i),
+.wave-card .weakness-seal :is(span, b),
+.synergy-strip span :is(b, small, i),
+.concentration-workbench .concentration-target-list > button :is(b, strong, span, small) {
+  color: #e4d9bd !important;
+}
+
+.shop-workbench .action-button b,
+.shop-workbench .formation-unlock-list button b,
+.growth-workbench .growth-element-tabs button b,
+.wave-card .weakness-seal b {
+  color: #fff4dc !important;
+}
+
+.shop-workbench .action-button--summon b { color: #ffeec4 !important; }
+.shop-workbench .action-button--summon :is(small, em) { color: #e2c079 !important; }
+.shop-workbench .action-button .hotkey { color: #e8d5a4 !important; }
+
+.shop-workbench .action-button:disabled :is(b, strong, span, small, em, i) {
+  color: #7f7768 !important;
+}
+
+/* 8px 잔여 제거 */
+.control-panel :is(small, span, em, i, b) {
+  font-size: max(10px, 1em);
+}
+
+/* 비활성 버튼이 종이 위에서 거의 안 보였다. 이유를 읽을 수 있어야 한다. */
+.action-button:disabled,
+.shop-workbench .action-button:disabled :is(b, strong, span, small, em, i) {
+  color: #5c5445 !important;
+}
+
+.action-button:disabled {
+  background: linear-gradient(180deg, #cabb98 0%, #b7a684 100%) !important;
+  background-color: #c0b08d !important;
+  box-shadow: inset 0 0 0 1px rgba(122, 90, 42, 0.36) !important;
+}
+
+.action-button:disabled .hotkey {
+  color: #6b6252 !important;
+  background: rgba(122, 90, 42, 0.16);
+}
+
+/* 약점 인장은 주홍 바탕에 흰 글자로 (DELTA: 위험/강조는 인주) */
+.weakness-seal {
+  background: linear-gradient(180deg, #a8352a 0%, #7b241b 100%) !important;
+  background-color: #8f2a20 !important;
+  box-shadow: var(--bevel-up), 0 0 0 1px rgba(110, 32, 24, 0.7) !important;
+}
+
+.wave-card .weakness-seal :is(span, b) {
+  color: #ffeadf !important;
+}
+
+/* 오행 상생 띠는 종이 판 위에 얹힌 얇은 옻칠 띠로 */
+.synergy-strip {
+  background: linear-gradient(180deg, #2a2723 0%, #191715 100%) !important;
+  background-color: #201e1a !important;
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   32. 도감 — 한자 글리프가 오행색이라 종이 위에서 흐렸다
+   속성색은 좌측 띠·오행 배지로 유지하고, 글자 자체는 먹으로 읽힌다.
+   ══════════════════════════════════════════════════════════════════ */
+
+.codex-jaryeong-card :is(b, strong, span, small, em, i, p, div),
+.codex-recipe-card :is(b, strong, span, small, em, i, p),
+.codex-idiom-card :is(b, strong, span, small, em, i, p),
+.codex-jaryeong-detail :is(b, strong, span, small, em, i, p, div),
+.codex-detail :is(b, strong, span, small, em, i, p, div) {
+  color: var(--text-200) !important;
+}
+
+.codex-jaryeong-card :is(b, strong),
+.codex-jaryeong-name,
+.codex-jaryeong-detail :is(b, strong),
+.codex-detail :is(b, strong),
+.codex-recipe-card b,
+.codex-idiom-card b {
+  color: var(--text-100) !important;
+}
+
+/* 큰 한자 글리프 */
+.codex-jaryeong-card .codex-jaryeong-name,
+.codex-jaryeong-identity :is(b, strong),
+.codex-jaryeong-detail-hero :is(b, strong),
+.codex-detail-hero :is(b, strong),
+.codex-review-reading-glyph {
+  color: #17130f !important;
+  text-shadow: 0 1px 0 rgba(255, 250, 232, 0.7);
+}
+
+.codex-jaryeong-number,
+.codex-jaryeong-category,
+.codex-jaryeong-recipe {
+  color: var(--gold-500) !important;
+}
+
+/* 오행 배지는 어두운 판으로 색을 살린다 */
+.codex-jaryeong-tags span,
+.codex-jaryeong-badges span,
+.codex-progression-badges span,
+.codex-review-badges span,
+.codex-jaryeong-identity i,
+.codex-jaryeong-portrait > span {
+  background-color: #221f1a !important;
+  background-image: none !important;
+  color: #e4d9bd !important;
+  box-shadow: inset 0 0 0 1px rgba(122, 90, 42, 0.5) !important;
+}
+
+.codex-independent-badge {
+  background-color: #33270f !important;
+  color: #ffeec4 !important;
+}
+
+.codex-tier-stars {
+  color: var(--gold-400) !important;
+}
+
+/* 상세 본문 블록 */
+.codex-jaryeong-observation,
+.codex-jaryeong-trait,
+.codex-meaning-explanation,
+.codex-note,
+.codex-jaryeong-facts > *,
+.codex-stats > * {
+  background: rgba(201, 183, 143, 0.4) !important;
+  color: var(--text-200) !important;
+}
+
+.codex-note,
+.codex-list span,
+.codex-toolbar span {
+  color: var(--text-400) !important;
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   33. Codex 한지 조각 9-slice 적용
+   출처: handoff/to-claude/hanji-ui-pack-v1/sprites/ui/
+   inset 값은 SPRITE_SPEC.md 2절 표 그대로다.
+   ══════════════════════════════════════════════════════════════════ */
+
+/* 상단 HUD 쪽지 — 압정과 찢긴 가장자리가 고정 여백 안에 있다 */
+.stage-chip {
+  border-style: solid;
+  border-width: 13px 16px 12px 24px;
+  border-image: url("/assets/ui/frames/hud-slip-wide-v1.png") 13 16 12 24 fill stretch;
+  background: none;
+  box-shadow: var(--lift-1);
+  padding: 2px 6px;
+}
+
+/* 자원 4칸 레일 */
+.resource-grid {
+  border-style: solid;
+  border-width: 15px 18px;
+  border-image: url("/assets/ui/frames/resource-rail-v1.png") 15 18 fill stretch;
+  background: none;
+  padding: 0 2px;
+  gap: 0;
+}
+
+.resource-grid div {
+  background: none !important;
+  box-shadow: inset -1px 0 0 rgba(122, 90, 42, 0.28) !important;
+  border-radius: 0;
+}
+
+.resource-grid div:last-child {
+  box-shadow: none !important;
+}
+
+/* 웨이브 브리핑 — 우측 먹 인장이 고정 영역에 있다 */
+.wave-card {
+  border-style: solid;
+  border-width: 15px 24px 15px 18px;
+  border-image: url("/assets/ui/frames/briefing-card-v1.png") 15 24 15 18 fill stretch;
+  background: none !important;
+  box-shadow: var(--lift-1) !important;
+}
+
+/* 하단 기능군 레일 — 자체 분할선 때문에 늘리지 않는다 */
+.panel-tabs {
+  border-style: solid;
+  border-width: 10px 14px;
+  border-image: url("/assets/ui/frames/nav-rail-v1.png") 10 14 fill stretch;
+  background: none;
+  box-shadow: none;
+}
+
+/* 화면 제목 구획선 */
+.shop-workbench-heading,
+.goal-workbench-heading,
+.evolution-heading,
+.section-heading {
+  border-bottom: 0;
+  padding-bottom: 6px;
+  background-image: url("/assets/ui/frames/ink-divider-v1.png");
+  background-repeat: no-repeat;
+  background-position: center bottom;
+  background-size: 100% 8px;
+}
+
+/* 상태 띠 */
+.shop-help-strip,
+.synergy-strip {
+  border-style: solid;
+  border-width: 10px 14px;
+  border-image: url("/assets/ui/frames/status-strip-v1.png") 10 14 fill stretch;
+  background: none !important;
+  box-shadow: none !important;
+}
+
+.synergy-strip span {
+  background: rgba(28, 25, 21, 0.82) !important;
+}
+
+/* 상단 제어 버튼 육각 */
+.icon-button,
+.speed-button {
+  border: 0 !important;
+  background-image: url("/assets/ui/frames/control-hex-v1.png") !important;
+  background-size: 100% 100%;
+  background-color: transparent !important;
+  box-shadow: var(--lift-1) !important;
+}
+
+/* 인주 인장 — 패널 우하단 */
+.panel-footer {
+  position: relative;
+}
+
+.panel-footer::after {
+  content: "";
+  position: absolute;
+  right: 2px;
+  bottom: 1px;
+  width: 22px;
+  height: 22px;
+  background: url("/assets/ui/frames/seal-cinnabar-v1.png") center / contain no-repeat;
+  opacity: 0.9;
+  pointer-events: none;
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   34. 9-slice 교정
+   border-image 는 border-width 만큼 상자를 키워, 행 높이가 고정된
+   패널 그리드를 통째로 밀어냈다. 상단 쪽지처럼 자유 크기인 곳만
+   border-image 를 남기고, 고정 격자 안에서는 배경 이미지로 깐다.
+   ══════════════════════════════════════════════════════════════════ */
+
+.resource-grid,
+.wave-card,
+.panel-tabs,
+.shop-help-strip,
+.synergy-strip {
+  border: 0 !important;
+  border-image: none !important;
+}
+
+.resource-grid {
+  padding: 3px 5px;
+  background:
+    url("/assets/ui/frames/resource-rail-v1.png") center / 100% 100% no-repeat !important;
+  box-shadow: var(--lift-1);
+}
+
+.wave-card {
+  padding: 6px 12px 6px 10px;
+  background:
+    url("/assets/ui/frames/briefing-card-v1.png") center / 100% 100% no-repeat !important;
+  box-shadow: var(--lift-1) !important;
+}
+
+.panel-tabs {
+  padding: 4px 6px;
+  background:
+    url("/assets/ui/frames/nav-rail-v1.png") center / 100% 100% no-repeat !important;
+  box-shadow: none !important;
+}
+
+.shop-help-strip,
+.synergy-strip {
+  padding: 3px 8px;
+  background:
+    url("/assets/ui/frames/status-strip-v1.png") center / 100% 100% no-repeat !important;
+  box-shadow: none !important;
+}
+
+.synergy-strip span {
+  background: rgba(28, 25, 21, 0.8) !important;
+}
+
+/* 상단 쪽지는 자유 크기라 9-slice 가 안전하다. 다만 여백을 줄여 원래
+   칩 크기를 유지한다. */
+.stage-chip {
+  border-width: 11px 13px 10px 18px;
+  border-image: url("/assets/ui/frames/hud-slip-wide-v1.png") 13 16 12 24 fill stretch;
+  padding: 0 4px 0 0;
+  min-height: 0;
+}
+
+/* 육각 제어 버튼이 종이 위에서 너무 옅었다 */
+.icon-button,
+.speed-button {
+  background-color: rgba(28, 25, 21, 0.06) !important;
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   35. 하단 레일과 육각 제어 교정
+   nav-rail-v1 은 5기능군 1줄용 자체 분할선을 가진 381x89 자산이라
+   10탭 2줄 격자에 깔면 분할선이 라벨을 가른다. 현재 탭 구조에서는
+   status-strip 을 쓰고, 5기능군 재편은 별도 과제로 남긴다.
+   ══════════════════════════════════════════════════════════════════ */
+
+.panel-tabs {
+  padding: 4px 6px;
+  background:
+    url("/assets/ui/frames/status-strip-v1.png") center / 100% 100% no-repeat !important;
+}
+
+.panel-tabs button {
+  min-height: 30px;
+  padding: 1px 2px 2px;
+}
+
+.panel-tabs button::before {
+  width: 17px;
+  height: 17px;
+}
+
+.panel-tabs button {
+  grid-template-rows: 17px auto;
+}
+
+/* 육각 제어 버튼은 어두운 자산이므로 글자를 밝게 */
+.icon-button,
+.speed-button {
+  color: #f0e4c6 !important;
+  background-color: transparent !important;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+}
+
+.icon-button:hover,
+.speed-button:hover,
+.speed-button.is-accelerated {
+  color: #fff4dc !important;
+  filter: brightness(1.14);
+}
+
+/* 자원 칸에서 "엽전 이자 +1" 라벨이 잘렸다 */
+.resource-grid span {
+  font-size: 9.5px;
+  letter-spacing: -0.02em;
+}
+
+.resource-grid span em {
+  font-size: 9px;
+}
+
+/* 인장이 시드 문구와 겹쳤다 */
+.panel-footer {
+  padding-right: 26px;
+}
+
+/* 탭 아이콘이 종이 위에서 옅었다 */
+.panel-tabs button::before {
+  opacity: 0.8;
+}
+
+.panel-tabs button.is-active::before {
+  opacity: 1;
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   36. 자령 스프라이트가 사라지던 문제
+   그림은 `visualBackgroundStyle()` 이 인라인 background-image 로 넣는다.
+   스킨이 background 단축 속성을 !important 로 덮으면서 background-image
+   까지 none 으로 밀어버려 합성 카드 등에서 그림이 빈 사각형이 되었다.
+   이 자리들은 배경색만 지정하고 이미지는 인라인 값을 그대로 둔다.
+   ══════════════════════════════════════════════════════════════════ */
+
+.evolution-spirit,
+.run-inventory-spirit,
+.summon-result-spirit,
+.casual-fusion-sprite,
+.casual-fusion-slot-sprite,
+.casual-confirm-sprite,
+.composition-result-spirit,
+.mode-preview--spirit {
+  background-color: #ddd0ad;
+  background-repeat: no-repeat;
+  border: 0;
+  border-radius: var(--r-sm);
+  box-shadow:
+    var(--bevel-in),
+    0 0 0 1px rgba(122, 90, 42, 0.34);
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   37. 소제목 자간이 제목까지 번지던 문제
+   `.evolution-heading span` 이 kicker 와 제목 안쪽 span 을 함께 잡아
+   "조 합 서 책 / 현 재 가능한 합성" 처럼 벌어졌다.
+   ══════════════════════════════════════════════════════════════════ */
+
+.evolution-heading span,
+.section-heading span,
+.eyebrow {
+  letter-spacing: normal;
+}
+
+.eyebrow,
+#evolution-kicker,
+#shop-kicker,
+#goal-kicker,
+.evolution-heading > div > span:first-child,
+.section-heading > span:first-child {
+  letter-spacing: 0.24em;
+  font-size: 10px;
+  color: var(--gold-500);
+}
+
+.evolution-heading strong,
+.evolution-heading strong span,
+.evolution-heading strong b,
+.section-heading b {
+  letter-spacing: 0.01em;
+  font-size: var(--fs-md);
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   38. 합성 카드 넘침
+   `목표 경로` 배지가 카드 밖으로 나가고 "결합 · 財 재화연성" 이 잘렸다.
+   ══════════════════════════════════════════════════════════════════ */
+
+.evolution-card {
+  overflow: hidden;
+  padding-right: 10px;
+  gap: 6px;
+}
+
+.evolution-card mark {
+  flex: 0 0 auto;
+  max-width: 62px;
+  overflow: hidden;
+  padding: 1px 5px;
+  font-size: 9px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.evolution-card small {
+  min-width: 0;
+  overflow: hidden;
+  font-size: 10px;
+  line-height: 1.35;
+}
+
+.evolution-card small b {
+  white-space: nowrap;
+}
+
+.recipe-parents,
+.recipe-result {
+  flex: 0 0 auto;
+}
+
+.evolution-index {
+  flex: 0 0 auto;
+}
+
+/* 39. 자간·크기 강제 — 위 규칙이 캐스케이드에서 밀려 적용되지 않았다 */
+#evolution-kicker,
+#shop-kicker,
+#goal-kicker,
+.evolution-heading > div > span {
+  letter-spacing: 0.02em !important;
+}
+
+#evolution-kicker,
+#shop-kicker,
+#goal-kicker {
+  font-size: 10px !important;
+  letter-spacing: 0.18em !important;
+}
+
+#evolution-heading-label,
+.evolution-heading strong,
+.evolution-heading strong b {
+  font-size: 14px !important;
+  letter-spacing: 0.01em !important;
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   40. 탭 구조 재편 — 10개 -> 8개 + 3그룹
+   도감은 전체화면 모달과 완전 중복이라 상단 아이콘으로 옮겼고,
+   기록은 열어야 보이던 수동 로그라 바닥 상시 티커로 바꿨다.
+   남은 8개를 얻기 / 키우기 / 노리기 로 나눈다.
+   ══════════════════════════════════════════════════════════════════ */
+
+.panel-tabs {
+  display: flex;
+  align-items: stretch;
+  gap: 2px;
+  grid-template-columns: none !important;
+  grid-template-rows: none !important;
+}
+
+.panel-tabs button {
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 32px;
+}
+
+.tab-divider {
+  flex: 0 0 1px;
+  align-self: center;
+  width: 1px;
+  height: 22px;
+  margin: 0 3px;
+  background: linear-gradient(180deg, transparent, rgba(122, 90, 42, 0.55), transparent);
+}
+
+/* 한 줄 8칸이라 라벨을 더 좁게 */
+.panel-tabs button > b,
+.panel-tabs button > span {
+  font-size: 10px !important;
+  letter-spacing: -0.03em;
+}
+
+.panel-tabs button small {
+  top: 0;
+  right: 1px;
+  font-size: 8px;
+}
+
+/* 상단 도감 아이콘 */
+.icon-button--codex {
+  width: auto;
+  min-width: 40px;
+  padding: 0 7px;
+  gap: 3px;
+}
+
+.icon-button--codex b {
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.icon-button--codex small {
+  font-size: 9px;
+  opacity: 0.85;
+}
+
+/* ── 바닥 기록 티커 ─────────────────────────────────────────────── */
+.record-ticker {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  overflow: hidden;
+  min-width: 0;
+  padding: 2px 8px;
+  border-radius: var(--r-sm);
+  background: rgba(201, 183, 143, 0.44);
+  box-shadow: inset 0 0 0 1px rgba(122, 90, 42, 0.26);
+  font-size: 10px;
+  white-space: nowrap;
+}
+
+.record-ticker > i {
+  flex: 0 0 4px;
+  width: 4px;
+  height: 4px;
+  border-radius: 999px;
+  background: var(--text-400);
+}
+
+.record-ticker[data-active="1"] > i {
+  background: var(--seal);
+}
+
+.record-ticker b {
+  flex: 0 0 auto;
+  font-family: "Batang", serif;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.record-ticker span {
+  overflow: hidden;
+  color: var(--text-300);
+  text-overflow: ellipsis;
+}
+
+/* 티커가 한 줄 들어가므로 세로 예산을 다시 나눈다 */
+@media (min-width: 800px) {
+  .control-panel {
+    grid-template-rows: 34px 56px 52px minmax(0, 1fr) 40px 20px 20px 24px;
+  }
+}
+
+@media (min-width: 1500px) and (min-height: 850px) {
+  .control-panel {
+    grid-template-rows: 40px 64px 60px minmax(0, 1fr) 46px 24px 24px 28px;
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   41. 강화 제련소 — 400px 안에 2열을 넣어 글자가 세로로 쪼개졌다
+   각 열이 190px 뿐이라 "오 행 강 화", "木 문 분" 처럼 한 글자씩 끊겼다.
+   분해와 오행 강화는 순서가 있는 흐름이므로 세로로 쌓는다.
+   ══════════════════════════════════════════════════════════════════ */
+
+.growth-layout {
+  display: flex !important;
+  flex-direction: column;
+  gap: var(--sp-2);
+  min-height: 0;
+  overflow-y: auto;
+  grid-template-columns: none !important;
+}
+
+.dismantle-workbench {
+  flex: 0 0 auto;
+  max-height: 216px;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.element-growth-workbench {
+  flex: 1 1 auto;
+  min-height: 190px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+/* 소제목이 세로로 끊기던 것 */
+.growth-workbench .subheading,
+.concentration-workbench .subheading {
+  display: flex;
+  gap: 6px;
+  align-items: baseline;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.growth-workbench .subheading b {
+  flex: 0 0 auto;
+  font-size: 12px;
+}
+
+.growth-workbench .subheading small {
+  overflow: hidden;
+  font-size: 10px;
+  text-overflow: ellipsis;
+}
+
+/* 헤더 요약도 한 줄로 */
+.growth-workbench > header {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  justify-content: space-between;
+  white-space: nowrap;
+}
+
+#growth-resource-summary {
+  overflow: hidden;
+  margin: 0;
+  font-size: 10px;
+  text-overflow: ellipsis;
+}
+
+/* 필터 3개 가로 유지 */
+.growth-filters {
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 4px;
+}
+
+.dismantle-toolbar {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px;
+}
+
+.dismantle-toolbar button {
+  padding: 4px 6px;
+  font-size: 10px;
+  white-space: nowrap;
+}
+
+/* 오행 탭 5칸 가로 — "木 문 분" 세로 쪼개짐 해소 */
+.growth-element-tabs {
+  display: grid !important;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 3px;
+}
+
+.growth-element-tabs button {
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 0;
+  min-height: 38px;
+  padding: 3px 2px;
+  white-space: nowrap;
+}
+
+.growth-element-tabs button b {
+  font-size: 15px;
+  line-height: 1.1;
+}
+
+.growth-element-tabs button small,
+.growth-element-tabs button span {
+  overflow: hidden;
+  max-width: 100%;
+  font-size: 9px;
+  line-height: 1.1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 강화 카드의 투자 버튼 3개가 세로로 깨지던 것 */
+.growth-stat-row,
+.growth-trait-row {
+  display: grid !important;
+  grid-template-columns: 30px minmax(0, 1fr);
+  gap: 6px;
+  align-items: center;
+  padding: 6px 7px;
+}
+
+.growth-stat-row nav,
+.growth-trait-row nav {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 3px;
+}
+
+.growth-stat-row nav button,
+.growth-trait-row nav button {
+  min-height: 30px;
+  padding: 3px 2px;
+  font-size: 9px !important;
+  line-height: 1.15;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+/* 분해 목록·견적 */
+.growth-dismantle-list {
+  flex: 1 1 auto;
+  min-height: 74px;
+}
+
+.dismantle-quote {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 4px 8px;
+  align-items: center;
+  white-space: nowrap;
+}
+
+.dismantle-quote button {
+  grid-column: 1 / -1;
+  min-height: 28px;
+}
+
+.dismantle-quote span,
+.dismantle-quote strong {
+  overflow: hidden;
+  font-size: 10px;
+  text-overflow: ellipsis;
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   42. 탭바 잘림 — status-strip 자산의 구운 인장과 떠 있는 배지
+   status-strip-v1.png 은 우측에 인주 인장이 구워져 있어 8탭 띠에 깔면
+   성어 탭과 겹친다. 탭바·도움말 띠는 무지 종이로 바꾸고,
+   absolute 로 띄워 잘리던 수량 배지는 라벨 옆 인라인 칩으로 내린다.
+   ══════════════════════════════════════════════════════════════════ */
+
+.panel-tabs,
+.shop-help-strip {
+  background:
+    linear-gradient(180deg, #f2e8cd 0%, #e3d6b6 100%) !important;
+  box-shadow:
+    var(--bevel-up),
+    0 0 0 1px rgba(122, 90, 42, 0.34) !important;
+}
+
+.panel-tabs button {
+  overflow: visible;
+}
+
+.panel-tabs button small {
+  position: static !important;
+  display: inline-block;
+  margin-left: 2px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: rgba(122, 90, 42, 0.16);
+  box-shadow: inset 0 0 0 1px rgba(122, 90, 42, 0.3);
+  color: var(--gold-500) !important;
+  font-size: 8px !important;
+  line-height: 1.5;
+  vertical-align: 1px;
+  white-space: nowrap;
+}
+
+.panel-tabs button.is-active small {
+  background: rgba(159, 47, 35, 0.14);
+  color: var(--seal) !important;
+}
+
+/* 활성 탭: 들뜬 종이 카드 + 주홍 하단선 */
+.panel-tabs button.is-active,
+.panel-tabs button[aria-selected="true"] {
+  background: linear-gradient(180deg, #fdf8ea 0%, #f0e5c9 100%) !important;
+  box-shadow:
+    var(--bevel-up),
+    inset 0 -3px 0 var(--seal),
+    0 0 0 1px rgba(122, 90, 42, 0.44),
+    var(--lift-1) !important;
+}
+
+/* 소환 목적 안내 띠: 말줄임 도배 대신 두 줄 허용 */
+.shop-help-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 8px;
+  overflow: hidden;
+  padding: 3px 8px;
+  white-space: normal;
+}
+
+.shop-help-strip b,
+.shop-help-strip span {
+  overflow: visible;
+  font-size: 9.5px !important;
+  text-overflow: clip;
+  white-space: nowrap;
+}
+
+/* 43. 배지 줄바꿈 잘림 + 오행 띠의 잔여 인장 */
+
+/* "상점 1,000" 이 탭 폭 44px 안에서 두 줄로 감겨 바닥에서 잘렸다.
+   배지는 아이콘 우상단 모서리에 겹치는 도장으로 올린다. 탭바는
+   overflow visible 이라 잘리지 않는다. */
+.panel-tabs button small {
+  position: absolute !important;
+  top: -1px;
+  right: 0;
+  z-index: 1;
+  margin: 0;
+  background: #f6eed9;
+  box-shadow:
+    inset 0 0 0 1px rgba(122, 90, 42, 0.4),
+    0 1px 2px rgba(58, 44, 22, 0.3);
+}
+
+/* 오행 상생 띠가 아직 status-strip(우측 인장 구움)을 쓰고 있었다.
+   어두운 칩이 얹히는 띠이므로 옻칠 바탕으로 통일한다. */
+.synergy-strip {
+  background:
+    linear-gradient(180deg, #2a2723 0%, #191715 100%) !important;
+  background-color: #201e1a !important;
+  box-shadow:
+    var(--bevel-in),
+    0 0 0 1px rgba(122, 90, 42, 0.4) !important;
+}

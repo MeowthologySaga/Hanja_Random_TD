@@ -79,7 +79,7 @@ test("freezes the opening until the first summon opens its matching formation", 
   await page.getByTestId("start-run").click();
   await expect(page.locator("#shop-panel")).toBeVisible();
   await expect(page.locator("#shop-tab")).toHaveClass(/is-active/u);
-  await expect(page.locator(".panel-tabs > button")).toHaveCount(10);
+  await expect(page.locator(".panel-tabs > button")).toHaveCount(8);
   await expect(page.locator("#formation-unlock-list > button")).toHaveCount(5);
   await expect(page.locator("#formation-unlock-list > button.is-unlocked")).toHaveCount(0);
   await expect(page.getByTestId("early-wave")).toBeDisabled();
@@ -204,7 +204,7 @@ test("runs the casual eight-star entry and readable KEEP-USE fusion workshop", a
 test("uses tabbed owned-aware goals and summons from all one thousand Cheonjamun sprites", async ({ page }) => {
   await page.goto("/?seed=EVO-E2E-2");
   await page.getByTestId("start-run").click();
-  await expect(page.locator(".panel-tabs > button")).toHaveCount(10);
+  await expect(page.locator(".panel-tabs > button")).toHaveCount(8);
   await expect(page.locator("#selected-card")).toBeHidden();
   await expect(page.locator("#goal-panel")).toBeHidden();
   await expect(page.locator("#shop-panel")).toBeVisible();
@@ -399,9 +399,8 @@ test("starts a KR run and exposes the finished core loop at 1280x720", async ({ 
   await expect(page.locator("#battle-canvas")).toHaveAttribute("data-projectile-sprite-draw", "true");
   await page.screenshot({ path: "artifacts/projectile-sprite-active-1280x720.png", fullPage: true });
   await expect(page.locator("#ability-banner")).toHaveCount(0);
-  await page.getByRole("tab", { name: "기록" }).click();
-  await expect(page.locator(".combat-readout")).toBeVisible();
-  await expect(page.locator(".record-heading")).toContainText("최근 능력 기록");
+  // 기록은 탭이 아니라 패널 바닥 상시 티커로 노출된다.
+  await expect(page.locator("#record-ticker")).toBeVisible();
   await page.getByRole("tab", { name: "자령" }).click();
 
   const overflow = await page.evaluate(() => ({
@@ -705,7 +704,7 @@ test("keeps the full game surface on a small laptop without a browser page scrol
   await page.locator("#growth-tab").click();
   await expect(page.locator("#growth-panel")).toBeVisible();
   const tabRows = await page.locator(".panel-tabs > button").evaluateAll((buttons) => [...new Set(buttons.map((button) => Math.round(button.getBoundingClientRect().top)))]);
-  expect(tabRows).toHaveLength(2);
+  expect(tabRows).toHaveLength(1);
   const workbenchScrollbar = await page.locator("#growth-upgrade-list").evaluate((element) => getComputedStyle(element).scrollbarColor);
   expect(workbenchScrollbar).not.toBe("auto");
 
