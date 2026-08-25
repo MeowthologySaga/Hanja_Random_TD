@@ -5919,3 +5919,64 @@ dialog,
 .s00-stage.is-3d .s00-modes .s00-mode:nth-of-type(1) { left: 8px; top: 168px; }
 .s00-stage.is-3d .s00-modes .s00-mode:nth-of-type(2) { left: 8px; top: 268px; }
 .s00-stage.is-3d .s00-mode-label { top: 138px; }
+
+/* 62. menu3d — 조작물이 실제 모델이 됐으므로 DOM 은 텍스트·히트만 남긴다 */
+.s00-stage.is-3d .s00-mode .s00-skin,
+.s00-stage.is-3d .s00-region .s00-skin,
+.s00-stage.is-3d .s00-start .s00-skin,
+.s00-stage.is-3d .s00-custom .s00-skin {
+  opacity: 0;
+}
+
+.s00-stage.is-3d .s00-summary {
+  background: none;
+  box-shadow: none;
+}
+
+.s00-stage.is-3d .s00-mode.is-selected {
+  outline: none;
+}
+
+/* 모델 각도에 맞춘 미세 기울임 — 텍스트가 판 위에 얹혀 보이게 */
+.s00-stage.is-3d .s00-modes .s00-mode:nth-of-type(1) { rotate: -2.4deg; }
+.s00-stage.is-3d .s00-modes .s00-mode:nth-of-type(2) { rotate: -1.2deg; }
+.s00-stage.is-3d .s00-start { rotate: -1.6deg; }
+
+/* 요약 띠 글자는 모델 위 밝은 종이라 먹색 유지, 그림자 제거 */
+.s00-stage.is-3d .s00-summary strong,
+.s00-stage.is-3d .s00-summary span {
+  text-shadow: none;
+}
+
+/* 63. menu3d — 3D 모드에서 화면 고정 잔여물 정리 */
+.s00-stage.is-3d .s00-ea-note,
+.s00-stage.is-3d .s00-mode-label {
+  display: none;
+}
+
+.s00-stage.is-3d .s00-start b {
+  font-size: 26px;
+}
+
+.s00-stage.is-3d .s00-start small {
+  color: #f0d9a8;
+}
+
+/* 절대 재배치와 충돌하는 기존 시차 변환 제거 */
+.s00-stage.is-3d .s00-summary,
+.s00-stage.is-3d .s00-title-plaque {
+  transform: none;
+}
+
+/* 3D 모드: 2D용 #start-button 금박 슬래브가 스킨 아래 깔려 있다가
+   스킨이 투명해지며 드러났다. 걸쇠 모델이 배경을 담당한다. */
+.s00-stage.is-3d #start-button,
+.s00-stage.is-3d .s00-custom,
+.s00-stage.is-3d .s00-mode,
+.s00-stage.is-3d .s00-region {
+  background: none !important;
+  background-color: transparent !important;
+  box-shadow: none !important;
+  clip-path: none !important;
+  animation: none !important;
+}
