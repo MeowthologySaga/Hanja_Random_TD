@@ -5831,3 +5831,72 @@ dialog,
 
 /* 요약 부제 대비 */
 .s00-summary span { color: #5a4526 !important; }
+
+/* ══════════════════════════════════════════════════════════════════
+   60. S00 2.5D — 포인터 시차 + 기립 자령 빌보드
+   레이어별 이동량 차이가 깊이를 만든다: 배경(느림) < 고리 < 자령(빠름).
+   조작 버튼은 고정해 히트 영역이 흔들리지 않는다.
+   ══════════════════════════════════════════════════════════════════ */
+
+.s00-stage {
+  --plx: 0;
+  --ply: 0;
+  perspective: 1100px;
+}
+
+.s00-env {
+  width: 106%;
+  height: 106%;
+  left: -3%;
+  top: -3%;
+  transform: translate3d(calc(var(--plx) * -8px), calc(var(--ply) * -5px), 0);
+  will-change: transform;
+}
+
+.s00-showcase figure {
+  transform:
+    translate3d(calc(var(--plx) * 16px), calc(var(--ply) * 10px), 0)
+    rotateY(calc(var(--plx) * 6deg))
+    rotateX(calc(var(--ply) * -3deg));
+  transform-style: preserve-3d;
+  will-change: transform;
+}
+
+/* 고리는 책에 붙고, 자령만 앞으로 세운다 */
+.s00-showcase .s00-ring {
+  transform: translateZ(0);
+}
+
+.s00-showcase .s00-spirit {
+  transform-origin: 50% 88%;
+  transform: translateZ(34px);
+  filter: drop-shadow(0 14px 10px rgba(10, 6, 3, 0.55));
+}
+
+/* 기립 자령의 숨쉬기: translateZ 를 유지한 채 위아래로 */
+@keyframes s00-breathe {
+  0%, 100% { transform: translateZ(34px) translateY(0); }
+  50% { transform: translateZ(34px) translateY(-7px); }
+}
+
+/* 현판·서갈피·요약도 아주 약하게 따라와 장면의 일부가 된다 */
+.s00-title-plaque,
+.s00-mode-label {
+  transform: translate3d(calc(var(--plx) * 4px), calc(var(--ply) * 3px), 0);
+}
+
+.s00-summary,
+.s00-ea-note {
+  transform: translate3d(calc(var(--plx) * 7px), calc(var(--ply) * 5px), 0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .s00-env,
+  .s00-showcase figure,
+  .s00-title-plaque,
+  .s00-mode-label,
+  .s00-summary,
+  .s00-ea-note {
+    transform: none;
+  }
+}

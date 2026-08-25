@@ -5205,6 +5205,44 @@ function syncCoachProgress(): void {
   if (step && step.satisfied()) advanceCoach();
 }
 
+/*
+ * S00 2.5D 리그.
+ *
+ * 진짜 3D 엔진 없이, 포인터 시차와 원근 기울임만으로 "그림 속 책상 위에
+ * 자령이 서 있는" 깊이감을 만든다. 좌표는 CSS 변수로만 전달하므로
+ * 버튼 히트 영역은 움직이지 않고, prefers-reduced-motion 이면 껐다.
+ */
+const s00Stage = document.querySelector<HTMLElement>(".s00-stage");
+if (s00Stage && !window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+  let parallaxRaf = 0;
+  let targetX = 0;
+  let targetY = 0;
+  let currentX = 0;
+  let currentY = 0;
+  const applyParallax = (): void => {
+    parallaxRaf = 0;
+    // 살짝 늦게 따라와야 손맛이 아니라 "무거운 장면"으로 느껴진다.
+    currentX += (targetX - currentX) * 0.12;
+    currentY += (targetY - currentY) * 0.12;
+    s00Stage.style.setProperty("--plx", currentX.toFixed(4));
+    s00Stage.style.setProperty("--ply", currentY.toFixed(4));
+    if (Math.abs(targetX - currentX) + Math.abs(targetY - currentY) > 0.002) {
+      parallaxRaf = window.requestAnimationFrame(applyParallax);
+    }
+  };
+  s00Stage.addEventListener("pointermove", (event) => {
+    const rect = s00Stage.getBoundingClientRect();
+    targetX = ((event.clientX - rect.left) / rect.width - 0.5) * 2;
+    targetY = ((event.clientY - rect.top) / rect.height - 0.5) * 2;
+    if (!parallaxRaf) parallaxRaf = window.requestAnimationFrame(applyParallax);
+  });
+  s00Stage.addEventListener("pointerleave", () => {
+    targetX = 0;
+    targetY = 0;
+    if (!parallaxRaf) parallaxRaf = window.requestAnimationFrame(applyParallax);
+  });
+}
+
 must<HTMLButtonElement>("#coach-next").addEventListener("click", advanceCoach);
 must<HTMLButtonElement>("#coach-skip").addEventListener("click", endCoach);
 
