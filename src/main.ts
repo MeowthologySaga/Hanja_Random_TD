@@ -3979,12 +3979,7 @@ function drawEnemy(enemy: Enemy, point = positionOnPath(enemy.progress)): void {
     context.shadowBlur = enemy.boss ? 16 : 8;
     context.drawImage(image, frame * frameWidth, 0, frameWidth, frameHeight, -drawSize / 2, -drawSize / 2, drawSize, drawSize);
     context.shadowBlur = 0;
-    // 같은 그림이라도 적은 살짝 어둡게 깔아 아군 자령보다 가라앉아 보이게 한다.
-    context.save();
-    context.globalCompositeOperation = "source-atop";
-    context.fillStyle = enemy.boss ? "rgba(46, 8, 6, 0.16)" : "rgba(30, 14, 8, 0.22)";
-    context.fillRect(-drawSize / 2, -drawSize / 2, drawSize, drawSize);
-    context.restore();
+
   } else {
     context.fillStyle = color;
     context.beginPath();
