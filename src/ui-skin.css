@@ -5758,3 +5758,76 @@ dialog,
 .s00-custom b { color: #d8c9a8; }
 .s00-custom small { color: #a8977a; }
 .s00-custom .s00-reason { color: #d86a54; }
+
+/* ══════════════════════════════════════════════════════════════════
+   58. S00 정합 — 에셋 알파 bbox 실측 기준 재배치
+   summary-strip 은 990x162 중 그림이 390x87 뿐(양옆 30% 여백)이라
+   100% 늘림에서 띠가 1/3 로 축소돼 보였다. 그림 영역이 요소를 채우도록
+   배경을 확대 crop 한다. (330/390 스케일 → 전체 838x101)
+   ══════════════════════════════════════════════════════════════════ */
+
+.s00-summary {
+  background:
+    url("/assets/ui/main-menu-b/ui/selection-summary-strip-v1.png") center / 838px 101px no-repeat;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.s00-summary strong { font-size: 14px; }
+.s00-summary span { font-size: 9.5px; }
+
+/* 서갈피: 그림 밴드(상단 3%~85%) 안으로 텍스트 정렬 */
+.s00-mode {
+  align-content: start;
+  padding-top: 24px;
+  padding-left: 80px;
+  gap: 3px;
+}
+
+.s00-mode b { font-size: 17px !important; }
+.s00-mode small { font-size: 10px !important; }
+.s00-mode em { top: 22px; right: 22px; }
+
+.s00-mode.is-selected {
+  outline-offset: -10px;
+}
+
+/* 보조 메달리온: 원판 중심(세로 44%)에 아이콘, 라벨은 바닥 고정 */
+.s00-utility button {
+  padding-top: 22px;
+  gap: 0;
+}
+
+.s00-utility span {
+  position: absolute;
+  bottom: 2px;
+  left: 0;
+  right: 0;
+  text-align: center;
+}
+
+/* 지역 인장: selected-kr 원본이 오른쪽으로 치우쳐 있어 글자를 따라 보정 */
+.s00-region.is-selected[data-region="KR"] b { transform: translateX(6px); }
+
+/* 59. S00 마지막 손질 */
+
+/* 서갈피 부제가 좌하단 금장식(엽전 클래스프)에 걸렸다 */
+.s00-mode small {
+  padding-left: 14px;
+}
+
+/* 맞춤 쪽지: 작은 태그에 3줄은 과밀 — 이름과 사유만 남긴다 */
+.s00-custom small:not(.s00-reason) {
+  display: none;
+}
+
+.s00-custom {
+  padding-top: 8px;
+  gap: 3px;
+}
+
+.s00-custom b { font-size: 13px; }
+.s00-custom .s00-reason { font-size: 9px; }
+
+/* 요약 부제 대비 */
+.s00-summary span { color: #5a4526 !important; }
