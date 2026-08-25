@@ -391,7 +391,7 @@ app.innerHTML = `
         <span class="canvas-tip">
           <i><em>휠</em>확대·축소</i><i><em>끌기</em>화면 이동</i><i><em>클릭</em>선택·이동</i><i><em>자령 끌기</em>자리 교환</i>
         </span>
-        <span><b id="message-value">지역과 목표 한자를 선택하세요.</b> · 시드 <b id="seed-value">-</b></span>
+        <span><b id="message-value">지역과 목표 한자를 선택하세요.</b><span id="footer-seed" class="footer-seed"> · 시드 <b id="seed-value">-</b></span></span>
       </footer>
     </aside>
 
@@ -964,16 +964,13 @@ function syncTitleModeSelection(): void {
     button.classList.toggle("is-selected", selected);
     button.setAttribute("aria-checked", String(selected));
   });
-  if (selectedGameMode === "casual") selectedRegion = "KR";
   document.querySelectorAll<HTMLButtonElement>(".region-option").forEach((button) => {
     const region = button.dataset.region as RegionCode;
-    const disabled = selectedGameMode === "casual" && region !== "KR";
-    button.disabled = disabled;
-    button.setAttribute("aria-disabled", String(disabled));
+    button.disabled = false;
+    button.setAttribute("aria-disabled", "false");
     const info = REGION_MENU_INFO[region];
-    const reason = "현재 캐주얼 8성전은 한국(KR) 전용입니다";
-    button.title = disabled ? reason : info.pool;
-    button.setAttribute("aria-label", disabled ? `${info.name}. ${reason}` : `${info.name} · ${info.pool}`);
+    button.title = info.pool;
+    button.setAttribute("aria-label", `${info.name} · ${info.pool}`);
     const selected = region === selectedRegion;
     button.classList.toggle("is-selected", selected);
     button.setAttribute("aria-checked", String(selected));
@@ -4599,14 +4596,12 @@ p00Dialog.addEventListener("click", (event) => {
 const s13Dialog = must<HTMLDialogElement>("#s13-dialog");
 
 function syncS13(): void {
-  const casual = selectedGameMode === "casual";
   s13Dialog.querySelectorAll<HTMLButtonElement>("[data-s13-region]").forEach((button) => {
     const region = button.dataset.s13Region as RegionCode;
-    const disabled = casual && region !== "KR";
-    button.disabled = disabled;
+    button.disabled = false;
     button.classList.toggle("is-selected", region === selectedRegion);
     button.setAttribute("aria-checked", String(region === selectedRegion));
-    button.title = disabled ? "현재 캐주얼 8성전은 한국(KR) 전용입니다" : REGION_MENU_INFO[region].pool;
+    button.title = REGION_MENU_INFO[region].pool;
   });
   s13Dialog.querySelectorAll<HTMLButtonElement>("[data-s13-display]").forEach((button) => {
     const selected = button.dataset.s13Display === displayMode;
@@ -5385,6 +5380,42 @@ if (s00Stage && !window.matchMedia("(prefers-reduced-motion: reduce)").matches) 
     if (!parallaxRaf) parallaxRaf = window.requestAnimationFrame(applyParallax);
   });
 }
+
+/*
+ * 개발자 모드.
+ *
+ * 런 시드는 재현·디버그 도구라 일반 화면에서 치운다. 백틱(`)을 다른 키
+ * 없이 5번 연속 누르면 토글되고, 시드 입력·재생성·푸터 시드가 나타난다.
+ * ?seed= URL 파라미터는 게이트와 무관하게 항상 동작한다(테스트 계약).
+ */
+let devKeyStreak = 0;
+let devKeyTimer = 0;
+
+function setDevMode(enabled: boolean): void {
+  shell.dataset.devMode = enabled ? "1" : "0";
+  if (enabled) {
+    seedInput.focus();
+    seedInput.select();
+  }
+}
+
+window.addEventListener("keydown", (event) => {
+  const target = event.target as HTMLElement | null;
+  if (target && target.closest("input, textarea")) return;
+  if (event.code === "Backquote") {
+    devKeyStreak += 1;
+    window.clearTimeout(devKeyTimer);
+    devKeyTimer = window.setTimeout(() => {
+      devKeyStreak = 0;
+    }, 1200);
+    if (devKeyStreak >= 5) {
+      devKeyStreak = 0;
+      setDevMode(shell.dataset.devMode !== "1");
+    }
+    return;
+  }
+  devKeyStreak = 0;
+});
 
 must<HTMLButtonElement>("#coach-next").addEventListener("click", advanceCoach);
 must<HTMLButtonElement>("#coach-skip").addEventListener("click", endCoach);

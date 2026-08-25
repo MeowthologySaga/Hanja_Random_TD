@@ -96,7 +96,7 @@ const DOM_ANCHORS: ReadonlyArray<{ selector: string; at: Vector3 }> = [
   { selector: ".s00-regions .s00-region:nth-of-type(3)", at: new Vector3(0.64, -0.18, 2.9) },
   { selector: ".s00-start", at: new Vector3(3.35, -0.16, 2.72) },
   { selector: ".s00-summary", at: new Vector3(1.85, 0.5, 1.85) },
-  { selector: ".s00-custom", at: new Vector3(-3.74, -0.66, 2.94) }
+  { selector: ".s00-custom", at: new Vector3(-3.58, -0.68, 2.9) }
 ];
 
 /** 낡은 종이 얼룩·섬유·가장자리 그을림을 절차적으로 그린다. */

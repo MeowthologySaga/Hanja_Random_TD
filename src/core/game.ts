@@ -275,7 +275,6 @@ export class GameEngine {
   private combatDistinctElements = 0;
 
   constructor(seed: string, region: RegionCode = "KR", mode: GameMode = "standard") {
-    if (mode === "casual" && region !== "KR") throw new Error("캐주얼 8성전은 천자문 한국 지역에서만 지원됩니다.");
     this.catalog = getCatalog(region);
     this.evolution = new EvolutionService(this.catalog);
     this.rng = new SeededRng(seed);

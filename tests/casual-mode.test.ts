@@ -57,8 +57,18 @@ describe("casual eight-star mode", () => {
     expect(casualNaturalStar("天")).toBe(1);
   });
 
-  it("keeps casual mode KR-only and summons from the full natural-star pool", () => {
-    expect(() => new GameEngine("casual-jp", "JP", "casual")).toThrow(/한국/);
+  it("supports casual mode in every region via supplement strokes", () => {
+    // JP/CN 로스터는 Unihan kTotalStrokes 보충 데이터로 별을 받는다.
+    for (const region of ["JP", "CN"] as const) {
+      const foreign = new GameEngine(`casual-${region.toLowerCase()}`, region, "casual");
+      foreign.setAutoPlaceSummons(false);
+      foreign.begin();
+      foreign.state.gold = 500;
+      for (let index = 0; index < 10; index += 1) expect(foreign.summon()).toMatchObject({ ok: true });
+      expect(foreign.state.inventoryTowers).toHaveLength(10);
+      expect(foreign.state.inventoryTowers.every((tower) => tower.naturalStar === casualNaturalStar(tower.char))).toBe(true);
+      expect(foreign.state.inventoryTowers.every((tower) => (tower.naturalStar ?? 0) >= 1 && (tower.naturalStar ?? 0) <= 8)).toBe(true);
+    }
     const engine = new GameEngine("casual-summons", "KR", "casual");
     engine.setAutoPlaceSummons(false);
     engine.begin();
