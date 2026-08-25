@@ -4395,3 +4395,112 @@ select option {
     var(--bevel-in),
     0 0 0 1px rgba(122, 90, 42, 0.4) !important;
 }
+
+/* ══════════════════════════════════════════════════════════════════
+   44. 우측 패널 잔여 정리 — 확대 검수에서 잡힌 5건
+   ══════════════════════════════════════════════════════════════════ */
+
+/* 44-1. 상단 도감 버튼: 육각 스프라이트(36x36)에 두 글자+배지가 안 들어가
+   "도갑"처럼 잘렸다. 육각 대신 자체 옻칠 알약으로. */
+.icon-button--codex {
+  min-width: 52px;
+  padding: 0 8px;
+  background: linear-gradient(180deg, #2a2723 0%, #17150f 100%) !important;
+  background-color: #1f1c18 !important;
+  border-radius: var(--r-sm) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(233, 222, 194, 0.22),
+    inset 0 -2px 0 rgba(0, 0, 0, 0.55),
+    0 0 0 1px rgba(122, 90, 42, 0.5),
+    var(--lift-1) !important;
+  overflow: visible;
+}
+
+.icon-button--codex b,
+.icon-button--codex small {
+  color: #efe3c6 !important;
+}
+
+/* 44-2. 약점 인장: 세로 공간보다 글자가 커서 木이 카드 밖으로 잘렸다. */
+.weakness-seal {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  align-self: center;
+  padding: 2px 7px;
+  line-height: 1;
+}
+
+.weakness-seal span {
+  font-size: 9px !important;
+}
+
+.weakness-seal b {
+  font-size: 15px !important;
+  line-height: 1.1;
+}
+
+/* 44-3. 단축키 배지(1·Q·2·3)가 카드 모서리 밖으로 나갔다.
+   카드 안쪽 우상단으로 고정. */
+.action-button {
+  overflow: hidden;
+}
+
+.action-button .hotkey {
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  left: auto;
+  width: 15px;
+  height: 15px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  font-size: 9px !important;
+  line-height: 1;
+}
+
+/* 44-4. 상점 탭 한가운데 빈 공간: 안내 띠를 바닥에 밀어 붙여 생긴
+   구멍이다. 내용 바로 아래로 되돌려 여백이 자연스럽게 바닥에 모이게. */
+.shop-help-strip {
+  margin-top: 0;
+}
+
+/* 44-5. 소제목 자간 과다 — "소환과 운영"이 두 줄을 잡아먹었다. */
+.shop-workbench-heading span,
+.goal-workbench-heading span,
+.workbench-heading > div > span,
+.eyebrow,
+.section-heading span,
+.evolution-heading span {
+  letter-spacing: 0.12em !important;
+  font-size: 10px !important;
+}
+
+.shop-workbench-heading,
+.goal-workbench-heading,
+.workbench-heading {
+  min-height: 0;
+}
+
+/* 자원 첫 칸(엽전 강조)이 레일 밖으로 튀어나온 흰 카드처럼 보였다.
+   레일 안 홈과 같은 높이로 눌러 앉힌다. */
+.resource-grid div:first-child {
+  background: linear-gradient(180deg, #fbf2d8 0%, #eee0b8 100%) !important;
+  box-shadow:
+    inset 0 0 0 1px var(--gold-300),
+    inset 0 2px 4px rgba(96, 76, 40, 0.2) !important;
+  border-radius: var(--r-sm);
+}
+
+/* "약점" 라벨이 flex 수축으로 "약.."이 되었다. 두 글자는 항상 지킨다. */
+.weakness-seal span {
+  flex: 0 0 auto;
+  overflow: visible;
+  white-space: nowrap;
+  text-overflow: clip;
+}
+
+.weakness-seal b {
+  flex: 0 0 auto;
+}
