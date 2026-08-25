@@ -58,10 +58,10 @@
   --text-400: #6f6454;
 
   /* ── 타이포 스케일 (최소 11px) ─────────────────────── */
-  --fs-2xs: 11px;
-  --fs-xs: 12px;
-  --fs-sm: 13px;
-  --fs-md: 15px;
+  --fs-2xs: 12px;
+  --fs-xs: 13px;
+  --fs-sm: 14px;
+  --fs-md: 16px;
   --fs-lg: 18px;
   --fs-xl: 22px;
   --fs-2xl: 28px;
@@ -2402,13 +2402,13 @@ dialog img {
 /* 탭 줄이 아이콘 때문에 높아진다 */
 @media (min-width: 800px) {
   .control-panel {
-    grid-template-rows: 34px 56px 52px minmax(0, 1fr) 74px 22px 24px;
+    grid-template-rows: 38px 62px 58px minmax(0, 1fr) 80px 26px 26px;
   }
 }
 
 @media (min-width: 1500px) and (min-height: 850px) {
   .control-panel {
-    grid-template-rows: 40px 64px 60px minmax(0, 1fr) 82px 26px 28px;
+    grid-template-rows: 44px 70px 64px minmax(0, 1fr) 88px 30px 30px;
   }
 }
 
@@ -4109,7 +4109,7 @@ select option {
 
 @media (min-width: 1500px) and (min-height: 850px) {
   .control-panel {
-    grid-template-rows: 40px 64px 60px minmax(0, 1fr) 46px 24px 24px 28px;
+    grid-template-rows: 44px 70px 64px minmax(0, 1fr) 52px 28px 28px 30px;
   }
 }
 
@@ -6240,3 +6240,189 @@ dialog,
     0 1px 3px rgba(0, 0, 0, 0.9),
     0 0 7px rgba(0, 0, 0, 0.6);
 }
+
+/* ══════════════════════════════════════════════════════════════════
+   69. 가독 바닥 상향 — 실측 결과 패널 텍스트 71% 가 12px 미만이었다
+   (6px 3·7px 16·8px 67·9px 138·10px 204·11px 211). census 상위
+   오펜더를 직접 끌어올린다. 목표: 정보 텍스트 최소 11.5px.
+   ══════════════════════════════════════════════════════════════════ */
+
+/* 자원 4칸 — 라벨 9.5px, 이자 9px 였다 */
+.resource-grid span { font-size: 11.5px !important; letter-spacing: -0.01em; }
+.resource-grid span em { font-size: 11px !important; }
+.resource-grid strong { font-size: 17px !important; }
+.resource-grid div:first-child strong { font-size: 19px !important; }
+
+/* 웨이브 카드 — 킥커·브리핑 11px, 약점 9px */
+#wave-kicker, .wave-card span { font-size: 12px !important; }
+#wave-briefing, .wave-card small { font-size: 12px !important; }
+.wave-card strong { font-size: 15px !important; }
+.weakness-seal span { font-size: 11px !important; }
+.weakness-seal b { font-size: 17px !important; }
+
+/* 화면 소제목(10px)과 요약 */
+.workbench-heading span,
+.shop-workbench-heading span,
+.goal-workbench-heading span,
+.section-heading span,
+.evolution-heading span,
+.eyebrow { font-size: 11px !important; }
+.workbench-heading strong,
+.section-heading b { font-size: 15px !important; }
+#growth-resource-summary { font-size: 11.5px !important; }
+
+/* 온보딩 스텝 — b 10px·span 9px */
+.opening-guide > div b { font-size: 11.5px !important; }
+.opening-guide > div span { font-size: 11px !important; }
+
+/* 오행진 해금 — 상태 8px */
+.formation-unlock-list button b { font-size: 15px !important; }
+.formation-unlock-list button span { font-size: 11.5px !important; }
+.formation-unlock-list button small { font-size: 10.5px !important; }
+#formation-unlock-summary { font-size: 11px !important; }
+
+/* 소환 목적·행동 버튼 — 라벨 10~11px */
+.summon-intent-tabs button { font-size: 11.5px !important; }
+.action-button b { font-size: 14px !important; }
+.action-button small,
+.action-button em,
+.action-button i { font-size: 11.5px !important; }
+.hotkey { font-size: 10px !important; }
+.shop-help-strip b, .shop-help-strip span { font-size: 11.5px !important; }
+
+/* 하단 탭 — 라벨 11px·수량 8px */
+.panel-tabs button > b,
+.panel-tabs button > span { font-size: 12px !important; }
+.panel-tabs button small { font-size: 10px !important; }
+.panel-tabs button { min-height: 40px; }
+.panel-tabs button::before { width: 20px; height: 20px; }
+.panel-tabs button { grid-template-rows: 20px auto; }
+
+/* 티커·푸터 — 10~11px */
+.record-ticker { font-size: 12px; }
+.record-ticker b { font-size: 15px; }
+#message-value { font-size: 11.5px !important; }
+.panel-footer, .panel-footer span { font-size: 11px !important; }
+.canvas-tip i { font-size: 11.5px; }
+.canvas-tip i em { font-size: 10.5px; }
+
+/* 목표 서책 — 훈음 11px·상태 mark 9px */
+.goal-choice-copy strong { font-size: 13px !important; }
+.goal-choice-copy :is(em, small) { font-size: 11px !important; }
+.goal-choice-card mark { font-size: 10.5px !important; }
+.goal-materials span { font-size: 11px !important; }
+.goal-reading { font-size: 12.5px !important; }
+#goal-owned-summary, .goal-owned-summary { font-size: 11px !important; }
+
+/* 강화 제련소 — 7px 안내·9px 라벨이 최악 지대였다 */
+.growth-workbench .subheading b { font-size: 12.5px !important; }
+.growth-workbench .subheading small { font-size: 11px !important; }
+.growth-upgrade-section small,
+.growth-stat-row small,
+.growth-trait-row small { font-size: 10.5px !important; }
+.growth-stat-row b, .growth-trait-row b,
+.growth-stat-row strong, .growth-trait-row strong { font-size: 12px !important; }
+.growth-stat-row span, .growth-trait-row span { font-size: 11px !important; }
+.growth-stat-row nav button, .growth-trait-row nav button { font-size: 10.5px !important; min-height: 34px; }
+.growth-element-tabs button b { font-size: 16px !important; }
+.growth-element-tabs button :is(small, span) { font-size: 10.5px !important; }
+.dismantle-toolbar button { font-size: 11.5px !important; }
+.dismantle-quote span, .dismantle-quote strong { font-size: 11.5px !important; }
+.dismantle-row :is(b, span, small) { font-size: 11px !important; }
+
+/* 농축 공방 — em 8px */
+.concentration-workbench .subheading b { font-size: 12.5px !important; }
+.concentration-workbench .subheading small { font-size: 11px !important; }
+.concentration-paths :is(b, strong) { font-size: 12.5px !important; }
+.concentration-paths :is(span, small, em) { font-size: 11px !important; }
+.concentration-payment :is(span, small, em, b) { font-size: 11px !important; }
+.concentration-compare > div :is(span, b, i) { font-size: 10.5px !important; }
+.concentration-target-list > button strong { font-size: 10px !important; }
+.concentration-target-list > button small { font-size: 10px !important; }
+
+/* 자령 상세 부가 설명 */
+.selected-copy > small { font-size: 11px !important; }
+.selected-ability-summary :is(span, em) { font-size: 11.5px !important; }
+.ability-overview :is(b, span) { font-size: 11.5px !important; }
+
+/* 인벤·성어 */
+.run-inventory-card :is(span, small, b) { font-size: 11.5px !important; }
+.run-inventory-heading :is(span, small) { font-size: 11px !important; }
+.idiom-target-copy :is(span, small, p) { font-size: 11.5px !important; }
+.idiom-strategy, .idiom-material-guide { font-size: 11.5px !important; }
+
+/* 70. 확대 여파 정리 — overflow 스캔 13건 중 실질 6건 */
+
+/* 잔여 극소 글자 */
+.concentration-payment em { font-size: 10.5px !important; }
+#discover-count { font-size: 10px !important; }
+
+/* 소환 목적 4번째 탭(중복 수집) +14px */
+.summon-intent-tabs button { font-size: 10.5px !important; letter-spacing: -0.03em; }
+
+/* 하단 탭·티커 행이 4px 모자람 */
+@media (min-width: 800px) {
+  .control-panel {
+    grid-template-rows: 38px 62px 58px minmax(0, 1fr) 66px 24px 24px 26px;
+  }
+}
+
+@media (min-width: 1500px) and (min-height: 850px) {
+  .control-panel {
+    grid-template-rows: 44px 70px 64px minmax(0, 1fr) 72px 28px 28px 30px;
+  }
+}
+
+.panel-tabs button { min-height: 44px; }
+
+/* 조작 칩: 커진 라벨이 마지막 칩을 밀어냄 */
+.canvas-tip { gap: 4px; }
+.canvas-tip i { padding: 1px 5px 1px 2px; font-size: 11px; }
+.canvas-tip i em { font-size: 10px; padding: 1px 4px; }
+
+/* 농축: 재료 선택 부제 +77px, 대상 카드 +26px */
+.concentration-workbench .subheading { min-width: 0; }
+.concentration-workbench .subheading small {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.concentration-target-list > button {
+  grid-template-columns: 26px minmax(0, 1fr) !important;
+}
+.concentration-target-list > button :is(strong, small) {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 목표 서책 헤딩 세로 +9px */
+.goal-workbench-heading { min-height: 0; padding-bottom: 2px; }
+.goal-workbench-heading p { margin: 0; }
+
+/* 71. 확대 마감 3종 */
+
+/* 목표 서책 헤딩: 2줄이 안 들어가 웨이브 카드와 겹침 -> 한 줄 압축 */
+.goal-workbench-heading > div > span { display: none; }
+.goal-workbench-heading strong { font-size: 14px !important; }
+
+/* 행동 버튼 부제(10W 개방 · 0/5) 잘림 */
+.action-button small, .action-button em, .action-button i { font-size: 11px !important; letter-spacing: -0.02em; }
+
+/* 온보딩 ①②③: 패널에서 가장 어두운 저대비 칩 -> 종이 칩 + 먹 글자 */
+.opening-guide > div {
+  background: linear-gradient(180deg, #f2e8cd 0%, #e2d4b2 100%) !important;
+  box-shadow: var(--bevel-up), 0 0 0 1px rgba(122, 90, 42, 0.34) !important;
+  border: 0 !important;
+}
+.opening-guide > div b { color: #3a2c16 !important; }
+.opening-guide > div span { color: #6d5c40 !important; }
+.opening-guide > div.is-current {
+  box-shadow: var(--bevel-up), inset 0 -3px 0 var(--seal), 0 0 0 1px var(--gold-300) !important;
+}
+.opening-guide > div.is-complete { opacity: 0.62; }
+.opening-guide > i { color: #8a7a58 !important; }
+
+/* 10연 소환·해금 뱃지 끝자락 잘림 */
+.summon-action-group .action-button b { font-size: 13px !important; letter-spacing: -0.02em; }
+.formation-unlock-list button small { letter-spacing: -0.04em; }

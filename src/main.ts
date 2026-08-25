@@ -1637,7 +1637,7 @@ function renderFormationUnlocks(): void {
     const disabled = unlocked || !active || cost === null || state.gold < cost;
     const status = unlocked
       ? index === state.startingFormationIndex ? "시작 진" : "개방"
-      : state.startingFormationIndex === null ? "첫 소환 대기" : affordable ? `해금 가능 · ${cost}` : `${cost}엽전`;
+      : state.startingFormationIndex === null ? "첫 소환 대기" : affordable ? `해금 ${cost}!` : `${cost}엽전`;
     return `<button type="button" data-formation-index="${index}" class="${unlocked ? "is-unlocked" : affordable ? "is-affordable" : ""}" style="--formation:${formation.color}" ${disabled ? "disabled" : ""}><b>${formation.preferredWuxing}</b><span>${formation.label}</span><small>${status}</small></button>`;
   }).join("");
   // 처음 하는 사람은 진을 추가 구매할 수 있다는 사실 자체를 모른다.
