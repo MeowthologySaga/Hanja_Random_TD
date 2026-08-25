@@ -6712,3 +6712,142 @@ dialog,
   background: rgba(122, 90, 42, 0.12) !important;
   box-shadow: inset 0 0 0 1px rgba(122, 90, 42, 0.25) !important;
 }
+
+/* ══════════════════════════════════════════════════════════════════
+   75. 농축·강화 대수술 — 어두운 잔재 카드와 "뭘 해야 하는지" 부재
+   ══════════════════════════════════════════════════════════════════ */
+
+.concentration-target-list > button {
+  background: linear-gradient(180deg, #f2e8cd 0%, #e2d4b2 100%) !important;
+  background-color: #e9dcbd !important;
+  box-shadow: var(--bevel-up), 0 0 0 1px rgba(122, 90, 42, 0.3) !important;
+  grid-template-columns: 34px minmax(0, 1fr) !important;
+  column-gap: 7px;
+  min-height: 48px;
+  padding: 5px 7px !important;
+}
+
+.concentration-target-list > button b {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  color: color-mix(in srgb, var(--element, #b8934a) 55%, #2e2212) !important;
+  border-radius: 4px;
+  background:
+    radial-gradient(circle at 50% 34%, color-mix(in srgb, var(--element, #b8934a) 24%, transparent), transparent 72%),
+    linear-gradient(180deg, #cdbb92 0%, #ded1b0 100%);
+  box-shadow: var(--bevel-in), 0 0 0 1px color-mix(in srgb, var(--element, #b8934a) 40%, rgba(122, 90, 42, 0.4));
+  font-size: 19px !important;
+}
+
+.concentration-target-list > button strong {
+  color: #3a2c16 !important;
+  font-size: 11px !important;
+}
+
+.concentration-target-list > button small {
+  color: #6d5a3c !important;
+  font-size: 10.5px !important;
+}
+
+.concentration-target-list > button.is-selected {
+  background: linear-gradient(180deg, #fdf7e6 0%, #efe3c5 100%) !important;
+  box-shadow:
+    var(--bevel-up),
+    inset 0 -3px 0 var(--seal),
+    0 0 0 2px var(--gold-400) !important;
+}
+
+.concentration-target-list > button:hover:not(.is-selected) {
+  background: linear-gradient(180deg, #f9f0d9 0%, #eaddbb 100%) !important;
+}
+
+.concentration-focus > header {
+  color: #2e2212 !important;
+  border: 0 !important;
+  background:
+    radial-gradient(circle at 50% 30%, color-mix(in srgb, var(--element, #b8934a) 20%, transparent), transparent 70%),
+    linear-gradient(180deg, #cdbb92 0%, #ded1b0 100%) !important;
+  box-shadow: var(--bevel-in), 0 0 0 1px color-mix(in srgb, var(--element, #b8934a) 45%, rgba(122, 90, 42, 0.4)) !important;
+}
+
+.concentration-focus > header :is(b, span, strong, small, div) {
+  color: #2e2212 !important;
+  text-shadow: 0 1px 0 rgba(255, 250, 235, 0.5);
+}
+
+.concentration-paths > button.is-selected {
+  background: linear-gradient(180deg, #fdf7e6 0%, #efe3c5 100%) !important;
+  box-shadow:
+    var(--bevel-up),
+    inset 0 -3px 0 var(--seal),
+    0 0 0 2px var(--gold-400) !important;
+}
+
+#concentration-confirm-button:disabled {
+  color: #8a7c64 !important;
+  background: linear-gradient(180deg, #ddd0ae 0%, #cfc09b 100%) !important;
+  border: 0 !important;
+  box-shadow: inset 0 0 0 1px rgba(122, 90, 42, 0.25) !important;
+}
+
+#concentration-confirm-button:not(:disabled) {
+  color: #2b2009 !important;
+  background: linear-gradient(180deg, #ffeec4 0%, #dbb96e 100%) !important;
+  border: 0 !important;
+  box-shadow: var(--bevel-up), 0 0 14px rgba(219, 185, 110, 0.4) !important;
+  font-weight: 900;
+}
+
+.concentration-guide {
+  color: #6d5a3c !important;
+  font-size: 11.5px !important;
+  line-height: 1.5;
+}
+
+.concentration-guide i {
+  color: #8a3324;
+  font-style: normal;
+  font-weight: 900;
+}
+
+/* 강화: 좁은 스크롤 감옥 해소 — 분해 컴팩트, 강화에 공간 */
+.dismantle-workbench {
+  max-height: 190px;
+}
+
+.growth-dismantle-list {
+  min-height: 56px;
+  max-height: 96px;
+  overflow-y: auto;
+}
+
+.element-growth-workbench {
+  flex: 1 1 auto;
+  min-height: 260px;
+}
+
+.growth-upgrade-list {
+  flex: 1 1 auto;
+  min-height: 190px;
+  overflow-y: auto;
+}
+
+/* 분해 확정 줄이 max-height 에 눌려 잘렸다 — 목록만 제한한다 */
+.dismantle-workbench {
+  max-height: none;
+}
+
+.dismantle-quote {
+  flex: 0 0 auto;
+}
+
+/* 빈 목록 안내 둘째 줄이 흐릿하게 잘리던 것 */
+.growth-dismantle-list :is(p, span, small),
+.dismantle-workbench .empty-note {
+  color: #6d5a3c !important;
+  font-size: 11px !important;
+  line-height: 1.45;
+  white-space: normal;
+}

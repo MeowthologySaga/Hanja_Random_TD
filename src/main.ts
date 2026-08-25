@@ -322,8 +322,8 @@ app.innerHTML = `
 
         <section id="concentration-panel" class="concentration-workbench panel-view" data-panel-view="concentration" aria-label="자령 농축 공방">
           <header class="workbench-heading">
-            <div><span>중복 또는 문기 지불</span><strong>농축 공방</strong></div>
-            <p>대상·분기·재료를 직접 고른 뒤 수치 변화를 확인합니다.</p>
+            <div><span>같은 자령을 더 강하게</span><strong>농축 공방</strong></div>
+            <p class="concentration-guide"><i>①</i> 왼쪽에서 자령 선택 <i>②</i> 연속·심화 중 택1 <i>③</i> 재료 지불 → 능력치 영구 상승</p>
           </header>
           <div class="concentration-layout">
             <aside><div class="subheading"><b>농축 대상</b><small id="concentration-target-summary">0기</small></div><div id="concentration-target-list" class="concentration-target-list"></div></aside>
@@ -333,12 +333,12 @@ app.innerHTML = `
 
         <section id="growth-panel" class="growth-workbench panel-view" data-panel-view="growth" aria-label="분해 문기와 오행 강화">
           <header class="workbench-heading">
-            <div><span>분해 · 문기 · 오행 강화</span><strong>강화 제련소</strong></div>
+            <div><span>안 쓰는 자령을 힘으로</span><strong>강화 제련소</strong></div>
             <p id="growth-resource-summary">문기 木0 火0 土0 金0 水0</p>
           </header>
           <div class="growth-layout">
             <section class="dismantle-workbench">
-              <div class="subheading"><b>분해·문기</b><small>인벤토리만 · 보호 규칙 적용</small></div>
+              <div class="subheading"><b>① 분해</b><small>안 쓰는 인벤 자령을 문기(재료)로 바꿉니다</small></div>
               <div class="growth-filters">
                 <select id="dismantle-element-filter" aria-label="분해 오행 필터"><option value="all">모든 오행</option><option>木</option><option>火</option><option>土</option><option>金</option><option>水</option></select>
                 <select id="dismantle-stage-filter" aria-label="분해 단계 필터"><option value="all">모든 단계</option><option value="1">1성</option><option value="2">2성</option><option value="3">3성</option><option value="4">4성</option><option value="5">5성</option><option value="6">6성</option><option value="7">7성</option><option value="8">8성</option></select>
@@ -349,7 +349,7 @@ app.innerHTML = `
               <footer class="dismantle-quote"><span id="dismantle-selection-summary">0기 선택</span><strong id="dismantle-gain-summary">예상 문기 없음</strong><button id="dismantle-confirm-button" type="button" disabled>선택 분해</button></footer>
             </section>
             <section class="element-growth-workbench">
-              <div class="subheading"><b>오행 강화</b><small>모든 투자는 이번 런에만 적용</small></div>
+              <div class="subheading"><b>② 오행 강화</b><small>문기로 그 오행 자령 전원의 능력치를 올립니다</small></div>
               <div id="growth-element-tabs" class="growth-element-tabs"></div>
               <div id="growth-upgrade-list" class="growth-upgrade-list"></div>
             </section>
