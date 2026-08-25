@@ -146,6 +146,7 @@ app.innerHTML = `
         <div class="stage-chip stage-chip--region"><span>지역</span><strong id="stage-region">한국</strong></div>
         <div class="stage-chip stage-chip--chapter"><span>봉인장</span><strong id="stage-chapter">1 / 10</strong></div>
         <div class="stage-chip stage-chip--phase"><i id="phase-dot"></i><strong id="stage-phase">준비 전</strong></div>
+        <button id="early-button" class="early-start" type="button" data-testid="early-wave">시작 보너스</button>
         <div id="enemy-limit-chip" class="stage-chip"><span>적 한계</span><strong id="stage-enemies">0 / ${MAX_ENEMIES}</strong></div>
       </div>
       <div class="wave-progress" aria-hidden="true"><i id="wave-progress-fill"></i></div>
@@ -180,7 +181,6 @@ app.innerHTML = `
       <section class="wave-card">
         <div><span id="wave-kicker">첫 웨이브 대기</span><strong id="wave-label">소환진을 준비하세요</strong><small id="wave-briefing">다음 적 정보를 확인하세요.</small></div>
         <div class="weakness-seal"><span>약점</span><b id="wave-weakness">木</b></div>
-        <button id="early-button" class="small-button" type="button" data-testid="early-wave">시작 보너스</button>
       </section>
 
       <div class="context-deck">
@@ -409,25 +409,82 @@ app.innerHTML = `
     </div>
 
     <section id="title-overlay" class="modal-layer modal-layer--visible" aria-labelledby="title-heading">
-      <div class="title-card">
-        <p class="eyebrow">지역 한자 구성 방어전</p>
-        <div class="title-seal" aria-hidden="true"><i>木</i><i>林</i><i>森</i></div>
-        <h2 id="title-heading">한자 운명진</h2>
-        <p id="title-lead" class="title-lead">운으로 글자를 부르고, 실제 구성 원리로 합성하라.<br />열 개의 장과 백 번의 망령 행렬을 넘어 대봉인을 완성하세요.</p>
-        <div class="game-mode-picker" role="radiogroup" aria-label="게임 모드">
-          <button type="button" class="game-mode-option is-selected" data-game-mode-option="standard" role="radio" aria-checked="true"><i>策</i><span><b>전략 조합전</b><small>실제 한자 구성식 · 목표 계보</small></span><em>STANDARD</em></button>
-          <button type="button" class="game-mode-option" data-game-mode-option="casual" role="radio" aria-checked="false"><i>八</i><span><b>캐주얼 8성전</b><small>같은 오행 3체 · 획수 희귀도</small></span><em>NEW</em></button>
+      <div class="s00-stage" data-screen-id="S00">
+        <img class="s00-env" src="${import.meta.env.BASE_URL}assets/ui/main-menu-b/background/S00-living-codex-empty-1280x720-v1.png" alt="" aria-hidden="true" />
+
+        <div class="s00-title-plaque">
+          <h2 id="title-heading">천자진</h2>
+          <span>오행 자령 디펜스</span>
+          <small>Thousand Glyphs: Elemental Defense</small>
         </div>
-        <div class="region-picker" role="radiogroup" aria-label="지역 한자 체계">
-          <button type="button" class="region-option is-selected" data-region="KR" role="radio" aria-checked="true"><b>韓</b><span>한국</span><small>천자문 1000</small></button>
-          <button type="button" class="region-option" data-region="JP" role="radio" aria-checked="false"><b>日</b><span>일본</span><small>상용한자 2136</small></button>
-          <button type="button" class="region-option" data-region="CN" role="radio" aria-checked="false"><b>中</b><span>중국</span><small>규범한자 3500</small></button>
+
+        <nav class="s00-utility" aria-label="보조 메뉴">
+          <button id="s00-codex-button" type="button"><i class="s00-skin" aria-hidden="true"></i><b>冊</b><span>도감</span></button>
+          <button id="title-settings-button" type="button" aria-label="화면 모드 설정"><i class="s00-skin" aria-hidden="true"></i><b>⚙</b><span>설정</span></button>
+          <button id="title-help-button" type="button"><i class="s00-skin" aria-hidden="true"></i><b>?</b><span>도움말</span></button>
+        </nav>
+
+        <p class="s00-mode-label">진법 선택</p>
+        <div class="s00-modes" role="radiogroup" aria-label="진법 선택">
+          <button type="button" class="s00-mode game-mode-option is-selected" data-game-mode-option="standard" role="radio" aria-checked="true">
+            <i class="s00-skin" aria-hidden="true"></i><b>자형연성 진법</b><small>실제 한자 구성식 · 목표 계보</small><em>선택됨</em>
+          </button>
+          <button type="button" class="s00-mode game-mode-option" data-game-mode-option="casual" role="radio" aria-checked="false">
+            <i class="s00-skin" aria-hidden="true"></i><b>별승급 진법</b><small>KEEP 1기 + USE 2기 · 최고 8성</small><em>선택됨</em>
+          </button>
         </div>
-        <label class="seed-field">런 시드<input id="seed-input" maxlength="24" spellcheck="false" /></label>
-        <button id="start-button" class="start-button" type="button" data-testid="start-run">봉인전 시작</button>
-        <div class="title-link-row"><button id="title-settings-button" class="title-help-button" type="button">화면 모드 설정</button><button id="title-help-button" class="title-help-button" type="button">게임 방법 보기</button></div>
-        <p id="title-note" class="title-note">100웨이브 · 10장 보스전 · 천자문 자령 1,000종</p>
+
+        <div class="s00-showcase" aria-hidden="true">
+          <figure style="left:455px;top:116px"><img class="s00-ring" src="${import.meta.env.BASE_URL}assets/ui/main-menu-b/rings/summon-ring-wood-v1.png" alt="" /><img class="s00-spirit" src="${import.meta.env.BASE_URL}assets/ui/main-menu-b/jaryeongs/menu-wood-orchid-frame-v1.png" alt="" /></figure>
+          <figure style="left:803px;top:112px"><img class="s00-ring" src="${import.meta.env.BASE_URL}assets/ui/main-menu-b/rings/summon-ring-earth-v1.png" alt="" /><img class="s00-spirit" src="${import.meta.env.BASE_URL}assets/ui/main-menu-b/jaryeongs/menu-earth-pottery-frame-v1.png" alt="" /></figure>
+          <figure style="left:368px;top:334px"><img class="s00-ring" src="${import.meta.env.BASE_URL}assets/ui/main-menu-b/rings/summon-ring-water-v1.png" alt="" /><img class="s00-spirit" src="${import.meta.env.BASE_URL}assets/ui/main-menu-b/jaryeongs/menu-water-ice-frame-v1.png" alt="" /></figure>
+          <figure style="left:637px;top:336px"><img class="s00-ring" src="${import.meta.env.BASE_URL}assets/ui/main-menu-b/rings/summon-ring-fire-v1.png" alt="" /><img class="s00-spirit" src="${import.meta.env.BASE_URL}assets/ui/main-menu-b/jaryeongs/menu-fire-fox-frame-v1.png" alt="" /></figure>
+          <figure style="left:965px;top:333px"><img class="s00-ring" src="${import.meta.env.BASE_URL}assets/ui/main-menu-b/rings/summon-ring-metal-v1.png" alt="" /><img class="s00-spirit" src="${import.meta.env.BASE_URL}assets/ui/main-menu-b/jaryeongs/menu-metal-mirror-frame-v1.png" alt="" /></figure>
+        </div>
+
+        <button id="custom-formation-button" class="s00-custom" type="button" disabled
+          title="맞춤 진법 설정 화면 연결 준비 중" aria-label="맞춤 진법. 설정 화면 연결 준비 중">
+          <i class="s00-skin" aria-hidden="true"></i><b>맞춤 진법</b><small>범위 · 표기 · 규칙</small><small class="s00-reason">연결 준비 중</small>
+        </button>
+
+        <div class="s00-regions" role="radiogroup" aria-label="지역 한자 체계">
+          <button type="button" class="s00-region region-option is-selected" data-region="KR" role="radio" aria-checked="true">
+            <i class="s00-skin" aria-hidden="true"></i><b>한국</b><small class="s00-badge">심사 권장</small>
+          </button>
+          <button type="button" class="s00-region region-option" data-region="JP" role="radio" aria-checked="false">
+            <i class="s00-skin" aria-hidden="true"></i><b>일본</b><small class="s00-badge s00-badge--ea">EARLY ACCESS</small>
+          </button>
+          <button type="button" class="s00-region region-option" data-region="CN" role="radio" aria-checked="false">
+            <i class="s00-skin" aria-hidden="true"></i><b>중국</b><small class="s00-badge s00-badge--ea">EARLY ACCESS</small>
+          </button>
+        </div>
+
+        <div class="s00-summary" aria-live="polite">
+          <strong id="s00-summary-main">한국 · 자형연성 진법</strong>
+          <span id="title-note">심사 권장 · 현재 제출 기준 콘텐츠</span>
+          <span id="title-lead" hidden></span>
+        </div>
+        <p class="s00-ea-note">일본·중국은 도감·현지화·밸런스 보강 중입니다.</p>
+
+        <label class="s00-seed">런 시드<input id="seed-input" maxlength="24" spellcheck="false" /></label>
+        <button id="seed-reroll-button" type="button" aria-label="새 시드 생성" title="새 시드">⟲</button>
+
+        <button id="start-button" class="s00-start" type="button" data-testid="start-run">
+          <i class="s00-skin" aria-hidden="true"></i><b>출정</b><small id="s00-start-sub">한국 천자문 1,000</small>
+        </button>
       </div>
+
+      <dialog id="p00-dialog" class="p00-dialog" data-popup-id="P00" aria-labelledby="p00-title">
+        <div class="p00-frame">
+          <p class="s00-mode-label">얼리 액세스 안내</p>
+          <h3 id="p00-title">일본 한자 체계</h3>
+          <p id="p00-body">이 지역은 도감·현지화·밸런스를 보강하는 중입니다.<br />심사 권장 기준은 한국 천자문 1,000종입니다.</p>
+          <div class="p00-actions">
+            <button id="p00-return" type="button" autofocus>한국으로 돌아가기</button>
+            <button id="p00-continue" type="button">일본으로 계속</button>
+          </div>
+        </div>
+      </dialog>
     </section>
 
     <section id="end-overlay" class="modal-layer" aria-labelledby="end-heading">
@@ -598,6 +655,8 @@ if (import.meta.env.DEV) Object.assign(window, { __HANJA_AUDIO_QA__: sound });
 const initialSeed = new URLSearchParams(window.location.search).get("seed")?.slice(0, 24) || createRunSeed();
 seedInput.value = initialSeed;
 let selectedRegion: RegionCode = "KR";
+let pendingRegion: RegionCode | null = null;
+let formationUnlockHintShown = false;
 let selectedGameMode: GameMode = "standard";
 let displayMode: DisplayMode = initialDisplayMode;
 let engine = new GameEngine(initialSeed, selectedRegion, selectedGameMode);
@@ -875,16 +934,23 @@ function syncTitleModeSelection(): void {
     const disabled = selectedGameMode === "casual" && region !== "KR";
     button.disabled = disabled;
     button.setAttribute("aria-disabled", String(disabled));
+    const info = REGION_MENU_INFO[region];
+    const reason = "현재 캐주얼 8성전은 한국(KR) 전용입니다";
+    button.title = disabled ? reason : info.pool;
+    button.setAttribute("aria-label", disabled ? `${info.name}. ${reason}` : `${info.name} · ${info.pool}`);
     const selected = region === selectedRegion;
     button.classList.toggle("is-selected", selected);
     button.setAttribute("aria-checked", String(selected));
   });
+  const modeName = selectedGameMode === "casual" ? "별승급 진법" : "자형연성 진법";
+  must<HTMLElement>("#s00-summary-main").textContent = `${REGION_MENU_INFO[selectedRegion].name} · ${modeName}`;
+  must<HTMLElement>("#s00-start-sub").textContent = REGION_MENU_INFO[selectedRegion].pool;
   must<HTMLElement>("#title-lead").innerHTML = selectedGameMode === "casual"
     ? "획수가 희귀도를 정하고, 같은 오행 세 자령이 한 별을 올립니다.<br />남길 본체를 직접 골라 8성 대봉인까지 성장시키세요."
     : "운으로 글자를 부르고, 실제 구성 원리로 합성하라.<br />열 개의 장과 백 번의 망령 행렬을 넘어 대봉인을 완성하세요.";
-  must<HTMLElement>("#title-note").textContent = selectedGameMode === "casual"
-    ? "한국 천자문 전용 · 실제 획수 8단 희귀도 · 안전 3체 조합 · 100웨이브"
-    : "100웨이브 · 10장 보스전 · 천자문 자령 1,000종";
+  must<HTMLElement>("#title-note").textContent = selectedRegion === "KR"
+    ? "심사 권장 · 현재 제출 기준 콘텐츠"
+    : "EARLY ACCESS · 도감·현지화·밸런스 보강 중";
 }
 
 function setSelectedGameMode(mode: GameMode): void {
@@ -969,6 +1035,7 @@ function startRun(useNewSeed = false): void {
   pendingCasualFusion = null;
   if (casualFusionConfirmDialog.open) casualFusionConfirmDialog.close();
   setPanelTab("shop");
+  formationUnlockHintShown = false;
   startCoach();
   window.clearTimeout(comboTimer);
   evolutionRenderKey = "";
@@ -1531,12 +1598,19 @@ function renderFormationUnlocks(): void {
       : "오행진 5개 전부 개방";
   must<HTMLElement>("#formation-unlock-list").innerHTML = BOARD_FORMATIONS.map((formation, index) => {
     const unlocked = engine.isFormationUnlocked(index);
+    const affordable = !unlocked && active && cost !== null && state.gold >= cost && state.startingFormationIndex !== null;
     const disabled = unlocked || !active || cost === null || state.gold < cost;
     const status = unlocked
       ? index === state.startingFormationIndex ? "시작 진" : "개방"
-      : state.startingFormationIndex === null ? "첫 소환 대기" : `${cost}엽전`;
-    return `<button type="button" data-formation-index="${index}" class="${unlocked ? "is-unlocked" : ""}" style="--formation:${formation.color}" ${disabled ? "disabled" : ""}><b>${formation.preferredWuxing}</b><span>${formation.label}</span><small>${status}</small></button>`;
+      : state.startingFormationIndex === null ? "첫 소환 대기" : affordable ? `해금 가능 · ${cost}` : `${cost}엽전`;
+    return `<button type="button" data-formation-index="${index}" class="${unlocked ? "is-unlocked" : affordable ? "is-affordable" : ""}" style="--formation:${formation.color}" ${disabled ? "disabled" : ""}><b>${formation.preferredWuxing}</b><span>${formation.label}</span><small>${status}</small></button>`;
   }).join("");
+  // 처음 하는 사람은 진을 추가 구매할 수 있다는 사실 자체를 모른다.
+  // 해금 가능해지는 최초 1회만 짚어 준다.
+  if (cost !== null && state.gold >= cost && state.startingFormationIndex !== null && state.unlockedFormations.length < BOARD_FORMATIONS.length && !formationUnlockHintShown) {
+    formationUnlockHintShown = true;
+    showToast(`엽전 ${cost}으로 새 오행진을 해금할 수 있습니다 — 상점의 오행진 해금에서 원하는 진을 고르세요`);
+  }
 }
 
 function syncPanel(): void {
@@ -3264,9 +3338,12 @@ function drawBoard(): void {
     // 7. 진 이름표: 돌에 박힌 작은 명패.
     const bonusLabel = resonance.damageBonus > 0 ? ` · 피해 +${Math.round(resonance.damageBonus * 100)}%` : "";
     const unlockCost = engine.nextFormationUnlockCost();
+    const unlockAffordable = !unlocked && unlockCost !== null && engine.state.gold >= unlockCost && engine.state.startingFormationIndex !== null;
     const plateText = unlocked
       ? `${formation.label} ${resonance.matching}/16${bonusLabel}`
-      : `${formation.label} · ${unlockCost ?? 0}엽전 해금`;
+      : unlockAffordable
+        ? `${formation.label} · ${unlockCost}엽전 해금 가능!`
+        : `${formation.label} · ${unlockCost ?? 0}엽전 해금`;
     context.font = '900 10px "Malgun Gothic", sans-serif';
     const nameWidth = context.measureText(plateText).width + 16;
     // 판 위 중앙은 윗줄 자령 명패가 차지한다. 좌상단 모서리에 붙인다.
@@ -3278,7 +3355,7 @@ function drawBoard(): void {
     context.strokeStyle = unlocked ? formation.color + "8c" : "rgba(112, 108, 102, 0.55)";
     context.lineWidth = 1;
     context.stroke();
-    context.fillStyle = unlocked ? "#f6ecd2" : "#a8a29a";
+    context.fillStyle = unlocked ? "#f6ecd2" : unlockAffordable ? "#ffd98a" : "#a8a29a";
     context.textAlign = "left";
     context.fillText(plateText, plateLeft + 8, cy - 113.5);
     context.textAlign = "center";
@@ -4431,16 +4508,60 @@ must<HTMLButtonElement>("#map-zoom-reset").addEventListener("click", resetMapCam
 must<HTMLButtonElement>("#hanja-emphasis-toggle").addEventListener("click", toggleHanjaEmphasis);
 must<HTMLButtonElement>("#speed-button").addEventListener("click", cycleGameSpeed);
 
+const REGION_MENU_INFO: Record<RegionCode, { name: string; pool: string }> = {
+  KR: { name: "한국", pool: "한국 천자문 1,000" },
+  JP: { name: "일본", pool: "일본 상용한자 2,136" },
+  CN: { name: "중국", pool: "중국 규범한자 3,500" }
+};
+const p00Dialog = must<HTMLDialogElement>("#p00-dialog");
+
+function openP00(region: RegionCode): void {
+  pendingRegion = region;
+  const info = REGION_MENU_INFO[region];
+  must<HTMLElement>("#p00-title").textContent = `${info.name} 한자 체계`;
+  must<HTMLButtonElement>("#p00-continue").textContent = `${info.name}으로 계속`;
+  p00Dialog.showModal();
+  must<HTMLButtonElement>("#p00-return").focus();
+}
+
+function closeP00(confirm: boolean): void {
+  if (confirm && pendingRegion) selectedRegion = pendingRegion;
+  pendingRegion = null;
+  if (p00Dialog.open) p00Dialog.close();
+  syncTitleModeSelection();
+}
+
 document.querySelectorAll<HTMLButtonElement>(".region-option").forEach((button) => {
   button.addEventListener("click", () => {
     if (button.disabled) return;
-    selectedRegion = button.dataset.region as RegionCode;
-    document.querySelectorAll<HTMLButtonElement>(".region-option").forEach((option) => {
-      const selected = option === button;
-      option.classList.toggle("is-selected", selected);
-      option.setAttribute("aria-checked", String(selected));
-    });
+    const region = button.dataset.region as RegionCode;
+    // JP/CN 은 pending 만 두고 P00 확인을 거친다. 취소하면 기존 선택이 유지된다.
+    if (region === "KR") {
+      selectedRegion = "KR";
+      syncTitleModeSelection();
+      return;
+    }
+    openP00(region);
   });
+});
+
+must<HTMLButtonElement>("#p00-return").addEventListener("click", () => closeP00(false));
+must<HTMLButtonElement>("#p00-continue").addEventListener("click", () => closeP00(true));
+p00Dialog.addEventListener("cancel", (event) => {
+  event.preventDefault();
+  closeP00(false);
+});
+p00Dialog.addEventListener("click", (event) => {
+  if (event.target === p00Dialog) closeP00(false);
+});
+
+must<HTMLButtonElement>("#seed-reroll-button").addEventListener("click", () => {
+  seedInput.value = createRunSeed();
+  sound.playUiConfirm();
+});
+
+must<HTMLButtonElement>("#s00-codex-button").addEventListener("click", () => {
+  must<HTMLButtonElement>("#codex-button").click();
 });
 
 document.querySelectorAll<HTMLButtonElement>("[data-mode]").forEach((button) => {

@@ -5003,3 +5003,758 @@ dialog,
 .panel-tabs button > b, .panel-tabs button > span { font-size: 11px !important; }
 .canvas-tip i { font-size: 11px; }
 .canvas-tip i em { font-size: 10px; }
+
+/* ══════════════════════════════════════════════════════════════════
+   50. 시작 보너스를 전장 상단바로 — 패널 구석에선 계속 놓쳤다
+   준비 중에만 금박 슬래브로 나타나고, 교전 중에는 사라진다
+   (교전 상태는 바로 옆 진행 칩이 이미 말해 준다).
+   ══════════════════════════════════════════════════════════════════ */
+
+#early-button.early-start {
+  clip-path: var(--clip-cut-sm);
+  min-height: 40px;
+  padding: 4px 14px;
+  color: #2b2009;
+  border: 0;
+  background: linear-gradient(180deg, #ffeec4 0%, #dbb96e 46%, #b8934a 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 252, 240, 0.8),
+    inset 0 -3px 0 rgba(78, 58, 22, 0.5),
+    0 2px 0 rgba(0, 0, 0, 0.4),
+    0 0 18px rgba(219, 185, 110, 0.55);
+  font-size: 13px;
+  font-weight: 900;
+  cursor: pointer;
+  animation: early-pulse 1.4s ease-in-out infinite;
+}
+
+#early-button.early-start:hover {
+  background: linear-gradient(180deg, #fff8e2 0%, #e8ca84 46%, #c49d52 100%);
+}
+
+/* 준비가 아니면(교전 중·첫 소환 전) 자리 자체를 비운다 */
+#early-button.early-start:disabled {
+  display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #early-button.early-start { animation: none; }
+}
+
+/* 패널 브리핑 카드는 이제 약점 인장까지만 */
+.wave-card {
+  grid-template-columns: minmax(0, 1fr) auto !important;
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   51. 웨이브 진행 바 — 3px 형광 실선이 시스템 로딩 바처럼 보였다
+   먹 홈에 차오르는 금박 잉크 + 끝머리 인주 방울로 교체.
+   ══════════════════════════════════════════════════════════════════ */
+
+.wave-progress {
+  top: 56px;
+  left: 16px;
+  right: 16px;
+  height: 9px;
+  overflow: visible;
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(38, 30, 20, 0.5), rgba(58, 46, 30, 0.34));
+  box-shadow:
+    inset 0 1px 3px rgba(20, 14, 8, 0.55),
+    inset 0 -1px 0 rgba(255, 250, 232, 0.35),
+    0 1px 0 rgba(255, 250, 232, 0.25);
+}
+
+.wave-progress i {
+  position: relative;
+  overflow: visible;
+  border-radius: 999px;
+  background:
+    repeating-linear-gradient(100deg, rgba(255, 250, 232, 0.14) 0 3px, transparent 3px 7px),
+    linear-gradient(90deg, #86682f 0%, #c9a659 62%, #f2d79a 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 250, 232, 0.5),
+    0 0 10px rgba(219, 185, 110, 0.5);
+}
+
+/* 진행 끝머리: 젖은 인주 방울 */
+.wave-progress i::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  right: -4px;
+  width: 13px;
+  height: 13px;
+  border-radius: 999px;
+  transform: translateY(-50%);
+  background: radial-gradient(circle at 36% 32%, #ffd9c2, var(--seal) 58%, #6d1f16);
+  box-shadow:
+    0 1px 2px rgba(58, 20, 12, 0.5),
+    0 0 9px rgba(159, 47, 35, 0.55);
+}
+
+/* 진행 0%일 때 방울이 홀로 떠 있지 않게 */
+.wave-progress i[style*="width: 0%"]::after {
+  display: none;
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   52. S00 메인 메뉴 — Codex B안 "살아있는 소환 서책"
+   좌표는 main-menu-b-living-codex-pack-v1/S00_LAYOUT.json 그대로.
+   모든 클릭 대상은 독립 <button>, 피부 이미지는 pointer-events:none 자식.
+   ══════════════════════════════════════════════════════════════════ */
+
+#title-overlay {
+  display: grid;
+  place-items: center;
+  padding: 0;
+  background: #0d0a07;
+}
+
+.s00-stage {
+  position: relative;
+  width: 1280px;
+  height: 720px;
+  overflow: hidden;
+  font-family: "Noto Serif KR", "Batang", serif;
+}
+
+.s00-env {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.s00-stage .s00-skin {
+  position: absolute;
+  inset: 0;
+  background-size: 100% 100%;
+  background-repeat: no-repeat;
+  pointer-events: none;
+}
+
+.s00-stage button {
+  position: absolute;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.s00-stage button:focus-visible {
+  outline: 3px solid #e8c874;
+  outline-offset: 3px;
+}
+
+/* 제호 현판 (14,10,330,110) */
+.s00-title-plaque {
+  position: absolute;
+  left: 14px;
+  top: 10px;
+  width: 330px;
+  height: 110px;
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 1px;
+  background: url("/assets/ui/main-menu-b/ui/title-plaque-v1.png") center / 100% 100% no-repeat;
+}
+
+.s00-title-plaque h2 {
+  margin: 0;
+  color: #f2dfae;
+  font-size: 34px;
+  font-weight: 900;
+  letter-spacing: 0.34em;
+  text-indent: 0.34em;
+  text-shadow: 0 2px 3px rgba(0, 0, 0, 0.7);
+}
+
+.s00-title-plaque span {
+  color: #cdb277;
+  font-size: 12px;
+  letter-spacing: 0.42em;
+  text-indent: 0.42em;
+}
+
+.s00-title-plaque small {
+  color: #8d7a52;
+  font-size: 8.5px;
+  letter-spacing: 0.1em;
+}
+
+/* 보조 메뉴 (1051/1125/1199, 10, 66x84) */
+.s00-utility button {
+  width: 66px;
+  height: 84px;
+  display: grid;
+  align-content: start;
+  justify-items: center;
+  padding-top: 14px;
+  gap: 20px;
+  color: #e8d5a4;
+}
+
+.s00-utility button .s00-skin { background-image: url("/assets/ui/main-menu-b/ui/utility-medallion-default-v1.png"); }
+.s00-utility button:hover .s00-skin { background-image: url("/assets/ui/main-menu-b/ui/utility-medallion-hover-v1.png"); }
+.s00-utility button:active .s00-skin { background-image: url("/assets/ui/main-menu-b/ui/utility-medallion-pressed-v1.png"); }
+
+#s00-codex-button { left: 1051px; top: 10px; }
+#title-settings-button { left: 1125px; top: 10px; }
+#title-help-button { left: 1199px; top: 10px; }
+
+.s00-utility b {
+  position: relative;
+  z-index: 1;
+  font-size: 20px;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+.s00-utility span {
+  position: relative;
+  z-index: 1;
+  color: #d9c48f;
+  font-size: 11px;
+  font-weight: 800;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+/* 진법 선택 (23,181 / 23,281, 300x92) */
+.s00-mode-label {
+  position: absolute;
+  left: 26px;
+  top: 148px;
+  margin: 0;
+  color: #d9c48f;
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: 0.28em;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.7);
+}
+
+.s00-mode {
+  width: 300px;
+  height: 92px;
+  display: grid;
+  align-content: center;
+  justify-items: start;
+  gap: 2px;
+  padding-left: 64px;
+  text-align: left;
+}
+
+.s00-mode .s00-skin { background-image: url("/assets/ui/main-menu-b/ui/mode-bookmark-default-v1.png"); }
+.s00-mode:hover .s00-skin { background-image: url("/assets/ui/main-menu-b/ui/mode-bookmark-hover-v1.png"); }
+.s00-mode:active .s00-skin { background-image: url("/assets/ui/main-menu-b/ui/mode-bookmark-pressed-v1.png"); }
+.s00-mode.is-selected .s00-skin { background-image: url("/assets/ui/main-menu-b/ui/mode-bookmark-selected-v1.png"); }
+
+.s00-modes .s00-mode:nth-of-type(1) { left: 23px; top: 181px; }
+.s00-modes .s00-mode:nth-of-type(2) { left: 23px; top: 281px; }
+
+.s00-mode b {
+  position: relative;
+  z-index: 1;
+  color: #f2e3bd;
+  font-size: 19px;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.75);
+}
+
+.s00-mode small {
+  position: relative;
+  z-index: 1;
+  color: #c4ad7d;
+  font-size: 11px;
+}
+
+.s00-mode em {
+  position: absolute;
+  right: 16px;
+  top: 10px;
+  z-index: 1;
+  display: none;
+  padding: 2px 8px;
+  color: #ffeec4;
+  border-radius: 999px;
+  background: rgba(159, 47, 35, 0.85);
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 900;
+}
+
+.s00-mode.is-selected em { display: block; }
+
+/* 자령 전시 (비상호작용) */
+.s00-showcase figure {
+  position: absolute;
+  width: 190px;
+  height: 172px;
+  margin: 0;
+  pointer-events: none;
+}
+
+.s00-showcase .s00-ring,
+.s00-showcase .s00-spirit {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.s00-showcase .s00-spirit {
+  animation: s00-breathe 4.2s ease-in-out infinite;
+}
+
+.s00-showcase figure:nth-of-type(2) .s00-spirit { animation-delay: 0.9s; }
+.s00-showcase figure:nth-of-type(3) .s00-spirit { animation-delay: 1.7s; }
+.s00-showcase figure:nth-of-type(4) .s00-spirit { animation-delay: 2.6s; }
+.s00-showcase figure:nth-of-type(5) .s00-spirit { animation-delay: 3.4s; }
+
+@keyframes s00-breathe {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-7px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .s00-showcase .s00-spirit { animation: none; }
+}
+
+/* 맞춤 진법 (18,598,148,84) — S13 미연결: disabled + 사유 표시 */
+.s00-custom {
+  left: 18px;
+  top: 598px;
+  width: 148px;
+  height: 84px;
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 1px;
+}
+
+.s00-custom .s00-skin { background-image: url("/assets/ui/main-menu-b/ui/custom-note-disabled-v1.png"); }
+
+.s00-custom b {
+  position: relative;
+  z-index: 1;
+  color: #8d7a58;
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.s00-custom small {
+  position: relative;
+  z-index: 1;
+  color: #7a6a4c;
+  font-size: 9px;
+}
+
+.s00-custom .s00-reason {
+  color: #9f2f23;
+  font-weight: 800;
+}
+
+.s00-custom:disabled { cursor: not-allowed; }
+
+/* 지역 인장 (382/515/648, 573, 132x126) */
+.s00-region {
+  width: 132px;
+  height: 126px;
+  display: grid;
+  align-content: center;
+  justify-items: center;
+}
+
+.s00-regions .s00-region:nth-of-type(1) { left: 382px; top: 573px; }
+.s00-regions .s00-region:nth-of-type(2) { left: 515px; top: 573px; }
+.s00-regions .s00-region:nth-of-type(3) { left: 648px; top: 573px; }
+
+.s00-region .s00-skin { background-image: url("/assets/ui/main-menu-b/ui/region-seal-default-v1.png"); }
+.s00-region:hover:not(:disabled) .s00-skin { background-image: url("/assets/ui/main-menu-b/ui/region-seal-hover-v1.png"); }
+.s00-region:active:not(:disabled) .s00-skin { background-image: url("/assets/ui/main-menu-b/ui/region-seal-pressed-v1.png"); }
+.s00-region.is-selected[data-region="KR"] .s00-skin { background-image: url("/assets/ui/main-menu-b/ui/region-seal-selected-kr-v1.png"); }
+.s00-region.is-selected[data-region="JP"] .s00-skin,
+.s00-region.is-selected[data-region="CN"] .s00-skin { background-image: url("/assets/ui/main-menu-b/ui/region-seal-selected-ea-v1.png"); }
+.s00-region:disabled .s00-skin { background-image: url("/assets/ui/main-menu-b/ui/region-seal-disabled-v1.png"); }
+
+.s00-region b {
+  position: relative;
+  z-index: 1;
+  margin-top: -16px;
+  color: #f6e9c8;
+  font-size: 19px;
+  font-weight: 900;
+  letter-spacing: 0.2em;
+  text-indent: 0.2em;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.85);
+}
+
+.s00-region:disabled b { color: #97907e; }
+
+.s00-badge {
+  position: absolute;
+  bottom: 3px;
+  left: 50%;
+  z-index: 1;
+  transform: translateX(-50%);
+  padding: 1px 7px;
+  color: #ffe9b0;
+  border-radius: 999px;
+  background: rgba(60, 22, 14, 0.85);
+  box-shadow: inset 0 0 0 1px rgba(219, 185, 110, 0.45);
+  font-size: 8.5px;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.s00-badge--ea {
+  color: #d8c9a8;
+  background: rgba(30, 28, 26, 0.85);
+  box-shadow: inset 0 0 0 1px rgba(150, 133, 104, 0.5);
+}
+
+/* 선택 요약 (757,517,330,54) */
+.s00-summary {
+  position: absolute;
+  left: 757px;
+  top: 517px;
+  width: 330px;
+  height: 54px;
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  background: url("/assets/ui/main-menu-b/ui/selection-summary-strip-v1.png") center / 100% 100% no-repeat;
+}
+
+.s00-summary strong {
+  color: #3a2c14;
+  font-size: 15px;
+  font-weight: 900;
+}
+
+.s00-summary span {
+  color: #6b5836;
+  font-size: 10px;
+}
+
+.s00-ea-note {
+  position: absolute;
+  left: 757px;
+  top: 574px;
+  width: 330px;
+  margin: 0;
+  color: #d8b28a;
+  font-size: 10.5px;
+  text-align: center;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.7);
+}
+
+/* 시드 (792,614,142,34) + 재생성 (940,609,40,44) */
+.s00-seed {
+  position: absolute;
+  left: 792px;
+  top: 596px;
+  width: 190px;
+  color: #d9c48f;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.s00-seed input {
+  display: block;
+  width: 142px;
+  height: 34px;
+  margin-top: 3px;
+  padding: 0 8px;
+  color: #f2e3bd !important;
+  border: 0;
+  border-radius: 4px;
+  background: rgba(14, 11, 8, 0.85) !important;
+  box-shadow: inset 0 1px 4px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(155, 113, 55, 0.6) !important;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-align: center;
+}
+
+#seed-reroll-button {
+  left: 940px;
+  top: 609px;
+  width: 40px;
+  height: 44px;
+  color: #e8d5a4;
+  border-radius: 5px;
+  background: linear-gradient(180deg, #3a352c 0%, #221f19 100%);
+  box-shadow: inset 0 1px 0 rgba(233, 222, 194, 0.25), 0 0 0 1px rgba(155, 113, 55, 0.55);
+  font-size: 17px;
+}
+
+#seed-reroll-button:hover {
+  color: #ffeec4;
+  background: linear-gradient(180deg, #4a443a 0%, #2c2820 100%);
+}
+
+/* 출정 (986,592,280,118) */
+.s00-start {
+  left: 986px;
+  top: 592px;
+  width: 280px;
+  height: 118px;
+  display: grid;
+  align-content: center;
+  justify-items: center;
+}
+
+.s00-start .s00-skin { background-image: url("/assets/ui/main-menu-b/ui/start-clasp-default-v1.png"); }
+.s00-start:hover .s00-skin { background-image: url("/assets/ui/main-menu-b/ui/start-clasp-hover-v1.png"); }
+.s00-start:active .s00-skin { background-image: url("/assets/ui/main-menu-b/ui/start-clasp-pressed-v1.png"); }
+
+.s00-start b {
+  position: relative;
+  z-index: 1;
+  color: #ffe9b8;
+  font-size: 33px;
+  font-weight: 900;
+  letter-spacing: 0.5em;
+  text-indent: 0.5em;
+  text-shadow: 0 2px 4px rgba(40, 8, 4, 0.9);
+}
+
+.s00-start small {
+  position: relative;
+  z-index: 1;
+  margin-top: -2px;
+  color: #e0b98a;
+  font-size: 10.5px;
+}
+
+/* P00 얼리 액세스 확인 (520x310) */
+.p00-dialog {
+  width: 520px;
+  padding: 0;
+  border: 0;
+  background: none;
+  overflow: visible;
+}
+
+.p00-dialog::backdrop {
+  background: rgba(10, 7, 5, 0.72);
+}
+
+.p00-frame {
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 6px;
+  width: 520px;
+  height: 310px;
+  padding: 30px 48px 44px;
+  background: url("/assets/ui/main-menu-b/ui/p00-scroll-frame-v1.png") center / 100% 100% no-repeat;
+  text-align: center;
+}
+
+.p00-frame .s00-mode-label {
+  position: static;
+  font-size: 10px;
+}
+
+.p00-frame h3 {
+  margin: 0;
+  color: #f2e3bd;
+  font-size: 22px;
+  font-weight: 900;
+}
+
+.p00-frame p {
+  margin: 0;
+  color: #c9b48a;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.p00-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.p00-actions button {
+  min-width: 168px;
+  min-height: 44px;
+  border: 0;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+#p00-return {
+  color: #ffeec4;
+  background:
+    url("/assets/ui/main-menu-b/ui/button-secondary-default-v1.png") center / 100% 100% no-repeat,
+    #4a1e14;
+}
+
+#p00-return:hover { filter: brightness(1.12); }
+
+#p00-continue {
+  color: #d8c9a8;
+  background:
+    url("/assets/ui/main-menu-b/ui/button-secondary-default-v1.png") center / 100% 100% no-repeat,
+    #26221c;
+  filter: grayscale(0.35);
+}
+
+#p00-continue:hover { filter: grayscale(0) brightness(1.08); }
+
+/* ══════════════════════════════════════════════════════════════════
+   53. S00 중화 — 인게임 스킨의 .game-mode-option/.region-option 규칙이
+   서책 버튼에 종이 카드 배경과 옛 격자 열을 강제해 글자가 세로로 꺾였다.
+   S00 무대 안에서는 B안 스킨만 남긴다.
+   ══════════════════════════════════════════════════════════════════ */
+
+.s00-stage .game-mode-option,
+.s00-stage .region-option,
+.s00-stage .game-mode-option.is-selected,
+.s00-stage .region-option.is-selected {
+  display: grid !important;
+  grid-template-columns: none !important;
+  clip-path: none !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: none !important;
+  background-color: transparent !important;
+  box-shadow: none !important;
+  overflow: visible;
+}
+
+.s00-stage .s00-mode {
+  grid-template-rows: auto auto;
+  align-content: center;
+  justify-items: start;
+}
+
+.s00-stage .s00-region {
+  grid-template-rows: auto;
+  align-content: center;
+  justify-items: center;
+}
+
+.s00-stage .s00-mode b,
+.s00-stage .s00-region b {
+  white-space: nowrap;
+}
+
+.s00-stage .s00-mode b { font-size: 19px !important; color: #f2e3bd !important; }
+.s00-stage .s00-mode small { font-size: 11px !important; color: #c4ad7d !important; }
+.s00-stage .s00-region b { font-size: 19px !important; color: #f6e9c8 !important; }
+.s00-stage .s00-region:disabled b { color: #97907e !important; }
+
+/* 요약 스트립·현판·서고 배경 위 글자는 28절의 종이 팔레트가 아니라 자체 색 */
+.s00-stage .s00-summary strong { color: #3a2c14 !important; }
+.s00-stage .s00-summary span { color: #6b5836 !important; }
+.s00-title-plaque h2 { color: #f2dfae !important; }
+
+/* 54. S00 마무리 — 스킨 레이어 강제·요약 스트립·맞춤 진법 쪽지 */
+
+/* 옛 .game-mode-option i(44px 아이콘 칸)가 스킨 레이어를 조각냈다 */
+.s00-stage .s00-skin {
+  position: absolute !important;
+  inset: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  margin: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background-color: transparent !important;
+  box-shadow: none !important;
+  font-size: 0 !important;
+  color: transparent !important;
+}
+
+/* 요약 스트립: 이미지 로드 실패 시에도 한지 띠 유지 */
+.s00-summary {
+  background:
+    url("/assets/ui/main-menu-b/ui/selection-summary-strip-v1.png") center / 100% 100% no-repeat,
+    linear-gradient(180deg, #efe4c8 0%, #dccdac 100%);
+  border-radius: 4px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.45);
+}
+
+/* 맞춤 진법 쪽지: 세 줄이 겹치지 않게 */
+.s00-custom {
+  gap: 2px;
+  padding-top: 10px;
+}
+
+.s00-custom b { font-size: 13px; }
+.s00-custom small { font-size: 8.5px; line-height: 1.1; }
+
+/* 서갈피 '선택됨' 인장 위치 고정 */
+.s00-mode em {
+  right: 14px;
+  top: 12px;
+}
+
+/* 55. S00 미세 정렬 — 스킨 원본의 내부 여백 보정 */
+.s00-mode {
+  padding-top: 18px;
+  padding-left: 70px;
+}
+
+.s00-mode em { top: 20px; }
+
+.s00-custom {
+  padding-top: 2px;
+  gap: 0;
+}
+
+.s00-custom b { font-size: 12px; }
+.s00-custom small { font-size: 8px; }
+
+/* 56. 오행진 해금 가능 상태 — 살 수 있다는 것을 화면이 먼저 말한다 */
+.formation-unlock-list button.is-affordable {
+  background: linear-gradient(180deg, #4a3a18 0%, #33270f 100%) !important;
+  background-color: #3a2d12 !important;
+  box-shadow:
+    inset 0 1px 0 rgba(233, 200, 130, 0.4),
+    inset 0 -2px 0 rgba(0, 0, 0, 0.5),
+    0 0 0 1px var(--gold-300),
+    0 0 14px rgba(219, 185, 110, 0.55) !important;
+  animation: early-pulse 1.6s ease-in-out infinite;
+}
+
+.formation-unlock-list button.is-affordable :is(b, span, small) {
+  color: #ffeec4 !important;
+}
+
+.formation-unlock-list button.is-affordable small {
+  color: #e2c079 !important;
+  font-weight: 900;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .formation-unlock-list button.is-affordable { animation: none; }
+}
+
+/* 57. 선택 서갈피 — selected 원본의 그림 오프셋이 default 와 달라
+   텍스트가 스킨 밖으로 밀렸다. 스킨은 default 로 통일하고 선택 상태는
+   금 글로우 + 주홍 인장(코드 레이어)으로 표현한다. */
+.s00-mode.is-selected .s00-skin {
+  background-image: url("/assets/ui/main-menu-b/ui/mode-bookmark-default-v1.png") !important;
+  filter: brightness(1.12) saturate(1.15);
+}
+
+.s00-mode.is-selected {
+  outline: 2px solid rgba(232, 200, 116, 0.9);
+  outline-offset: -6px;
+  border-radius: 8px !important;
+}
+
+/* 맞춤 진법 쪽지: 회색 태그 위에서 읽히도록 밝게 */
+.s00-custom b { color: #d8c9a8; }
+.s00-custom small { color: #a8977a; }
+.s00-custom .s00-reason { color: #d86a54; }
