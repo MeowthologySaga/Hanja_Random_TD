@@ -392,12 +392,13 @@ export function startMenu3d(host: HTMLElement): Menu3dHandle {
   for (const slot of SPIRIT_SLOTS) {
     const ringTexture = sharpen(loader.load(MENU_ASSET(slot.ring)));
     ringTexture.colorSpace = SRGBColorSpace;
-    const ring = new Mesh(
-      new PlaneGeometry(2.0, 1.84),
-      new MeshStandardMaterial({ map: ringTexture, transparent: true, roughness: 1 })
-    );
+    // depthWrite 를 끄고 renderOrder 로 층을 고정해, 카메라가 움직일 때
+    // 페이지 곡면과의 깊이 경합(z-fight)으로 고리가 점멸하지 않게 한다.
+    const ringMaterial = new MeshStandardMaterial({ map: ringTexture, transparent: true, roughness: 1, depthWrite: false });
+    const ring = new Mesh(new PlaneGeometry(2.0, 1.84), ringMaterial);
     ring.rotation.x = -Math.PI / 2;
     ring.position.set(slot.x, 0.45, slot.z);
+    ring.renderOrder = 2;
     scene.add(ring);
   }
 
@@ -449,6 +450,7 @@ export function startMenu3d(host: HTMLElement): Menu3dHandle {
     const spirit = new Sprite(new SpriteMaterial({ map: texture, transparent: true }));
     spirit.scale.set(1.72, 1.58, 1);
     spirit.position.set(slot.x, 1.0 + slot.dy, slot.z);
+    spirit.renderOrder = 3;
     sprites.push(spirit);
     scene.add(spirit);
   }
@@ -590,9 +592,10 @@ export function startMenu3d(host: HTMLElement): Menu3dHandle {
   const summaryTexture = croppedTexture("ui/selection-summary-strip-v1.png");
   const summaryStrip = new Mesh(
     new PlaneGeometry(2.35, 0.56),
-    new MeshStandardMaterial({ map: summaryTexture, transparent: true, roughness: 0.9 })
+    new MeshStandardMaterial({ map: summaryTexture, transparent: true, roughness: 0.9, depthWrite: false })
   );
   summaryStrip.rotation.x = -Math.PI / 2 + 0.04;
+  summaryStrip.renderOrder = 2;
   summaryStrip.position.set(1.85, 0.46, 1.85);
   scene.add(summaryStrip);
 
@@ -606,6 +609,7 @@ export function startMenu3d(host: HTMLElement): Menu3dHandle {
   const note = new Mesh(new PlaneGeometry(1.55, 0.9), noteMaterial);
   note.rotation.x = -Math.PI / 2;
   note.rotation.z = 0.14;
+  note.renderOrder = 2;
   note.position.set(-3.55, -0.7, 2.9);
   scene.add(note);
   registerControl(".s00-custom", noteMaterial, noteSkins, (_element, hovered) => (hovered ? "hover" : "default"));

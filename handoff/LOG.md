@@ -4,6 +4,7 @@
 
 | 날짜 | 방향 | 내용 |
 |---|---|---|
+| 2026-08-26 | Claude | 4건: P00·S13 역방향 명암 교정, 3D 고리 z-fight 점멸 제거(depthWrite/renderOrder), 소환 카드 가시성(오행 색점·NEW 뱃지 정리), 빠른 시작 클릭 삼킴 수정(topbar pointer-events) + 엽전 팝 피드백 |
 | 2026-08-26 | Claude | 가독 대공사: 패널 텍스트 71%가 12px 미만(실측 census)이던 것을 토큰+오펜더 직접 상향으로 재분포(6~9.5px 471→소수 장식만). 행높이 보정, overflow 스캔 후 6건 정리, 온보딩 칩 종이화 |
 | 2026-08-26 | Claude | 별승급 전 지역 지원: Unihan 17.0.0 kTotalStrokes 보충 3,560자 생성 + casual 폴백 + core 게이트 제거(선점 고지). 런 시드는 개발자 모드(` 5연타)로 이동. S00 대비 실측 검수 6곳 교정 |
 | 2026-08-26 | Codex → Claude | `to-claude/p0-ui-components-pack-v1/` 전달. v3 P0 1-3~1-8의 빈 8탭 레일 381×89, 대칭 상태 띠 333×43, 자령 명패 3상태×2형, 자원 아이콘 4종, 조작 픽토그램 3종, 오행 셀 소켓 5×빈/점유 10종 등 런타임 PNG 25장. 9-slice·상태 우선순위·최악 훈음·강조 OFF·8탭 구조·오류 fallback 명세와 프롬프트/처리/QC/체크섬 포함. visible magenta 0, 최종 QC PASS. Codex는 게임 코드를 수정하지 않음. |

@@ -4798,7 +4798,23 @@ elementUpgradeDialog.addEventListener("click", (event) => {
 });
 must<HTMLButtonElement>("#early-button").addEventListener("click", () => {
   sound.unlock();
-  handleAction(engine.startWaveEarly(), { invalidatePanels: false });
+  const bonus = Math.floor(engine.state.prepRemaining / 2);
+  const result = engine.startWaveEarly();
+  handleAction(result, { invalidatePanels: false });
+  if (result.ok) {
+    // 이득이 "일어났다"가 눈에 남게: 버튼 자리에서 엽전 팝이 떠오른다.
+    const button = must<HTMLButtonElement>("#early-button");
+    const pop = document.createElement("span");
+    pop.className = "early-bonus-pop";
+    pop.textContent = bonus > 0 ? `+${bonus} 엽전` : "웨이브 시작!";
+    const rect = button.getBoundingClientRect();
+    const shellRect = shell.getBoundingClientRect();
+    const scale = shellRect.width / Math.max(1, shell.offsetWidth);
+    pop.style.left = `${(rect.left - shellRect.left) / scale + rect.width / scale / 2}px`;
+    pop.style.top = `${(rect.top - shellRect.top) / scale}px`;
+    shell.appendChild(pop);
+    window.setTimeout(() => pop.remove(), 1400);
+  }
 });
 must<HTMLButtonElement>("#help-button").addEventListener("click", () => helpDialog.showModal());
 must<HTMLButtonElement>("#title-help-button").addEventListener("click", () => helpDialog.showModal());

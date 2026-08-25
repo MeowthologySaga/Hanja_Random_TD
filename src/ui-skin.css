@@ -6426,3 +6426,135 @@ dialog,
 /* 10연 소환·해금 뱃지 끝자락 잘림 */
 .summon-action-group .action-button b { font-size: 13px !important; letter-spacing: -0.02em; }
 .formation-unlock-list button small { letter-spacing: -0.04em; }
+
+/* ══════════════════════════════════════════════════════════════════
+   72. 4건 피드백 — 팝업 대비 · 소환 카드 · 빠른 시작
+   ══════════════════════════════════════════════════════════════════ */
+
+/* (4a) 상단바가 클릭을 캔버스로 흘려보냈다 — 실측: 버튼 중심 명중이 CANVAS */
+.stage-topbar {
+  pointer-events: none;
+}
+
+.stage-topbar #early-button {
+  pointer-events: auto;
+}
+
+/* (4b) 누른 이득이 보이도록: 버튼 자리에서 떠오르는 엽전 팝 */
+.early-bonus-pop {
+  position: absolute;
+  z-index: 40;
+  transform: translateX(-50%);
+  padding: 4px 12px;
+  color: #2b2009;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #ffeec4, #dbb96e);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 252, 240, 0.8),
+    0 2px 6px rgba(0, 0, 0, 0.45),
+    0 0 16px rgba(219, 185, 110, 0.6);
+  font-size: 15px;
+  font-weight: 900;
+  pointer-events: none;
+  animation: early-pop 1.4s ease-out forwards;
+}
+
+@keyframes early-pop {
+  0% { opacity: 0; translate: 0 6px; scale: 0.8; }
+  16% { opacity: 1; translate: 0 -6px; scale: 1.08; }
+  70% { opacity: 1; translate: 0 -30px; scale: 1; }
+  100% { opacity: 0; translate: 0 -48px; scale: 0.96; }
+}
+
+/* (1) P00·S13: 밝은 두루마리 위 밝은 글자(역방향) -> 먹으로 */
+.p00-frame .s00-mode-label {
+  color: #7a5a2a;
+  text-shadow: none;
+}
+
+.p00-frame h3 {
+  color: #2e2212;
+  text-shadow: 0 1px 0 rgba(255, 250, 235, 0.6);
+}
+
+.p00-frame p {
+  color: #5c4a2e;
+}
+
+.s13-group-label {
+  color: #5c4728;
+  text-shadow: 0 1px 0 rgba(255, 250, 235, 0.5);
+}
+
+/* (3) 소환 결과 카드: 오행색 글자가 종이에서 실종 + NEW 겹침 */
+.summon-result-card {
+  position: relative;
+  padding-top: 12px;
+  padding-bottom: 10px;
+  row-gap: 3px;
+}
+
+.summon-result-card small {
+  color: #6d5a3c !important;
+  font-size: 11.5px !important;
+}
+
+/* 오행은 글자색 대신 이름 앞 색점으로 */
+.summon-result-card small::before {
+  content: "";
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-right: 4px;
+  border-radius: 999px;
+  background: var(--summon, #b8934a);
+  box-shadow: 0 0 0 1px rgba(58, 44, 22, 0.45);
+  vertical-align: baseline;
+}
+
+.summon-result-card b {
+  color: #2e2212 !important;
+  font-size: 13.5px !important;
+}
+
+.summon-result-card > div {
+  display: flex;
+  gap: 4px;
+  justify-content: center;
+  margin-top: 2px;
+}
+
+.summon-result-card em {
+  position: static !important;
+  padding: 2px 9px;
+  color: #1d3a2a !important;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #9fe8c0, #5fc38d) !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.55), 0 1px 2px rgba(30, 60, 40, 0.4);
+  font-size: 10.5px !important;
+  font-style: normal;
+  font-weight: 900;
+}
+
+.summon-result-card mark {
+  padding: 2px 8px;
+  color: #4a3712;
+  border-radius: 999px;
+  background: rgba(219, 185, 110, 0.4);
+  box-shadow: inset 0 0 0 1px rgba(122, 90, 42, 0.4);
+  font-size: 10.5px;
+  font-weight: 800;
+}
+
+/* 소환 결과 첫 진 개방 안내줄 — 종이 위 금색이라 실종됐다 */
+#summon-reveal-summary > strong {
+  flex: 1 1 100%;
+  padding: 3px 10px;
+  color: #5c4312 !important;
+  border-radius: 999px;
+  background: rgba(219, 185, 110, 0.38) !important;
+  box-shadow: inset 0 0 0 1px rgba(122, 90, 42, 0.45);
+  font-size: 12px !important;
+  font-weight: 900;
+  text-align: center;
+}
