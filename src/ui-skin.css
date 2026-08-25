@@ -5900,3 +5900,17 @@ dialog,
     transform: none;
   }
 }
+
+/* 61. ?menu3d=1 실험 — WebGL 장면이 그림 배경을 대체 */
+.s00-3d {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.s00-stage.is-3d .s00-env,
+.s00-stage.is-3d .s00-showcase {
+  display: none;
+}

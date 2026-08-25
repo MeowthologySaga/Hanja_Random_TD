@@ -5212,6 +5212,18 @@ function syncCoachProgress(): void {
  * 자령이 서 있는" 깊이감을 만든다. 좌표는 CSS 변수로만 전달하므로
  * 버튼 히트 영역은 움직이지 않고, prefers-reduced-motion 이면 껐다.
  */
+// ?menu3d=1 실험: 책·책상을 실제 지오메트리로, 자령은 기립 빌보드로.
+if (new URLSearchParams(window.location.search).get("menu3d") === "1") {
+  const stage = document.querySelector<HTMLElement>(".s00-stage");
+  if (stage) {
+    stage.classList.add("is-3d");
+    void import("./ui/menu3d").then(({ startMenu3d }) => {
+      const handle = startMenu3d(stage);
+      must<HTMLButtonElement>("#start-button").addEventListener("click", () => handle.dispose(), { once: true });
+    });
+  }
+}
+
 const s00Stage = document.querySelector<HTMLElement>(".s00-stage");
 if (s00Stage && !window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
   let parallaxRaf = 0;
