@@ -144,7 +144,7 @@ app.innerHTML = `
       <div class="stage-topbar" aria-live="polite">
         <div class="stage-chip"><span>웨이브</span><strong id="stage-wave">0 / ${GAME_CONFIG.maxWaves}</strong></div>
         <div class="stage-chip stage-chip--region"><span>지역</span><strong id="stage-region">한국</strong></div>
-        <div class="stage-chip stage-chip--chapter"><span>봉인장</span><strong id="stage-chapter">1 / 10</strong></div>
+        <div class="stage-chip stage-chip--chapter" title="10웨이브마다 보스가 오는 장(章) 진행"><span>챕터</span><strong id="stage-chapter">1 / 10</strong></div>
         <div class="stage-chip stage-chip--phase"><i id="phase-dot"></i><strong id="stage-phase">준비 전</strong></div>
         <button id="early-button" class="early-start" type="button" data-testid="early-wave">시작 보너스</button>
         <div id="enemy-limit-chip" class="stage-chip"><span>적 한계</span><strong id="stage-enemies">0 / ${MAX_ENEMIES}</strong></div>
@@ -257,7 +257,6 @@ app.innerHTML = `
               <b>강화 탭</b><small id="element-upgrade-total">총 0단계</small>
             </button>
           </section>
-          <div class="shop-help-strip"><b>소환 목적</b><span><i>균형</i> 전체</span><span><i>탐색</i> 새 한자</span><span><i>계보</i> 목표·성어 재료</span><span><i>중복 수집</i> 보유 중복</span></div>
         </section>
 
         <section id="selected-card" class="selected-card panel-view" data-panel-view="unit" aria-live="polite">
@@ -382,10 +381,6 @@ app.innerHTML = `
         <button id="idiom-tab" type="button" data-panel-tab="idiom" role="tab" aria-selected="false">성어 <small id="idiom-tab-count">0/5</small></button>
       </nav>
 
-      <div id="record-ticker" class="record-ticker" aria-live="polite" aria-label="최근 발동 기록">
-        <i aria-hidden="true"></i><b id="record-ticker-glyph"></b><span id="record-ticker-text">전투가 시작되면 발동한 능력이 여기에 표시됩니다.</span>
-      </div>
-      <section id="synergy-strip" class="synergy-strip" aria-label="오행 상생"></section>
 
       <footer class="panel-footer">
         <span class="canvas-tip">
@@ -1145,12 +1140,6 @@ function addCombatFeed(glyph: string, name: string, detail: string, color: strin
   const key = glyph + name;
   if (now - (feedCooldowns.get(key) ?? -10_000) < 1100) return;
   feedCooldowns.set(key, now);
-  // 기록은 더 이상 탭 뒤에 숨지 않는다. 최신 한 건을 패널 바닥에 상시 노출한다.
-  const tickerGlyph = must<HTMLElement>("#record-ticker-glyph");
-  tickerGlyph.textContent = glyph;
-  tickerGlyph.style.color = color;
-  must<HTMLElement>("#record-ticker-text").textContent = name + " · " + detail;
-  must<HTMLElement>("#record-ticker").dataset.active = "1";
   const item = document.createElement("li");
   item.style.setProperty("--feed-color", color);
   const seal = document.createElement("b");
@@ -1637,7 +1626,7 @@ function renderFormationUnlocks(): void {
     const disabled = unlocked || !active || cost === null || state.gold < cost;
     const status = unlocked
       ? index === state.startingFormationIndex ? "시작 진" : "개방"
-      : state.startingFormationIndex === null ? "첫 소환 대기" : affordable ? `해금 ${cost}!` : `${cost}엽전`;
+      : state.startingFormationIndex === null ? "첫 소환 대기" : `${cost}엽전`;
     return `<button type="button" data-formation-index="${index}" class="${unlocked ? "is-unlocked" : affordable ? "is-affordable" : ""}" style="--formation:${formation.color}" ${disabled ? "disabled" : ""}><b>${formation.preferredWuxing}</b><span>${formation.label}</span><small>${status}</small></button>`;
   }).join("");
   // 처음 하는 사람은 진을 추가 구매할 수 있다는 사실 자체를 모른다.
@@ -1749,7 +1738,6 @@ function syncPanel(): void {
   renderRunInventory();
   if (activePanelTab === "concentration") renderConcentration();
   if (activePanelTab === "growth") renderGrowth();
-  renderSynergies();
   renderIdiomHud();
 }
 
@@ -2418,13 +2406,6 @@ function closeCompositionDrawer(): void {
   drawer?.setAttribute("aria-hidden", "true");
 }
 
-function renderSynergies(): void {
-  const active = new Set(engine.activeSynergies());
-  must<HTMLElement>("#synergy-strip").innerHTML = WUXING_ORDER.map((wuxing) => {
-    const style = ELEMENT_STYLES[wuxing];
-    return `<span class="${active.has(wuxing) ? "is-active" : ""}" style="--element:${style.color}" title="${style.combatDescription}"><b>${wuxing}</b><small>${style.name}</small></span>`;
-  }).join('<i aria-hidden="true">›</i>');
-}
 
 function renderIdiomHud(): void {
   const target = engine.currentIdiomTarget();

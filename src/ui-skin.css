@@ -6558,3 +6558,157 @@ dialog,
   font-weight: 900;
   text-align: center;
 }
+
+/* ══════════════════════════════════════════════════════════════════
+   73. 상점 명령부 재정리 — "못생기고 더럽다" 구역
+   문제: 어두운 상자들이 크기·톤 제각각 + 펄스 과다 + 라벨 뚫림.
+   원칙: 종이 카드 한 가지 어휘, 소환만 금박 1차, 해금 가능은 조용한 금테.
+   ══════════════════════════════════════════════════════════════════ */
+
+/* 오행진 해금 5칸: 요란한 옻칠+펄스 -> 균일한 종이 칸 */
+.formation-unlock-list {
+  gap: 5px;
+}
+
+.formation-unlock-list button {
+  display: grid !important;
+  grid-template-columns: 24px minmax(0, 1fr);
+  grid-template-rows: auto auto;
+  align-items: center;
+  column-gap: 6px;
+  min-height: 44px;
+  padding: 4px 7px !important;
+  background: linear-gradient(180deg, #f2e8cd 0%, #e2d4b2 100%) !important;
+  background-color: #e9dcbd !important;
+  box-shadow: var(--bevel-up), 0 0 0 1px rgba(122, 90, 42, 0.3) !important;
+  animation: none !important;
+}
+
+.formation-unlock-list button b {
+  grid-row: 1 / 3;
+  color: color-mix(in srgb, var(--formation, #b8934a) 60%, #2e2212) !important;
+  font-size: 17px !important;
+}
+
+.formation-unlock-list button span {
+  color: #3a2c16 !important;
+  font-size: 12px !important;
+  line-height: 1.1;
+}
+
+.formation-unlock-list button small {
+  color: #7a6644 !important;
+  font-size: 10.5px !important;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+}
+
+.formation-unlock-list button.is-unlocked {
+  background: linear-gradient(180deg, #d9cba6 0%, #cbbc95 100%) !important;
+  box-shadow: inset 0 1px 3px rgba(96, 76, 40, 0.3), 0 0 0 1px rgba(122, 90, 42, 0.26) !important;
+}
+
+.formation-unlock-list button.is-affordable {
+  box-shadow:
+    var(--bevel-up),
+    0 0 0 2px var(--gold-400),
+    0 0 10px rgba(184, 147, 74, 0.45) !important;
+}
+
+.formation-unlock-list button.is-affordable small {
+  color: #8a6a1c !important;
+  font-weight: 900;
+}
+
+.formation-unlock-list button:disabled:not(.is-unlocked) {
+  opacity: 0.55;
+}
+
+/* 행동 격자: 소환만 1차(금박), 나머지는 같은 종이 카드 */
+.action-button {
+  color: #2e2212;
+  background: linear-gradient(180deg, #f2e8cd 0%, #e2d4b2 100%);
+  background-color: #e9dcbd;
+  box-shadow: var(--bevel-up), 0 0 0 1px rgba(122, 90, 42, 0.3);
+}
+
+.action-button b { color: #2e2212; }
+.action-button :is(small, em, i) { color: #6d5a3c; }
+.action-button .hotkey {
+  color: #7a5a26;
+  background: rgba(122, 90, 42, 0.16);
+  box-shadow: inset 0 0 0 1px rgba(122, 90, 42, 0.35);
+}
+
+.action-button:hover:not(:disabled) {
+  background: linear-gradient(180deg, #f9f0d9 0%, #ead cbb 100%);
+  background: linear-gradient(180deg, #f9f0d9 0%, #eaddbb 100%);
+}
+
+.action-button:disabled {
+  color: #8a7c64 !important;
+  background: linear-gradient(180deg, #ddd0ae 0%, #cfc09b 100%) !important;
+  box-shadow: inset 0 0 0 1px rgba(122, 90, 42, 0.22) !important;
+}
+
+.action-button:disabled :is(b, small, em, i) { color: #8a7c64 !important; }
+
+.action-button--summon {
+  color: #2b2009;
+  background: linear-gradient(180deg, #ffeec4 0%, #e2c079 48%, #c49d52 100%) !important;
+  background-color: #e2c079 !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 252, 240, 0.8),
+    inset 0 -3px 0 rgba(78, 58, 22, 0.45),
+    0 2px 0 rgba(0, 0, 0, 0.35),
+    0 0 14px rgba(219, 185, 110, 0.4) !important;
+}
+
+.action-button--summon b { color: #2b2009 !important; }
+.action-button--summon :is(small, em) { color: #5c4312 !important; }
+
+/* 소제목 오른쪽 요약이 가장자리에 붙어 답답 */
+.shop-workbench-heading { padding-right: 4px; }
+
+/* 약점 인장이 카드 밖으로 삐져나옴 */
+.wave-card { overflow: hidden; }
+.weakness-seal { margin-right: 2px; }
+.wave-card small { padding-right: 6px; }
+
+/* 74. 3D 위 텍스트 가시성 — 측면 각도에서도 읽히는 이중 윤곽 */
+.s00-stage.is-3d .s00-mode b {
+  color: #fff3d4 !important;
+  text-shadow:
+    0 1px 0 rgba(20, 12, 5, 0.95),
+    0 -1px 0 rgba(20, 12, 5, 0.7),
+    1px 0 0 rgba(20, 12, 5, 0.7),
+    -1px 0 0 rgba(20, 12, 5, 0.7),
+    0 2px 6px rgba(0, 0, 0, 0.6);
+}
+
+.s00-stage.is-3d .s00-mode small {
+  color: #f2e2ba !important;
+  font-weight: 800;
+  text-shadow:
+    0 1px 0 rgba(20, 12, 5, 0.95),
+    0 -1px 0 rgba(20, 12, 5, 0.6),
+    0 2px 5px rgba(0, 0, 0, 0.55);
+}
+
+/* 오행진 해금 칸: 좁은 5열에서 이름·비용이 뚫리지 않게 */
+.formation-unlock-list button {
+  grid-template-columns: 18px minmax(0, 1fr);
+  column-gap: 4px;
+  padding: 4px 5px !important;
+}
+
+.formation-unlock-list button b { font-size: 15px !important; }
+.formation-unlock-list button span { font-size: 11.5px !important; letter-spacing: -0.03em; }
+.formation-unlock-list button small { font-size: 10px !important; letter-spacing: -0.04em; }
+
+/* 비활성 자령 소환의 단축키 뱃지가 흰 조각으로 남던 것 */
+.action-button:disabled .hotkey {
+  color: #8a7c64 !important;
+  background: rgba(122, 90, 42, 0.12) !important;
+  box-shadow: inset 0 0 0 1px rgba(122, 90, 42, 0.25) !important;
+}

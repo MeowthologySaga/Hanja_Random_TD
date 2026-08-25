@@ -86,7 +86,7 @@ test("freezes the opening until the first summon opens its matching formation", 
   await expect(page.getByTestId("early-wave")).toHaveText("첫 소환 필요");
   await expect(page.locator("#wave-kicker")).toContainText("시간 정지");
   const openingLayout = await page.evaluate(() => {
-    const panelChildren = [".brand-row", ".resource-grid", ".wave-card", ".context-deck", ".panel-tabs", ".synergy-strip", ".panel-footer"]
+    const panelChildren = [".brand-row", ".resource-grid", ".wave-card", ".context-deck", ".panel-tabs", ".panel-footer"]
       .map((selector) => document.querySelector<HTMLElement>(selector)?.getBoundingClientRect().right ?? 0);
     const actionRow = document.querySelector<HTMLElement>(".shop-workbench .action-row");
     return {
@@ -331,7 +331,6 @@ test("starts a KR run and exposes the finished core loop at 1280x720", async ({ 
   await expect(page.locator("#gold-value")).toHaveText("14");
   await expect(page.locator("#interest-preview")).toHaveText("이자 +0");
   await expect(page.locator("#seed-value")).toHaveText("E2E-FIXED-01");
-  await expect(page.locator("#synergy-strip span")).toHaveCount(5);
   await expect(page.locator("#selected-card .ability-pills--locked")).toBeVisible();
   await expect(page.locator("#selected-card .ability-pills--locked")).toContainText("기본 공격");
   await expect(page.locator("#selected-card .selected-ability-summary")).toContainText("기술 해금 전");

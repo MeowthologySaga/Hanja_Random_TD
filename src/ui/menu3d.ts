@@ -15,7 +15,9 @@
  *     hover/selected/disabled 는 DOM 상태가 3D 머티리얼 스킨을 갈아끼운다.
  */
 import {
+  ACESFilmicToneMapping,
   AmbientLight,
+  HemisphereLight,
   BoxGeometry,
   CanvasTexture,
   Clock,
@@ -23,6 +25,7 @@ import {
   Group,
   Mesh,
   MeshStandardMaterial,
+  PCFSoftShadowMap,
   PerspectiveCamera,
   PlaneGeometry,
   PointLight,
@@ -74,9 +77,9 @@ const CROPS: Record<string, ArtCrop> = {
   "ui/mode-bookmark-hover-v1.png": { w: 840, h: 264, l: 35, t: 9, r: 16, b: 39 },
   "ui/mode-bookmark-selected-v1.png": { w: 840, h: 264, l: 4, t: 15, r: 4, b: 15 },
   "ui/region-seal-default-v1.png": { w: 396, h: 378, l: 48, t: 5, r: 71, b: 12 },
-  "ui/region-seal-hover-v1.png": { w: 396, h: 378, l: 48, t: 5, r: 71, b: 12 },
+  "ui/region-seal-hover-v1.png": { w: 396, h: 378, l: 45, t: 2, r: 68, b: 9 },
   "ui/region-seal-selected-kr-v1.png": { w: 396, h: 378, l: 80, t: 6, r: 38, b: 16 },
-  "ui/region-seal-selected-ea-v1.png": { w: 396, h: 378, l: 48, t: 5, r: 71, b: 12 },
+  "ui/region-seal-selected-ea-v1.png": { w: 396, h: 378, l: 80, t: 6, r: 38, b: 16 },
   "ui/region-seal-disabled-v1.png": { w: 396, h: 378, l: 48, t: 5, r: 71, b: 12 },
   "ui/start-clasp-default-v1.png": { w: 840, h: 354, l: 9, t: 3, r: 10, b: 3 },
   "ui/start-clasp-hover-v1.png": { w: 840, h: 354, l: 9, t: 3, r: 10, b: 3 },
@@ -212,6 +215,10 @@ export function startMenu3d(host: HTMLElement): Menu3dHandle {
 
   const renderer = new WebGLRenderer({ canvas, antialias: true });
   renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = PCFSoftShadowMap;
+  // 필름릭 톤매핑이 과노출 핫스팟과 밴딩을 눌러 "싸구려 3D" 인상을 지운다.
+  renderer.toneMapping = ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.12;
   const updateRendererScale = (): void => {
     const shownWidth = host.getBoundingClientRect().width || 1280;
     const effective = (window.devicePixelRatio || 1) * (shownWidth / 1280);
@@ -235,16 +242,22 @@ export function startMenu3d(host: HTMLElement): Menu3dHandle {
   camera.lookAt(0, 0.05, 0.25);
 
   // ── 조명 ──
-  scene.add(new AmbientLight(0x9a8365, 0.75));
-  const key = new SpotLight(0xffe0b0, 300, 34, Math.PI / 3.4, 0.5, 1.85);
-  key.position.set(4.6, 9.2, 4.4);
+  // 위(따뜻한 등불 반사)와 아래(어두운 목재 반사)를 잇는 반구광이
+  // 평평한 AmbientLight 보다 자연스러운 상하 톤을 만든다.
+  scene.add(new HemisphereLight(0xf0dcae, 0x241609, 0.55));
+  scene.add(new AmbientLight(0x8a7a60, 0.3));
+  const key = new SpotLight(0xffe4bc, 170, 40, Math.PI / 2.6, 0.95, 1.7);
+  key.position.set(4.2, 9.6, 4.8);
   key.castShadow = true;
-  key.shadow.mapSize.set(1024, 1024);
+  key.shadow.mapSize.set(2048, 2048);
+  key.shadow.radius = 6;
+  key.shadow.bias = -0.0004;
   scene.add(key);
-  const fill = new SpotLight(0xc09a68, 90, 30, Math.PI / 3, 0.7, 2);
-  fill.position.set(-6, 6.5, 3);
+  // 보조광은 살짝 차게 — 색 온도 대비가 입체를 만든다.
+  const fill = new SpotLight(0x9a8f80, 55, 32, Math.PI / 2.8, 1, 2);
+  fill.position.set(-6.5, 6, 3.2);
   scene.add(fill);
-  const ember = new PointLight(0xff9040, 20, 12, 2);
+  const ember = new PointLight(0xff8a3c, 11, 10, 2);
   ember.position.set(-4.2, 1.1, 2.9);
   scene.add(ember);
 
@@ -547,10 +560,13 @@ export function startMenu3d(host: HTMLElement): Menu3dHandle {
     { selector: ".s00-regions .s00-region:nth-of-type(3)", x: 0.64, region: "CN" }
   ];
   for (const spec of sealSpecs) {
-    const material = new MeshStandardMaterial({ map: sealSkins.default, transparent: true, roughness: 0.55 });
+    // 인장은 최전면 조작물이다. depthTest 를 끄고 renderOrder 로 층을
+    // 고정해, 기울어진 판이 책 앞단면을 뚫고 들어가도 잘리지 않는다.
+    const material = new MeshStandardMaterial({ map: sealSkins.default, transparent: true, roughness: 0.55, depthTest: false, depthWrite: false });
     const mesh = new Mesh(new PlaneGeometry(0.92, 1.2), material);
     mesh.position.set(spec.x, -0.18, 2.86);
     mesh.rotation.x = -0.52;
+    mesh.renderOrder = 4;
     mesh.castShadow = true;
     scene.add(mesh);
     registerControl(spec.selector, material, sealSkins, (element, hovered) => {
