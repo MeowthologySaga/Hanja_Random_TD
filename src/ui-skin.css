@@ -4731,3 +4731,275 @@ select option {
   text-overflow: ellipsis;
   line-height: 1.25;
 }
+
+/* ══════════════════════════════════════════════════════════════════
+   47. 자령 상세 카드 가시성 — 46절이 엉뚱한 셀렉터를 고쳤다
+   실제 기술 카드는 `.ability-pills span` 이 아니라 `button.ability-card`.
+   color-mix(..., rgba(4,10,18,0.88)) 어두운 잔재를 종이+오행 틴트로.
+   ══════════════════════════════════════════════════════════════════ */
+
+.ability-pills .ability-card {
+  color: var(--text-200) !important;
+  border: 0 !important;
+  border-left: 3px solid color-mix(in srgb, var(--ability) 70%, #6a5326) !important;
+  background:
+    linear-gradient(180deg,
+      color-mix(in srgb, var(--ability) 10%, #f4ecd6) 0%,
+      color-mix(in srgb, var(--ability) 6%, #e5d9ba) 100%) !important;
+  box-shadow:
+    var(--bevel-up),
+    0 0 0 1px rgba(122, 90, 42, 0.28) !important;
+}
+
+.ability-pills .ability-card:hover {
+  background:
+    linear-gradient(180deg,
+      color-mix(in srgb, var(--ability) 14%, #faf3e0) 0%,
+      color-mix(in srgb, var(--ability) 9%, #ecdfc2) 100%) !important;
+}
+
+/* 글리프 상자: 기술 안내와 같은 파인 종이 홈 */
+.ability-pills .ability-card > i {
+  color: color-mix(in srgb, var(--ability) 55%, #17130f) !important;
+  border: 0 !important;
+  background:
+    radial-gradient(circle at 50% 34%, color-mix(in srgb, var(--ability) 24%, transparent), transparent 72%),
+    linear-gradient(180deg, #cdbb92 0%, #ded1b0 100%) !important;
+  box-shadow:
+    var(--bevel-in),
+    0 0 0 1px color-mix(in srgb, var(--ability) 42%, rgba(122, 90, 42, 0.4)) !important;
+}
+
+/* 분류 라벨(고유 기술·주기 자동)·이름·설명 — 흰 글씨 잔재를 먹으로 */
+.ability-pills .ability-card em {
+  color: color-mix(in srgb, var(--ability) 45%, #6f6454) !important;
+  font-size: 9px !important;
+}
+
+.ability-pills .ability-card b {
+  color: var(--text-100) !important;
+  font-size: 12px !important;
+}
+
+.ability-pills .ability-card small {
+  color: var(--text-300) !important;
+  font-size: 9.5px !important;
+  line-height: 1.3;
+}
+
+/* 충전 게이지: 형광 청록 스트립 -> 종이 홈 + 오행 잉크 채움 */
+.ability-charge {
+  border: 0 !important;
+  border-radius: var(--r-sm) !important;
+  background: linear-gradient(180deg, #cdbb92 0%, #ded1b0 100%) !important;
+  box-shadow: var(--bevel-in), 0 0 0 1px rgba(122, 90, 42, 0.3) !important;
+  overflow: hidden;
+}
+
+.ability-charge > i {
+  background: linear-gradient(90deg,
+    color-mix(in srgb, var(--charge, #b8934a) 55%, #8a6a2e),
+    color-mix(in srgb, var(--charge, #dbb96e) 70%, #dbb96e)) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 250, 232, 0.4) !important;
+  opacity: 0.85;
+}
+
+.ability-charge small {
+  color: var(--text-100) !important;
+  font-size: 10px !important;
+  font-weight: 800;
+  text-shadow: 0 1px 0 rgba(255, 250, 232, 0.5);
+}
+
+/* 기술 요약 줄(技 기술 4개 · 설명 ›) */
+.selected-ability-summary {
+  background: rgba(201, 183, 143, 0.5) !important;
+  box-shadow: inset 0 0 0 1px rgba(122, 90, 42, 0.3) !important;
+}
+
+.selected-ability-summary :is(b, span, em) {
+  color: var(--text-200) !important;
+  font-size: 10px !important;
+}
+
+.selected-ability-summary b {
+  color: var(--text-100) !important;
+}
+
+/* 주기 겹침 안내 줄 */
+.ability-overview {
+  border: 0 !important;
+  background: rgba(201, 183, 143, 0.44) !important;
+  box-shadow: inset 0 0 0 1px rgba(122, 90, 42, 0.24) !important;
+}
+
+.ability-overview :is(b, span) {
+  color: var(--text-300) !important;
+  font-size: 10px !important;
+}
+
+.ability-overview button {
+  color: var(--gold-100) !important;
+  background: var(--mat-brass) !important;
+  border: 0 !important;
+  border-radius: var(--r-sm) !important;
+  box-shadow: var(--bevel-up), 0 0 0 1px rgba(122, 90, 42, 0.3) !important;
+  font-size: 10px !important;
+}
+
+/* ── 우측 조작 버튼: 옅은 회청 글씨(9aabc0)가 종이에서 흐릿했다 ── */
+.selected-actions button {
+  color: var(--gold-100) !important;
+  background: var(--mat-brass) !important;
+  border: 0 !important;
+  box-shadow: var(--bevel-up), 0 0 0 1px rgba(122, 90, 42, 0.3) !important;
+  font-size: 10px !important;
+  font-weight: 800;
+}
+
+.selected-actions button:hover:not(:disabled) {
+  background: var(--mat-brass-hot) !important;
+}
+
+.selected-actions button:disabled {
+  color: #8a7f6c !important;
+  background: linear-gradient(180deg, #d6c9a8 0%, #c4b491 100%) !important;
+  box-shadow: inset 0 0 0 1px rgba(122, 90, 42, 0.24) !important;
+}
+
+/* 판매·잠금 상태는 위 통일보다 우선 */
+#sell-button:not(:disabled) {
+  color: #fff2ec !important;
+  background: linear-gradient(180deg, #b13a2c 0%, #8a2a20 100%) !important;
+  box-shadow: var(--bevel-up), 0 0 0 1px rgba(110, 32, 24, 0.7) !important;
+}
+
+#lock-button.is-locked {
+  color: #2b2009 !important;
+  background: linear-gradient(180deg, #ffeec4 0%, #dbb96e 100%) !important;
+  box-shadow: var(--bevel-up), inset 0 -3px 0 var(--seal), 0 0 0 1px rgba(122, 90, 42, 0.5) !important;
+}
+
+/* ── 이름 줄의 훈음 칩(어두운 남색 잔재)과 머리 태그 ── */
+.selected-copy h3 .selected-radical,
+.selected-copy > div > span {
+  color: var(--text-300) !important;
+  background: rgba(201, 183, 143, 0.5) !important;
+  box-shadow: inset 0 0 0 1px rgba(122, 90, 42, 0.28) !important;
+  border: 0 !important;
+  font-size: 9px !important;
+}
+
+.selected-learning,
+.selected-copy .selected-learning b,
+.selected-copy .selected-learning em {
+  color: var(--text-200) !important;
+  font-size: 11px !important;
+}
+
+/* 보호·문기 안내 줄 */
+.selected-copy > small {
+  color: var(--text-400) !important;
+  font-size: 9.5px !important;
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   48. 한국어 단어 중간 줄바꿈 전역 금지 — "제자리 봉/쇄", "이동 봉/쇄"
+   ══════════════════════════════════════════════════════════════════ */
+
+.control-panel,
+.codex-dialog,
+dialog,
+.title-card,
+.end-card,
+.coach-bubble,
+.summon-reveal {
+  word-break: keep-all;
+  overflow-wrap: break-word;
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   49. 글씨 크기 — 47절에서 9~10px 로 눌렀던 것이 최대 불만.
+   자령 상세 계열 전체를 한 단계씩 키운다. (DELTA 5절: 본문 최소 12px)
+   ══════════════════════════════════════════════════════════════════ */
+
+.ability-pills .ability-card {
+  min-height: 64px;
+  gap: 7px;
+  grid-template-columns: 30px minmax(0, 1fr);
+}
+
+.ability-pills .ability-card > i {
+  width: 30px;
+  height: 30px;
+  font-size: 16px;
+}
+
+.ability-pills .ability-card em {
+  font-size: 10px !important;
+}
+
+.ability-pills .ability-card b {
+  font-size: 13px !important;
+}
+
+.ability-pills .ability-card small {
+  font-size: 11px !important;
+  line-height: 1.35;
+}
+
+.selected-ability-summary :is(span, em) {
+  font-size: 11px !important;
+}
+
+.selected-ability-summary b {
+  font-size: 12px !important;
+}
+
+.ability-overview :is(b, span) {
+  font-size: 11px !important;
+}
+
+.ability-overview button {
+  font-size: 11px !important;
+}
+
+.ability-charge small {
+  font-size: 11px !important;
+}
+
+.selected-actions button {
+  font-size: 11px !important;
+  min-height: 30px;
+}
+
+.selected-copy h3 .selected-radical,
+.selected-copy > div > span {
+  font-size: 10px !important;
+}
+
+.selected-learning,
+.selected-copy .selected-learning b,
+.selected-copy .selected-learning em {
+  font-size: 12.5px !important;
+}
+
+.selected-copy > small {
+  font-size: 10.5px !important;
+}
+
+.selected-copy p {
+  font-size: 13.5px !important;
+}
+
+/* 패널 공통 바닥 올리기 */
+.record-ticker { font-size: 11px; }
+.record-ticker b { font-size: 14px; }
+.opening-guide > div span { font-size: 10px !important; }
+.goal-choice-copy :is(em, small) { font-size: 10px !important; }
+.concentration-compare > div :is(span, b, i) { font-size: 10px !important; }
+.concentration-target-list > button strong { font-size: 9px !important; }
+.shop-help-strip b, .shop-help-strip span { font-size: 10.5px !important; }
+.panel-tabs button > b, .panel-tabs button > span { font-size: 11px !important; }
+.canvas-tip i { font-size: 11px; }
+.canvas-tip i em { font-size: 10px; }
