@@ -180,7 +180,7 @@ app.innerHTML = `
       <section class="wave-card">
         <div><span id="wave-kicker">첫 웨이브 대기</span><strong id="wave-label">소환진을 준비하세요</strong><small id="wave-briefing">다음 적 정보를 확인하세요.</small></div>
         <div class="weakness-seal"><span>약점</span><b id="wave-weakness">木</b></div>
-        <button id="early-button" class="small-button" type="button" data-testid="early-wave">즉시 시작</button>
+        <button id="early-button" class="small-button" type="button" data-testid="early-wave">시작 보너스</button>
       </section>
 
       <div class="context-deck">
@@ -1589,7 +1589,7 @@ function syncPanel(): void {
   const earlyButton = must<HTMLButtonElement>("#early-button");
   earlyButton.disabled = state.phase !== "prep" || state.summonCount === 0;
   earlyButton.textContent = state.phase === "prep"
-    ? state.summonCount === 0 ? "첫 소환 필요" : "즉시 +" + String(Math.floor(state.prepRemaining / 2))
+    ? state.summonCount === 0 ? "첫 소환 필요" : "시작 +" + String(Math.floor(state.prepRemaining / 2)) + "엽전"
     : "교전 중";
   const openingGuide = must<HTMLElement>("#opening-guide");
   openingGuide.classList.toggle("is-collapsed", state.wave >= 1);

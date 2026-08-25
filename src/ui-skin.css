@@ -4554,3 +4554,180 @@ select option {
 .growth-layout {
   gap: 10px;
 }
+
+/* ══════════════════════════════════════════════════════════════════
+   46. 사용자 피드백 3건 — 검은 판 답답함 · 헤더 스프라이트 · 시작 보너스
+   ══════════════════════════════════════════════════════════════════ */
+
+/* ── 46-1. 기술 안내의 검은 판들 — 쿨타임 중처럼 읽혔다.
+   rgba(4,10,17) 계열 옛 어두운 테마 잔재를 종이+오행 틴트로. */
+.ability-guide-card > i {
+  color: color-mix(in srgb, var(--ability) 55%, #17130f) !important;
+  border: 0 !important;
+  background:
+    radial-gradient(circle at 50% 34%, color-mix(in srgb, var(--ability) 26%, transparent), transparent 70%),
+    linear-gradient(180deg, #cdbb92 0%, #ded1b0 100%) !important;
+  box-shadow:
+    var(--bevel-in),
+    0 0 0 1px color-mix(in srgb, var(--ability) 45%, rgba(122, 90, 42, 0.4)) !important;
+}
+
+.ability-guide-card > div em {
+  color: color-mix(in srgb, var(--ability) 60%, #17130f) !important;
+  border: 0 !important;
+  background: rgba(201, 183, 143, 0.55) !important;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ability) 40%, rgba(122, 90, 42, 0.35)) !important;
+}
+
+.ability-guide-card dl > div {
+  background: rgba(201, 183, 143, 0.44) !important;
+  box-shadow: inset 0 0 0 1px rgba(122, 90, 42, 0.22) !important;
+}
+
+.ability-guide-card dl dt {
+  color: var(--gold-500) !important;
+}
+
+.ability-guide-card dl dd,
+.ability-guide-card p {
+  color: var(--text-200) !important;
+}
+
+.ability-guide-card > div span {
+  color: var(--gold-500) !important;
+}
+
+.ability-guide-card h3 {
+  color: var(--text-100) !important;
+}
+
+/* 상단 규칙 상자: 짙은 남색 -> 옅은 먹 담채 */
+.ability-guide-rule {
+  border: 0;
+  border-left: 4px solid var(--gold-400);
+  background:
+    var(--grain),
+    linear-gradient(110deg, rgba(155, 113, 55, 0.14), rgba(201, 183, 143, 0.3));
+  box-shadow: var(--bevel-up), 0 0 0 1px rgba(122, 90, 42, 0.26);
+}
+
+.ability-guide-rule span { color: var(--gold-500) !important; }
+.ability-guide-rule h3 { color: var(--text-100) !important; }
+.ability-guide-rule p { color: var(--text-300) !important; }
+.ability-guide-rule p b { color: var(--text-100) !important; }
+
+/* 규칙 요약 칩 3개 — 검은 알약이 답답함의 주범 */
+.ability-guide-rule > div > b {
+  color: var(--text-200) !important;
+  background: rgba(246, 238, 217, 0.8) !important;
+  border: 0 !important;
+  border-radius: 999px !important;
+  box-shadow: inset 0 0 0 1px rgba(122, 90, 42, 0.34) !important;
+  font-weight: 800;
+}
+
+/* 자령 카드 뒤에 비치던 기술 알약도 같은 이유로 */
+.ability-pills span {
+  background: linear-gradient(180deg, #f2e8cd 0%, #e3d6b6 100%) !important;
+  box-shadow: var(--bevel-up), 0 0 0 1px rgba(122, 90, 42, 0.3) !important;
+}
+
+.ability-pills span > b,
+.ability-pills span > b small {
+  color: var(--text-200) !important;
+}
+
+.ability-pills i {
+  background: rgba(201, 183, 143, 0.6) !important;
+  color: var(--text-100) !important;
+  box-shadow: inset 0 0 0 1px rgba(122, 90, 42, 0.35) !important;
+}
+
+/* ── 46-2. 헤더 스프라이트 이상함 — 육각(36x36 고정)을 폭이 다른
+   버튼에 늘려 찌그러졌다. 육각을 걷고 도감 버튼과 같은 옻칠 알약으로 통일. */
+.icon-button,
+.speed-button {
+  background-image: none !important;
+  background: linear-gradient(180deg, #2a2723 0%, #17150f 100%) !important;
+  background-color: #1f1c18 !important;
+  border-radius: var(--r-sm) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(233, 222, 194, 0.22),
+    inset 0 -2px 0 rgba(0, 0, 0, 0.55),
+    0 0 0 1px rgba(122, 90, 42, 0.5),
+    var(--lift-1) !important;
+  color: #efe3c6 !important;
+  filter: none !important;
+}
+
+.icon-button:hover,
+.speed-button:hover,
+.speed-button.is-accelerated {
+  background: linear-gradient(180deg, #3a352c 0%, #221f19 100%) !important;
+  color: #fff4dc !important;
+}
+
+.speed-button.is-accelerated {
+  box-shadow:
+    inset 0 1px 0 rgba(233, 222, 194, 0.28),
+    inset 0 -3px 0 var(--seal),
+    0 0 0 1px rgba(122, 90, 42, 0.55),
+    var(--lift-1) !important;
+}
+
+/* ── 46-3. 시작 보너스가 안 보여 매번 놓쳤다.
+   준비 중(활성)일 때만 금박 슬래브 + 맥동으로 승격. 교전 중(비활성)은 조용히. */
+.wave-card {
+  grid-template-columns: minmax(0, 1fr) auto minmax(76px, auto);
+  gap: 6px;
+}
+
+#early-button:not(:disabled) {
+  min-height: 40px;
+  padding: 4px 10px;
+  color: #2b2009 !important;
+  background: linear-gradient(180deg, #ffeec4 0%, #dbb96e 46%, #b8934a 100%) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 252, 240, 0.8),
+    inset 0 -3px 0 rgba(78, 58, 22, 0.5),
+    0 2px 0 rgba(0, 0, 0, 0.4),
+    0 0 18px rgba(219, 185, 110, 0.55) !important;
+  font-size: 12px !important;
+  font-weight: 900;
+  animation: early-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes early-pulse {
+  0%, 100% { box-shadow:
+    inset 0 1px 0 rgba(255, 252, 240, 0.8),
+    inset 0 -3px 0 rgba(78, 58, 22, 0.5),
+    0 2px 0 rgba(0, 0, 0, 0.4),
+    0 0 10px rgba(219, 185, 110, 0.4); }
+  50% { box-shadow:
+    inset 0 1px 0 rgba(255, 252, 240, 0.8),
+    inset 0 -3px 0 rgba(78, 58, 22, 0.5),
+    0 2px 0 rgba(0, 0, 0, 0.4),
+    0 0 26px rgba(219, 185, 110, 0.85); }
+}
+
+#early-button:disabled {
+  animation: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #early-button:not(:disabled) { animation: none; }
+}
+
+/* 브리핑 3번째 줄이 카드 바닥에 반쯤 걸렸다 — 텍스트 열은 전부 1줄 말줄임 */
+.wave-card > div:first-child {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.wave-card > div:first-child :is(span, small, strong, b, p) {
+  display: block;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  line-height: 1.25;
+}
