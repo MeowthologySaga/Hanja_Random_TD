@@ -211,9 +211,22 @@ export function startMenu3d(host: HTMLElement): Menu3dHandle {
   host.prepend(canvas);
 
   const renderer = new WebGLRenderer({ canvas, antialias: true });
-  renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
-  renderer.setSize(1280, 720, false);
   renderer.shadowMap.enabled = true;
+  const updateRendererScale = (): void => {
+    const shownWidth = host.getBoundingClientRect().width || 1280;
+    const effective = (window.devicePixelRatio || 1) * (shownWidth / 1280);
+    renderer.setPixelRatio(Math.min(2.5, Math.max(1, effective)));
+    renderer.setSize(1280, 720, false);
+  };
+  updateRendererScale();
+  window.addEventListener("resize", updateRendererScale);
+
+  const maxAnisotropy = renderer.capabilities.getMaxAnisotropy();
+  /** 사선으로 보는 종이·나무 결이 밉맵에서 뭉개지지 않게 한다. */
+  const sharpen = <T extends Texture>(texture: T): T => {
+    texture.anisotropy = maxAnisotropy;
+    return texture;
+  };
 
   const scene = new Scene();
   const camera = new PerspectiveCamera(33, 1280 / 720, 0.1, 60);
@@ -248,7 +261,7 @@ export function startMenu3d(host: HTMLElement): Menu3dHandle {
     wallContext.fillStyle = gradient;
     wallContext.fillRect(0, 0, 8, 256);
   }
-  const wallTexture = new CanvasTexture(wallCanvas);
+  const wallTexture = sharpen(new CanvasTexture(wallCanvas));
   wallTexture.colorSpace = SRGBColorSpace;
   const wall = new Mesh(new PlaneGeometry(64, 28), new MeshStandardMaterial({ map: wallTexture, roughness: 1 }));
   wall.position.set(0, 8, -12);
@@ -278,7 +291,7 @@ export function startMenu3d(host: HTMLElement): Menu3dHandle {
       }
     }
   }
-  const deskTexture = new CanvasTexture(deskCanvas);
+  const deskTexture = sharpen(new CanvasTexture(deskCanvas));
   deskTexture.colorSpace = SRGBColorSpace;
   const desk = new Mesh(new PlaneGeometry(34, 22), new MeshStandardMaterial({ map: deskTexture, roughness: 0.72, metalness: 0.12 }));
   desk.rotation.x = -Math.PI / 2;
@@ -288,7 +301,7 @@ export function startMenu3d(host: HTMLElement): Menu3dHandle {
 
   // ── 책 ──
   const book = new Group();
-  const leather = leatherTexture();
+  const leather = sharpen(leatherTexture());
 
   const cover = new Mesh(
     new BoxGeometry(10.4, 0.22, 5.9),
@@ -314,7 +327,7 @@ export function startMenu3d(host: HTMLElement): Menu3dHandle {
   spine.position.set(0, -0.52, 0);
   book.add(spine);
 
-  const edge = pageEdgeTexture();
+  const edge = sharpen(pageEdgeTexture());
   const edgeMaterial = new MeshStandardMaterial({ map: edge, roughness: 0.9 });
   const blockTopMaterial = new MeshStandardMaterial({ color: 0xdccfa8, roughness: 0.95 });
   for (const side of [-1, 1] as const) {
@@ -340,7 +353,7 @@ export function startMenu3d(host: HTMLElement): Menu3dHandle {
     pageCanvas.height = 1024;
     const context = pageCanvas.getContext("2d");
     if (context) paintAgedPaper(context, 1024, sideIndex + 1);
-    const texture = new CanvasTexture(pageCanvas);
+    const texture = sharpen(new CanvasTexture(pageCanvas));
     texture.colorSpace = SRGBColorSpace;
     pageTextures[sideName] = texture;
   });
@@ -377,7 +390,7 @@ export function startMenu3d(host: HTMLElement): Menu3dHandle {
   // ── 먹 고리: 페이지 위 0.02 띄운 평면. UV 굽기는 페이지 곡률·회전과
   // 어긋나기 쉬워 폐기했다. MeshStandard 라 조명은 그대로 받는다. ──
   for (const slot of SPIRIT_SLOTS) {
-    const ringTexture = loader.load(MENU_ASSET(slot.ring));
+    const ringTexture = sharpen(loader.load(MENU_ASSET(slot.ring)));
     ringTexture.colorSpace = SRGBColorSpace;
     const ring = new Mesh(
       new PlaneGeometry(2.0, 1.84),
@@ -431,7 +444,7 @@ export function startMenu3d(host: HTMLElement): Menu3dHandle {
   // ── 자령 빌보드 ──
   const sprites: Sprite[] = [];
   for (const slot of SPIRIT_SLOTS) {
-    const texture = loader.load(MENU_ASSET(slot.spirit));
+    const texture = sharpen(loader.load(MENU_ASSET(slot.spirit)));
     texture.colorSpace = SRGBColorSpace;
     const spirit = new Sprite(new SpriteMaterial({ map: texture, transparent: true }));
     spirit.scale.set(1.72, 1.58, 1);
@@ -446,7 +459,7 @@ export function startMenu3d(host: HTMLElement): Menu3dHandle {
 
   /** 그림 영역만 면을 채우도록 crop 된 텍스처. */
   function croppedTexture(file: string): Texture {
-    const texture = loader.load(MENU_ASSET(file));
+    const texture = sharpen(loader.load(MENU_ASSET(file)));
     texture.colorSpace = SRGBColorSpace;
     const crop = CROPS[file];
     if (crop) {
@@ -675,6 +688,7 @@ export function startMenu3d(host: HTMLElement): Menu3dHandle {
   return {
     dispose(): void {
       window.cancelAnimationFrame(frame);
+      window.removeEventListener("resize", updateRendererScale);
       if (!reduced) host.removeEventListener("pointermove", onPointer);
       for (const anchor of domAnchors) {
         anchor.element.style.left = anchor.originalLeft;

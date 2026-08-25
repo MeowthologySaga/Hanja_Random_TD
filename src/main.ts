@@ -444,7 +444,7 @@ app.innerHTML = `
 
         <button id="custom-formation-button" class="s00-custom" type="button"
           title="맞춤 진법 — 범위·표기·규칙 (설정 화면 준비 중)" aria-label="맞춤 진법. 범위·표기·규칙 설정. 아직 준비 중입니다">
-          <i class="s00-skin" aria-hidden="true"></i><b>맞춤 진법</b><small>범위 · 표기 · 규칙</small><small class="s00-reason" aria-live="polite">준비 중</small>
+          <i class="s00-skin" aria-hidden="true"></i><b>맞춤 진법</b><small>범위 · 표기 · 규칙</small><small class="s00-reason">설정 열기</small>
         </button>
 
         <div class="s00-regions" role="radiogroup" aria-label="지역 한자 체계">
@@ -483,6 +483,42 @@ app.innerHTML = `
             <button id="p00-return" type="button" autofocus>한국으로 돌아가기</button>
             <button id="p00-continue" type="button">일본으로 계속</button>
           </div>
+        </div>
+      </dialog>
+
+      <dialog id="s13-dialog" class="p00-dialog s13-dialog" data-popup-id="S13" aria-labelledby="s13-title">
+        <div class="p00-frame s13-frame">
+          <p class="s00-mode-label">맞춤 진법</p>
+          <h3 id="s13-title">범위 · 표기 · 규칙</h3>
+
+          <div class="s13-group" role="radiogroup" aria-label="한자 범위">
+            <span class="s13-group-label">한자 범위</span>
+            <div class="s13-options">
+              <button type="button" data-s13-region="KR" role="radio"><b>한국</b><small>천자문 1,000</small></button>
+              <button type="button" data-s13-region="JP" role="radio"><b>일본</b><small>상용한자 2,136</small></button>
+              <button type="button" data-s13-region="CN" role="radio"><b>중국</b><small>규범한자 3,500</small></button>
+            </div>
+          </div>
+
+          <div class="s13-group" aria-label="읽기 표기">
+            <span class="s13-group-label">읽기 · 표기</span>
+            <div class="s13-options">
+              <button type="button" data-s13-display="spirit" role="radio"><b>자령 모드</b><small>머리 위 훈음 명패</small></button>
+              <button type="button" data-s13-display="study" role="radio"><b>공부 모드</b><small>큰 한자와 읽기</small></button>
+              <button type="button" id="s13-emphasis" aria-pressed="true"><b>한자 강조</b><small class="s13-state">ON</small></button>
+            </div>
+          </div>
+
+          <div class="s13-group" aria-label="진법 규칙">
+            <span class="s13-group-label">진법 규칙</span>
+            <div class="s13-options">
+              <button type="button" data-s13-mode="standard" role="radio"><b>자형연성</b><small>실제 구성식 합성</small></button>
+              <button type="button" data-s13-mode="casual" role="radio"><b>별승급</b><small>같은 오행 3체 승급</small></button>
+              <button type="button" id="s13-autoplace" aria-pressed="true"><b>소환 자동 배치</b><small class="s13-state">ON</small></button>
+            </div>
+          </div>
+
+          <div class="p00-actions"><button id="s13-close" type="button">닫기</button></div>
         </div>
       </dialog>
     </section>
@@ -944,6 +980,8 @@ function syncTitleModeSelection(): void {
   });
   const modeName = selectedGameMode === "casual" ? "별승급 진법" : "자형연성 진법";
   must<HTMLElement>("#s00-summary-main").textContent = `${REGION_MENU_INFO[selectedRegion].name} · ${modeName}`;
+  const s13 = document.querySelector<HTMLDialogElement>("#s13-dialog");
+  if (s13?.open) syncS13();
   must<HTMLElement>("#s00-start-sub").textContent = REGION_MENU_INFO[selectedRegion].pool;
   must<HTMLElement>("#title-lead").innerHTML = selectedGameMode === "casual"
     ? "획수가 희귀도를 정하고, 같은 오행 세 자령이 한 별을 올립니다.<br />남길 본체를 직접 골라 8성 대봉인까지 성장시키세요."
@@ -4555,17 +4593,92 @@ p00Dialog.addEventListener("click", (event) => {
   if (event.target === p00Dialog) closeP00(false);
 });
 
-// 맞춤 진법(S13)은 아직 화면이 없다. 죽은 버튼 대신, 눌리되 정직하게
-// "준비 중"을 그 자리에서 답한다. 어떤 모드도 임시로 시작시키지 않는다.
-let customFormationNoticeTimer = 0;
+// ── S13 맞춤 진법: 한자 범위 x 읽기·표기 x 진법 규칙을 한 화면에서 ──
+// 세 번째 엔진 모드가 아니라 기존 설정들의 진입점이다(코덱스 스펙).
+// JP/CN 범위 선택도 P00 확인을 우회하지 않는다.
+const s13Dialog = must<HTMLDialogElement>("#s13-dialog");
+
+function syncS13(): void {
+  const casual = selectedGameMode === "casual";
+  s13Dialog.querySelectorAll<HTMLButtonElement>("[data-s13-region]").forEach((button) => {
+    const region = button.dataset.s13Region as RegionCode;
+    const disabled = casual && region !== "KR";
+    button.disabled = disabled;
+    button.classList.toggle("is-selected", region === selectedRegion);
+    button.setAttribute("aria-checked", String(region === selectedRegion));
+    button.title = disabled ? "현재 캐주얼 8성전은 한국(KR) 전용입니다" : REGION_MENU_INFO[region].pool;
+  });
+  s13Dialog.querySelectorAll<HTMLButtonElement>("[data-s13-display]").forEach((button) => {
+    const selected = button.dataset.s13Display === displayMode;
+    button.classList.toggle("is-selected", selected);
+    button.setAttribute("aria-checked", String(selected));
+  });
+  s13Dialog.querySelectorAll<HTMLButtonElement>("[data-s13-mode]").forEach((button) => {
+    const selected = button.dataset.s13Mode === selectedGameMode;
+    button.classList.toggle("is-selected", selected);
+    button.setAttribute("aria-checked", String(selected));
+  });
+  const emphasisButton = must<HTMLButtonElement>("#s13-emphasis");
+  emphasisButton.setAttribute("aria-pressed", String(hanjaEmphasis));
+  must<HTMLElement>("#s13-emphasis .s13-state").textContent = hanjaEmphasis ? "ON" : "OFF";
+  emphasisButton.classList.toggle("is-on", hanjaEmphasis);
+  const autoButton = must<HTMLButtonElement>("#s13-autoplace");
+  autoButton.setAttribute("aria-pressed", String(engine.state.autoPlaceSummons));
+  must<HTMLElement>("#s13-autoplace .s13-state").textContent = engine.state.autoPlaceSummons ? "ON" : "OFF";
+  autoButton.classList.toggle("is-on", engine.state.autoPlaceSummons);
+}
+
 must<HTMLButtonElement>("#custom-formation-button").addEventListener("click", () => {
   sound.playUiConfirm();
-  const reason = must<HTMLElement>("#custom-formation-button .s00-reason");
-  reason.textContent = "설정 화면을 준비하고 있습니다";
-  window.clearTimeout(customFormationNoticeTimer);
-  customFormationNoticeTimer = window.setTimeout(() => {
-    reason.textContent = "준비 중";
-  }, 2200);
+  syncS13();
+  s13Dialog.showModal();
+});
+
+must<HTMLButtonElement>("#s13-close").addEventListener("click", () => s13Dialog.close());
+s13Dialog.addEventListener("click", (event) => {
+  if (event.target === s13Dialog) {
+    s13Dialog.close();
+    return;
+  }
+  const target = event.target as HTMLElement;
+  const regionButton = target.closest<HTMLButtonElement>("[data-s13-region]");
+  if (regionButton && !regionButton.disabled) {
+    const region = regionButton.dataset.s13Region as RegionCode;
+    if (region === "KR") {
+      selectedRegion = "KR";
+      syncTitleModeSelection();
+    } else {
+      // 얼리 액세스 확인(P00)을 우회하지 않는다.
+      s13Dialog.close();
+      openP00(region);
+    }
+    return;
+  }
+  const displayButton = target.closest<HTMLButtonElement>("[data-s13-display]");
+  if (displayButton) {
+    setDisplayMode(displayButton.dataset.s13Display as DisplayMode);
+    syncS13();
+    return;
+  }
+  const modeButton = target.closest<HTMLButtonElement>("[data-s13-mode]");
+  if (modeButton) {
+    setSelectedGameMode(modeButton.dataset.s13Mode as GameMode);
+    return;
+  }
+  if (target.closest("#s13-emphasis")) {
+    toggleHanjaEmphasis();
+    syncS13();
+    return;
+  }
+  if (target.closest("#s13-autoplace")) {
+    sound.unlock();
+    const enabled = !engine.state.autoPlaceSummons;
+    saveAutoPlaceSummons(enabled);
+    handleAction(engine.setAutoPlaceSummons(enabled));
+    syncAutoPlaceControl();
+    sound.playUiConfirm();
+    syncS13();
+  }
 });
 
 must<HTMLButtonElement>("#seed-reroll-button").addEventListener("click", () => {
