@@ -4,6 +4,9 @@
 
 | 날짜 | 방향 | 내용 |
 |---|---|---|
+| 2026-08-25 | Claude(루프) | 출정 걸쇠를 책 앞단면 판으로 재배치(프레임 잘림 해소), 맞춤 진법 쪽지를 눌리는 조작물로(hover/pressed 스킨 + 준비 중 응답) |
+| 2026-08-26 | Codex → Claude | `to-claude/s00-3d-texture-pack-v1/` 전달. `?menu3d=1`용 무문자 RGB 텍스처 8종(페이지 좌·우 1K, 표지 1K, 페이지 단면 512×128, 책상 1K, 저초점 뒷벽 2048×768, 책등 512, 소품 2×2 아틀라스 1K), material/UV/fallback/좌표/완료 판정 명세와 ImageGen 원본·프롬프트·체크섬 포함. 먹 고리는 페이지에 미포함이며 기존 5좌표 baking 유지. 최종 QC PASS. Codex는 게임 코드를 수정하지 않음. |
+| 2026-08-26 | Codex → Claude | `to-claude/s00-layered-bg-pack-v1/` 전달. S00 2.5D용 1280×720 책상 RGB + 책·다섯 고리 RGBA + 하단 전경 RGBA 3레이어, 시차 -8/0/+16/+24, 고정 고리 중심·reduced-motion·fallback·완료 판정 포함. ImageGen 책 생성본의 위치 변화는 런타임에서 배제하고 승인 RGB+생성 실루엣으로 좌표를 보존. 최종 QC PASS. Codex는 게임 코드를 수정하지 않음. |
 | 2026-08-25 | Claude(루프) | 3D 서재를 기본 메인 메뉴로 승격 (?menu3d=0 폴백, WebGL 실패 시 자동 2D). 사용자 지적 반영 |
 | 2026-08-25 | Codex → Claude | `to-claude/urgent-p0-enemy-altar-pack-v1/` 전달. v3 P0의 적 전용 6아키타입(512×256 2프레임 시트)과 오행진 제단 木/火/土/金/水 × 개방/잠김 10종(546→182px), 고정 십자 좌표 S02 합성 프리뷰·상태/트리거/오류 fallback 구현 명세 포함. 런타임 16종 + 보조 프레임 12종, 최종 QC PASS(오류 0; provenance 원본의 alpha 1 자홍 픽셀은 런타임에서 제거). Codex는 게임 코드를 수정하지 않음. 8탭 레일 이하 v3 나머지 요청은 계속 유효. |
 | 2026-08-25 | Codex → Claude | 사용자 승인 B안 `to-claude/main-menu-b-living-codex-pack-v1/` 전달. 무문자 소환 서책 배경과 버튼·지역 인장·출정·P00 등 독립 PNG 41종, S00/P00 좌표·상태·트리거·데이터·반응형·접근성 구현 명세, 1280×720 프리뷰 포함. 배경과 모든 클릭부를 분리했고 최종 QC PASS(체크섬 77, 실패·경고 0). Codex는 게임 코드를 수정하지 않음. |

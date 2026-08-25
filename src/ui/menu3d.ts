@@ -82,7 +82,9 @@ const CROPS: Record<string, ArtCrop> = {
   "ui/start-clasp-hover-v1.png": { w: 840, h: 354, l: 9, t: 3, r: 10, b: 3 },
   "ui/start-clasp-pressed-v1.png": { w: 840, h: 354, l: 9, t: 3, r: 10, b: 3 },
   "ui/selection-summary-strip-v1.png": { w: 990, h: 162, l: 296, t: 38, r: 304, b: 37 },
-  "ui/custom-note-disabled-v1.png": { w: 444, h: 252, l: 12, t: 10, r: 6, b: 19 }
+  "ui/custom-note-default-v1.png": { w: 444, h: 252, l: 12, t: 10, r: 6, b: 19 },
+  "ui/custom-note-hover-v1.png": { w: 444, h: 252, l: 12, t: 9, r: 4, b: 19 },
+  "ui/custom-note-pressed-v1.png": { w: 444, h: 252, l: 12, t: 16, r: 6, b: 13 }
 };
 
 /** DOM 버튼을 붙일 3D 앵커(모델 면 중심). 중립 카메라 대비 편차만 적용한다. */
@@ -92,9 +94,9 @@ const DOM_ANCHORS: ReadonlyArray<{ selector: string; at: Vector3 }> = [
   { selector: ".s00-regions .s00-region:nth-of-type(1)", at: new Vector3(-1.2, -0.14, 2.86) },
   { selector: ".s00-regions .s00-region:nth-of-type(2)", at: new Vector3(-0.28, -0.18, 2.9) },
   { selector: ".s00-regions .s00-region:nth-of-type(3)", at: new Vector3(0.64, -0.18, 2.9) },
-  { selector: ".s00-start", at: new Vector3(4.0, -0.32, 2.5) },
+  { selector: ".s00-start", at: new Vector3(3.35, -0.16, 2.72) },
   { selector: ".s00-summary", at: new Vector3(1.85, 0.5, 1.85) },
-  { selector: ".s00-custom", at: new Vector3(-3.55, -0.66, 2.9) }
+  { selector: ".s00-custom", at: new Vector3(-3.74, -0.66, 2.94) }
 ];
 
 /** 낡은 종이 얼룩·섬유·가장자리 그을림을 절차적으로 그린다. */
@@ -555,9 +557,9 @@ export function startMenu3d(host: HTMLElement): Menu3dHandle {
     new BoxGeometry(2.25, 0.14, 1.4),
     [claspSide, claspSide, claspMaterial, claspSide, claspSide, claspSide]
   );
-  clasp.position.set(4.0, -0.4, 2.5);
-  clasp.rotation.y = -0.14;
-  clasp.rotation.x = 0.06;
+  clasp.position.set(3.35, -0.26, 2.72);
+  clasp.rotation.y = -0.05;
+  clasp.rotation.x = 0.38;
   clasp.castShadow = true;
   scene.add(clasp);
   registerControl(".s00-start", claspMaterial, claspSkins, (_element, hovered) => (hovered ? "hover" : "default"));
@@ -581,16 +583,28 @@ export function startMenu3d(host: HTMLElement): Menu3dHandle {
   summaryStrip.position.set(1.85, 0.46, 1.85);
   scene.add(summaryStrip);
 
-  // 맞춤 쪽지: 책상 위 종이.
-  const noteTexture = croppedTexture("ui/custom-note-disabled-v1.png");
-  const note = new Mesh(
-    new PlaneGeometry(1.55, 0.9),
-    new MeshStandardMaterial({ map: noteTexture, transparent: true, roughness: 0.95 })
-  );
+  // 맞춤 쪽지: 책상 위 종이. 눌리는 조작물이므로 상태 스킨을 바인딩한다.
+  const noteSkins = {
+    default: croppedTexture("ui/custom-note-default-v1.png"),
+    hover: croppedTexture("ui/custom-note-hover-v1.png"),
+    pressed: croppedTexture("ui/custom-note-pressed-v1.png")
+  };
+  const noteMaterial = new MeshStandardMaterial({ map: noteSkins.default, transparent: true, roughness: 0.95 });
+  const note = new Mesh(new PlaneGeometry(1.55, 0.9), noteMaterial);
   note.rotation.x = -Math.PI / 2;
   note.rotation.z = 0.14;
   note.position.set(-3.55, -0.7, 2.9);
   scene.add(note);
+  registerControl(".s00-custom", noteMaterial, noteSkins, (_element, hovered) => (hovered ? "hover" : "default"));
+  const customElement = host.querySelector<HTMLElement>(".s00-custom");
+  customElement?.addEventListener("pointerdown", () => {
+    noteMaterial.map = noteSkins.pressed;
+    noteMaterial.needsUpdate = true;
+  });
+  customElement?.addEventListener("pointerup", () => {
+    noteMaterial.map = noteSkins.hover;
+    noteMaterial.needsUpdate = true;
+  });
 
   // ── DOM 재투영: 3D 모드에서는 스크린 레이아웃을 버리고, 요소 중심이
   // 항상 모델 앵커의 투영점에 오도록 절대 배치한다. dispose 때 원복. ──

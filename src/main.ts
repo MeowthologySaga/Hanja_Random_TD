@@ -442,9 +442,9 @@ app.innerHTML = `
           <figure style="left:965px;top:333px"><img class="s00-ring" src="${import.meta.env.BASE_URL}assets/ui/main-menu-b/rings/summon-ring-metal-v1.png" alt="" /><img class="s00-spirit" src="${import.meta.env.BASE_URL}assets/ui/main-menu-b/jaryeongs/menu-metal-mirror-frame-v1.png" alt="" /></figure>
         </div>
 
-        <button id="custom-formation-button" class="s00-custom" type="button" disabled
-          title="맞춤 진법 설정 화면 연결 준비 중" aria-label="맞춤 진법. 설정 화면 연결 준비 중">
-          <i class="s00-skin" aria-hidden="true"></i><b>맞춤 진법</b><small>범위 · 표기 · 규칙</small><small class="s00-reason">연결 준비 중</small>
+        <button id="custom-formation-button" class="s00-custom" type="button"
+          title="맞춤 진법 — 범위·표기·규칙 (설정 화면 준비 중)" aria-label="맞춤 진법. 범위·표기·규칙 설정. 아직 준비 중입니다">
+          <i class="s00-skin" aria-hidden="true"></i><b>맞춤 진법</b><small>범위 · 표기 · 규칙</small><small class="s00-reason" aria-live="polite">준비 중</small>
         </button>
 
         <div class="s00-regions" role="radiogroup" aria-label="지역 한자 체계">
@@ -4553,6 +4553,19 @@ p00Dialog.addEventListener("cancel", (event) => {
 });
 p00Dialog.addEventListener("click", (event) => {
   if (event.target === p00Dialog) closeP00(false);
+});
+
+// 맞춤 진법(S13)은 아직 화면이 없다. 죽은 버튼 대신, 눌리되 정직하게
+// "준비 중"을 그 자리에서 답한다. 어떤 모드도 임시로 시작시키지 않는다.
+let customFormationNoticeTimer = 0;
+must<HTMLButtonElement>("#custom-formation-button").addEventListener("click", () => {
+  sound.playUiConfirm();
+  const reason = must<HTMLElement>("#custom-formation-button .s00-reason");
+  reason.textContent = "설정 화면을 준비하고 있습니다";
+  window.clearTimeout(customFormationNoticeTimer);
+  customFormationNoticeTimer = window.setTimeout(() => {
+    reason.textContent = "준비 중";
+  }, 2200);
 });
 
 must<HTMLButtonElement>("#seed-reroll-button").addEventListener("click", () => {

@@ -5980,3 +5980,19 @@ dialog,
   clip-path: none !important;
   animation: none !important;
 }
+
+/* 64. 맞춤 진법 — 죽은 버튼에서 눌리는 쪽지로 */
+.s00-custom {
+  cursor: pointer;
+}
+
+.s00-custom b { color: #e6d6ae; }
+.s00-custom small { color: #b3a17e; }
+.s00-custom .s00-reason { color: #c96a50; font-weight: 800; }
+
+.s00-custom:hover b { color: #f7ecc9; }
+.s00-custom:active { translate: 0 2px; }
+
+.s00-custom .s00-skin { background-image: url("/assets/ui/main-menu-b/ui/custom-note-default-v1.png"); }
+.s00-custom:hover .s00-skin { background-image: url("/assets/ui/main-menu-b/ui/custom-note-hover-v1.png"); }
+.s00-custom:active .s00-skin { background-image: url("/assets/ui/main-menu-b/ui/custom-note-pressed-v1.png"); }
