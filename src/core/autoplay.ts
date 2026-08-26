@@ -5,7 +5,7 @@
  * 결정성 회귀에 쓰이며, 게임 실행 경로에는 들어가지 않는다.
  */
 import { BOARD_FORMATIONS, FORMATION_COLUMNS, FORMATION_ROWS } from "./content";
-import { autoConcentrationPath, MAX_CONCENTRATION_LEVEL, sumElementValues } from "./engine-tuning";
+import { autoConcentrationPath, MAX_CONCENTRATION_LEVEL, sumElementValues, summonCost } from "./engine-tuning";
 import { GameEngine } from "./game";
 import { ELEMENT_TRAIT_MAX_LEVEL, elementTraitUnlockScore, elementTraitUpgradeCost } from "./growth";
 import {
@@ -13,7 +13,6 @@ import {
   globalUpgradeCost,
   researchCost,
   researchUnlockWave,
-  summonCost,
   UPGRADE_STAT_ORDER
 } from "./hanzi";
 import {

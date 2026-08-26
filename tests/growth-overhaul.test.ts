@@ -9,7 +9,8 @@ import {
   dismantleEssenceValue
 } from "../src/core/game";
 import { ELEMENT_TRAIT_COSTS } from "../src/core/growth";
-import { STAGE_MULTIPLIERS, definitionForTower, elementUpgradeCost, summonCost } from "../src/core/hanzi";
+import { STAGE_MULTIPLIERS, definitionForTower, elementUpgradeCost } from "../src/core/hanzi";
+import { summonCost } from "../src/core/engine-tuning";
 import type { Enemy, HanziDefinition, Tower } from "../src/core/types";
 
 function towerFor(definition: HanziDefinition, id: number, cell: number, locked = false): Tower {

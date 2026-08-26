@@ -35,7 +35,8 @@
  */
 import { TALISMAN_MODE_ENEMY_HP_SCALE } from "../../core/engine-tuning";
 import { type GameEngine } from "../../core/game";
-import { summonCost, WUXING_ORDER } from "../../core/hanzi";
+import { summonCost } from "../../core/engine-tuning";
+import { WUXING_ORDER } from "../../core/hanzi";
 import { learningInfo } from "../../core/learning";
 import { type HanziDefinition, type Wuxing } from "../../core/types";
 import { calmBattlefield, ctx, must, TALISMAN_MODE_STORAGE_KEY, sound } from "../app-context";

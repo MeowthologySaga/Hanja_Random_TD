@@ -1,0 +1,29 @@
+{
+  "name": "scene-04-v3",
+  "seed": "CHEONJA-DEMO",
+  "base": "http://127.0.0.1:4438",
+  "marks": [
+    {
+      "label": "money",
+      "t": 17.003
+    },
+    {
+      "label": "pickup",
+      "t": 26.231
+    },
+    {
+      "label": "place",
+      "t": 30.73
+    },
+    {
+      "label": "sealed",
+      "t": 33.712
+    },
+    {
+      "label": "end",
+      "t": 38.532
+    }
+  ],
+  "end": 38.648,
+  "file": ".codex_tmp\\demo\\raw\\scene-04-v3.webm"
+}

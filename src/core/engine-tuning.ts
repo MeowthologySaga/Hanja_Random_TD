@@ -112,6 +112,66 @@ export function casualSummonStarDistribution(
   return rows.map((row) => ({ star: row.star, share: total > 0 ? row.share / total : 0 }));
 }
 
+/**
+ * 소환 기본가. 열두 번 뽑을 때마다 1 오르고 24에서 멎는다 — 무한 뽑기를 막되
+ * 후반에도 상한이 예측 가능해야 상점 계획이 선다.
+ */
+export const SUMMON_BASE_COST = Object.freeze({ start: 7, perStep: 12, cap: 24 });
+
+export function summonCost(summonCount: number): number {
+  const { start, perStep, cap } = SUMMON_BASE_COST;
+  return Math.min(cap, start + Math.floor(Math.max(0, summonCount) / perStep));
+}
+
+/**
+ * 상점 소환 상품의 기본가 배수 — 정찰료는 정액이 아니라 **정률**이다.
+ *
+ * 확률 보정은 공짜가 아니다. 목적 소환은 기본가에 배수를 곱해 "무엇을
+ * 노리는가"가 곧 지출 판단이 되도록 한다. 균형 소환만 1이며 10연 소환은
+ * 균형가를 그대로 쓴다(`multiSummonCost`).
+ *
+ * 정액(+2/+3/+5/+12)이던 시절의 병리 — 기본가가 7→24 로 세 배 넘게 오르는
+ * 동안 정찰료만 굳어 있어서 엽전당 전투력 순위가 뒤집혔다. 실측:
+ *
+ *   기본가  7: 기본 0.179 > 중급 0.153 > 고급 0.140   (건강 — 기본=화력, 티어=별 프리미엄)
+ *   기본가 24: 기본 0.052 < 중급 0.063 < 고급 0.074   (역전 — 고급 전면 우위·기본 완전 열등)
+ *
+ * 배수로 바꾸면 가격비가 척도 불변이 되어 초반 구조가 끝까지 유지된다.
+ * 계수는 초반 가격(7/9/10/9/12/19)을 한 푼도 바꾸지 않도록 골랐고,
+ * 그래서 후반은 24/31/35/31/41/65 가 된다. 상품 간 엽전당 전투력 최대/최소
+ * 격차는 전 구간 1.29~1.33 로 평탄해진다(정액은 1.29 → 1.53 으로 벌어졌다).
+ *
+ * 탐색·중복(×1.3)·계보(×1.45)도 같은 병을 앓고 있었다 — 정액 +2/+3 은
+ * 후반에 기본가 대비 8% 프리미엄으로 녹아 "목적을 고르는 지출 판단" 자체가
+ * 사라졌다. 정률로 바꾸면 프리미엄이 30%·45% 로 고정된다. 이 셋은 별 밴드가
+ * 기본과 같거나(탐색·중복 1~3★) 아예 없어서(계보는 자형연성 전용) 전투력
+ * 축으로는 언제나 기본보다 낮다 — 값은 겨냥에 붙지 화력에 붙지 않는다.
+ */
+export const SUMMON_COST_MULTIPLIER: Readonly<Record<SummonIntent, number>> = Object.freeze({
+  balanced: 1,
+  discovery: 1.3,
+  lineage: 1.45,
+  concentration: 1.3,
+  midstar: 1.7,
+  highstar: 2.7
+});
+
+/** 상품 카드에 표시하고 실제로 청구하는 1회 소환가. */
+export function summonProductCost(summonCount: number, intent: SummonIntent): number {
+  return Math.round(summonCost(summonCount) * SUMMON_COST_MULTIPLIER[intent]);
+}
+
+/** 기본가 위에 얹히는 정찰료 실액. 표시와 청구가 같은 곳에서 나오도록 파생으로 둔다. */
+export function summonSurcharge(summonCount: number, intent: SummonIntent): number {
+  return summonProductCost(summonCount, intent) - summonCost(summonCount);
+}
+
+/** 10연 소환은 균형가 열 장 값 그대로다(배수 1, 할증 없음). */
+export function multiSummonCost(summonCount: number, amount = 10): number {
+  return Array.from({ length: Math.max(0, amount) }, (_, index) => summonCost(summonCount + index))
+    .reduce((total, cost) => total + cost, 0);
+}
+
 export function interestForGold(gold: number): number {
   return Math.min(20, Math.max(0, Math.floor(gold / 20)));
 }
