@@ -8920,3 +8920,45 @@ span.codex-jaryeong-category { color: #4a3f30 !important; }
     0 3px 0 rgba(66, 48, 20, 0.22),
     0 8px 20px rgba(0, 0, 0, 0.26);
 }
+
+/* ──────────────────────────────────────────────────────────────────
+   R7-3. 일시정지 칩 — 전장 한가운데 위쪽에 한 줄
+   모달을 열면 전투가 서고, 그 사실이 전장 위에서 바로 읽혀야 한다.
+   상단바(z 6)·배너보다 위, 토스트와 같은 층에 둔다.
+   ────────────────────────────────────────────────────────────────── */
+
+.pause-chip {
+  position: absolute;
+  left: 50%;
+  top: 96px;
+  z-index: 8;
+  display: flex;
+  gap: var(--sp-2);
+  align-items: baseline;
+  clip-path: var(--clip-cut-sm);
+  padding: 7px 16px;
+  background: linear-gradient(180deg, var(--ji-400) 0%, var(--ji-600) 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 250, 0.9),
+    inset 0 0 0 1px rgba(88, 70, 44, 0.4),
+    0 6px 18px rgba(0, 0, 0, 0.45);
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+.pause-chip[hidden] {
+  display: none;
+}
+
+.pause-chip b {
+  color: var(--seal);
+  font-size: var(--fs-sm);
+  font-weight: 900;
+  letter-spacing: 0.02em;
+}
+
+.pause-chip span {
+  color: var(--text-100);
+  font-size: var(--fs-2xs);
+  font-weight: 700;
+}

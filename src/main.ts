@@ -189,6 +189,7 @@ app.innerHTML = `
       </div>
       <div class="wave-progress" aria-hidden="true"><i id="wave-progress-fill"></i></div>
       <div id="boss-banner" class="boss-banner" aria-live="assertive"></div>
+      <div id="pause-chip" class="pause-chip" role="status" aria-live="polite" hidden><b>⏸ 일시정지</b><span id="pause-reason">창을 닫으면 계속</span></div>
       <div id="toast" class="toast" role="status" aria-live="polite"></div>
       <section id="summon-reveal" class="summon-reveal" aria-hidden="true" aria-live="assertive">
         <header><div><span>소환 결과</span><strong id="summon-reveal-title">자령 소환</strong></div><button id="summon-reveal-close" type="button" aria-label="소환 결과 닫기">×</button></header>
@@ -631,7 +632,7 @@ app.innerHTML = `
           <li><b>게임 배속</b><span>오른쪽 위 배속 버튼이나 F키로 1×·2×·3×를 순환합니다.</span></li>
           <li><b>게임오버</b><span>적은 경로 끝에서 사라지지 않고 계속 순환합니다. 전장에 ${MAX_ENEMIES}체가 쌓이거나 보스를 제한시간 안에 처치하지 못하면 즉시 실패합니다. 제어 능력은 적을 뒤로 밀지 않고 현재 공격권 안에서 감속·봉쇄합니다.</span></li>
         </ol>
-        <div class="key-guide"><span><kbd>1</kbd> 소환</span><span><kbd>Q</kbd> 10연</span><span><kbd>2</kbd> 첫 합성</span><span><kbd>3</kbd> 연구</span><span><kbd>Space</kbd> 한자 강조</span><span><kbd>F</kbd> 배속</span><span><kbd>C</kbd> 도감</span><span><kbd>M</kbd> 음소거</span></div>
+        <div class="key-guide"><span><kbd>1</kbd> 소환</span><span><kbd>Q</kbd> 10연</span><span><kbd>2</kbd> 첫 합성</span><span><kbd>3</kbd> 연구</span><span><kbd>Space</kbd> 한자 강조</span><span><kbd>F</kbd> 배속</span><span><kbd>P</kbd> 일시정지</span><span><kbd>C</kbd> 도감</span><span><kbd>M</kbd> 음소거</span></div>
         <p>장갑·질풍·군집·회생 적의 특성을 미리 확인하세요. 놓친 적도 사라지지 않고 다음 바퀴를 돌기 때문에 누적 수를 계속 관리해야 합니다.</p>
       </form>
     </dialog>
@@ -1248,6 +1249,7 @@ function startRun(useNewSeed = false): void {
   engine.state.autoPlaceSummons = loadAutoPlaceSummons();
   engine.begin();
   previousPhase = "prep";
+  manualPause = false;
   titleOverlay.classList.remove("modal-layer--visible");
   endOverlay.classList.remove("modal-layer--visible");
   sound.unlock();
@@ -5688,14 +5690,49 @@ window.addEventListener("keydown", (event) => {
   } else if (event.code === "KeyC") must<HTMLButtonElement>("#codex-button").click();
   else if (event.code === "KeyM") must<HTMLButtonElement>("#sound-button").click();
   else if (event.code === "KeyF") cycleGameSpeed();
+  else if (event.code === "KeyP") toggleManualPause();
 });
+
+/*
+ * 일시정지.
+ *
+ * 도감·도움말·설정·S13 을 열어 두고 규칙을 읽는 동안에도 전투가 계속
+ * 굴러가서, 창을 닫으면 진법이 이미 무너져 있었다. 모달이 열려 있으면
+ * `engine.update` 만 건너뛰고 렌더 루프는 그대로 돌린다 — 화면이 얼어붙는
+ * 대신 "멈춰 있다"가 그대로 보인다. P 키는 수동 토글이며 같은 칩을 쓴다.
+ * 종료 화면은 이미 정지 상태라 무관하다.
+ */
+let manualPause = false;
+
+/** 열려 있는 모달 다이얼로그가 하나라도 있으면 전투를 세운다. */
+function modalPauseActive(): boolean {
+  return document.querySelector("dialog[open]") !== null;
+}
+
+function syncPauseChip(paused: boolean, manual: boolean): void {
+  const chip = must<HTMLElement>("#pause-chip");
+  if (chip.hidden !== !paused) chip.hidden = !paused;
+  if (!paused) return;
+  const reason = manual ? "P 키로 계속" : "창을 닫으면 계속";
+  const label = must<HTMLElement>("#pause-reason");
+  if (label.textContent !== reason) label.textContent = reason;
+}
+
+function toggleManualPause(): void {
+  if (engine.state.phase !== "prep" && engine.state.phase !== "combat") return;
+  manualPause = !manualPause;
+  showToast(manualPause ? "일시정지 — P 키로 계속합니다." : "다시 진행합니다.");
+}
 
 function frame(now: number): void {
   const frameWorkStartedAt = performance.now();
   const delta = Math.min(0.1, Math.max(0, (now - lastFrame) / 1000));
-  const simulationDelta = delta * gameSpeed;
+  const running = engine.state.phase === "prep" || engine.state.phase === "combat";
+  const paused = running && (manualPause || modalPauseActive());
+  const simulationDelta = paused ? 0 : delta * gameSpeed;
   lastFrame = now;
-  engine.update(simulationDelta);
+  syncPauseChip(paused, manualPause);
+  if (!paused) engine.update(simulationDelta);
   const audioPlan = engine.getCurrentPlan();
   sound.syncBgm({
     phase: engine.state.phase,
@@ -5716,7 +5753,8 @@ function frame(now: number): void {
   // Simulation respects the selected speed, while visual feedback keeps a
   // stable real-time duration so 2x/3x does not make projectiles and skill
   // labels flash for only a few frames.
-  drawWorld(delta);
+  // 일시정지 중에는 이펙트도 0 으로 굴려 "적은 멈췄는데 탄만 난다"를 막는다.
+  drawWorld(paused ? 0 : delta);
   syncPanel();
   syncCoachProgress();
   if (waveStartedThisFrame) canvas.dataset.waveStartWorkMs = (performance.now() - frameWorkStartedAt).toFixed(2);
