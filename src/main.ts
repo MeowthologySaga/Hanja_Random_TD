@@ -5,6 +5,8 @@ import {
   BOARD_FORMATIONS,
   CELLS_PER_FORMATION,
   ENEMY_PATH_POINTS,
+  FORMATION_COLUMNS,
+  FORMATION_ROWS,
   ENEMY_SPAWN_PROGRESS,
   MAX_ENEMIES,
   WAVE_REINFORCEMENT_DELAY,
@@ -38,7 +40,13 @@ import {
   elementTraitUnlockScore,
   elementTraitUpgradeCost
 } from "./core/growth";
-import { idiomById, type IdiomDefinition } from "./core/idioms";
+import {
+  type IdiomDefinition,
+  type PartialIdiomChain,
+  idiomById,
+  idiomNeighborCells,
+  partialIdiomChain
+} from "./core/idioms";
 import {
   enemyJaryeongVisualFor,
   jaryeongAssetPath,
@@ -53,6 +61,21 @@ import {
   type CheonjamunJaryeongDexEntry
 } from "./core/cheonjamun-jaryeong-dex";
 import { koreanMeaningExplanation } from "./core/korean-meaning-explanations";
+import { type CompactReading, type MeasureText, compactReading } from "./ui/plaque-text";
+import {
+  NAMEPLATE_LAYOUT,
+  type NameplateKind,
+  nameplateImage,
+  nameplateReady,
+  preloadNameplateSprites
+} from "./ui/nameplate-sprites";
+import {
+  type IdiomOrder,
+  idiomOrderSealImage,
+  idiomSpriteReady,
+  preloadIdiomSprites,
+  tintedIdiomRipple
+} from "./ui/idiom-sprites";
 import { LEARNING_DATA_META, learningInfo } from "./core/learning";
 import { radicalGlyph, radicalLearningLabel } from "./core/radicals";
 import {
@@ -140,11 +163,7 @@ import {
   CELL_SOCKET_SIZE,
   cellSocketImage,
   isCellSocketReady,
-  isNameplateReady,
-  nameplateImage,
-  nameplateStateFor,
-  preloadP0ComponentSprites,
-  type NameplateForm
+  preloadP0ComponentSprites
 } from "./ui/p0-component-sprites";
 import {
   EXIT_SEAL_SIZE,
@@ -202,6 +221,7 @@ app.innerHTML = `
         <button id="early-button" class="early-start" type="button" data-testid="early-wave">시작 보너스</button>
         <div id="enemy-limit-chip" class="stage-chip"><span>적 한계</span><strong id="stage-enemies">0 / ${MAX_ENEMIES}</strong></div>
       </div>
+      <div id="active-idioms" class="active-idioms" aria-label="발동 중 사자성어" aria-live="polite"></div>
       <div class="wave-progress" aria-hidden="true"><i id="wave-progress-fill"></i></div>
       <div id="boss-banner" class="boss-banner" aria-live="assertive"></div>
       <div id="toast" class="toast" role="status" aria-live="polite"></div>
@@ -348,6 +368,15 @@ app.innerHTML = `
         </div>
 
         <section id="idiom-panel" class="idiom-panel panel-view" data-panel-view="idiom" aria-label="사자성어 진법" aria-live="polite">
+          <section class="idiom-rule-guide" aria-label="성어 발동 규칙">
+            <div class="idiom-rule-chain" aria-hidden="true">
+              <i style="--r:1;--c:1">①</i><b style="--r:1;--c:2">→</b>
+              <i style="--r:1;--c:3">②</i><b style="--r:1;--c:4">→</b>
+              <i style="--r:1;--c:5">③</i><b class="is-diagonal" style="--r:2;--c:6">↘</b>
+              <i style="--r:2;--c:7">④</i>
+            </div>
+            <p>순서대로 이웃(대각선 가능) · 역순도 인정 · 같은 진 안에서</p>
+          </section>
           <div id="idiom-hud" class="idiom-hud">
             <div class="idiom-heading"><span>四字成語 진법</span><b id="idiom-count">0 / 4</b></div>
             <div id="idiom-glyphs" class="idiom-glyphs"></div>
@@ -948,6 +977,29 @@ function pushRasterBurst(image: HTMLImageElement, at: Point, size: number): void
   rasterBursts.push({ image, at: { x: at.x, y: at.y }, size, age: 0 });
 }
 
+/**
+ * 봉인 발동 파문 — 코덱스 파문 마스크를 성어 색으로 물들여 네 칸에 한 번씩 띄운다.
+ * `delay` 로 1번 칸부터 차례로 터뜨려 "이 넷이 이 순서"라는 사실을 한 번 더 말한다.
+ */
+interface IdiomRippleFx {
+  at: Point;
+  color: string;
+  age: number;
+  delay: number;
+  duration: number;
+}
+/** 발동 순간 뜨는 성어 4자 대형 플래시. 카메라가 어디에 있든 보이도록 화면 좌표로 그린다. */
+interface IdiomFlashFx {
+  chars: string;
+  reading: string;
+  color: string;
+  at: Point;
+  age: number;
+  duration: number;
+}
+const idiomRipples: IdiomRippleFx[] = [];
+let idiomFlash: IdiomFlashFx | null = null;
+
 function pushPooled<T>(active: T[], pool: T[], item: T, limit: number): void {
   if (active.length >= limit) {
     const recycled = active.shift();
@@ -1112,6 +1164,8 @@ preloadFormationPlates();
 preloadLockSprites();
 preloadP0ComponentSprites();
 preloadPolishSprites();
+preloadIdiomSprites();
+preloadNameplateSprites();
 
 /*
  * 집중 프레임(S06 강화 · S07 농축).
@@ -1341,6 +1395,10 @@ function startRun(useNewSeed = false): void {
   recycleAll(floaters, floaterPool, 48);
   recycleAll(rings, ringPool, 32);
   recycleAll(abilityBursts, abilityBurstPool, 12);
+  idiomRipples.length = 0;
+  idiomFlash = null;
+  // 새 런은 봉인이 0개라 키도 빈 문자열이 된다. 초기값과 겹치지 않게 표식으로 밀어 둔다.
+  activeIdiomsRenderKey = "run-reset";
   projectileSpriteDrawTotal = 0;
   abilityZoneSpriteDrawTotal = 0;
   canvas.dataset.projectileSpriteDrawTotal = "0";
@@ -1433,6 +1491,19 @@ function showWaveBanner(): void {
         { opacity: 1, transform: "translate(-50%, 0) scale(1)", offset: 0.7 },
         { opacity: 0, transform: "translate(-50%, 6px) scale(1.02)" }
       ], { duration: 1200, easing: "ease" });
+}
+
+/**
+ * 첫 봉인 축하 — 스펙 6라운드 E3.
+ *
+ * 첫 봉인은 "뭔가 터졌다"로만 남고 그 효과가 어디에 남는지는 알려 주지 않았다.
+ * 웨이브 배너를 한 번 빌려 전장 왼쪽 스택을 가리킨다. 런마다 처음 한 번뿐이다.
+ */
+function firstSealCelebration(reading: string): void {
+  bossBanner.textContent = `첫 봉인 ${reading}! 발동 중 성어는 전장 왼쪽에 표시됩니다`;
+  bossBanner.classList.remove("boss-banner--boss");
+  bossBanner.classList.add("boss-banner--idiom");
+  showWaveBanner();
 }
 
 function addCombatFeed(glyph: string, name: string, detail: string, color: string): void {
@@ -1913,12 +1984,28 @@ function processEvent(event: GameEvent): void {
       const points = event.cells.map((cell) => BOARD_CELLS[cell] as Point);
       const center = points.reduce((total, point) => ({ x: total.x + point.x / points.length, y: total.y + point.y / points.length }), { x: 0, y: 0 });
       for (const point of points) pushPooled(rings, ringPool, takeRing(point, event.color, 1.05), 32);
+      // 코덱스 봉인 인장(래스터) + 네 칸 파문 + 4자 플래시를 함께 띄운다.
       pushRasterBurst(idiomCompletionSealImage(), center, IDIOM_SEAL_SIZE);
-      const flourishAt = { x: center.x, y: Math.min(WORLD_HEIGHT - 100, center.y + 115) };
-      pushPooled(floaters, floaterPool, takeFloater(flourishAt, event.reading + " 자동 봉인!", event.color, 1.25, true), 48);
+      // 봉인된 네 칸에서 1→4 순서로 성어 색 파문이 퍼지고, 그 위에 4자가 크게 뜬다.
+      idiomRipples.length = 0;
+      for (let index = 0; index < points.length; index += 1) {
+        const point = points[index] as Point;
+        idiomRipples.push({
+          at: point,
+          color: event.color,
+          age: 0,
+          delay: reducedMotion ? 0 : index * 0.09,
+          duration: reducedMotion ? 0.34 : 0.66
+        });
+      }
+      // 대형 플래시가 `이심전심 · 봉인` 을 이미 크게 말한다. 같은 자리에 뜨던
+      // `이심전심 자동 봉인!` 플로터까지 겹치면 배너·플래시·플로터가 한 문장을
+      // 세 번 반복해 정작 어느 칸이 봉인됐는지가 안 보인다.
+      idiomFlash = { chars: event.chars, reading: event.reading, color: event.color, at: center, age: 0, duration: reducedMotion ? 0.6 : 1.2 };
       showIdiomResult(event.reading, event.meaning, event.bonus, event.color);
       addCombatFeed("四", event.reading, event.bonus, event.color);
       idiomRenderKey = "";
+      if (engine.state.idiomSeals.length === 1) firstSealCelebration(event.reading);
       break;
     }
     case "wave":
@@ -1926,6 +2013,7 @@ function processEvent(event: GameEvent): void {
         ? "⚠ 우두머리 " + String(event.wave) + " · 약점 " + event.weakness + " ⚠"
         : "웨이브 " + String(event.wave) + " · 약점 " + event.weakness;
       bossBanner.classList.toggle("boss-banner--boss", event.boss);
+      bossBanner.classList.remove("boss-banner--idiom");
       showWaveBanner();
       break;
     case "phase":
@@ -2231,6 +2319,7 @@ function syncPanel(): void {
   if (activePanelTab === "concentration") renderConcentration();
   if (activePanelTab === "growth") renderGrowth();
   renderIdiomHud();
+  renderActiveIdioms();
 }
 
 function renderGoal(): void {
@@ -2995,12 +3084,69 @@ function closeCompositionDrawer(): void {
 }
 
 
+/*
+ * 1회성 성어 코치 — 스펙 6라운드 E1.
+ *
+ * 발동 규칙은 지금까지 성어 탭 안 10px 한 줄에만 있었고, 재료가 손에 들어온
+ * 순간에는 아무 말도 없었다. 추적 중인 성어의 글자를 둘 이상 갖게 된 최초의
+ * 순간에 한 번만 규칙을 말하고, 자세한 건 성어 목표 탭에 있다고 가리킨다.
+ */
+const IDIOM_HINT_STORAGE_KEY = "hanja-td:idiom-hint-v1";
+let idiomHintHandled = false;
+
+function idiomHintAlreadySeen(): boolean {
+  try {
+    return window.localStorage.getItem(IDIOM_HINT_STORAGE_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function markIdiomHintSeen(): void {
+  try {
+    window.localStorage.setItem(IDIOM_HINT_STORAGE_KEY, "1");
+  } catch {
+    // 저장이 막혀 있어도 이번 판 안내는 정상 동작한다.
+  }
+}
+
+/**
+ * 성어 탭을 세 번 맥동시켜 "더 볼 곳"을 짚는다.
+ *
+ * 목표 탭 안의 성어 서브탭은 목표 패널을 열어 둔 사람에게만 보이므로, 항상
+ * 보이는 성어 패널 탭도 함께 맥동시킨다. 안내가 아무 데도 안 닿으면 무의미하다.
+ */
+function pulseIdiomGoalTab(): void {
+  const tabs = [idiomTab, document.querySelector<HTMLButtonElement>('[data-goal-mode="idiom"]')];
+  for (const tab of tabs) {
+    if (!tab) continue;
+    tab.classList.remove("is-hint-pulsing");
+    void tab.offsetWidth;
+    tab.classList.add("is-hint-pulsing");
+    window.setTimeout(() => tab.classList.remove("is-hint-pulsing"), 2600);
+  }
+}
+
+function maybeShowIdiomHint(target: IdiomDefinition | undefined): void {
+  if (idiomHintHandled || !target) return;
+  if (engine.idiomProgress(target.id).owned < 2) return;
+  idiomHintHandled = true;
+  if (idiomHintAlreadySeen()) return;
+  markIdiomHintSeen();
+  showToast(`${target.chars} 재료가 모이고 있어요 — 같은 진에서 ①→④ 순서로 이웃하게 놓으면 봉인 발동! (역순도 가능)`);
+  // 두 줄짜리 안내라 평소 자리(bottom 45px)에서는 지도·강조 버튼과 겹친다.
+  toast.classList.add("toast--idiom-hint");
+  window.setTimeout(() => toast.classList.remove("toast--idiom-hint"), 2000);
+  pulseIdiomGoalTab();
+}
+
 function renderIdiomHud(): void {
   const target = engine.currentIdiomTarget();
   const ownedSignature = engine.state.towers.map((tower) => tower.char).sort().join("");
   const key = engine.state.idiomSeals.map((seal) => seal.idiomId).join(",") + "|" + (target?.id ?? "done") + "|" + ownedSignature;
   if (key === idiomRenderKey) return;
   idiomRenderKey = key;
+  maybeShowIdiomHint(target);
   must<HTMLElement>("#idiom-count").textContent = String(engine.state.idiomSeals.length) + " / " + String(engine.idioms().length);
   must<HTMLElement>("#idiom-tab-count").textContent = String(engine.state.idiomSeals.length) + "/" + String(engine.idioms().length);
   const hud = must<HTMLElement>("#idiom-hud");
@@ -3034,6 +3180,52 @@ function renderIdiomHud(): void {
   must<HTMLElement>("#idiom-hint").textContent = missingCraft
     ? "먼저 " + missingCraft.char + " = " + missingCraft.parents.join("+") + " 조합"
     : "1→2→3→4 이웃 배치 → 자동 발동";
+}
+
+/**
+ * 발동 중 성어 스택 — 스펙 6라운드 D.
+ *
+ * 봉인한 성어의 효과는 런 내내 남는데, 지금까지 그 사실은 성어 탭을 열어야만
+ * 보였다. 전장 좌측에 상시 배지로 세워 두고, 배지를 누르면 그 네 칸으로
+ * 카메라를 옮겨 "어디에 있는 무엇인지"까지 이어 준다.
+ */
+let activeIdiomsRenderKey = "init";
+
+/** `모든 자령 사거리 +12` → `사거리 +12`. 12px 배지 한 줄에 담기게 주어를 턴다. */
+function shortIdiomBonusLabel(label: string): string {
+  return label.replace(/^모든 자령 /, "").replace(/^모든 적 /, "적 ").replace(/^합성할 때마다 /, "합성 ");
+}
+
+function renderActiveIdioms(): void {
+  const seals = engine.state.idiomSeals;
+  const key = seals.map((seal) => seal.idiomId).join(",");
+  if (key === activeIdiomsRenderKey) return;
+  activeIdiomsRenderKey = key;
+  const stack = must<HTMLElement>("#active-idioms");
+  // 성어 목표는 다섯이라 그 이상은 생길 수 없지만, 전장을 덮지 않도록 못을 박는다.
+  const visible = seals.slice(0, 5);
+  stack.innerHTML = visible
+    .map((seal) => {
+      const idiom = idiomById(engine.state.region, seal.idiomId);
+      if (!idiom) return "";
+      const bonus = shortIdiomBonusLabel(idiom.bonus.label);
+      return `<button type="button" class="active-idiom" data-active-idiom="${escapeHtml(seal.idiomId)}" style="--idiom:${idiom.color}" title="${escapeHtml(idiom.reading)} · ${escapeHtml(idiom.bonus.label)} — 눌러서 봉인 칸으로 이동" aria-label="${escapeHtml(idiom.reading)} 봉인 · ${escapeHtml(idiom.bonus.label)} · 눌러서 해당 네 칸으로 이동"><b>${escapeHtml(idiom.chars)}</b><span>${escapeHtml(bonus)}</span></button>`;
+    })
+    .join("");
+  stack.classList.toggle("is-empty", visible.length === 0);
+}
+
+/** 여러 칸의 무게중심으로 카메라를 옮긴다. 발동 성어 배지가 이걸 쓴다. */
+function focusMapOnCells(cells: readonly number[]): void {
+  const points = cells.map((cell) => BOARD_CELLS[cell]).filter((point): point is Point => Boolean(point));
+  if (points.length === 0) return;
+  const center = points.reduce(
+    (total, point) => ({ x: total.x + point.x / points.length, y: total.y + point.y / points.length }),
+    { x: 0, y: 0 }
+  );
+  mapOffset = { x: WORLD_WIDTH / 2 - center.x * mapZoom, y: WORLD_HEIGHT / 2 - center.y * mapZoom };
+  constrainMapCamera();
+  syncMapZoomControl();
 }
 
 const ROLE_STRATEGY: Record<HanziDefinition["combat"]["role"], string> = {
@@ -3496,6 +3688,15 @@ function drawWorld(delta: number): void {
   const state = engine.state;
   const selectedTower = engine.selectedTower();
   canvas.dataset.selectedTowerId = selectedTower ? String(selectedTower.id) : "";
+  // compact 명패가 훈음을 줄여 적어도 전체값은 접근성 이름과 상세 팝오버에 남는다.
+  const selectedReading = selectedTower ? learningInfo(state.region, selectedTower.char).short : "";
+  if (canvas.dataset.selectedTowerReading !== selectedReading) {
+    canvas.dataset.selectedTowerReading = selectedReading;
+    canvas.setAttribute(
+      "aria-label",
+      selectedTower ? `전장 · 선택 자령 ${selectedTower.char} ${selectedReading}` : "전장 · 선택한 자령 없음"
+    );
+  }
   canvas.dataset.selectedSynthesisTier = selectedTower ? String(engine.state.mode === "casual" ? casualStarOf(selectedTower) : mapSynthesisDepths.get(selectedTower.char) ?? 1) : "";
   const materialIds = hoveredMaterialIds();
   // 개발 진단: 적·제단 래스터 로드 상태. 프로덕션 화면에는 노출하지 않는다.
@@ -3509,6 +3710,8 @@ function drawWorld(delta: number): void {
   context.scale(mapZoom, mapZoom);
   drawTrack();
   drawBoard();
+  refreshIdiomPlacementGuide();
+  drawIdiomPlacementCells();
   drawAbilityZones();
   drawCompositionMaterialLinks();
   drawIdiomSeals();
@@ -3520,11 +3723,14 @@ function drawWorld(delta: number): void {
   for (const tower of [...state.towers].sort((a, b) => a.cell - b.cell)) {
     if (isWorldPointVisible(BOARD_CELLS[tower.cell] as Point, 65)) drawTower(tower, materialIds);
   }
+  // 명패는 자령 본체를 모두 그린 뒤에 흘려야 이웃 자령이 훈음을 덮지 않는다.
+  flushTowerPlaques();
   // Keep combat sprites in the foreground so their raster silhouettes are not
   // hidden by the enemy/tower bodies. Their alpha and size remain restrained
   // so the learning labels stay readable.
   updateAndDrawFx(delta);
   context.restore();
+  drawIdiomFlash();
   drawHoveredTowerCard();
 }
 
@@ -4176,19 +4382,205 @@ function drawProceduralLock(cx: number, cy: number, scale: number, affordable: b
   context.restore();
 }
 
+/**
+ * 추적 중 성어의 배치 안내 — 스펙 6라운드 B.
+ * 어떤 자령이 몇 번째 글자인지(순번 배지), 다음 글자를 어디에 놓을 수 있는지
+ * (유효 셀)를 한 번만 계산해 두고 명패·보드 오버레이가 함께 읽는다.
+ */
+interface IdiomPlacementGuide {
+  readonly idiom: IdiomDefinition;
+  readonly chain: PartialIdiomChain;
+  /** 자령 id → 성어에서의 순번(1~4). */
+  readonly orders: ReadonlyMap<number, IdiomOrder>;
+  /** 다음 글자를 이을 수 있는 빈 칸. */
+  readonly nextCells: readonly number[];
+}
+
+let idiomPlacementGuide: IdiomPlacementGuide | null = null;
+let idiomPlacementGuideKey = "";
+
+function refreshIdiomPlacementGuide(): void {
+  const idiom = engine.currentIdiomTarget();
+  const key = idiom
+    ? `${idiom.id}|${engine.state.towers.map((tower) => `${tower.cell}:${tower.char}`).sort().join(",")}|${engine.state.unlockedFormations.join("")}`
+    : "";
+  if (key === idiomPlacementGuideKey) return;
+  idiomPlacementGuideKey = key;
+  if (!idiom) {
+    idiomPlacementGuide = null;
+    canvas.dataset.idiomTarget = "";
+    canvas.dataset.idiomChainCells = "";
+    canvas.dataset.idiomNextCells = "";
+    canvas.dataset.idiomOrderBadges = "";
+    return;
+  }
+  const characters = [...idiom.chars];
+  const chain = partialIdiomChain(engine.state.towers, idiom);
+  const orders = new Map<number, IdiomOrder>();
+  const takenOrders = new Set<number>();
+  const takenTowers = new Set<number>();
+  // 사슬에 실제로 쓰인 자령이 순번을 먼저 가져간다(같은 글자 중복 대비).
+  for (let index = 0; index < chain.cells.length; index += 1) {
+    const order = (chain.reversed ? chain.startOrder - index : chain.startOrder + index) as IdiomOrder;
+    const tower = engine.state.towers.find((candidate) => candidate.cell === chain.cells[index]);
+    if (!tower) continue;
+    orders.set(tower.id, order);
+    takenOrders.add(order);
+    takenTowers.add(tower.id);
+  }
+  for (let index = 0; index < characters.length; index += 1) {
+    const order = index + 1;
+    if (takenOrders.has(order)) continue;
+    const tower = engine.state.towers.find(
+      (candidate) => candidate.char === characters[index] && !takenTowers.has(candidate.id)
+    );
+    if (!tower) continue;
+    orders.set(tower.id, order as IdiomOrder);
+    takenOrders.add(order);
+    takenTowers.add(tower.id);
+  }
+
+  const nextCells: number[] = [];
+  if (chain.anchorCell !== null && !chain.complete) {
+    const occupied = new Set(engine.state.towers.map((tower) => tower.cell));
+    for (const cell of idiomNeighborCells(chain.anchorCell)) {
+      if (occupied.has(cell) || !engine.isCellUnlocked(cell)) continue;
+      nextCells.push(cell);
+    }
+  }
+  idiomPlacementGuide = { idiom, chain, orders, nextCells };
+  // 배치 안내 상태를 캔버스 데이터셋으로 내보내 캡처·e2e 가 읽을 수 있게 한다.
+  canvas.dataset.idiomTarget = idiom.chars;
+  canvas.dataset.idiomChainCells = chain.cells.join(",");
+  canvas.dataset.idiomChainReversed = String(chain.reversed);
+  canvas.dataset.idiomNextOrder = chain.nextOrder === null ? "" : String(chain.nextOrder);
+  canvas.dataset.idiomNextCells = nextCells.join(",");
+  canvas.dataset.idiomOrderBadges = [...orders]
+    .map(([towerId, order]) => `${engine.state.towers.find((tower) => tower.id === towerId)?.cell ?? -1}:${order}`)
+    .join(",");
+}
+
+/** 순번 인장(60x60 원본 → 표시 20px). 로드 실패 시 인주 원 + 백색 숫자로 대체한다. */
+function drawIdiomOrderBadge(centerX: number, centerY: number, size: number, order: IdiomOrder): void {
+  const sprite = idiomOrderSealImage(order);
+  if (idiomSpriteReady(sprite)) {
+    context.drawImage(sprite, centerX - size / 2, centerY - size / 2, size, size);
+    return;
+  }
+  context.save();
+  context.fillStyle = "#b6372b";
+  context.strokeStyle = "rgba(255, 242, 214, 0.85)";
+  context.lineWidth = 1.2;
+  context.beginPath();
+  context.arc(centerX, centerY, size / 2, 0, Math.PI * 2);
+  context.fill();
+  context.stroke();
+  context.fillStyle = "#fff6e4";
+  context.textAlign = "center";
+  context.textBaseline = "middle";
+  context.font = `900 ${Math.round(size * 0.62)}px "Malgun Gothic", sans-serif`;
+  context.fillText(String(order), centerX, centerY + 0.5);
+  context.restore();
+}
+
+/**
+ * 다음 글자를 놓을 수 있는 빈 칸을 금색 점선 테두리와 순번으로 표시한다.
+ * 자령을 끌고 있는 동안에도 같은 표시가 유지된다.
+ */
+function drawIdiomPlacementCells(): void {
+  const guide = idiomPlacementGuide;
+  if (!guide || guide.nextCells.length === 0 || guide.chain.nextOrder === null) return;
+  const order = guide.chain.nextOrder as IdiomOrder;
+  const breath = reducedMotion ? 0.72 : 0.58 + Math.sin(engine.state.elapsed * 3.1) * 0.22;
+  context.save();
+  context.setLineDash([5, 4]);
+  context.lineWidth = 1.8;
+  context.strokeStyle = "#ffd479";
+  context.shadowColor = "rgba(255, 205, 105, 0.7)";
+  context.shadowBlur = 8;
+  context.globalAlpha = breath;
+  for (const cell of guide.nextCells) {
+    const point = BOARD_CELLS[cell] as Point;
+    context.beginPath();
+    context.roundRect(point.x - 17.5, point.y - 17.5, 35, 35, 5);
+    context.stroke();
+  }
+  context.setLineDash([]);
+  context.shadowBlur = 0;
+  context.globalAlpha = Math.min(1, breath + 0.24);
+  for (const cell of guide.nextCells) {
+    const point = BOARD_CELLS[cell] as Point;
+    drawIdiomOrderBadge(point.x, point.y, 18, order);
+  }
+  context.restore();
+}
+
+/** 폴리라인 위 비율 t(0~1) 지점. 사슬 빔의 광점이 1→4 방향으로 흐르게 한다. */
+function pointAlongPolyline(points: readonly Point[], t: number): Point | null {
+  if (points.length < 2) return points[0] ?? null;
+  const lengths: number[] = [];
+  let total = 0;
+  for (let index = 1; index < points.length; index += 1) {
+    const from = points[index - 1] as Point;
+    const to = points[index] as Point;
+    const length = Math.hypot(to.x - from.x, to.y - from.y);
+    lengths.push(length);
+    total += length;
+  }
+  if (total <= 0) return points[0] ?? null;
+  let travelled = t * total;
+  for (let index = 0; index < lengths.length; index += 1) {
+    const length = lengths[index] as number;
+    if (travelled <= length) {
+      const from = points[index] as Point;
+      const to = points[index + 1] as Point;
+      const ratio = length === 0 ? 0 : travelled / length;
+      return { x: from.x + (to.x - from.x) * ratio, y: from.y + (to.y - from.y) * ratio };
+    }
+    travelled -= length;
+  }
+  return points[points.length - 1] ?? null;
+}
+
+/**
+ * 발동한 봉인 — 스펙 6라운드 C.
+ * 네 칸이 성어 색으로 숨쉬고, 사슬 빔 위를 광점이 1→4 방향으로 흐르며,
+ * 칸마다 순번 인장이 박힌다. 모션 감소에서는 펄스 없이 정적 60% 밝기만 쓴다.
+ */
 function drawIdiomSeals(): void {
   for (const seal of engine.state.idiomSeals) {
     const idiom = idiomById(engine.state.region, seal.idiomId);
     if (!idiom) continue;
     const points = seal.cells.map((cell) => BOARD_CELLS[cell] as Point);
+    const breath = reducedMotion ? 0.6 : 0.5 + (Math.sin((engine.state.elapsed / 1.8) * Math.PI * 2) * 0.5 + 0.5) * 0.5;
     context.save();
+
+    // 1. 봉인된 칸 자체가 숨쉬듯 발광한다.
+    for (const point of points) {
+      context.globalAlpha = breath * 0.55;
+      context.fillStyle = idiom.color;
+      context.beginPath();
+      context.roundRect(point.x - 19, point.y - 19, 38, 38, 5);
+      context.fill();
+      context.globalAlpha = Math.min(1, breath + 0.25);
+      context.strokeStyle = idiom.color;
+      context.shadowColor = idiom.color;
+      context.shadowBlur = 12 * breath + 4;
+      context.lineWidth = 2;
+      context.beginPath();
+      context.roundRect(point.x - 19, point.y - 19, 38, 38, 5);
+      context.stroke();
+      context.shadowBlur = 0;
+    }
+
+    // 2. 사슬 빔. 굵기를 키워 "이 넷이 한 줄"이라는 사실이 멀리서도 읽히게 한다.
     context.globalAlpha = 0.48;
     context.lineCap = "round";
     context.lineJoin = "round";
     context.strokeStyle = idiom.color;
     context.shadowColor = idiom.color;
     context.shadowBlur = 18;
-    context.lineWidth = 9;
+    context.lineWidth = 12;
     context.beginPath();
     context.moveTo(points[0]?.x ?? 0, points[0]?.y ?? 0);
     for (const point of points.slice(1)) context.lineTo(point.x, point.y);
@@ -4198,23 +4590,117 @@ function drawIdiomSeals(): void {
     context.shadowBlur = 0;
     context.lineWidth = 2;
     context.stroke();
+
+    // 3. 광점 1개가 1번 칸에서 4번 칸으로 흐르며 순서 방향을 알린다.
+    if (!reducedMotion) {
+      const spark = pointAlongPolyline(points, ((engine.state.elapsed + seal.completedAt) / 2.2) % 1);
+      if (spark) {
+        context.globalAlpha = 0.95;
+        context.fillStyle = "#fff9e6";
+        context.shadowColor = idiom.color;
+        context.shadowBlur = 14;
+        context.beginPath();
+        context.arc(spark.x, spark.y, 4.5, 0, Math.PI * 2);
+        context.fill();
+        context.shadowBlur = 0;
+      }
+    }
+
+    // 4. 칸마다 순번 인장을 박아 어느 글자가 몇 번째인지 남긴다.
+    context.globalAlpha = 1;
     for (let index = 0; index < points.length; index += 1) {
       const point = points[index] as Point;
       context.fillStyle = idiom.color;
       context.beginPath();
-      context.arc(point.x, point.y, 6, 0, Math.PI * 2);
+      context.arc(point.x, point.y, 5, 0, Math.PI * 2);
       context.fill();
-      context.beginPath();
-      context.arc(point.x + 41, point.y - 41, 13, 0, Math.PI * 2);
-      context.fill();
-      context.fillStyle = "#081019";
-      context.font = '900 13px "Malgun Gothic", sans-serif';
-      context.textAlign = "center";
-      context.textBaseline = "middle";
-      context.fillText(String(index + 1), point.x + 41, point.y - 40);
+      drawIdiomOrderBadge(point.x - 13, point.y - 13, 16, (index + 1) as IdiomOrder);
     }
     context.restore();
   }
+}
+
+/**
+ * 발동 순간의 파문 링 — 스펙 6라운드 C3.
+ *
+ * 코덱스 파문 마스크를 성어 색으로 물들여 봉인된 네 칸에서 1→4 차례로 터뜨린다.
+ * 마스크가 아직 안 실렸으면 같은 리듬의 절차 원호로 대신한다. 월드 좌표계에서
+ * 부르므로 updateAndDrawFx 안에서만 호출한다.
+ */
+function drawIdiomRipples(): void {
+  const sprite = idiomRipples.length > 0 ? tintedIdiomRipple(idiomRipples[0]?.color ?? "#ffffff") : null;
+  for (const ripple of idiomRipples) {
+    const live = ripple.age - ripple.delay;
+    if (live < 0) continue;
+    if (!isWorldPointVisible(ripple.at, 120)) continue;
+    const ratio = Math.min(1, live / ripple.duration);
+    const size = 46 + ratio * 128;
+    context.save();
+    context.globalAlpha = (1 - ratio) * (1 - ratio) * 0.9;
+    if (sprite) {
+      context.drawImage(sprite, ripple.at.x - size / 2, ripple.at.y - size / 2, size, size);
+    } else {
+      context.strokeStyle = ripple.color;
+      context.lineWidth = 5 - ratio * 3.4;
+      context.shadowColor = ripple.color;
+      context.shadowBlur = 16;
+      context.beginPath();
+      context.arc(ripple.at.x, ripple.at.y, size / 2, 0, Math.PI * 2);
+      context.stroke();
+    }
+    context.restore();
+  }
+  for (let index = idiomRipples.length - 1; index >= 0; index -= 1) {
+    const ripple = idiomRipples[index] as IdiomRippleFx;
+    if (ripple.age >= ripple.delay + ripple.duration) idiomRipples.splice(index, 1);
+  }
+}
+
+/**
+ * 성어 4자 대형 플래시 — 스펙 6라운드 C3.
+ *
+ * 봉인된 네 칸 위에 뜨되, 카메라가 그 칸을 벗어나 있어도 무엇이 발동했는지는
+ * 알아야 하므로 화면 좌표로 그리고 전장 안으로 clamp 한다. 그래서 월드 변환을
+ * 되돌린 뒤(drawWorld 의 restore 이후)에 호출한다.
+ */
+function drawIdiomFlash(): void {
+  const flash = idiomFlash;
+  if (!flash || flash.age >= flash.duration) {
+    if (flash) idiomFlash = null;
+    if (canvas.dataset.idiomFlash) canvas.dataset.idiomFlash = "";
+    return;
+  }
+  canvas.dataset.idiomFlash = flash.chars;
+  const ratio = flash.age / flash.duration;
+  // 튀어 오르고(0~18%) 머무르다(~62%) 사라진다.
+  const rise = Math.min(1, ratio / 0.18);
+  const fade = ratio < 0.62 ? 1 : 1 - (ratio - 0.62) / 0.38;
+  const scale = reducedMotion ? 1 : 0.82 + rise * 0.24 - Math.max(0, ratio - 0.62) * 0.16;
+  const x = Math.min(WORLD_WIDTH - 150, Math.max(150, mapOffset.x + flash.at.x * mapZoom));
+  const y = Math.min(WORLD_HEIGHT - 120, Math.max(120, mapOffset.y + flash.at.y * mapZoom));
+  context.save();
+  context.globalAlpha = Math.max(0, Math.min(1, rise * fade));
+  context.translate(x, y);
+  context.scale(scale, scale);
+  context.textAlign = "center";
+  context.textBaseline = "middle";
+  context.font = '900 62px "Malgun Gothic", serif';
+  // 어떤 배경 위에서도 읽히도록 먹 윤곽 먼저, 성어 색 채움 나중.
+  context.lineJoin = "round";
+  context.lineWidth = 9;
+  context.strokeStyle = "rgba(4, 8, 14, 0.92)";
+  context.strokeText(flash.chars, 0, 0);
+  context.shadowColor = flash.color;
+  context.shadowBlur = 26;
+  context.fillStyle = "#fff6dd";
+  context.fillText(flash.chars, 0, 0);
+  context.shadowBlur = 0;
+  context.font = '800 19px "Malgun Gothic", sans-serif';
+  context.lineWidth = 6;
+  context.strokeText(`${flash.reading} · 봉인`, 0, 50);
+  context.fillStyle = flash.color;
+  context.fillText(`${flash.reading} · 봉인`, 0, 50);
+  context.restore();
 }
 
 function hoveredMaterialIds(): Set<number> {
@@ -4342,128 +4828,310 @@ function drawStudyTower(tower: Tower, cell: Point, definition: HanziDefinition, 
   context.fillText(learningInfo(engine.state.region, tower.char).short, cell.x, cell.y + 24, 40);
 }
 
+/**
+ * 전장 명패 치수 — layout-audit-response-v1 §2 + v5-compact-tier-assets-pack-v1.
+ *
+ * 셀 중심 간격은 월드 44px 이고 기본 배율(2.0)에서 화면 88px 이 된다. 명패는
+ * 역-스케일로 그려 화면 픽셀 크기가 고정되므로, 104px wide 형은 88px 간격에
+ * 16px 씩 겹쳤다. 상시 명패를 84×40 compact 2줄형으로 낮춰 좌우 2px 씩,
+ * 합계 4px 의 투명 간격을 만든다. 104×60 detail 형은 선택 상세 팝오버 전용이다.
+ * 실제 치수와 코드 텍스트 좌표는 NAMEPLATE_LAYOUT(납품 명세)을 따른다.
+ */
+const PLAQUE_GLYPH_ONLY_WIDTH = 34;
+/** 명패 아래 끝은 기존 wide 형과 같은 높이에 두어 자령 그림을 덮는 정도를 유지한다. */
+const PLAQUE_BOTTOM = -28;
+/** 셀 중심 간 월드 거리. content.ts 의 FORMATION_SPACING 을 좌표에서 되읽는다. */
+const CELL_SPACING = ((BOARD_CELLS[1]?.x ?? 44) - (BOARD_CELLS[0]?.x ?? 0)) || 44;
+/** 이웃 명패 사이에 남겨야 하는 최소 투명 간격(화면 px). */
+const PLAQUE_MIN_GAP = 4;
+
+const compactReadingCache = new Map<string, CompactReading>();
+
+function plaqueReadingFont(size: number): string {
+  return `800 ${size}px "Malgun Gothic", sans-serif`;
+}
+
+/** 캔버스 실측을 plaque-text 모듈에 주입한다. 글꼴 상태는 호출 뒤 되돌린다. */
+const measurePlaqueText: MeasureText = (value, fontSize) => {
+  context.font = plaqueReadingFont(fontSize);
+  return context.measureText(value).width;
+};
+
+/**
+ * compact 명패의 훈음 2줄 배치를 정한다. 매 프레임 자령 수만큼 실측하지 않도록
+ * 문자열·폭 조합으로 캐시한다.
+ */
+function compactReadingFor(full: string, maxWidth: number): CompactReading {
+  const key = `${full}|${maxWidth}`;
+  const cached = compactReadingCache.get(key);
+  if (cached) return cached;
+  const previousFont = context.font;
+  const resolved = compactReading(full, maxWidth, measurePlaqueText);
+  context.font = previousFont;
+  compactReadingCache.set(key, resolved);
+  return resolved;
+}
+
+/** 상시 명패는 glyph-only 34px 이하로는 내려가지 않는다. 폭이 부족하면 통째로 숨기지 않고 한자만 남긴다. */
+function plaqueIsGlyphOnly(): boolean {
+  return CELL_SPACING * mapZoom < NAMEPLATE_LAYOUT.compact.width + PLAQUE_MIN_GAP;
+}
+
 function drawSpiritTowerLabel(tower: Tower, cell: Point, selected: boolean, material: boolean): void {
   const style = ELEMENT_STYLES[tower.wuxing];
   const learning = learningInfo(engine.state.region, tower.char);
+  // 한자 강조 OFF 는 명패 래스터와 글자를 통째로 숨긴다. glyph-only 명패도 남기지 않는다.
   if (!hanjaEmphasis) return;
 
-  const glyphOnly = mapZoom / BASE_MAP_ZOOM < 0.6;
-  // 세로로 쌓인 56px 검은 상자는 자령 그림을 절반쯤 가렸고, 훈음 최장값
-  // "수레 가기 힘들 가"는 49px 안에서 48%까지 압착되어 읽히지 않았다.
-  // 가로형 명패로 바꿔 그림을 덜 가리면서 훈음에 96px을 준다.
-  const width = glyphOnly ? 34 : 104;
-  const height = glyphOnly ? 34 : 34;
-  const top = glyphOnly ? -50 : -62;
-  const glyphBox = glyphOnly ? width : 34;
+  const glyphOnly = plaqueIsGlyphOnly();
+  const layout = NAMEPLATE_LAYOUT.compact;
+  const width = glyphOnly ? Math.min(PLAQUE_GLYPH_ONLY_WIDTH, Math.max(20, CELL_SPACING * mapZoom - PLAQUE_MIN_GAP)) : layout.width;
+  const height = glyphOnly ? 34 : layout.height;
+  const top = PLAQUE_BOTTOM - height + (glyphOnly ? 12 : 0);
+  const left = -width / 2;
 
   context.save();
   context.translate(cell.x, cell.y);
   // Counter-scale the label so Hanja stays readable while the map zooms and pans.
   context.scale(1 / mapZoom, 1 / mapZoom);
+  drawPlaqueShell(glyphOnly ? null : "compact", width, height, top, glyphOnly ? width : layout.glyphColumn, style.color, selected || material);
 
-  // p0-ui-components-pack-v1 한지 명패. 화면 고정 크기(wide 104×34 / glyph 34×34)와
-  // 한자 칸 34px·divider x=33 계약을 그대로 쓰므로 좌표는 아래 코드 판과 같다.
-  const plateForm: NameplateForm = glyphOnly ? "glyph" : "wide";
-  const plateState = nameplateStateFor(selected, material);
-  const plateReady = isNameplateReady(plateForm, plateState);
-  const rim = selected ? "#c8912f" : material ? "#9f2f23" : plateReady ? "rgba(122, 90, 42, 0.62)" : style.color;
-
-  context.save();
-  context.shadowColor = selected || material ? "rgba(255, 231, 164, 0.5)" : "rgba(0, 0, 0, 0.55)";
-  context.shadowBlur = selected || material ? 13 : 7;
-  context.shadowOffsetY = 2;
-  if (plateReady) {
-    // 그림자를 판 안쪽 사각형이 드리우게 해 래스터에 매 프레임 blur 를 걸지 않는다.
-    context.fillStyle = "rgba(30, 22, 12, 0.9)";
-    context.beginPath();
-    context.roundRect(-width / 2 + 3, top + 3, width - 6, height - 6, 6);
-    context.fill();
-  } else {
-    const plaque = context.createLinearGradient(0, top, 0, top + height);
-    plaque.addColorStop(0, "rgba(38, 44, 56, 0.97)");
-    plaque.addColorStop(0.5, "rgba(16, 21, 30, 0.97)");
-    plaque.addColorStop(1, "rgba(7, 10, 16, 0.97)");
-    context.fillStyle = plaque;
-    context.beginPath();
-    context.roundRect(-width / 2, top, width, height, [3, 11, 3, 11]);
-    context.fill();
+  context.textAlign = "center";
+  context.textBaseline = "middle";
+  context.fillStyle = PLAQUE_INK;
+  context.font = plaqueGlyphFont(glyphOnly ? 22 : 24);
+  const glyphCenterX = glyphOnly ? 0 : left + layout.glyphCenter.x;
+  const glyphCenterY = glyphOnly ? top + height / 2 : top + layout.glyphCenter.y;
+  // 안전 영역을 넘으면 22px 로 한 번만 줄인다. 압축은 하지 않는다.
+  if (!glyphOnly && context.measureText(tower.char).width > layout.glyphSafe.width) context.font = plaqueGlyphFont(22);
+  context.fillText(tower.char, glyphCenterX, glyphCenterY + 1);
+  if (!glyphOnly) {
+    // 훈음은 오른쪽 텍스트 영역에서 2줄까지 균형 분할한다. maxWidth 압축은 쓰지 않는다.
+    const reading = compactReadingFor(learning.short, layout.text.width - 1);
+    const readingCenterX = left + layout.text.x + layout.text.width / 2;
+    const readingCenterY = top + layout.text.y + layout.text.height / 2;
+    context.fillStyle = PLAQUE_INK_SOFT;
+    context.font = plaqueReadingFont(reading.font);
+    if (reading.lines.length <= 1) context.fillText(reading.lines[0] ?? "", readingCenterX, readingCenterY);
+    else {
+      context.fillText(reading.lines[0] ?? "", readingCenterX, readingCenterY - 6);
+      context.fillText(reading.lines[1] ?? "", readingCenterX, readingCenterY + 6);
+    }
+    if (reading.shortened) {
+      // 줄인 훈음에는 오른쪽 위에 작은 표식을 두어 상세 팝오버를 보게 한다.
+      context.fillStyle = "rgba(140, 46, 34, 0.9)";
+      context.beginPath();
+      context.arc(width / 2 - 6, top + 6, 2, 0, Math.PI * 2);
+      context.fill();
+    }
+  }
+  // 추적 중 성어의 글자를 가진 자령에는 명패 좌측에 순번 인장을 얹는다.
+  const order = idiomPlacementGuide?.orders.get(tower.id);
+  if (order) {
+    const badgeSize = glyphOnly ? 14 : 18;
+    drawIdiomOrderBadge(left + badgeSize / 2 - 1, top + 1, badgeSize, order);
   }
   context.restore();
+}
 
-  if (plateReady) context.drawImage(nameplateImage(plateForm, plateState), -width / 2, top, width, height);
+/** 명패 바탕색 위의 먹글씨. 크림 한지 위에서 대비를 확보한다. */
+const PLAQUE_INK = "#231708";
+const PLAQUE_INK_SOFT = "#3a2a14";
 
-  // 한자 칸은 오행 색 바탕으로 구분해 명패가 두 구역으로 읽히게 한다.
-  // 한지 명패에는 divider 가 이미 인쇄돼 있으므로 옅은 오행 물듦만 남긴다.
-  if (!glyphOnly && plateReady) {
-    context.save();
+function plaqueGlyphFont(size: number): string {
+  return `900 ${size}px "Malgun Gothic", "Noto Sans CJK KR", serif`;
+}
+
+/**
+ * 명패 판 — v5 납품 래스터를 1/3 배율로 고정 렌더한다(9-slice·stretch 금지).
+ * 로드 전이거나 glyph-only 축소본은 절차 드로잉으로 대체한다.
+ */
+function drawPlaqueShell(
+  kind: NameplateKind | null,
+  width: number,
+  height: number,
+  top: number,
+  glyphBox: number,
+  elementColor: string,
+  emphasised: boolean
+): void {
+  const left = -width / 2;
+  const radii = [3, 11, 3, 11] as const;
+  context.save();
+  context.shadowColor = emphasised ? "rgba(255, 231, 164, 0.55)" : "rgba(0, 0, 0, 0.5)";
+  context.shadowBlur = emphasised ? 12 : 6;
+  context.shadowOffsetY = 2;
+  if (kind && nameplateReady(kind)) {
+    context.drawImage(nameplateImage(kind), left, top, width, height);
+  } else {
+    // 폴백: 납품 래스터와 같은 한지 바탕 + 옻칠 테두리를 절차로 그린다.
+    const paper = context.createLinearGradient(0, top, 0, top + height);
+    paper.addColorStop(0, "#e6d7b4");
+    paper.addColorStop(1, "#cdba91");
+    context.fillStyle = paper;
     context.beginPath();
-    context.roundRect(-width / 2, top, width, height, 6);
-    context.clip();
-    context.fillStyle = style.color + "26";
-    context.fillRect(-width / 2, top, glyphBox, height);
-    context.restore();
-  } else if (!glyphOnly) {
-    context.save();
+    context.roundRect(left, top, width, height, [...radii]);
+    context.fill();
+    context.shadowBlur = 0;
+    context.shadowOffsetY = 0;
+    context.strokeStyle = "#231a10";
+    context.lineWidth = 2;
     context.beginPath();
-    context.roundRect(-width / 2, top, width, height, [3, 11, 3, 11]);
-    context.clip();
-    const glyphGround = context.createLinearGradient(0, top, 0, top + height);
-    glyphGround.addColorStop(0, style.color + "44");
-    glyphGround.addColorStop(1, style.color + "18");
-    context.fillStyle = glyphGround;
-    context.fillRect(-width / 2, top, glyphBox, height);
-    context.strokeStyle = "rgba(255, 240, 208, 0.14)";
-    context.lineWidth = 1;
-    context.beginPath();
-    context.moveTo(-width / 2 + glyphBox, top + 4);
-    context.lineTo(-width / 2 + glyphBox, top + height - 4);
+    context.roundRect(left + 1, top + 1, width - 2, height - 2, [...radii]);
     context.stroke();
+    if (glyphBox < width) {
+      context.strokeStyle = "rgba(50, 36, 18, 0.45)";
+      context.lineWidth = 1;
+      context.beginPath();
+      context.moveTo(left + glyphBox + 0.5, top + 4);
+      context.lineTo(left + glyphBox + 0.5, top + height - 4);
+      context.stroke();
+    }
+  }
+  context.shadowBlur = 0;
+  context.shadowOffsetY = 0;
+
+  // 한자 칸에 오행 색을 옅게 씌워 명패가 두 구역으로 읽히게 한다.
+  if (glyphBox < width) {
+    context.save();
+    context.beginPath();
+    context.roundRect(left + 2, top + 2, width - 4, height - 4, [...radii]);
+    context.clip();
+    context.globalAlpha = 0.22;
+    context.fillStyle = elementColor;
+    context.fillRect(left + 2, top + 2, glyphBox - 2, height - 4);
     context.restore();
   }
 
-  // 상단 광원 베벨과 테두리는 코드 판에만 그린다. 한지 명패에는 이미 인쇄돼 있다.
-  if (!plateReady) {
-    context.strokeStyle = "rgba(255, 246, 222, 0.2)";
-    context.lineWidth = 1;
+  // 선택·재료 상태는 색만이 아니라 두꺼운 금테로도 구분한다.
+  if (emphasised) {
+    context.strokeStyle = "#ffe9b0";
+    context.lineWidth = 2;
     context.beginPath();
-    context.moveTo(-width / 2 + 5, top + 0.5);
-    context.lineTo(width / 2 - 5, top + 0.5);
-    context.stroke();
-
-    context.strokeStyle = rim;
-    context.lineWidth = selected || material ? 2 : 1.3;
-    context.beginPath();
-    context.roundRect(-width / 2, top, width, height, [3, 11, 3, 11]);
+    context.roundRect(left + 1, top + 1, width - 2, height - 2, [...radii]);
     context.stroke();
   }
 
   // 자령을 가리키는 작은 꼬리
-  context.fillStyle = rim;
+  context.fillStyle = emphasised ? "#ffe9b0" : "#2b2014";
   context.beginPath();
-  context.moveTo(-4, top + height);
-  context.lineTo(4, top + height);
-  context.lineTo(0, top + height + 5);
+  context.moveTo(-4, top + height - 1);
+  context.lineTo(4, top + height - 1);
+  context.lineTo(0, top + height + 4);
   context.closePath();
   context.fill();
+  context.restore();
+}
 
+interface PendingPlaque {
+  readonly tower: Tower;
+  readonly cell: Point;
+  readonly selected: boolean;
+  readonly material: boolean;
+}
+
+/**
+ * 명패는 자령 본체 루프 안에서 바로 그리지 않고 모았다가 마지막에 흘린다.
+ * 렌더 순서: 일반 y순 → 합성 재료 → 선택 명패 → 선택 상세 팝오버.
+ * 이웃 자령의 본체나 명패가 선택 명패의 훈음을 덮지 않게 한다.
+ */
+const pendingPlaques: PendingPlaque[] = [];
+
+function flushTowerPlaques(): void {
+  if (pendingPlaques.length === 0) return;
+  const ordered = [...pendingPlaques].sort((left, right) => left.cell.y - right.cell.y);
+  for (const entry of ordered) {
+    if (entry.material || entry.selected) continue;
+    drawSpiritTowerLabel(entry.tower, entry.cell, false, false);
+  }
+  for (const entry of ordered) {
+    if (entry.material && !entry.selected) drawSpiritTowerLabel(entry.tower, entry.cell, false, true);
+  }
+  for (const entry of ordered) {
+    if (entry.selected) drawSpiritTowerLabel(entry.tower, entry.cell, true, entry.material);
+  }
+  const focused = ordered.find((entry) => entry.selected);
+  if (focused) drawTowerDetailPopover(focused.tower, focused.cell);
+  pendingPlaques.length = 0;
+}
+
+/** 같은 진 안에서 방향으로 이웃한 셀 번호. 진 밖이면 null(가릴 명패가 없음). */
+function neighborCellIndex(cell: number, columnStep: number, rowStep: number): number | null {
+  if (cell < 0 || cell >= BOARD_CELLS.length) return null;
+  const formation = Math.floor(cell / CELLS_PER_FORMATION);
+  const local = cell % CELLS_PER_FORMATION;
+  const column = local % FORMATION_COLUMNS + columnStep;
+  const row = Math.floor(local / FORMATION_COLUMNS) + rowStep;
+  if (column < 0 || column >= FORMATION_COLUMNS || row < 0 || row >= FORMATION_ROWS) return null;
+  return formation * CELLS_PER_FORMATION + row * FORMATION_COLUMNS + column;
+}
+
+/**
+ * 선택 자령의 104px 상세 팝오버. compact 가 줄여 적은 훈음의 전체값을 보여준다.
+ * 가장 가까운 빈 방향에 띄우고 전장 경계 안으로 clamp 한다.
+ */
+function drawTowerDetailPopover(tower: Tower, cell: Point): void {
+  if (!hanjaEmphasis) return;
+  const style = ELEMENT_STYLES[tower.wuxing];
+  const learning = learningInfo(engine.state.region, tower.char);
+  const layout = NAMEPLATE_LAYOUT.detail;
+  const previousFont = context.font;
+  context.font = plaqueReadingFont(11);
+  let lines = canvasWrappedLines(learning.short, layout.text.width - 2, 3);
+  if (lines.length > 3) {
+    context.font = plaqueReadingFont(10);
+    lines = canvasWrappedLines(learning.short, layout.text.width - 2, 3);
+  }
+  const readingFont = context.font;
+  context.font = previousFont;
+  const lineHeight = 13;
+  const height = layout.height;
+
+  const occupied = new Set(engine.state.towers.map((candidate) => candidate.cell));
+  const free = (columnStep: number, rowStep: number): boolean => {
+    const neighbor = neighborCellIndex(tower.cell, columnStep, rowStep);
+    return neighbor === null || !occupied.has(neighbor);
+  };
+  // 가장 가까운 빈 방향: 위 → 오른쪽 → 왼쪽 → 아래. 자기 compact 명패(84px)와
+  // 겹치지 않도록 옆으로 낼 때는 두 폭의 절반 합에 6px 여백을 더한다.
+  const sideOffset = (NAMEPLATE_LAYOUT.compact.width + layout.width) / 2 + 6;
+  const sideTop = PLAQUE_BOTTOM - NAMEPLATE_LAYOUT.compact.height / 2 - height / 2;
+  const placements: ReadonlyArray<{ columnStep: number; rowStep: number; offsetX: number; top: number }> = [
+    { columnStep: 0, rowStep: -1, offsetX: 0, top: PLAQUE_BOTTOM - NAMEPLATE_LAYOUT.compact.height - 14 - height },
+    { columnStep: 1, rowStep: 0, offsetX: sideOffset, top: sideTop },
+    { columnStep: -1, rowStep: 0, offsetX: -sideOffset, top: sideTop },
+    { columnStep: 0, rowStep: 1, offsetX: 0, top: 36 }
+  ];
+  const placement = placements.find((candidate) => free(candidate.columnStep, candidate.rowStep)) ?? placements[0] as (typeof placements)[number];
+  let offsetX = placement.offsetX;
+  let top = placement.top;
+
+  // 전장(캔버스) 경계 안으로 밀어 넣는다. 명패는 역-스케일이라 화면 px 로 계산한다.
+  const screenX = mapOffset.x + cell.x * mapZoom;
+  const screenY = mapOffset.y + cell.y * mapZoom;
+  // 최소 8px viewport inset 을 지킨다.
+  const inset = 8;
+  offsetX = Math.max(inset + layout.width / 2 - screenX, Math.min(WORLD_WIDTH - inset - layout.width / 2 - screenX, offsetX));
+  top = Math.max(46 - screenY, Math.min(WORLD_HEIGHT - inset - height - screenY, top));
+
+  const left = -layout.width / 2;
+  context.save();
+  context.translate(cell.x, cell.y);
+  context.scale(1 / mapZoom, 1 / mapZoom);
+  context.translate(offsetX, 0);
+  drawPlaqueShell("detail", layout.width, height, top, layout.glyphColumn, style.color, true);
   context.textAlign = "center";
   context.textBaseline = "middle";
-  // 한지 명패는 밝은 바탕이므로 글자를 먹색으로 뒤집는다. 코드 판은 흰 글자 유지.
-  context.fillStyle = plateReady ? "#241a0d" : "#fff8e8";
-  context.font = `900 ${glyphOnly ? 24 : 23}px "Malgun Gothic", "Noto Sans CJK KR", serif`;
-  context.fillText(tower.char, glyphOnly ? 0 : -width / 2 + glyphBox / 2, top + height / 2 + 1, glyphBox - 4);
-  if (!glyphOnly) {
-    // 훈음 칸은 좌우 4px padding 을 뺀 70px. 최장 "수레 가기 힘들 가" 10자가
-    // 눌려 보이지 않도록 12→9px 사이에서 들어가는 가장 큰 글꼴을 고른다.
-    const readingLeft = -width / 2 + glyphBox;
-    const readingWidth = width - glyphBox;
-    const readingBox = readingWidth - 8;
-    context.fillStyle = plateReady ? "#3a2b14" : "#f3e8cd";
-    for (const size of [12, 11, 10, 9]) {
-      context.font = `800 ${size}px "Malgun Gothic", sans-serif`;
-      if (context.measureText(learning.short).width <= readingBox || size === 9) break;
-    }
-    context.fillText(learning.short, readingLeft + readingWidth / 2, top + height / 2 + 1, readingBox);
+  context.fillStyle = PLAQUE_INK;
+  context.font = plaqueGlyphFont(30);
+  if (context.measureText(tower.char).width > layout.glyphSafe.width) context.font = plaqueGlyphFont(26);
+  context.fillText(tower.char, left + layout.glyphCenter.x, top + layout.glyphCenter.y + 1);
+  context.fillStyle = PLAQUE_INK_SOFT;
+  context.font = readingFont;
+  const readingCenter = left + layout.text.x + layout.text.width / 2;
+  const firstLine = top + layout.text.y + layout.text.height / 2 - (lines.length - 1) * lineHeight / 2;
+  for (let index = 0; index < lines.length; index += 1) {
+    context.fillText(lines[index] as string, readingCenter, firstLine + index * lineHeight);
   }
   context.restore();
 }
@@ -4528,7 +5196,7 @@ function drawSpiritTower(tower: Tower, cell: Point, definition: HanziDefinition,
     context.shadowBlur = 0;
   }
 
-  drawSpiritTowerLabel(tower, cell, selected, material);
+  pendingPlaques.push({ tower, cell, selected, material });
 }
 
 function drawTowerAbilityPopup(tower: Tower, cell: Point): void {
@@ -4973,6 +5641,8 @@ function updateAndDrawFx(delta: number): void {
     context.restore();
   }
   for (const burst of abilityBursts) burst.age += delta;
+  for (const ripple of idiomRipples) ripple.age += delta;
+  if (idiomFlash) idiomFlash.age += delta;
   for (const popup of towerAbilityPopups.values()) popup.age += delta;
   let projectileSpriteDrawnThisFrame = false;
   for (const projectile of projectiles) {
@@ -5060,6 +5730,7 @@ function updateAndDrawFx(delta: number): void {
     context.fillText(floater.text, floater.at.x, floater.at.y - 25 - ratio * 28);
     context.restore();
   }
+  drawIdiomRipples();
   recycleExpired(projectiles, projectilePool, 48);
   recycleExpired(floaters, floaterPool, 48);
   recycleExpired(rings, ringPool, 32);
@@ -5116,7 +5787,8 @@ function syncMapZoomControl(): void {
   canvas.dataset.mapZoomDisplay = String(displayZoom);
   canvas.dataset.mapOffsetX = mapOffset.x.toFixed(1);
   canvas.dataset.mapOffsetY = mapOffset.y.toFixed(1);
-  canvas.dataset.labelDensity = mapZoom / BASE_MAP_ZOOM < 0.6 ? "glyph" : "reading";
+  // 84px compact 명패가 이웃과 4px 이상 떨어질 수 없는 배율에서만 한자만 남긴다.
+  canvas.dataset.labelDensity = plaqueIsGlyphOnly() ? "glyph" : "reading";
   canvas.dataset.hanjaEmphasis = String(hanjaEmphasis);
 }
 
@@ -5398,6 +6070,13 @@ canvas.addEventListener("wheel", (event) => {
 }, { passive: false });
 must<HTMLButtonElement>("#map-zoom-reset").addEventListener("click", resetMapCamera);
 must<HTMLButtonElement>("#hanja-emphasis-toggle").addEventListener("click", toggleHanjaEmphasis);
+// 발동 성어 배지를 누르면 그 성어를 이룬 네 칸으로 카메라가 간다.
+must<HTMLElement>("#active-idioms").addEventListener("click", (event) => {
+  const idiomId = (event.target as HTMLElement | null)?.closest<HTMLButtonElement>("[data-active-idiom]")?.dataset.activeIdiom;
+  if (!idiomId) return;
+  const seal = engine.state.idiomSeals.find((candidate) => candidate.idiomId === idiomId);
+  if (seal) focusMapOnCells(seal.cells);
+});
 must<HTMLButtonElement>("#speed-button").addEventListener("click", cycleGameSpeed);
 
 const REGION_MENU_INFO: Record<RegionCode, { name: string; pool: string }> = {
