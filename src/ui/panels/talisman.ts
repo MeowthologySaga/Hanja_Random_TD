@@ -7,6 +7,12 @@
  * 통과 여부를 정한다. 성공하면 먹선이 또렷해지고 주홍 인장이 찍히며, 웨이브당
  * 3회까지 가중 랜덤 보상(엽전 60% / 문기 30% / 기본 소환 무료권 10%)을 준다.
  *
+ * 트랙 C2 ①: 판정 시점은 사람이 정한다.
+ *   예전에는 획을 뗄 때마다 채점해 임계를 넘는 순간 제멋대로 완성 처리했다 —
+ *   "다 쓰지도 않았는데 끝나 버린다"(사용자 실황). 이제 획마다 갱신되는 것은
+ *   상태 줄(정확·덮음)뿐이고, [부적 봉인] 을 눌러야 판정한다. 미달이면 벌 없이
+ *   안내만 남기고 먹선을 그대로 둬 이어 그릴 수 있다.
+ *
  * 설정의 「학습 모드 · 부적 만들기」 토글(기본 꺼짐, localStorage)을 켜야
  * 「부적」 탭이 탭바에 나타난다. 강제 없음 — 런 중 언제나 열 수 있다.
  *
@@ -144,10 +150,29 @@ function clearInk(): void {
   drawing = false;
 }
 
-function setStatus(text: string, pass = false): void {
+/**
+ * 상태 줄. `pass` 는 완성(금빛), `hint` 는 제출 미달 안내(주의 색)다.
+ * 안내는 리플로 후 클래스를 다시 얹어 연속 미달에도 매번 눈에 띈다.
+ */
+function setStatus(text: string, tone: "plain" | "pass" | "hint" = "plain"): void {
   const status = must<HTMLElement>("#talisman-status");
   status.textContent = text;
-  status.classList.toggle("is-pass", pass);
+  status.classList.toggle("is-pass", tone === "pass");
+  status.classList.remove("is-hint");
+  if (tone !== "hint") return;
+  void status.offsetWidth;
+  status.classList.add("is-hint");
+}
+
+/** 획이 하나도 없으면 제출할 것이 없다. 봉인이 끝난 부적도 다시 낼 수 없다. */
+function syncSubmitButton(hasInk: boolean): void {
+  const submit = must<HTMLButtonElement>("#talisman-submit");
+  submit.disabled = sealed || !hasInk;
+  submit.title = sealed
+    ? "이미 완성된 부적입니다 — [새 부적 쓰기] 로 다음 글자를 받으세요"
+    : hasInk
+      ? `획순은 자유 · 정확 ${Math.round(TALISMAN_THRESHOLDS.inside * 100)}% · 덮음 ${Math.round(TALISMAN_THRESHOLDS.coverage * 100)}% 이상이면 부적이 완성됩니다`
+      : "먼저 부적지의 한자를 따라 써 보세요";
 }
 
 function hideSeal(): void {
@@ -167,8 +192,9 @@ function presentDefinition(definition: HanziDefinition): void {
   hideSeal();
   const info = learningInfo(definition.region, definition.char);
   must<HTMLElement>("#talisman-reading").textContent = `${info.readingLabel} · ${info.reading}`;
-  setStatus("반투명 글자를 따라 쓰세요");
+  setStatus("반투명 글자를 따라 쓰고 [부적 봉인]");
   must<HTMLButtonElement>("#talisman-redraw").textContent = "다시 뽑기";
+  syncSubmitButton(false);
   syncRewardNote();
 }
 
@@ -212,7 +238,7 @@ function grantReward(): void {
   }
 }
 
-/** 성공 연출 — 먹선이 또렷해지고 주홍 인장이 찍힌다(calm-screen 은 맥동 없이). */
+/** 완성 연출 — 먹선이 또렷해지고 주홍 인장이 찍힌다(calm-screen 은 맥동 없이). */
 function completeTalisman(score: TalismanScore): void {
   sealed = true;
   drawing = false;
@@ -228,26 +254,51 @@ function completeTalisman(score: TalismanScore): void {
     seal.classList.add("is-stamped");
   }
   sound.playUiConfirm();
-  setStatus(`봉인 성공! 정확 ${Math.round(score.insideRatio * 100)}% · 덮음 ${Math.round(score.coverageRatio * 100)}%`, true);
+  setStatus(`부적 완성! 정확 ${Math.round(score.insideRatio * 100)}% · 덮음 ${Math.round(score.coverageRatio * 100)}%`, "pass");
   must<HTMLButtonElement>("#talisman-redraw").textContent = "새 부적 쓰기";
+  syncSubmitButton(false);
   grantReward();
   syncRewardNote();
 }
 
-/** 획을 뗄 때마다 채점한다. 실패는 벌 없음 — 계속 그리거나 지우면 된다. */
-function evaluateInk(): void {
-  if (sealed || !inkContext || !maskData) return;
+/**
+ * 지금 먹선을 채점해 상태 줄과 [부적 봉인] 활성 여부를 맞춘다.
+ * 판정(완성 처리)은 하지 않는다 — 그것은 제출 버튼만의 권한이다.
+ */
+function refreshScore(): TalismanScore | null {
+  if (!inkContext || !maskData) return null;
   const data = inkContext.getImageData(0, 0, PAPER_WIDTH, PAPER_HEIGHT).data;
   const score = scoreTalismanDrawing(maskData, data, PAPER_WIDTH, PAPER_HEIGHT);
-  if (score.pass) {
-    completeTalisman(score);
+  if (!sealed) {
+    syncSubmitButton(score.inkPixels > 0);
+    if (score.inkPixels === 0) setStatus("반투명 글자를 따라 쓰고 [부적 봉인]");
+    else setStatus(`정확 ${Math.round(score.insideRatio * 100)}% · 덮음 ${Math.round(score.coverageRatio * 100)}%`);
+  }
+  return score;
+}
+
+/** 미달 안내는 모자란 축만 짚는다. 벌은 없고 먹선도 지우지 않는다. */
+function shortfallHint(score: TalismanScore): string {
+  const coverage = Math.round(TALISMAN_THRESHOLDS.coverage * 100);
+  const inside = Math.round(TALISMAN_THRESHOLDS.inside * 100);
+  if (score.coverageRatio < TALISMAN_THRESHOLDS.coverage) return `조금 더 채워 보세요 — 덮음 ${coverage}% 필요`;
+  return `글자 안쪽으로 더 붙여 보세요 — 정확 ${inside}% 필요`;
+}
+
+/**
+ * [부적 봉인] — 사람이 "다 썼다"고 선언하는 지점.
+ * 통과면 완성 연출·보상, 미달이면 안내만 남기고 그린 것을 그대로 둔다.
+ */
+function submitTalisman(): void {
+  if (sealed) return;
+  const score = refreshScore();
+  if (!score || score.inkPixels === 0) return;
+  if (!score.pass) {
+    setStatus(shortfallHint(score), "hint");
+    sound.playActionOutcome(false);
     return;
   }
-  if (score.inkPixels === 0) {
-    setStatus("반투명 글자를 따라 쓰세요");
-    return;
-  }
-  setStatus(`정확 ${Math.round(score.insideRatio * 100)}% · 덮음 ${Math.round(score.coverageRatio * 100)}%`);
+  completeTalisman(score);
 }
 
 function canvasPoint(canvas: HTMLCanvasElement, event: PointerEvent): { x: number; y: number } {
@@ -296,7 +347,8 @@ function wireDrawing(ink: HTMLCanvasElement): void {
   const finish = (): void => {
     if (!drawing) return;
     drawing = false;
-    evaluateInk();
+    // 획을 뗄 때 갱신되는 것은 상태 줄과 제출 활성뿐 — 완성 판정은 하지 않는다.
+    refreshScore();
   };
   ink.addEventListener("pointerup", finish);
   ink.addEventListener("pointercancel", finish);
@@ -334,6 +386,8 @@ function syncTabPresence(): void {
   button.addEventListener("click", () => {
     setPanelTab("talisman");
     ensureDefinition();
+    // 같은 글자로 돌아온 경우에도 제출 활성·상태 줄을 지금 먹선에 맞춘다.
+    refreshScore();
     syncRewardNote();
   });
   must<HTMLElement>(".panel-tabs").append(button);
@@ -397,9 +451,12 @@ const PANEL_MARKUP = `
     <div id="talisman-seal" class="talisman-seal" hidden aria-hidden="true"><i>封</i></div>
   </div>
   <div class="talisman-footer">
-    <p id="talisman-status" class="talisman-status">반투명 글자를 따라 쓰세요</p>
-    <button id="talisman-clear" class="small-button" type="button" data-testid="talisman-clear">지우기</button>
-    <button id="talisman-redraw" class="small-button" type="button" data-testid="talisman-redraw">다시 뽑기</button>
+    <p id="talisman-status" class="talisman-status">반투명 글자를 따라 쓰고 [부적 봉인]</p>
+    <div class="talisman-actions">
+      <button id="talisman-clear" class="small-button" type="button" data-testid="talisman-clear">지우기</button>
+      <button id="talisman-redraw" class="small-button" type="button" data-testid="talisman-redraw">다시 뽑기</button>
+      <button id="talisman-submit" class="small-button talisman-submit" type="button" data-testid="talisman-submit" disabled>부적 봉인</button>
+    </div>
   </div>`;
 
 function mountTalismanPanel(): void {
@@ -426,19 +483,27 @@ function mountTalismanPanel(): void {
       return;
     }
     clearInk();
-    setStatus("반투명 글자를 따라 쓰세요");
+    setStatus("반투명 글자를 따라 쓰고 [부적 봉인]");
+    syncSubmitButton(false);
   });
   must<HTMLButtonElement>("#talisman-redraw").addEventListener("click", () => {
     sound.unlock();
     const definition = pickDefinition();
     if (definition) presentDefinition(definition);
   });
+  must<HTMLButtonElement>("#talisman-submit").addEventListener("click", () => {
+    sound.unlock();
+    submitTalisman();
+  });
+  syncSubmitButton(false);
 }
 
 /**
  * QA 자동 따라쓰기(개발 전용) — 마스크 칸의 가로 이음선을 따라 포인터
- * 이벤트를 합성해, 실제 그리기 경로 그대로 임계 통과 상태를 재현한다.
- * e2e 는 손그림 대신 이것으로 성공 연출·보상 흐름을 결정적으로 검증한다.
+ * 이벤트를 합성해, 실제 그리기 경로 그대로 임계 통과선까지 그려 준다.
+ *
+ * 트랙 C2: 그리기까지만 한다. 제출은 사람의 몫이므로 e2e 도 이어서
+ * `__HANJA_TALISMAN_QA__.submit()` 을 부르거나 실제 버튼을 눌러야 한다.
  */
 function autoTraceTalisman(): void {
   const ink = document.querySelector<HTMLCanvasElement>("#talisman-ink");
@@ -452,7 +517,7 @@ function autoTraceTalisman(): void {
     ink.dispatchEvent(new PointerEvent(type, { ...toClient(x, y), pointerId: 7, bubbles: true, cancelable: true }));
   };
   const { columns, rows, counts } = maskGrid;
-  for (let row = 0; row < rows && !sealed; row += 1) {
+  for (let row = 0; row < rows; row += 1) {
     const y = (row + 0.5) * CELL_SIZE;
     let runStart = -1;
     for (let column = 0; column <= columns; column += 1) {
@@ -466,7 +531,6 @@ function autoTraceTalisman(): void {
         dispatch("pointermove", endX, y);
         dispatch("pointerup", endX, y);
         runStart = -1;
-        if (sealed) break;
       }
     }
   }
@@ -487,6 +551,8 @@ export function wireTalisman1(): void {
     Object.assign(window, {
       __HANJA_TALISMAN_QA__: {
         autoTrace: autoTraceTalisman,
+        /** 제출은 따로다 — 자동 따라쓰기가 완성까지 하지 않는다는 규칙의 반영. */
+        submit: submitTalisman,
         currentChar: () => currentDefinition?.char ?? null,
         isSealed: () => sealed,
         /** 특정 글자를 강제 제시 — 최밀 글자 채점 검증·스크린샷 재현용. */

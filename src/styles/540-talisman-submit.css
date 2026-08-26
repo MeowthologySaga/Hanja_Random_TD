@@ -1,0 +1,74 @@
+/* ══════════════════════════════════════════════════════════════
+   540. 부적 만들기 — 제출 버튼 (트랙 C2 ①)
+
+   470절(부적 패널) 뒤에 서서 판정을 사람이 여는 [부적 봉인] 을 얹는다.
+   바닥줄이 상태 줄 한 행 + 버튼 세 개 한 행의 2행으로 바뀐다(470절의
+   1행 flex 를 되짚는다). 세로 예산은 여전히 .context-deck 368px 이므로
+   버튼 높이를 26px 로 눌러 부적지(264px)를 밀어내지 않는다.
+
+   맥동류는 차분한 화면(.game-shell[data-calm-screen="1"])과
+   prefers-reduced-motion 두 게이트를 존중한다.
+   ══════════════════════════════════════════════════════════════ */
+
+.talisman-footer {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 3px;
+}
+
+.talisman-status {
+  flex: 0 0 auto;
+  text-align: center;
+}
+
+/* 미달 안내는 벌이 아니라 힌트다 — 주의색으로 한 번 번쩍이고 가라앉는다. */
+.talisman-status.is-hint {
+  color: var(--seal);
+  font-weight: 900;
+  animation: talisman-hint-pulse 0.6s ease-out;
+}
+
+@keyframes talisman-hint-pulse {
+  0% { opacity: 0.35; }
+  35% { opacity: 1; }
+  100% { opacity: 1; }
+}
+
+.talisman-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.35fr);
+  gap: 5px;
+}
+
+.talisman-actions > .small-button {
+  min-width: 0;
+  min-height: 26px;
+  padding: 0 4px;
+}
+
+/* [부적 봉인] 은 이 패널의 단 하나뿐인 주행동이라, 이 버튼이 찍어 낼 인장
+   (.talisman-seal 의 인주 그라디언트)과 같은 색을 입는다 — 060절이 모든
+   .small-button 을 !important 로 놋쇠에 못박고 있어 같은 무게로 되짚는다
+   (#sell-button 이 인주를 되찾는 선례와 같은 문법). */
+.talisman-submit:not(:disabled) {
+  color: var(--dan-hobun) !important;
+  background: linear-gradient(180deg, #b8453a 0%, var(--seal) 100%) !important;
+  box-shadow: var(--bevel-up), 0 0 0 1px rgba(122, 25, 16, 0.55) !important;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+}
+
+.talisman-submit:not(:disabled):hover {
+  color: #fff6ea !important;
+  background: linear-gradient(180deg, #c95346 0%, #ac3427 100%) !important;
+}
+
+.game-shell[data-calm-screen="1"] .talisman-status.is-hint {
+  animation: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .talisman-status.is-hint {
+    animation: none;
+  }
+}
