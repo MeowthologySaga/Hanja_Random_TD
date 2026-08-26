@@ -5550,7 +5550,12 @@ must<HTMLButtonElement>("#codex-button").addEventListener("click", () => {
   search.value = "";
   renderCodex("");
   codexDialog.showModal();
-  search.focus();
+  // 포커스를 한 프레임 늦춘다. 단축키로 열었을 때 그 키의 문자가
+  // 검색창에 새어 들어가지 않게 하는 두 번째 방어선이다.
+  window.requestAnimationFrame(() => {
+    search.value = "";
+    search.focus();
+  });
 });
 must<HTMLButtonElement>("#codex-close").addEventListener("click", () => codexDialog.close());
 
@@ -5841,7 +5846,12 @@ window.addEventListener("keydown", (event) => {
   else if (event.code === "Space") {
     event.preventDefault();
     toggleHanjaEmphasis();
-  } else if (event.code === "KeyC") must<HTMLButtonElement>("#codex-button").click();
+  } else if (event.code === "KeyC") {
+    // 도감은 열자마자 검색창에 포커스를 준다. 기본 동작을 막지 않으면
+    // 방금 누른 'c' 가 그대로 검색어로 들어가 빈 목록(0/1,001)으로 열렸다.
+    event.preventDefault();
+    must<HTMLButtonElement>("#codex-button").click();
+  }
   else if (event.code === "KeyM") must<HTMLButtonElement>("#sound-button").click();
   else if (event.code === "KeyF") cycleGameSpeed();
   else if (event.code === "KeyP") toggleManualPause();
@@ -6249,6 +6259,19 @@ window.addEventListener("resize", () => {
   fitShell();
   layoutCoach();
 });
+/*
+ * 첫 오픈에만 늦게 오는 그림 미리 받기.
+ *
+ * P00·S13 의 두루마리 프레임은 그 창을 처음 열 때에야 요청이 나가서,
+ * 도착 전까지 먹 글자와 버튼만 메뉴 위에 둥둥 떠 보였다. CSS 가 쓰는
+ * 것과 같은 경로로 미리 받아 둔다(R7-30 의 한지 바탕과 짝).
+ */
+for (const path of ["/assets/ui/main-menu-b/ui/p00-scroll-frame-v1.png"]) {
+  const warm = new Image();
+  warm.decoding = "async";
+  warm.src = path;
+}
+
 syncMapZoomControl();
 setGameSpeed(1);
 setDisplayMode(initialDisplayMode, false);
