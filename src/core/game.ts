@@ -3160,8 +3160,11 @@ export function runAutoplay(seed: string, region: RegionCode = "KR", maxSeconds 
       && engine.availableEvolutions().length === 0
       && lastReplacementWave !== engine.state.wave) {
       const protectedChars = autoplayProtectedChars(engine);
+      // 유지형 규칙: 발동 중 봉인의 네 자령을 팔면 봉인이 그 자리에서 꺼진다.
+      // 사람 규칙은 그대로 두고(팔 수는 있다) 봇의 후보에서만 뺀다.
+      const sealedIds = engine.sealedIdiomTowerIds();
       const disposable = [...engine.state.towers]
-        .filter((tower) => !tower.locked && (tower.concentration ?? 0) === 0 && !protectedChars.has(tower.char))
+        .filter((tower) => !tower.locked && (tower.concentration ?? 0) === 0 && !protectedChars.has(tower.char) && !sealedIds.has(tower.id))
         .sort((left, right) => {
           const leftRank = engine.state.mode === "casual" ? left.casualStar ?? 1 : left.stage;
           const rightRank = engine.state.mode === "casual" ? right.casualStar ?? 1 : right.stage;
@@ -3262,14 +3265,24 @@ function autoplayProtectedChars(engine: GameEngine): Set<string> {
 }
 
 function autoplayEvolutionOption(engine: GameEngine): EvolutionOption | undefined {
-  const options = engine.availableEvolutions();
+  // 유지형 규칙(R18) 이후 봉인은 네 자령이 줄에 서 있는 동안만 산다. 봇이 그
+  // 자령을 합성 재료로 태우면 제 손으로 보너스를 끄는 셈이라, 발동 중 봉인의
+  // 자령이 낀 합성식은 후보에서 통째로 뺀다. 전부 걸리면 이번 틱은 합성을
+  // 쉰다 — 성어 유지가 합성 한 번보다 우선이다. 사람 규칙은 그대로다.
+  const sealedIds = engine.sealedIdiomTowerIds();
+  const options = engine.availableEvolutions()
+    .filter((option) => !option.materialTowerIds.some((id) => sealedIds.has(id)));
+  // 아직 줄이 없는(혹은 흩어진) 성어의 글자도 지킨다 — 재봉인 재료다.
+  const pendingIdioms = engine.idioms().filter((candidate) => !engine.isIdiomSealActive(candidate.id));
   const idiom = engine.currentIdiomTarget();
-  if (!idiom) return options.find((candidate) => candidate.onTargetPath) ?? options[0];
-  const exactChars = new Set(idiom.chars);
+  if (pendingIdioms.length === 0) return options.find((candidate) => candidate.onTargetPath) ?? options[0];
+  const exactChars = new Set(pendingIdioms.flatMap((candidate) => [...candidate.chars]));
   const idiomPath = new Set<string>();
-  for (const char of exactChars) for (const pathChar of engine.evolution.getTargetPath(char)) idiomPath.add(pathChar);
+  for (const char of idiom?.chars ?? "") for (const pathChar of engine.evolution.getTargetPath(char)) idiomPath.add(pathChar);
   const required = new Map<string, number>();
-  for (const char of idiom.chars) required.set(char, (required.get(char) ?? 0) + 1);
+  for (const candidate of pendingIdioms) {
+    for (const char of candidate.chars) required.set(char, (required.get(char) ?? 0) + 1);
+  }
   const owned = new Map<string, number>();
   for (const tower of engine.state.towers) owned.set(tower.char, (owned.get(tower.char) ?? 0) + 1);
   const preservesPlacedIdiomChars = (option: EvolutionOption): boolean => option.materialTowerIds.every((id) => {
@@ -3305,28 +3318,36 @@ function autoplayIdiomLine(engine: GameEngine, pinnedCells: ReadonlySet<number>)
 
 function arrangeAvailableAutoplayIdioms(engine: GameEngine): void {
   for (let guard = 0; guard < engine.idioms().length; guard += 1) {
-    const idiom = engine.currentIdiomTarget();
-    if (!idiom) return;
     // 유지형 규칙: 이미 발동 중인 봉인의 네 자령은 봇도 건드리지 않는다.
+    // 흩어진 기록(비활성 봉인)도 다시 세울 대상이다 — 재봉인하면 보너스가 돌아온다.
+    // 첫 성어의 글자가 모자라도 뒤 성어는 세울 수 있으므로 하나씩 전부 시도한다.
     const pinned = engine.sealedIdiomTowerIds();
     const pinnedCells = new Set(engine.state.towers.filter((tower) => pinned.has(tower.id)).map((tower) => tower.cell));
-    const chosen: Tower[] = [];
-    const usedIds = new Set<number>();
-    for (const char of idiom.chars) {
-      const tower = engine.state.towers.find((candidate) => candidate.char === char && !usedIds.has(candidate.id) && !pinned.has(candidate.id));
-      if (!tower) return;
-      chosen.push(tower);
-      usedIds.add(tower.id);
+    let arranged = false;
+    for (const idiom of engine.idioms()) {
+      if (engine.isIdiomSealActive(idiom.id)) continue;
+      const chosen: Tower[] = [];
+      const usedIds = new Set<number>();
+      for (const char of idiom.chars) {
+        const tower = engine.state.towers.find((candidate) => candidate.char === char && !usedIds.has(candidate.id) && !pinned.has(candidate.id));
+        if (!tower) break;
+        chosen.push(tower);
+        usedIds.add(tower.id);
+      }
+      if (chosen.length !== [...idiom.chars].length) continue;
+      const line = autoplayIdiomLine(engine, pinnedCells);
+      if (!line) return;
+      for (let index = 0; index < chosen.length; index += 1) {
+        const tower = chosen[index] as Tower;
+        const targetCell = line[index] as number;
+        const occupant = engine.state.towers.find((candidate) => candidate.cell === targetCell);
+        if (occupant && occupant.id !== tower.id) occupant.cell = tower.cell;
+        tower.cell = targetCell;
+      }
+      if (engine.resolveIdiomFormations() === 0) return;
+      arranged = true;
+      break;
     }
-    const line = autoplayIdiomLine(engine, pinnedCells);
-    if (!line) return;
-    for (let index = 0; index < chosen.length; index += 1) {
-      const tower = chosen[index] as Tower;
-      const targetCell = line[index] as number;
-      const occupant = engine.state.towers.find((candidate) => candidate.cell === targetCell);
-      if (occupant && occupant.id !== tower.id) occupant.cell = tower.cell;
-      tower.cell = targetCell;
-    }
-    if (engine.resolveIdiomFormations() === 0) return;
+    if (!arranged) return;
   }
 }
