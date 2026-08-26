@@ -12,6 +12,7 @@
  */
 
 import type { Wuxing } from "../core/types";
+import { preloadedImage } from "./asset-loader";
 
 export type FormationPlateState = "loading" | "ready" | "error";
 
@@ -42,6 +43,17 @@ function keyFor(wuxing: Wuxing, unlocked: boolean): string {
 
 function loadPlate(key: string): PlateEntry {
   const path = `${import.meta.env.BASE_URL}assets/ui/formations/v1/formation-altar-${key}-546-v1.png`;
+  // 프리로드본이 있으면 절차 석판을 한 프레임도 그리지 않고 바로 판을 쓴다.
+  const preloaded = preloadedImage(path);
+  if (preloaded) {
+    const ready = preloaded.naturalWidth === SOURCE_SIZE && preloaded.naturalHeight === SOURCE_SIZE;
+    const cached: PlateEntry = { image: preloaded, state: ready ? "ready" : "error" };
+    if (!ready) {
+      console.warn(`[formation-plate-sprites] 크기 불일치: ${path} (기대 ${SOURCE_SIZE}×${SOURCE_SIZE}, 실제 ${preloaded.naturalWidth}×${preloaded.naturalHeight})`);
+    }
+    plates.set(key, cached);
+    return cached;
+  }
   const image = new Image();
   const entry: PlateEntry = { image, state: "loading" };
   image.decoding = "async";

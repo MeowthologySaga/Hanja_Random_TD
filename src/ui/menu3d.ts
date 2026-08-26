@@ -40,6 +40,7 @@ import {
   Vector3,
   WebGLRenderer
 } from "three";
+import { preloadedImage } from "./asset-loader";
 
 const MENU_ASSET = (relative: string): string => `${import.meta.env.BASE_URL}assets/ui/main-menu-b/${relative}`;
 
@@ -238,6 +239,21 @@ export function startMenu3d(host: HTMLElement): Menu3dHandle {
 
   const loader = new TextureLoader();
 
+  /**
+   * R11: 1차 프리로드가 이미 받아 둔 원본이 있으면 그것으로 텍스처를 **동기**
+   * 생성한다. `TextureLoader.load` 는 아무리 빨라도 한 프레임 뒤에 재질을
+   * 갈아끼워서, 그 사이 절차 재질(민 종이·무지 가죽)이 반드시 한 번 보였다.
+   * 캐시 미스면 지금까지처럼 비동기 로더로 되돌아간다.
+   */
+  function cachedTexture(url: string): Texture | null {
+    const image = preloadedImage(url);
+    if (!image) return null;
+    const texture = new Texture(image);
+    texture.colorSpace = SRGBColorSpace;
+    texture.needsUpdate = true;
+    return texture;
+  }
+
   // ══════════════════════════════════════════════════════════════
   //  s00-3d-texture-pack-v1 — 절차 재질을 실물 텍스처로 교체
   //  출처: handoff/to-claude/s00-3d-texture-pack-v1/assets/
@@ -265,24 +281,30 @@ export function startMenu3d(host: HTMLElement): Menu3dHandle {
    * 않는다. 오류는 파일당 한 번만 기록한다.
    */
   function applyTexture(material: MeshStandardMaterial, file: string, options: TextureApplyOptions = {}): void {
+    const commit = (texture: Texture): void => {
+      texture.colorSpace = SRGBColorSpace;
+      sharpen(texture);
+      options.configure?.(texture);
+      texture.needsUpdate = true;
+      material.map = texture;
+      if (options.material?.roughness !== undefined) material.roughness = options.material.roughness;
+      if (options.material?.metalness !== undefined) material.metalness = options.material.metalness;
+      if (options.material?.color !== undefined) material.color.copy(options.material.color);
+      if (options.selfLit !== undefined) {
+        material.emissiveMap = texture;
+        material.emissive.setHex(0xffffff);
+        material.emissiveIntensity = options.selfLit;
+      }
+      material.needsUpdate = true;
+    };
+    const cached = cachedTexture(S00_TEXTURE(file));
+    if (cached) {
+      commit(cached);
+      return;
+    }
     loader.load(
       S00_TEXTURE(file),
-      (texture) => {
-        texture.colorSpace = SRGBColorSpace;
-        sharpen(texture);
-        options.configure?.(texture);
-        texture.needsUpdate = true;
-        material.map = texture;
-        if (options.material?.roughness !== undefined) material.roughness = options.material.roughness;
-        if (options.material?.metalness !== undefined) material.metalness = options.material.metalness;
-        if (options.material?.color !== undefined) material.color.copy(options.material.color);
-        if (options.selfLit !== undefined) {
-          material.emissiveMap = texture;
-          material.emissive.setHex(0xffffff);
-          material.emissiveIntensity = options.selfLit;
-        }
-        material.needsUpdate = true;
-      },
+      commit,
       undefined,
       () => console.warn(`[menu3d] 텍스처 로드 실패, 절차 재질 유지: ${file}`)
     );
@@ -475,7 +497,7 @@ export function startMenu3d(host: HTMLElement): Menu3dHandle {
   // ── 먹 고리: 페이지 위 0.02 띄운 평면. UV 굽기는 페이지 곡률·회전과
   // 어긋나기 쉬워 폐기했다. MeshStandard 라 조명은 그대로 받는다. ──
   for (const slot of SPIRIT_SLOTS) {
-    const ringTexture = sharpen(loader.load(MENU_ASSET(slot.ring)));
+    const ringTexture = sharpen(cachedTexture(MENU_ASSET(slot.ring)) ?? loader.load(MENU_ASSET(slot.ring)));
     ringTexture.colorSpace = SRGBColorSpace;
     // depthWrite 를 끄고 renderOrder 로 층을 고정해, 카메라가 움직일 때
     // 페이지 곡면과의 깊이 경합(z-fight)으로 고리가 점멸하지 않게 한다.
@@ -507,23 +529,29 @@ export function startMenu3d(host: HTMLElement): Menu3dHandle {
 
   /** 아틀라스는 한 번만 받아 사분면별로 clone 한다. 실패하면 전부 절차 재질 유지. */
   function applyPropAtlas(skins: readonly PropSkin[]): void {
+    const commit = (base: Texture): void => {
+      for (const skin of skins) {
+        const texture = base.clone();
+        texture.colorSpace = SRGBColorSpace;
+        sharpen(texture);
+        const [u, v] = PROP_QUADRANTS[skin.quadrant];
+        texture.offset.set(u, v);
+        texture.repeat.set(0.5, 0.5);
+        texture.needsUpdate = true;
+        skin.material.map = texture;
+        skin.material.roughness = skin.roughness;
+        skin.material.metalness = skin.metalness;
+        skin.material.needsUpdate = true;
+      }
+    };
+    const cached = cachedTexture(S00_TEXTURE("desk-props-atlas-v1.png"));
+    if (cached) {
+      commit(cached);
+      return;
+    }
     loader.load(
       S00_TEXTURE("desk-props-atlas-v1.png"),
-      (base) => {
-        for (const skin of skins) {
-          const texture = base.clone();
-          texture.colorSpace = SRGBColorSpace;
-          sharpen(texture);
-          const [u, v] = PROP_QUADRANTS[skin.quadrant];
-          texture.offset.set(u, v);
-          texture.repeat.set(0.5, 0.5);
-          texture.needsUpdate = true;
-          skin.material.map = texture;
-          skin.material.roughness = skin.roughness;
-          skin.material.metalness = skin.metalness;
-          skin.material.needsUpdate = true;
-        }
-      },
+      commit,
       undefined,
       () => console.warn("[menu3d] 텍스처 로드 실패, 절차 재질 유지: desk-props-atlas-v1.png")
     );
@@ -575,7 +603,7 @@ export function startMenu3d(host: HTMLElement): Menu3dHandle {
   // ── 자령 빌보드 ──
   const sprites: Sprite[] = [];
   for (const slot of SPIRIT_SLOTS) {
-    const texture = sharpen(loader.load(MENU_ASSET(slot.spirit)));
+    const texture = sharpen(cachedTexture(MENU_ASSET(slot.spirit)) ?? loader.load(MENU_ASSET(slot.spirit)));
     texture.colorSpace = SRGBColorSpace;
     const spirit = new Sprite(new SpriteMaterial({ map: texture, transparent: true }));
     spirit.scale.set(1.72, 1.58, 1);
@@ -591,7 +619,8 @@ export function startMenu3d(host: HTMLElement): Menu3dHandle {
 
   /** 그림 영역만 면을 채우도록 crop 된 텍스처. */
   function croppedTexture(file: string): Texture {
-    const texture = sharpen(loader.load(MENU_ASSET(file)));
+    const url = MENU_ASSET(file);
+    const texture = sharpen(cachedTexture(url) ?? loader.load(url));
     texture.colorSpace = SRGBColorSpace;
     const crop = CROPS[file];
     if (crop) {

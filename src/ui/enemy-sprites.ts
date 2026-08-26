@@ -10,6 +10,7 @@
  */
 
 import type { EnemyArchetype } from "../core/types";
+import { preloadedImage } from "./asset-loader";
 
 export type EnemySpriteState = "loading" | "ready" | "error";
 
@@ -67,6 +68,18 @@ const sheets = new Map<EnemyArchetype, SheetEntry>();
 function loadSheet(archetype: EnemyArchetype): SheetEntry {
   const file = ENEMY_SHEET_FILES[archetype];
   const path = `${import.meta.env.BASE_URL}assets/enemies/p0-v1/${file}`;
+  // 2차 프리로드가 이미 받아 놨으면 그 원본을 그대로 쓴다. `decode()` 까지
+  // 끝난 상태라 첫 프레임부터 실물이고, 아군 시트 폴백을 한 번도 안 거친다.
+  const preloaded = preloadedImage(path);
+  if (preloaded) {
+    const ready = preloaded.naturalWidth === SHEET_WIDTH && preloaded.naturalHeight === SHEET_HEIGHT;
+    const cached: SheetEntry = { image: preloaded, state: ready ? "ready" : "error" };
+    if (!ready) {
+      console.warn(`[enemy-sprites] 크기 불일치: ${path} (기대 ${SHEET_WIDTH}×${SHEET_HEIGHT}, 실제 ${preloaded.naturalWidth}×${preloaded.naturalHeight})`);
+    }
+    sheets.set(archetype, cached);
+    return cached;
+  }
   const image = new Image();
   const entry: SheetEntry = { image, state: "loading" };
   image.decoding = "async";

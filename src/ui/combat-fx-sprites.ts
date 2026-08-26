@@ -1,4 +1,5 @@
 import type { Wuxing } from "../core/types";
+import { preloadedImage } from "./asset-loader";
 
 const ELEMENT_ASSET_NAMES: Record<Wuxing, string> = {
   木: "wood",
@@ -23,9 +24,15 @@ const images = new Map<string, HTMLImageElement>();
 function imageFor(path: string): HTMLImageElement {
   const cached = images.get(path);
   if (cached) return cached;
+  const url = `${import.meta.env.BASE_URL}assets/fx/${path}`;
+  const preloaded = preloadedImage(url);
+  if (preloaded) {
+    images.set(path, preloaded);
+    return preloaded;
+  }
   const image = new Image();
   image.decoding = "async";
-  image.src = `${import.meta.env.BASE_URL}assets/fx/${path}`;
+  image.src = url;
   images.set(path, image);
   void image.decode().catch(() => undefined);
   return image;
