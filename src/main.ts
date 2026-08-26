@@ -104,6 +104,23 @@ import { SoundManager } from "./ui/audio";
 import { abilityZoneSpriteLayout, deterministicZoneRotation } from "./ui/combat-fx-layout";
 import { elementProjectileImage, elementZoneImage, preloadCombatFxSprites } from "./ui/combat-fx-sprites";
 import {
+  ENEMY_FRAME_SIZE,
+  FALLBACK_ART_TOP_FACTOR,
+  enemyArtTopFactor,
+  enemySheetImage,
+  enemySheetStateSummary,
+  isEnemySheetReady,
+  preloadEnemySprites
+} from "./ui/enemy-sprites";
+import {
+  FORMATION_PLATE_HALF,
+  FORMATION_PLATE_SIZE,
+  formationPlateImage,
+  formationPlateStateSummary,
+  isFormationPlateReady,
+  preloadFormationPlates
+} from "./ui/formation-plate-sprites";
+import {
   inkArrowImage,
   inkCornerImage,
   inkCrossImage,
@@ -887,6 +904,8 @@ canvas.dataset.formationTileColorMode = "element";
 canvas.dataset.formationTilePalette = BOARD_FORMATIONS.map((formation) => `${formation.preferredWuxing}:${formation.color}`).join("|");
 preloadCombatFxSprites();
 preloadInkPathSprites();
+preloadEnemySprites();
+preloadFormationPlates();
 
 function setPanelTab(tab: PanelTab): void {
   if (tab !== "unit") closeCompositionDrawer();
@@ -2917,6 +2936,11 @@ function drawWorld(delta: number): void {
   canvas.dataset.selectedTowerId = selectedTower ? String(selectedTower.id) : "";
   canvas.dataset.selectedSynthesisTier = selectedTower ? String(engine.state.mode === "casual" ? casualStarOf(selectedTower) : mapSynthesisDepths.get(selectedTower.char) ?? 1) : "";
   const materialIds = hoveredMaterialIds();
+  // 개발 진단: 적·제단 래스터 로드 상태. 프로덕션 화면에는 노출하지 않는다.
+  const enemySheets = enemySheetStateSummary();
+  if (canvas.dataset.enemySheets !== enemySheets) canvas.dataset.enemySheets = enemySheets;
+  const formationPlates = formationPlateStateSummary();
+  if (canvas.dataset.formationPlates !== formationPlates) canvas.dataset.formationPlates = formationPlates;
   drawPaperBackdrop();
   context.save();
   context.translate(mapOffset.x, mapOffset.y);
@@ -3262,6 +3286,8 @@ function drawBoard(): void {
   context.save();
   context.textAlign = "center";
   const occupied = new Set(engine.state.towers.map((tower) => tower.cell));
+  // 제단 래스터가 준비된 진에서는 코드 석판과 셀 채움을 낮춰 재질을 가리지 않는다.
+  const plateRastered: boolean[] = [];
 
   for (let formationIndex = 0; formationIndex < BOARD_FORMATIONS.length; formationIndex += 1) {
     const formation = BOARD_FORMATIONS[formationIndex] as (typeof BOARD_FORMATIONS)[number];
@@ -3271,64 +3297,89 @@ function drawBoard(): void {
     const cy = formation.center.y;
     // 좌상·우하만 크게 깎은 비대칭 모서리가 웹 카드 대신 인장 실루엣으로 읽히게 한다.
     const plateRadii = [15, 4, 15, 4];
+    const plateReady = isFormationPlateReady(formation.preferredWuxing, unlocked);
+    plateRastered[formationIndex] = plateReady;
 
-    // 1. 제단이 도로 위에 떠 있도록 아래로 접지 그림자를 드리운다.
-    context.save();
-    context.shadowColor = unlocked ? "rgba(28, 20, 10, 0.62)" : "rgba(12, 11, 10, 0.6)";
-    context.shadowBlur = 17;
-    context.shadowOffsetY = 7;
-    const stone = context.createLinearGradient(0, cy - 91, 0, cy + 91);
-    if (unlocked) {
-      stone.addColorStop(0, "#eae4d4");
-      stone.addColorStop(0.42, "#dcd5c2");
-      stone.addColorStop(1, "#c4bca8");
+    if (plateReady) {
+      // 1'. 접지 그림자는 판 안쪽에 숨긴 사각형이 드리우게 해 래스터 위에 blur를
+      //     매 프레임 다시 계산하지 않는다. 판 바깥으로 새 장식이 나가지 않는다.
+      context.save();
+      context.shadowColor = unlocked ? "rgba(28, 20, 10, 0.62)" : "rgba(12, 11, 10, 0.6)";
+      context.shadowBlur = 17;
+      context.shadowOffsetY = 7;
+      context.fillStyle = "rgba(24, 18, 11, 0.92)";
+      context.beginPath();
+      context.roundRect(cx - 87, cy - 87, 174, 174, 12);
+      context.fill();
+      context.restore();
+
+      // 2'. 546×546 원본을 정확히 182×182로 축소해 놓는다. 확대·재착색 없음.
+      context.drawImage(
+        formationPlateImage(formation.preferredWuxing, unlocked),
+        cx - FORMATION_PLATE_HALF,
+        cy - FORMATION_PLATE_HALF,
+        FORMATION_PLATE_SIZE,
+        FORMATION_PLATE_SIZE
+      );
     } else {
-      stone.addColorStop(0, "#a8a396");
-      stone.addColorStop(0.42, "#928d82");
-      stone.addColorStop(1, "#77736b");
+      // 1. 제단이 도로 위에 떠 있도록 아래로 접지 그림자를 드리운다.
+      context.save();
+      context.shadowColor = unlocked ? "rgba(28, 20, 10, 0.62)" : "rgba(12, 11, 10, 0.6)";
+      context.shadowBlur = 17;
+      context.shadowOffsetY = 7;
+      const stone = context.createLinearGradient(0, cy - 91, 0, cy + 91);
+      if (unlocked) {
+        stone.addColorStop(0, "#eae4d4");
+        stone.addColorStop(0.42, "#dcd5c2");
+        stone.addColorStop(1, "#c4bca8");
+      } else {
+        stone.addColorStop(0, "#a8a396");
+        stone.addColorStop(0.42, "#928d82");
+        stone.addColorStop(1, "#77736b");
+      }
+      context.fillStyle = stone;
+      context.beginPath();
+      context.roundRect(cx - 91, cy - 91, 182, 182, plateRadii);
+      context.fill();
+      context.restore();
+
+      // 2. 오행 기운을 돌 표면에 스미게 한다. 채도는 낮게, 중심에서만 번지게.
+      context.save();
+      context.beginPath();
+      context.roundRect(cx - 91, cy - 91, 182, 182, plateRadii);
+      context.clip();
+      const tint = context.createRadialGradient(cx, cy, 8, cx, cy, 118);
+      tint.addColorStop(0, formation.color + (unlocked ? (resonance.tier > 0 ? "5c" : "3a") : "18"));
+      tint.addColorStop(1, formation.color + "00");
+      context.fillStyle = tint;
+      context.fillRect(cx - 91, cy - 91, 182, 182);
+
+      // 3. 상단 광원 베벨. 위 모서리는 밝게, 아래 모서리는 어둡게.
+      context.strokeStyle = "rgba(255, 253, 244, 0.85)";
+      context.lineWidth = 2;
+      context.beginPath();
+      context.moveTo(cx - 83, cy - 90);
+      context.lineTo(cx + 86, cy - 90);
+      context.stroke();
+      context.strokeStyle = "rgba(86, 70, 44, 0.4)";
+      context.beginPath();
+      context.moveTo(cx - 86, cy + 90);
+      context.lineTo(cx + 83, cy + 90);
+      context.stroke();
+      context.restore();
+
+      // 4. 테두리: 바깥 접촉선 + 오행 색 실선.
+      context.strokeStyle = "rgba(52, 40, 22, 0.55)";
+      context.lineWidth = 1;
+      context.beginPath();
+      context.roundRect(cx - 91, cy - 91, 182, 182, plateRadii);
+      context.stroke();
+      context.strokeStyle = unlocked ? formation.color + (resonance.tier > 0 ? "e0" : "9e") : "rgba(88, 84, 79, 0.66)";
+      context.lineWidth = resonance.tier > 0 ? 2 : 1.4;
+      context.beginPath();
+      context.roundRect(cx - 88.5, cy - 88.5, 177, 177, [13, 3, 13, 3]);
+      context.stroke();
     }
-    context.fillStyle = stone;
-    context.beginPath();
-    context.roundRect(cx - 91, cy - 91, 182, 182, plateRadii);
-    context.fill();
-    context.restore();
-
-    // 2. 오행 기운을 돌 표면에 스미게 한다. 채도는 낮게, 중심에서만 번지게.
-    context.save();
-    context.beginPath();
-    context.roundRect(cx - 91, cy - 91, 182, 182, plateRadii);
-    context.clip();
-    const tint = context.createRadialGradient(cx, cy, 8, cx, cy, 118);
-    tint.addColorStop(0, formation.color + (unlocked ? (resonance.tier > 0 ? "5c" : "3a") : "18"));
-    tint.addColorStop(1, formation.color + "00");
-    context.fillStyle = tint;
-    context.fillRect(cx - 91, cy - 91, 182, 182);
-
-    // 3. 상단 광원 베벨. 위 모서리는 밝게, 아래 모서리는 어둡게.
-    context.strokeStyle = "rgba(255, 253, 244, 0.85)";
-    context.lineWidth = 2;
-    context.beginPath();
-    context.moveTo(cx - 83, cy - 90);
-    context.lineTo(cx + 86, cy - 90);
-    context.stroke();
-    context.strokeStyle = "rgba(86, 70, 44, 0.4)";
-    context.beginPath();
-    context.moveTo(cx - 86, cy + 90);
-    context.lineTo(cx + 83, cy + 90);
-    context.stroke();
-    context.restore();
-
-    // 4. 테두리: 바깥 접촉선 + 오행 색 실선.
-    context.strokeStyle = "rgba(52, 40, 22, 0.55)";
-    context.lineWidth = 1;
-    context.beginPath();
-    context.roundRect(cx - 91, cy - 91, 182, 182, plateRadii);
-    context.stroke();
-    context.strokeStyle = unlocked ? formation.color + (resonance.tier > 0 ? "e0" : "9e") : "rgba(88, 84, 79, 0.66)";
-    context.lineWidth = resonance.tier > 0 ? 2 : 1.4;
-    context.beginPath();
-    context.roundRect(cx - 88.5, cy - 88.5, 177, 177, [13, 3, 13, 3]);
-    context.stroke();
 
     // 5. 공명 단계는 네 모서리 꺾쇠 길이로 알린다. 색만으로 구분하지 않는다.
     if (unlocked && resonance.tier > 0) {
@@ -3389,19 +3440,23 @@ function drawBoard(): void {
     const cell = BOARD_CELLS[index] as Point;
     const unlocked = engine.isCellUnlocked(index);
     const filled = occupied.has(index);
-    const formation = BOARD_FORMATIONS[Math.floor(index / CELLS_PER_FORMATION)] as (typeof BOARD_FORMATIONS)[number];
+    const formationIndex = Math.floor(index / CELLS_PER_FORMATION);
+    const formation = BOARD_FORMATIONS[formationIndex] as (typeof BOARD_FORMATIONS)[number];
+    // 제단 래스터에 이미 4×4 소켓이 파여 있으면 코드 채움을 낮춰 재질을 덮지 않는다.
+    // 좌표·크기·히트영역·테두리는 그대로다.
+    const overPlate = plateRastered[formationIndex] === true;
 
     // 소켓 바닥: 위가 어둡고 아래가 밝은 그라디언트가 파인 느낌을 만든다.
     const socket = context.createLinearGradient(0, cell.y - 19, 0, cell.y + 19);
     if (!unlocked) {
-      socket.addColorStop(0, "rgba(88, 84, 78, 0.42)");
-      socket.addColorStop(1, "rgba(132, 127, 118, 0.3)");
+      socket.addColorStop(0, overPlate ? "rgba(88, 84, 78, 0.10)" : "rgba(88, 84, 78, 0.42)");
+      socket.addColorStop(1, overPlate ? "rgba(132, 127, 118, 0.06)" : "rgba(132, 127, 118, 0.3)");
     } else if (filled) {
-      socket.addColorStop(0, formation.color + "74");
-      socket.addColorStop(1, formation.color + "3e");
+      socket.addColorStop(0, formation.color + (overPlate ? "50" : "74"));
+      socket.addColorStop(1, formation.color + (overPlate ? "28" : "3e"));
     } else {
-      socket.addColorStop(0, formation.color + "4c");
-      socket.addColorStop(1, formation.color + "24");
+      socket.addColorStop(0, formation.color + (overPlate ? "1e" : "4c"));
+      socket.addColorStop(1, formation.color + (overPlate ? "10" : "24"));
     }
     context.fillStyle = socket;
     context.beginPath();
@@ -3409,12 +3464,15 @@ function drawBoard(): void {
     context.fill();
 
     // 아래 가장자리에 얇은 빛을 남겨 파인 깊이를 굳힌다.
-    context.strokeStyle = "rgba(255, 253, 244, 0.7)";
-    context.lineWidth = 1;
-    context.beginPath();
-    context.moveTo(cell.x - 14, cell.y + 18.5);
-    context.lineTo(cell.x + 14, cell.y + 18.5);
-    context.stroke();
+    // 래스터 판은 자체 베벨이 있으므로 이 선을 겹쳐 그리지 않는다.
+    if (!overPlate) {
+      context.strokeStyle = "rgba(255, 253, 244, 0.7)";
+      context.lineWidth = 1;
+      context.beginPath();
+      context.moveTo(cell.x - 14, cell.y + 18.5);
+      context.lineTo(cell.x + 14, cell.y + 18.5);
+      context.stroke();
+    }
 
     context.strokeStyle = !unlocked
       ? "rgba(104, 99, 92, 0.7)"
@@ -4024,10 +4082,14 @@ function drawEnemy(enemy: Enemy, point = positionOnPath(enemy.progress)): void {
   const color = colors[enemy.archetype];
   const weaknessColor = ELEMENT_STYLES[enemy.weakness].color;
   const visual = enemyJaryeongVisualFor(enemy.archetype, enemy.id + enemy.wave);
-  const image = jaryeongSpriteImage(visual);
+  // 적 전용 1×2 시트를 우선 쓰고, 로드 실패·크기 불일치일 때만 아군 자령 2×2 시트로
+  // 되돌아간다. 둘 다 없으면 아래 원형+한자 폴백이 남는다.
+  const sheetReady = isEnemySheetReady(enemy.archetype);
+  const image = sheetReady ? enemySheetImage(enemy.archetype) : jaryeongSpriteImage(visual);
   const drawSize = enemy.boss ? 70 : enemy.archetype === "swarm" ? 32 : enemy.archetype === "armored" ? 46 : 40;
-  // 스프라이트 프레임 위쪽 투명 여백(실측 15~27%)을 보정해 그림 윗변에 맞춘다.
-  const artTop = drawSize * 0.3;
+  // 스프라이트 프레임 위쪽 투명 여백을 보정해 HP 바를 그림 윗변에 붙인다.
+  // 전용 시트는 아키타입별 실측 알파 bbox, 폴백은 기존 계수를 쓴다.
+  const artTop = drawSize * (sheetReady ? enemyArtTopFactor(enemy.archetype) : FALLBACK_ART_TOP_FACTOR);
   const top = point.y - artTop;
   context.save();
   context.translate(point.x, point.y);
@@ -4073,9 +4135,11 @@ function drawEnemy(enemy: Enemy, point = positionOnPath(enemy.progress)): void {
 
   if (image.complete && image.naturalWidth > 0 && image.naturalHeight > 0) {
     const frame = reducedMotion ? 0 : Math.floor((engine.state.elapsed * 2.2 + enemy.id * 0.37)) % 2;
-    const frameWidth = image.naturalWidth / 2;
-    const frameHeight = image.naturalHeight / 2;
-    context.shadowColor = enemy.boss ? "#ff4a3a" : "#a8341f";
+    // 적 전용 시트는 1행 2열이라 세로를 자르지 않는다. 아군 폴백 시트만 2×2다.
+    const frameWidth = sheetReady ? ENEMY_FRAME_SIZE : image.naturalWidth / 2;
+    const frameHeight = sheetReady ? ENEMY_FRAME_SIZE : image.naturalHeight / 2;
+    // 적대 윤곽은 진사(cinnabar) 계열 광원으로만 알린다. 원본을 재착색하지 않는다.
+    context.shadowColor = enemy.boss ? "#c4392a" : "#9f2f23";
     context.shadowBlur = enemy.boss ? 16 : 8;
     context.drawImage(image, frame * frameWidth, 0, frameWidth, frameHeight, -drawSize / 2, -drawSize / 2, drawSize, drawSize);
     context.shadowBlur = 0;
