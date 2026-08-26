@@ -122,10 +122,12 @@ test("runs the casual eight-star entry and readable one-click promotion workshop
   await page.goto("/?seed=CASUAL-EIGHT-STAR-E2E");
   await expect(page.getByRole("radio", { name: /자형연성 진법/ })).toBeChecked();
   await page.getByRole("radio", { name: /별승급 진법/ }).click();
-  await expect(page.locator('[data-region="KR"]')).toBeChecked();
-  await expect(page.locator('[data-region="JP"]')).toBeDisabled();
-  await expect(page.locator('[data-region="CN"]')).toBeDisabled();
-  await expect(page.locator("#title-note")).toContainText("실제 획수 8단 희귀도");
+  await expect(page.locator('[data-region="KR"]')).toHaveAttribute("aria-checked", "true");
+  // 별승급은 보충 획수 데이터로 전 지역을 지원한다. JP/CN 은 잠기지 않고
+  // 얼리 액세스 확인(P00)을 거친다.
+  await expect(page.locator('[data-region="JP"]')).toBeEnabled();
+  await expect(page.locator('[data-region="CN"]')).toBeEnabled();
+  await expect(page.locator("#s00-summary-main")).toContainText("별승급 진법");
   await page.getByTestId("start-run").click();
 
   await expect(page.locator(".game-shell")).toHaveAttribute("data-game-mode", "casual");
@@ -143,21 +145,30 @@ test("runs the casual eight-star entry and readable one-click promotion workshop
   await expect(page.locator(".game-shell")).toHaveAttribute("data-panel-tab", "evolution");
   await expect(page.locator("#standard-evolution-modes")).toBeHidden();
   await expect(page.locator("#casual-fusion-toolbar")).toBeVisible();
-  // 기본 뷰는 [한 번에 승급] + 그룹 카드. 수동 3슬롯은 접힘 안으로 내려갔다.
-  await expect(page.locator("#casual-fuse-all")).toBeVisible();
+  // v2 기본 뷰는 [한 번에 승급] + 그룹 카드. 4연 소환으로는 같은 오행·같은
+  // 별 3체가 모이지 않으므로 버튼은 비활성이고 빈 상태 안내가 뜬다.
+  await expect(page.locator("#casual-fuse-all")).toBeDisabled();
+  await expect(page.locator("#casual-fuse-all-count")).toHaveText("지금은 0회");
+  await expect(page.locator(".casual-group-card")).toHaveCount(0);
+  await expect(page.locator(".casual-group-empty")).toBeVisible();
+  await expect(page.locator("#casual-goto-shop")).toBeVisible();
+
+  // 수동 3슬롯은 [직접 고르기] 접힘으로 강등됐고 KEEP/USE 용어는 사라졌다.
+  await expect(page.locator(".casual-fusion-slot").first()).toBeHidden();
   await page.locator("#casual-manual-details > summary").click();
   await expect(page.locator("#casual-manual-details")).toHaveAttribute("open", "");
   await expect(page.locator(".casual-rarity-rule > i")).toHaveCount(8);
   await expect(page.locator(".casual-fusion-slot")).toHaveCount(3);
-  await expect(page.locator(".casual-fusion-tower")).toHaveCount(4);
-  const eligibleKeeper = page.locator(".casual-fusion-tower:not(:disabled)").first();
-  await expect(eligibleKeeper).toBeEnabled();
-  const keeperChar = await eligibleKeeper.locator("b").first().innerText();
-  await eligibleKeeper.click();
   await expect(page.locator(".casual-fusion-slot.is-core")).toContainText("남길 자령");
-  await expect(page.locator(".casual-fusion-slot.is-core")).toContainText(keeperChar);
-  await expect(page.locator(".casual-fusion-slot.is-core .casual-fusion-slot-sprite")).toHaveCSS("background-image", /assets\/jaryeongs\//u);
-  await expect(page.locator(".casual-fusion-result")).toContainText(keeperChar);
+  await expect(page.locator(".casual-fusion-slot").nth(1)).toContainText("재료");
+  await expect(page.locator(".casual-fusion-slots")).not.toContainText("KEEP");
+  await expect(page.locator(".casual-fusion-slots")).not.toContainText("USE");
+  // 요구 1 해소: 3체가 안 모인 자령은 흐림 + `3체 미달` 배지로 못 고른다.
+  await expect(page.locator(".casual-fusion-tower")).toHaveCount(4);
+  // 8★ 는 `최고` 라벨을 받으므로 `3체 미달` 배지는 8★ 미만에만 붙는다.
+  await expect(page.locator(".casual-fusion-tower.is-short")).not.toHaveCount(0);
+  await expect(page.locator(".casual-fusion-tower.is-short").first()).toContainText("3체 미달");
+  await expect(page.locator(".casual-fusion-tower:not(:disabled)")).toHaveCount(0);
 
   const desktopLayout = await page.evaluate(() => {
     const workbench = document.querySelector<HTMLElement>(".evolution-workbench")!.getBoundingClientRect();
