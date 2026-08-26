@@ -331,13 +331,15 @@ app.innerHTML = `
               title="인연 연구 — 엽전을 들여 목표 재료가 나올 확률을 올립니다. 최고 5단계 (3키)">
               <span class="hotkey">3</span><b>인연 연구</b><small><em id="research-cost">10W 개방</em> · <i id="research-level">0</i>/5</small>
             </button>
-            <button id="auto-arrange-button" class="action-button action-button--auto-arrange" type="button" data-testid="auto-arrange-button" title="발동 가능한 사자성어를 봉인하고 오행진 공명을 최적화합니다">
-              <b>자동배치</b><small>성어·오행 최적화</small>
-            </button>
             <button id="element-upgrade-button" class="action-button action-button--element-upgrade" type="button" data-testid="element-upgrade-button">
               <b>강화 탭</b><small id="element-upgrade-total">총 0단계</small>
             </button>
           </section>
+          <div id="shop-pinned" class="shop-pinned">
+            <button id="auto-arrange-button" class="action-button action-button--auto-arrange" type="button" data-testid="auto-arrange-button" title="발동 가능한 사자성어를 봉인하고 오행진 공명을 최적화합니다">
+              <b>자동배치</b><small>성어·오행 최적화</small>
+            </button>
+          </div>
         </section>
 
         <section id="selected-card" class="selected-card panel-view" data-panel-view="unit" aria-live="polite">
