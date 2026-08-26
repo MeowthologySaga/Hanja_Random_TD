@@ -654,7 +654,12 @@ test("stores manual summons in the run inventory, deploys them, and returns boar
   await expect(page.locator("#tower-count-value")).toHaveText("0 / 16");
   await expect(page.locator("#run-inventory-count")).toHaveText("1");
   await expect(page.locator("#run-inventory-panel")).toBeVisible();
-  // 패널의 [보관고 열기] 로도 다시 연다(탭 재클릭과 같은 경로).
+  // [보관] 은 탭 재진입이라 집중 프레임이 자동으로 열리고, 프레임이 열린
+  // 동안 요약의 [보관고 열기] 는 숨는다(감사 M2). 닫은 뒤 버튼으로 다시
+  // 여는 경로까지 이어서 본다.
+  await expect(page.locator("#inventory-frame")).toBeVisible();
+  await page.locator("#inventory-frame-close").click();
+  await expect(page.locator("#run-inventory-frame-open")).toBeVisible();
   await page.locator("#run-inventory-frame-open").click();
   await expect(page.locator("#inventory-frame")).toBeVisible();
   await page.screenshot({ path: "artifacts/run-inventory-1280x720.png", fullPage: true });
