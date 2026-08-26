@@ -9109,3 +9109,105 @@ span.codex-jaryeong-category { color: #4a3f30 !important; }
 
 /* 25-F(캔버스 호버 카드 힌트·뜻)는 CSS 로 닿지 않는다 —
    drawHoveredTowerCard 의 context.font 에서 직접 올렸다. */
+
+/* ══════════════════════════════════════════════════════════════════
+   R7-22. hover 사망 클러스터 — !important 패스가 :hover 를 눌러 죽였다
+   28절이 판을 종이로 갈아끼우며 `background: ... !important` 를 깔았는데
+   그 아래 있던 :hover 는 !important 가 없어 전부 무력화됐다. 실측 18곳
+   중 11곳이 호버에 아무 변화가 없었다 — 누를 수 있는 것인지 화면에서
+   알 수 없다는 뜻이다. 2711~2719 이 쓰던 `:hover ... !important` 짝
+   패턴으로 일괄 복구하고, 규칙이 아예 없던 것은 새로 낸다.
+   ※ #early-button 은 R4 핫픽스가 잡고 있어 이 절에서 손대지 않는다.
+   ══════════════════════════════════════════════════════════════════ */
+
+/* ── 22-A. 누를 수 있는데 화살표가 뜨던 4곳 ─────────────────────── */
+.goal-mode-tabs button,
+.codex-mode-tabs button,
+.codex-synthesis-filters button,
+.audio-mute-button {
+  cursor: pointer;
+}
+
+/* ── 22-B. 황동 계열 — 이미 쓰던 brass-hot 으로 맞춘다 ──────────── */
+.coach-next:hover,
+.audio-mute-button:hover,
+.summon-reveal > header button:hover,
+.codex-dialog > header button:hover {
+  background: var(--mat-brass-hot) !important;
+  box-shadow: var(--bevel-up), 0 0 0 1px rgba(122, 90, 42, 0.5) !important;
+}
+
+/* 오디오 음소거만 78절이 `#settings-dialog .audio-mute-button`(1,1,0) 으로
+   판을 못박아 둬서 클래스 하나짜리 호버로는 못 이긴다. 같은 형태로 되짚고,
+   켜짐 상태는 이미 brass-hot 이라 테두리로 구분한다. */
+#settings-dialog .audio-mute-button:hover {
+  background: var(--mat-brass-hot) !important;
+  box-shadow: var(--bevel-up), 0 0 0 2px var(--gold-400) !important;
+}
+
+#settings-dialog .audio-mute-button.is-on:hover {
+  box-shadow: var(--bevel-up), 0 0 0 2px var(--seal) !important;
+}
+
+/* ── 22-C. 닫기 × — 호버 규칙이 아예 없었다. 인주로 물든다 ──────── */
+#codex-close:hover,
+#settings-close:hover,
+#element-upgrade-close:hover,
+#ability-guide-close:hover,
+#summon-reveal-close:hover,
+#help-dialog .dialog-heading button:hover {
+  color: #fff4e8 !important;
+  background: var(--seal) !important;
+  box-shadow: var(--bevel-up), 0 0 0 1px rgba(112, 30, 22, 0.7) !important;
+}
+
+/* ── 22-D. 설정 토글 — 판 전체가 눌리는 곳이라 판을 밝힌다 ──────── */
+.settings-toggle:hover {
+  background: linear-gradient(180deg, #fffaf0 0%, #f3ead4 100%) !important;
+  box-shadow: var(--bevel-up), 0 0 0 1px rgba(122, 90, 42, 0.44) !important;
+}
+
+.settings-toggle:hover > i {
+  box-shadow: var(--bevel-in), inset 0 0 0 1px rgba(128, 108, 74, 0.5) !important;
+}
+
+/* ── 22-E. 표시 모드 옵션 — 고르는 카드인데 반응이 없었다 ───────── */
+.display-mode-option:hover {
+  background: linear-gradient(180deg, #fffaf0 0%, #f1e7cf 100%) !important;
+  box-shadow: var(--bevel-up), 0 0 0 1px rgba(122, 90, 42, 0.5) !important;
+}
+
+/* ── 22-F. 한자 강조 — 켜짐(어두운 판)·꺼짐(밝은 판) 양쪽 ───────── */
+.hanja-emphasis-control:hover {
+  box-shadow:
+    var(--bevel-up),
+    0 0 0 1px rgba(255, 209, 113, 0.75),
+    var(--lift-2) !important;
+}
+
+.hanja-emphasis-control.is-on:hover {
+  background: rgba(38, 34, 24, 0.95) !important;
+}
+
+/* ── 22-G. 목표 모드 탭 ─────────────────────────────────────────── */
+.goal-mode-tabs button:hover:not(.is-active) {
+  color: var(--text-100) !important;
+  background: var(--mat-brass-hot) !important;
+}
+
+/* ── 22-H. 종료 화면 버튼 — R7-1 이 세운 판을 그대로 밝힌다 ─────── */
+.end-actions .start-button:hover {
+  background: linear-gradient(180deg, #fff8e2 0%, #f8dfa2 46%, #d6a851 100%);
+}
+
+.end-actions .secondary-button:hover {
+  background: linear-gradient(180deg, #fffdf6 0%, #f2e9d3 100%);
+}
+
+.end-actions .start-button:active,
+.end-actions .secondary-button:active {
+  transform: translateY(2px);
+  box-shadow:
+    inset 0 2px 6px rgba(78, 58, 22, 0.5),
+    0 1px 0 rgba(0, 0, 0, 0.4);
+}
