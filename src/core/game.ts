@@ -22,6 +22,7 @@ import {
 import { hasActiveSkills } from "./abilities";
 import {
   CASUAL_POLARIS_AURA,
+  CASUAL_SPLASH_STAR_SCALE,
   CASUAL_STAR_POWER,
   casualNaturalStar,
   casualStrokeCount
@@ -909,8 +910,9 @@ export class GameEngine {
     this.damageEnemy(target, damage, critical, weakness, armorPenetration);
 
     if (activeSkills && tower.wuxing === "火") {
-      const splashRadius = (tuning.splashRadius + signatureControlBonus * 80) * (1 + this.elementTraitLevel("火", 1) * 0.02);
-      const splashRatio = (tuning.splashRatio + signatureControlBonus * 0.35) * (1 + this.elementTraitLevel("火", 0) * 0.025);
+      // 수술 5: 캐주얼에서는 별이 곧 광역의 크기다(표준은 배율 1).
+      const splashRadius = (tuning.splashRadius + signatureControlBonus * 80) * (1 + this.elementTraitLevel("火", 1) * 0.02) * this.casualSplashRadiusScale(tower);
+      const splashRatio = (tuning.splashRatio + signatureControlBonus * 0.35) * (1 + this.elementTraitLevel("火", 0) * 0.025) * this.casualSplashRatioScale(tower);
       for (const enemy of this.state.enemies
         .filter((candidate) => candidate.id !== target.id && distance(this.enemyPoint(candidate), targetPoint) <= splashRadius)
         .slice(0, 5)) {
@@ -948,12 +950,15 @@ export class GameEngine {
         this.damageEnemy(target, damage * 0.58 * tuning.signatureMultiplier * abilityPower, false, weakness, armorPenetration * 0.5);
         roleEffect = "같은 적에게 " + String(Math.round(58 * tuning.signatureMultiplier)) + "% 추가타";
       } else if (profile.role === "splash") {
+        // 수술 5: 역할 확산도 캐주얼 별 스케일을 함께 탄다.
+        const spreadRadius = (tuning.splashRadius + 22) * this.casualSplashRadiusScale(tower);
+        const spreadRatio = tuning.roleSplashRatio * this.casualSplashRatioScale(tower);
         const spreadTargets = this.state.enemies
-          .filter((candidate) => candidate.id !== target.id && distance(this.enemyPoint(candidate), targetPoint) <= tuning.splashRadius + 22)
+          .filter((candidate) => candidate.id !== target.id && distance(this.enemyPoint(candidate), targetPoint) <= spreadRadius)
           .slice(0, 5);
-        for (const enemy of spreadTargets) this.damageEnemy(enemy, damage * tuning.roleSplashRatio * abilityPower, false, enemy.weakness === tower.wuxing);
+        for (const enemy of spreadTargets) this.damageEnemy(enemy, damage * spreadRatio * abilityPower, false, enemy.weakness === tower.wuxing);
         roleTargets += spreadTargets.length;
-        roleEffect = "주변 " + String(spreadTargets.length) + "체에 " + String(Math.round(tuning.roleSplashRatio * 100)) + "% 확산";
+        roleEffect = "주변 " + String(spreadTargets.length) + "체에 " + String(Math.round(spreadRatio * 100)) + "% 확산";
       } else if (profile.role === "control") {
         roleEffect = "오행 효과 강화 · 이번 공격 ×" + tuning.signatureMultiplier.toFixed(2);
       } else if (profile.role === "support") {
@@ -1026,7 +1031,8 @@ export class GameEngine {
       targets = Math.max(1, zoneTargets);
       effect = `${zone.label} ${zone.duration.toFixed(1)}초 · 초당 ${Math.round(zone.damagePerSecond)} 피해`;
     } else if (family === "flame") {
-      const radius = 115;
+      // 수술 5: 잔화 지대도 캐주얼에서는 별을 따라 넓어진다.
+      const radius = 115 * this.casualSplashRadiusScale(tower);
       const victims = this.state.enemies
         .filter((candidate) => candidate.id !== target.id && distance(this.enemyPoint(candidate), targetPoint) <= radius)
         .slice(0, 5);
@@ -2261,6 +2267,21 @@ export class GameEngine {
   /** 극성 개안이 이 오행의 공격에 곱하는 배율. 오라가 없으면 1이다. */
   casualPolarisDamageMultiplier(wuxing: Wuxing): number {
     return this.casualPolarisAuraActive(wuxing) ? 1 + CASUAL_POLARIS_AURA.damageBonus : 1;
+  }
+
+  /**
+   * 광역 계열(화행 폭발·역할 확산·잔화 지대)의 반경에 곱하는 캐주얼 별 스케일.
+   * 표준 모드는 tuning 이 이미 stage 로 스케일하므로 1이다.
+   */
+  casualSplashRadiusScale(tower: Tower): number {
+    if (this.state.mode !== "casual") return 1;
+    return 1 + ((tower.casualStar ?? tower.naturalStar ?? 1) - 1) * CASUAL_SPLASH_STAR_SCALE.radiusPerStar;
+  }
+
+  /** 광역 계열 확산비(splashRatio·roleSplashRatio)에 곱하는 캐주얼 별 스케일. */
+  casualSplashRatioScale(tower: Tower): number {
+    if (this.state.mode !== "casual") return 1;
+    return 1 + ((tower.casualStar ?? tower.naturalStar ?? 1) - 1) * CASUAL_SPLASH_STAR_SCALE.ratioPerStar;
   }
 
   towerRangeBonus(tower: Tower): number {

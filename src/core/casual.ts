@@ -90,6 +90,19 @@ export const CASUAL_POLARIS_AURA = Object.freeze({
   description: "8★ 극성 자령이 전장에 있으면 같은 오행 아군 전체의 공격이 15% 증가합니다. 같은 오행의 오라는 중첩되지 않습니다."
 });
 
+/**
+ * 광역(스플래시) 계열의 별 스케일 — 사용자 직접 지시.
+ *
+ * splashRadius = 58 + stage×6 은 캐주얼에서 stage 가 사실상 고정이라
+ * 별이 올라도 범위가 그대로였다. 캐주얼에서만 별당 반경 +7%, 확산비 +4%를
+ * 곱해 높은 별의 광역이 실제로 넓고 아프게 만든다. 표준 모드는 기존
+ * stage 스케일을 그대로 쓴다.
+ */
+export const CASUAL_SPLASH_STAR_SCALE = Object.freeze({
+  radiusPerStar: 0.07,
+  ratioPerStar: 0.04
+});
+
 export const CASUAL_STAR_NAMES: Record<CasualStar, string> = Object.freeze({
   1: "일반",
   2: "숙련",

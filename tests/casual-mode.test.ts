@@ -610,4 +610,21 @@ describe("casual eight-star mode", () => {
     standard.begin();
     expect(standard.casualPolarisDamageMultiplier(wuxing)).toBe(1);
   });
+
+  it("widens splash radius and ratio with the casual star while standard stays stage-scaled", () => {
+    // 수술 5(사용자 지시): 광역 계열이 별과 무관하게 일정하던 것을 바로잡는다.
+    const engine = casualEngine("casual-splash-scale");
+    const definition = safeCasualDefinitions(engine, 1)[0] as HanziDefinition;
+    const low = casualTower(definition, 1401, 0, 1);
+    const high = casualTower(definition, 1402, 1, 8);
+    expect(engine.casualSplashRadiusScale(low)).toBe(1);
+    expect(engine.casualSplashRatioScale(low)).toBe(1);
+    expect(engine.casualSplashRadiusScale(high)).toBeCloseTo(1.49, 5);
+    expect(engine.casualSplashRatioScale(high)).toBeCloseTo(1.28, 5);
+
+    const standard = new GameEngine("standard-splash-scale", "KR");
+    standard.begin();
+    expect(standard.casualSplashRadiusScale(high)).toBe(1);
+    expect(standard.casualSplashRatioScale(high)).toBe(1);
+  });
 });
