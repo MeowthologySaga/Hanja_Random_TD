@@ -24,6 +24,7 @@ import { wireSelected1, wireSelected2, wireSelected3 } from "./ui/panels/selecte
 import { wireShop1 } from "./ui/panels/shop";
 import { wireTalisman1 } from "./ui/panels/talisman";
 import { wireS00Menu1, wireS00Menu2, wireS00Menu3, wireS00Menu4 } from "./ui/s00-menu";
+import { wireScrollAffordance1 } from "./ui/scroll-affordance";
 import { wireSummonReveal1 } from "./ui/summon-reveal";
 import { wireTutorial1 } from "./ui/tutorial";
 
@@ -69,6 +70,7 @@ wireBoot2();
 wireDevTools1();
 wireCoach1();
 wireHint1();
+wireScrollAffordance1();
 wireTutorial1();
 wireBoot3();
 wireBoot4();

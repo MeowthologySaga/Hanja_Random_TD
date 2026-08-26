@@ -112,6 +112,15 @@ test("walks the training grounds through all eight scripted steps", async ({ pag
   await expect(fuseAll).toBeEnabled();
   await page.screenshot({ path: `${SHOT_DIR}/tutorial-step4-fusion-1280x720.png` });
   await fuseAll.click();
+  // [트랙 R · P-03] 일괄 승급이 전장 배치 자령까지 재료로 먹으면 확인 창을 한 번
+  // 거친다. 수련장 4걸음은 가방에 3기를 지급하지만, 그 시점 전장에는 이미 같은
+  // 오행·1★ 자령 3기(2·3걸음의 배치·지원군)가 서 있어 묶음이 둘이 된다 —
+  // 실측: 2묶음 6기 중 전장 3기. 즉 예전에는 여기서 전장 3기가 말없이 사라졌다.
+  const fusionConfirm = page.locator("#casual-fusion-confirm-dialog");
+  await expect(fusionConfirm).toBeVisible();
+  await expect(page.locator("#casual-fusion-confirm-title")).toContainText("전장 자령");
+  await page.locator("#casual-fusion-execute").click();
+  await expect(fusionConfirm).toBeHidden();
   // 완료 연출 — 승급이 남긴 문기를 자원칸 스포트라이트로 짚는다(걸음 수 유지).
   await expect(page.locator("#tutorial-title")).toContainText("승급이 문기를 남겼어요");
   await expect(page.locator("#tutorial-body")).toContainText("아무 곳이나 눌러 계속");

@@ -1286,9 +1286,6 @@ test("spotlights the first run with a three-step coach that can be skipped for g
 // FB4 — 1회성 안내. 별승급 진법에서 중급 소환 해금 안내가 먼저 서고,
 // 첫 소환 공개 연출에는 획수→별 규칙 안내가 딱 한 번 붙는다.
 test("teaches summon tiers and the stroke-to-star rule with one-shot hints", { tag: HINT_TAG }, async ({ page }) => {
-  // 부적 안내(기본 켜짐)는 이 스펙의 대상이 아니다 — 본 뒤로 표시해 두지 않으면
-  // 중급 안내를 닫는 순간 그 자리를 이어받아 "안내가 안 걷힌다"로 보인다.
-  await page.addInitScript(() => window.localStorage.setItem("hanja-td:hint:talisman:v1", "1"));
   await page.goto("/?seed=HINT-E2E-01");
   await page.getByTestId("start-run").click();
 
@@ -1296,6 +1293,17 @@ test("teaches summon tiers and the stroke-to-star rule with one-shot hints", { t
   await expect(page.locator("#hint-layer")).toBeVisible();
   await expect(page.locator("#hint-title")).toContainText("별 확률");
   await expect(page.locator("#hint-body")).toContainText("확정, 주로");
+
+  // [트랙 R · P-27] 안내를 [확인]으로 걷으면 다음 안내(부적)가 같은 자리를 바로
+  // 다음 프레임에 이어받았다 — 눈에는 "안 걷혔다"로 보이고, 걷으려던 클릭이
+  // 새 안내를 향한 클릭이 되어 두 번째 안내를 못 보고 지나친다. 재장전 지연
+  // (hint.ts HINT_RELOAD_DELAY_MS)이 그 사이를 비우는지 시간으로 잰다.
+  const dismissedAt = Date.now();
+  await page.locator("#hint-dismiss").click();
+  await expect(page.locator("#hint-layer")).toBeHidden();
+  await expect(page.locator("#hint-layer")).toBeVisible();
+  expect(Date.now() - dismissedAt).toBeGreaterThanOrEqual(400);
+  await expect(page.locator("#hint-title")).toContainText("부적");
   await page.locator("#hint-dismiss").click();
   await expect(page.locator("#hint-layer")).toBeHidden();
 

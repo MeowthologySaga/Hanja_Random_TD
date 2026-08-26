@@ -153,7 +153,14 @@ export type JaryeongDexFilter = "all" | Wuxing;
 
 export const dismantleSelection = new Set<number>();
 
-type PendingCasualFusion = { kind: "manual"; materialIds: [number, number, number]; quote: CasualFusionQuote };
+/**
+ * 확인 창이 기다리고 있는 승급. `manual` 은 손으로 고른 3기,
+ * `auto` 는 [한 번에 승급] 일괄이다 — 트랙 R(P-03)에서 전장 자령이 낀 일괄만
+ * 같은 창을 한 번 거치게 했다.
+ */
+type PendingCasualFusion =
+  | { kind: "manual"; materialIds: [number, number, number]; quote: CasualFusionQuote }
+  | { kind: "auto"; groups: number; boardTowerIds: readonly number[] };
 
 /** 발동 순간 뜨는 성어 4자 대형 플래시. 카메라가 어디에 있든 보이도록 화면 좌표로 그린다. */
 interface IdiomFlashFx {

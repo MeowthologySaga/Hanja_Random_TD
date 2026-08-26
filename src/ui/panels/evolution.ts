@@ -7,7 +7,7 @@ import { type CasualStar, type EvolutionOption, type Wuxing } from "../../core/t
 import { ctx, must } from "../app-context";
 import { casualStarOf, visualBackgroundStyle } from "../format";
 import { handleAction, setPanelTab, showToast } from "../hud";
-import { openCasualManualReview, renderCasualFusion, runCasualAutoFusion } from "./casual-fusion";
+import { openCasualManualReview, renderCasualFusion, requestCasualAutoFusionAll, runCasualAutoFusion } from "./casual-fusion";
 
 export function renderEvolutions(): void {
   if (ctx.engine.state.mode === "casual") {
@@ -121,7 +121,7 @@ export function wireEvolution1(): void {
     const details = event.target as HTMLElement;
     if (details instanceof HTMLDetailsElement && details.id === "casual-manual-details") ctx.casualManualOpen = details.open;
   }, true);
-  must<HTMLButtonElement>("#casual-fuse-all").addEventListener("click", () => runCasualAutoFusion("all", null));
+  must<HTMLButtonElement>("#casual-fuse-all").addEventListener("click", () => requestCasualAutoFusionAll());
   must<HTMLElement>("#evolution-options").addEventListener("pointerover", (event) => {
     ctx.hoveredRecipeId = (event.target as HTMLElement).closest<HTMLButtonElement>("[data-recipe]")?.dataset.recipe ?? null;
   });

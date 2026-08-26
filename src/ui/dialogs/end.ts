@@ -4,12 +4,16 @@
 import { ctx, endOverlay, must } from "../app-context";
 import { formatTime, gameModeLabel } from "../format";
 import { setFocusFrame } from "../hud";
+import { hideSummonReveal } from "../summon-reveal";
 import { totalElementUpgradeLevels, totalGlobalUpgradeLevels } from "./element-upgrade";
 
 export function showEndScreen(phase: "victory" | "defeat"): void {
   // 강화·농축 프레임을 연 채 패배하면 종료 화면 뒤에 프레임이 남아,
   // 재도전 직후 전장이 어두운 유리 아래 갇힌다.
   setFocusFrame(null);
+  // 소환·3합 공개 연출도 같은 이유로 먼저 걷는다 — 연출 중에 패배하면
+  // 카드 막이 종료 화면 통계 11칸 중 8칸을 그대로 덮었다.
+  hideSummonReveal();
   const state = ctx.engine.state;
   const victory = phase === "victory";
   // 최고 기록은 이번 판을 저장하기 "전"에 읽어야 갱신 여부를 알 수 있다.

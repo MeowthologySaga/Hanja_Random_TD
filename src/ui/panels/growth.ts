@@ -70,6 +70,36 @@ function setDismantleProtectsUnique(enabled: boolean): void {
 
 const UPGRADE_UNAVAILABLE_LABEL = "투자 불가";
 
+/** cleanupAssessments 가 붙이는 유일 보유 보호 사유. 원인 지목의 기준점이다. */
+const SOLE_COPY_REASON = "유일 보유 한자";
+
+/**
+ * "[유일 자령 보호] 하나만 걷으면 바로 분해되는" 가방 자령의 수 — 트랙 R(P-07).
+ *
+ * 감사 실측: 보통의 가방은 서로 다른 한자로 차므로 기본 ON 인 이 보호가 후보를
+ * 전부 삼켜 분해 가능 0기가 된다(끄면 즉시 8기 전부). 그런데 빈 상태 문구는
+ * "필터를 바꾸거나…"라 원인을 안 가리켜, 문기 획득 자체가 막힌 것처럼 보였다.
+ * 기본값은 그대로 두고(사용자 결정), 막힌 이유와 그 자리에서 푸는 길만 세운다.
+ */
+function soleCopyOnlyCount(assessments: ReadonlyMap<number, { protected: boolean; protectedReasons: readonly string[] }>): number {
+  if (!ctx.dismantleProtectsUnique) return 0;
+  return ctx.engine.state.inventoryTowers.filter((tower) => {
+    const assessment = assessments.get(tower.id);
+    if (!assessment?.protected) return false;
+    return assessment.protectedReasons.every((reason) => reason === SOLE_COPY_REASON);
+  }).length;
+}
+
+/** 원인 지목 + 그 자리에서 끄는 바로가기. 빈 목록과 "전부 보호" 양쪽에 쓴다. */
+function soleCopyNoticeMarkup(count: number, empty: boolean): string {
+  return `<div class="workbench-empty dismantle-unique-notice">
+    <b>전부 유일 보유 보호에 걸렸습니다</b>
+    <span>가방 자령 ${count}기가 "이 한자는 이 1기뿐"이라는 이유 하나로 후보에서 빠졌습니다. [유일 자령 보호]를 끄면 그 ${count}기가 그대로 분해 후보로 들어옵니다.</span>
+    <button type="button" data-dismantle-unique-off>[유일 자령 보호] 끄기</button>
+    ${empty ? `<button type="button" data-goto-inventory>가방 탭 열기</button>` : ""}
+  </div>`;
+}
+
 function upgradeAmountLabel(scope: "global" | "element" | "trait", stat: UpgradeStat | null, traitIndex: number | null, amount: number | "max"): string {
   const quote = scope === "global" && stat
     ? ctx.engine.quoteGlobalUpgrade(stat, amount)
@@ -100,7 +130,10 @@ export function renderGrowth(): void {
   must<HTMLElement>("#growth-resource-summary").textContent = "문기 " + WUXING_ORDER.map((wuxing) => `${wuxing}${ctx.engine.state.elementEssence[wuxing]}`).join(" ");
   const dismantleReady = ctx.engine.state.inventoryTowers.filter((tower) => !assessmentMap.get(tower.id)?.protected).length;
   must<HTMLElement>("#growth-panel-dismantle").textContent = `분해 가능 ${dismantleReady}기 · 선택 ${dismantleSelection.size}기`;
-  must<HTMLElement>("#growth-dismantle-list").innerHTML = rows.length > 0 ? rows.map(({ tower, assessment }) => {
+  // 원인 지목: 분해 가능이 0기이고 그 이유가 오직 유일 보유 보호일 때만 세운다.
+  const soleOnly = dismantleReady === 0 ? soleCopyOnlyCount(assessmentMap) : 0;
+  const soleNotice = soleOnly > 0 ? soleCopyNoticeMarkup(soleOnly, rows.length === 0) : "";
+  must<HTMLElement>("#growth-dismantle-list").innerHTML = rows.length > 0 ? soleNotice + rows.map(({ tower, assessment }) => {
     const protectedReasons = assessment?.protectedReasons ?? ["보호 상태 확인 필요"];
     const protectedState = assessment?.protected ?? true;
     const essence = ctx.engine.towerDismantleEssenceValue(tower);
@@ -110,7 +143,7 @@ export function renderGrowth(): void {
       <input type="checkbox" data-dismantle-id="${tower.id}" ${dismantleSelection.has(tower.id) ? "checked" : ""} ${protectedState || !active ? "disabled" : ""}>
       ${spiritPortraitMarkup(tower.char, tower.wuxing, "workbench-spirit--dismantle")}<b>${escapeHtml(tower.char)}</b><span><strong>${soleBadge}${tower.wuxing}행 · ${towerProgressionLabel(tower)} · #${tower.id}</strong><small>${protectedState ? `분해 불가 — ${protectedReasons.map(escapeHtml).join(" · ")}` : (assessment?.reasons ?? []).map(escapeHtml).join(" · ") || "분해 가능"}</small></span><em>${protectedState ? "보호" : essenceAmountChip(tower.wuxing, essence)}</em>
     </label>`;
-  }).join("") : `<div class="workbench-empty"><b>조건에 맞는 가방 자령이 없습니다</b><span>필터를 바꾸거나 소환 자령을 가방에 보관하세요.</span><button type="button" data-goto-inventory>가방 탭 열기</button></div>`;
+  }).join("") : soleNotice || `<div class="workbench-empty"><b>조건에 맞는 가방 자령이 없습니다</b><span>필터를 바꾸거나 소환 자령을 가방에 보관하세요.</span><button type="button" data-goto-inventory>가방 탭 열기</button></div>`;
 
   const quote = ctx.engine.quoteDismantle([...dismantleSelection], dismantleOptions());
   // [J-1] "木+3" 은 무엇이 3인지 안 말한다 — 문기·분해 점수 각각에 단위를 붙인다.
@@ -180,7 +213,15 @@ export function wireGrowth2(): void {
     });
   }
   must<HTMLElement>("#growth-dismantle-list").addEventListener("click", (event) => {
-    if (!(event.target as HTMLElement).closest("[data-goto-inventory]")) return;
+    const target = event.target as HTMLElement;
+    // 원인 지목 안내의 바로가기 — 필터 줄까지 눈을 옮기지 않고 그 자리에서 푼다.
+    if (target.closest("[data-dismantle-unique-off]")) {
+      sound.unlock();
+      setDismantleProtectsUnique(false);
+      sound.playUiConfirm();
+      return;
+    }
+    if (!target.closest("[data-goto-inventory]")) return;
     setPanelTab("inventory");
   });
   must<HTMLElement>("#growth-dismantle-list").addEventListener("change", (event) => {
