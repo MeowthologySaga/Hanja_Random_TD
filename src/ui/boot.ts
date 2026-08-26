@@ -3,6 +3,7 @@
  */
 import { BOARD_FORMATIONS, WORLD_HEIGHT, WORLD_WIDTH } from "../core/content";
 import {
+  beginBootStageBuild,
   dismissBootScreen,
   preloadP1,
   registerServiceWorker,
@@ -177,6 +178,9 @@ async function bootGame(): Promise<void> {
   // 첫 방문에도 워커가 곧바로 페이지를 물어 P1·P2 응답을 캐시에 담게 한다.
   registerServiceWorker();
   await preloadP1(s00Mode, updateBootProgress);
+  // 여기부터 막이 걷힐 때까지가 진행 표시의 사각지대였다(실측 프로덕션 1.1초 ·
+  // dev 5.3초를 100% 인 채로 서 있었다). 마지막 걸음에도 이름과 자리를 준다.
+  beginBootStageBuild();
   await mountS00();
   dismissBootScreen();
   attachHanjiPaperBackground();

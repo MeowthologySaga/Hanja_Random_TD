@@ -1,10 +1,11 @@
 /*
- * 490 — 표기(읽기) 축 준비 절. (gripe #6, 트랙 D)
+ * 490 — 표기(읽기) 축. (gripe #6, 트랙 D·Q)
  *
- * S13 맞춤 진법의 「읽기 표기법」 3버튼 그룹과 교차 조합용 「대체」 배지.
- * 그룹은 NOTATION_AXIS_READY=false 동안 hidden 이고, 배지는 통합 표기
- * 테이블(요청서 v8) 도착 전에는 도달 불가라 이 절은 현행 화면에 아무
- * 픽셀도 더하지 않는다 — 플래그를 켜는 순간부터 일한다.
+ * S13 맞춤 진법의 「읽기 표기법」 3버튼 그룹과, 읽기 값이 정통 훈음이 아닐 때
+ * 그렇다고 말하는 정직 배지 2종.
+ *
+ * 배지는 authentic 판정에서 마크업 자체가 나오지 않는다 — 자국 표기 3조합은
+ * 전부 authentic 이라 이 절은 아무것도 고르지 않은 화면에 픽셀을 더하지 않는다.
  */
 
 /* 절 52 의 `.s13-group { display: grid }` 가 UA 의 [hidden] display:none 을
@@ -18,21 +19,146 @@
   letter-spacing: 0.02em;
 }
 
+/* 표를 받는 동안 — 반쯤 채워진 라벨이 스치지 않도록 버튼을 잠근다. */
+.s13-notation-group.is-loading .s13-options {
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+.s13-notation-group.is-loading .s13-group-label::after {
+  content: " · 자료 받는 중";
+  font-weight: 400;
+  opacity: 0.7;
+}
+
 /*
- * 표기 대체 배지 — notationSubstituteHtml(src/ui/notation-substitute.ts).
- * 선택한 표기가 그 글자를 커버하지 못해 자국 표기로 대신 보여 줄 때
- * 읽기 문자열 옆에 붙는다. 먹지 위 회갈 점선 테로, 본문보다 낮은 성량.
+ * 표기 그룹 아래 한 줄 안내 — 무엇을 고르는 축인지 먼저 말한다.
+ *
+ * S13 은 한지빛 두루마리 위다. 배지와 같은 이유로 글자색을 고정하지 않고
+ * 주변 본문색을 물려받아 옅기로만 낮춘다 — 밝은 색을 박아 두면 밝은 종이
+ * 위에서 통째로 사라진다.
  */
-.notation-substitute {
-  display: inline-block;
+.s13-group-note {
+  grid-column: 1 / -1;
+  margin: 4px 0 0;
+  font-size: 11px;
+  line-height: 1.5;
+  color: inherit;
+  opacity: 0.78;
+}
+
+.s13-group-note b {
+  color: inherit;
+  font-weight: 800;
+  opacity: 1;
+}
+
+/*
+ * ── 정직 배지 2종 ───────────────────────────────────────────────────────
+ * notation-substitute.ts 가 찍는다.
+ *
+ * 배지는 먹지 위 HUD 부터 한지빛 도감 패널까지 열 몇 군데에 얹힌다. 색을
+ * 고정하면 그중 절반에서 읽히지 않으므로 글자색은 주변 본문색을 물려받고
+ * (color: inherit + 낮은 불투명도) 갈래는 테두리·바탕의 색기로만 가른다 —
+ * 어느 바닥 위에서도 읽히면서 본문보다 한 칸 낮은 성량을 지킨다.
+ *
+ * !important 가 붙은 이유는 호스트 테마 시트들이 카드 안쪽 요소를 자기
+ * !important 로 칠하기 때문이다. 배지는 어디에 얹혀도 배지여야 한다.
+ */
+.notation-mark {
+  display: inline-flex !important;
+  align-items: center;
+  gap: 3px;
   margin-left: 4px;
   padding: 0 4px;
+  flex: 0 0 auto;
+  color: inherit !important;
+  opacity: 0.82;
   font-size: 9px;
   font-weight: 700;
+  font-style: normal;
   line-height: 14px;
   vertical-align: 1px;
-  color: #9d8f78;
-  border: 1px dashed rgba(157, 143, 120, 0.55);
   border-radius: 3px;
   white-space: nowrap;
+  text-shadow: none !important;
+  box-shadow: none !important;
+  background-image: none !important;
+}
+
+/* 정자 파생 — 값 자체는 사전 독음이라 실선으로 조금 더 단단하게. */
+.notation-mark--derived {
+  border: 1px solid rgba(96, 132, 74, 0.55) !important;
+  background-color: rgba(120, 156, 96, 0.14) !important;
+}
+
+.notation-mark-glyph {
+  font-weight: 700;
+  font-size: 10px;
+  font-style: normal;
+  color: inherit !important;
+  background: none !important;
+  box-shadow: none !important;
+  text-shadow: none !important;
+}
+
+/* 대체 표기 — 점선. 사전 독음이 아니라는 신호를 가장 약한 결로. */
+.notation-mark--substitute {
+  border: 1px dashed rgba(138, 118, 88, 0.7) !important;
+  background-color: rgba(150, 132, 104, 0.12) !important;
+}
+
+.notation-mark-kind {
+  font-style: normal;
+  font-weight: 600;
+  font-size: 9px;
+  color: inherit !important;
+  background: none !important;
+  box-shadow: none !important;
+  opacity: 0.88;
+}
+
+.notation-mark-kind::before {
+  content: "·";
+  margin-right: 3px;
+  opacity: 0.7;
+}
+
+/*
+ * 원천 뜻 — 대체 표기의 뜻은 번역하지 않은 원문이다. 영어 원문은 세리프
+ * 이탤릭 + lang="en" 으로 훈음과 확실히 갈라 놓는다(같은 활자면 오인한다).
+ */
+.notation-gloss {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 6px;
+  margin-top: 4px;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.notation-gloss-caption {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: inherit !important;
+  opacity: 0.7;
+}
+
+.notation-gloss-text {
+  color: inherit !important;
+  opacity: 0.86;
+}
+
+.notation-gloss-text--en {
+  font-style: italic;
+  font-family: Georgia, "Times New Roman", serif;
+  letter-spacing: 0.01em;
+}
+
+.notation-gloss-origin {
+  font-size: 9px;
+  color: inherit !important;
+  opacity: 0.65;
 }

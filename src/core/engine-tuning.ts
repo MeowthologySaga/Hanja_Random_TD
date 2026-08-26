@@ -112,6 +112,66 @@ export function casualSummonStarDistribution(
   return rows.map((row) => ({ star: row.star, share: total > 0 ? row.share / total : 0 }));
 }
 
+/**
+ * 소환 기본가. 열두 번 뽑을 때마다 1 오르고 24에서 멎는다 — 무한 뽑기를 막되
+ * 후반에도 상한이 예측 가능해야 상점 계획이 선다.
+ */
+export const SUMMON_BASE_COST = Object.freeze({ start: 7, perStep: 12, cap: 24 });
+
+export function summonCost(summonCount: number): number {
+  const { start, perStep, cap } = SUMMON_BASE_COST;
+  return Math.min(cap, start + Math.floor(Math.max(0, summonCount) / perStep));
+}
+
+/**
+ * 상점 소환 상품의 기본가 배수 — 정찰료는 정액이 아니라 **정률**이다.
+ *
+ * 확률 보정은 공짜가 아니다. 목적 소환은 기본가에 배수를 곱해 "무엇을
+ * 노리는가"가 곧 지출 판단이 되도록 한다. 균형 소환만 1이며 10연 소환은
+ * 균형가를 그대로 쓴다(`multiSummonCost`).
+ *
+ * 정액(+2/+3/+5/+12)이던 시절의 병리 — 기본가가 7→24 로 세 배 넘게 오르는
+ * 동안 정찰료만 굳어 있어서 엽전당 전투력 순위가 뒤집혔다. 실측:
+ *
+ *   기본가  7: 기본 0.179 > 중급 0.153 > 고급 0.140   (건강 — 기본=화력, 티어=별 프리미엄)
+ *   기본가 24: 기본 0.052 < 중급 0.063 < 고급 0.074   (역전 — 고급 전면 우위·기본 완전 열등)
+ *
+ * 배수로 바꾸면 가격비가 척도 불변이 되어 초반 구조가 끝까지 유지된다.
+ * 계수는 초반 가격(7/9/10/9/12/19)을 한 푼도 바꾸지 않도록 골랐고,
+ * 그래서 후반은 24/31/35/31/41/65 가 된다. 상품 간 엽전당 전투력 최대/최소
+ * 격차는 전 구간 1.29~1.33 로 평탄해진다(정액은 1.29 → 1.53 으로 벌어졌다).
+ *
+ * 탐색·중복(×1.3)·계보(×1.45)도 같은 병을 앓고 있었다 — 정액 +2/+3 은
+ * 후반에 기본가 대비 8% 프리미엄으로 녹아 "목적을 고르는 지출 판단" 자체가
+ * 사라졌다. 정률로 바꾸면 프리미엄이 30%·45% 로 고정된다. 이 셋은 별 밴드가
+ * 기본과 같거나(탐색·중복 1~3★) 아예 없어서(계보는 자형연성 전용) 전투력
+ * 축으로는 언제나 기본보다 낮다 — 값은 겨냥에 붙지 화력에 붙지 않는다.
+ */
+export const SUMMON_COST_MULTIPLIER: Readonly<Record<SummonIntent, number>> = Object.freeze({
+  balanced: 1,
+  discovery: 1.3,
+  lineage: 1.45,
+  concentration: 1.3,
+  midstar: 1.7,
+  highstar: 2.7
+});
+
+/** 상품 카드에 표시하고 실제로 청구하는 1회 소환가. */
+export function summonProductCost(summonCount: number, intent: SummonIntent): number {
+  return Math.round(summonCost(summonCount) * SUMMON_COST_MULTIPLIER[intent]);
+}
+
+/** 기본가 위에 얹히는 정찰료 실액. 표시와 청구가 같은 곳에서 나오도록 파생으로 둔다. */
+export function summonSurcharge(summonCount: number, intent: SummonIntent): number {
+  return summonProductCost(summonCount, intent) - summonCost(summonCount);
+}
+
+/** 10연 소환은 균형가 열 장 값 그대로다(배수 1, 할증 없음). */
+export function multiSummonCost(summonCount: number, amount = 10): number {
+  return Array.from({ length: Math.max(0, amount) }, (_, index) => summonCost(summonCount + index))
+    .reduce((total, cost) => total + cost, 0);
+}
+
 export function interestForGold(gold: number): number {
   return Math.min(20, Math.max(0, Math.floor(gold / 20)));
 }
@@ -431,9 +491,22 @@ export const TUTORIAL_ENEMY_COUNT_SCALE = 0.4;
  *   21-30       57.1     17.0        2.3   37.9
  *   51-60      142.2     29.0        4.3  108.9
  *   91-100     221.1     45.0        7.1  169.0
- * 부적 기대 수입(상한 3장/웨이브 · 성공률 100% 가정):
+ * 부적 기대 수입(적립 3장/웨이브 · 성공률 100% 가정):
  *   엽전 60% × 평균 10 = 6.0/장 · 문기 30% × 1 · 무료권 10% × 1
  *   → 웨이브당 18 엽전 + 0.9 문기 + 0.3 소환권.
+ *
+ * 트랙 C3 — 장수 이월과 누적 상한 30장:
+ * "라운드당 3개 계속 쌓이게 해서 유저가 시간에 쫓길 일 없게 하자"(사용자).
+ * 웨이브마다 3장이 더해지고 안 쓴 장수는 소멸하지 않는다. **적립 속도는
+ * 그대로 3장/웨이브**라 위의 웨이브당 기대 수입(18엽전)도 그대로다 — 바뀌는
+ * 것은 그것을 언제 쓰느냐뿐이다.
+ * 상한 30장인 근거: (a) 10웨이브 = 한 봉인장치 비축이라 사람이 셈하기 쉽고,
+ * (b) 한 번에 몰아써도 30 × 6.0 = 180엽전으로, 그 정도까지 모으려면 최소
+ * 10웨이브를 참아야 하는 51-60 구간의 웨이브 1회 총수입(142)·91-100 구간
+ * (221) 언저리에 머문다 — 한 웨이브의 흐름을 뒤엎지 못하는 크기다.
+ * (c) 초반에 30장을 채우려면 1-10웨이브 내내 한 장도 쓰지 않아야 하는데,
+ * 그 10웨이브 동안 포기한 수입이 정확히 같은 180엽전이라 이월은 총량을
+ * 늘리지 않고 시점만 옮긴다. 100웨이브 총 적립은 300장으로 유계다.
  *
  * 먼저 시도한 「웨이브 정산에서 되갚기」는 폐기했다 — 번 것을 도로 걷어 가면
  * 보상이 가짜가 된다(사용자: "정산에서 상환이라니 이게 뭐야"). 보상은 준 대로

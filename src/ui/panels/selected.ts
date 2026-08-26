@@ -21,6 +21,7 @@ import {
 } from "../../core/hanzi";
 import { jaryeongVisualFor } from "../../core/jaryeongs";
 import { learningInfoForNotation } from "../../core/learning";
+import { notationBadgeText, notationReadingHtml, notationShortHtml } from "../notation-substitute";
 import { radicalGlyph } from "../../core/radicals";
 import { type AbilitySpec, type CompositionBranchPreview, type HanziDefinition, type Tower } from "../../core/types";
 import { abilityGuideDialog, canvas, ctx, must } from "../app-context";
@@ -93,7 +94,9 @@ function openAbilityGuide(focusedAbilityId?: string): void {
   const gwicheonAbilities = ctx.engine.gwicheonStatus(tower) ? [GWICHEON_ABILITY] : [];
   const supportingAbilities = activeSkills ? [abilities.element, abilities.graph] : [abilities.graph];
   const loadout = [...periodicAbilities, ...gwicheonAbilities, ...supportingAbilities];
-  must<HTMLElement>("#ability-guide-title").textContent = `${tower.char} ${learning.short} · 기술 구성`;
+  // 배지 마크업을 못 쓰는 textContent 자리 — 곁말을 괄호로 달아 판정을 잃지 않는다.
+  const readingMark = notationBadgeText(learning);
+  must<HTMLElement>("#ability-guide-title").textContent = `${tower.char} ${learning.short}${readingMark ? ` (${readingMark})` : ""} · 기술 구성`;
   must<HTMLElement>("#ability-guide-content").innerHTML = `
     <section class="ability-guide-rule ${activeSkills ? "" : "is-locked"}">
       <span>${activeSkills ? `기술 ${loadout.length}개 모두 자동 판정` : "1단 재료 자령 · 기술 해금 전"}</span>
@@ -209,7 +212,7 @@ export function renderSelected(): void {
     <div class="selected-copy">
       <div><span>${progressionLabel} · ${style.name}행 · ${ROLE_LABELS[tower.combatRole]}</span><h3>${tower.char} <small>${GRAPH_ROLE_LABELS[tower.graphRole]}</small></h3></div>
       <p class="selected-learning"><i class="selected-radical">${ctx.displayMode === "spirit"
-        ? `<span>${learning.readingLabel}</span><b>${escapeHtml(learning.reading)}</b>`
+        ? `<span>${learning.readingLabel}</span><b>${notationReadingHtml(learning, ctx.engine.state.notation)}</b>`
         : `<span>부수</span><b>${radicalGlyph(tower.char)}</b>`}</i></p>
       <p class="selected-meaning"><span>${learning.meaningSource === "en" ? "뜻(영)" : "뜻"}</span><b>${escapeHtml(learning.meaning)}</b></p>
     </div>
@@ -273,7 +276,7 @@ function compositionBranchCard(branch: CompositionBranchPreview): string {
       <i class="composition-result-spirit" style="${visualBackgroundStyle(visual)}" aria-hidden="true"></i>
       <span class="composition-branch-copy">
         <strong>${branch.parents.join(" + ")} <em>→</em> <b>${branch.result.char}</b></strong>
-        <small>${STAGE_NAMES[branch.result.stage]} · ${escapeHtml(learningInfoForNotation(ctx.engine.state.notation, branch.result.char).short)}</small>
+        <small>${STAGE_NAMES[branch.result.stage]} · ${notationShortHtml(learningInfoForNotation(ctx.engine.state.notation, branch.result.char), ctx.engine.state.notation)}</small>
         <span class="composition-materials">${branch.materials.map(compositionMaterialChip).join("")}</span>
       </span>
       <mark>${branch.ready ? "합성 가능" : `${missing.join("·") || "재료"} 부족`}</mark>
@@ -301,7 +304,7 @@ export function renderCompositionDrawer(): void {
   must<HTMLElement>("#composition-ready-count").textContent = String(branches.filter((branch) => branch.ready).length);
   must<HTMLElement>("#composition-source").innerHTML = `
     <i class="composition-source-spirit" style="${spriteStyle(definition)}" aria-hidden="true"></i>
-    <span><b>${selected.char}</b><strong>${escapeHtml(learningInfoForNotation(ctx.engine.state.notation, selected.char).short)}</strong><small>${selected.cell < 0 ? "가방" : "전장 배치"} · 직접 파생 ${branches.length}개</small></span>
+    <span><b>${selected.char}</b><strong>${notationShortHtml(learningInfoForNotation(ctx.engine.state.notation, selected.char), ctx.engine.state.notation)}</strong><small>${selected.cell < 0 ? "가방" : "전장 배치"} · 직접 파생 ${branches.length}개</small></span>
   `;
   must<HTMLElement>("#composition-branches").innerHTML = branches.length > 0
     ? branches.map(compositionBranchCard).join("")

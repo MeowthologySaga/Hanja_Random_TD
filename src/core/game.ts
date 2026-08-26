@@ -104,8 +104,11 @@ import {
   interestForGold,
   MAX_CONCENTRATION_LEVEL,
   MODE_ENEMY_COUNT_SCALE,
+  multiSummonCost,
   regionEnemyHpMultiplier,
   SUMMON_STAGE_WEIGHTS,
+  summonCost,
+  summonSurcharge,
   type SummonStarBand,
   TALISMAN_MODE_ENEMY_HP_SCALE,
   TIERED_SUMMON_INTENTS,
@@ -137,7 +140,6 @@ import {
   MAX_UPGRADE_LEVEL,
   maxSummonStageForWave,
   MIN_TIER_POOL_SIZE,
-  multiSummonCost,
   researchConnectionBonus,
   researchCost,
   researchUnlockWave,
@@ -145,8 +147,6 @@ import {
   STAGE_MULTIPLIERS,
   SUMMON_INTENT_LABELS,
   SUMMON_STAR_BANDS,
-  SUMMON_SURCHARGE,
-  summonCost,
   UPGRADE_STAT_META,
   upgradeEffectiveLevels
 } from "./hanzi";
@@ -179,6 +179,7 @@ import {
   type GameMode,
   type GameState,
   type GoalProgress,
+  type NotationCode,
   type HanziCatalog,
   type HanziDefinition,
   type IdiomBonusKind,
@@ -1509,6 +1510,19 @@ export class GameEngine {
     return { ok: true, message: this.state.lastMessage };
   }
 
+  /**
+   * 읽기 표기 축을 런 도중에 바꾼다. (gripe #6, 트랙 Q)
+   *
+   * 표기는 화면 설정이라 전투 판정에 하나도 닿지 않는다 — learningInfo 계열은
+   * ui/ 밖에서 호출되지 않으므로 시드·난수·수치가 흔들릴 여지가 없다.
+   * 그래서 다음 런을 기다리지 않고 즉시 갈아 끼운다.
+   */
+  setNotation(notation: NotationCode): ActionResult {
+    this.state.notation = notation;
+    this.state.lastMessage = `읽기 표기 · ${notation === "kr-hunum" ? "한국 훈음" : notation === "jp-onkun" ? "일본 음훈" : "중국 병음"}`;
+    return { ok: true, message: this.state.lastMessage };
+  }
+
   setAutoPlaceSummons(enabled: boolean): ActionResult {
     this.state.autoPlaceSummons = enabled;
     this.state.lastMessage = enabled ? "뽑기 후 자동 배치 켜짐" : "뽑기 후 가방 보관";
@@ -1594,7 +1608,7 @@ export class GameEngine {
     const previous = this.state.summonIntent;
     this.state.summonIntent = intent;
     try {
-      const result = this.summon(false, SUMMON_SURCHARGE[intent]);
+      const result = this.summon(false, summonSurcharge(this.state.summonCount, intent));
       if (result.ok && intent !== "balanced") {
         this.state.lastMessage = `${SUMMON_INTENT_LABELS[intent]} 소환 · ${result.message}`;
         return { ok: true, message: this.state.lastMessage };

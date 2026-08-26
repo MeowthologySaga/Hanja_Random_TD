@@ -14,6 +14,8 @@ import { definitionForTower, ELEMENT_STYLES, STAGE_COLORS } from "../../core/han
 import { jaryeongFrameLayout, jaryeongVisualFor } from "../../core/jaryeongs";
 import { koreanMeaningExplanation } from "../../core/korean-meaning-explanations";
 import { learningInfoForNotation } from "../../core/learning";
+import type { ReadingProvenance } from "../../core/notation";
+import { notationBadgeText } from "../notation-substitute";
 import { type CasualStar, type HanziDefinition, type Point, type Tower } from "../../core/types";
 import { UNCOMBINABLE_STAGE_ONE_COLOR } from "../codex-synthesis";
 import { jaryeongSpriteImage } from "../jaryeong-sprites";
@@ -171,6 +173,33 @@ export function plaqueIsGlyphOnly(): boolean {
   return CELL_SPACING * ctx.mapZoom < NAMEPLATE_LAYOUT.compact.width + PLAQUE_MIN_GAP;
 }
 
+/**
+ * 표기 정직 배지의 캔버스판 — src/styles/490-notation.css 의 DOM 배지와
+ * 같은 색·같은 곁말을 쓴다. 파생은 실선, 대체는 점선이라는 규칙도 옮긴다.
+ */
+function drawNotationBadge(x: number, y: number, label: string, provenance: ReadingProvenance): void {
+  const derived = provenance === "derived";
+  const stroke = derived ? "rgba(159, 176, 141, 0.62)" : "rgba(157, 143, 120, 0.68)";
+  const ink = derived ? "#9fb08d" : "#9d8f78";
+  context.save();
+  context.font = '700 9px "Malgun Gothic", sans-serif';
+  context.textAlign = "left";
+  context.textBaseline = "middle";
+  const width = context.measureText(label).width + 8;
+  context.beginPath();
+  context.roundRect(x, y - 7, width, 14, 3);
+  context.fillStyle = derived ? "rgba(159, 176, 141, 0.1)" : "rgba(157, 143, 120, 0.08)";
+  context.fill();
+  context.strokeStyle = stroke;
+  context.lineWidth = 1;
+  if (!derived) context.setLineDash([2.5, 2]);
+  context.stroke();
+  context.setLineDash([]);
+  context.fillStyle = ink;
+  context.fillText(label, x + 4, y);
+  context.restore();
+}
+
 function drawSpiritTowerLabel(tower: Tower, cell: Point, selected: boolean, material: boolean): void {
   const style = ELEMENT_STYLES[tower.wuxing];
   const learning = learningInfoForNotation(ctx.engine.state.notation, tower.char);
@@ -217,6 +246,21 @@ function drawSpiritTowerLabel(tower: Tower, cell: Point, selected: boolean, mate
       context.beginPath();
       context.arc(width / 2 - 6, top + 6, 2, 0, Math.PI * 2);
       context.fill();
+    }
+    // 표기 정직 표식 — 명패는 "대체 표기" 네 글자가 들어갈 폭이 아니라
+    // 배지 대신 점 하나로 말하고, 곁말은 호버 카드의 정식 배지가 맡는다.
+    // 색은 DOM 배지와 같다(연둣빛=정자 파생 · 회갈=대체 표기).
+    if (learning.provenance !== "authentic") {
+      context.beginPath();
+      context.arc(-width / 2 + 6, top + 6, 2.5, 0, Math.PI * 2);
+      if (learning.provenance === "derived") {
+        context.fillStyle = "rgba(159, 176, 141, 0.92)";
+        context.fill();
+      } else {
+        context.strokeStyle = "rgba(157, 143, 120, 0.95)";
+        context.lineWidth = 1.2;
+        context.stroke();
+      }
     }
   }
   // 추적 중 성어의 글자를 가진 자령에는 명패 좌측에 순번 인장을 얹는다.
@@ -777,6 +821,12 @@ export function drawHoveredTowerCard(): void {
   context.fillStyle = "#f7edcf";
   context.font = '900 17px "Malgun Gothic", sans-serif';
   context.fillText(learning.short, copyX, y + 28, copyWidth);
+  // 표기 정직 배지 — DOM 배지와 같은 곁말(notationBadgeText)을 캔버스 알약으로.
+  const badgeLabel = notationBadgeText(learning);
+  if (badgeLabel) {
+    const readingWidth = Math.min(context.measureText(learning.short).width, copyWidth);
+    drawNotationBadge(copyX + readingWidth + 7, y + 21, badgeLabel, learning.provenance);
+  }
   context.fillStyle = style.color;
   context.font = '900 12px "Malgun Gothic", sans-serif';
   context.fillText(`${style.name}행 · ${towerProgressionLabel(tower)}`, copyX, y + 50, copyWidth);

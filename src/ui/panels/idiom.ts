@@ -1,9 +1,10 @@
-/*
+﻿/*
  * 사자성어 패널과 발동 배지.
  */
-import { idiomById, type IdiomDefinition } from "../../core/idioms";
-import { learningInfoForNotation } from "../../core/learning";
-import { idiomReadingForNotation } from "../../core/notation";
+import { idiomById, IDIOM_ORDER_SEALS, type IdiomDefinition } from "../../core/idioms";
+import { learningInfoForNotation, type LearningInfo } from "../../core/learning";
+import { idiomReadingInfoForNotation } from "../../core/notation";
+import { notationBadgeText, notationShortHtml } from "../notation-substitute";
 import type { IdiomSeal } from "../../core/types";
 import { ctx, idiomResult, idiomTab, must, toast } from "../app-context";
 import { escapeHtml } from "../format";
@@ -133,10 +134,13 @@ export function renderIdiomHud(): void {
     const occurrence = (used.get(char) ?? 0) + 1;
     used.set(char, occurrence);
     const owned = (counts.get(char) ?? 0) >= occurrence;
-    return `<i class="${owned ? "is-owned" : ""}" style="--idiom:${target.color}" title="${index + 1}번째 글자">${char}</i>`;
+    // 트랙 N: "N번째 글자" 만으로는 전장 명패의 ①②③④ 인장과 이어지지 않았다.
+    return `<i class="${owned ? "is-owned" : ""}" style="--idiom:${target.color}" title="${IDIOM_ORDER_SEALS[index] ?? String(index + 1)} 성어의 ${index + 1}번째 글자 — 전장에서 이 글자를 가진 자령에 같은 인장이 붙습니다">${char}</i>`;
   }).join("");
   must<HTMLElement>("#idiom-glyphs").innerHTML = glyphs;
-  must<HTMLElement>("#idiom-name").textContent = idiomReadingForNotation(target, ctx.engine.state.notation);
+  const targetReading = idiomReadingInfoForNotation(target, ctx.engine.state.notation, ctx.engine.state.region);
+  const targetMark = notationBadgeText(targetReading);
+  must<HTMLElement>("#idiom-name").textContent = `${targetReading.reading}${targetMark ? ` (${targetMark})` : ""}`;
   must<HTMLElement>("#idiom-meaning").textContent = target.meaning;
   must<HTMLElement>("#idiom-bonus").textContent = target.bonus.label;
   must<HTMLElement>("#idiom-bonus").style.setProperty("--idiom", target.color);
@@ -146,7 +150,8 @@ export function renderIdiomHud(): void {
   must<HTMLElement>("#idiom-hint").textContent = missingCraft
     ? "먼저 " + missingCraft.char + " = " + missingCraft.parents.join("+") + " 조합"
     // 한 줄에 담기는 길이라야 말줄임 없이 보인다. "배치"는 화살표가 대신한다.
-    : "한 줄에 1→2→3→4 → 자동 발동";
+    // 트랙 N: 숫자 대신 인장 글리프를 써 전장 표시와 같은 말로 가리킨다.
+    : `한 줄에 ${IDIOM_ORDER_SEALS[0]}→${IDIOM_ORDER_SEALS[3]} 순서 → 자동 발동`;
 }
 
 /**
@@ -169,7 +174,7 @@ function renderIdiomSealStatus(): void {
       const idiom = idiomById(ctx.engine.state.region, seal.idiomId);
       if (!idiom) return "";
       const label = seal.active ? "발동 중" : "발동 이력 · 지금은 흩어짐";
-      return `<div class="idiom-seal-row ${seal.active ? "is-live" : "is-scattered"}" style="--idiom:${idiom.color}"><b>${escapeHtml(idiom.chars)}</b><span>${escapeHtml(idiomReadingForNotation(idiom, ctx.engine.state.notation))}</span><em>${escapeHtml(shortIdiomBonusLabel(idiom.bonus.label))}</em><mark>${label}</mark></div>`;
+      return `<div class="idiom-seal-row ${seal.active ? "is-live" : "is-scattered"}" style="--idiom:${idiom.color}"><b>${escapeHtml(idiom.chars)}</b><span>${notationShortHtml(idiomSealReading(idiom), ctx.engine.state.notation, "idiom")}</span><em>${escapeHtml(shortIdiomBonusLabel(idiom.bonus.label))}</em><mark>${label}</mark></div>`;
     })
     .join("");
 }
@@ -197,27 +202,42 @@ function splitIdiomBonus(label: string): { text: string; value: string } {
   return { text: (match[1] ?? "").trim(), value: (match[2] ?? "").replace(/\s+/gu, "") };
 }
 
+/**
+ * 성어 읽기 + 합산 판정 — 성어 표기가 나오는 모든 자리가 이 한 줄을 거친다.
+ * 짧은/긴 읽기가 같으므로 배지 조판 함수에 그대로 넘길 수 있게 맞춰 둔다.
+ */
+function idiomSealReading(idiom: IdiomDefinition): { short: string; reading: string } & ReturnType<typeof idiomReadingInfoForNotation> {
+  const info = idiomReadingInfoForNotation(idiom, ctx.engine.state.notation, ctx.engine.state.region);
+  return { ...info, short: info.reading };
+}
+
 /** 봉인된 네 칸에 실제로 선 자령 — 없으면 성어 글자로 대신 채운다(해제 직전 한 프레임). */
-function sealParticipants(idiom: IdiomDefinition, seal: IdiomSeal): Array<{ char: string; reading: string }> {
+function sealParticipants(idiom: IdiomDefinition, seal: IdiomSeal): Array<{ char: string; info: LearningInfo }> {
   const chars = [...idiom.chars];
   const notation = ctx.engine.state.notation;
   const placed = seal.cells
     .map((cell) => ctx.engine.state.towers.find((tower) => tower.cell === cell)?.char)
     .filter((char): char is string => Boolean(char));
   const source = placed.length === chars.length ? placed : chars;
-  return source.map((char) => ({ char, reading: learningInfoForNotation(notation, char).short }));
+  return source.map((char) => ({ char, info: learningInfoForNotation(notation, char) }));
 }
 
 /** 터치·키보드용 축약본 — 팝오버와 같은 내용을 한 줄로 접는다. */
 function activeIdiomTitle(idiom: IdiomDefinition, seal: IdiomSeal, reading: string): string {
-  const parts = sealParticipants(idiom, seal).map((part) => `${part.char}(${part.reading})`).join(" · ");
+  const parts = sealParticipants(idiom, seal)
+    .map((part) => {
+      const mark = notationBadgeText(part.info);
+      return `${part.char}(${part.info.short}${mark ? ` · ${mark}` : ""})`;
+    })
+    .join(" · ");
   return `${idiom.chars} ${reading} — ${idiom.meaning} · 발동 효과 ${idiom.bonus.label} · 참여 자령 ${parts} — 눌러서 발동 칸으로 이동`;
 }
 
 /** 호버 팝오버 — 한자 4자 · 독음 · 뜻풀이 · 발동 효과 · 참여 자령 4자. */
 function activeIdiomPopHtml(idiom: IdiomDefinition, seal: IdiomSeal, reading: string): string {
+  const notation = ctx.engine.state.notation;
   const participants = sealParticipants(idiom, seal)
-    .map((part) => `<span class="aip-jar"><b>${escapeHtml(part.char)}</b><em>${escapeHtml(part.reading)}</em></span>`)
+    .map((part) => `<span class="aip-jar"><b>${escapeHtml(part.char)}</b><em>${notationShortHtml(part.info, notation)}</em></span>`)
     .join("");
   return `<span class="active-idiom-pop" aria-hidden="true">`
     + `<span class="aip-head"><b class="aip-chars">${escapeHtml(idiom.chars)}</b><strong class="aip-reading">${escapeHtml(reading)}</strong></span>`
@@ -245,11 +265,13 @@ export function renderActiveIdioms(): void {
       const idiom = idiomById(ctx.engine.state.region, seal.idiomId);
       if (!idiom) return "";
       const bonus = splitIdiomBonus(shortIdiomBonusLabel(idiom.bonus.label));
-      const reading = idiomReadingForNotation(idiom, ctx.engine.state.notation);
+      const readingInfo = idiomSealReading(idiom);
+      const reading = readingInfo.reading;
+      const readingMark = notationBadgeText(readingInfo);
       const value = bonus.value ? `<strong class="active-idiom-value">${escapeHtml(bonus.value)}</strong>` : "";
-      return `<button type="button" class="active-idiom" data-active-idiom="${escapeHtml(seal.idiomId)}" style="--idiom:${idiom.color}" title="${escapeHtml(activeIdiomTitle(idiom, seal, reading))}" aria-label="${escapeHtml(reading)} 발동 · ${escapeHtml(idiom.meaning)} · ${escapeHtml(idiom.bonus.label)} · 눌러서 해당 네 칸으로 이동">`
+      return `<button type="button" class="active-idiom" data-active-idiom="${escapeHtml(seal.idiomId)}" style="--idiom:${idiom.color}" title="${escapeHtml(activeIdiomTitle(idiom, seal, reading))}" aria-label="${escapeHtml(reading)}${readingMark ? ` (${escapeHtml(readingMark)})` : ""} 발동 · ${escapeHtml(idiom.meaning)} · ${escapeHtml(idiom.bonus.label)} · 눌러서 해당 네 칸으로 이동">`
         + `<b class="active-idiom-chars">${escapeHtml(idiom.chars)}</b>`
-        + `<i class="active-idiom-reading">${escapeHtml(reading)}</i>`
+        + `<i class="active-idiom-reading">${notationShortHtml(readingInfo, ctx.engine.state.notation, "idiom")}</i>`
         + `<span class="active-idiom-effect"><em>${escapeHtml(bonus.text)}</em>${value}</span>`
         + activeIdiomPopHtml(idiom, seal, reading)
         + `</button>`;

@@ -2,8 +2,7 @@
  * 소환 상점 패널.
  */
 import { BOARD_FORMATIONS } from "../../core/content";
-import { IDIOM_WISH_COST_MULTIPLIER } from "../../core/engine-tuning";
-import { multiSummonCost, SUMMON_SURCHARGE, summonCost } from "../../core/hanzi";
+import { IDIOM_WISH_COST_MULTIPLIER, multiSummonCost, SUMMON_COST_MULTIPLIER, summonCost, summonProductCost } from "../../core/engine-tuning";
 import { type SummonIntent } from "../../core/types";
 import { ctx, must } from "../app-context";
 import { summonAndFocus, summonIdiomWishAndFocus } from "../battle/camera";
@@ -120,7 +119,7 @@ export function renderSummonShop(): void {
   if (key === summonShopRenderKey) return;
   summonShopRenderKey = key;
   const cards = products.map((product) => {
-    const price = base + SUMMON_SURCHARGE[product.intent];
+    const price = summonProductCost(state.summonCount, product.intent);
     const freeToken = product.intent === "balanced" && talismanTokens > 0;
     const affordable = freeToken || state.gold >= price;
     const banded = product.band !== null;
@@ -138,7 +137,11 @@ export function renderSummonShop(): void {
       badge: freeToken ? `부적 ×${talismanTokens}` : undefined,
       title: `${product.label} · ${product.effect} · ${price}엽전`
         + (freeToken ? ` · 부적 무료권 ${talismanTokens}장 — 다음 1회 무료` : "")
-        + (product.intent === "balanced" ? "" : ` (기본 ${base} + 목적 ${SUMMON_SURCHARGE[product.intent]})`)
+        // 정찰료는 정액이 아니라 기본가 배수다. 후반 기본가 24 에서 "기본 24 + 목적 12"
+        // 처럼 굳은 덧셈으로 읽히면 값이 왜 41·65 인지 설명이 끊긴다. 표기는 "×N" 이 아니라
+        // "N배" 로 적는다 — 탐색 카드의 효과 문구가 이미 "새 한자 ×3.4"(가중 배수)라서
+        // 나란히 놓이면 두 곱셈이 같은 종류로 읽힌다.
+        + (product.intent === "balanced" ? "" : ` (기본 ${base}의 ${SUMMON_COST_MULTIPLIER[product.intent]}배)`)
         + (banded && product.effect !== product.bandLabel ? ` · ${product.bandLabel}` : "")
         + (banded && product.odds !== "" ? ` · 확률 ${product.odds}` : "")
         + (banded ? ` · 낮은 별이 더 흔합니다 · ${PAIR_BOOST_NOTE}` : "")

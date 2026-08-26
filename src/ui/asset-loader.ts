@@ -451,17 +451,99 @@ export function takeOverBootScreen(): void {
   window.__hanjaBootSafety = undefined;
 }
 
+/*
+ * 진행 막대의 걸음 배분.
+ *
+ * 문제(실측, 12Mbps 회선 모사):
+ *   - 프로덕션 번들 기준 0~2.0초는 막대가 폭 0 에 「0%」 라 완전히 멈춰 보였다.
+ *     이 구간은 번들 3.1MB 가 오는 중이라 셀 수 있는 것이 아직 없다. dev 에서는
+ *     14.5초까지 벌어진다.
+ *   - 그림 프리로드는 2.7~3.7초에 매끄럽게 0→100% 로 올랐다(여기는 멀쩡했다).
+ *   - 그런데 100% 에 닿은 뒤 막이 걷히기까지 1.1초가 더 걸렸다(dev 5.3초).
+ *     mountS00 이 3D 서재를 세우는 시간인데, 막대는 이미 100% 라 두 번째로
+ *     멈춰 보였다.
+ *
+ * 즉 "프리로드 단계 가중치 불균형"이 맞았다 — 진행률이 전체 부팅이 아니라
+ * 가운데 한 토막만 재고 있었다. 앞뒤 두 토막에 자리를 내준다.
+ *   [번들]  셀 수 없음 → 훑는 빗금 + 걸음 이름
+ *   [그림]  0 ~ 86%    → 실제 파일 진행
+ *   [서재]  86 ~ 98%   → 시간 점근(신호가 없다). 100% 는 끝났을 때만 말한다.
+ */
+const BOOT_PRELOAD_SHARE = 0.86;
+/** 서재 조립 구간이 점근할 상한. 끝나기 전에는 절대 100% 를 말하지 않는다. */
+const BOOT_STAGE_CEILING = 0.98;
+/** 조립 시간 눈금(실측 프로덕션 1.1초 · dev 5.3초). 늦어도 막대는 계속 오른다. */
+const BOOT_STAGE_TIME_SCALE_MS = 2_600;
+
+const BOOT_STAGE_LABELS = {
+  assets: "그림을 들이는 중",
+  stage: "서재를 세우는 중",
+  done: "서재를 펼치는 중"
+} as const;
+
+function bootElement(id: string): HTMLElement | null {
+  return document.getElementById(id);
+}
+
+function paintBootBar(ratio: number, caption: string): void {
+  const bar = bootElement("boot-bar");
+  const percent = bootElement("boot-percent");
+  if (bar) bar.style.width = `${(ratio * 100).toFixed(1)}%`;
+  if (percent) percent.textContent = caption;
+}
+
 export function updateBootProgress({ done, total }: PreloadProgress): void {
-  const bar = document.getElementById("boot-bar");
-  const percent = document.getElementById("boot-percent");
+  const bar = bootElement("boot-bar");
+  const percent = bootElement("boot-percent");
   if (!bar && !percent) return;
   const ratio = total === 0 ? 1 : Math.min(1, done / total);
-  if (bar) bar.style.width = `${(ratio * 100).toFixed(1)}%`;
-  if (percent) percent.textContent = `${Math.round(ratio * 100)}%  ·  ${Math.floor(done)} / ${total}`;
+  const stage = bootElement("boot-stage");
+  if (stage) stage.textContent = BOOT_STAGE_LABELS.assets;
+  // 첫 바이트가 오기 전까지는 여전히 셀 것이 없다 — 빗금을 남겨 둔다.
+  if (ratio > 0) bootElement("boot-track")?.classList.remove("is-waiting");
+  const scaled = ratio * BOOT_PRELOAD_SHARE;
+  // 0% 는 쓰지 않는다 — 이 화면에서 없애려는 것이 바로 그 글자다. 첫 바이트
+  // 전에는 셀 수 있는 것(파일 수)만 말하고 비율은 값이 생긴 뒤에 붙인다.
+  paintBootBar(scaled, ratio > 0
+    ? `${Math.round(scaled * 100)}%  ·  그림 ${Math.floor(done)} / ${total}`
+    : `그림 0 / ${total}`);
+}
+
+let bootStageTimer = 0;
+
+/**
+ * 서재 조립 구간을 연다.
+ *
+ * `mountS00()` 은 중간 진행을 알려 주지 않는다(three.js 장면 구성 한 덩어리).
+ * 그래서 시간으로 점근시킨다 — 지수 감쇠라 늦어질수록 느려지되 멈추지는 않고,
+ * 상한 98% 를 넘지 않아 "다 됐다"고 거짓말하지도 않는다. 걸음 이름이 무엇을
+ * 기다리는지 함께 말하므로 막대만으로 오해할 일도 없다.
+ */
+export function beginBootStageBuild(): void {
+  const stage = bootElement("boot-stage");
+  if (stage) stage.textContent = BOOT_STAGE_LABELS.stage;
+  bootElement("boot-track")?.classList.remove("is-waiting");
+  const startedAt = performance.now();
+  const tick = (): void => {
+    const elapsed = (performance.now() - startedAt) / BOOT_STAGE_TIME_SCALE_MS;
+    const eased = 1 - Math.exp(-2.2 * elapsed);
+    const ratio = BOOT_PRELOAD_SHARE + (BOOT_STAGE_CEILING - BOOT_PRELOAD_SHARE) * eased;
+    paintBootBar(ratio, `${Math.round(ratio * 100)}%  ·  ${BOOT_STAGE_LABELS.stage}`);
+    bootStageTimer = window.requestAnimationFrame(tick);
+  };
+  bootStageTimer = window.requestAnimationFrame(tick);
 }
 
 /** 페이드가 끝나면 DOM 에서 걷어낸다 — 투명한 막이 클릭을 먹지 않게. */
 export function dismissBootScreen(): void {
+  if (bootStageTimer !== 0) {
+    window.cancelAnimationFrame(bootStageTimer);
+    bootStageTimer = 0;
+  }
+  const stage = bootElement("boot-stage");
+  if (stage) stage.textContent = BOOT_STAGE_LABELS.done;
+  bootElement("boot-track")?.classList.remove("is-waiting");
+  paintBootBar(1, "100%");
   const layer = document.getElementById("boot-loader");
   if (!layer) return;
   layer.classList.add("is-done");

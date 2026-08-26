@@ -62,12 +62,7 @@
 .canvas-tip i { font-size: 11.5px; }
 .canvas-tip i em { font-size: 10.5px; }
 
-/* 목표 서책 — 훈음 11px·상태 mark 9px */
-.goal-choice-copy strong { font-size: 13px !important; }
-.goal-choice-copy :is(em, small) { font-size: 11px !important; }
-.goal-choice-card mark { font-size: 10.5px !important; }
-.goal-materials span { font-size: 11px !important; }
-.goal-reading { font-size: 12.5px !important; }
+/* 목표 서책 */
 #goal-owned-summary, .goal-owned-summary { font-size: 11px !important; }
 
 /* 강화 제련소 — 7px 안내·9px 라벨이 최악 지대였다 */
@@ -104,7 +99,6 @@
 /* 인벤·성어 */
 .run-inventory-card :is(span, small, b) { font-size: 11.5px !important; }
 .run-inventory-heading :is(span, small) { font-size: 11px !important; }
-.idiom-target-copy :is(span, small, p) { font-size: 11.5px !important; }
 .idiom-strategy, .idiom-material-guide { font-size: 11.5px !important; }
 
 /* 70. 확대 여파 정리 — overflow 스캔 13건 중 실질 6건 */
@@ -1140,20 +1134,6 @@ span.codex-jaryeong-category { color: #4a3f30 !important; }
 
 #cleanup-recommended-button:hover:not(:disabled) {
   background: rgba(155, 113, 55, 0.26) !important;
-}
-
-/* 성어 목표 리스트의 글자 타일 */
-.goal-choice-idiom-glyphs i {
-  color: #3a2c16 !important;
-  border: 0 !important;
-  background: linear-gradient(180deg, #f7f0dd 0%, #e6d9b8 100%) !important;
-  box-shadow: var(--bevel-up), 0 0 0 1px rgba(122, 90, 42, 0.28) !important;
-}
-
-.goal-choice-idiom-glyphs i.is-owned {
-  color: #241c0e !important;
-  background: var(--mat-brass-hot) !important;
-  box-shadow: var(--bevel-up), 0 0 0 2px var(--gold-400), inset 0 -3px 0 var(--seal) !important;
 }
 
 #goal-owned-summary,

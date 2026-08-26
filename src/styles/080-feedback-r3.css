@@ -442,7 +442,6 @@ dialog,
 
 /* 패널 공통 바닥 올리기 (R7-2: 제거된 .record-ticker 두 줄 삭제) */
 .opening-guide > div span { font-size: 10px !important; }
-.goal-choice-copy :is(em, small) { font-size: 10px !important; }
 .concentration-compare > div :is(span, b, i) { font-size: 10px !important; }
 .concentration-target-list > button strong { font-size: 9px !important; }
 .shop-help-strip b, .shop-help-strip span { font-size: 10.5px !important; }
