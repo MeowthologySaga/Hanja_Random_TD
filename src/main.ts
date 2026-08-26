@@ -601,6 +601,7 @@ app.innerHTML = `
         <div class="end-actions">
           <button id="retry-button" class="start-button" type="button">같은 시드 재도전</button>
           <button id="new-seed-button" class="secondary-button" type="button">새 시드로 시작</button>
+          <button id="return-menu-button" class="secondary-button" type="button">메뉴로 돌아가기</button>
         </div>
       </div>
     </section>
@@ -1792,12 +1793,17 @@ function processEvent(event: GameEvent): void {
 function showEndScreen(phase: "victory" | "defeat"): void {
   const state = engine.state;
   const victory = phase === "victory";
+  // 최고 기록은 이번 판을 저장하기 "전"에 읽어야 갱신 여부를 알 수 있다.
+  const previousBest = loadBestWave();
+  const renewed = state.wave > previousBest;
+  const bestWave = Math.max(previousBest, state.wave);
   must<HTMLElement>("#end-kicker").textContent = victory ? "SEAL COMPLETE" : "DEFENSE FAILED";
   must<HTMLElement>("#end-heading").textContent = victory ? "천자문 대봉인 완성" : "수비에 실패했습니다";
   must<HTMLElement>("#end-message").textContent = state.lastMessage;
   must<HTMLElement>("#end-stats").innerHTML = `
     <div><span>게임 모드</span><b>${state.mode === "casual" ? "캐주얼 8성전" : "전략 조합전"}</b></div>
     <div><span>도달 웨이브</span><b>${state.wave} / ${state.maxWaves}</b></div>
+    <div${renewed ? ' class="is-record"' : ""}><span>최고 기록</span><b>${bestWave}웨이브${renewed ? "<em>갱신!</em>" : ""}</b></div>
     <div><span>처치한 망령</span><b>${state.killCount}</b></div>
     <div><span>${state.mode === "casual" ? "3체 조합" : "한자 합성"}</span><b>${state.mode === "casual" ? state.casualFusionCount : state.evolutionCount}</b></div>
     <div><span>목표 완성</span><b>${state.goalsCompleted.length}</b></div>
@@ -1811,9 +1817,22 @@ function showEndScreen(phase: "victory" | "defeat"): void {
   saveBestWave(state.wave);
 }
 
+function bestWaveKey(): string {
+  return `hanzi-random-defense-best-${engine.state.mode}-${engine.state.region}`;
+}
+
+/** 저장만 하고 아무도 읽지 않던 값을 종료 화면이 드디어 읽는다. */
+function loadBestWave(): number {
+  try {
+    return Number(window.localStorage.getItem(bestWaveKey()) ?? 0) || 0;
+  } catch {
+    return 0;
+  }
+}
+
 function saveBestWave(wave: number): void {
   try {
-    const key = `hanzi-random-defense-best-${engine.state.mode}-${engine.state.region}`;
+    const key = bestWaveKey();
     const previous = Number(window.localStorage.getItem(key) ?? 0);
     if (wave > previous) window.localStorage.setItem(key, String(wave));
   } catch {
@@ -5250,6 +5269,28 @@ must<HTMLElement>("#evolution-options").addEventListener("pointerout", (event) =
 must<HTMLButtonElement>("#start-button").addEventListener("click", () => startRun(false));
 must<HTMLButtonElement>("#retry-button").addEventListener("click", () => startRun(false));
 must<HTMLButtonElement>("#new-seed-button").addEventListener("click", () => startRun(true));
+
+/*
+ * 종료 화면 막다른 길.
+ *
+ * 재도전·새 시드뿐이라 지역·진법을 바꾸러 메뉴로 갈 길이 없었고 Esc 도
+ * 먹지 않았다. 3D 리그·엔진·카메라·패널이 한 판 분량의 상태를 물고 있어
+ * 오버레이만 되돌리면 남은 찌꺼기가 다음 판까지 따라온다. 새로고침이
+ * 가장 견고하다 — 최고 기록·안내 본 여부·오디오 설정은 전부
+ * localStorage 라 그대로 살아남는다.
+ */
+function returnToMenu(): void {
+  window.location.reload();
+}
+
+must<HTMLButtonElement>("#return-menu-button").addEventListener("click", returnToMenu);
+window.addEventListener("keydown", (event) => {
+  if (event.code !== "Escape") return;
+  if (!endOverlay.classList.contains("modal-layer--visible")) return;
+  if (document.querySelector("dialog[open]")) return;
+  event.preventDefault();
+  returnToMenu();
+});
 document.querySelectorAll<HTMLButtonElement>("[data-summon-intent]").forEach((button) => {
   button.addEventListener("click", () => handleAction(engine.setSummonIntent(button.dataset.summonIntent as SummonIntent)));
 });
