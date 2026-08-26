@@ -360,7 +360,8 @@ test("uses tabbed owned-aware goals and summons from all one thousand Cheonjamun
   await openCodex(page);
   // 도감은 "자령 도감 / 조합표 / 사자성어" 3분류로 통합됐다. 옛 `jaryeongs` 전용 모드는 사라지고
   // 기본 `hanzi` 탭이 천자문 자령 초상화까지 함께 싣는다.
-  await expect(page.locator(".codex-mode-tabs > button")).toHaveCount(3);
+  // R17 도움말도 같은 갈피 어휘(.codex-mode-tabs)를 쓰므로 도감 안으로 좁혀 센다.
+  await expect(page.locator("#codex-dialog .codex-mode-tabs > button")).toHaveCount(3);
   await page.locator('[data-codex-mode="hanzi"]').click();
   await expect(page.locator("#codex-summary")).toContainText(/자령 1,0\d\d\/1,0\d\d · 독립 \d+/u);
   // 천자문 1,000자 + 합성 확장분이므로 정확한 총합보다 "1,000자 이상 실린다" 를 지킨다.
@@ -946,13 +947,44 @@ test("opens the rules and exposes synthesis keyboard guidance", async ({ page })
   await expect(page.locator(".s00-utility > button")).toHaveCount(3);
   await page.locator("#title-help-button").click();
   await expect(page.getByRole("heading", { name: "봉인술 입문" })).toBeVisible();
+
+  // R17: 21개 항목 두루마리가 다섯 갈피로 갈렸다. 첫 갈피는 언제나 [시작하기] 다.
+  const tabs = page.locator("#help-dialog .help-tabs [role=tab]");
+  await expect(tabs).toHaveCount(5);
+  await expect(tabs).toHaveText(["시작하기", "소환·상점", "전투·배치", "승급·강화", "사자성어"]);
+  await expect(page.locator("#help-tab-start")).toHaveAttribute("aria-selected", "true");
+
+  // 첫 갈피 = 세 걸음 순서도 + 용어 여섯 장 + 단축키.
+  const startPanel = page.locator("#help-panel-start");
+  await expect(startPanel).toBeVisible();
+  await expect(startPanel.locator(".help-flow > li")).toHaveCount(3);
+  await expect(startPanel.locator(".help-term")).toHaveCount(6);
+  await expect(startPanel).toContainText("자령");
+  await expect(startPanel).toContainText("엽전");
   await expect(page.locator(".key-guide")).toContainText("첫 합성");
   await expect(page.locator(".key-guide")).toContainText("Space");
-  await expect(page.locator("#help-dialog")).toContainText("능력 조합");
-  await expect(page.locator("#help-dialog")).toContainText("사자성어");
-  await expect(page.locator("#help-dialog")).toContainText("자동배치");
-  await expect(page.locator("#help-dialog")).toContainText("은행 이자");
-  await expect(page.locator("#help-dialog")).toContainText("훈·독");
+
+  // 갈피를 눌러도 창은 닫히지 않고(폼 submit 방지) 해당 갈피만 열린다.
+  await page.locator("#help-tab-battle").click();
+  await expect(page.locator("#help-dialog")).toBeVisible();
+  await expect(startPanel).toBeHidden();
+  await expect(page.locator("#help-panel-battle")).toBeVisible();
+  await expect(page.locator("#help-panel-battle")).toContainText("은행 이자");
+  await expect(page.locator("#help-panel-battle")).toContainText("훈·독");
+  await expect(page.locator("#help-panel-battle")).toContainText("오행 공명");
+
+  await page.locator("#help-tab-summon").click();
+  await expect(page.locator("#help-panel-summon")).toContainText("자동배치");
+  await page.locator("#help-tab-growth").click();
+  await expect(page.locator("#help-panel-growth")).toContainText("능력 조합");
+  await page.locator("#help-tab-idiom").click();
+  await expect(page.locator("#help-panel-idiom")).toContainText("사자성어");
+
+  // 다시 열면 첫 갈피로 되돌아온다.
+  await page.locator("#help-dialog .dialog-heading button").click();
+  await expect(page.locator("#help-dialog")).toBeHidden();
+  await page.locator("#title-help-button").click();
+  await expect(page.locator("#help-panel-start")).toBeVisible();
 });
 
 // 코치를 실제로 띄우는 유일한 스펙이다. @onboarding 태그 덕분에 beforeEach 가 "이미 봤음"
