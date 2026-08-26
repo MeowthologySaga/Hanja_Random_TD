@@ -5,6 +5,8 @@ import {
   BOARD_FORMATIONS,
   CELLS_PER_FORMATION,
   ENEMY_PATH_POINTS,
+  FORMATION_COLUMNS,
+  FORMATION_ROWS,
   ENEMY_SPAWN_PROGRESS,
   MAX_ENEMIES,
   WAVE_REINFORCEMENT_DELAY,
@@ -53,6 +55,7 @@ import {
   type CheonjamunJaryeongDexEntry
 } from "./core/cheonjamun-jaryeong-dex";
 import { koreanMeaningExplanation } from "./core/korean-meaning-explanations";
+import { type CompactReading, type MeasureText, compactReading } from "./ui/plaque-text";
 import { LEARNING_DATA_META, learningInfo } from "./core/learning";
 import { radicalGlyph, radicalLearningLabel } from "./core/radicals";
 import {
@@ -2908,6 +2911,15 @@ function drawWorld(delta: number): void {
   const state = engine.state;
   const selectedTower = engine.selectedTower();
   canvas.dataset.selectedTowerId = selectedTower ? String(selectedTower.id) : "";
+  // compact 명패가 훈음을 줄여 적어도 전체값은 접근성 이름과 상세 팝오버에 남는다.
+  const selectedReading = selectedTower ? learningInfo(state.region, selectedTower.char).short : "";
+  if (canvas.dataset.selectedTowerReading !== selectedReading) {
+    canvas.dataset.selectedTowerReading = selectedReading;
+    canvas.setAttribute(
+      "aria-label",
+      selectedTower ? `전장 · 선택 자령 ${selectedTower.char} ${selectedReading}` : "전장 · 선택한 자령 없음"
+    );
+  }
   canvas.dataset.selectedSynthesisTier = selectedTower ? String(engine.state.mode === "casual" ? casualStarOf(selectedTower) : mapSynthesisDepths.get(selectedTower.char) ?? 1) : "";
   const materialIds = hoveredMaterialIds();
   drawPaperBackdrop();
@@ -2927,6 +2939,8 @@ function drawWorld(delta: number): void {
   for (const tower of [...state.towers].sort((a, b) => a.cell - b.cell)) {
     if (isWorldPointVisible(BOARD_CELLS[tower.cell] as Point, 65)) drawTower(tower, materialIds);
   }
+  // 명패는 자령 본체를 모두 그린 뒤에 흘려야 이웃 자령이 훈음을 덮지 않는다.
+  flushTowerPlaques();
   // Keep combat sprites in the foreground so their raster silhouettes are not
   // hidden by the enemy/tower bodies. Their alpha and size remain restrained
   // so the learning labels stay readable.
@@ -3596,56 +3610,149 @@ function drawStudyTower(tower: Tower, cell: Point, definition: HanziDefinition, 
   context.fillText(learningInfo(engine.state.region, tower.char).short, cell.x, cell.y + 24, 40);
 }
 
+/**
+ * 전장 명패 치수 — layout-audit-response-v1 §2.
+ *
+ * 셀 중심 간격은 월드 44px 이고 기본 배율(2.0)에서 화면 88px 이 된다. 명패는
+ * 역-스케일로 그려 화면 픽셀 크기가 고정되므로, 104px wide 형은 88px 간격에
+ * 16px 씩 겹쳤다. 상시 명패를 84×40 compact 2줄형으로 낮춰 좌우 2px 씩,
+ * 합계 4px 의 투명 간격을 만든다. 104px wide 형은 선택 상세 팝오버에서만 쓴다.
+ */
+const PLAQUE_COMPACT_WIDTH = 84;
+const PLAQUE_COMPACT_HEIGHT = 40;
+const PLAQUE_COMPACT_GLYPH_BOX = 32;
+/** 32(한자) + 1(divider) + 51(훈음) = 84 */
+const PLAQUE_COMPACT_READING_BOX = 51;
+const PLAQUE_GLYPH_ONLY_WIDTH = 34;
+/** 명패 아래 끝은 기존 wide 형과 같은 높이에 두어 자령 그림을 덮는 정도를 유지한다. */
+const PLAQUE_BOTTOM = -28;
+const PLAQUE_DETAIL_WIDTH = 104;
+const PLAQUE_DETAIL_GLYPH_BOX = 34;
+/** 셀 중심 간 월드 거리. content.ts 의 FORMATION_SPACING 을 좌표에서 되읽는다. */
+const CELL_SPACING = ((BOARD_CELLS[1]?.x ?? 44) - (BOARD_CELLS[0]?.x ?? 0)) || 44;
+/** 이웃 명패 사이에 남겨야 하는 최소 투명 간격(화면 px). */
+const PLAQUE_MIN_GAP = 4;
+
+const compactReadingCache = new Map<string, CompactReading>();
+
+function plaqueReadingFont(size: number): string {
+  return `800 ${size}px "Malgun Gothic", sans-serif`;
+}
+
+/** 캔버스 실측을 plaque-text 모듈에 주입한다. 글꼴 상태는 호출 뒤 되돌린다. */
+const measurePlaqueText: MeasureText = (value, fontSize) => {
+  context.font = plaqueReadingFont(fontSize);
+  return context.measureText(value).width;
+};
+
+/**
+ * compact 명패의 훈음 2줄 배치를 정한다. 매 프레임 자령 수만큼 실측하지 않도록
+ * 문자열·폭 조합으로 캐시한다.
+ */
+function compactReadingFor(full: string, maxWidth: number): CompactReading {
+  const key = `${full}|${maxWidth}`;
+  const cached = compactReadingCache.get(key);
+  if (cached) return cached;
+  const previousFont = context.font;
+  const resolved = compactReading(full, maxWidth, measurePlaqueText);
+  context.font = previousFont;
+  compactReadingCache.set(key, resolved);
+  return resolved;
+}
+
+/** 상시 명패는 glyph-only 34px 이하로는 내려가지 않는다. 폭이 부족하면 통째로 숨기지 않고 한자만 남긴다. */
+function plaqueIsGlyphOnly(): boolean {
+  return CELL_SPACING * mapZoom < PLAQUE_COMPACT_WIDTH + PLAQUE_MIN_GAP;
+}
+
 function drawSpiritTowerLabel(tower: Tower, cell: Point, selected: boolean, material: boolean): void {
   const style = ELEMENT_STYLES[tower.wuxing];
   const learning = learningInfo(engine.state.region, tower.char);
+  // 한자 강조 OFF 는 머리 위 명패를 통째로 숨긴다. glyph-only 명패도 남기지 않는다.
   if (!hanjaEmphasis) return;
 
-  const glyphOnly = mapZoom / BASE_MAP_ZOOM < 0.6;
-  // 세로로 쌓인 56px 검은 상자는 자령 그림을 절반쯤 가렸고, 훈음 최장값
-  // "수레 가기 힘들 가"는 49px 안에서 48%까지 압착되어 읽히지 않았다.
-  // 가로형 명패로 바꿔 그림을 덜 가리면서 훈음에 96px을 준다.
-  const width = glyphOnly ? 34 : 104;
-  const height = glyphOnly ? 34 : 34;
-  const top = glyphOnly ? -50 : -62;
-  const glyphBox = glyphOnly ? width : 34;
+  const glyphOnly = plaqueIsGlyphOnly();
+  const width = glyphOnly ? Math.min(PLAQUE_GLYPH_ONLY_WIDTH, Math.max(20, CELL_SPACING * mapZoom - PLAQUE_MIN_GAP)) : PLAQUE_COMPACT_WIDTH;
+  const height = glyphOnly ? 34 : PLAQUE_COMPACT_HEIGHT;
+  const top = PLAQUE_BOTTOM - height + (glyphOnly ? 12 : 0);
+  const glyphBox = glyphOnly ? width : PLAQUE_COMPACT_GLYPH_BOX;
 
   context.save();
   context.translate(cell.x, cell.y);
   // Counter-scale the label so Hanja stays readable while the map zooms and pans.
   context.scale(1 / mapZoom, 1 / mapZoom);
+  drawPlaqueShell(width, height, top, glyphBox, style.color, selected || material ? "#ffe9b0" : style.color, selected || material, !glyphOnly);
 
-  const rim = selected || material ? "#ffe9b0" : style.color;
+  context.textAlign = "center";
+  context.textBaseline = "middle";
+  context.fillStyle = "#fff8e8";
+  context.font = `900 ${glyphOnly ? 24 : 22}px "Malgun Gothic", "Noto Sans CJK KR", serif`;
+  context.fillText(tower.char, glyphOnly ? 0 : -width / 2 + glyphBox / 2, top + height / 2 + 1, glyphBox - 3);
+  if (!glyphOnly) {
+    // 훈음은 오른쪽 51px 칸에서 2줄까지 균형 분할한다. fillText maxWidth 압축은 쓰지 않는다.
+    const readingCenter = -width / 2 + glyphBox + 1 + (PLAQUE_COMPACT_READING_BOX - 1) / 2;
+    const reading = compactReadingFor(learning.short, PLAQUE_COMPACT_READING_BOX - 5);
+    context.fillStyle = "#f3e8cd";
+    context.font = plaqueReadingFont(reading.font);
+    const middle = top + height / 2 + 1;
+    if (reading.lines.length <= 1) context.fillText(reading.lines[0] ?? "", readingCenter, middle);
+    else {
+      context.fillText(reading.lines[0] ?? "", readingCenter, middle - 5);
+      context.fillText(reading.lines[1] ?? "", readingCenter, middle + 5);
+    }
+    if (reading.shortened) {
+      // 줄인 훈음에는 오른쪽 위에 작은 표식을 두어 상세 팝오버를 보게 한다.
+      context.fillStyle = "rgba(255, 226, 160, 0.85)";
+      context.beginPath();
+      context.arc(width / 2 - 5, top + 5, 2, 0, Math.PI * 2);
+      context.fill();
+    }
+  }
+  context.restore();
+}
+
+/** 명패 판·베벨·테두리·꼬리 — compact 와 상세 팝오버가 같은 재질을 쓴다. */
+function drawPlaqueShell(
+  width: number,
+  height: number,
+  top: number,
+  glyphBox: number,
+  elementColor: string,
+  rim: string,
+  emphasised: boolean,
+  splitGlyphColumn: boolean
+): void {
+  const radii = [3, 11, 3, 11] as const;
   const plaque = context.createLinearGradient(0, top, 0, top + height);
   plaque.addColorStop(0, "rgba(38, 44, 56, 0.97)");
   plaque.addColorStop(0.5, "rgba(16, 21, 30, 0.97)");
   plaque.addColorStop(1, "rgba(7, 10, 16, 0.97)");
   context.fillStyle = plaque;
-  context.shadowColor = selected || material ? "rgba(255, 231, 164, 0.5)" : "rgba(0, 0, 0, 0.55)";
-  context.shadowBlur = selected || material ? 13 : 7;
+  context.shadowColor = emphasised ? "rgba(255, 231, 164, 0.5)" : "rgba(0, 0, 0, 0.55)";
+  context.shadowBlur = emphasised ? 13 : 7;
   context.shadowOffsetY = 2;
   context.beginPath();
-  context.roundRect(-width / 2, top, width, height, [3, 11, 3, 11]);
+  context.roundRect(-width / 2, top, width, height, [...radii]);
   context.fill();
   context.shadowBlur = 0;
   context.shadowOffsetY = 0;
 
   // 한자 칸은 오행 색 바탕으로 구분해 명패가 두 구역으로 읽히게 한다.
-  if (!glyphOnly) {
+  if (splitGlyphColumn) {
     context.save();
     context.beginPath();
-    context.roundRect(-width / 2, top, width, height, [3, 11, 3, 11]);
+    context.roundRect(-width / 2, top, width, height, [...radii]);
     context.clip();
     const glyphGround = context.createLinearGradient(0, top, 0, top + height);
-    glyphGround.addColorStop(0, style.color + "44");
-    glyphGround.addColorStop(1, style.color + "18");
+    glyphGround.addColorStop(0, elementColor + "44");
+    glyphGround.addColorStop(1, elementColor + "18");
     context.fillStyle = glyphGround;
     context.fillRect(-width / 2, top, glyphBox, height);
     context.strokeStyle = "rgba(255, 240, 208, 0.14)";
     context.lineWidth = 1;
     context.beginPath();
-    context.moveTo(-width / 2 + glyphBox, top + 4);
-    context.lineTo(-width / 2 + glyphBox, top + height - 4);
+    context.moveTo(-width / 2 + glyphBox + 0.5, top + 4);
+    context.lineTo(-width / 2 + glyphBox + 0.5, top + height - 4);
     context.stroke();
     context.restore();
   }
@@ -3659,9 +3766,9 @@ function drawSpiritTowerLabel(tower: Tower, cell: Point, selected: boolean, mate
   context.stroke();
 
   context.strokeStyle = rim;
-  context.lineWidth = selected || material ? 2 : 1.3;
+  context.lineWidth = emphasised ? 2 : 1.3;
   context.beginPath();
-  context.roundRect(-width / 2, top, width, height, [3, 11, 3, 11]);
+  context.roundRect(-width / 2, top, width, height, [...radii]);
   context.stroke();
 
   // 자령을 가리키는 작은 꼬리
@@ -3672,19 +3779,115 @@ function drawSpiritTowerLabel(tower: Tower, cell: Point, selected: boolean, mate
   context.lineTo(0, top + height + 5);
   context.closePath();
   context.fill();
+}
 
+interface PendingPlaque {
+  readonly tower: Tower;
+  readonly cell: Point;
+  readonly selected: boolean;
+  readonly material: boolean;
+}
+
+/**
+ * 명패는 자령 본체 루프 안에서 바로 그리지 않고 모았다가 마지막에 흘린다.
+ * 렌더 순서: 일반 y순 → 합성 재료 → 선택 명패 → 선택 상세 팝오버.
+ * 이웃 자령의 본체나 명패가 선택 명패의 훈음을 덮지 않게 한다.
+ */
+const pendingPlaques: PendingPlaque[] = [];
+
+function flushTowerPlaques(): void {
+  if (pendingPlaques.length === 0) return;
+  const ordered = [...pendingPlaques].sort((left, right) => left.cell.y - right.cell.y);
+  for (const entry of ordered) {
+    if (entry.material || entry.selected) continue;
+    drawSpiritTowerLabel(entry.tower, entry.cell, false, false);
+  }
+  for (const entry of ordered) {
+    if (entry.material && !entry.selected) drawSpiritTowerLabel(entry.tower, entry.cell, false, true);
+  }
+  for (const entry of ordered) {
+    if (entry.selected) drawSpiritTowerLabel(entry.tower, entry.cell, true, entry.material);
+  }
+  const focused = ordered.find((entry) => entry.selected);
+  if (focused) drawTowerDetailPopover(focused.tower, focused.cell);
+  pendingPlaques.length = 0;
+}
+
+/** 같은 진 안에서 방향으로 이웃한 셀 번호. 진 밖이면 null(가릴 명패가 없음). */
+function neighborCellIndex(cell: number, columnStep: number, rowStep: number): number | null {
+  if (cell < 0 || cell >= BOARD_CELLS.length) return null;
+  const formation = Math.floor(cell / CELLS_PER_FORMATION);
+  const local = cell % CELLS_PER_FORMATION;
+  const column = local % FORMATION_COLUMNS + columnStep;
+  const row = Math.floor(local / FORMATION_COLUMNS) + rowStep;
+  if (column < 0 || column >= FORMATION_COLUMNS || row < 0 || row >= FORMATION_ROWS) return null;
+  return formation * CELLS_PER_FORMATION + row * FORMATION_COLUMNS + column;
+}
+
+/**
+ * 선택 자령의 104px 상세 팝오버. compact 가 줄여 적은 훈음의 전체값을 보여준다.
+ * 가장 가까운 빈 방향에 띄우고 전장 경계 안으로 clamp 한다.
+ */
+function drawTowerDetailPopover(tower: Tower, cell: Point): void {
+  if (!hanjaEmphasis) return;
+  const style = ELEMENT_STYLES[tower.wuxing];
+  const learning = learningInfo(engine.state.region, tower.char);
+  const readingBox = PLAQUE_DETAIL_WIDTH - PLAQUE_DETAIL_GLYPH_BOX;
+  const previousFont = context.font;
+  context.font = plaqueReadingFont(11);
+  let lines = canvasWrappedLines(learning.short, readingBox - 8, 3);
+  if (lines.length > 2) {
+    context.font = plaqueReadingFont(10);
+    lines = canvasWrappedLines(learning.short, readingBox - 8, 3);
+  }
+  const readingFont = context.font;
+  context.font = previousFont;
+  const lineHeight = 12;
+  const height = Math.max(34, 12 + lines.length * lineHeight);
+
+  const occupied = new Set(engine.state.towers.map((candidate) => candidate.cell));
+  const free = (columnStep: number, rowStep: number): boolean => {
+    const neighbor = neighborCellIndex(tower.cell, columnStep, rowStep);
+    return neighbor === null || !occupied.has(neighbor);
+  };
+  // 가장 가까운 빈 방향: 위 → 오른쪽 → 왼쪽 → 아래. 자기 compact 명패(84px)와
+  // 겹치지 않도록 옆으로 낼 때는 두 폭의 절반 합에 6px 여백을 더한다.
+  const sideOffset = (PLAQUE_COMPACT_WIDTH + PLAQUE_DETAIL_WIDTH) / 2 + 6;
+  const sideTop = PLAQUE_BOTTOM - PLAQUE_COMPACT_HEIGHT / 2 - height / 2;
+  const placements: ReadonlyArray<{ columnStep: number; rowStep: number; offsetX: number; top: number }> = [
+    { columnStep: 0, rowStep: -1, offsetX: 0, top: PLAQUE_BOTTOM - PLAQUE_COMPACT_HEIGHT - 8 - height },
+    { columnStep: 1, rowStep: 0, offsetX: sideOffset, top: sideTop },
+    { columnStep: -1, rowStep: 0, offsetX: -sideOffset, top: sideTop },
+    { columnStep: 0, rowStep: 1, offsetX: 0, top: 36 }
+  ];
+  const placement = placements.find((candidate) => free(candidate.columnStep, candidate.rowStep)) ?? placements[0] as (typeof placements)[number];
+  let offsetX = placement.offsetX;
+  let top = placement.top;
+
+  // 전장(캔버스) 경계 안으로 밀어 넣는다. 명패는 역-스케일이라 화면 px 로 계산한다.
+  const screenX = mapOffset.x + cell.x * mapZoom;
+  const screenY = mapOffset.y + cell.y * mapZoom;
+  const minLeft = 8;
+  const maxRight = WORLD_WIDTH - 8;
+  offsetX = Math.max(minLeft + PLAQUE_DETAIL_WIDTH / 2 - screenX, Math.min(maxRight - PLAQUE_DETAIL_WIDTH / 2 - screenX, offsetX));
+  top = Math.max(46 - screenY, Math.min(WORLD_HEIGHT - 8 - height - screenY, top));
+
+  context.save();
+  context.translate(cell.x, cell.y);
+  context.scale(1 / mapZoom, 1 / mapZoom);
+  context.translate(offsetX, 0);
+  drawPlaqueShell(PLAQUE_DETAIL_WIDTH, height, top, PLAQUE_DETAIL_GLYPH_BOX, style.color, "#ffe9b0", true, true);
   context.textAlign = "center";
   context.textBaseline = "middle";
   context.fillStyle = "#fff8e8";
-  context.font = `900 ${glyphOnly ? 24 : 23}px "Malgun Gothic", "Noto Sans CJK KR", serif`;
-  context.fillText(tower.char, glyphOnly ? 0 : -width / 2 + glyphBox / 2, top + height / 2 + 1, glyphBox - 4);
-  if (!glyphOnly) {
-    // 훈음은 명패 오른쪽 칸 전체(96px)를 쓴다. 최장 "수레 가기 힘들 가"도 들어간다.
-    const readingLeft = -width / 2 + glyphBox;
-    const readingWidth = width - glyphBox;
-    context.fillStyle = "#f3e8cd";
-    context.font = '800 12px "Malgun Gothic", sans-serif';
-    context.fillText(learning.short, readingLeft + readingWidth / 2, top + height / 2 + 1, readingWidth - 8);
+  context.font = '900 24px "Malgun Gothic", "Noto Sans CJK KR", serif';
+  context.fillText(tower.char, -PLAQUE_DETAIL_WIDTH / 2 + PLAQUE_DETAIL_GLYPH_BOX / 2, top + height / 2 + 1, PLAQUE_DETAIL_GLYPH_BOX - 4);
+  context.fillStyle = "#f6ecd2";
+  context.font = readingFont;
+  const readingCenter = -PLAQUE_DETAIL_WIDTH / 2 + PLAQUE_DETAIL_GLYPH_BOX + readingBox / 2;
+  const firstLine = top + height / 2 + 1 - (lines.length - 1) * lineHeight / 2;
+  for (let index = 0; index < lines.length; index += 1) {
+    context.fillText(lines[index] as string, readingCenter, firstLine + index * lineHeight);
   }
   context.restore();
 }
@@ -3749,7 +3952,7 @@ function drawSpiritTower(tower: Tower, cell: Point, definition: HanziDefinition,
     context.shadowBlur = 0;
   }
 
-  drawSpiritTowerLabel(tower, cell, selected, material);
+  pendingPlaques.push({ tower, cell, selected, material });
 }
 
 function drawTowerAbilityPopup(tower: Tower, cell: Point): void {
@@ -4286,7 +4489,8 @@ function syncMapZoomControl(): void {
   canvas.dataset.mapZoomDisplay = String(displayZoom);
   canvas.dataset.mapOffsetX = mapOffset.x.toFixed(1);
   canvas.dataset.mapOffsetY = mapOffset.y.toFixed(1);
-  canvas.dataset.labelDensity = mapZoom / BASE_MAP_ZOOM < 0.6 ? "glyph" : "reading";
+  // 84px compact 명패가 이웃과 4px 이상 떨어질 수 없는 배율에서만 한자만 남긴다.
+  canvas.dataset.labelDensity = plaqueIsGlyphOnly() ? "glyph" : "reading";
   canvas.dataset.hanjaEmphasis = String(hanjaEmphasis);
 }
 
