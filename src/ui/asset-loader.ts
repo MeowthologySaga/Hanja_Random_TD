@@ -388,3 +388,27 @@ export function dismissBootScreen(): void {
   layer.setAttribute("aria-hidden", "true");
   window.setTimeout(() => layer.remove(), 460);
 }
+
+// ── 서비스 워커 ───────────────────────────────────────────────────
+
+/**
+ * 두 번째 방문부터 15MB 를 다시 받지 않게 하는 오프라인 캐시.
+ *
+ * 등록 경로·범위를 전부 상대로 두어 GitHub Pages 하위 경로(base "./")에서도
+ * 그대로 동작한다. 개발 서버에서는 켜지 않고, 예전에 남은 워커가 있으면
+ * 오히려 낡은 번들을 물려 줄 수 있으므로 지운다.
+ */
+export function registerServiceWorker(): void {
+  if (!("serviceWorker" in navigator)) return;
+  if (!import.meta.env.PROD) {
+    void navigator.serviceWorker.getRegistrations()
+      .then((registrations) => Promise.all(registrations.map((registration) => registration.unregister())))
+      .catch(() => undefined);
+    return;
+  }
+  const scope = new URL("./", document.baseURI);
+  const script = new URL(`sw.js?v=${__BUILD_ID__}`, scope);
+  void navigator.serviceWorker.register(script.href, { scope: scope.href }).catch((error: unknown) => {
+    console.warn("[sw] 등록 실패, 네트워크로 계속한다:", error instanceof Error ? error.message : error);
+  });
+}

@@ -105,6 +105,7 @@ import {
   dismissBootScreen,
   isBattleAssetsReady,
   preloadP1,
+  registerServiceWorker,
   startP2,
   updateBootProgress,
   whenBattleAssetsReady,
@@ -6155,6 +6156,8 @@ syncPanel();
  *      `whenBattleAssetsReady()` 가 잠깐만 붙잡는다.
  */
 async function bootGame(): Promise<void> {
+  // 첫 방문에도 워커가 곧바로 페이지를 물어 P1·P2 응답을 캐시에 담게 한다.
+  registerServiceWorker();
   await preloadP1(s00Mode, updateBootProgress);
   await mountS00();
   dismissBootScreen();
