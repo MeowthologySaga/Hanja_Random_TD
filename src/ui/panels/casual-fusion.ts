@@ -256,8 +256,11 @@ export function renderCasualFusion(): void {
   const heldCount = readyCount - runnableCount;
   fuseAllButton.disabled = !active || runnableCount === 0;
   must<HTMLElement>("#casual-fuse-all-count").textContent = `(${runnableCount}회)`;
+  // 트랙 R(P-03): "가방 자령을 먼저 씁니다"만 적혀 있어, 가방이 모자라 전장
+  // 배치 자령까지 사라지는 실제 동작이 예고되지 않았다(실측 배치 16/16 → 12/16).
+  // 소모 경고 배지는 스크롤 접힘 아래라 보이지도 않았다 — 부제에 못박는다.
   must<HTMLElement>("#casual-fuse-all-note").textContent = runnableCount > 0
-    ? `3기가 모두 사라지고 같은 오행의 다음 별 자령 1기를 무작위로 얻습니다. 가방 자령을 먼저 씁니다.${heldCount > 0 ? ` 전장 자령이 낀 ${heldCount}묶음은 아래 카드에서 개별 실행하세요.` : ""}`
+    ? `3기가 모두 사라지고 같은 오행의 다음 별 자령 1기를 무작위로 얻습니다. 가방 자령을 먼저 쓰고, 모자라면 전장 자령도 사라집니다.${heldCount > 0 ? ` 전장 자령이 낀 ${heldCount}묶음은 아래 카드에서 개별 실행하세요.` : ""}`
     : heldCount > 0
       ? `모인 ${heldCount}묶음이 전부 전장 자령을 소모합니다. 일괄에서는 건너뛰니, 아래 카드의 [승급] 버튼으로 하나씩 실행하세요.`
       : buckets.some((bucket) => bucket.shortReason !== null)
@@ -363,6 +366,48 @@ export function openCasualManualReview(): void {
 }
 
 /**
+ * [한 번에 승급]이 지금 실제로 실행할 묶음과, 그 재료 중 전장에 서 있는 자령.
+ *
+ * 일괄 경로는 가방 자령을 먼저 쓰도록 정렬하지만(casualAutoFusionPlan), 가방이
+ * 모자라면 전장 배치 자령도 그대로 끌어 쓴다 — `deployed` 는 건너뛰기 사유가
+ * 아니기 때문이다(engine-tuning: CASUAL_AUTO_SKIP_KINDS 는 `resonance` 뿐).
+ */
+function casualAutoFusionBoardMaterials(): { groups: number; boardTowers: Tower[] } {
+  const all = [...ctx.engine.state.towers, ...ctx.engine.state.inventoryTowers];
+  const runnable = WUXING_ORDER
+    .flatMap((wuxing) => ctx.engine.casualAutoFusionPlan(wuxing))
+    .filter((group) => group.autoSkipReason === null);
+  const boardTowers = runnable
+    .flatMap((group) => group.materialIds)
+    .map((id) => all.find((tower) => tower.id === id))
+    .filter((tower): tower is Tower => tower !== undefined && tower.cell >= 0);
+  return { groups: runnable.length, boardTowers };
+}
+
+/**
+ * [한 번에 승급] 진입점 — 트랙 R(P-03).
+ *
+ * 전장 자령이 한 기라도 재료에 끼면 되돌릴 수 없는 판 손실이므로, 손으로 고른
+ * 3기와 같은 확인 창을 딱 한 번 거친다. 가방만으로 끝나는 일괄은 예전처럼
+ * 곧장 실행한다 — 확인을 늘 세우면 흔한 조작 하나가 두 번 클릭이 된다.
+ */
+export function requestCasualAutoFusionAll(): void {
+  const { groups, boardTowers } = casualAutoFusionBoardMaterials();
+  if (groups === 0 || boardTowers.length === 0) {
+    runCasualAutoFusion("all", null);
+    return;
+  }
+  ctx.pendingCasualFusion = { kind: "auto", groups, boardTowerIds: boardTowers.map((tower) => tower.id) };
+  must<HTMLElement>("#casual-fusion-confirm-title").textContent = `전장 자령 ${boardTowers.length}기가 함께 사라집니다`;
+  must<HTMLElement>("#casual-fusion-confirm-content").innerHTML = `
+    <section class="casual-confirm-summary"><b>${groups}묶음을 한 번에 승급합니다 — ${groups * 3}기가 모두 사라집니다</b><span>가방 자령을 먼저 쓰지만 모자라 <strong>전장 ${boardTowers.length}기</strong>까지 재료로 들어갔습니다. 그 자리는 비고, 결과 글자는 공개 순간에 정해지며 되돌릴 수 없습니다.</span></section>
+    <div class="casual-confirm-towers">${boardTowers.map((tower) => casualConfirmTowerRow(tower)).join("")}</div>
+    <p class="casual-confirm-pool"><b>전장에서 빠지는 자령만 위에 세웠습니다</b><span>가방 자령 ${Math.max(0, groups * 3 - boardTowers.length)}기는 목록에서 생략했습니다.</span></p>`;
+  must<HTMLButtonElement>("#casual-fusion-execute").textContent = `${groups}묶음 승급 · 전장 ${boardTowers.length}기 포함`;
+  casualFusionConfirmDialog.showModal();
+}
+
+/**
  * 그룹 카드·[한 번에 승급]의 원클릭 실행. 확인 모달을 거치지 않는 대신
  * 결과(승급 횟수·소모 자령·건너뛴 묶음)를 토스트로 반드시 가시화한다.
  */
@@ -393,6 +438,12 @@ export function wireCasualFusion1(): void {
   must<HTMLButtonElement>("#casual-fusion-execute").addEventListener("click", () => {
     const pending = ctx.pendingCasualFusion;
     if (!pending) return;
+    if (pending.kind === "auto") {
+      // 확인은 여기서 끝난다 — 실행은 예전과 같은 일괄 경로를 그대로 탄다.
+      closeCasualFusionReview();
+      runCasualAutoFusion("all", null);
+      return;
+    }
     sound.unlock();
     const essenceBefore = essenceSnapshot();
     const result = ctx.engine.fuseCasual(pending.materialIds, true);
