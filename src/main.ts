@@ -397,7 +397,7 @@ app.innerHTML = `
             <b id="idiom-result-glyph">四</b>
             <span>
               <small>최근 자동 감지</small>
-              <strong id="idiom-result-name">네 글자를 한 줄에 순서대로 놓으세요</strong>
+              <strong id="idiom-result-name">한 줄에 네 글자를 순서대로</strong>
               <em id="idiom-result-meaning">배치된 자령을 자동으로 판정합니다.</em>
             </span>
             <mark id="idiom-result-bonus">자동 판정</mark>
@@ -1396,7 +1396,7 @@ function resetIdiomResult(): void {
   idiomResult.classList.remove("is-active");
   idiomResult.style.removeProperty("--idiom-result-color");
   must<HTMLElement>("#idiom-result-glyph").textContent = "四";
-  must<HTMLElement>("#idiom-result-name").textContent = "네 글자를 한 줄에 순서대로 놓으세요";
+  must<HTMLElement>("#idiom-result-name").textContent = "한 줄에 네 글자를 순서대로";
   must<HTMLElement>("#idiom-result-meaning").textContent = "배치된 자령을 자동으로 판정합니다.";
   must<HTMLElement>("#idiom-result-bonus").textContent = "자동 판정";
 }
@@ -3238,7 +3238,8 @@ function renderIdiomHud(): void {
     .find((definition) => definition?.acquisition === "craft" && (counts.get(definition.char) ?? 0) === 0);
   must<HTMLElement>("#idiom-hint").textContent = missingCraft
     ? "먼저 " + missingCraft.char + " = " + missingCraft.parents.join("+") + " 조합"
-    : "한 줄에 1→2→3→4 배치 → 자동 발동";
+    // 한 줄에 담기는 길이라야 말줄임 없이 보인다. "배치"는 화살표가 대신한다.
+    : "한 줄에 1→2→3→4 → 자동 발동";
 }
 
 /**
