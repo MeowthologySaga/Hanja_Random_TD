@@ -1346,3 +1346,40 @@ test("hints research unlock and first Munki once in standard mode", { tag: HINT_
   await expect(page.locator("#hint-layer")).toBeVisible();
   await expect(page.locator("#hint-title")).toContainText("문기");
 });
+
+/*
+ * ── 트랙 N — 지난 감사의 "설계 판단" 보류분 ────────────────────────────
+ *
+ * 말줄임을 남길지 풀지는 눈이 아니라 자로 정한다. 아래 스펙들은 그 자를
+ * 코드에 박아 둔 것이다 — 조판이 밀리면 사람이 아니라 게이트가 먼저 안다.
+ */
+
+/** 웨이브 브리핑: 1~100 웨이브 × 잔존 유무 전수를 실제 조판으로 잰다. */
+test("keeps every wave briefing inside the two-line clamp", async ({ page }) => {
+  await page.goto("/?seed=TRACK-N-BRIEF&mode=casual");
+  await page.getByTestId("start-run").click();
+  await expect(page.locator("#wave-briefing")).toBeVisible();
+
+  const overflowing = await page.evaluate(async () => {
+    // 문자열을 변수로 돌려 tsc 의 정적 해석을 피한다 — 이 경로는 dev 서버가 푼다.
+    const specifier = "/src/core/content.ts";
+    const module = await import(specifier) as typeof import("../src/core/content");
+    const element = document.getElementById("wave-briefing") as HTMLElement;
+    const original = element.textContent;
+    const bad: Array<{ wave: number; survivors: number | null; text: string; overflow: number }> = [];
+    for (let wave = 1; wave <= 100; wave += 1) {
+      const plan = module.wavePlan(wave);
+      for (const survivors of [null, 9, 99]) {
+        const text = module.composeWaveBriefing(plan.briefing, wave, plan.boss, survivors);
+        element.textContent = text;
+        const overflow = element.scrollHeight - element.clientHeight;
+        if (overflow > 1) bad.push({ wave, survivors, text, overflow });
+      }
+    }
+    element.textContent = original;
+    return bad;
+  });
+  expect(overflowing).toEqual([]);
+  // 그래도 잘리는 날을 대비한 안전망: 전문이 title 로 남는다.
+  await expect(page.locator("#wave-briefing")).toHaveAttribute("title", /.+/u);
+});
