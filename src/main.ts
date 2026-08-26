@@ -7666,10 +7666,11 @@ window.addEventListener("resize", () => {
  * 도착 전까지 먹 글자와 버튼만 메뉴 위에 둥둥 떠 보였다. CSS 가 쓰는
  * 것과 같은 경로로 미리 받아 둔다(R7-30 의 한지 바탕과 짝).
  */
-for (const path of ["/assets/ui/main-menu-b/ui/p00-scroll-frame-v1.png"]) {
+for (const path of ["assets/ui/main-menu-b/ui/p00-scroll-frame-v1.png"]) {
   const warm = new Image();
   warm.decoding = "async";
-  warm.src = path;
+  // 하위 경로 배포(GitHub Pages)에서 루트 절대 경로는 404 가 된다 — 문서 기준으로.
+  warm.src = new URL(`${import.meta.env.BASE_URL}${path}`, document.baseURI).toString();
 }
 
 syncMapZoomControl();
