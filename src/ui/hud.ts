@@ -2,7 +2,7 @@
  * 상단 띠·패널 탭·집중 프레임·토스트·전투 기록 등 상시 HUD.
  */
 import { bossTimeLimitForWave, MAX_ENEMIES, WAVE_REINFORCEMENT_DELAY, wavePlan } from "../core/content";
-import { FIRST_PREP_SECONDS, interestForGold } from "../core/game";
+import { FIRST_PREP_SECONDS, type GameEngine, interestForGold } from "../core/game";
 import {
   ELEMENT_STYLES,
   GAME_CONFIG,
@@ -111,6 +111,33 @@ function maybeShowEarlyHint(): void {
   hint.style.top = `${(rect.bottom - stage.top) / scale + 10}px`;
   hint.hidden = false;
   earlyHintTimer = window.setTimeout(hideEarlyHint, 5000);
+}
+
+/*
+ * [FB3] 적 한계 3단 경고.
+ *
+ * 1단(75%): 런당 딱 한 번, 토스트 + 경고음으로 "무엇이 게임오버인지"를
+ *   말로 알린다. 재도전은 새 GameEngine 인스턴스라 엔진 참조 비교만으로
+ *   런 단위 리셋이 성립한다(별도 초기화 배선 불필요).
+ * 2단(90%): 칩에 is-critical — 확대·빨강 맥동·수치 강조(CSS [FB3-] 절).
+ *   90% 미만으로 내려가면 클래스가 벗겨져 원상 복구된다.
+ * 3단(패배): 종료 화면이 state.defeatCause 로 사유를 명시한다(end.ts).
+ */
+const ENEMY_LIMIT_WARN_RATIO = 0.75;
+
+const ENEMY_LIMIT_CRITICAL_RATIO = 0.9;
+
+let enemyLimitWarnedEngine: GameEngine | null = null;
+
+function syncEnemyLimitWarning(count: number): void {
+  const chip = must<HTMLElement>("#enemy-limit-chip");
+  const ratio = count / MAX_ENEMIES;
+  chip.classList.toggle("is-danger", ratio >= ENEMY_LIMIT_WARN_RATIO);
+  chip.classList.toggle("is-critical", ratio >= ENEMY_LIMIT_CRITICAL_RATIO);
+  if (ratio < ENEMY_LIMIT_WARN_RATIO || enemyLimitWarnedEngine === ctx.engine) return;
+  enemyLimitWarnedEngine = ctx.engine;
+  showToast(`적이 최대 ${MAX_ENEMIES}체를 넘으면 봉인이 무너집니다`, true);
+  sound.playEnemyLimitWarning();
 }
 
 const FOCUS_FRAME_MOUNTS: ReadonlyArray<{ id: FocusFrameId; source: string; target: string }> = [
@@ -310,7 +337,7 @@ export function syncPanel(): void {
   must<HTMLElement>("#stage-region").textContent = `${REGION_META[state.region].title.split(" · ")[0] ?? state.region}${state.mode === "casual" ? " · 8성" : ""}`;
   must<HTMLElement>("#stage-phase").textContent = phaseLabel(state.phase);
   must<HTMLElement>("#stage-enemies").textContent = String(state.enemies.length) + " / " + String(MAX_ENEMIES);
-  must<HTMLElement>("#enemy-limit-chip").classList.toggle("is-danger", state.enemies.length >= MAX_ENEMIES * 0.75);
+  syncEnemyLimitWarning(state.enemies.length);
   must<HTMLElement>("#gold-value").textContent = String(state.gold);
   must<HTMLElement>("#interest-preview").textContent = "이자 +" + String(interestForGold(state.gold));
   must<HTMLElement>("#enemy-cap-value").textContent = String(MAX_ENEMIES) + "체";

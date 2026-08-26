@@ -12862,3 +12862,76 @@ dialog {
 .boss-banner {
   z-index: 22;
 }
+
+/* ══════════════════════════════════════════════════════════════════
+   [FB3-] 적 한계 3단 경고 — 90% 이상 위기 단계
+   ══════════════════════════════════════════════════════════════════
+
+   75% 는 기존 is-danger(styles.css v0.11 절, 색 전환)가 그대로 맡고,
+   여기서는 90% 이상에서 hud.ts 가 붙이는 is-critical 만 다룬다.
+   칩을 키우고(스케일) 빨강 맥동을 얹으며 수치를 굵게 세운다.
+   90% 미만으로 내려가면 클래스가 벗겨져 아래 규칙 전체가 원상 복구된다.
+   자기완결: 이 절의 키프레임은 [FB3-] 접두 이름만 쓴다.
+
+   주의: 한지 쪽지 프레임(33절, border-image … fill)이 칩 배경색 위를
+   통째로 덮는다 — 위기 상태만은 쪽지를 걷고(border-image: none) 스킨의
+   원래 절단 모서리 판(clip-cut)으로 되돌린 뒤 진홍 바탕을 깐다. */
+
+/* 75% 단계(is-danger)의 색 전환도 같은 이유로 쪽지에 묻혀 있었다.
+   쪽지는 그대로 두고 글자만 진홍으로 물들인다(먹 → 핏빛 전환).
+   아래 is-critical 자식 규칙이 같은 특이도로 뒤에 와서 90% 이상을 덮는다. */
+#enemy-limit-chip.is-danger span {
+  color: #8a2331;
+}
+
+#enemy-limit-chip.is-danger strong {
+  color: #a41326;
+}
+
+#enemy-limit-chip.is-critical {
+  border: 0;
+  border-image: none;
+  clip-path: var(--clip-cut-sm);
+  padding: 7px 12px;
+  transform: scale(1.16);
+  transform-origin: center;
+  color: #fff1f2;
+  border-color: rgba(255, 70, 90, 0.95);
+  background: rgba(96, 12, 22, 0.96);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 96, 112, 0.55),
+    0 0 0 0 rgba(255, 60, 80, 0.55);
+  animation: fb3-enemy-limit-critical 0.62s ease-in-out infinite;
+  /* 이웃 칩 위로 커지는 만큼 겹침 우선권을 준다(상단 띠 z21 안에서만). */
+  z-index: 1;
+}
+
+#enemy-limit-chip.is-critical span {
+  color: #ffc9cf;
+}
+
+#enemy-limit-chip.is-critical strong {
+  color: #ffffff;
+  font-weight: 900;
+  text-shadow: 0 0 6px rgba(255, 82, 100, 0.8);
+}
+
+@keyframes fb3-enemy-limit-critical {
+  0%, 100% {
+    background: rgba(96, 12, 22, 0.96);
+    box-shadow:
+      inset 0 0 0 1px rgba(255, 96, 112, 0.55),
+      0 0 0 0 rgba(255, 60, 80, 0.55);
+  }
+  50% {
+    background: rgba(150, 18, 30, 0.98);
+    box-shadow:
+      inset 0 0 0 1px rgba(255, 128, 140, 0.85),
+      0 0 16px 5px rgba(255, 60, 80, 0.75);
+  }
+}
+
+/* 감속 모드: 맥동은 멈추되 확대·강조 상태색은 남겨 위기 판독은 유지한다. */
+@media (prefers-reduced-motion: reduce) {
+  #enemy-limit-chip.is-critical { animation: none; }
+}
