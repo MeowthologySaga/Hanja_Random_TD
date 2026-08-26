@@ -4,7 +4,7 @@
 import { type GameMode } from "../../core/types";
 import { type DisplayMode, saveDisplayMode } from "../display-mode";
 import { saveAutoPlaceSummons } from "../summon-placement";
-import { ctx, HOVER_GLYPH_STORAGE_KEY, must, settingsDialog, shell, sound } from "../app-context";
+import { CALM_SCREEN_STORAGE_KEY, ctx, HOVER_GLYPH_STORAGE_KEY, must, reducedMotion, settingsDialog, shell, sound } from "../app-context";
 import { startCoach } from "../coach";
 import { handleAction, showToast } from "../hud";
 import { setSelectedGameMode } from "../s00-menu";
@@ -35,6 +35,40 @@ export function setHoverGlyphLarge(enabled: boolean): void {
   showToast(enabled
     ? "팝오버 큰 한자 ON · 자령에 마우스를 올리면 한자를 크게 보여줍니다"
     : "팝오버 큰 한자 OFF · 팝오버는 기존 글줄만 표시합니다");
+}
+
+/*
+ * FB6 차분한 화면.
+ *
+ * 실효값 = 명시적 선택(localStorage) ?? OS 동작 줄이기. CSS 는
+ * .game-shell[data-calm-screen="1"] 게이트로, 전장 캔버스는 draw/fx 의
+ * calmBattlefield() 분기로 같은 값을 읽는다.
+ */
+function syncCalmScreenControl(): void {
+  const button = must<HTMLButtonElement>("#calm-screen-toggle");
+  button.classList.toggle("is-on", ctx.calmScreen);
+  button.setAttribute("aria-checked", String(ctx.calmScreen));
+  must<HTMLElement>("#calm-screen-toggle i em").textContent = ctx.calmScreen ? "ON" : "OFF";
+}
+
+/** 선택(설정 > OS)을 실효값으로 굳혀 셸 게이트에 새긴다. */
+function applyCalmScreen(): void {
+  ctx.calmScreen = ctx.calmScreenChoice ?? reducedMotion;
+  shell.dataset.calmScreen = ctx.calmScreen ? "1" : "0";
+  syncCalmScreenControl();
+}
+
+export function setCalmScreen(enabled: boolean): void {
+  ctx.calmScreenChoice = enabled;
+  try {
+    window.localStorage.setItem(CALM_SCREEN_STORAGE_KEY, String(enabled));
+  } catch {
+    // 사생활 보호 모드 등에서 저장이 막혀도 이번 세션 선택은 살린다.
+  }
+  applyCalmScreen();
+  showToast(enabled
+    ? "차분한 화면 ON · 맥동·플래시·먹물 흐름을 멈춥니다"
+    : "차분한 화면 OFF · 기본 연출로 되돌립니다");
 }
 
 export function syncAutoPlaceControl(): void {
@@ -90,11 +124,14 @@ export function wireSettings1(): void {
     syncDisplayModeControls();
     syncAutoPlaceControl();
     syncHoverGlyphControl();
+    syncCalmScreenControl();
     syncAudioControls();
     settingsDialog.showModal();
   });
   // 저장된 선택이 OFF 면 첫 그림부터 반영되도록 초기 1회 맞춘다.
   syncHoverGlyphControl();
+  // FB6: 저장된 선택(또는 OS 동작 줄이기)이 첫 그림부터 게이트에 실리게 한다.
+  applyCalmScreen();
 }
 
 /** main.ts 가 원래 순서대로 부르는 배선 묶음. */
@@ -104,12 +141,18 @@ export function wireSettings2(): void {
     syncDisplayModeControls();
     syncAutoPlaceControl();
     syncHoverGlyphControl();
+    syncCalmScreenControl();
     syncAudioControls();
     settingsDialog.showModal();
   });
   must<HTMLButtonElement>("#hover-glyph-toggle").addEventListener("click", () => {
     sound.unlock();
     setHoverGlyphLarge(!ctx.hoverGlyphLarge);
+    sound.playUiConfirm();
+  });
+  must<HTMLButtonElement>("#calm-screen-toggle").addEventListener("click", () => {
+    sound.unlock();
+    setCalmScreen(!ctx.calmScreen);
     sound.playUiConfirm();
   });
   must<HTMLButtonElement>("#settings-close").addEventListener("click", () => settingsDialog.close());
