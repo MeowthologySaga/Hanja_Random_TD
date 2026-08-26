@@ -248,8 +248,9 @@ export function renderCasualFusion(): void {
   container.classList.add("is-casual");
   const buckets = casualFusionBuckets(allTowers, plans, protections);
   const fuseAllButton = must<HTMLButtonElement>("#casual-fuse-all");
-  // 일괄 실행은 전장 재료 묶음을 건너뛰므로, 버튼이 세는 수도 실제로
-  // 실행될 묶음만이어야 한다. "(2회)"를 보고 눌렀는데 0회 승급되는
+  // 일괄 실행은 오행 공명이 깨지는 묶음을 건너뛰므로(casualAutoSkipReason 은
+  // "resonance" 하나만 자동 제외한다 — 전장 배치는 막지 않는다), 버튼이 세는
+  // 수도 실제로 실행될 묶음만이어야 한다. "(2회)"를 보고 눌렀는데 0회 승급되는
   // 죽은 버튼을 만들지 않는다. 건너뛸 묶음은 안내문이 카드로 보낸다.
   const runnableCount = [...plans.values()]
     .reduce((sum, groups) => sum + groups.filter((group) => group.autoSkipReason === null).length, 0);
@@ -260,9 +261,9 @@ export function renderCasualFusion(): void {
   // 배치 자령까지 사라지는 실제 동작이 예고되지 않았다(실측 배치 16/16 → 12/16).
   // 소모 경고 배지는 스크롤 접힘 아래라 보이지도 않았다 — 부제에 못박는다.
   must<HTMLElement>("#casual-fuse-all-note").textContent = runnableCount > 0
-    ? `3기가 모두 사라지고 같은 오행의 다음 별 자령 1기를 무작위로 얻습니다. 가방 자령을 먼저 쓰고, 모자라면 전장 자령도 사라집니다.${heldCount > 0 ? ` 전장 자령이 낀 ${heldCount}묶음은 아래 카드에서 개별 실행하세요.` : ""}`
+    ? `3기가 모두 사라지고 같은 오행의 다음 별 자령 1기를 무작위로 얻습니다. 가방 자령을 먼저 쓰고, 모자라면 전장 자령도 사라집니다.${heldCount > 0 ? ` 오행 공명이 깨지는 ${heldCount}묶음은 아래 카드에서 개별 실행하세요.` : ""}`
     : heldCount > 0
-      ? `모인 ${heldCount}묶음이 전부 전장 자령을 소모합니다. 일괄에서는 건너뛰니, 아래 카드의 [승급] 버튼으로 하나씩 실행하세요.`
+      ? `모인 ${heldCount}묶음은 전부 오행 공명이 깨집니다. 일괄에서는 건너뛰니, 아래 카드의 [승급] 버튼으로 하나씩 실행하세요.`
       : buckets.some((bucket) => bucket.shortReason !== null)
         ? "3체는 모였지만 소모할 수 없는 자령이 섞여 있습니다. 아래 카드에서 사유를 확인하세요."
         : "같은 오행·같은 별 자령이 3체 모이면 여기서 한 번에 승급합니다.";
