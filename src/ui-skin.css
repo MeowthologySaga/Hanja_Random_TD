@@ -8925,3 +8925,51 @@ span.codex-jaryeong-category { color: #4a3f30 !important; }
   font-size: 10px !important;
   text-shadow: none !important;
 }
+
+/* ══════════════════════════════════════════════════════════════════
+   ===== R7 ===== 4축 스윕 발견 70건 수정 (spec-round7-sweep.md)
+   기존 절과 섞이지 않도록 파일 끝에 R7-n 독립 절로만 쌓는다.
+   ══════════════════════════════════════════════════════════════════ */
+
+/* ──────────────────────────────────────────────────────────────────
+   R7-1. 종료 화면 행동 버튼 — 남색 판을 걷어낸다
+   28절의 `.end-card *{ color: var(--text-200) }` 먹색 강제가
+   styles.css `.secondary-button`(#dce5f1 on #1b2635) 의 "글자만" 덮어써서
+   먹 글자가 남색 판 위에 얹혀 1.10:1 이 되어 있었다. 글자색을 되돌리는
+   대신 남색 판 자체를 걷어내고 한지 스킨으로 재정의한다 — 종료 카드가
+   이미 밝은 한지면이라 어두운 판이 이물이었다.
+   ────────────────────────────────────────────────────────────────── */
+
+.end-actions .start-button,
+.end-actions .secondary-button {
+  clip-path: var(--clip-cut-sm);
+  border: 0;
+  border-radius: 0;
+  font-size: var(--fs-md);
+  font-weight: 900;
+  letter-spacing: 0.03em;
+  cursor: pointer;
+}
+
+/* 주버튼 — 금박판 + 먹 글자 */
+.end-actions .start-button {
+  color: #2b2009;
+  background: linear-gradient(180deg, #ffeec4 0%, #f0d189 46%, #c99a45 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 253, 240, 0.85),
+    inset 0 -2px 0 rgba(94, 68, 24, 0.45),
+    0 3px 0 rgba(66, 48, 20, 0.35),
+    0 8px 20px rgba(0, 0, 0, 0.32);
+}
+
+/* 보조버튼 — 밝은 한지판 + 먹 글자. 금박과 같은 밝기 계열이라
+   "두 번째 선택지"임을 채도로만 구분한다. */
+.end-actions .secondary-button {
+  color: var(--text-100);
+  background: linear-gradient(180deg, var(--ji-400) 0%, var(--ji-600) 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 250, 0.9),
+    inset 0 0 0 1px rgba(88, 70, 44, 0.34),
+    0 3px 0 rgba(66, 48, 20, 0.22),
+    0 8px 20px rgba(0, 0, 0, 0.26);
+}
