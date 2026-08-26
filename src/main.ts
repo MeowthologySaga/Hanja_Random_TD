@@ -172,6 +172,7 @@ app.innerHTML = `
         <button id="early-button" class="early-start" type="button" data-testid="early-wave">시작 보너스</button>
         <div id="enemy-limit-chip" class="stage-chip"><span>적 한계</span><strong id="stage-enemies">0 / ${MAX_ENEMIES}</strong></div>
       </div>
+      <div id="active-idioms" class="active-idioms" aria-label="발동 중 사자성어" aria-live="polite"></div>
       <div class="wave-progress" aria-hidden="true"><i id="wave-progress-fill"></i></div>
       <div id="boss-banner" class="boss-banner" aria-live="assertive"></div>
       <div id="toast" class="toast" role="status" aria-live="polite"></div>
@@ -1092,6 +1093,8 @@ function startRun(useNewSeed = false): void {
   recycleAll(abilityBursts, abilityBurstPool, 12);
   idiomRipples.length = 0;
   idiomFlash = null;
+  // 새 런은 봉인이 0개라 키도 빈 문자열이 된다. 초기값과 겹치지 않게 표식으로 밀어 둔다.
+  activeIdiomsRenderKey = "run-reset";
   projectileSpriteDrawTotal = 0;
   abilityZoneSpriteDrawTotal = 0;
   canvas.dataset.projectileSpriteDrawTotal = "0";
@@ -1802,6 +1805,7 @@ function syncPanel(): void {
   if (activePanelTab === "concentration") renderConcentration();
   if (activePanelTab === "growth") renderGrowth();
   renderIdiomHud();
+  renderActiveIdioms();
 }
 
 function renderGoal(): void {
@@ -2509,6 +2513,52 @@ function renderIdiomHud(): void {
   must<HTMLElement>("#idiom-hint").textContent = missingCraft
     ? "먼저 " + missingCraft.char + " = " + missingCraft.parents.join("+") + " 조합"
     : "1→2→3→4 이웃 배치 → 자동 발동";
+}
+
+/**
+ * 발동 중 성어 스택 — 스펙 6라운드 D.
+ *
+ * 봉인한 성어의 효과는 런 내내 남는데, 지금까지 그 사실은 성어 탭을 열어야만
+ * 보였다. 전장 좌측에 상시 배지로 세워 두고, 배지를 누르면 그 네 칸으로
+ * 카메라를 옮겨 "어디에 있는 무엇인지"까지 이어 준다.
+ */
+let activeIdiomsRenderKey = "init";
+
+/** `모든 자령 사거리 +12` → `사거리 +12`. 12px 배지 한 줄에 담기게 주어를 턴다. */
+function shortIdiomBonusLabel(label: string): string {
+  return label.replace(/^모든 자령 /, "").replace(/^모든 적 /, "적 ").replace(/^합성할 때마다 /, "합성 ");
+}
+
+function renderActiveIdioms(): void {
+  const seals = engine.state.idiomSeals;
+  const key = seals.map((seal) => seal.idiomId).join(",");
+  if (key === activeIdiomsRenderKey) return;
+  activeIdiomsRenderKey = key;
+  const stack = must<HTMLElement>("#active-idioms");
+  // 성어 목표는 다섯이라 그 이상은 생길 수 없지만, 전장을 덮지 않도록 못을 박는다.
+  const visible = seals.slice(0, 5);
+  stack.innerHTML = visible
+    .map((seal) => {
+      const idiom = idiomById(engine.state.region, seal.idiomId);
+      if (!idiom) return "";
+      const bonus = shortIdiomBonusLabel(idiom.bonus.label);
+      return `<button type="button" class="active-idiom" data-active-idiom="${escapeHtml(seal.idiomId)}" style="--idiom:${idiom.color}" title="${escapeHtml(idiom.reading)} · ${escapeHtml(idiom.bonus.label)} — 눌러서 봉인 칸으로 이동" aria-label="${escapeHtml(idiom.reading)} 봉인 · ${escapeHtml(idiom.bonus.label)} · 눌러서 해당 네 칸으로 이동"><b>${escapeHtml(idiom.chars)}</b><span>${escapeHtml(bonus)}</span></button>`;
+    })
+    .join("");
+  stack.classList.toggle("is-empty", visible.length === 0);
+}
+
+/** 여러 칸의 무게중심으로 카메라를 옮긴다. 발동 성어 배지가 이걸 쓴다. */
+function focusMapOnCells(cells: readonly number[]): void {
+  const points = cells.map((cell) => BOARD_CELLS[cell]).filter((point): point is Point => Boolean(point));
+  if (points.length === 0) return;
+  const center = points.reduce(
+    (total, point) => ({ x: total.x + point.x / points.length, y: total.y + point.y / points.length }),
+    { x: 0, y: 0 }
+  );
+  mapOffset = { x: WORLD_WIDTH / 2 - center.x * mapZoom, y: WORLD_HEIGHT / 2 - center.y * mapZoom };
+  constrainMapCamera();
+  syncMapZoomControl();
 }
 
 const ROLE_STRATEGY: Record<HanziDefinition["combat"]["role"], string> = {
@@ -5098,6 +5148,13 @@ canvas.addEventListener("wheel", (event) => {
 }, { passive: false });
 must<HTMLButtonElement>("#map-zoom-reset").addEventListener("click", resetMapCamera);
 must<HTMLButtonElement>("#hanja-emphasis-toggle").addEventListener("click", toggleHanjaEmphasis);
+// 발동 성어 배지를 누르면 그 성어를 이룬 네 칸으로 카메라가 간다.
+must<HTMLElement>("#active-idioms").addEventListener("click", (event) => {
+  const idiomId = (event.target as HTMLElement | null)?.closest<HTMLButtonElement>("[data-active-idiom]")?.dataset.activeIdiom;
+  if (!idiomId) return;
+  const seal = engine.state.idiomSeals.find((candidate) => candidate.idiomId === idiomId);
+  if (seal) focusMapOnCells(seal.cells);
+});
 must<HTMLButtonElement>("#speed-button").addEventListener("click", cycleGameSpeed);
 
 const REGION_MENU_INFO: Record<RegionCode, { name: string; pool: string }> = {
