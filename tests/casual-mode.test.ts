@@ -519,7 +519,7 @@ describe("casual eight-star mode", () => {
     expect((shares.get(4) ?? 0) / (shares.get(3) ?? 1)).toBeCloseTo(CASUAL_STAR_TAIL_DECAY, 10);
     expect((shares.get(5) ?? 0) / (shares.get(4) ?? 1)).toBeCloseTo(CASUAL_STAR_TAIL_DECAY, 10);
     // 목표 감각: 기본 소환 4★+ 는 2% 안팎, 5★ 0.2%대, 8★은 로또(0.001% 미만).
-    const tail = [4, 5, 6, 7, 8].reduce((sum, star) => sum + (shares.get(star) ?? 0), 0);
+    const tail = ([4, 5, 6, 7, 8] as CasualStar[]).reduce((sum, star) => sum + (shares.get(star) ?? 0), 0);
     expect(tail).toBeGreaterThan(0.01);
     expect(tail).toBeLessThan(0.03);
     expect(shares.get(5) ?? 0).toBeGreaterThan(0.001);

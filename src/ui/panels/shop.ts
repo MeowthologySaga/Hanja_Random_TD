@@ -6,7 +6,7 @@ import { multiSummonCost, SUMMON_SURCHARGE, summonCost } from "../../core/hanzi"
 import { type SummonIntent } from "../../core/types";
 import { ctx, must } from "../app-context";
 import { summonAndFocus } from "../battle/camera";
-import { escapeHtml } from "../format";
+import { escapeHtml, summonOddsSummary } from "../format";
 import { showToast } from "../hud";
 
 /**
@@ -30,8 +30,8 @@ interface SummonProductMeta {
 // 두 티어가 같은 별 아이콘을 쓰면 색만이 유일한 구분이 되어 색각 차이에서 무너진다.
 const SUMMON_PRODUCTS: readonly SummonProductMeta[] = Object.freeze([
   { intent: "balanced", label: "기본 소환", effect: "전체 풀", tint: "#a8791f", icon: "v4/shop/shop-default-coin-v1" },
-  { intent: "midstar", label: "중급 소환", effect: "2~5★ 확정", tint: "#306f89", icon: "v5/shop/shop-tier-mid-v1" },
-  { intent: "highstar", label: "고급 소환", effect: "3~8★ 확정", tint: "#af3629", icon: "v5/shop/shop-tier-high-v1" },
+  { intent: "midstar", label: "중급 소환", effect: "2★ 확정 · 주로 2~5★", tint: "#306f89", icon: "v5/shop/shop-tier-mid-v1" },
+  { intent: "highstar", label: "고급 소환", effect: "3★ 확정 · 3~8★", tint: "#af3629", icon: "v5/shop/shop-tier-high-v1" },
   { intent: "discovery", label: "탐색 소환", effect: "새 한자 ×3.4", tint: "#3f7d6e", icon: "v4/shop/shop-explore-compass-lantern-v1" },
   { intent: "lineage", label: "계보 소환", effect: "목표·성어 재료 ×3.2", tint: "#3a5794", icon: "v4/shop/shop-lineage-scroll-v1" },
   { intent: "concentration", label: "중복 소환", effect: "보유 중복 ↑ · 농축 재료", tint: "#9a6d16", icon: "v4/shop/shop-duplicate-cards-v1" }
@@ -88,12 +88,17 @@ export function renderSummonShop(): void {
     .map((product) => {
       // 좁은 지역 풀에서는 밴드 하한이 한 단계 내려간다. 카드 문구도 실효 밴드를 따른다.
       const band = ctx.engine.summonStarBand(product.intent);
-      if (band === null) return { ...product, band: null, bandLabel: "" };
-      const bandLabel = `${band.min}~${band.max}★${band.min > 1 ? " 확정" : ""}`;
+      if (band === null) return { ...product, band: null, bandLabel: "", odds: "" };
+      // 하한은 하드("N★ 확정"), 상한은 소프트 — 밴드가 8★에 못 닿으면 "주로"다.
+      const bandLabel = (band.min > 1 ? `${band.min}★ 확정 · ` : "")
+        + (band.max < 8 ? `주로 ${band.min}~${band.max}★` : `${band.min}~${band.max}★`);
+      // 확률은 문구 하드코딩이 아니라 엔진 분포에서 렌더한다 — 상수를 바꾸면 따라온다.
+      const distribution = ctx.engine.summonStarDistribution(product.intent);
+      const odds = distribution === null ? "" : summonOddsSummary(distribution, band.max);
       // 탐색·중복은 밴드가 아니라 가중이 정체성이므로 효과 문구를 그대로 두고
       // 밴드는 툴팁으로만 알린다. 기본·티어는 밴드 자체가 상품 설명이다.
       const showsBand = product.intent === "balanced" || band.min > 1;
-      return { ...product, band, bandLabel, effect: showsBand ? bandLabel : product.effect };
+      return { ...product, band, bandLabel, odds, effect: showsBand ? bandLabel : product.effect };
     });
   // 10연은 균형 밴드를 그대로 쓰므로 보장선도 그 상한(기본 3★)이다.
   const multiBand = ctx.engine.summonStarBand("balanced");
@@ -120,6 +125,7 @@ export function renderSummonShop(): void {
       title: `${product.label} · ${product.effect} · ${price}엽전`
         + (product.intent === "balanced" ? "" : ` (기본 ${base} + 목적 ${SUMMON_SURCHARGE[product.intent]})`)
         + (banded && product.effect !== product.bandLabel ? ` · ${product.bandLabel}` : "")
+        + (banded && product.odds !== "" ? ` · 확률 ${product.odds}` : "")
         + (banded ? ` · 낮은 별이 더 흔합니다 · ${PAIR_BOOST_NOTE}` : "")
         + (product.band !== null && product.band.min > 1 ? ` · ${STROKE_STAR_NOTE}` : "")
     });
@@ -142,7 +148,7 @@ export function renderSummonShop(): void {
     testId: "multi-summon-button",
     title: multiUnlocked
       ? `10연 소환 · ${tenCost}엽전 · 할증 없음`
-        + (multiBand === null ? "" : ` · 기본 밴드 ${multiBand.min}~${multiBand.max}★ · ${multiBand.max}★ 1기 보장`)
+        + (multiBand === null ? "" : ` · 주로 ${multiBand.min}~${multiBand.max}★ · ${multiBand.max}★ 1기 보장`)
       : "10웨이브를 지키면 열립니다"
   }));
   must<HTMLElement>("#summon-shop").innerHTML = cards.join("");

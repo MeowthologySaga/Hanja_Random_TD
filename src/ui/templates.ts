@@ -7,7 +7,9 @@
 import { CASUAL_STAR_BINS, CASUAL_STAR_COLORS } from "../core/casual";
 import { MAX_ENEMIES, WORLD_HEIGHT, WORLD_WIDTH } from "../core/content";
 import { CHEONJAMUN_JARYEONG_DEX_META } from "../core/cheonjamun-jaryeong-dex";
-import { GAME_CONFIG } from "../core/hanzi";
+import { casualSummonStarDistribution, type SummonStarBand } from "../core/engine-tuning";
+import { GAME_CONFIG, SUMMON_STAR_BANDS } from "../core/hanzi";
+import type { CasualStar } from "../core/types";
 import type { DisplayMode } from "./display-mode";
 
 /**
@@ -21,6 +23,48 @@ function helpStrokeBinsHtml(): string {
   return CASUAL_STAR_BINS
     .map((bin) => `<i style="--star:${CASUAL_STAR_COLORS[bin.star]}"><b>★${bin.star}</b><span>${bin.minStrokes}~${bin.maxStrokes}획</span><small>${bin.count}자</small></i>`)
     .join("");
+}
+
+/** 확률표 칸 하나. 값이 작아질수록 자릿수를 늘려 "확 떨어짐"이 눈에 보이게 한다. */
+function helpOddsPercent(share: number): string {
+  if (share <= 0) return "—";
+  const percent = share * 100;
+  if (percent >= 10) return `${Math.round(percent)}%`;
+  if (percent >= 1) return `${percent.toFixed(1)}%`;
+  if (percent >= 0.01) return `${percent.toFixed(2)}%`;
+  return `${percent.toFixed(4)}%`;
+}
+
+/**
+ * 도움말 소환 갈피의 티어별 1~8★ 확률표 — gripe #10 확률 공개.
+ *
+ * 수치는 문구에 하드코딩하지 않는다. 밴드·감쇠 상수에서
+ * `casualSummonStarDistribution` 이 계산한 값을 그대로 렌더하므로
+ * 상수를 조정하면 표가 따라온다(획수→별 구간표와 같은 원칙).
+ * 소형 풀 지역의 실효 밴드 보정은 상점 카드 툴팁이 맡고, 여기는 정규 밴드다.
+ */
+function helpSummonOddsHtml(): string {
+  const tiers: ReadonlyArray<[string, readonly [number, number] | null]> = [
+    ["기본 · 탐색 · 중복", SUMMON_STAR_BANDS.balanced],
+    ["중급 소환", SUMMON_STAR_BANDS.midstar],
+    ["고급 소환", SUMMON_STAR_BANDS.highstar]
+  ];
+  const stars = [1, 2, 3, 4, 5, 6, 7, 8] as CasualStar[];
+  const head = `<div class="help-odds-row is-head"><b></b>${stars
+    .map((star) => `<span style="--star:${CASUAL_STAR_COLORS[star]}">${star}★</span>`)
+    .join("")}</div>`;
+  const rows = tiers.map(([label, bandTuple]) => {
+    if (bandTuple === null) return "";
+    const band: SummonStarBand = { min: bandTuple[0], max: bandTuple[1] };
+    const cells = casualSummonStarDistribution(band)
+      .map((row) => {
+        const kind = row.share <= 0 ? "" : row.star > band.max ? " class=\"is-tail\"" : " class=\"is-on\"";
+        return `<span${kind} style="--star:${CASUAL_STAR_COLORS[row.star]}">${helpOddsPercent(row.share)}</span>`;
+      })
+      .join("");
+    return `<div class="help-odds-row"><b>${label}</b>${cells}</div>`;
+  });
+  return head + rows.join("");
 }
 
 /** `#app` 에 넣을 게임 셸 전체 마크업. */
@@ -398,7 +442,7 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
           <p class="eyebrow">수련 완수</p>
           <h2 id="tutorial-complete-title">여덟 걸음을 모두 배웠습니다</h2>
           <ul id="tutorial-summary" class="tutorial-summary">
-            <li><b>소환</b><span>획이 많은 한자일수록 별이 높아요 · 기본 1~3★ / 중급 2~5★ / 고급 3~8★</span></li>
+            <li><b>소환</b><span>획이 많은 한자일수록 별이 높아요 · 기본 주로 1~3★ / 중급 2★ 확정 / 고급 3★ 확정</span></li>
             <li><b>승급</b><span>같은 오행·같은 별 3기 → 다음 별 자령 1기, 무엇이 나올지는 무작위</span></li>
             <li><b>강화</b><span>안 쓰는 자령을 분해해 문기를 얻고, 그 오행 전원을 키워요</span></li>
             <li><b>사자성어</b><span>한 줄에 4자 순서대로 — 줄을 지키는 동안만 보너스가 살아 있어요</span></li>
@@ -585,11 +629,13 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
             <p class="help-lead">자령은 오직 뽑기로 얻습니다. 상점 상품마다 <b>무엇이 잘 나오는지</b>가 다릅니다.</p>
             <h3 class="help-subhead">별 구간<em class="help-mode-badge is-casual">별승급 진법</em></h3>
             <div class="help-band" aria-label="소환 상품별 별 구간">
-              <div class="help-band-row"><b>기본 · 탐색 · 중복</b><span class="help-band-track" aria-hidden="true"><i class="is-on" style="--star:#aeb9cc">1</i><i class="is-on" style="--star:#72d8a0">2</i><i class="is-on" style="--star:#61c8ff">3</i><i>4</i><i>5</i><i>6</i><i>7</i><i>8</i></span><em>1~3★</em></div>
-              <div class="help-band-row"><b>중급 소환</b><span class="help-band-track" aria-hidden="true"><i>1</i><i class="is-on" style="--star:#72d8a0">2</i><i class="is-on" style="--star:#61c8ff">3</i><i class="is-on" style="--star:#a98cff">4</i><i class="is-on" style="--star:#f5c65b">5</i><i>6</i><i>7</i><i>8</i></span><em>2~5★</em></div>
-              <div class="help-band-row"><b>고급 소환</b><span class="help-band-track" aria-hidden="true"><i>1</i><i>2</i><i class="is-on" style="--star:#61c8ff">3</i><i class="is-on" style="--star:#a98cff">4</i><i class="is-on" style="--star:#f5c65b">5</i><i class="is-on" style="--star:#ff8a56">6</i><i class="is-on" style="--star:#ff5f91">7</i><i class="is-on" style="--star:#fff1ad">8</i></span><em>3~8★</em></div>
+              <div class="help-band-row"><b>기본 · 탐색 · 중복</b><span class="help-band-track" aria-hidden="true"><i class="is-on" style="--star:#aeb9cc">1</i><i class="is-on" style="--star:#72d8a0">2</i><i class="is-on" style="--star:#61c8ff">3</i><i class="is-tail" style="--star:#a98cff">4</i><i class="is-tail" style="--star:#f5c65b">5</i><i class="is-tail" style="--star:#ff8a56">6</i><i class="is-tail" style="--star:#ff5f91">7</i><i class="is-tail" style="--star:#fff1ad">8</i></span><em>주로 1~3★</em></div>
+              <div class="help-band-row"><b>중급 소환</b><span class="help-band-track" aria-hidden="true"><i>1</i><i class="is-on" style="--star:#72d8a0">2</i><i class="is-on" style="--star:#61c8ff">3</i><i class="is-on" style="--star:#a98cff">4</i><i class="is-on" style="--star:#f5c65b">5</i><i class="is-tail" style="--star:#ff8a56">6</i><i class="is-tail" style="--star:#ff5f91">7</i><i class="is-tail" style="--star:#fff1ad">8</i></span><em>2★ 확정 · 주로 2~5★</em></div>
+              <div class="help-band-row"><b>고급 소환</b><span class="help-band-track" aria-hidden="true"><i>1</i><i>2</i><i class="is-on" style="--star:#61c8ff">3</i><i class="is-on" style="--star:#a98cff">4</i><i class="is-on" style="--star:#f5c65b">5</i><i class="is-on" style="--star:#ff8a56">6</i><i class="is-on" style="--star:#ff5f91">7</i><i class="is-on" style="--star:#fff1ad">8</i></span><em>3★ 확정 · 3~8★</em></div>
             </div>
-            <p class="help-note">구간 안에서도 <b>낮은 별이 더 흔합니다</b>. 상위 별은 뽑기가 아니라 3기 조합으로 올립니다.</p>
+            <p class="help-note">하한 밑 별은 나오지 않습니다("N★ 확정"). 구간 안에서는 <b>낮은 별이 더 흔하고</b>, 상한 위 별도 <b>아주 낮은 확률</b>로 등장합니다 — 별이 오를수록 확률이 확 떨어집니다. 상위 별의 정공법은 3기 조합입니다.</p>
+            <h3 class="help-subhead">별 확률표<em class="help-mode-badge is-casual">별승급 진법</em></h3>
+            <div class="help-odds" aria-label="소환 상품별 별 확률표">${helpSummonOddsHtml()}</div>
             <h3 class="help-subhead">획수 → 기본 별 구간<em class="help-mode-badge is-casual">별승급 진법</em></h3>
             <div class="help-stroke-bins" aria-label="획수에 따른 기본 별 구간표">${helpStrokeBinsHtml()}</div>
             <p class="help-note"><b>획이 많은 한자일수록 별이 높습니다</b> — 기본 별은 뽑기 운이 아니라 실제 획수(Unicode kTotalStrokes)로 정해집니다.</p>
@@ -603,7 +649,7 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
             <h3 class="help-subhead">더 얻는 길</h3>
             <div class="help-cards">
               <article class="help-card"><b>소환<em><kbd>1</kbd></em></b><span>지역별 1단계 한자를 품은 자령이 무작위로 나옵니다. 목표에 모자란 재료는 뽑을수록 확률이 올라갑니다.</span></article>
-              <article class="help-card"><b>10연 소환<em><kbd>Q</kbd></em></b><span>10웨이브를 지키면 열립니다. 현재 소환 비용 10회를 한 번에 지불하며, 별승급 진법에서는 열 장 안에 기본 밴드 상단인 3★ 1기가 보장됩니다.</span></article>
+              <article class="help-card"><b>10연 소환<em><kbd>Q</kbd></em></b><span>10웨이브를 지키면 열립니다. 현재 소환 비용 10회를 한 번에 지불하며, 별승급 진법에서는 열 장 안에 기본 밴드 상단인 3★ 이상 1기가 보장됩니다.</span></article>
               <article class="help-card"><b>인연 연구<em><kbd>3</kbd></em></b><span>엽전을 들여 목표 재료가 나올 가중치를 올립니다. 최고 5단계이며 각 단계는 정해진 웨이브를 지나야 열립니다.</span></article>
               <article class="help-card"><b>첫 오행진과 해금</b><span>열린 진 없이 상점에서 시작합니다. 첫 소환 자령과 같은 오행진이 무료로 열리고, 나머지는 원하는 순서로 18·32·52·78엽전에 개방합니다.</span></article>
               <article class="help-card"><b>자동배치</b><span>런 인벤토리 자령을 현재 개방된 오행진에 투입하고, 완성 가능한 사자성어와 오행 공명을 함께 정리합니다.</span></article>

@@ -344,7 +344,9 @@
 
 #help-dialog .help-band-row {
   display: grid;
-  grid-template-columns: 116px minmax(0, 1fr) 44px;
+  /* 상한 소프트화(#10)로 라벨이 "2★ 확정 · 주로 2~5★"처럼 길어졌다 —
+     44px 고정을 auto 로 풀어 라벨이 트랙을 밀되 잘리지는 않게 한다. */
+  grid-template-columns: 116px minmax(0, 1fr) auto;
   gap: 9px;
   align-items: center;
 }

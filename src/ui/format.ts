@@ -35,6 +35,25 @@ export function escapeHtml(value: string): string {
   return value.replace(/[&<>"']/gu, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[character] ?? character);
 }
 
+/**
+ * 확률 공개 압축형 한 줄 — 예: "1★ 53% · 2★ 29% · 3★ 16% · 4★+ 2.2%".
+ * 수치는 engine 의 summonStarDistribution 에서 온다(문구 하드코딩 금지).
+ * 상한 위 잭팟 꼬리는 "N★+" 한 항으로 묶고, 0.1% 미만이면 그대로 말한다.
+ */
+export function summonOddsSummary(
+  distribution: ReadonlyArray<{ star: number; share: number }>,
+  bandMax: number
+): string {
+  const parts = distribution
+    .filter((row) => row.share > 0 && row.star <= bandMax)
+    .map((row) => `${row.star}★ ${Math.round(row.share * 100)}%`);
+  const tail = distribution
+    .filter((row) => row.star > bandMax)
+    .reduce((sum, row) => sum + row.share, 0);
+  if (tail > 0) parts.push(`${bandMax + 1}★+ ${tail >= 0.001 ? `${(tail * 100).toFixed(1)}%` : "0.1% 미만"}`);
+  return parts.join(" · ");
+}
+
 export function visualBackgroundStyle(visual: JaryeongVisual): string {
   const framing = jaryeongFrameLayout(visual) === "single"
     ? "background-size:contain;background-position:center"

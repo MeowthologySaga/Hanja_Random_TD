@@ -1291,7 +1291,7 @@ export class GameEngine {
     if (this.runSummonPool.length === 0) return { ok: false, message: "이 지역의 활성 소환 풀이 비어 있습니다." };
 
     const eventStart = this.events.length;
-    // 캐주얼 10연은 밴드 상한(기본 1~3★ → 3★) 1기를 보장한다. 열 장을 뽑고도
+    // 캐주얼 10연은 밴드 상한 이상(기본 밴드면 3★+, 잭팟 포함) 1기를 보장한다. 열 장을 뽑고도
     // 상한이 한 번도 안 나왔으면 마지막 한 장의 후보를 상한 별로 좁힌다.
     const band = this.summonStarBand(this.state.summonIntent);
     let bandTopSeen = false;

@@ -78,8 +78,8 @@ const ONE_SHOT_HINTS: readonly OneShotHint[] = [
     title: () => "별 확률이 다른 소환이 열렸습니다",
     body: () => {
       const band = ctx.engine.summonStarBand("midstar");
-      const label = band === null ? "2~5★" : `${band.min}~${band.max}★`;
-      return `중급 소환은 ${label} 확정입니다. 기본 소환보다 비싼 대신 낮은 별 구간을 건너뜁니다.`;
+      const [min, max] = band === null ? [2, 5] : [band.min, band.max];
+      return `중급 소환은 ${min}★부터 확정, 주로 ${min}~${max}★입니다. 기본 소환보다 비싼 대신 낮은 별 구간을 건너뜁니다. 확률은 카드에 마우스를 올리면 보입니다.`;
     },
     when: () => ctx.engine.isSummonProductAvailable("midstar")
   },

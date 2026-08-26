@@ -120,12 +120,13 @@ export function showSummonReveal(events: Array<Extract<GameEvent, { type: "summo
     const helpfulLabel = event.helpfulReason === "both" ? "목표·성어" : event.helpfulReason === "goal" ? "목표 재료" : event.helpfulReason === "idiom" ? "성어 재료" : "";
     const utilityLabel = event.utility === "new" ? "NEW" : event.utility === "synthesis" ? ctx.engine.state.mode === "casual" ? "목표" : "합성" : event.utility === "concentration" ? "중복" : "교체 후보";
     const star = casualStarOf(tower);
-    return `<article class="summon-result-card ${event.newDiscovery ? "is-new" : ""} ${event.helpful ? "is-helpful" : ""}" style="--summon:${style.color};--summon-star:${CASUAL_STAR_COLORS[star]};--summon-delay:${index * 45}ms">
+    // 잭팟(소프트 상한 위 별)은 카드 한 장에 별색 강조 1개만 얹는다 — calm-screen 존중.
+    return `<article class="summon-result-card ${event.newDiscovery ? "is-new" : ""} ${event.helpful ? "is-helpful" : ""} ${event.jackpot ? "is-jackpot" : ""}" style="--summon:${style.color};--summon-star:${CASUAL_STAR_COLORS[star]};--summon-delay:${index * 45}ms">
       <span class="summon-result-spirit" style="${visualBackgroundStyle(visual)}" aria-hidden="true"></span>
       <strong>${tower.char}</strong>
       <b>${escapeHtml(learning.short)}</b>
       <small>${style.name}행 · ${ctx.engine.state.mode === "casual" ? `${star}★ ${CASUAL_STAR_NAMES[star]} · ${casualStrokeCount(tower.char) ?? "?"}획` : escapeHtml(definition.combat.roleLabel)}</small>
-      <div><em>${utilityLabel}</em>${helpfulLabel ? `<mark>${helpfulLabel}</mark>` : ""}</div>
+      <div><em>${utilityLabel}</em>${event.jackpot ? `<mark class="summon-jackpot">상한 돌파</mark>` : ""}${helpfulLabel ? `<mark>${helpfulLabel}</mark>` : ""}</div>
     </article>`;
   }).join("");
   summonReveal.classList.toggle("is-batch", events.length > 1);
