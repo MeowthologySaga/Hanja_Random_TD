@@ -616,17 +616,45 @@ test("stores manual summons in the run inventory, deploys them, and returns boar
   await page.getByTestId("summon-button").click();
   await expect(page.locator("#tower-count-value")).toHaveText("0 / 16");
   await expect(page.locator("#run-inventory-count")).toHaveText("1");
-  // R14: 인벤 탭 진입 = 보관고 집중 프레임 자동 오픈. 목록은 8열 격자로
-  // 프레임 본문에 얹혀 있고, 패널에는 요약 + [보관고 열기] 만 남는다.
+  // R14: 인벤 탭 진입 = 보관고 집중 프레임 자동 오픈. 목록은 격자로 프레임
+  // 본문에 얹혀 있고, 패널에는 요약 + [보관고 열기] 만 남는다.
+  // R19: 우측 미니 상세 190px 를 떼어 주고 격자는 6열이 된다.
   await page.locator("#run-inventory-tab").click();
   await expect(page.locator("#inventory-frame")).toBeVisible();
-  await expect(page.locator("#run-inventory-list")).toHaveCSS("grid-template-columns", /(\S+ ){7}\S+/u);
+  await expect(page.locator("#run-inventory-list")).toHaveCSS("grid-template-columns", /^(\S+ ){5}\S+$/u);
   const inventoryCard = page.locator(".run-inventory-card").first();
   await expect(inventoryCard).toBeVisible();
   await expect(inventoryCard.locator(".run-inventory-spirit")).toHaveCSS("background-image", /assets\/jaryeongs\//u);
+  // R19: 카드 클릭은 고르기까지다 — 프레임은 그대로 서 있고, 고른 자령은
+  // 우측 미니 상세와 하단 행동 바가 함께 받는다(막 소환한 자령이 이미 골라져 있다).
   await inventoryCard.click();
   await expect(inventoryCard).toHaveClass(/is-selected/u);
-  // 프레임은 전장을 덮으므로 고른 즉시 걷힌다 — 그래야 다음 클릭이 칸에 닿는다.
+  await expect(page.locator("#inventory-frame")).toBeVisible();
+  await expect(page.locator("#focus-dim")).toBeVisible();
+  await expect(page.locator("#run-inventory-detail .run-inventory-detail-card")).toBeVisible();
+  await expect(page.locator("#run-inventory-actions")).not.toHaveClass(/is-idle/u);
+  await expect(page.locator("#run-inventory-action-hint")).toContainText("선택 ·");
+  await expect(page.getByTestId("inventory-deploy")).toBeEnabled();
+  await expect(page.getByTestId("inventory-lock")).toBeEnabled();
+
+  // R19: 별(단계) 대역 필터 — 1성 자령은 1~3 에만 잡히고 7~8 에서는 사라진다.
+  await page.locator('[data-inventory-grade="high"]').click();
+  await expect(page.locator(".run-inventory-card")).toHaveCount(0);
+  await page.locator('[data-inventory-grade="low"]').click();
+  await expect(page.locator(".run-inventory-card")).toHaveCount(1);
+  await page.locator('[data-inventory-grade="all"]').click();
+  await expect(page.locator(".run-inventory-card")).toHaveCount(1);
+
+  // R19: 일괄 모드는 카드의 의미를 "담기" 로 바꾸고 Esc 로만 풀린다(프레임은 유지).
+  await page.getByTestId("inventory-bulk-toggle").click();
+  await expect(page.locator(".run-inventory-card").first()).toHaveClass(/is-bulk/u);
+  await expect(page.getByTestId("inventory-bulk-dismantle")).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(page.locator(".run-inventory-card").first()).not.toHaveClass(/is-bulk/u);
+  await expect(page.locator("#inventory-frame")).toBeVisible();
+
+  // R19: 배치는 행동 바를 거친다 — 그제서야 프레임이 걷히고 전장 칸이 눌린다.
+  await page.getByTestId("inventory-deploy").click();
   await expect(page.locator("#inventory-frame")).toBeHidden();
   await expect(page.locator("#focus-dim")).toBeHidden();
   await expect(page.locator("#run-inventory-frame-open")).toBeVisible();
@@ -663,6 +691,11 @@ test("stores manual summons in the run inventory, deploys them, and returns boar
   await page.locator("#run-inventory-frame-open").click();
   await expect(page.locator("#inventory-frame")).toBeVisible();
   await page.screenshot({ path: "artifacts/run-inventory-1280x720.png", fullPage: true });
+  // R19: 더블클릭은 숙련자 지름길 — 고르기와 배치를 한 번에 끝낸다(R14 습관 보존).
+  await page.locator(".run-inventory-card").first().dblclick();
+  await expect(page.locator("#inventory-frame")).toBeHidden();
+  await page.locator("#run-inventory-frame-open").click();
+  await expect(page.locator("#inventory-frame")).toBeVisible();
   await page.locator("#inventory-frame-close").click();
   await expect(page.locator("#inventory-frame")).toBeHidden();
 

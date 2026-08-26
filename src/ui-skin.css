@@ -12089,6 +12089,383 @@ span.codex-jaryeong-category { color: #4a3f30 !important; }
   color: rgba(206, 192, 168, 0.82);
 }
 
+/* ════════════════════════════════════════════════════════════════
+   ===== R19 보관고 허브 =====
+
+   사용자 원문: "인벤에서 자령 클릭하면 바로 배치모드인데, 분류·분해 등
+   여러 작업하기 쉽게 개선하자."
+
+   R14 는 목록을 격자로 폈지만 카드 클릭은 여전히 "고르기 + 프레임 닫기 +
+   배치 모드" 셋을 한꺼번에 했다. 그래서 보관고는 꺼내는 서랍이었지 정리하는
+   곳이 아니었다. R19 는 **선택과 행동을 가른다** —
+
+     · 카드 클릭 = 고르기까지 (프레임 유지, 금테 + 우측 미니 상세)
+     · 아래 고정 줄 = 배치 · 분해 · 잠금 · 농축
+     · 더블클릭 = 즉시 배치 (R14 습관을 지키는 지름길)
+     · [여러 개 선택] = 카드 담기 → 한 번에 분해
+
+   본문 800x570 을 세 줄로 쪼갠다: 도구 30 · 격자 flex · 행동 46.
+   격자는 우측 미니 상세 190px 를 떼어 주고 6열로 좁힌다 —
+   (800 - 190 - 10 - 16 - 5*8) / 6 ≈ 90px 로 R14 카드 92px 와 거의 같다.
+   ══════════════════════════════════════════════════════════════════ */
+
+/* ── R19-1. 세 줄 뼈대 — 도구 · 본문 · 행동 ───────────────────── */
+#run-inventory-layout {
+  grid-template-rows: auto minmax(0, 1fr) auto;
+}
+
+.run-inventory-main {
+  display: grid;
+  min-height: 0;
+  grid-template-columns: minmax(0, 1fr) 190px;
+  gap: 10px;
+}
+
+#run-inventory-layout .run-inventory-list {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+
+/* 등급 칩은 오행 칩과 같은 문법을 쓰되 오행색이 없다 — 놋쇠 한 벌로 둔다. */
+.run-inventory-chips--grade button {
+  min-width: 44px;
+}
+
+.run-inventory-chips--grade button.is-active {
+  color: var(--gold-100);
+  background: var(--mat-brass-hot);
+  box-shadow: inset 0 0 0 2px var(--gold-500);
+}
+
+.run-inventory-chips--grade button.is-active small {
+  color: var(--gold-200);
+}
+
+/* ── R19-2. 우측 미니 상세 190px ────────────────────────────────
+   카드 92px 안에서는 훈음 한 줄이 한계였다. 초상·등급·오행·능력은 이 칸이
+   받는다 — 프레임을 닫지 않고도 "이게 맞나" 를 확인할 수 있어야 클릭이 곧
+   배치가 아니게 된 값을 한다. */
+.run-inventory-detail {
+  display: flex;
+  min-height: 0;
+  flex-direction: column;
+  padding: 10px 10px 12px;
+  overflow-y: auto;
+  border-radius: var(--r-md);
+  background: rgba(70, 52, 26, 0.09);
+  box-shadow: inset 0 0 0 1px rgba(122, 90, 42, 0.2);
+}
+
+.run-inventory-detail-empty {
+  margin: auto 0;
+  color: #7b6a4c;
+  text-align: center;
+}
+
+.run-inventory-detail-empty b {
+  display: block;
+  margin-bottom: 6px;
+  color: #3b301c;
+  font-size: 13.5px;
+  font-weight: 900;
+}
+
+.run-inventory-detail-empty span {
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.5;
+}
+
+/* 여섯 줄 남짓이라 위에 붙이면 칸이 텅 빈 것처럼 읽힌다 — 세로 가운데로 앉힌다.
+   auto 여백이라 내용이 길어지면 위쪽부터 자연스럽게 스크롤에 걸린다. */
+.run-inventory-detail-card {
+  display: flex;
+  margin: auto 0;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  text-align: center;
+}
+
+.run-inventory-detail-spirit {
+  width: 84px;
+  height: 84px;
+  border-radius: var(--r-md);
+  background-repeat: no-repeat;
+  box-shadow:
+    inset 0 0 0 2px color-mix(in srgb, var(--inventory-element) 46%, rgba(122, 90, 42, 0.34)),
+    0 2px 8px rgba(58, 44, 22, 0.2);
+}
+
+.run-inventory-detail-card > b {
+  color: #2c2216;
+  font-family: "Batang", "Malgun Gothic", serif;
+  font-size: 34px;
+  font-weight: 900;
+  line-height: 1.05;
+}
+
+.run-inventory-detail-card > strong {
+  color: #40341f;
+  font-size: 13px !important;
+  font-weight: 900;
+  line-height: 1.3;
+}
+
+.run-inventory-detail-card > p {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  margin: 2px 0 0;
+}
+
+.run-inventory-detail-card > p i {
+  padding: 0 7px;
+  color: #fff6e4;
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 900;
+  line-height: 18px;
+  border-radius: 9px;
+  background: var(--inventory-element);
+  box-shadow: 0 0 0 1px rgba(24, 17, 10, 0.3);
+}
+
+.run-inventory-detail-card > p u {
+  padding: 0 7px;
+  color: #221a10;
+  font-size: 11px;
+  font-weight: 900;
+  line-height: 18px;
+  text-decoration: none;
+  border-radius: 9px;
+  background: var(--inventory-star, var(--gold-600));
+  box-shadow: 0 0 0 1px rgba(24, 17, 10, 0.26);
+}
+
+.run-inventory-detail-card > small {
+  margin-top: 4px;
+  color: #4a3f2a;
+  font-size: 11px !important;
+  font-weight: 800;
+  line-height: 1.45;
+}
+
+.run-inventory-detail-card > em {
+  color: #7b6a4c;
+  font-size: 10.5px;
+  font-style: normal;
+  font-weight: 800;
+  line-height: 1.4;
+}
+
+/* 일괄 모드에서는 개별 자령 대신 바구니 회수량을 센다. */
+.run-inventory-detail-bulk {
+  display: flex;
+  margin: auto 0;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  text-align: center;
+}
+
+.run-inventory-detail-eyebrow {
+  color: #7b6a4c;
+  font-size: 10.5px;
+  font-weight: 800;
+}
+
+.run-inventory-detail-bulk b {
+  color: #2c2216;
+  font-size: 30px;
+  font-weight: 900;
+  line-height: 1.1;
+}
+
+.run-inventory-detail-bulk strong {
+  color: #7a2c1c;
+  font-size: 12.5px !important;
+  font-weight: 900;
+  line-height: 1.35;
+}
+
+.run-inventory-detail-bulk small {
+  color: #4a3f2a;
+  font-size: 10.5px !important;
+  font-weight: 700;
+}
+
+.run-inventory-detail-bulk em {
+  margin-top: 4px;
+  color: #7b6a4c;
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+/* ── R19-3. 하단 고정 행동 바 ───────────────────────────────────
+   격자 아래 한 줄로 못박는다(스크롤은 격자 안에서만 난다). 고른 것이 없으면
+   줄 전체를 흐리고 [카드를 고르세요] 만 남긴다 — 눌러도 되는 것과 아닌 것을
+   글자가 아니라 밝기로 먼저 말한다. */
+.run-inventory-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 46px;
+  padding: 6px 10px;
+  border-radius: var(--r-md);
+  background: linear-gradient(180deg, rgba(247, 240, 221, 0.9) 0%, rgba(226, 213, 180, 0.9) 100%);
+  box-shadow: var(--bevel-up), 0 0 0 1px rgba(122, 90, 42, 0.28);
+}
+
+.run-inventory-actions.is-idle .run-inventory-action-set {
+  opacity: 0.5;
+}
+
+.run-inventory-action-set {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+}
+
+.run-inventory-action-set[hidden] {
+  display: none;
+}
+
+.run-inventory-action-hint {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  color: #4a3f2a;
+  font-size: 11.5px;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.run-inventory-bulk-toggle,
+.run-inventory-action {
+  min-height: 32px;
+  padding: 0 12px;
+  color: var(--gold-100);
+  font-size: 12.5px;
+  font-weight: 900;
+  white-space: nowrap;
+  cursor: pointer;
+  border: 0;
+  border-radius: var(--r-sm);
+  background: var(--mat-brass);
+  box-shadow: var(--bevel-up), 0 0 0 1px rgba(122, 90, 42, 0.3);
+}
+
+.run-inventory-bulk-toggle:hover:not(:disabled),
+.run-inventory-action:hover:not(:disabled) {
+  background: var(--mat-brass-hot);
+}
+
+.run-inventory-action:disabled {
+  color: #8a7754;
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
+/* 주버튼 — 금박 한 겹. 이 줄에서 가장 먼저 읽혀야 한다. */
+.run-inventory-action--deploy {
+  min-width: 104px;
+  color: #fff6e2;
+  background: linear-gradient(180deg, #8a6a2a 0%, #6b4d1d 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 240, 200, 0.34), 0 0 0 1px rgba(43, 33, 18, 0.5), 0 2px 6px rgba(58, 44, 22, 0.26);
+}
+
+.run-inventory-action--deploy:hover:not(:disabled) {
+  background: linear-gradient(180deg, #a07f38 0%, #7d5c24 100%);
+}
+
+.run-inventory-action--deploy:disabled {
+  color: #efe3c6;
+  background: linear-gradient(180deg, #9a8c6d 0%, #7f7358 100%);
+}
+
+/* 분해는 되돌릴 수 없다 — 장단(주홍)으로 한 칸 떼어 놓는다. */
+.run-inventory-action--dismantle:not(:disabled) {
+  color: #fdf1e6;
+  background: linear-gradient(180deg, #a63a2a 0%, #7d2618 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 224, 206, 0.28), 0 0 0 1px rgba(52, 16, 9, 0.5);
+}
+
+.run-inventory-action--dismantle:hover:not(:disabled) {
+  background: linear-gradient(180deg, #bb4632 0%, #92301e 100%);
+}
+
+.run-inventory-bulk-toggle.is-on {
+  color: #fff6e2;
+  background: linear-gradient(180deg, #3f7d6e 0%, #2d5a50 100%);
+  box-shadow: inset 0 1px 0 rgba(226, 246, 240, 0.3), 0 0 0 1px rgba(16, 38, 33, 0.5);
+}
+
+.run-inventory-action.is-on {
+  color: #fff6e2;
+  background: linear-gradient(180deg, #6d5b34 0%, #4d3f22 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 240, 200, 0.26), 0 0 0 1px rgba(43, 33, 18, 0.5);
+}
+
+/* ── R19-4. 일괄 모드 카드 ──────────────────────────────────────
+   담김 여부를 카드 오른쪽 위 네모 한 칸으로 말한다. ×N 겹침 배지는 자리를
+   비켜 아래로 내리고, 정리/보호 꼬리표는 이 모드에서 쉰다. */
+#run-inventory-layout .run-inventory-card.is-bulk em {
+  display: none;
+}
+
+#run-inventory-layout .run-inventory-card.is-bulk .run-inventory-stack {
+  top: auto;
+  bottom: 3px;
+}
+
+#run-inventory-layout .run-inventory-check {
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  display: grid;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 3px;
+  place-items: center;
+  color: #7b6a4c;
+  font-size: 9.5px !important;
+  font-weight: 900;
+  border-radius: 3px;
+  background: rgba(255, 252, 240, 0.86);
+  box-shadow: inset 0 0 0 1px rgba(122, 90, 42, 0.55);
+}
+
+#run-inventory-layout .run-inventory-card.is-checked .run-inventory-check {
+  color: #fdf1e6;
+  background: linear-gradient(180deg, #a63a2a 0%, #7d2618 100%);
+  box-shadow: inset 0 0 0 1px rgba(52, 16, 9, 0.5);
+}
+
+#run-inventory-layout .run-inventory-card.is-checked {
+  background: linear-gradient(180deg, #f9e7dc 0%, #eed3c4 100%) !important;
+  box-shadow:
+    var(--bevel-up),
+    0 0 0 3px #a63a2a,
+    0 0 14px rgba(166, 58, 42, 0.34);
+}
+
+#run-inventory-layout .run-inventory-card.is-bulk-blocked {
+  cursor: not-allowed;
+  opacity: 0.52;
+}
+
+#run-inventory-layout .run-inventory-card.is-bulk-blocked:hover {
+  box-shadow:
+    var(--bevel-up),
+    0 0 0 1px color-mix(in srgb, var(--inventory-element) 42%, rgba(122, 90, 42, 0.3));
+}
+
 /* ══════════════════════════════════════════════════════════════════
    ===== R8 고정무대 =====
 
