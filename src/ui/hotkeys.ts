@@ -14,12 +14,14 @@ import {
 import { cycleGameSpeed, summonAndFocus, toggleHanjaEmphasis } from "./battle/camera";
 import { toggleManualPause } from "./game-loop";
 import { handleAction, setPanelTab } from "./hud";
+import { summonWithTalismanToken } from "./panels/talisman";
 
 /** main.ts 가 원래 순서대로 부르는 배선 묶음. */
 export function wireHotkeys1(): void {
   window.addEventListener("keydown", (event) => {
     if (event.target instanceof HTMLInputElement || helpDialog.open || settingsDialog.open || elementUpgradeDialog.open || abilityGuideDialog.open || casualFusionConfirmDialog.open || codexDialog.open) return;
-    if (event.code === "Digit1") summonAndFocus();
+    // 기본 소환(1키)은 상점 카드와 같은 경로 — 부적 무료권이 있으면 먼저 쓴다.
+    if (event.code === "Digit1") summonWithTalismanToken();
     else if (event.code === "KeyQ") summonAndFocus(10);
     else if (event.code === "Digit2") {
       if (ctx.engine.state.mode === "casual") setPanelTab("evolution");
