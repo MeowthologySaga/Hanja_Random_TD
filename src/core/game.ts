@@ -22,8 +22,11 @@ import {
 import { hasActiveSkills } from "./abilities";
 // [SKILL-V1] 스킬 1차 세트 상수·순수 계산.
 import {
+  FROST_ZONE_DURATION,
+  FROST_ZONE_RADIUS,
   MOMENTUM_STACK_BONUS,
   WARFARE_BRAND_DURATION,
+  frostSlowRatio,
   momentumMaxStacks,
   warfareBrandPower
 } from "./abilities";
@@ -748,9 +751,12 @@ export class GameEngine {
       const center = positionOnPath(zone.progress);
       for (const enemy of this.state.enemies) {
         if (distance(this.enemyPoint(enemy), center) > zone.radius) continue;
-        const armorPenetration = zone.kind === "caltrops" ? 0.42 : 0;
-        this.damageEnemy(enemy, zone.damagePerSecond * delta, false, enemy.weakness === zone.wuxing, armorPenetration);
-        if (!this.state.enemies.includes(enemy)) continue;
+        // [SKILL-V1] 서리길처럼 피해 없는 지대는 타격·피격 연출 없이 상태만 건다.
+        if (zone.damagePerSecond > 0) {
+          const armorPenetration = zone.kind === "caltrops" ? 0.42 : 0;
+          this.damageEnemy(enemy, zone.damagePerSecond * delta, false, enemy.weakness === zone.wuxing, armorPenetration);
+          if (!this.state.enemies.includes(enemy)) continue;
+        }
         if (zone.kind === "roots") {
           enemy.poisonDps = Math.max(enemy.poisonDps, zone.damagePerSecond * 0.24);
           enemy.poisonUntil = Math.max(enemy.poisonUntil, this.state.elapsed + 0.65 * (1 + this.elementTraitLevel("木", 2) * 0.025));
@@ -760,6 +766,10 @@ export class GameEngine {
         } else if (zone.kind === "rain") {
           enemy.slowFactor = Math.min(enemy.slowFactor, 0.64);
           enemy.slowUntil = Math.max(enemy.slowUntil, this.state.elapsed + 0.25 * (1 + this.elementTraitLevel("水", 1) * 0.025));
+        } else if (zone.kind === "frost") {
+          // [SKILL-V1] 서리길: 총 감속 캡 60%(이동 배율 0.4 미만 금지)를 지킨다.
+          enemy.slowFactor = Math.min(enemy.slowFactor, Math.max(0.4, zone.slowFactor ?? 1));
+          enemy.slowUntil = Math.max(enemy.slowUntil, this.state.elapsed + 0.2);
         }
       }
     }
@@ -791,6 +801,32 @@ export class GameEngine {
     else this.state.abilityZones.push(zone);
     if (this.state.abilityZones.length > 20) this.state.abilityZones.shift();
     return { label: spec.label, duration, damagePerSecond };
+  }
+
+  /**
+   * [SKILL-V1] 서리길(frost) 지대 — 비구름 장판 문법을 그대로 빌린 순수 감속 지대.
+   * 피해 0, 밀치기 0. 밟는 동안만 걸음이 늦어지고 벗어나면 곧 풀린다.
+   */
+  private deployFrostZone(tower: Tower, target: Enemy): { label: string; duration: number; damagePerSecond: number } {
+    const star = this.state.mode === "casual" ? tower.casualStar ?? tower.naturalStar ?? 1 : null;
+    const slowRatio = frostSlowRatio(star);
+    const existing = this.state.abilityZones.find((zone) => zone.towerId === tower.id);
+    const zone: AbilityZone = {
+      id: existing?.id ?? this.nextAbilityZoneId++,
+      towerId: tower.id,
+      kind: "frost",
+      wuxing: tower.wuxing,
+      progress: target.progress,
+      radius: FROST_ZONE_RADIUS,
+      damagePerSecond: 0,
+      expiresAt: this.state.elapsed + FROST_ZONE_DURATION,
+      color: "#bfe8ff",
+      slowFactor: 1 - slowRatio
+    };
+    if (existing) Object.assign(existing, zone);
+    else this.state.abilityZones.push(zone);
+    if (this.state.abilityZones.length > 20) this.state.abilityZones.shift();
+    return { label: "서리길", duration: FROST_ZONE_DURATION, damagePerSecond: 0 };
   }
 
   private updateTowers(delta: number): void {
@@ -1013,7 +1049,10 @@ export class GameEngine {
     const potency = 1 + (tower.concentrationPath === "potent" ? (tower.concentration ?? 0) * 0.035 : 0);
     const abilityPower = 1 + this.combinedUpgradeBonus(tower.wuxing, "abilityPower");
     const statusPower = 1 + this.combinedUpgradeBonus(tower.wuxing, "statusPower");
-    const zone = this.deployElementZone(tower, target, damage, potency, abilityPower);
+    // [SKILL-V1] 서리길은 오행 장판 대신 전용 감속 지대를 깐다(비구름 문법 재사용).
+    const zone = family === "frost"
+      ? this.deployFrostZone(tower, target)
+      : this.deployElementZone(tower, target, damage, potency, abilityPower);
     const activeZone = this.state.abilityZones.find((candidate) => candidate.towerId === tower.id);
     const zoneTargets = activeZone
       ? this.state.enemies.filter((enemy) => distance(this.enemyPoint(enemy), targetPoint) <= activeZone.radius).length
@@ -1095,11 +1134,17 @@ export class GameEngine {
       target.brandPower = brandPower;
       target.brandUntil = this.state.elapsed + WARFARE_BRAND_DURATION;
       effect = `${tower.wuxing}행 상극 낙인 ${WARFARE_BRAND_DURATION}초 · 같은 오행 피해 +${Math.round(brandPower * 100)}%`;
+    } else if (family === "frost") {
+      // [SKILL-V1] 서리길: 적중 지점 서리 지대 — 감속만 있고 피해·밀치기는 없다.
+      const slowRatio = frostSlowRatio(this.state.mode === "casual" ? tower.casualStar ?? tower.naturalStar ?? 1 : null);
+      targets = Math.max(1, zoneTargets);
+      effect = `서리길 ${zone.duration.toFixed(1)}초 · 밟는 적 ${Math.round(slowRatio * 100)}% 감속`;
     } else {
       effect = "뜻 구현 · 이번 공격 ×" + tuning.semanticMultiplier.toFixed(2);
     }
 
-    if (family !== "weather") effect += ` · ${zone.label} ${zone.duration.toFixed(1)}초`;
+    // [SKILL-V1] frost 는 장판 자체가 본 효과라 꼬리 문구를 겹쳐 붙이지 않는다.
+    if (family !== "weather" && family !== "frost") effect += ` · ${zone.label} ${zone.duration.toFixed(1)}초`;
 
     this.emitAbility(tower, abilities.semantic, origin, targetPoint, targets, effect, persistent);
   }

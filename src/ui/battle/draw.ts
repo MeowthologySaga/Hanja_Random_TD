@@ -212,10 +212,11 @@ function drawAbilityZones(): void {
 
     context.save();
     context.globalAlpha = 0.88 * life;
-    context.fillStyle = zone.kind === "rain" ? "#d9f2ff" : zone.color;
+    // [SKILL-V1] 서리길은 오행 대신 霜 표기 — 감속 지대임을 이름으로 말한다.
+    context.fillStyle = zone.kind === "rain" || zone.kind === "frost" ? "#d9f2ff" : zone.color;
     context.font = '900 10px "Malgun Gothic", sans-serif';
     context.textAlign = "center";
-    context.fillText(`${zone.wuxing} ${remaining.toFixed(1)}초`, point.x, point.y + zone.radius + 13);
+    context.fillText(`${zone.kind === "frost" ? "霜 서리길" : zone.wuxing} ${remaining.toFixed(1)}초`, point.x, point.y + zone.radius + 13);
     context.restore();
   }
   for (const id of zoneSpawnTimes.keys()) {
