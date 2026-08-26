@@ -73,7 +73,8 @@ import {
   type IdiomOrder,
   idiomOrderSealImage,
   idiomSpriteReady,
-  preloadIdiomSprites
+  preloadIdiomSprites,
+  tintedIdiomRipple
 } from "./ui/idiom-sprites";
 import { LEARNING_DATA_META, learningInfo } from "./core/learning";
 import { radicalGlyph, radicalLearningLabel } from "./core/radicals";
@@ -822,6 +823,29 @@ const ringPool: RingFx[] = [];
 const abilityBurstPool: AbilityBurstFx[] = [];
 const towerAbilityPopups = new Map<number, TowerAbilityPopup>();
 
+/**
+ * 봉인 발동 파문 — 코덱스 파문 마스크를 성어 색으로 물들여 네 칸에 한 번씩 띄운다.
+ * `delay` 로 1번 칸부터 차례로 터뜨려 "이 넷이 이 순서"라는 사실을 한 번 더 말한다.
+ */
+interface IdiomRippleFx {
+  at: Point;
+  color: string;
+  age: number;
+  delay: number;
+  duration: number;
+}
+/** 발동 순간 뜨는 성어 4자 대형 플래시. 카메라가 어디에 있든 보이도록 화면 좌표로 그린다. */
+interface IdiomFlashFx {
+  chars: string;
+  reading: string;
+  color: string;
+  at: Point;
+  age: number;
+  duration: number;
+}
+const idiomRipples: IdiomRippleFx[] = [];
+let idiomFlash: IdiomFlashFx | null = null;
+
 function pushPooled<T>(active: T[], pool: T[], item: T, limit: number): void {
   if (active.length >= limit) {
     const recycled = active.shift();
@@ -1066,6 +1090,8 @@ function startRun(useNewSeed = false): void {
   recycleAll(floaters, floaterPool, 48);
   recycleAll(rings, ringPool, 32);
   recycleAll(abilityBursts, abilityBurstPool, 12);
+  idiomRipples.length = 0;
+  idiomFlash = null;
   projectileSpriteDrawTotal = 0;
   abilityZoneSpriteDrawTotal = 0;
   canvas.dataset.projectileSpriteDrawTotal = "0";
@@ -1556,6 +1582,19 @@ function processEvent(event: GameEvent): void {
       const points = event.cells.map((cell) => BOARD_CELLS[cell] as Point);
       const center = points.reduce((total, point) => ({ x: total.x + point.x / points.length, y: total.y + point.y / points.length }), { x: 0, y: 0 });
       for (const point of points) pushPooled(rings, ringPool, takeRing(point, event.color, 1.05), 32);
+      // 봉인된 네 칸에서 1→4 순서로 성어 색 파문이 퍼지고, 그 위에 4자가 크게 뜬다.
+      idiomRipples.length = 0;
+      for (let index = 0; index < points.length; index += 1) {
+        const point = points[index] as Point;
+        idiomRipples.push({
+          at: point,
+          color: event.color,
+          age: 0,
+          delay: reducedMotion ? 0 : index * 0.09,
+          duration: reducedMotion ? 0.34 : 0.66
+        });
+      }
+      idiomFlash = { chars: event.chars, reading: event.reading, color: event.color, at: center, age: 0, duration: reducedMotion ? 0.6 : 1.2 };
       const flourishAt = { x: center.x, y: Math.min(WORLD_HEIGHT - 100, center.y + 115) };
       pushPooled(floaters, floaterPool, takeFloater(flourishAt, event.reading + " 자동 봉인!", event.color, 1.25, true), 48);
       showIdiomResult(event.reading, event.meaning, event.bonus, event.color);
@@ -2969,6 +3008,7 @@ function drawWorld(delta: number): void {
   // so the learning labels stay readable.
   updateAndDrawFx(delta);
   context.restore();
+  drawIdiomFlash();
   drawHoveredTowerCard();
 }
 
@@ -3600,19 +3640,72 @@ function drawIdiomPlacementCells(): void {
   context.restore();
 }
 
+/** 폴리라인 위 비율 t(0~1) 지점. 사슬 빔의 광점이 1→4 방향으로 흐르게 한다. */
+function pointAlongPolyline(points: readonly Point[], t: number): Point | null {
+  if (points.length < 2) return points[0] ?? null;
+  const lengths: number[] = [];
+  let total = 0;
+  for (let index = 1; index < points.length; index += 1) {
+    const from = points[index - 1] as Point;
+    const to = points[index] as Point;
+    const length = Math.hypot(to.x - from.x, to.y - from.y);
+    lengths.push(length);
+    total += length;
+  }
+  if (total <= 0) return points[0] ?? null;
+  let travelled = t * total;
+  for (let index = 0; index < lengths.length; index += 1) {
+    const length = lengths[index] as number;
+    if (travelled <= length) {
+      const from = points[index] as Point;
+      const to = points[index + 1] as Point;
+      const ratio = length === 0 ? 0 : travelled / length;
+      return { x: from.x + (to.x - from.x) * ratio, y: from.y + (to.y - from.y) * ratio };
+    }
+    travelled -= length;
+  }
+  return points[points.length - 1] ?? null;
+}
+
+/**
+ * 발동한 봉인 — 스펙 6라운드 C.
+ * 네 칸이 성어 색으로 숨쉬고, 사슬 빔 위를 광점이 1→4 방향으로 흐르며,
+ * 칸마다 순번 인장이 박힌다. 모션 감소에서는 펄스 없이 정적 60% 밝기만 쓴다.
+ */
 function drawIdiomSeals(): void {
   for (const seal of engine.state.idiomSeals) {
     const idiom = idiomById(engine.state.region, seal.idiomId);
     if (!idiom) continue;
     const points = seal.cells.map((cell) => BOARD_CELLS[cell] as Point);
+    const breath = reducedMotion ? 0.6 : 0.5 + (Math.sin((engine.state.elapsed / 1.8) * Math.PI * 2) * 0.5 + 0.5) * 0.5;
     context.save();
+
+    // 1. 봉인된 칸 자체가 숨쉬듯 발광한다.
+    for (const point of points) {
+      context.globalAlpha = breath * 0.55;
+      context.fillStyle = idiom.color;
+      context.beginPath();
+      context.roundRect(point.x - 19, point.y - 19, 38, 38, 5);
+      context.fill();
+      context.globalAlpha = Math.min(1, breath + 0.25);
+      context.strokeStyle = idiom.color;
+      context.shadowColor = idiom.color;
+      context.shadowBlur = 12 * breath + 4;
+      context.lineWidth = 2;
+      context.beginPath();
+      context.roundRect(point.x - 19, point.y - 19, 38, 38, 5);
+      context.stroke();
+      context.shadowBlur = 0;
+    }
+
+    // 2. 사슬 빔. 굵기를 키워 "이 넷이 한 줄"이라는 사실이 멀리서도 읽히게 한다.
     context.globalAlpha = 0.48;
     context.lineCap = "round";
     context.lineJoin = "round";
     context.strokeStyle = idiom.color;
     context.shadowColor = idiom.color;
     context.shadowBlur = 18;
-    context.lineWidth = 9;
+    context.lineWidth = 12;
     context.beginPath();
     context.moveTo(points[0]?.x ?? 0, points[0]?.y ?? 0);
     for (const point of points.slice(1)) context.lineTo(point.x, point.y);
@@ -3622,23 +3715,117 @@ function drawIdiomSeals(): void {
     context.shadowBlur = 0;
     context.lineWidth = 2;
     context.stroke();
+
+    // 3. 광점 1개가 1번 칸에서 4번 칸으로 흐르며 순서 방향을 알린다.
+    if (!reducedMotion) {
+      const spark = pointAlongPolyline(points, ((engine.state.elapsed + seal.completedAt) / 2.2) % 1);
+      if (spark) {
+        context.globalAlpha = 0.95;
+        context.fillStyle = "#fff9e6";
+        context.shadowColor = idiom.color;
+        context.shadowBlur = 14;
+        context.beginPath();
+        context.arc(spark.x, spark.y, 4.5, 0, Math.PI * 2);
+        context.fill();
+        context.shadowBlur = 0;
+      }
+    }
+
+    // 4. 칸마다 순번 인장을 박아 어느 글자가 몇 번째인지 남긴다.
+    context.globalAlpha = 1;
     for (let index = 0; index < points.length; index += 1) {
       const point = points[index] as Point;
       context.fillStyle = idiom.color;
       context.beginPath();
-      context.arc(point.x, point.y, 6, 0, Math.PI * 2);
+      context.arc(point.x, point.y, 5, 0, Math.PI * 2);
       context.fill();
-      context.beginPath();
-      context.arc(point.x + 41, point.y - 41, 13, 0, Math.PI * 2);
-      context.fill();
-      context.fillStyle = "#081019";
-      context.font = '900 13px "Malgun Gothic", sans-serif';
-      context.textAlign = "center";
-      context.textBaseline = "middle";
-      context.fillText(String(index + 1), point.x + 41, point.y - 40);
+      drawIdiomOrderBadge(point.x - 13, point.y - 13, 16, (index + 1) as IdiomOrder);
     }
     context.restore();
   }
+}
+
+/**
+ * 발동 순간의 파문 링 — 스펙 6라운드 C3.
+ *
+ * 코덱스 파문 마스크를 성어 색으로 물들여 봉인된 네 칸에서 1→4 차례로 터뜨린다.
+ * 마스크가 아직 안 실렸으면 같은 리듬의 절차 원호로 대신한다. 월드 좌표계에서
+ * 부르므로 updateAndDrawFx 안에서만 호출한다.
+ */
+function drawIdiomRipples(): void {
+  const sprite = idiomRipples.length > 0 ? tintedIdiomRipple(idiomRipples[0]?.color ?? "#ffffff") : null;
+  for (const ripple of idiomRipples) {
+    const live = ripple.age - ripple.delay;
+    if (live < 0) continue;
+    if (!isWorldPointVisible(ripple.at, 120)) continue;
+    const ratio = Math.min(1, live / ripple.duration);
+    const size = 46 + ratio * 128;
+    context.save();
+    context.globalAlpha = (1 - ratio) * (1 - ratio) * 0.9;
+    if (sprite) {
+      context.drawImage(sprite, ripple.at.x - size / 2, ripple.at.y - size / 2, size, size);
+    } else {
+      context.strokeStyle = ripple.color;
+      context.lineWidth = 5 - ratio * 3.4;
+      context.shadowColor = ripple.color;
+      context.shadowBlur = 16;
+      context.beginPath();
+      context.arc(ripple.at.x, ripple.at.y, size / 2, 0, Math.PI * 2);
+      context.stroke();
+    }
+    context.restore();
+  }
+  for (let index = idiomRipples.length - 1; index >= 0; index -= 1) {
+    const ripple = idiomRipples[index] as IdiomRippleFx;
+    if (ripple.age >= ripple.delay + ripple.duration) idiomRipples.splice(index, 1);
+  }
+}
+
+/**
+ * 성어 4자 대형 플래시 — 스펙 6라운드 C3.
+ *
+ * 봉인된 네 칸 위에 뜨되, 카메라가 그 칸을 벗어나 있어도 무엇이 발동했는지는
+ * 알아야 하므로 화면 좌표로 그리고 전장 안으로 clamp 한다. 그래서 월드 변환을
+ * 되돌린 뒤(drawWorld 의 restore 이후)에 호출한다.
+ */
+function drawIdiomFlash(): void {
+  const flash = idiomFlash;
+  if (!flash || flash.age >= flash.duration) {
+    if (flash) idiomFlash = null;
+    if (canvas.dataset.idiomFlash) canvas.dataset.idiomFlash = "";
+    return;
+  }
+  canvas.dataset.idiomFlash = flash.chars;
+  const ratio = flash.age / flash.duration;
+  // 튀어 오르고(0~18%) 머무르다(~62%) 사라진다.
+  const rise = Math.min(1, ratio / 0.18);
+  const fade = ratio < 0.62 ? 1 : 1 - (ratio - 0.62) / 0.38;
+  const scale = reducedMotion ? 1 : 0.82 + rise * 0.24 - Math.max(0, ratio - 0.62) * 0.16;
+  const x = Math.min(WORLD_WIDTH - 150, Math.max(150, mapOffset.x + flash.at.x * mapZoom));
+  const y = Math.min(WORLD_HEIGHT - 120, Math.max(120, mapOffset.y + flash.at.y * mapZoom));
+  context.save();
+  context.globalAlpha = Math.max(0, Math.min(1, rise * fade));
+  context.translate(x, y);
+  context.scale(scale, scale);
+  context.textAlign = "center";
+  context.textBaseline = "middle";
+  context.font = '900 62px "Malgun Gothic", serif';
+  // 어떤 배경 위에서도 읽히도록 먹 윤곽 먼저, 성어 색 채움 나중.
+  context.lineJoin = "round";
+  context.lineWidth = 9;
+  context.strokeStyle = "rgba(4, 8, 14, 0.92)";
+  context.strokeText(flash.chars, 0, 0);
+  context.shadowColor = flash.color;
+  context.shadowBlur = 26;
+  context.fillStyle = "#fff6dd";
+  context.fillText(flash.chars, 0, 0);
+  context.shadowBlur = 0;
+  context.font = '800 19px "Malgun Gothic", sans-serif';
+  context.lineWidth = 6;
+  context.strokeText(`${flash.reading} · 봉인`, 0, 50);
+  context.fillStyle = flash.color;
+  context.fillText(`${flash.reading} · 봉인`, 0, 50);
+  context.restore();
 }
 
 function hoveredMaterialIds(): Set<number> {
@@ -4528,6 +4715,8 @@ function updateAndDrawFx(delta: number): void {
   for (const floater of floaters) floater.age += delta;
   for (const ring of rings) ring.age += delta;
   for (const burst of abilityBursts) burst.age += delta;
+  for (const ripple of idiomRipples) ripple.age += delta;
+  if (idiomFlash) idiomFlash.age += delta;
   for (const popup of towerAbilityPopups.values()) popup.age += delta;
   let projectileSpriteDrawnThisFrame = false;
   for (const projectile of projectiles) {
@@ -4615,6 +4804,7 @@ function updateAndDrawFx(delta: number): void {
     context.fillText(floater.text, floater.at.x, floater.at.y - 25 - ratio * 28);
     context.restore();
   }
+  drawIdiomRipples();
   recycleExpired(projectiles, projectilePool, 48);
   recycleExpired(floaters, floaterPool, 48);
   recycleExpired(rings, ringPool, 32);
