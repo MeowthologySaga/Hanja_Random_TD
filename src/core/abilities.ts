@@ -122,8 +122,8 @@ export const SEMANTIC_ABILITY_TABLE: Record<SemanticFamily, SemanticPattern> = {
   // [SKILL-V1] 끝.
   // [SKILL-V2] 스킬 2차 세트 — 신설 의미 계열 5종.
   chainseal: semanticPattern("chainseal", "strongest", 6, 0.16, "연환 인장", "環", "stun", "공격 적중마다", "인장 상한 폭발·봉인", "공격마다 적에게 연환 인장을 겹칩니다. 인장이 상한에 닿으면 쌓아 둔 힘이 한꺼번에 터지고, 적은 1.2초 제자리에 봉인됩니다. 뒤로 밀지는 않습니다.", "#ff9db0"),
-  reaper: semanticPattern("reaper", "front", 6, 0.03, "참명", "斬", "execute", "체력 한계선 이하 적중", "일반 적 즉시 소멸", "체력이 한계선(기본 12%) 아래로 내려간 일반 망령을 즉시 베어 소멸시킵니다. 보상은 그대로 받으며, 우두머리·정예는 대신 주기 공격마다 현재 체력의 3%를 벱니다.", "#cbb6e8"),
-  command: semanticPattern("command", "strongest", 7, 0.2, "호령", "令", "support", "7번째 공격", "같은 진 집중 공격", "호령을 내려 잠시 동안 같은 진의 자령 전원이 시전자의 대상을 집중 공격합니다. 사거리 밖의 자령은 따르지 않습니다.", "#ffd9a0"),
+  reaper: semanticPattern("reaper", "front", 6, 0.03, "참명", "斬", "execute", "체력 한계선 이하 적중", "일반 적 즉시 소멸", "체력이 한계선(기본 12%) 아래로 내려간 일반 망령을 즉시 베어 소멸시킵니다. 참격 후에는 잠시 숨을 고릅니다. 보상은 그대로 받으며, 우두머리·정예는 대신 주기 공격마다 현재 체력의 3%를 벱니다.", "#cbb6e8"),
+  command: semanticPattern("command", "strongest", 10, 0.2, "호령", "令", "support", "10번째 공격", "같은 진 집중 공격", "호령을 내려 잠시 동안 같은 진의 자령 전원이 시전자의 대상을 집중 공격합니다. 사거리 밖의 자령은 따르지 않습니다.", "#ffd9a0"),
   scorch: semanticPattern("scorch", "cluster", 5, 0.32, "소흔", "燼", "blast", "적 처치마다", "처치 지점 잔불", "망령을 처치한 자리에 잔불을 남깁니다. 잔불을 밟는 적은 일정 시간 초당 피해를 입습니다.", "#ff9a52"),
   harvest: semanticPattern("harvest", "front", 6, 0, "채기", "采", "coin", "12번째 처치마다", "자기 오행 문기 +1", "처치를 거둘 때마다 기운을 모아, 일정 처치마다 자기 오행의 문기를 1 얻습니다.", "#c8e69a"),
   // [SKILL-V2] 끝.
@@ -484,8 +484,12 @@ export function semanticCharGroup(family: Exclude<SemanticFamily, "general">): R
  * 제자리 봉인(정지)뿐이고, 진행도는 절대 되돌리지 않는다.
  * ========================================================================== */
 
-/** 연환 인장(chainseal): 인장 한 겹이 적립하는 이번 공격 피해 비율. */
-export const CHAINSEAL_STORE_RATIO = 0.16;
+/**
+ * 연환 인장(chainseal): 인장 한 겹이 적립하는 이번 공격 피해 비율.
+ * 0.16 초안은 캐주얼 45런 승률을 0.667 로 밀어 올렸다(게이트 상한 0.60).
+ * 적 스케일은 금지라 스킬 수치로만 수렴한다 — 0.11 로 내린다.
+ */
+export const CHAINSEAL_STORE_RATIO = 0.11;
 /** 연환 인장: 상한 폭발이 함께 거는 제자리 봉인(초). 밀치기 없음. */
 export const CHAINSEAL_SEAL_SECONDS = 1.2;
 /** 연환 인장: 마지막 적립 후 이 시간(초)이 지나면 스택이 스러진다. */
@@ -502,6 +506,12 @@ export const REAPER_EXECUTE_PER_STAR = 0.01;
 export const REAPER_EXECUTE_CAP = 0.15;
 /** 참명: 우두머리·정예는 즉시 소멸 면역 — 대신 주기 공격이 현재 체력 3%를 벤다. */
 export const REAPER_BOSS_CHIP_RATIO = 0.03;
+/**
+ * 참명 숨 고르기: 한 자령이 참격한 뒤 다음 참격까지의 최소 간격(초).
+ * 문턱 12%(+별당 1%p·상한 15%)는 기획 고정값이라, 참격 빈도로만 세기를
+ * 조절한다 — 매 공격 판정 초안은 캐주얼 45런 승률을 단독 +9%p 밀어 올렸다.
+ */
+export const REAPER_EXECUTE_COOLDOWN_SECONDS = 5;
 
 /** 참명 문턱 비율. 캐주얼이 아니면 별 스케일 없이 기본치, 상한 15%를 절대 넘지 않는다. */
 export function reaperExecuteThreshold(casualStar: number | null): number {
@@ -509,10 +519,15 @@ export function reaperExecuteThreshold(casualStar: number | null): number {
   return Math.min(REAPER_EXECUTE_CAP, scaled);
 }
 
-/** 호령(command): 집중 4초, 캐주얼 별당 +0.25초, 상한 6초. */
+/**
+ * 호령(command): 집중 4초(기획 고정), 캐주얼 별당 +0.1초, 상한 5초.
+ * 초안(별당 0.25·상한 6초·주기 7)은 캐주얼 45런 승률을 단독 +9%p 밀어
+ * 올렸다 — 지속 기본값은 기획 고정이라 별 스케일과 발동 주기(7→10)로만
+ * 집중 가동률을 낮춰 게이트(≤0.60)에 수렴시킨다.
+ */
 export const COMMAND_RALLY_BASE_SECONDS = 4;
-export const COMMAND_RALLY_PER_STAR = 0.25;
-export const COMMAND_RALLY_CAP_SECONDS = 6;
+export const COMMAND_RALLY_PER_STAR = 0.1;
+export const COMMAND_RALLY_CAP_SECONDS = 5;
 
 /** 호령 집중 지속 시간(초). */
 export function commandRallySeconds(casualStar: number | null): number {
@@ -523,9 +538,12 @@ export function commandRallySeconds(casualStar: number | null): number {
 /** 소흔(scorch): 잔불 기본 2.5초, 캐주얼 별당 +0.2초. */
 export const SCORCH_ZONE_BASE_SECONDS = 2.5;
 export const SCORCH_ZONE_PER_STAR = 0.2;
-/** 소흔: 잔불 반경과 초당 피해 비율(자령 기준 공격력 대비). */
+/**
+ * 소흔: 잔불 반경과 초당 피해 비율(자령 기준 공격력 대비).
+ * 0.32 초안은 처치→잔불→연쇄 처치 루프가 캐주얼에서 과했다 — 0.24 로 내린다.
+ */
 export const SCORCH_ZONE_RADIUS = 95;
-export const SCORCH_DPS_RATIO = 0.32;
+export const SCORCH_DPS_RATIO = 0.24;
 
 /** 소흔 잔불 지속 시간(초). */
 export function scorchZoneSeconds(casualStar: number | null): number {

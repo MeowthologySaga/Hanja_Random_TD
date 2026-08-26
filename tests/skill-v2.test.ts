@@ -17,6 +17,7 @@ import {
   HARVEST_KILLS_PER_ESSENCE,
   REAPER_BOSS_CHIP_RATIO,
   REAPER_EXECUTE_CAP,
+  REAPER_EXECUTE_COOLDOWN_SECONDS,
   reaperExecuteThreshold,
   SEMANTIC_ABILITY_TABLE,
   scorchZoneSeconds,
@@ -194,13 +195,16 @@ describe("[SKILL-V2] 참명 (斬命)", () => {
     expect(REAPER_EXECUTE_CAP).toBe(0.15);
   });
 
-  it("문턱 이하의 일반 적은 즉시 소멸하고 보상은 정상 지급된다", () => {
+  it("문턱 이하의 일반 적은 즉시 소멸하고 보상은 정상 지급된다 — 참격 후엔 숨 고르기", () => {
     const definition = familyDefinition("KR", "reaper");
     const engine = new GameEngine("skill-reaper-execute", "KR");
     const { tower, enemy } = arrangeDuel(engine, definition);
     enemy.hp = enemy.maxHp * 0.11; // 문턱 12% 바로 아래.
     const killsBefore = engine.state.killCount;
     const goldBefore = engine.state.gold;
+    // 마지막 적 참격으로 웨이브가 닫히지 않게 닻 적을 함께 세운다.
+    const anchor = makeEnemy(-3, "normal", { progress: (enemy.progress + 0.5) % 1 });
+    engine.state.enemies = [enemy, anchor];
     engine.update(0.02);
     expect(tower.shotCount).toBe(1);
     const events = engine.consumeEvents();
@@ -209,6 +213,15 @@ describe("[SKILL-V2] 참명 (斬命)", () => {
     expect(engine.state.enemies.some((candidate) => candidate.id === enemy.id)).toBe(false);
     expect(engine.state.killCount).toBe(killsBefore + 1);
     expect(engine.state.gold).toBeGreaterThanOrEqual(goldBefore + enemy.reward);
+    // 숨 고르기: 쿨다운이 도는 동안 두 번째 저체력 적은 참격되지 않는다.
+    expect(tower.reaperReadyAt ?? 0).toBeGreaterThan(engine.state.elapsed);
+    expect((tower.reaperReadyAt ?? 0) - engine.state.elapsed).toBeLessThanOrEqual(REAPER_EXECUTE_COOLDOWN_SECONDS);
+    const second = makeEnemy(-4, "normal", { progress: enemy.progress });
+    second.hp = second.maxHp * 0.05;
+    engine.state.enemies = [second, anchor];
+    tower.cooldownLeft = 0;
+    engine.update(0.02);
+    expect(engine.state.enemies.some((candidate) => candidate.id === second.id)).toBe(true);
   });
 
   it("우두머리·정예는 즉시 소멸에 면역이고, 주기 공격이 현재 체력 3%를 벤다", () => {
@@ -248,10 +261,11 @@ describe("[SKILL-V2] 참명 (斬命)", () => {
 });
 
 describe("[SKILL-V2] 호령 (號令)", () => {
-  it("집중 지속 — 기본 4초, 캐주얼 별당 +0.25초, 상한 6초", () => {
+  it("집중 지속 — 기본 4초, 캐주얼 별당 +0.1초, 상한 5초", () => {
     expect(commandRallySeconds(null)).toBeCloseTo(4, 6);
     expect(commandRallySeconds(1)).toBeCloseTo(4, 6);
-    expect(commandRallySeconds(8)).toBeCloseTo(5.75, 6);
+    expect(commandRallySeconds(5)).toBeCloseTo(4.4, 6);
+    expect(commandRallySeconds(8)).toBeCloseTo(4.7, 6);
     expect(commandRallySeconds(99)).toBeCloseTo(COMMAND_RALLY_CAP_SECONDS, 6);
   });
 

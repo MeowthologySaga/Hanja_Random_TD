@@ -193,6 +193,8 @@ export interface Tower {
   ascendCharge?: number;
   // [SKILL-V2] 채기(harvest): 이 자령의 누적 처치 수 — N번째마다 문기 +1.
   harvestKills?: number;
+  // [SKILL-V2] 참명(reaper): 다음 참격이 가능해지는 시각(숨 고르기).
+  reaperReadyAt?: number;
 }
 
 export interface Enemy {

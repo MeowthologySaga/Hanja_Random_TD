@@ -17,6 +17,7 @@ import {
   MOMENTUM_STACK_BONUS,
   momentumMaxStacks,
   REAPER_BOSS_CHIP_RATIO,
+  REAPER_EXECUTE_COOLDOWN_SECONDS,
   reaperExecuteThreshold,
   SCORCH_DPS_RATIO,
   SCORCH_ZONE_RADIUS,
@@ -929,10 +930,14 @@ export class GameEngine {
 
     // [SKILL-V2] 참명: 체력 문턱 이하의 일반 적은 즉시 소멸(보상 정상 지급).
     // 우두머리·정예(철갑)는 면역 — 대신 주기 발동이 현재 체력 3%를 벤다.
+    // 참격 후에는 숨 고르기(자령당 최소 간격)가 붙는다 — 문턱은 기획 고정이라
+    // 빈도로만 세기를 조절한다.
     if (activeSkills && abilities.semanticFamily === "reaper" && this.state.enemies.includes(target)
-      && !target.boss && target.archetype !== "armored") {
+      && !target.boss && target.archetype !== "armored"
+      && (tower.reaperReadyAt ?? 0) <= this.state.elapsed) {
       const threshold = reaperExecuteThreshold(this.state.mode === "casual" ? tower.casualStar ?? tower.naturalStar ?? 1 : null);
       if (target.hp / target.maxHp <= threshold) {
+        tower.reaperReadyAt = this.state.elapsed + REAPER_EXECUTE_COOLDOWN_SECONDS;
         this.emitAbility(tower, abilities.semantic, origin, targetPoint, 1, `참명 · 체력 ${Math.round(threshold * 100)}% 이하 즉시 소멸`);
         this.damageEnemy(target, target.hp + 10, false, false, 1, tower);
       }
