@@ -31,6 +31,7 @@ import {
   WARFARE_BRAND_DURATION,
   frostSlowRatio,
   gwicheonChargeSeconds,
+  idiomBlessingBonus,
   momentumMaxStacks,
   warfareBrandPower
 } from "./abilities";
@@ -495,6 +496,8 @@ export class GameEngine {
   private readonly combatCharCounts = new Map<string, number>();
   private readonly combatSynergies = new Set<Wuxing>();
   private readonly combatFormationBonuses = [0, 0, 0, 0, 0];
+  // [SKILL-V1] 성어의 가호: 진별 가호 배율 캐시(발동 중 봉인 기준).
+  private readonly combatIdiomBlessings = [0, 0, 0, 0, 0];
   private combatDistinctElements = 0;
 
   constructor(seed: string, region: RegionCode = "KR", mode: GameMode = "standard") {
@@ -739,6 +742,24 @@ export class GameEngine {
       const tier = matching >= 16 ? 4 : matching >= 12 ? 3 : matching >= 8 ? 2 : matching >= 4 ? 1 : 0;
       this.combatFormationBonuses[index] = [0, 0.06, 0.12, 0.18, 0.25][tier] ?? 0;
     }
+    // [SKILL-V1] 성어의 가호: 발동 중 봉인이 선 진의 자령 전원이 공격 증폭을 받는다.
+    for (let index = 0; index < this.combatIdiomBlessings.length; index += 1) {
+      this.combatIdiomBlessings[index] = this.idiomBlessingBonusAt(index);
+    }
+  }
+
+  /**
+   * [SKILL-V1] 성어의 가호 — 이 진에 선 "발동 중" 성어 수로 계산한 공격 배율.
+   * 첫 구 +10%, 같은 진의 추가 구당 +5%p. 봉인이 흩어지면(active=false) 즉시 0.
+   */
+  idiomBlessingBonusAt(formationIndex: number): number {
+    let seals = 0;
+    for (const seal of this.activeIdiomSeals()) {
+      const anchorCell = seal.cells[0];
+      if (anchorCell === undefined) continue;
+      if (Math.floor(anchorCell / CELLS_PER_FORMATION) === formationIndex) seals += 1;
+    }
+    return idiomBlessingBonus(seals);
   }
 
   private enemyPoint(enemy: Enemy): Point {
@@ -960,6 +981,8 @@ export class GameEngine {
     const towerFormationIndex = Math.floor(tower.cell / CELLS_PER_FORMATION);
     damage *= 1 + (this.combatFormationBonuses[towerFormationIndex] ?? 0);
     damage *= FORMATION_ROUTE_COVERAGE_MULTIPLIER[towerFormationIndex] ?? 1;
+    // [SKILL-V1] 성어의 가호: 발동 중 성어와 같은 진에 선 자령 전원 공격 증폭.
+    damage *= 1 + (this.combatIdiomBlessings[towerFormationIndex] ?? 0);
     // Every elemental start receives the same first-chapter ward. It prevents
     // the free starting formation's map position from deciding a run before
     // the player can buy a second formation, then disappears after wave 10.
