@@ -6,7 +6,9 @@ export type GameMode = "standard" | "casual";
 export type CasualStar = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
 export type RunPhase = "title" | "prep" | "combat" | "victory" | "defeat";
 export type AutomationMode = "manual" | "semi" | "goal";
-export type SummonIntent = "balanced" | "discovery" | "lineage" | "concentration";
+// 상점 소환 상품. `midstar`·`highstar` 는 획수=별 규칙이 있는 캐주얼 8성전 전용
+// 티어 소환이며, 가중이 아니라 후보 풀 필터(확정 보장)로 동작한다.
+export type SummonIntent = "balanced" | "discovery" | "lineage" | "concentration" | "midstar" | "highstar";
 export type ConcentrationPath = "swift" | "potent";
 export type ConcentrationLevel = 0 | 1 | 2 | 3;
 export type ConcentrationPayment =

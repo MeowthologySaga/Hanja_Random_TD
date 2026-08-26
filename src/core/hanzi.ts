@@ -20,6 +20,7 @@ import type {
   HanziDefinition,
   RegionCode,
   Stage,
+  SummonIntent,
   UpgradeStat,
   Wuxing
 } from "./types";
@@ -370,6 +371,54 @@ export function definitionForTower(catalog: HanziCatalog, definitionId: string):
 
 export function summonCost(summonCount: number): number {
   return Math.min(24, 7 + Math.floor(Math.max(0, summonCount) / 12));
+}
+
+/**
+ * 상점 소환 상품의 기본가 가산분.
+ *
+ * 확률 보정은 공짜가 아니다. 목적 소환은 기본가 위에 정찰료를 얹어
+ * "무엇을 노리는가"가 곧 지출 판단이 되도록 한다. 균형 소환만 0이며
+ * 10연 소환은 균형가를 그대로 쓴다(`multiSummonCost`).
+ */
+export const SUMMON_SURCHARGE: Readonly<Record<SummonIntent, number>> = Object.freeze({
+  balanced: 0,
+  discovery: 2,
+  lineage: 3,
+  concentration: 2,
+  midstar: 5,
+  highstar: 12
+});
+
+export const SUMMON_INTENT_LABELS: Readonly<Record<SummonIntent, string>> = Object.freeze({
+  balanced: "기본",
+  discovery: "탐색",
+  lineage: "계보",
+  concentration: "중복",
+  midstar: "중급",
+  highstar: "고급"
+});
+
+/**
+ * 캐주얼 티어 소환이 요구하는 최소 naturalStar. 가중이 아니라 후보 풀 필터다.
+ * 실제 적용 별은 지역 풀 크기에 따라 `GameEngine.summonTierFloor()`가 낮춘다.
+ */
+export const SUMMON_TIER_FLOOR: Readonly<Partial<Record<SummonIntent, number>>> = Object.freeze({
+  midstar: 2,
+  highstar: 3
+});
+
+/**
+ * 티어 보장이 성립하려면 후보가 이만큼은 남아야 한다.
+ * JP·CN 처럼 활성 풀이 좁은 지역에서 같은 글자 서너 개만 반복되는 것을 막는다.
+ */
+export const MIN_TIER_POOL_SIZE = 30;
+
+/** 같은 (오행, 별) 묶음을 1~2기 들고 있을 때 후보 가중치 배수. */
+export const CASUAL_PAIR_WEIGHT = 2.2;
+
+/** 상품 카드에 표시하고 실제로 청구하는 1회 소환가. */
+export function summonProductCost(summonCount: number, intent: SummonIntent): number {
+  return summonCost(summonCount) + SUMMON_SURCHARGE[intent];
 }
 
 export function multiSummonCost(summonCount: number, amount = 10): number {

@@ -8,7 +8,7 @@ import {
 } from "../src/core/casual";
 import { BOARD_FORMATIONS } from "../src/core/content";
 import { GameEngine } from "../src/core/game";
-import { WUXING_ORDER } from "../src/core/hanzi";
+import { MIN_TIER_POOL_SIZE, SUMMON_SURCHARGE, summonCost, WUXING_ORDER } from "../src/core/hanzi";
 import type { CasualStar, HanziDefinition, RegionCode, Tower, Wuxing } from "../src/core/types";
 
 function casualTower(definition: HanziDefinition, id: number, cell: number, star = casualNaturalStar(definition.char)): Tower {
@@ -377,6 +377,103 @@ describe("casual eight-star mode", () => {
     // 공명 4기는 그대로 남고 인벤 묶음만 소모됐다.
     expect(engine.formationResonance(0).matching).toBe(4);
     expect(engine.state.inventoryTowers).toHaveLength(1);
+  });
+
+  it("guarantees the advertised star floor for tier summons and charges the exact surcharge", () => {
+    // 뽑기 별이 완전 무작위면 "같은 오행·같은 별 3기"라는 조합 루프가 성립하지 않는다.
+    // 중급·고급은 가중이 아니라 후보 풀 필터이므로 200회 전부 보장을 지켜야 한다.
+    for (const [intent, floor] of [["midstar", 2], ["highstar", 3]] as const) {
+      const engine = new GameEngine(`casual-tier-${intent}`, "KR", "casual");
+      engine.setAutoPlaceSummons(false);
+      engine.begin();
+      expect(engine.summonTierFloor(intent)).toBe(floor);
+      expect(engine.isSummonProductAvailable(intent)).toBe(true);
+      for (let index = 0; index < 200; index += 1) {
+        // 보상·이자가 섞이지 않게 가격 경계로 청구액을 재단한다.
+        const expected = summonCost(engine.state.summonCount) + SUMMON_SURCHARGE[intent];
+        engine.state.gold = expected - 1;
+        expect(engine.summonProduct(intent)).toMatchObject({ ok: false, message: "엽전이 1 부족합니다." });
+        engine.state.gold = expected;
+        expect(engine.summonProduct(intent)).toMatchObject({ ok: true });
+      }
+      expect(engine.state.inventoryTowers).toHaveLength(200);
+      expect(engine.state.inventoryTowers.every((tower) => (tower.naturalStar ?? 0) >= floor)).toBe(true);
+      // 소환 목적은 카드 한 장 안에서만 유효하다. 상태로 남지 않는다.
+      expect(engine.state.summonIntent).toBe("balanced");
+    }
+
+    // 기본 소환은 할증이 없고 보장도 없다.
+    const base = new GameEngine("casual-tier-base", "KR", "casual");
+    base.setAutoPlaceSummons(false);
+    base.begin();
+    expect(SUMMON_SURCHARGE.balanced).toBe(0);
+    expect(base.summonTierFloor("balanced")).toBeNull();
+    base.state.gold = summonCost(0) - 1;
+    expect(base.summonProduct("balanced")).toMatchObject({ ok: false, message: "엽전이 1 부족합니다." });
+    base.state.gold = summonCost(0);
+    expect(base.summonProduct("balanced")).toMatchObject({ ok: true });
+
+    // 자형연성은 별 수집이 루프가 아니므로 티어 상품을 열지 않는다.
+    const standard = new GameEngine("standard-tier", "KR", "standard");
+    standard.begin();
+    expect(standard.isSummonProductAvailable("midstar")).toBe(false);
+    expect(standard.isSummonProductAvailable("highstar")).toBe(false);
+    expect(standard.isSummonProductAvailable("lineage")).toBe(true);
+  });
+
+  it("drops the tier product where the regional pool is too thin to honour a guarantee", () => {
+    // JP·CN 활성 풀은 30여 자뿐이라 3★ 이상 후보가 한 자릿수다. 보장을 그대로
+    // 걸면 같은 글자만 반복되므로 상품 자체를 닫는다(가짜 보장 판매 금지).
+    for (const region of ["JP", "CN"] as const) {
+      const engine = new GameEngine(`casual-tier-${region}`, region, "casual");
+      engine.begin();
+      const eligible = (floor: number) =>
+        engine.summonDefinitions().filter((definition) => (casualNaturalStar(definition.char) ?? 1) >= floor).length;
+      expect(eligible(2)).toBeLessThan(MIN_TIER_POOL_SIZE);
+      expect(engine.summonTierFloor("midstar")).toBeNull();
+      expect(engine.summonTierFloor("highstar")).toBeNull();
+      expect(engine.isSummonProductAvailable("midstar")).toBe(false);
+      expect(engine.summonProduct("highstar")).toMatchObject({ ok: false });
+    }
+    const korea = new GameEngine("casual-tier-kr-pool", "KR", "casual");
+    korea.begin();
+    const koreanEligible = (floor: number) =>
+      korea.summonDefinitions().filter((definition) => (casualNaturalStar(definition.char) ?? 1) >= floor).length;
+    expect(koreanEligible(2)).toBeGreaterThanOrEqual(MIN_TIER_POOL_SIZE);
+    expect(koreanEligible(3)).toBeGreaterThanOrEqual(MIN_TIER_POOL_SIZE);
+  });
+
+  it("favours characters that complete a same-element same-star trio in the making", () => {
+    // 짝 가중은 그 묶음이 3기가 되는 순간 꺼진다(이미 조합 가능). 연속 소환으로 재면
+    // 두 조건 모두 금세 3기에 도달해 상쇄되므로, 시드마다 첫 1회만 뽑아 단발 확률로 잰다.
+    const firstDrawHits = (seeded: boolean, trials: number): number => {
+      let hits = 0;
+      for (let trial = 0; trial < trials; trial += 1) {
+        const engine = new GameEngine(`casual-pair-${trial}`, "KR", "casual");
+        engine.setAutoPlaceSummons(false);
+        engine.begin();
+        const held = engine.catalog.activePool.find((candidate) =>
+          candidate.wuxing === "木" && casualNaturalStar(candidate.char) === 2) as HanziDefinition;
+        const star = casualNaturalStar(held.char) as CasualStar;
+        if (seeded) {
+          engine.state.inventoryTowers = [
+            casualTower(held, 9_001, -1, star),
+            casualTower(held, 9_002, -1, star)
+          ];
+        }
+        engine.state.gold = 1_000;
+        expect(engine.summonProduct("balanced")).toMatchObject({ ok: true });
+        const drawn = engine.state.inventoryTowers.at(-1);
+        if (drawn && drawn.wuxing === "木" && (drawn.naturalStar ?? 0) === star) hits += 1;
+      }
+      return hits;
+    };
+    const trials = 300;
+    const seeded = firstDrawHits(true, trials);
+    const plain = firstDrawHits(false, trials);
+    // 설계 배수는 2.2x 이고 다른 가중항이 희석해 실측 1.8x 안팎이 나온다.
+    expect(plain).toBeGreaterThan(0);
+    expect(seeded).toBeGreaterThan(plain * 1.35);
   });
 
   it("provides monotonic star power and unlocks active skills from 2-star onward", () => {

@@ -38,6 +38,15 @@ async function openShop(page: Page): Promise<void> {
   await expect(page.locator("#shop-panel")).toBeVisible();
 }
 
+// 잠긴 칸을 누르면 해금 확인 창이 뜬다(5라운드). 전장을 훑는 검사는 창을 닫고 계속한다.
+async function dismissFormationUnlock(page: Page): Promise<void> {
+  const dialog = page.locator("#formation-unlock-dialog");
+  if (await dialog.evaluate((element: HTMLDialogElement) => element.open).catch(() => false)) {
+    await page.locator("#formation-unlock-close").click();
+    await expect(dialog).toBeHidden();
+  }
+}
+
 async function openUnit(page: Page): Promise<void> {
   await page.getByRole("tab", { name: "자령", exact: true }).click();
   await expect(page.locator("#selected-card")).toBeVisible();
@@ -106,7 +115,8 @@ test("shows a readable single summon reveal and explains the ten-pull milestone"
   await page.reload();
   await page.getByTestId("start-run").click();
   await openShop(page);
-  await expect(page.locator("#multi-summon-cost")).toHaveText("10W 개방");
+  // 10연은 이제 상품 카드다. 가격 자리에 개방 조건을 그대로 적는다.
+  await expect(page.locator('[data-summon-product="multi"] em')).toHaveText("10W 개방");
   await expect(page.getByTestId("multi-summon-button")).toBeDisabled();
   await page.screenshot({ path: "artifacts/summon-ten-locked-1280x720.png", fullPage: true });
 });
@@ -147,7 +157,13 @@ test("freezes the opening until the first summon opens its matching formation", 
   await expect(page.getByTestId("early-wave")).toBeEnabled();
   await expect(page.locator('[data-opening-step="2"]')).toHaveClass(/is-current/u);
 
+  // 해금은 즉시 구매가 아니라 확인 팝업을 거친다. 전장 자물쇠와 같은 경로다.
   await page.locator("#formation-unlock-list > button:not(.is-unlocked)").first().click();
+  await expect(page.locator("#formation-unlock-dialog")).toBeVisible();
+  await expect(page.locator("#formation-unlock-body")).toContainText("18엽전");
+  await expect(page.getByTestId("formation-unlock-confirm")).toBeEnabled();
+  await page.getByTestId("formation-unlock-confirm").click();
+  await expect(page.locator("#formation-unlock-dialog")).toBeHidden();
   await expect(page.locator("#message-value")).toContainText("해금");
   await expect(page.locator("#gold-value")).toHaveText("17");
   await expect(page.locator("#tower-count-value")).toHaveText("1 / 32");
@@ -285,8 +301,7 @@ test("uses tabbed owned-aware goals and summons from all one thousand Cheonjamun
   await openShop(page);
   await expect(page.locator("#shop-pool-count")).toHaveText("1,000");
   await expect(page.locator("#summon-pool-summary")).toContainText("천자문 1,000종");
-  await page.locator('button[data-summon-intent="discovery"]').click();
-  await page.getByTestId("summon-button").click();
+  await page.locator('button[data-summon-product="discovery"]').click();
   await expect(page.locator(".summon-result-card > strong")).not.toHaveText("");
   await expect(page.locator(".summon-result-spirit")).toHaveCSS("background-image", /cheonjamun-runtime-v1\/kr-[0-9a-f]+\.png/u);
   await expect(page.locator(".summon-result-spirit")).toHaveCSS("background-size", "contain");
@@ -576,8 +591,7 @@ test("shows synthesis branches, highlights board materials, protects locked Jary
   await page.getByTestId("start-run").click();
   await expect(page.locator("#stage-enemies")).toHaveText("0 / 80");
   await openShop(page);
-  await page.locator('button[data-summon-intent="lineage"]').click();
-  for (let index = 0; index < 4; index += 1) await page.getByTestId("summon-button").click();
+  for (let index = 0; index < 4; index += 1) await page.locator('button[data-summon-product="lineage"]').click();
   await page.locator("#summon-reveal-close").click();
   await openUnit(page);
 
@@ -585,6 +599,7 @@ test("shows synthesis branches, highlights board materials, protects locked Jary
   for (const x of [374, 422, 470, 518]) {
     const towerPosition = await canvasPositionForWorld(page, x, 294);
     await page.locator("#battle-canvas").click({ position: towerPosition });
+    await dismissFormationUnlock(page);
     readySourceFound = await page.getByTestId("derivative-composition").evaluate((element) => element.classList.contains("has-ready"));
     if (readySourceFound) break;
   }
@@ -691,8 +706,7 @@ test("renders only QC-passed generated CN sprites at 1280x720", async ({ page })
   await page.locator("#goal-search").fill("一");
   await page.locator('[data-goal-char="一"]').click();
   await openShop(page);
-  await page.locator('button[data-summon-intent="lineage"]').click();
-  await page.getByTestId("summon-button").click();
+  await page.locator('button[data-summon-product="lineage"]').click();
 
   await expect(page.locator("#stage-region")).toHaveText("중국");
   await expect(page.locator(".summon-result-card > strong")).toHaveText("一");
@@ -743,11 +757,10 @@ test("automatically seals four correctly placed towers with readable feedback", 
   await expect(page.locator(".control-panel #idiom-panel")).toHaveCount(1);
   await expect(page.locator(".battle-stage #idiom-hud, .battle-stage #idiom-result")).toHaveCount(0);
   await openShop(page);
-  await page.locator('button[data-summon-intent="lineage"]').click();
-  for (let index = 0; index < 3; index += 1) await page.getByTestId("summon-button").click();
+  for (let index = 0; index < 3; index += 1) await page.locator('button[data-summon-product="lineage"]').click();
   await expect(page.locator("#idiom-count")).toHaveText("0 / 5");
   await expect(page.locator("#idiom-glyphs .is-owned")).toHaveCount(3);
-  await page.getByTestId("summon-button").click();
+  await page.locator('button[data-summon-product="lineage"]').click();
   await expect(page.locator("#idiom-count")).toHaveText("1 / 5");
   await expect(page.locator("#idiom-name")).not.toHaveText("이심전심");
   await expect(page.locator("#idiom-tab-count")).toHaveText("1/5");

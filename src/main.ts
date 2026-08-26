@@ -76,6 +76,7 @@ import {
   researchCost,
   researchUnlockWave,
   summonStageUnlockWave,
+  SUMMON_SURCHARGE,
   summonCost
 } from "./core/hanzi";
 import { createRunSeed } from "./core/rng";
@@ -120,6 +121,12 @@ import {
   isFormationPlateReady,
   preloadFormationPlates
 } from "./ui/formation-plate-sprites";
+import {
+  LOCK_SPRITE_SIZE,
+  isLockSpriteReady,
+  lockSpriteImage,
+  preloadLockSprites
+} from "./ui/lock-sprites";
 import {
   inkArrowImage,
   inkCornerImage,
@@ -294,20 +301,7 @@ app.innerHTML = `
             <div id="formation-unlock-list" class="formation-unlock-list"></div>
           </section>
           <section class="action-row" aria-label="핵심 행동">
-            <div class="summon-action-group">
-              <div id="summon-intent-tabs" class="summon-intent-tabs" role="group" aria-label="소환 목적">
-                <button type="button" data-summon-intent="balanced" class="is-active" title="기본 확률">균형</button>
-                <button type="button" data-summon-intent="discovery" title="처음 보는 한자 가중">탐색</button>
-                <button type="button" data-summon-intent="lineage" title="목표 합성과 성어 재료 가중">계보</button>
-                <button type="button" data-summon-intent="concentration" title="보유 자령 중복 가중">중복 수집</button>
-              </div>
-              <button id="summon-button" class="action-button action-button--summon" type="button" data-testid="summon-button">
-                <span class="hotkey">1</span><b>자령 소환</b><small><em id="summon-cost">9</em> 엽전</small>
-              </button>
-              <button id="multi-summon-button" class="action-button action-button--multi-summon" type="button" data-testid="multi-summon-button">
-                <span class="hotkey">Q</span><b>10연 소환</b><small><em id="multi-summon-cost">10W 개방</em></small>
-              </button>
-            </div>
+            <div id="summon-shop" class="summon-shop" role="group" aria-label="소환 상품"></div>
             <button id="evolve-button" class="action-button action-button--evolve" type="button" data-testid="evolve-button">
               <span class="hotkey">2</span><b id="evolve-action-label">합성</b><small><em id="evolve-ready-count">0</em><span id="evolve-action-detail">개 조합 확인</span></small>
             </button>
@@ -703,6 +697,19 @@ app.innerHTML = `
       <div id="ability-guide-content" class="ability-guide-content"></div>
     </dialog>
 
+    <dialog id="formation-unlock-dialog" class="p00-dialog formation-unlock-dialog" data-popup-id="F01" aria-labelledby="formation-unlock-title">
+      <div class="p00-frame formation-unlock-frame">
+        <p class="s00-mode-label">오행진 해금</p>
+        <h3 id="formation-unlock-title"><b id="formation-unlock-glyph">火</b><span id="formation-unlock-label">화진 해금</span></h3>
+        <p id="formation-unlock-body">18엽전이 필요합니다. 해금하면 4×4 칸이 열립니다.</p>
+        <p id="formation-unlock-reason" class="formation-unlock-reason" hidden></p>
+        <div class="p00-actions">
+          <button id="formation-unlock-confirm" type="button" data-testid="formation-unlock-confirm">해금 · <em id="formation-unlock-price">18</em>엽전</button>
+          <button id="formation-unlock-close" type="button">닫기</button>
+        </div>
+      </div>
+    </dialog>
+
     <dialog id="casual-fusion-confirm-dialog" class="casual-fusion-confirm-dialog" aria-labelledby="casual-fusion-confirm-title">
       <div class="dialog-heading">
         <div><p class="eyebrow">삼체 일득</p><h2 id="casual-fusion-confirm-title">3체 조합 확인</h2></div>
@@ -1001,6 +1008,8 @@ let mapPanButton: 0 | 1 | null = null;
 let mapPanMoved = false;
 let mapPanClickCell = -1;
 let hoveredTowerId: number | null = null;
+/** 포인터가 올라간 잠긴 오행진. 자물쇠 확대와 캔버스 커서 전환에 쓴다. */
+let hoveredLockFormation: number | null = null;
 let hanjaEmphasis = true;
 // 호버 팝오버 우상단 큰 한자. 기본 ON, 선택은 브라우저에 저장한다.
 const HOVER_GLYPH_STORAGE_KEY = "hanja-td:hover-glyph-large";
@@ -1100,6 +1109,7 @@ preloadCombatFxSprites();
 preloadInkPathSprites();
 preloadEnemySprites();
 preloadFormationPlates();
+preloadLockSprites();
 preloadP0ComponentSprites();
 preloadPolishSprites();
 
@@ -1979,6 +1989,124 @@ function phaseLabel(phase: RunPhase): string {
   return "수비 실패";
 }
 
+/**
+ * 상점 소환 상품표.
+ *
+ * 목적 탭 + 단일 버튼은 "지금 어떤 목적인가"를 기억해야 하는 숨은 상태였다.
+ * 카드 한 장이 곧 상품 한 개이므로 가격·효과·아이콘이 클릭 지점에 함께 붙는다.
+ * 아이콘은 v4-rounds-assets-pack-v1 의 72×72 white-alpha 마스크를 24px 로 쓴다.
+ */
+interface SummonProductMeta {
+  readonly intent: SummonIntent;
+  readonly label: string;
+  readonly effect: string;
+  readonly tint: string;
+  readonly icon: string;
+}
+
+// 캐주얼 순서는 기본 → 중급 → 고급 → 탐색 → 중복, 자형연성은 기본 → 탐색 → 계보 → 중복.
+// 하나의 배열을 모드별로 걸러 두 순서를 동시에 만족시킨다.
+// 중급·고급은 별 개수(2개/3개)가 그림 안에 들어 있는 v5 전용 아이콘을 쓴다.
+// 두 티어가 같은 별 아이콘을 쓰면 색만이 유일한 구분이 되어 색각 차이에서 무너진다.
+const SUMMON_PRODUCTS: readonly SummonProductMeta[] = Object.freeze([
+  { intent: "balanced", label: "기본 소환", effect: "전체 풀", tint: "#a8791f", icon: "v4/shop/shop-default-coin-v1" },
+  { intent: "midstar", label: "중급 소환", effect: "2★ 이상 확정", tint: "#306f89", icon: "v5/shop/shop-tier-mid-v1" },
+  { intent: "highstar", label: "고급 소환", effect: "3★ 이상 확정", tint: "#af3629", icon: "v5/shop/shop-tier-high-v1" },
+  { intent: "discovery", label: "탐색 소환", effect: "새 한자 ×3.4", tint: "#3f7d6e", icon: "v4/shop/shop-explore-compass-lantern-v1" },
+  { intent: "lineage", label: "계보 소환", effect: "목표·성어 재료 ×3.2", tint: "#3a5794", icon: "v4/shop/shop-lineage-scroll-v1" },
+  { intent: "concentration", label: "중복 소환", effect: "보유 중복 ↑ · 농축 재료", tint: "#9a6d16", icon: "v4/shop/shop-duplicate-cards-v1" }
+] as const);
+
+/** 세 티어 공통으로 걸리는 캐주얼 짝 맞추기 보정 안내. */
+const PAIR_BOOST_NOTE = "짝이 맞는 자령이 더 자주 나옵니다";
+
+const SUMMON_ICON_BASE = `${import.meta.env.BASE_URL}assets/ui/`;
+let summonShopRenderKey = "";
+
+function summonCardMarkup(options: {
+  key: string;
+  label: string;
+  effect: string;
+  tint: string;
+  icon: string;
+  price: string;
+  disabled: boolean;
+  affordable: boolean;
+  hotkey?: string;
+  wide?: boolean;
+  testId?: string;
+  title: string;
+}): string {
+  const classes = ["summon-card"];
+  if (options.wide) classes.push("summon-card--wide");
+  if (!options.affordable) classes.push("summon-card--short");
+  const testId = options.testId ? ` data-testid="${options.testId}"` : "";
+  const hotkey = options.hotkey ? `<span class="summon-card-key">${options.hotkey}</span>` : "";
+  return `<button type="button" class="${classes.join(" ")}" data-summon-product="${options.key}"${testId}`
+    + ` style="--product:${options.tint};--product-icon:url('${SUMMON_ICON_BASE}${options.icon}.png')"`
+    + ` title="${escapeHtml(options.title)}" aria-label="${escapeHtml(`${options.label} · ${options.effect} · ${options.price}`)}"`
+    + `${options.disabled ? " disabled" : ""}>`
+    + `<i class="summon-card-icon" aria-hidden="true"></i>`
+    + `<b>${escapeHtml(options.label)}</b><small>${escapeHtml(options.effect)}</small>`
+    + `<em>${escapeHtml(options.price)}</em>${hotkey}</button>`;
+}
+
+function renderSummonShop(): void {
+  const state = engine.state;
+  const active = state.phase === "prep" || state.phase === "combat";
+  const base = summonCost(state.summonCount);
+  const tenCost = multiSummonCost(state.summonCount, 10);
+  const multiUnlocked = state.wave >= 10;
+  const products = SUMMON_PRODUCTS
+    .filter((product) => engine.isSummonProductAvailable(product.intent))
+    .map((product) => {
+      // 좁은 지역 풀에서는 보장 별이 한 단계 내려간다. 카드 문구도 실효 값을 따른다.
+      const floor = engine.summonTierFloor(product.intent);
+      return floor === null ? product : { ...product, effect: `${floor}★ 이상 확정` };
+    });
+  const casualTier = state.mode === "casual";
+  const key = `${state.mode}|${base}|${tenCost}|${multiUnlocked ? "10" : "-"}|${state.gold}|${active ? "on" : "off"}`
+    + `|${products.map((product) => `${product.intent}:${product.effect}`).join(",")}`;
+  if (key === summonShopRenderKey) return;
+  summonShopRenderKey = key;
+  const cards = products.map((product) => {
+    const price = base + SUMMON_SURCHARGE[product.intent];
+    const affordable = state.gold >= price;
+    const tiered = casualTier && (product.intent === "balanced" || engine.summonTierFloor(product.intent) !== null);
+    const effect = tiered && product.intent === "balanced" ? "전체 풀 · 짝 맞춤 보정" : product.effect;
+    return summonCardMarkup({
+      key: product.intent,
+      label: product.label,
+      effect,
+      tint: product.tint,
+      icon: product.icon,
+      price: `${price} 엽전`,
+      disabled: !active || !affordable,
+      affordable: !active || affordable,
+      hotkey: product.intent === "balanced" ? "1" : undefined,
+      testId: product.intent === "balanced" ? "summon-button" : undefined,
+      title: `${product.label} · ${product.effect} · ${price}엽전`
+        + (product.intent === "balanced" ? "" : ` (기본 ${base} + 목적 ${SUMMON_SURCHARGE[product.intent]})`)
+        + (tiered ? ` · ${PAIR_BOOST_NOTE}` : "")
+    });
+  });
+  cards.push(summonCardMarkup({
+    key: "multi",
+    label: "10연 소환",
+    effect: multiUnlocked ? "기본 확률 10회" : "10웨이브에 개방",
+    tint: "#a8791f",
+    icon: "v4/shop/shop-ten-pull-coin-bundle-v1",
+    price: multiUnlocked ? `${tenCost} 엽전` : "10W 개방",
+    disabled: !active || !multiUnlocked || state.gold < tenCost,
+    affordable: !active || !multiUnlocked || state.gold >= tenCost,
+    hotkey: "Q",
+    wide: cards.length % 2 === 1,
+    testId: "multi-summon-button",
+    title: multiUnlocked ? `10연 소환 · ${tenCost}엽전 · 할증 없음` : "10웨이브를 지키면 열립니다"
+  }));
+  must<HTMLElement>("#summon-shop").innerHTML = cards.join("");
+}
+
 function renderFormationUnlocks(): void {
   const state = engine.state;
   const cost = engine.nextFormationUnlockCost();
@@ -1998,7 +2126,8 @@ function renderFormationUnlocks(): void {
     const disabled = unlocked || !active || cost === null || state.gold < cost;
     const status = unlocked
       ? index === state.startingFormationIndex ? "시작 진" : "개방"
-      : state.startingFormationIndex === null ? "첫 소환 대기" : `${cost}엽전`;
+      // 5칸 격자는 한 줄이 6~7자를 넘기면 잘린다. 전체 안내는 바 머리글이 맡는다.
+      : state.startingFormationIndex === null ? "첫 소환" : `${cost}엽전`;
     return `<button type="button" data-formation-index="${index}" class="${unlocked ? "is-unlocked" : affordable ? "is-affordable" : ""}" style="--formation:${formation.color}" ${disabled ? "disabled" : ""}><b>${formation.preferredWuxing}</b><span>${formation.label}</span><small>${status}</small></button>`;
   }).join("");
   // 처음 하는 사람은 진을 추가 구매할 수 있다는 사실 자체를 모른다.
@@ -2031,25 +2160,14 @@ function syncPanel(): void {
   must<HTMLElement>("#seed-value").textContent = state.seed;
   must<HTMLElement>("#message-value").textContent = state.lastMessage;
   renderFormationUnlocks();
-  must<HTMLElement>("#summon-cost").textContent = String(summonCost(state.summonCount));
-  const tenSummonCost = multiSummonCost(state.summonCount, 10);
-  const multiUnlocked = state.wave >= 10;
-  must<HTMLElement>("#multi-summon-cost").textContent = multiUnlocked ? `${tenSummonCost} 엽전` : "10W 개방";
+  renderSummonShop();
   must<HTMLElement>("#research-level").textContent = String(state.researchLevel);
   const nextResearchWave = researchUnlockWave(state.researchLevel);
   const researchUnlocked = state.researchLevel < 5 && state.wave >= nextResearchWave;
   must<HTMLElement>("#research-cost").textContent = state.researchLevel >= 5 ? "최고" : researchUnlocked ? `${researchCost(state.researchLevel)} 엽전` : `${nextResearchWave}W 개방`;
   must<HTMLElement>("#discover-count").textContent = String(state.discoveredChars.length);
   must<HTMLElement>("#essence-summary").textContent = "문기 " + WUXING_ORDER.map((wuxing) => `${wuxing}${state.elementEssence[wuxing]}`).join(" ");
-  document.querySelectorAll<HTMLButtonElement>("[data-summon-intent]").forEach((button) => {
-    const selected = button.dataset.summonIntent === state.summonIntent;
-    button.classList.toggle("is-active", selected);
-    button.setAttribute("aria-pressed", String(selected));
-  });
-
   const active = state.phase === "prep" || state.phase === "combat";
-  must<HTMLButtonElement>("#summon-button").disabled = !active || state.gold < summonCost(state.summonCount);
-  must<HTMLButtonElement>("#multi-summon-button").disabled = !active || !multiUnlocked || state.gold < tenSummonCost;
   must<HTMLButtonElement>("#research-button").disabled = !active || !researchUnlocked || state.gold < researchCost(state.researchLevel);
   must<HTMLButtonElement>("#auto-arrange-button").disabled = !active || state.towers.length === 0;
   must<HTMLButtonElement>("#element-upgrade-button").disabled = !active;
@@ -3965,6 +4083,96 @@ function drawBoard(): void {
       }
     }
   }
+
+  // 9. 잠긴 진에는 자물쇠를 얹는다. 셀 소켓보다 뒤에 그려야 가려지지 않는다.
+  //    잠긴 진 클릭이 곧 해금 시도인데도 시각 단서가 없어 발견되지 않았다.
+  drawFormationLocks();
+  context.restore();
+}
+
+/**
+ * 잠긴 오행진 중앙 자물쇠.
+ *
+ * 스프라이트(120×120 → 40×40)를 우선 쓰고, 로드 실패 시 절차 드로잉으로 되돌린다.
+ * 엽전이 충분하면 glow 스프라이트 + 금색 맥동 링을 더해 "눌러도 된다"를 알린다.
+ * 모션 감소 설정에서는 정지 이미지만 쓴다.
+ */
+function drawFormationLocks(): void {
+  const unlockCost = engine.nextFormationUnlockCost();
+  const purchasable = unlockCost !== null && engine.state.startingFormationIndex !== null;
+  const affordable = purchasable && engine.state.gold >= unlockCost;
+  const pulse = reducedMotion ? 0 : (performance.now() % 1_600) / 1_600;
+
+  for (let formationIndex = 0; formationIndex < BOARD_FORMATIONS.length; formationIndex += 1) {
+    if (engine.isFormationUnlocked(formationIndex)) continue;
+    const formation = BOARD_FORMATIONS[formationIndex] as (typeof BOARD_FORMATIONS)[number];
+    const cx = formation.center.x;
+    const cy = formation.center.y;
+    const hovered = hoveredLockFormation === formationIndex;
+    const scale = hovered && !reducedMotion ? 1.14 : 1;
+
+    // 살 수 있는 진은 금색 링이 1.6초 주기로 번지며 시선을 끈다.
+    if (affordable && !reducedMotion) {
+      const radius = 26 + pulse * 20;
+      context.save();
+      context.globalAlpha = (1 - pulse) * 0.62;
+      context.strokeStyle = "#ffd98a";
+      context.lineWidth = 2.4;
+      context.beginPath();
+      context.arc(cx, cy, radius, 0, Math.PI * 2);
+      context.stroke();
+      context.restore();
+    }
+
+    const kind = affordable ? "glow" : "closed";
+    if (isLockSpriteReady(kind)) {
+      const size = LOCK_SPRITE_SIZE * scale;
+      context.drawImage(lockSpriteImage(kind), cx - size / 2, cy - size / 2, size, size);
+    } else {
+      drawProceduralLock(cx, cy, scale, affordable);
+    }
+
+    // 색만으로 잠금·해금 가능을 가르지 않는다. 자물쇠 아래에 사유를 남긴다.
+    const note = !purchasable
+      ? "첫 소환 대기"
+      : affordable
+        ? `${unlockCost}엽전 해금`
+        : `엽전 ${unlockCost - engine.state.gold} 부족`;
+    context.save();
+    context.font = '900 10px "Malgun Gothic", sans-serif';
+    context.textAlign = "center";
+    const noteWidth = context.measureText(note).width + 12;
+    context.fillStyle = "rgba(28, 25, 21, 0.9)";
+    context.beginPath();
+    context.roundRect(cx - noteWidth / 2, cy + 24, noteWidth, 15, 4);
+    context.fill();
+    context.fillStyle = affordable ? "#ffd98a" : "#c8c1b6";
+    context.fillText(note, cx, cy + 35);
+    context.restore();
+  }
+}
+
+/** 스프라이트가 없을 때 쓰는 절차 자물쇠(몸통 26×20 + 고리). */
+function drawProceduralLock(cx: number, cy: number, scale: number, affordable: boolean): void {
+  context.save();
+  context.translate(cx, cy);
+  context.scale(scale, scale);
+  context.strokeStyle = affordable ? "rgba(255, 217, 138, 0.92)" : "rgba(226, 219, 205, 0.72)";
+  context.lineWidth = 3;
+  context.beginPath();
+  context.arc(0, -8, 8, Math.PI, 0);
+  context.stroke();
+  context.fillStyle = affordable ? "rgba(96, 74, 34, 0.9)" : "rgba(60, 50, 38, 0.85)";
+  context.beginPath();
+  context.roundRect(-13, -6, 26, 20, 4);
+  context.fill();
+  context.strokeStyle = affordable ? "rgba(255, 217, 138, 0.92)" : "rgba(226, 219, 205, 0.62)";
+  context.lineWidth = 1.4;
+  context.stroke();
+  context.fillStyle = affordable ? "#ffd98a" : "#d8d1c4";
+  context.beginPath();
+  context.arc(0, 3, 2.4, 0, Math.PI * 2);
+  context.fill();
   context.restore();
 }
 
@@ -4950,9 +5158,21 @@ function focusMapOnSelectedTower(): void {
   syncMapZoomControl();
 }
 
-function summonAndFocus(amount = 1): void {
+/** 새로 열린 진으로 화면을 옮겨 "무엇이 열렸는지"를 눈으로 잇는다. */
+function focusMapOnFormation(formationIndex: number): void {
+  const center = BOARD_FORMATIONS[formationIndex]?.center;
+  if (!center) return;
+  mapOffset = {
+    x: WORLD_WIDTH / 2 - center.x * mapZoom,
+    y: WORLD_HEIGHT / 2 - center.y * mapZoom
+  };
+  constrainMapCamera();
+  syncMapZoomControl();
+}
+
+function summonAndFocus(amount = 1, intent: SummonIntent = "balanced"): void {
   sound.unlock();
-  const result = amount === 1 ? engine.summon() : engine.summonMany(amount);
+  const result = amount === 1 ? engine.summonProduct(intent) : engine.summonMany(amount);
   handleAction(result);
   if (result.ok) focusMapOnSelectedTower();
 }
@@ -4982,6 +5202,23 @@ function toggleHanjaEmphasis(): void {
 
 function cellAtPoint(point: Point): number {
   return BOARD_CELLS.findIndex((candidate) => Math.hypot(candidate.x - point.x, candidate.y - point.y) <= 21);
+}
+
+/**
+ * 잠긴 진 중앙 자물쇠의 히트 영역.
+ *
+ * 자물쇠는 판 정중앙에 놓이는데 그 지점은 어느 칸의 반경(21px)에도 들지 않는다.
+ * 그래서 칸 판정과 별개로 중앙 원을 따로 잡는다. 판 전체를 히트 영역으로 두면
+ * 여백을 스칠 때마다 확인 창이 떠 오히려 방해가 되므로 자물쇠 크기(40px)에
+ * 맞춘 반경만 받는다.
+ */
+const LOCK_HIT_RADIUS = 34;
+
+function lockedFormationAtPoint(point: Point): number | null {
+  const index = BOARD_FORMATIONS.findIndex((formation) =>
+    Math.hypot(formation.center.x - point.x, formation.center.y - point.y) <= LOCK_HIT_RADIUS);
+  if (index < 0 || engine.isFormationUnlocked(index)) return null;
+  return index;
 }
 
 function beginMapPan(event: PointerEvent, button: 0 | 1, clickCell = -1): void {
@@ -5050,9 +5287,16 @@ canvas.addEventListener("pointermove", (event) => {
     constrainMapCamera();
     return;
   }
-  const hoverCell = cellAtPoint(canvasPoint(event));
+  const hoverPoint = canvasPoint(event);
+  const hoverCell = cellAtPoint(hoverPoint);
   hoveredTowerId = hoverCell >= 0 ? towerAtCell(hoverCell)?.id ?? null : null;
   canvas.dataset.hoveredTowerId = hoveredTowerId === null ? "" : String(hoveredTowerId);
+  // 자물쇠 위에서는 확대하고 커서를 손가락으로 바꿔 "눌린다"를 알린다.
+  // 잠긴 칸도 같은 팝업으로 이어지므로 커서는 같이 바꾼다.
+  const runActive = engine.state.phase === "prep" || engine.state.phase === "combat";
+  hoveredLockFormation = runActive ? lockedFormationAtPoint(hoverPoint) : null;
+  const overLockedCell = runActive && hoverCell >= 0 && !engine.isCellUnlocked(hoverCell);
+  canvas.dataset.lockHover = hoveredLockFormation !== null || overLockedCell ? "1" : "";
   if (event.pointerId !== towerDragPointerId || !towerDragStart) return;
   const point = canvasPoint(event);
   if (Math.hypot(point.x - towerDragStart.x, point.y - towerDragStart.y) >= 10) towerDragMoved = true;
@@ -5097,14 +5341,21 @@ function finishMapPan(event: PointerEvent, applyClick: boolean): boolean {
   mapPanClickCell = -1;
   canvas.classList.remove("is-panning");
   if (applyClick && button === 0 && !moved) {
-    if (clickCell < 0) {
-      engine.selectTower(null);
-      evolutionRenderKey = "";
-      selectedRenderKey = "";
-      syncPanel();
-    } else {
-      if (!engine.isCellUnlocked(clickCell)) { sound.expectFormationUnlock(); handleAction(engine.unlockFormation(Math.floor(clickCell / CELLS_PER_FORMATION))); }
+    // 잠긴 칸과 판 중앙 자물쇠는 같은 확인 팝업으로 모은다. 예전에는 클릭 즉시
+    // 엽전이 빠져나가 무슨 일이 벌어졌는지 알 수 없었다.
+    if (clickCell >= 0) {
+      if (!engine.isCellUnlocked(clickCell)) openFormationUnlockDialog(Math.floor(clickCell / CELLS_PER_FORMATION));
       else { sound.expectPlacement(); handleAction(engine.moveSelectedToCell(clickCell)); }
+    } else {
+      const lockedFormation = lockedFormationAtPoint(canvasPoint(event));
+      if (lockedFormation !== null) {
+        openFormationUnlockDialog(lockedFormation);
+      } else {
+        engine.selectTower(null);
+        evolutionRenderKey = "";
+        selectedRenderKey = "";
+        syncPanel();
+      }
     }
   }
   return true;
@@ -5117,6 +5368,8 @@ canvas.addEventListener("pointerleave", () => {
   if (mapPanPointerId !== null || towerDragPointerId !== null) return;
   hoveredTowerId = null;
   canvas.dataset.hoveredTowerId = "";
+  hoveredLockFormation = null;
+  canvas.dataset.lockHover = "";
 });
 canvas.addEventListener("pointercancel", (event) => {
   if (!finishMapPan(event, false)) finishTowerDrag(event, false);
@@ -5197,6 +5450,61 @@ p00Dialog.addEventListener("click", (event) => {
 // ── S13 맞춤 진법: 한자 범위 x 읽기·표기 x 진법 규칙을 한 화면에서 ──
 // 세 번째 엔진 모드가 아니라 기존 설정들의 진입점이다(코덱스 스펙).
 // JP/CN 범위 선택도 P00 확인을 우회하지 않는다.
+/* ── 오행진 해금 확인 ─────────────────────────────────────────
+   예전에는 잠긴 칸을 누르는 즉시 엽전이 빠져나갔다. 실수로 눌러도 되돌릴 수
+   없었고, 무엇을 얼마에 샀는지도 남지 않았다. 전장 자물쇠와 상점 5칸 모두
+   이 팝업 한 곳으로 모아 값과 결과를 먼저 보여 준다.
+   ──────────────────────────────────────────────────────────── */
+const formationUnlockDialog = must<HTMLDialogElement>("#formation-unlock-dialog");
+let pendingFormationUnlock: number | null = null;
+
+function openFormationUnlockDialog(formationIndex: number): void {
+  const formation = BOARD_FORMATIONS[formationIndex];
+  if (!formation || engine.isFormationUnlocked(formationIndex)) return;
+  pendingFormationUnlock = formationIndex;
+  const cost = engine.nextFormationUnlockCost();
+  const notStarted = engine.state.startingFormationIndex === null;
+  const shortfall = cost === null ? 0 : Math.max(0, cost - engine.state.gold);
+  must<HTMLElement>("#formation-unlock-glyph").textContent = formation.preferredWuxing;
+  must<HTMLElement>("#formation-unlock-glyph").style.setProperty("--formation", formation.color);
+  must<HTMLElement>("#formation-unlock-label").textContent = `${formation.label} 해금`;
+  must<HTMLElement>("#formation-unlock-body").textContent = cost === null
+    ? "모든 오행진을 이미 개방했습니다."
+    : `${cost}엽전이 필요합니다. 해금하면 ${formation.label}의 4×4 칸이 열립니다.`;
+  const reason = must<HTMLElement>("#formation-unlock-reason");
+  const blocked = notStarted || cost === null || shortfall > 0;
+  reason.hidden = !blocked;
+  reason.textContent = notStarted
+    ? "첫 자령을 소환하면 같은 오행진이 무료로 먼저 열립니다."
+    : cost === null
+      ? "더 살 진이 없습니다."
+      : `엽전 ${shortfall} 부족`;
+  must<HTMLElement>("#formation-unlock-price").textContent = String(cost ?? 0);
+  must<HTMLButtonElement>("#formation-unlock-confirm").disabled = blocked;
+  if (!formationUnlockDialog.open) formationUnlockDialog.showModal();
+}
+
+function closeFormationUnlockDialog(): void {
+  pendingFormationUnlock = null;
+  if (formationUnlockDialog.open) formationUnlockDialog.close();
+}
+
+must<HTMLButtonElement>("#formation-unlock-confirm").addEventListener("click", () => {
+  if (pendingFormationUnlock === null) return;
+  const formationIndex = pendingFormationUnlock;
+  sound.unlock();
+  const result = engine.unlockFormation(formationIndex);
+  closeFormationUnlockDialog();
+  handleAction(result);
+  // 성공하면 기존 개방 링 연출을 그대로 재사용해 어디가 열렸는지 눈으로 잇는다.
+  if (result.ok) focusMapOnFormation(formationIndex);
+});
+must<HTMLButtonElement>("#formation-unlock-close").addEventListener("click", closeFormationUnlockDialog);
+formationUnlockDialog.addEventListener("click", (event) => {
+  if (event.target === formationUnlockDialog) closeFormationUnlockDialog();
+});
+formationUnlockDialog.addEventListener("close", () => { pendingFormationUnlock = null; });
+
 const s13Dialog = must<HTMLDialogElement>("#s13-dialog");
 
 function syncS13(): void {
@@ -5375,11 +5683,14 @@ must<HTMLElement>("#evolution-options").addEventListener("pointerout", (event) =
 must<HTMLButtonElement>("#start-button").addEventListener("click", () => startRun(false));
 must<HTMLButtonElement>("#retry-button").addEventListener("click", () => startRun(false));
 must<HTMLButtonElement>("#new-seed-button").addEventListener("click", () => startRun(true));
-document.querySelectorAll<HTMLButtonElement>("[data-summon-intent]").forEach((button) => {
-  button.addEventListener("click", () => handleAction(engine.setSummonIntent(button.dataset.summonIntent as SummonIntent)));
+// 카드가 곧 상품이다. 목적 상태를 미리 고르는 단계 없이 누른 카드로 즉시 1회 소환한다.
+must<HTMLElement>("#summon-shop").addEventListener("click", (event) => {
+  const card = (event.target as HTMLElement).closest<HTMLButtonElement>("[data-summon-product]");
+  if (!card || card.disabled) return;
+  const product = card.dataset.summonProduct ?? "balanced";
+  if (product === "multi") summonAndFocus(10);
+  else summonAndFocus(1, product as SummonIntent);
 });
-must<HTMLButtonElement>("#summon-button").addEventListener("click", () => summonAndFocus());
-must<HTMLButtonElement>("#multi-summon-button").addEventListener("click", () => summonAndFocus(10));
 must<HTMLButtonElement>("#summon-reveal-close").addEventListener("click", hideSummonReveal);
 document.addEventListener("pointerdown", () => {
   if (summonReveal.classList.contains("is-active")) hideSummonReveal();
@@ -5390,8 +5701,8 @@ must<HTMLElement>("#formation-unlock-list").addEventListener("click", (event) =>
   const button = (event.target as HTMLElement).closest<HTMLButtonElement>("[data-formation-index]");
   if (!button) return;
   sound.unlock();
-  sound.expectFormationUnlock();
-  handleAction(engine.unlockFormation(Number(button.dataset.formationIndex)));
+  // 상점 5칸과 전장 자물쇠는 같은 확인 팝업을 거친다.
+  openFormationUnlockDialog(Number(button.dataset.formationIndex));
 });
 must<HTMLButtonElement>("#auto-arrange-button").addEventListener("click", () => { sound.unlock(); handleAction(engine.autoArrangeTowers()); });
 must<HTMLButtonElement>("#element-upgrade-button").addEventListener("click", () => setPanelTab("growth"));
@@ -5889,7 +6200,7 @@ interface CoachStep {
 const COACH_STORAGE_KEY = "hanja-td:coach-seen-v1";
 const COACH_STEPS: readonly CoachStep[] = [
   {
-    target: "#summon-button",
+    target: '[data-summon-product="balanced"]',
     title: "먼저 자령을 소환하세요",
     body: "엽전을 써서 자령을 뽑습니다. 첫 자령의 오행에 맞는 4×4 진이 무료로 열립니다.",
     control: "click",
