@@ -6,6 +6,7 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const inputPath = path.join(root, "src", "data", "cheonjamun-review-dex-v1.json");
 const runtimePath = path.join(root, "src", "data", "cheonjamun-runtime-jaryeongs.json");
 const outputPath = path.join(root, "src", "data", "cheonjamun-jaryeong-dex-v1.json");
+const huneumOverridesPath = path.join(root, "src", "data", "korean-huneum-overrides.json");
 
 const ELEMENT_PROFILES = {
   木: {
@@ -131,6 +132,16 @@ function readJson(filePath) {
   return JSON.parse(fs.readFileSync(filePath, "utf8"));
 }
 
+const huneumOverrides = readJson(huneumOverridesPath);
+
+function canonicalHuneum(char, fallback) {
+  return huneumOverrides[char] ?? fallback;
+}
+
+function meaningFromHuneum(huneum) {
+  return huneum.trim().split(/\s+/u).slice(0, -1).join(" ");
+}
+
 function appearanceSentence(raw) {
   const parts = String(raw).trim().replace(/[.。!?]+$/u, "").split(/\s*[·,，]\s*/u).filter(Boolean);
   if (parts.length === 1) return `${parts[0]}이다.`;
@@ -160,13 +171,15 @@ const reviewedEntries = new Map(source.entries.map((entry) => {
   const niche = nicheFor(entry, profile);
   const appearance = appearanceSentence(entry.semanticDesign);
   const [traitName, traitDescription] = profile.traits[index];
+  const huneum = canonicalHuneum(entry.hanja, entry.huneum);
+  const meaning = huneumOverrides[entry.hanja] ? meaningFromHuneum(huneum) : entry.meaningKo;
 
   return [entry.id, {
     id: entry.id,
     number: entry.sequence,
     hanja: entry.hanja,
-    huneum: entry.huneum,
-    meaning: entry.meaningKo,
+    huneum,
+    meaning,
     wuxing: entry.wuxing,
     elementName: profile.name,
     category: niche.category,
@@ -188,15 +201,18 @@ const entries = runtime.entries
     const profile = ELEMENT_PROFILES[entry.wuxing];
     if (!profile) throw new Error(`Unsupported element for ${entry.id}: ${entry.wuxing}`);
     const index = (entry.sequence - 1) % profile.behaviors.length;
-    const niche = nicheFor({ semanticDesign: `${entry.meaning} ${entry.huneum}` }, profile);
-    const meaning = String(entry.meaning || entry.huneum || entry.hanja).trim();
+    const huneum = canonicalHuneum(entry.hanja, entry.huneum);
+    const meaning = huneumOverrides[entry.hanja]
+      ? meaningFromHuneum(huneum)
+      : String(entry.meaning || huneum || entry.hanja).trim();
+    const niche = nicheFor({ semanticDesign: `${meaning} ${huneum}` }, profile);
     const appearance = `글자 ${entry.hanja}의 뜻인 ${meaning}의 기운이 ${profile.resonance}의 형상으로 응결된 자령이다.`;
     const [traitName, traitDescription] = profile.traits[index];
     return {
       id: entry.id,
       number: entry.sequence,
       hanja: entry.hanja,
-      huneum: entry.huneum,
+      huneum,
       meaning,
       wuxing: entry.wuxing,
       elementName: profile.name,

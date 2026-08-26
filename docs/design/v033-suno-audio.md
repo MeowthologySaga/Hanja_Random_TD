@@ -1,5 +1,7 @@
 # v0.33 Suno 게임 오디오 설계·통합 기록
 
+> v0.34에서 메인 메뉴용 `Moonlit Codex`가 추가되었다. 연결·QC 세부값은 `v034-main-menu-audio.md`를 따른다.
+
 ## 목표표
 
 | key | type | use | Suno mode | target file | normalize | notes |
@@ -33,7 +35,7 @@
 
 ## 제작·검증 기록
 
-- Suno 작업공간 `김길우-한자td`에서 BGM 6회·SFX 12회, 후보 36개를 생성하고 17개를 채택했다. 일반 보스곡 첫 후보는 23초로 반복 피로가 커서 제외하고 2분 39초 장편 후보를 다시 생성해 채택했다.
+- Suno 작업공간 `hanja-td`에서 BGM 6회·SFX 12회, 후보 36개를 생성하고 17개를 채택했다. 일반 보스곡 첫 후보는 23초로 반복 피로가 커서 제외하고 2분 39초 장편 후보를 다시 생성해 채택했다.
 - 세션 전 2,350크레딧에서 완료 후 2,266크레딧으로 84크레딧을 사용했다.
 - 다운로드 원본은 `.codex_tmp/suno-audio-v033/raw`에 안정적인 이름으로 보존하며 Git에는 포함하지 않는다.
 - 선정 자산의 제목·파일·전체 영문 프롬프트·Suno 모드·원본 ID·실제 길이·용도는 `src/data/audio-manifest.json`, 재측정 음량·바이트·SHA-256은 `public/assets/audio/audio-qc.json`에 기록한다.

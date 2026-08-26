@@ -6,7 +6,9 @@ export type GameMode = "standard" | "casual";
 export type CasualStar = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
 export type RunPhase = "title" | "prep" | "combat" | "victory" | "defeat";
 export type AutomationMode = "manual" | "semi" | "goal";
-export type SummonIntent = "balanced" | "discovery" | "lineage" | "concentration";
+// 상점 소환 상품. `midstar`·`highstar` 는 획수=별 규칙이 있는 캐주얼 8성전 전용
+// 티어 소환이며, 가중이 아니라 후보 풀 필터(확정 보장)로 동작한다.
+export type SummonIntent = "balanced" | "discovery" | "lineage" | "concentration" | "midstar" | "highstar";
 export type ConcentrationPath = "swift" | "potent";
 export type ConcentrationLevel = 0 | 1 | 2 | 3;
 export type ConcentrationPayment =
@@ -321,7 +323,7 @@ export type GameEvent =
   | { type: "statUpgrade"; scope: "global" | "element"; wuxing: Wuxing | null; stat: UpgradeStat; level: number; cost: number; bonus: number }
   | { type: "traitUpgrade"; wuxing: Wuxing; traitIndex: number; level: number; cost: number }
   | { type: "evolve"; at: Point; tower: Tower; parents: string[]; targetCompleted: boolean }
-  | { type: "casualFuse"; at: Point; tower: Tower; consumed: Tower[]; fromStar: CasualStar; toStar: CasualStar }
+  | { type: "casualFuse"; at: Point; tower: Tower; consumed: Tower[]; fromStar: CasualStar; toStar: CasualStar; newDiscovery: boolean; starFallback: boolean; rosterFallback: boolean }
   | { type: "ability"; at: Point; source: Point; towerId: number; name: string; glyph: string; color: string; kind: AbilityFxKind; targets: number; effect: string; persistent?: boolean }
   | { type: "goal"; char: string; reward: number }
   | { type: "idiom"; idiomId: string; chars: string; reading: string; meaning: string; bonus: string; color: string; cells: number[] }

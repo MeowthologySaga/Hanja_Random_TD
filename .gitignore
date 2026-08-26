@@ -1,4 +1,5 @@
 node_modules/
+.claude/
 .codex_tmp/
 dist/
 test-results/
@@ -29,3 +30,8 @@ handoff_source/*
 !handoff_source/data/
 handoff_source/data/*
 !handoff_source/data/*.runtime.json
+
+# 에이전트 인계 폴더: 규약 문서만 추적하고 주고받는 파일은 제외
+handoff/*
+!handoff/README.md
+!handoff/LOG.md

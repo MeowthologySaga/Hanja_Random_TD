@@ -1,4 +1,5 @@
 import strokeData from "../data/cheonjamun-strokes.json";
+import supplementData from "../data/hanzi-strokes-supplement.json";
 import type { CasualStar } from "./types";
 
 interface StrokeEntry {
@@ -30,6 +31,28 @@ if (typedStrokeData.schema !== "cheonjamun-strokes-v1" || typedStrokeData.total 
 }
 
 const strokeByChar = new Map(typedStrokeData.entries.map((entry) => [entry.hanja, entry] as const));
+
+// 일본·중국 로스터(3,560자)는 같은 Unihan 17.0.0 kTotalStrokes 에서 뽑은
+// 보충 획수를 쓴다. 별 구간은 천자문과 동일한 빈(bin)을 공유하므로
+// "실제 획수 = 희귀도" 규칙이 전 지역에서 유지된다.
+interface SupplementData {
+  schema: string;
+  sourceSha256: string;
+  total: number;
+  strokes: Record<string, number>;
+}
+const typedSupplement = supplementData as SupplementData;
+if (typedSupplement.schema !== "hanzi-strokes-supplement-v1" || typedSupplement.total !== 3560) {
+  throw new Error("보충 획수 데이터의 스키마 또는 수량이 올바르지 않습니다.");
+}
+
+function starForStrokes(strokes: number): CasualStar {
+  for (const bin of typedStrokeData.bins) {
+    if (strokes >= bin.minStrokes && strokes <= bin.maxStrokes) return bin.star;
+  }
+  // 29획 초과 벽자(예: 일부 CN 규범자)는 최상위 구간으로 본다.
+  return 8;
+}
 
 export const CASUAL_STAR_BINS = Object.freeze(typedStrokeData.bins.map((bin) => Object.freeze({ ...bin })));
 export const CASUAL_STROKE_SOURCE = Object.freeze({
@@ -75,13 +98,20 @@ export const CASUAL_STAR_COLORS: Record<CasualStar, string> = Object.freeze({
 });
 
 export function casualStrokeCount(char: string): number | null {
-  return strokeByChar.get(char)?.strokes ?? null;
+  return strokeByChar.get(char)?.strokes ?? typedSupplement.strokes[char] ?? null;
 }
 
 export function casualNaturalStar(char: string): CasualStar | null {
-  return strokeByChar.get(char)?.naturalStar ?? null;
+  const entry = strokeByChar.get(char);
+  if (entry) return entry.naturalStar;
+  const strokes = typedSupplement.strokes[char];
+  return strokes === undefined ? null : starForStrokes(strokes);
 }
 
+/**
+ * 3기를 소모하면 노리는 별. v3 에서는 이 별의 글자 풀이 비어 있을 수 있어
+ * 실제 결과 별은 GameEngine.casualResultPool 이 사다리를 훑어 정한다.
+ */
 export function casualStarAfterFusion(star: CasualStar): CasualStar | null {
   return star >= 8 ? null : (star + 1) as CasualStar;
 }

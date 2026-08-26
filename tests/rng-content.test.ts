@@ -97,6 +97,13 @@ describe("regional catalog and wave content", () => {
     expect(BOARD_CELLS).toHaveLength(80);
     expect(new Set(BOARD_CELLS.map((cell) => String(cell.x) + ":" + String(cell.y))).size).toBe(80);
     expect(new Set(BOARD_FORMATIONS.map((formation) => formation.preferredWuxing)).size).toBe(5);
+    expect(Object.fromEntries(BOARD_FORMATIONS.map((formation) => [formation.preferredWuxing, formation.color]))).toEqual({
+      水: "#60c9ff",
+      金: "#d8e2ec",
+      土: "#d9a25f",
+      木: "#70d684",
+      火: "#ff7666"
+    });
     expect(BOARD_FORMATIONS.map((formation) => formation.center)).toEqual([
       { x: 440, y: 160 },
       { x: 240, y: 360 },

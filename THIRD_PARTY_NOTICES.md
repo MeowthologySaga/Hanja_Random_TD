@@ -32,6 +32,18 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 
 The game adds a small curated Korean hun-eum layer for 24 unusual Korean-catalog glyphs that do not carry a usable libhangul gloss. That local layer is original project data and is not copied from another dictionary. Neither Unicode nor libhangul endorses this game.
 
+## National Institute of Korean Language Korean Basic Dictionary
+
+Learner-friendly Korean definitions in `src/data/korean-easy-meanings.json` are derived in part from the Korean Basic Dictionary full JSON release dated 2026-08-19. The game retains only the compact definitions selected for its Korean 1,001-character codex; ambiguous, archaic, and unmatched entries are independently rewritten in `src/data/korean-easy-meaning-overrides.json`.
+
+- Source: https://krdict.korean.go.kr/download/downloadPopup
+- Open API information: https://krdict.korean.go.kr/kor/openApi/openApiInfo
+- Copyright policy: https://www.korean.go.kr/front/page/pageView.do?mn_id=105&page_id=P000189
+- Download archive SHA-256: `7CF41E62A2A36158A8BE2B6D2F84C086221E9B29D4345C44E5497EEBF21C8C40`
+- Source attribution: National Institute of Korean Language, Korean Basic Dictionary
+
+The Korean Basic Dictionary describes its information as freely reusable subject to the site's copyright policy. National Institute of Korean Language public works carrying the Korea Open Government License attribution mark require source attribution. This project identifies the institution, work, release, source URLs, and exact archive hash, and does not imply endorsement by the National Institute of Korean Language.
+
 ## Thousand Character Classic reading cross-check
 
 The public-domain Thousand Character Classic source order and the conventional Korean readings used by `src/data/cheonjamun-phrases.ts` were cross-checked against the Korean Wikisource translation page, revision 415809. The game's short gameplay meanings are independently condensed paraphrases.
@@ -44,3 +56,9 @@ The public-domain Thousand Character Classic source order and the conventional K
 ## Project-generated map artwork
 
 `public/assets/map/hanji-ink-field/hanji-paper-base.png` was generated specifically for this project without a third-party source image. Its production prompt is preserved beside the PNG, and `map-manifest.json` records the runtime layer contract. The route, arrows, portals, formations, actors, hit regions, and effects remain original Canvas/CSS runtime graphics rather than baked content in the generated texture.
+
+## Project-generated Suno audio
+
+The BGM and one-shot SFX listed in `src/data/audio-manifest.json` were generated for this project with Suno and then normalized locally for game playback. `Moonlit Codex` was supplied by the project owner; the downloaded file identifies Suno source ID `1efbbbd9-fd2d-4fc9-9408-5a287baf5852`. The shipped derivative removes embedded cover art and creation metadata while the manifest and `public/assets/audio/audio-qc.json` preserve provenance, duration, loudness, file size, and checksum records.
+
+Suno usage and distribution rights depend on the account plan and terms that applied when each asset was created. Before public release or competition submission, the project owner must retain the applicable account/subscription evidence and confirm that the chosen terms cover the intended distribution. This notice records provenance and does not replace that rights verification.

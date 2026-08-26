@@ -46,11 +46,11 @@ export interface BoardFormation {
 
 const FORMATION_SPACING = 44;
 const FORMATION_DEFINITIONS: readonly Omit<BoardFormation, "startCell">[] = [
-  { id: "north", label: "수진", center: { x: 440, y: 160 }, color: "#76d7ff", preferredWuxing: "水" },
-  { id: "west", label: "금진", center: { x: 240, y: 360 }, color: "#f0d58a", preferredWuxing: "金" },
-  { id: "center", label: "토진", center: { x: 440, y: 360 }, color: "#ffd068", preferredWuxing: "土" },
-  { id: "east", label: "목진", center: { x: 640, y: 360 }, color: "#9be77c", preferredWuxing: "木" },
-  { id: "south", label: "화진", center: { x: 440, y: 560 }, color: "#ff9477", preferredWuxing: "火" }
+  { id: "north", label: "수진", center: { x: 440, y: 160 }, color: "#60c9ff", preferredWuxing: "水" },
+  { id: "west", label: "금진", center: { x: 240, y: 360 }, color: "#d8e2ec", preferredWuxing: "金" },
+  { id: "center", label: "토진", center: { x: 440, y: 360 }, color: "#d9a25f", preferredWuxing: "土" },
+  { id: "east", label: "목진", center: { x: 640, y: 360 }, color: "#70d684", preferredWuxing: "木" },
+  { id: "south", label: "화진", center: { x: 440, y: 560 }, color: "#ff7666", preferredWuxing: "火" }
 ];
 
 export const BOARD_FORMATIONS: readonly BoardFormation[] = FORMATION_DEFINITIONS.map((formation, index) => ({
@@ -173,6 +173,31 @@ export function positionOnPath(progress: number): Point {
     distance -= segmentLength;
   }
   return { ...(ENEMY_PATH_POINTS[ENEMY_PATH_POINTS.length - 1] as Point) };
+}
+
+/**
+ * Returns the smoothed travel direction at a point on the closed enemy path.
+ * Sampling on both sides keeps long effects aligned with straight lanes while
+ * turning them diagonally through corners instead of snapping past the track.
+ */
+export function directionOnPath(progress: number, smoothingDistance = 36): Point {
+  const distance = Math.max(1, Math.min(TOTAL_PATH_LENGTH / 8, Math.abs(smoothingDistance)));
+  const progressOffset = distance / TOTAL_PATH_LENGTH;
+  const before = positionOnPath(progress - progressOffset);
+  const after = positionOnPath(progress + progressOffset);
+  const dx = after.x - before.x;
+  const dy = after.y - before.y;
+  const length = Math.hypot(dx, dy);
+  if (length > 0.0001) return { x: dx / length, y: dy / length };
+
+  const fallbackBefore = positionOnPath(progress - 0.0001);
+  const fallbackAfter = positionOnPath(progress + 0.0001);
+  const fallbackX = fallbackAfter.x - fallbackBefore.x;
+  const fallbackY = fallbackAfter.y - fallbackBefore.y;
+  const fallbackLength = Math.hypot(fallbackX, fallbackY);
+  return fallbackLength > 0.0001
+    ? { x: fallbackX / fallbackLength, y: fallbackY / fallbackLength }
+    : { x: 1, y: 0 };
 }
 
 export function wavePlan(wave: number): WavePlan {

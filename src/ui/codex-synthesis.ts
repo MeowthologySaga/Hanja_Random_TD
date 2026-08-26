@@ -63,6 +63,6 @@ export function synthesisTierAccessibleLabel(
   filter: Exclude<SynthesisTierFilter, "all">,
   uncombinableStageOne = false
 ): string {
-  if (filter === UNCOMBINABLE_STAGE_ONE || uncombinableStageOne) return "★ · 조합 불가 1단";
+  if (filter === UNCOMBINABLE_STAGE_ONE || uncombinableStageOne) return "★ · 1단 · 독립 자령";
   return `${synthesisDepthLabel(filter)} · ${filter}단`;
 }

@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { BOARD_FORMATIONS, CELLS_PER_FORMATION } from "../src/core/content";
-import { FIRST_PREP_SECONDS, GameEngine, concentrationEssenceCost, dismantleEssenceValue } from "../src/core/game";
+import {
+  FIRST_PREP_SECONDS,
+  GameEngine,
+  autoConcentrationPath,
+  concentrationEssenceCost,
+  concentrationPathLabel,
+  dismantleEssenceValue
+} from "../src/core/game";
 import { ELEMENT_TRAIT_COSTS } from "../src/core/growth";
 import { STAGE_MULTIPLIERS, definitionForTower, elementUpgradeCost, summonCost } from "../src/core/hanzi";
 import type { Enemy, HanziDefinition, Tower } from "../src/core/types";
@@ -116,6 +123,53 @@ describe("safe dismantle, concentration, and element growth", () => {
     expect(engine.state.inventoryTowers.map((tower) => tower.id)).toEqual([locked.id]);
   });
 
+  it("keeps sole-copy protection on by default and releases it only for the dismantle path", () => {
+    const engine = new GameEngine("sole-copy-toggle", "KR");
+    engine.begin();
+    const definition = safeDuplicateDefinition(engine);
+    const sole = towerFor(definition, 400, -1);
+    engine.state.towers = [];
+    engine.state.inventoryTowers = [sole];
+
+    const guarded = engine.cleanupAssessments().find((assessment) => assessment.towerId === sole.id);
+    expect(guarded?.soleCopy).toBe(true);
+    expect(guarded?.protected).toBe(true);
+    expect(guarded?.protectedReasons).toContain("유일 보유 한자");
+    expect(engine.cleanupCandidates(8, true).map((candidate) => candidate.towerId)).not.toContain(sole.id);
+    expect(engine.quoteDismantle([sole.id]).blocked).toHaveLength(1);
+    expect(engine.dismantleTowers([sole.id])).toMatchObject({ ok: false });
+    expect(engine.state.inventoryTowers).toHaveLength(1);
+
+    const released = { protectUnique: false };
+    const open = engine.cleanupAssessments(released).find((assessment) => assessment.towerId === sole.id);
+    // 배지 근거는 남고 보호만 풀린다.
+    expect(open?.soleCopy).toBe(true);
+    expect(open?.protected).toBe(false);
+    expect(open?.protectedReasons).not.toContain("유일 보유 한자");
+    expect(engine.cleanupCandidates(8, true, released).map((candidate) => candidate.towerId)).toContain(sole.id);
+    expect(engine.quoteDismantle([sole.id], released).blocked).toHaveLength(0);
+    expect(engine.dismantleTowers([sole.id], released)).toMatchObject({ ok: true });
+    expect(engine.state.inventoryTowers).toHaveLength(0);
+    expect(engine.state.elementEssence[definition.wuxing]).toBe(dismantleEssenceValue(definition.stage));
+  });
+
+  it("still blocks locked and concentrated towers when sole-copy protection is off", () => {
+    const engine = new GameEngine("sole-copy-other-guards", "KR");
+    engine.begin();
+    const definition = safeDuplicateDefinition(engine);
+    const locked = towerFor(definition, 410, -1, true);
+    const concentrated = { ...towerFor(definition, 411, -1), concentration: 1 as const, concentrationPath: "swift" as const };
+    engine.state.towers = [];
+    engine.state.inventoryTowers = [locked, concentrated];
+
+    const released = { protectUnique: false };
+    const assessments = new Map(engine.cleanupAssessments(released).map((assessment) => [assessment.towerId, assessment]));
+    expect(assessments.get(locked.id)?.protectedReasons).toContain("잠금 자령");
+    expect(assessments.get(concentrated.id)?.protectedReasons).toContain("농축 1단계 투자");
+    expect(engine.dismantleTowers([locked.id, concentrated.id], released)).toMatchObject({ ok: false });
+    expect(engine.state.inventoryTowers).toHaveLength(2);
+  });
+
   it("requires an explicit duplicate or essence payment and permanently fixes the first path", () => {
     const engine = new GameEngine("explicit-concentration", "KR");
     engine.begin();
@@ -141,6 +195,48 @@ describe("safe dismantle, concentration, and element growth", () => {
     expect(engine.concentrateTower(target.id, "potent", { kind: "essence" })).toMatchObject({ ok: false });
     expect(engine.concentrateTower(target.id, "swift", { kind: "essence" })).toMatchObject({ ok: true });
     expect(target.concentration).toBe(2);
+  });
+
+  it("derives the concentration direction from the combat role instead of asking", () => {
+    const engine = new GameEngine("auto-concentration-path", "KR");
+    engine.begin();
+    const definition = safeDuplicateDefinition(engine);
+
+    // 초당 타수로 먹고사는 역할은 공속(swift).
+    for (const role of ["rapid", "support"] as const) {
+      const tower = { ...towerFor(definition, 300, 0), combatRole: role };
+      expect(autoConcentrationPath(tower)).toBe("swift");
+    }
+    // 한 방으로 먹고사는 나머지는 피해(potent).
+    for (const role of ["burst", "splash", "control", "economy"] as const) {
+      const tower = { ...towerFor(definition, 301, 0), combatRole: role };
+      expect(autoConcentrationPath(tower)).toBe("potent");
+    }
+    // 이미 박힌 방향은 역할과 어긋나도 유지된다(기존 세이브 일관성).
+    expect(autoConcentrationPath({ combatRole: "rapid", concentrationPath: "potent" })).toBe("potent");
+    expect(concentrationPathLabel("swift")).toBe("공속 농축");
+    expect(concentrationPathLabel("potent")).toBe("피해 농축");
+  });
+
+  it("concentrates a selected tower on its role direction with no branch prompt", () => {
+    const engine = new GameEngine("role-concentration", "KR");
+    engine.begin();
+    const definition = safeDuplicateDefinition(engine);
+    const rapid = { ...towerFor(definition, 310, 0), combatRole: "rapid" as const };
+    const burst = { ...towerFor(definition, 311, 1), combatRole: "burst" as const };
+    engine.state.towers = [rapid, burst];
+    engine.state.inventoryTowers = [];
+    engine.state.elementEssence[definition.wuxing] = concentrationEssenceCost(0) * 2;
+
+    engine.selectTower(rapid.id);
+    expect(engine.concentrateSelected()).toMatchObject({ ok: true });
+    expect(rapid.concentrationPath).toBe("swift");
+    expect(engine.state.lastMessage).toContain("공속 농축");
+
+    engine.selectTower(burst.id);
+    expect(engine.concentrateSelected()).toMatchObject({ ok: true });
+    expect(burst.concentrationPath).toBe("potent");
+    expect(engine.state.lastMessage).toContain("피해 농축");
   });
 
   it("quotes the true cumulative cost up to level 99 and spends it in one transaction", () => {
