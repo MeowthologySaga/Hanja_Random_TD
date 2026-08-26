@@ -1,6 +1,7 @@
 /*
  * 판 종료 화면.
  */
+import { MAX_ENEMIES } from "../../core/content";
 import { ctx, endOverlay, must } from "../app-context";
 import { formatTime, gameModeLabel } from "../format";
 import { setFocusFrame } from "../hud";
@@ -27,7 +28,15 @@ export function showEndScreen(phase: "victory" | "defeat"): void {
   must<HTMLElement>("#end-heading").textContent = victory
     ? "천자문 대봉인 완성"
     : enemyLimitDefeat ? "적 한계 초과로 수비 실패" : "수비에 실패했습니다";
-  must<HTMLElement>("#end-message").textContent = state.lastMessage;
+  // P-18: lastMessage 는 "마지막으로 한 조작"이라 패배 순간과 무관한 승급 로그가
+  // 오는 일이 잦았다. 사유가 분명하면 사유 문장을 쓰고, 조작 로그는 버린다.
+  must<HTMLElement>("#end-message").textContent = victory
+    ? state.lastMessage
+    : state.defeatCause === "enemy-limit"
+      ? `적 ${MAX_ENEMIES}체가 전장을 뒤덮어 봉인이 무너졌습니다.`
+      : state.defeatCause === "boss-timeout"
+        ? "제한시간 안에 우두머리를 처치하지 못했습니다."
+        : state.lastMessage;
   must<HTMLElement>("#end-stats").innerHTML = `
     <div><span>진법</span><b>${gameModeLabel(state.mode)}</b></div>
     <div><span>도달 웨이브</span><b>${state.wave} / ${state.maxWaves}</b></div>

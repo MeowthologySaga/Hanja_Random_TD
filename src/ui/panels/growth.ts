@@ -18,6 +18,7 @@ import {
 } from "../../core/hanzi";
 import { type Tower, type UpgradeStat, type Wuxing } from "../../core/types";
 import { ctx, DISMANTLE_UNIQUE_STORAGE_KEY, dismantleSelection, must, reducedMotion, sound } from "../app-context";
+import { openConfirm } from "../dialogs/confirm";
 import { formatStatBonus, upgradeStateSignature } from "../dialogs/element-upgrade";
 import {
   casualStarOf,
@@ -175,15 +176,19 @@ export function renderGrowth(): void {
     const bonusLabel = formatStatBonus(stat, perLevel * UPGRADE_MILESTONE_LEVEL_BONUS);
     return `이정표 ${UPGRADE_MILESTONE_INTERVAL}단계마다 ${bonusLabel}${milestones > 0 ? ` · 달성 ${milestones}회` : ""}${level < 99 ? ` · 다음까지 ${toNext}단계` : ""}`;
   };
+  // [S/P-25] 설명 줄은 자리(242px)보다 두 배 가까이 길어 뒤가 통째로 잘렸다.
+  // 절 560 이 두 줄로 펴 주지만, 그래도 못 담는 극단을 위해 전문을 title 에 남긴다.
   const globalRows = UPGRADE_STAT_ORDER.map((stat) => {
     const meta = UPGRADE_STAT_META[stat];
     const level = ctx.engine.state.globalUpgrades[stat];
-    return `<article class="growth-stat-row"><i>${meta.glyph}</i><div><b>공용 ${meta.label} <em>Lv.${level}/99</em></b><small>${meta.description} · 현재 ${formatStatBonus(stat, ctx.engine.globalUpgradeBonus(stat))} · ${milestoneNote(stat, level, meta.globalPerLevel)}</small></div><span>${batchButtons("global", stat)}</span></article>`;
+    const note = `${meta.description} · 현재 ${formatStatBonus(stat, ctx.engine.globalUpgradeBonus(stat))} · ${milestoneNote(stat, level, meta.globalPerLevel)}`;
+    return `<article class="growth-stat-row"><i>${meta.glyph}</i><div><b>공용 ${meta.label} <em>Lv.${level}/99</em></b><small title="${escapeHtml(note)}">${note}</small></div><span>${batchButtons("global", stat)}</span></article>`;
   }).join("");
   const elementRows = UPGRADE_STAT_ORDER.map((stat) => {
     const meta = UPGRADE_STAT_META[stat];
     const level = ctx.engine.state.elementUpgrades[ctx.growthElement][stat];
-    return `<article class="growth-stat-row is-element" style="--element:${ELEMENT_STYLES[ctx.growthElement].color}"><i>${meta.glyph}</i><div><b>${ctx.growthElement}행 ${meta.label} <em>Lv.${level}/99</em></b><small>현재 ${formatStatBonus(stat, ctx.engine.elementUpgradeBonus(ctx.growthElement, stat))} · 단계당 ${formatStatBonus(stat, meta.elementPerLevel)} · ${milestoneNote(stat, level, meta.elementPerLevel)}</small></div><span>${batchButtons("element", stat)}</span></article>`;
+    const note = `현재 ${formatStatBonus(stat, ctx.engine.elementUpgradeBonus(ctx.growthElement, stat))} · 단계당 ${formatStatBonus(stat, meta.elementPerLevel)} · ${milestoneNote(stat, level, meta.elementPerLevel)}`;
+    return `<article class="growth-stat-row is-element" style="--element:${ELEMENT_STYLES[ctx.growthElement].color}"><i>${meta.glyph}</i><div><b>${ctx.growthElement}행 ${meta.label} <em>Lv.${level}/99</em></b><small title="${escapeHtml(note)}">${note}</small></div><span>${batchButtons("element", stat)}</span></article>`;
   }).join("");
   const traitRows = ELEMENT_TRAITS[ctx.growthElement].map((trait, traitIndex) => {
     const level = ctx.engine.elementTraitLevel(ctx.growthElement, traitIndex);
@@ -257,10 +262,20 @@ export function wireGrowth2(): void {
     const towers = quote.ids.map((id) => ctx.engine.state.inventoryTowers.find((tower) => tower.id === id)).filter((tower): tower is Tower => Boolean(tower));
     const towerLabel = towers.map((tower) => `${tower.char}(${tower.wuxing} ${towerProgressionLabel(tower)})`).join(" · ");
     const gainLabel = essenceGainsLabel(quote.gains);
-    if (!window.confirm(`${towers.length}기를 한 번에 분해합니다.\n${towerLabel}\n획득: ${gainLabel}`)) return;
-    const result = ctx.engine.dismantleTowers(quote.ids, dismantleOptions());
-    if (result.ok) dismantleSelection.clear();
-    handleAction(result);
+    // [S/P-08] 브라우저 기본 확인 창 → 게임 서책 확인 창.
+    openConfirm({
+      eyebrow: "강화 제련소",
+      title: `${towers.length}기를 한 번에 분해할까요?`,
+      lines: [
+        `<b>${escapeHtml(towerLabel)}</b>`,
+        `획득 ${escapeHtml(gainLabel || "없음")} · 되돌릴 수 없습니다.`
+      ],
+      confirmLabel: `${towers.length}기 분해`
+    }, () => {
+      const result = ctx.engine.dismantleTowers(quote.ids, dismantleOptions());
+      if (result.ok) dismantleSelection.clear();
+      handleAction(result);
+    });
   });
   must<HTMLElement>("#growth-element-tabs").addEventListener("click", (event) => {
     const wuxing = (event.target as HTMLElement).closest<HTMLButtonElement>("[data-growth-element]")?.dataset.growthElement as Wuxing | undefined;
@@ -286,12 +301,29 @@ export function wireGrowth2(): void {
       : scope === "element" && stat
         ? ctx.engine.quoteElementUpgrade(ctx.growthElement, stat, amount)
         : ctx.engine.quoteElementTraitUpgrade(ctx.growthElement, traitIndex, amount);
-    if (amount === "max" && !window.confirm(`실제 누적 비용 ${quote.cost}을 사용해 ${quote.levels}단계 강화할까요? (${quote.fromLevel} → ${quote.toLevel})`)) return;
-    const result = scope === "global" && stat
-      ? ctx.engine.upgradeGlobal(stat, amount)
-      : scope === "element" && stat
-        ? ctx.engine.upgradeElement(ctx.growthElement, stat, amount)
-        : ctx.engine.upgradeElementTrait(ctx.growthElement, traitIndex, amount);
-    handleAction(result);
+    const apply = (): void => {
+      const result = scope === "global" && stat
+        ? ctx.engine.upgradeGlobal(stat, amount)
+        : scope === "element" && stat
+          ? ctx.engine.upgradeElement(ctx.growthElement, stat, amount)
+          : ctx.engine.upgradeElementTrait(ctx.growthElement, traitIndex, amount);
+      handleAction(result);
+    };
+    // [S/P-08] [최대]는 가진 자원을 통째로 쓴다 — 확인 1회를 서책 창으로 세운다.
+    if (amount !== "max") {
+      apply();
+      return;
+    }
+    const currency = scope === "global" ? "엽전" : `${ctx.growthElement} 문기`;
+    openConfirm({
+      eyebrow: "강화 제련소",
+      title: `${quote.levels}단계를 한 번에 올릴까요?`,
+      lines: [
+        `Lv.${quote.fromLevel} → <b>Lv.${quote.toLevel}</b>`,
+        `누적 비용 <b>${quote.cost} ${escapeHtml(currency)}</b>`
+      ],
+      confirmLabel: `+${quote.levels}단계 강화`,
+      tone: "neutral"
+    }, apply);
   });
 }

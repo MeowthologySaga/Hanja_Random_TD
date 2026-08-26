@@ -89,6 +89,9 @@ export const abilityGuideDialog = must<HTMLDialogElement>("#ability-guide-dialog
 
 export const casualFusionConfirmDialog = must<HTMLDialogElement>("#casual-fusion-confirm-dialog");
 
+/** [S/P-08] 되돌릴 수 없는 조작 공용 확인 창. 배선은 ui/dialogs/confirm.ts. */
+export const confirmDialog = must<HTMLDialogElement>("#confirm-dialog");
+
 export const codexDialog = must<HTMLDialogElement>("#codex-dialog");
 
 export const summonReveal = must<HTMLElement>("#summon-reveal");

@@ -62,7 +62,14 @@ function summonCardMarkup(options: {
   hotkey?: string;
   wide?: boolean;
   testId?: string;
-  title: string;
+  /**
+   * 카드 겉면(이름·효과·가격) 뒤에 붙는 설명 조각들. 빈 문자열은 걸러진다.
+   *
+   * [S/P-19] 전에는 이 조각들이 title 에만 실리고 aria-label 은 겉면 셋만
+   * 읽었다. 별 확률·짝 보정 같은 "사는 근거"가 눈으로만 닿고 소리로는
+   * 닿지 않았다는 뜻이다. 이제 한 문장을 만들어 둘 다 같은 말을 한다.
+   */
+  details: readonly string[];
   /** 부적 무료권 등 카드 우상단 배지. */
   badge?: string;
 }): string {
@@ -72,9 +79,10 @@ function summonCardMarkup(options: {
   const testId = options.testId ? ` data-testid="${options.testId}"` : "";
   const hotkey = options.hotkey ? `<span class="summon-card-key">${options.hotkey}</span>` : "";
   const badge = options.badge ? `<mark class="summon-card-badge">${escapeHtml(options.badge)}</mark>` : "";
+  const spoken = escapeHtml([options.label, options.effect, options.price, ...options.details].filter((part) => part !== "").join(" · "));
   return `<button type="button" class="${classes.join(" ")}" data-summon-product="${options.key}"${testId}`
     + ` style="--product:${options.tint};--product-icon:url('${SUMMON_ICON_BASE}${options.icon}.png')"`
-    + ` title="${escapeHtml(options.title)}" aria-label="${escapeHtml(`${options.label} · ${options.effect} · ${options.price}`)}"`
+    + ` title="${spoken}" aria-label="${spoken}"`
     + `${options.disabled ? " disabled" : ""}>`
     + `<i class="summon-card-icon" aria-hidden="true"></i>`
     + `<b>${escapeHtml(options.label)}</b><small>${escapeHtml(options.effect)}</small>`
@@ -135,17 +143,19 @@ export function renderSummonShop(): void {
       hotkey: product.intent === "balanced" ? "1" : undefined,
       testId: product.intent === "balanced" ? "summon-button" : undefined,
       badge: freeToken ? `부적 ×${talismanTokens}` : undefined,
-      title: `${product.label} · ${product.effect} · ${price}엽전`
-        + (freeToken ? ` · 부적 무료권 ${talismanTokens}장 — 다음 1회 무료` : "")
+      details: [
+        freeToken ? `부적 무료권 ${talismanTokens}장 — 다음 1회 무료` : "",
         // 정찰료는 정액이 아니라 기본가 배수다. 후반 기본가 24 에서 "기본 24 + 목적 12"
         // 처럼 굳은 덧셈으로 읽히면 값이 왜 41·65 인지 설명이 끊긴다. 표기는 "×N" 이 아니라
         // "N배" 로 적는다 — 탐색 카드의 효과 문구가 이미 "새 한자 ×3.4"(가중 배수)라서
         // 나란히 놓이면 두 곱셈이 같은 종류로 읽힌다.
-        + (product.intent === "balanced" ? "" : ` (기본 ${base}의 ${SUMMON_COST_MULTIPLIER[product.intent]}배)`)
-        + (banded && product.effect !== product.bandLabel ? ` · ${product.bandLabel}` : "")
-        + (banded && product.odds !== "" ? ` · 확률 ${product.odds}` : "")
-        + (banded ? ` · 낮은 별이 더 흔합니다 · ${PAIR_BOOST_NOTE}` : "")
-        + (product.band !== null && product.band.min > 1 ? ` · ${STROKE_STAR_NOTE}` : "")
+        product.intent === "balanced" ? "" : `기본 ${base}의 ${SUMMON_COST_MULTIPLIER[product.intent]}배`,
+        banded && product.effect !== product.bandLabel ? product.bandLabel : "",
+        banded && product.odds !== "" ? `확률 ${product.odds}` : "",
+        banded ? "낮은 별이 더 흔합니다" : "",
+        banded ? PAIR_BOOST_NOTE : "",
+        product.band !== null && product.band.min > 1 ? STROKE_STAR_NOTE : ""
+      ]
     });
   });
   // 성어 기원 — 부족 글자가 없으면(추적 없음/완성) 비활성 + 사유를 효과 줄에 적는다.
@@ -155,19 +165,23 @@ export function renderSummonShop(): void {
   if (state.mode === "casual") cards.push(summonCardMarkup({
     key: "idiom-wish",
     label: "성어 기원",
-    effect: wish.reason === null
-      ? `부족 ${wishChars.slice(0, 4).join("·")}${wishChars.length > 4 ? "…" : ""} · 1★`
-      : wish.reason,
+    // [S/신규 문구] 부제가 `부족 天·地·玄·黃 · 1★` 였다. 글자를 늘어놓기만 해서
+    // "무엇이 부족한지"도 "그게 확정으로 나온다"도 툴팁을 열어야 알았고,
+    // 좁은 카드(줄바꿈 없음)에서 목록이 잘리기까지 했다. 하는 일을 그대로 적고
+    // 어떤 글자인지는 툴팁·접근명에 그대로 남긴다.
+    effect: wish.reason === null ? "부족 글자 확정 · 1★" : wish.reason,
     tint: "#96324a",
     icon: "v4/shop/shop-lineage-scroll-v1",
     price: `${wish.cost} 엽전`,
     disabled: !active || wish.reason !== null || state.gold < wish.cost,
     affordable: !active || wish.reason !== null || state.gold >= wish.cost,
     testId: "idiom-wish-button",
-    title: "성어 기원 · 추적 성어의 부족 글자를 부릅니다(1★)"
-      + ` · ${wish.cost}엽전 (기본 ${base} × ${IDIOM_WISH_COST_MULTIPLIER})`
-      + " · 부적에 기원을 적어 올리는 소환 — 전투력이 아니라 성어 완성을 삽니다"
-      + (wish.reason === null ? ` · 부족 ${wishChars.join("·")}` : ` · ${wish.reason}`)
+    details: [
+      "추적 성어의 부족 글자만 나옵니다",
+      `기본 ${base} × ${IDIOM_WISH_COST_MULTIPLIER}`,
+      "부적에 기원을 적어 올리는 소환 — 전투력이 아니라 성어 완성을 삽니다",
+      wish.reason === null ? `부족 ${wishChars.join("·")}` : wish.reason
+    ]
   }));
   cards.push(summonCardMarkup({
     key: "multi",
@@ -185,10 +199,9 @@ export function renderSummonShop(): void {
     // 빈칸 + 전용 행으로 한 행을 통째로 낭비해 상점 세로 넘침의 주범이었다.
     wide: cards.length % 2 === 0,
     testId: "multi-summon-button",
-    title: multiUnlocked
-      ? `10연 소환 · ${tenCost}엽전 · 할증 없음`
-        + (multiBand === null ? "" : ` · 주로 ${multiBand.min}~${multiBand.max}★ · ${multiBand.max}★ 1기 보장`)
-      : "10웨이브를 지키면 열립니다"
+    details: multiUnlocked
+      ? ["할증 없음", multiBand === null ? "" : `주로 ${multiBand.min}~${multiBand.max}★ · ${multiBand.max}★ 1기 보장`]
+      : ["10웨이브를 지키면 열립니다"]
   }));
   must<HTMLElement>("#summon-shop").innerHTML = cards.join("");
 }

@@ -103,7 +103,7 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
         <div class="stage-chip stage-chip--chapter" title="10웨이브마다 우두머리가 오는 장(章) 진행"><span>장</span><strong id="stage-chapter">1 / 10</strong></div>
         <div class="stage-chip stage-chip--phase"><i id="phase-dot"></i><strong id="stage-phase">준비 전</strong></div>
         <button id="early-button" class="early-start" type="button" data-testid="early-wave">시작 보너스</button>
-        <div id="enemy-limit-chip" class="stage-chip"><span>적 한계</span><strong id="stage-enemies">0 / ${MAX_ENEMIES}</strong></div>
+        <div id="enemy-limit-chip" class="stage-chip" title="지금 전장에 남은 적 수 / 적 상한 ${MAX_ENEMIES}체 — 상한에 닿으면 수비 실패입니다"><span>적 한계</span><strong id="stage-enemies">0 / ${MAX_ENEMIES}</strong></div>
       </div>
       <div id="active-idioms" class="active-idioms" aria-label="발동 중 사자성어" aria-live="polite"></div>
       <div class="wave-progress" aria-hidden="true"><i id="wave-progress-fill"></i></div>
@@ -163,7 +163,12 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
 
       <section class="resource-grid" aria-label="현재 자원">
         <div><span>엽전 <em id="interest-preview">이자 +2</em></span><strong id="gold-value">${GAME_CONFIG.startingGold}</strong></div>
-        <div><span>적 한계</span><strong id="enemy-cap-value">${MAX_ENEMIES}체</strong></div>
+        <!--
+          [S/P-11] 여기와 전장 상단 칩이 둘 다 "적 한계"였다. 칩은 "5 / 80"(현재/상한),
+          이 칸은 "80체"(상한만) — 같은 낱말이 한 화면에서 두 뜻으로 읽혔다.
+          한 낱말 한 뜻으로 가른다: 칩이 「적 한계」(차오르는 눈금), 이 칸이 「적 상한」(그 눈금의 끝).
+        -->
+        <div title="이 판이 버티는 적 수의 끝 — 전장 상단 [적 한계] 눈금이 이 수에 닿으면 수비 실패입니다"><span>적 상한</span><strong id="enemy-cap-value">${MAX_ENEMIES}체</strong></div>
         <div title="전장에 배치된 자령 수 / 열린 진의 칸 수"><span>배치</span><strong id="tower-count-value">0 / 16</strong></div>
         <div title="이번 런에 발동한 성어 수 / 이번 런 성어 목표 수"><span>성어 발동</span><strong id="goal-count-value">0 / 5</strong></div>
       </section>
@@ -413,7 +418,8 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
         <button id="concentration-tab" type="button" data-panel-tab="concentration" role="tab" aria-selected="false">농축</button>
         <button id="growth-tab" type="button" data-panel-tab="growth" role="tab" aria-selected="false">강화</button>
         <i class="tab-divider" aria-hidden="true"></i>
-        <button id="goal-tab" type="button" data-panel-tab="goal" role="tab" aria-selected="false">목표 <small id="goal-tab-progress">0%</small></button>
+        <!-- [S/P-09] 배지는 「준비도」 — 카드의 「N/4자 보유」와 다른 셈이다. 문구는 goal.ts 가 채운다. -->
+        <button id="goal-tab" type="button" data-panel-tab="goal" role="tab" aria-selected="false">목표 <small id="goal-tab-progress">준비 0%</small></button>
         <button id="idiom-tab" type="button" data-panel-tab="idiom" role="tab" aria-selected="false">성어 <small id="idiom-tab-count">0/5</small></button>
       </nav>
 
@@ -480,6 +486,28 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
         <div class="p00-actions">
           <button id="tutorial-quit-cancel" type="button" data-testid="tutorial-quit-cancel">계속 수련하기</button>
           <button id="tutorial-quit-confirm" type="button" data-testid="tutorial-quit-confirm">그만두기</button>
+        </div>
+      </div>
+    </dialog>
+
+    <!--
+      [S/P-08] 공용 확인 창.
+
+      되돌릴 수 없는 조작(분해·최대 강화)이 브라우저 기본 window.confirm 을 쓰고
+      있었다. 게임 어휘와 따로 놀 뿐 아니라, OS 창이라 자동화가 열지도 읽지도
+      못해 e2e 로 지킬 수 없었다. 수련장 그만두기 창(p00 서책)과 같은 틀을
+      빌려 한 벌로 세운다 — 부르는 쪽은 dialogs/confirm.ts 의 openConfirm 뿐이다.
+      승급 확인(#casual-fusion-confirm-dialog)은 재료 격자를 그리는 별개 창이라
+      그대로 둔다.
+    -->
+    <dialog id="confirm-dialog" class="p00-dialog confirm-dialog" aria-labelledby="confirm-dialog-title" data-testid="confirm-dialog">
+      <div class="p00-frame confirm-frame">
+        <p id="confirm-dialog-eyebrow" class="s00-mode-label">확인</p>
+        <h3 id="confirm-dialog-title">진행할까요?</h3>
+        <div id="confirm-dialog-body" class="confirm-dialog-body"></div>
+        <div class="p00-actions">
+          <button id="confirm-dialog-cancel" type="button" data-testid="confirm-dialog-cancel">취소</button>
+          <button id="confirm-dialog-accept" type="button" data-testid="confirm-dialog-accept">확인</button>
         </div>
       </div>
     </dialog>
@@ -918,7 +946,12 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
       </div>
       <div class="codex-toolbar">
         <div class="codex-mode-tabs" role="tablist" aria-label="도감 분류">
-          <button type="button" class="is-active" data-codex-mode="hanzi" role="tab" aria-selected="true">자령 도감 <small>${CHEONJAMUN_JARYEONG_DEX_META.total}+</small></button>
+          <!--
+            [S/P-23] 한 화면이 같은 수를 세 가지로 적었다 — 갈피 "1000+", 오행 거르개
+            "전체 1001", 요약 "1,001/1,001". 도감 안의 모든 개수는 이제 한 서식
+            (천 단위 쉼표)에 실제 실린 수를 적는다. 갈피 배지도 렌더가 채운다.
+          -->
+          <button type="button" class="is-active" data-codex-mode="hanzi" role="tab" aria-selected="true">자령 도감 <small id="codex-hanzi-count">${CHEONJAMUN_JARYEONG_DEX_META.total.toLocaleString("ko-KR")}</small></button>
           <button type="button" data-codex-mode="recipes" role="tab" aria-selected="false">조합표</button>
           <button type="button" data-codex-mode="idioms" role="tab" aria-selected="false">사자성어</button>
         </div>

@@ -1,0 +1,223 @@
+/* ══════════════════════════════════════════════════════════════════
+   [트랙 S] 플레이테스트 감사 — 중·경 결함 수술
+   ══════════════════════════════════════════════════════════════════
+
+   앞선 절들이 자리와 색을 다 정해 놓았으므로, 이 절은 감사에서 실측으로
+   잡힌 자리만 좁게 덮는다. 새 규범을 세우지 않는다. */
+
+/* ── S/P-08. 공용 확인 창 — 서책 틀 재사용 ───────────────────────
+   되돌릴 수 없는 조작 넷이 브라우저 기본 확인 창을 쓰고 있었다. 수련장
+   그만두기 창과 같은 p00 서책 틀을 빌리되, 본문 줄 수가 들쭉날쭉하므로
+   (분해 목록은 12기까지 늘어난다) 본문만 접어 넣는다. */
+
+.confirm-frame {
+  /* 서책 그림은 520×310 고정이다 — 본문이 길어도 틀이 늘어나지 않게 한다.
+     종이 면적은 그림 안쪽이므로 위아래 여백은 P00 기본값을 그대로 쓴다. */
+  gap: 8px;
+  padding: 34px 48px 40px;
+}
+
+.confirm-frame h3 {
+  max-width: 400px;
+  line-height: 1.3;
+  text-wrap: balance;
+}
+
+.confirm-dialog-body {
+  display: grid;
+  gap: 5px;
+  width: 100%;
+  max-width: 396px;
+  /* 분해 목록은 12기까지 늘어난다 — 틀을 밀어내는 대신 본문만 접는다. */
+  max-height: 104px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+/* 두루마리 종이는 밝다 — 100-readability.css 가 정한 먹빛을 그대로 잇는다.
+   (앞서 어두운 창 기준의 금빛을 쓰다가 종이 위에서 글자가 실종됐다.) */
+.confirm-dialog-body p {
+  margin: 0;
+  color: #5c4a2e;
+  font-size: 12px;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+
+.confirm-dialog-body b {
+  color: #2e2212;
+  font-weight: 800;
+}
+
+#confirm-dialog-cancel {
+  color: #d8c9a8;
+  background:
+    url("/assets/ui/main-menu-b/ui/button-secondary-default-v1.png") center / 100% 100% no-repeat,
+    #26221c;
+  filter: grayscale(0.35);
+}
+
+#confirm-dialog-cancel:hover { filter: grayscale(0) brightness(1.08); }
+
+#confirm-dialog-accept {
+  color: #ffeec4;
+  background:
+    url("/assets/ui/main-menu-b/ui/button-secondary-default-v1.png") center / 100% 100% no-repeat,
+    #3a2a16;
+}
+
+/* 되돌릴 수 없는 조작은 붉은 인장으로 한 번 더 눈에 걸리게 한다. */
+#confirm-dialog-accept.is-danger {
+  background:
+    url("/assets/ui/main-menu-b/ui/button-secondary-default-v1.png") center / 100% 100% no-repeat,
+    #4a1e14;
+}
+
+#confirm-dialog-accept:hover { filter: brightness(1.12); }
+
+/* ── S/P-14. 합성 탭 빈 상태의 「다음 한 걸음」 ───────────────────
+   26웨이브까지 "가능한 합성 0 · 재료를 모으는 중"만 있던 자리다. 목표
+   서책의 부품 트리(.goal-tree)를 그대로 빌려 오므로 여기서는 그 트리를
+   담을 칸과 머리글·버튼만 정한다. */
+
+/* 빈 상자는 flex: 1 이라 남은 높이를 통째로 먹었다(실측 289px). 아래에
+   할 말이 붙으면 그 자리를 양보한다 — 사실 한 줄에 289px 은 과하다. */
+.empty-evolution:has(+ .evolution-next-step) {
+  flex: 0 0 auto;
+  min-height: 0;
+  padding: 16px 12px;
+}
+
+.evolution-next-step {
+  display: grid;
+  /* 이 패널에는 격자 자식을 둘째 칸으로 보내는 규칙이 살아 있어, 머리글과
+     본문이 한 줄에 나란히 섰다(실측: 181px + 153px 두 칸). 이 칸의 차례는
+     세로이므로 자식마다 첫 칸을 못 박는다. */
+  grid-auto-flow: row;
+  grid-template-columns: minmax(0, 1fr);
+  justify-items: stretch;
+  gap: 6px;
+  margin-top: 8px;
+  padding: 9px 10px;
+  border-radius: 8px;
+  box-shadow: inset 0 0 0 1px rgba(122, 90, 42, 0.26);
+  background: rgba(238, 227, 200, 0.5);
+}
+
+.evolution-next-step > * {
+  grid-column: 1;
+}
+
+.evolution-next-step h4 {
+  margin: 0;
+  color: #4a3a20;
+  font-size: 12px;
+  font-weight: 900;
+  line-height: 1.35;
+}
+
+.evolution-next-step h4 b { color: #7a2f1c; }
+
+.evolution-next-step p {
+  margin: 0;
+  color: #6d5a3c;
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.evolution-next-step p b {
+  color: #3c2f18;
+  font-weight: 800;
+}
+
+.evolution-next-step .goal-tree {
+  max-height: 118px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.evolution-next-step > button {
+  justify-self: start;
+  min-height: 28px;
+  padding: 0 11px;
+  border: 0;
+  border-radius: 6px;
+  color: #f4e6c4;
+  background: #6b4a22;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.evolution-next-step > button:hover { filter: brightness(1.12); }
+
+/* ── S/P-09. 목표 갈피 배지 「준비 N%」 ──────────────────────────
+   배지가 숫자만 적던 때는 37px 갈피에 넉넉했지만, 「준비」를 붙이면
+   58px 이 되어 왼쪽 갈피(강화) 위로 23px 올라탄다. 갈피 안에서 두 줄로
+   접는다 — 낱말 중간은 끊지 않는다(한국어 단어 중간 줄바꿈 금지 규범). */
+
+#goal-tab-progress {
+  display: block;
+  max-width: 100%;
+  line-height: 1.12;
+  white-space: normal;
+  word-break: keep-all;
+}
+
+/* ── S/P-25. 강화 설명 한 줄 잘림 ────────────────────────────────
+   실측(1280×720, 강화 프레임): `.growth-stat-row > div small` 은 자리
+   242px 인데 내용이 385~494px 였다 — 127~252px 가 말줄임으로 잘렸다.
+   잘린 자리가 하필 "이정표 10단계마다 +5.0% · 다음까지 10단계" 였고,
+   버튼에 붙는 里 배지가 가리키는 문장이 바로 그 대목이다. 배지는 있는데
+   설명이 없어서 里 가 무슨 뜻인지 화면 어디서도 읽을 수 없었다.
+   한 줄을 두 줄로 편다(행 높이 +16px, 목록은 원래 스크롤 상자다). */
+
+.growth-stat-row > div small {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  /* 가장 긴 줄(공격 속도, 494px)이 두 줄에 1px 모자랐다 — 셋까지 연다.
+     대부분의 행은 두 줄에서 끝나므로 실제로 세 줄이 되는 행은 하나뿐이다. */
+  -webkit-line-clamp: 3;
+  line-height: 1.3;
+  white-space: normal;
+  /* 세 줄로도 못 담는 극단은 여전히 말줄임이다 — 전문은 title 이 받는다. */
+  text-overflow: ellipsis;
+}
+
+/* ── S/P-21. 농축 「② 재료 지불」 우측 여백 0 ────────────────────
+   실측: `.concentration-payment .subheading` 의 오른쪽 부제가 상자
+   오른쪽 테두리와 정확히 같은 x(812px)에서 끝났다 — 글자가 테두리에
+   맞닿아 잘린 것처럼 읽힌다. 세로도 1px 넘쳤다. 좌우 여백을 세운다. */
+
+.concentration-payment > .subheading {
+  padding: 2px 8px;
+}
+
+.concentration-payment > .subheading small {
+  line-height: 1.35;
+}
+
+/* ── S/P-24. 개발자 모드 바닥 줄 — 시드가 통째로 밀려났다 ─────────
+   바닥 줄의 겉 <span> 하나가 상태 문구와 시드를 함께 담고, 그 span 이
+   통째로 말줄임이었다. 상태 문구가 자리(354px)보다 길면(실측 380px)
+   뒤에 붙은 시드가 통째로 잘려 나갔다 — 버그 신고에 붙일 시드를 개발자
+   모드에서 읽을 수 없었다는 뜻이다. 줄어들 쪽을 문구로 못 박는다. */
+
+.panel-footer > span:last-child {
+  display: flex;
+  align-items: baseline;
+  min-width: 0;
+}
+
+.panel-footer > span:last-child > #message-value {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.game-shell[data-dev-mode="1"] .footer-seed {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
