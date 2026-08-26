@@ -7666,3 +7666,76 @@ span.codex-jaryeong-category { color: #4a3f30 !important; }
 @media (prefers-reduced-motion: reduce) {
   .summon-result-card::before { opacity: 0.7; }
 }
+
+/* ══════════════════════════════════════════════════════════════════
+   83. S00 2D 폴백(`?menu3d=0`) 3레이어 배경
+   출처: handoff/to-claude/s00-layered-bg-pack-v1/assets/
+   설치: public/assets/ui/s00-layers-v1/
+
+   3D 가 기본이므로 이 절은 WebGL 이 없거나 `?menu3d=0` 일 때만 쓰인다.
+   한 장짜리 배경을 책상(-8) / 책(0) / 전경(+24) 으로 갈라 자령(+16)이
+   책과 전경 사이에 서게 만든다. 다섯 먹 고리는 책 레이어 RGB 안에 있어
+   좌표가 그대로다. 세 장이 모두 도착해야 `.is-ready` 가 붙는다.
+   ══════════════════════════════════════════════════════════════════ */
+
+.s00-parallax {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  opacity: 0;
+  pointer-events: none;
+  user-select: none;
+}
+
+.s00-parallax.is-ready { opacity: 1; }
+
+/* 세 장이 다 온 뒤에만 한 장짜리 배경을 끈다. */
+.s00-parallax.is-ready ~ .s00-env--legacy,
+.s00-stage:has(.s00-parallax.is-ready) .s00-env--legacy { opacity: 0; }
+
+/* 책상: ±8px 이동에도 빈 가장자리가 없도록 106% overscan 후 중앙 크롭. */
+.s00-env--desk {
+  z-index: 0;
+  width: 106%;
+  height: 106%;
+  left: -3%;
+  top: -3%;
+  object-fit: cover;
+  transform: translate3d(calc(var(--plx) * -8px), calc(var(--ply) * -5px), 0);
+  will-change: transform;
+}
+
+/* 책: 시차 0. 고리 좌표의 기준면이다. */
+.s00-env--book {
+  z-index: 10;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  left: 0;
+  top: 0;
+  object-fit: fill;
+  transform: none;
+}
+
+/* 전경 소품: 자령(+16)보다 더 앞으로. 이동분만큼 overscan 해 좌우가 비지 않게. */
+.s00-env--foreground {
+  z-index: 30;
+  width: 106%;
+  height: 106%;
+  left: -3%;
+  top: -3%;
+  object-fit: fill;
+  transform: translate3d(calc(var(--plx) * 24px), calc(var(--ply) * 15px), 0);
+  will-change: transform;
+}
+
+/* 자령 무리는 책과 전경 사이에 선다. */
+.s00-stage .s00-showcase { z-index: 20; }
+
+@media (prefers-reduced-motion: reduce) {
+  .s00-env--desk,
+  .s00-env--foreground { transform: none; }
+}
+
+/* 3D 모드에서는 61절이 `.s00-env` 를 통째로 숨기지만, 새 묶음 상자도 함께 끈다. */
+.s00-stage.is-3d .s00-parallax { display: none; }

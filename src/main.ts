@@ -443,7 +443,12 @@ app.innerHTML = `
 
     <section id="title-overlay" class="modal-layer modal-layer--visible" aria-labelledby="title-heading">
       <div class="s00-stage" data-screen-id="S00">
-        <img class="s00-env" src="${import.meta.env.BASE_URL}assets/ui/main-menu-b/background/S00-living-codex-empty-1280x720-v1.png" alt="" aria-hidden="true" />
+        <img class="s00-env s00-env--legacy" src="${import.meta.env.BASE_URL}assets/ui/main-menu-b/background/S00-living-codex-empty-1280x720-v1.png" alt="" aria-hidden="true" />
+        <div id="s00-parallax" class="s00-parallax" aria-hidden="true">
+          <img id="s00-desk" class="s00-env s00-env--desk" src="${import.meta.env.BASE_URL}assets/ui/s00-layers-v1/S00-bg-desk-v2.png" alt="" aria-hidden="true" />
+          <img id="s00-book" class="s00-env s00-env--book" src="${import.meta.env.BASE_URL}assets/ui/s00-layers-v1/S00-bg-book-v2.png" alt="" aria-hidden="true" />
+          <img id="s00-foreground" class="s00-env s00-env--foreground" src="${import.meta.env.BASE_URL}assets/ui/s00-layers-v1/S00-fg-props-v2.png" alt="" aria-hidden="true" />
+        </div>
 
         <div class="s00-title-plaque">
           <h2 id="title-heading">천자진</h2>
@@ -706,6 +711,40 @@ if (!canvasContext) throw new Error("Canvas 2D context is unavailable.");
 const context: CanvasRenderingContext2D = canvasContext;
 const seedInput = must<HTMLInputElement>("#seed-input");
 const titleOverlay = must<HTMLElement>("#title-overlay");
+/**
+ * S00 2D 폴백(`?menu3d=0`)의 3레이어 배경.
+ *
+ * 출처: handoff/to-claude/s00-layered-bg-pack-v1/assets/
+ * 설치: public/assets/ui/s00-layers-v1/
+ *
+ * 세 장이 전부 도착했을 때만 기존 단일 배경을 끈다. 한 장이라도 실패하면
+ * 합성이 어긋난 채 보이느니 원래 한 장짜리 배경을 그대로 쓴다. 다섯 먹 고리는
+ * 책 레이어 RGB 에 그대로 있으므로 좌표가 바뀌지 않는다.
+ */
+(function initS00ParallaxLayers(): void {
+  const group = document.querySelector<HTMLElement>("#s00-parallax");
+  if (!group) return;
+  const layers = Array.from(group.querySelectorAll<HTMLImageElement>("img"));
+  let settled = 0;
+  let failed = false;
+  const settle = (ok: boolean, image: HTMLImageElement): void => {
+    if (!ok) {
+      failed = true;
+      console.warn(`[s00-layers] 레이어 로드 실패, 단일 배경 유지: ${image.src.split("/").pop() ?? ""}`);
+    }
+    settled += 1;
+    if (settled === layers.length && !failed) group.classList.add("is-ready");
+  };
+  for (const image of layers) {
+    if (image.complete) {
+      settle(image.naturalWidth > 0, image);
+      continue;
+    }
+    image.addEventListener("load", () => settle(true, image), { once: true });
+    image.addEventListener("error", () => settle(false, image), { once: true });
+  }
+})();
+
 const endOverlay = must<HTMLElement>("#end-overlay");
 const toast = must<HTMLElement>("#toast");
 const bossBanner = must<HTMLElement>("#boss-banner");
