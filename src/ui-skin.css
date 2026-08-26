@@ -8663,3 +8663,218 @@ span.codex-jaryeong-category { color: #4a3f30 !important; }
   .focus-frame-body .growth-element-tabs button b { font-size: 18px !important; }
   .focus-frame-body .growth-element-tabs button :is(span, small) { font-size: 9px !important; }
 }
+
+/* ══════════════════════════════════════════════════════════════════
+   90. S07 농축 공방 집중 프레임
+   에셋: public/assets/ui/v4/focus-frames/focus-frame-workshop-v1.png
+        (1500x1304 원본 -> 750x652 고정 표시 = 정확히 0.5배)
+   근거: spec-round4-focus-frames.md B절 S07
+
+   여기서는 그림의 세로 구분선(x약200px)과 스펙의 "① 대상 좌 200px"이
+   일치한다. 89절과 같은 어휘로 좌우 작업대에 불투명 한지를 깔되,
+   경계가 그려진 선 위에 오도록 좌열 폭을 맞췄다.
+   ══════════════════════════════════════════════════════════════════ */
+
+.focus-frame--workshop {
+  top: 56px;
+  right: 16px;
+  width: 750px;
+  height: 652px;
+  background-image: url("/assets/ui/v4/focus-frames/focus-frame-workshop-v1.png");
+}
+
+/* 공방 그림은 제목띠가 좌우로 더 물려 있다(원본 x 215~1290) */
+.focus-frame--workshop .focus-frame-head {
+  top: 7.4%;
+  left: 14.3%;
+  right: 14%;
+  height: 8%;
+}
+
+/* 본문 한지: 원본 x 90~1415 · y 255~1190 */
+.focus-frame--workshop .focus-frame-body {
+  top: 19.5%;
+  right: 5.6%;
+  bottom: 8.6%;
+  left: 6%;
+}
+
+.focus-frame-body.concentration-workbench {
+  width: auto;
+  height: auto;
+  flex-direction: row;
+  gap: 0;
+  padding: 0;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: none !important;
+  box-shadow: none !important;
+  clip-path: none !important;
+}
+
+.focus-frame-body .concentration-layout {
+  display: grid !important;
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+  grid-template-columns: 200px minmax(0, 1fr) !important;
+  gap: 12px;
+}
+
+.focus-frame-body .concentration-layout > aside,
+.focus-frame-body .concentration-detail {
+  min-width: 0;
+  min-height: 0;
+  padding: 10px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  border: 0 !important;
+  border-radius: 6px !important;
+  background: linear-gradient(180deg, #f4ecd6 0%, #ece0c2 100%) !important;
+  box-shadow: inset 0 0 0 1px rgba(122, 90, 42, 0.26) !important;
+}
+
+.focus-frame-body .concentration-layout > aside {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.focus-frame-body .concentration-target-list {
+  min-height: 0;
+  flex: 1 1 auto;
+}
+
+/* ── 90-A. 단계 ①②③ 을 구조로 읽히게 ────────────────────── */
+
+.focus-frame-body .concentration-workbench .subheading,
+.focus-frame-body .concentration-layout .subheading {
+  flex: 0 0 auto;
+  min-height: 0;
+  align-items: baseline;
+  white-space: normal;
+}
+
+.focus-frame-body .concentration-layout .subheading b {
+  flex: 0 0 auto;
+  color: #7a2f1c;
+  font-size: 14px !important;
+  letter-spacing: 0.01em;
+}
+
+.focus-frame-body .concentration-layout .subheading small {
+  overflow: visible;
+  font-size: 11.5px !important;
+  line-height: 1.25;
+  text-align: right;
+  text-overflow: clip;
+}
+
+/* ── 90-B. 대상 카드 · 분기 카드 · 비교표를 프레임 크기로 ── */
+
+.focus-frame-body .concentration-target-list > button {
+  min-height: 56px;
+  grid-template-columns: 38px minmax(0, 1fr) !important;
+}
+
+.focus-frame-body .concentration-target-list > button b {
+  width: 38px;
+  height: 38px;
+  font-size: 22px !important;
+}
+
+.focus-frame-body .concentration-target-list > button strong { font-size: 12px !important; }
+.focus-frame-body .concentration-target-list > button small { font-size: 11px !important; }
+.focus-frame-body .concentration-target-list > button em { font-size: 10.5px !important; }
+
+.focus-frame-body .concentration-focus { min-width: 0; }
+.focus-frame-body .concentration-focus > header b { font-size: 26px !important; }
+.focus-frame-body .concentration-focus > header :is(span, small) { font-size: 12px !important; }
+.focus-frame-body .concentration-focus > header strong { font-size: 15px !important; }
+
+.focus-frame-body .concentration-paths button {
+  min-height: 74px;
+  padding: 9px 11px;
+}
+
+.focus-frame-body .concentration-paths :is(b, strong) { font-size: 15px !important; }
+.focus-frame-body .concentration-paths :is(span, small, em) { font-size: 12px !important; }
+
+.focus-frame-body .concentration-compare {
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 6px;
+}
+
+.focus-frame-body .concentration-compare > div { padding: 7px 9px; }
+.focus-frame-body .concentration-compare > div span { font-size: 11.5px !important; }
+.focus-frame-body .concentration-compare > div b { font-size: 13px !important; }
+.focus-frame-body .concentration-compare > div i { font-size: 11px !important; }
+.focus-frame-body .concentration-compare > div strong { font-size: 14px !important; }
+
+.focus-frame-body .concentration-payment :is(span, small, em, b) { font-size: 12px !important; }
+.focus-frame-body .payment-option { min-height: 42px; }
+
+.focus-frame-body #concentration-confirm-button {
+  min-height: 48px;
+  font-size: 15px !important;
+  font-weight: 900;
+}
+
+@media (max-width: 1099px), (max-height: 679px) {
+  .focus-frame-body .concentration-layout {
+    grid-template-columns: 160px minmax(0, 1fr) !important;
+    gap: 8px;
+  }
+
+  .focus-frame-body .concentration-paths button { min-height: 64px; }
+  .focus-frame-body .concentration-focus > header b { font-size: 21px !important; }
+}
+
+/* ── 90-C. 대상 카드 글자색 — 31절의 `.concentration-workbench
+   .concentration-target-list > button :is(b,strong,span,small)` 가
+   크림(#e4d9bd)을 !important 로 박아 두었다. 그건 카드가 옻칠판이던
+   시절 규칙이고 75절이 카드를 한지로 바꾼 뒤로는 크림 글자가 한지
+   위에 얹혀 사실상 보이지 않았다. 특이도를 한 칸 올려 되돌린다. ── */
+
+.focus-frame-body .concentration-target-list > button :is(b, strong, span, small, em) {
+  color: #3a2c16 !important;
+}
+
+.focus-frame-body .concentration-target-list > button small { color: #6d5a3c !important; }
+
+.focus-frame-body .concentration-target-list > button em {
+  grid-column: 1 / -1;
+  justify-self: start;
+  color: #7a4419 !important;
+  font-style: normal;
+  white-space: nowrap;
+}
+
+.focus-frame-body .concentration-target-list > button.is-ready em { color: #2f5a45 !important; }
+
+/* 공방 제목띠 왼쪽은 붓통 장식이 안으로 물려 있다 */
+.focus-frame--workshop .focus-frame-head {
+  left: 16.4%;
+  right: 15%;
+}
+
+/* 패널 잔여: 36px 고정 머리말에 3단계 안내가 눌려 겹쳤다 */
+#concentration-panel .workbench-heading,
+#growth-panel .workbench-heading {
+  flex: 0 0 auto;
+  align-items: start;
+}
+
+#concentration-panel .concentration-guide {
+  max-width: 200px;
+  font-size: 11px !important;
+  line-height: 1.35;
+  white-space: normal;
+}
+
+/* 48절의 한국어 단어 중간 줄바꿈 금지는 `.control-panel` 계열만 잡았다.
+   프레임은 전장 자식이라 "사거/리 +4" 처럼 끊겼다. */
+.focus-frame {
+  word-break: keep-all;
+  overflow-wrap: break-word;
+}

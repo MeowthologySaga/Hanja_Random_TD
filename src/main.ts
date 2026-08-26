@@ -204,6 +204,13 @@ app.innerHTML = `
         </header>
         <div id="growth-frame-body" class="focus-frame-body growth-workbench"></div>
       </section>
+      <section id="concentration-frame" class="focus-frame focus-frame--workshop" role="dialog" aria-modal="false" aria-labelledby="concentration-frame-title" hidden>
+        <header class="focus-frame-head">
+          <div><strong id="concentration-frame-title">농축 공방</strong><span>같은 자령을 더 강하게</span></div>
+          <button id="concentration-frame-close" class="focus-frame-close" type="button" data-focus-close="concentration" aria-label="농축 공방 닫기">닫기 ✕</button>
+        </header>
+        <div id="concentration-frame-body" class="focus-frame-body concentration-workbench"></div>
+      </section>
     </section>
 
     <aside class="control-panel" aria-label="합성과 수비 조작 패널">
@@ -374,9 +381,13 @@ app.innerHTML = `
             <div><span>같은 자령을 더 강하게</span><strong>농축 공방</strong></div>
             <p class="concentration-guide"><i>①</i> 왼쪽에서 자령 선택 <i>②</i> 연속·심화 중 택1 <i>③</i> 재료 지불 → 능력치 영구 상승</p>
           </header>
-          <div class="concentration-layout">
-            <aside><div class="subheading"><b>농축 대상</b><small id="concentration-target-summary">0기</small></div><div id="concentration-target-list" class="concentration-target-list"></div></aside>
+          <div id="concentration-layout" class="concentration-layout">
+            <aside><div class="subheading"><b>① 대상 선택</b><small id="concentration-target-summary">0기</small></div><div id="concentration-target-list" class="concentration-target-list"></div></aside>
             <div id="concentration-detail" class="concentration-detail"></div>
+          </div>
+          <div class="focus-panel-summary">
+            <p id="concentration-panel-summary">농축 가능 0기 · 총 0기</p>
+            <button id="concentration-frame-open" class="focus-open-button" type="button">공방 열기</button>
           </div>
         </section>
 
@@ -1032,7 +1043,8 @@ preloadPolishSprites();
 type FocusFrameId = "growth" | "concentration";
 
 const FOCUS_FRAME_MOUNTS: ReadonlyArray<{ id: FocusFrameId; source: string; target: string }> = [
-  { id: "growth", source: ".growth-layout", target: "#growth-frame-body" }
+  { id: "growth", source: ".growth-layout", target: "#growth-frame-body" },
+  { id: "concentration", source: "#concentration-layout", target: "#concentration-frame-body" }
 ];
 
 let openFocusFrame: FocusFrameId | null = null;
@@ -1495,6 +1507,7 @@ function renderConcentration(): void {
   }).sort((left, right) => left.rank - right.rank || right.level - left.level || casualStarOf(right.tower) - casualStarOf(left.tower) || right.tower.stage - left.tower.stage || left.tower.id - right.tower.id);
 
   must<HTMLElement>("#concentration-target-summary").textContent = `${rows.filter((row) => row.actionable).length}기 가능 · 총 ${rows.length}기`;
+  must<HTMLElement>("#concentration-panel-summary").textContent = `농축 가능 ${rows.filter((row) => row.actionable).length}기 · 총 ${rows.length}기`;
   must<HTMLElement>("#concentration-target-list").innerHTML = rows.length > 0 ? rows.map(({ tower, level, duplicateCount, cost, maxed, actionable }) => {
     const stateLabel = maxed ? "최대 단계" : actionable ? "농축 가능" : "재료 부족";
     return `<button type="button" data-concentration-target="${tower.id}" class="${tower.id === concentrationTargetId ? "is-selected" : ""} ${actionable ? "is-ready" : ""}" style="--element:${ELEMENT_STYLES[tower.wuxing].color}">
@@ -1530,6 +1543,7 @@ function renderConcentration(): void {
   detail.innerHTML = `
     <article class="concentration-focus" style="--element:${ELEMENT_STYLES[target.wuxing].color}">
       <header><b>${escapeHtml(target.char)}</b><div><span>${target.wuxing}행 · ${towerProgressionLabel(target)} · ${target.cell < 0 ? "인벤토리" : "전장"}</span><strong>濃 ${quote.currentLevel} → ${quote.nextLevel}</strong><small>${pathLocked ? "선택한 분기는 영구 고정" : "첫 분기 선택 후 변경 불가"}</small></div></header>
+      <div class="subheading"><b>② 분기 선택</b><small>${pathLocked ? "이 자령의 분기는 이미 고정됨" : "처음 한 번만 고를 수 있습니다"}</small></div>
       <div class="concentration-paths" role="radiogroup" aria-label="농축 분기">
         <button type="button" data-concentration-path="swift" class="${swiftSelected ? "is-selected" : ""}" ${pathLocked && !swiftSelected ? "disabled" : ""}><b>迅 연속 농축</b><span>단계당 피해 +5.5%</span><span>공격 대기 -7.5% · 사거리 +4</span></button>
         <button type="button" data-concentration-path="potent" class="${!swiftSelected ? "is-selected" : ""}" ${pathLocked && swiftSelected ? "disabled" : ""}><b>深 심화 농축</b><span>단계당 피해 +12%</span><span>대기 -2% · 의미 기술 +3.5% · 사거리 +4</span></button>
@@ -1540,7 +1554,7 @@ function renderConcentration(): void {
         <div><span>사거리</span><b>${Math.round(quote.current.range)}</b><i>→</i><strong>${Math.round(quote.next.range)}</strong></div>
         <div><span>기술 효과</span><b>${Math.round((quote.current.abilityEffect - 1) * 100)}%</b><i>→</i><strong>${Math.round((quote.next.abilityEffect - 1) * 100)}%</strong></div>
       </div>
-      <section class="concentration-payment"><div class="subheading"><b>재료 선택</b><small>전장 자령과 잠긴 자령은 후보에서 제외</small></div><div class="payment-grid">
+      <section class="concentration-payment"><div class="subheading"><b>③ 재료 지불</b><small>전장 자령과 잠긴 자령은 후보에서 제외</small></div><div class="payment-grid">
         ${paymentRows}
         <label class="payment-option is-essence ${concentrationPayment === "essence" ? "is-selected" : ""} ${essenceAvailable ? "" : "is-unavailable"}"><input type="radio" name="concentration-payment" value="essence" ${concentrationPayment === "essence" ? "checked" : ""} ${essenceAvailable ? "" : "disabled"}><b>${target.wuxing}</b><span>${target.wuxing} 문기 ${quote.essenceCost}</span><small>보유 ${engine.state.elementEssence[target.wuxing]}</small></label>
       </div></section>
@@ -5247,6 +5261,7 @@ document.querySelectorAll<HTMLButtonElement>("[data-focus-close]").forEach((butt
   button.addEventListener("click", () => setFocusFrame(null));
 });
 must<HTMLButtonElement>("#growth-frame-open").addEventListener("click", () => setFocusFrame("growth"));
+must<HTMLButtonElement>("#concentration-frame-open").addEventListener("click", () => setFocusFrame("concentration"));
 window.addEventListener("keydown", (event) => {
   if (event.key !== "Escape" || openFocusFrame === null) return;
   if (helpDialog.open || settingsDialog.open || elementUpgradeDialog.open || abilityGuideDialog.open || casualFusionConfirmDialog.open || codexDialog.open) return;
@@ -5451,7 +5466,7 @@ must<HTMLButtonElement>("#cleanup-recommended-button").addEventListener("click",
   setPanelTab("growth");
 });
 
-must<HTMLElement>("#concentration-panel").addEventListener("click", (event) => {
+must<HTMLElement>("#concentration-layout").addEventListener("click", (event) => {
   const target = event.target as HTMLElement;
   const targetId = Number(target.closest<HTMLButtonElement>("[data-concentration-target]")?.dataset.concentrationTarget);
   if (Number.isInteger(targetId)) {
@@ -5482,7 +5497,7 @@ must<HTMLElement>("#concentration-panel").addEventListener("click", (event) => {
     : { kind: "duplicate" as const, towerId: concentrationPayment };
   handleAction(engine.concentrateTower(concentrationTargetId, concentrationPath, payment));
 });
-must<HTMLElement>("#concentration-panel").addEventListener("change", (event) => {
+must<HTMLElement>("#concentration-layout").addEventListener("change", (event) => {
   const input = (event.target as HTMLElement).closest<HTMLInputElement>('input[name="concentration-payment"]');
   if (!input) return;
   concentrationPayment = input.value === "essence" ? "essence" : Number(input.value);
