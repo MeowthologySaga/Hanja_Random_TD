@@ -2070,7 +2070,11 @@ export class GameEngine {
     const sealedIds = rest.filter((candidate) => this.state.idiomSeals.some((seal) => seal.idiomId === candidate));
     const trackedIds = rest.filter((candidate) => !sealedIds.includes(candidate) && this.state.trackedIdiomIds.includes(candidate));
     const pendingIds = rest.filter((candidate) => !sealedIds.includes(candidate) && !trackedIds.includes(candidate));
-    this.state.featuredIdiomIds = [id, ...sealedIds, ...trackedIds, ...pendingIds].slice(0, 5);
+    // 다섯 자리 정리 우선순위: 새 추적 > 기존 추적 > 봉인 이력 > 나머지.
+    // 봉인 이력이 다섯 자리에서 밀려도 발동·해제 판정은 idiomSeals 목록이
+    // 따로 지키므로(resolveIdiomFormations) 효과는 끊기지 않는다 — 반대로
+    // 추적 중인 구가 밀리면 봉인 자체가 성립하지 않으니 추적이 앞선다.
+    this.state.featuredIdiomIds = [id, ...trackedIds, ...sealedIds, ...pendingIds].slice(0, 5);
   }
 
   /** 이 성어를 1순위 추적 목표로 세운다(수련장·"목표로 지정" 경로). */
