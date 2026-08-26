@@ -1,5 +1,5 @@
 /*
- * 상단 띠·패널 탭·집중 프레임·토스트·전투 기록 등 상시 HUD.
+ * 상단 띠·패널 탭·집중 프레임·토스트 등 상시 HUD.
  */
 import { bossTimeLimitForWave, MAX_ENEMIES, WAVE_REINFORCEMENT_DELAY, wavePlan } from "../core/content";
 import { FIRST_PREP_SECONDS, type GameEngine, interestForGold } from "../core/game";
@@ -17,11 +17,8 @@ import {
   bossBanner,
   casualFusionConfirmDialog,
   codexDialog,
-  combatFeed,
-  comboMeter,
   ctx,
   elementUpgradeDialog,
-  feedCooldowns,
   type FocusFrameId,
   helpDialog,
   must,
@@ -304,48 +301,11 @@ export function firstSealCelebration(reading: string): void {
   showWaveBanner();
 }
 
-export function addCombatFeed(glyph: string, name: string, detail: string, color: string): void {
-  const now = performance.now();
-  const key = glyph + name;
-  if (now - (feedCooldowns.get(key) ?? -10_000) < 1100) return;
-  feedCooldowns.set(key, now);
-  const item = document.createElement("li");
-  item.style.setProperty("--feed-color", color);
-  const seal = document.createElement("b");
-  seal.textContent = glyph;
-  const copy = document.createElement("span");
-  const title = document.createElement("strong");
-  title.textContent = name;
-  const description = document.createElement("small");
-  description.textContent = detail;
-  copy.append(title, description);
-  item.append(seal, copy);
-  combatFeed.prepend(item);
-  while (combatFeed.children.length > 4) combatFeed.lastElementChild?.remove();
-}
-
 export function showTowerAbilityPopup(towerId: number, glyph: string, name: string, color: string): void {
   const current = towerAbilityPopups.get(towerId);
   // Frequent procs still happen mechanically, but the same tower cannot flood the screen.
   if (current && current.age < 0.8) return;
   towerAbilityPopups.set(towerId, { text: glyph + " " + name, color, age: 0, duration: 0.82 });
-}
-
-export function registerKillCombo(): void {
-  const now = performance.now();
-  ctx.comboCount = now - ctx.lastKillAt <= 1450 ? ctx.comboCount + 1 : 1;
-  ctx.lastKillAt = now;
-  window.clearTimeout(ctx.comboTimer);
-  if (ctx.comboCount >= 3) {
-    must<HTMLElement>("#combo-count").textContent = "× " + String(ctx.comboCount);
-    comboMeter.classList.remove("combo-meter--visible");
-    void comboMeter.offsetWidth;
-    comboMeter.classList.add("combo-meter--visible");
-  }
-  ctx.comboTimer = window.setTimeout(() => {
-    ctx.comboCount = 0;
-    comboMeter.classList.remove("combo-meter--visible");
-  }, 1750);
 }
 
 export function syncPanel(): void {

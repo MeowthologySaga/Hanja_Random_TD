@@ -68,10 +68,6 @@ export const toast = must<HTMLElement>("#toast");
 
 export const bossBanner = must<HTMLElement>("#boss-banner");
 
-export const combatFeed = must<HTMLOListElement>("#combat-feed");
-
-export const comboMeter = must<HTMLElement>("#combo-meter");
-
 export const idiomResult = must<HTMLElement>("#idiom-result");
 
 export const idiomTab = must<HTMLButtonElement>("#idiom-tab");
@@ -137,11 +133,11 @@ export const RUN_INVENTORY_GRADE_BANDS: ReadonlyArray<{ id: RunInventoryGradeBan
 
 export const runInventoryBulkSelection = new Set<number>();
 
-export const feedCooldowns = new Map<string, number>();
-
 export const lastAbilityFxByTower = new Map<number, number>();
 
-export type PanelTab = "shop" | "unit" | "inventory" | "evolution" | "concentration" | "growth" | "goal" | "idiom" | "record";
+/* 기록 탭은 gripe #4 확정으로 완전히 걷어냈다 — 능력 발동은 전장 말풍선
+   (showTowerAbilityPopup)이, 상시 메시지는 패널 푸터가 대신한다. 탭은 8개다. */
+export type PanelTab = "shop" | "unit" | "inventory" | "evolution" | "concentration" | "growth" | "goal" | "idiom";
 
 export type GoalPanelMode = "hanzi" | "idiom";
 
@@ -274,9 +270,6 @@ class AppContext {
   formationRenderKey = "";
   concentrationRenderKey = "";
   growthRenderKey = "";
-  comboTimer = 0;
-  comboCount = 0;
-  lastKillAt = 0;
   lastGlobalAbilityFxAt = -10;
   codexMode: CodexMode = "hanzi";
   codexSynthesisDepth: SynthesisTierFilter = "all";

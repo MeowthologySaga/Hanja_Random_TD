@@ -10,12 +10,9 @@ import { loadAutoPlaceSummons } from "./summon-placement";
 import {
   canvas,
   casualFusionConfirmDialog,
-  combatFeed,
-  comboMeter,
   ctx,
   dismantleSelection,
   endOverlay,
-  feedCooldowns,
   lastAbilityFxByTower,
   must,
   runInventoryBulkSelection,
@@ -173,10 +170,6 @@ export function startRun(useNewSeed = false, options: StartRunOptions = {}): voi
   towerAbilityPopups.clear();
   lastAbilityFxByTower.clear();
   ctx.lastGlobalAbilityFxAt = -10;
-  combatFeed.replaceChildren();
-  feedCooldowns.clear();
-  ctx.comboCount = 0;
-  comboMeter.classList.remove("combo-meter--visible");
   resetIdiomResult();
   hideSummonReveal();
   closeCompositionDrawer();
@@ -195,7 +188,6 @@ export function startRun(useNewSeed = false, options: StartRunOptions = {}): voi
   setPanelTab("shop");
   ctx.formationUnlockHintShown = false;
   if (!options.skipCoach) startCoach();
-  window.clearTimeout(ctx.comboTimer);
   ctx.evolutionRenderKey = "";
   ctx.goalRenderKey = "";
   ctx.selectedRenderKey = "";

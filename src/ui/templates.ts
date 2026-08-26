@@ -195,12 +195,6 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
           </div>
         </section>
 
-        <div class="combat-readout panel-view" data-panel-view="record" aria-label="전투 발동 기록">
-          <div class="record-heading"><span>최근 능력 기록</span><small>무엇이 왜 발동했는지 표시됩니다.</small></div>
-          <div id="combo-meter" class="combo-meter"><span>연쇄 봉인</span><b id="combo-count">× 3</b></div>
-          <ol id="combat-feed" class="combat-feed"></ol>
-        </div>
-
         <section id="idiom-panel" class="idiom-panel panel-view" data-panel-view="idiom" aria-label="사자성어 진법" aria-live="polite">
           <section class="idiom-rule-guide" aria-label="성어 발동 규칙">
             <div class="idiom-rule-figures" aria-hidden="true">
@@ -351,7 +345,6 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
         <i class="tab-divider" aria-hidden="true"></i>
         <button id="goal-tab" type="button" data-panel-tab="goal" role="tab" aria-selected="false">목표 <small id="goal-tab-progress">0%</small></button>
         <button id="idiom-tab" type="button" data-panel-tab="idiom" role="tab" aria-selected="false">성어 <small id="idiom-tab-count">0/5</small></button>
-        <button id="record-tab" type="button" data-panel-tab="record" role="tab" aria-selected="false">기록</button>
       </nav>
 
 
