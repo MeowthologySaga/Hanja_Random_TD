@@ -1,0 +1,38 @@
+/*
+ * 490 — 표기(읽기) 축 준비 절. (gripe #6, 트랙 D)
+ *
+ * S13 맞춤 진법의 「읽기 표기법」 3버튼 그룹과 교차 조합용 「대체」 배지.
+ * 그룹은 NOTATION_AXIS_READY=false 동안 hidden 이고, 배지는 통합 표기
+ * 테이블(요청서 v8) 도착 전에는 도달 불가라 이 절은 현행 화면에 아무
+ * 픽셀도 더하지 않는다 — 플래그를 켜는 순간부터 일한다.
+ */
+
+/* 절 52 의 `.s13-group { display: grid }` 가 UA 의 [hidden] display:none 을
+   이긴다 — hidden 이 실제로 숨기도록 더 특정한 규칙으로 눌러 둔다. */
+.s13-group[hidden] {
+  display: none;
+}
+
+/* 버튼 소문구가 세 문자권 표본(가나·병음 성조 부호)이라 살짝 넓게 숨 쉬게 한다. */
+.s13-notation-group .s13-options button small {
+  letter-spacing: 0.02em;
+}
+
+/*
+ * 표기 대체 배지 — notationSubstituteHtml(src/ui/notation-substitute.ts).
+ * 선택한 표기가 그 글자를 커버하지 못해 자국 표기로 대신 보여 줄 때
+ * 읽기 문자열 옆에 붙는다. 먹지 위 회갈 점선 테로, 본문보다 낮은 성량.
+ */
+.notation-substitute {
+  display: inline-block;
+  margin-left: 4px;
+  padding: 0 4px;
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 14px;
+  vertical-align: 1px;
+  color: #9d8f78;
+  border: 1px dashed rgba(157, 143, 120, 0.55);
+  border-radius: 3px;
+  white-space: nowrap;
+}

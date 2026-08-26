@@ -8,6 +8,7 @@ import { CASUAL_STAR_BINS, CASUAL_STAR_COLORS } from "../core/casual";
 import { MAX_ENEMIES, WORLD_HEIGHT, WORLD_WIDTH } from "../core/content";
 import { CHEONJAMUN_JARYEONG_DEX_META } from "../core/cheonjamun-jaryeong-dex";
 import { GAME_CONFIG } from "../core/hanzi";
+import { NOTATION_AXIS_READY, NOTATION_LABELS } from "../core/notation";
 import type { DisplayMode } from "./display-mode";
 
 /**
@@ -509,6 +510,17 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
               <button type="button" data-s13-region="KR" role="radio"><b>한국</b><small>천자문 1,000</small></button>
               <button type="button" data-s13-region="JP" role="radio"><b>일본</b><small>상용한자 2,136</small></button>
               <button type="button" data-s13-region="CN" role="radio"><b>중국</b><small>규범한자 3,500</small></button>
+            </div>
+          </div>
+
+          <!-- gripe #6: 범위와 독립인 읽기 표기 축. 통합 표기 테이블(요청서 v8)
+               도착 전에는 NOTATION_AXIS_READY=false 로 숨긴다 — 플래그만 켜면 열린다. -->
+          <div class="s13-group s13-notation-group" role="radiogroup" aria-label="읽기 표기법" ${NOTATION_AXIS_READY ? "" : "hidden"}>
+            <span class="s13-group-label">읽기 표기법</span>
+            <div class="s13-options">
+              <button type="button" data-s13-notation="kr-hunum" role="radio"><b>${NOTATION_LABELS["kr-hunum"].name}</b><small>${NOTATION_LABELS["kr-hunum"].sample}</small></button>
+              <button type="button" data-s13-notation="jp-onkun" role="radio"><b>${NOTATION_LABELS["jp-onkun"].name}</b><small>${NOTATION_LABELS["jp-onkun"].sample}</small></button>
+              <button type="button" data-s13-notation="cn-pinyin" role="radio"><b>${NOTATION_LABELS["cn-pinyin"].name}</b><small>${NOTATION_LABELS["cn-pinyin"].sample}</small></button>
             </div>
           </div>
 
