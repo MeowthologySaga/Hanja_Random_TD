@@ -82,3 +82,34 @@ export function spriteStyle(definition: HanziDefinition): string {
   const visual = jaryeongVisualFor(definition.char, definition.wuxing, ctx.engine.state.region);
   return visualBackgroundStyle(visual);
 }
+
+/*
+ * [트랙 J-1] 화폐 표기 — 숫자만 적힌 버튼을 없앤다.
+ *
+ * 사용자 원문: "분해랑 판매 버튼에 숫자에 표시가 없어서 문기인지 엽전인지
+ * 헷갈린다." 이 게임의 화폐는 둘이다 — 판 전체가 쓰는 엽전과 오행마다 따로
+ * 쌓이는 문기. `+7` 만 적힌 버튼은 어느 쪽인지 말해 주지 않는다.
+ * 표기는 여기서만 만든다. 새 자리를 만들 때도 직접 문자열을 짜지 말고
+ * 이 함수를 불러라.
+ */
+export function goldAmountLabel(amount: number, signed = false): string {
+  return `${signed && amount > 0 ? "+" : ""}${amount} 엽전`;
+}
+
+/** 문기는 오행 글자를 반드시 데리고 다닌다 — "木 문기 +3". */
+export function essenceAmountLabel(wuxing: Wuxing, amount: number, signed = true): string {
+  return `${wuxing} 문기 ${signed ? "+" : ""}${amount}`;
+}
+
+/** 오행색을 살린 문기 조각. 버튼 안에서도 그 오행의 색으로 읽힌다. */
+export function essenceAmountChip(wuxing: Wuxing, amount: number): string {
+  return `<i class="unit-essence" style="--unit-element:${ELEMENT_STYLES[wuxing].color}">${essenceAmountLabel(wuxing, amount)}</i>`;
+}
+
+/** 오행별 회수량 묶음 — 일괄 분해 견적이 쓰는 한 줄. */
+export function essenceGainsLabel(gains: Partial<Record<Wuxing, number>>): string {
+  return (Object.entries(gains) as Array<[Wuxing, number]>)
+    .filter(([, amount]) => amount > 0)
+    .map(([wuxing, amount]) => essenceAmountLabel(wuxing, amount))
+    .join(" · ");
+}

@@ -19,7 +19,14 @@ import {
 import { type Tower, type UpgradeStat, type Wuxing } from "../../core/types";
 import { ctx, DISMANTLE_UNIQUE_STORAGE_KEY, dismantleSelection, must, reducedMotion, sound } from "../app-context";
 import { formatStatBonus, upgradeStateSignature } from "../dialogs/element-upgrade";
-import { casualStarOf, escapeHtml, spiritPortraitMarkup, towerProgressionLabel } from "../format";
+import {
+  casualStarOf,
+  escapeHtml,
+  essenceAmountChip,
+  essenceGainsLabel,
+  spiritPortraitMarkup,
+  towerProgressionLabel
+} from "../format";
 import { handleAction, setPanelTab, showToast } from "../hud";
 import { renderRunInventory } from "./inventory";
 
@@ -101,13 +108,14 @@ export function renderGrowth(): void {
     const soleBadge = assessment?.soleCopy && !protectedState ? `<i class="dismantle-sole-badge">유일</i>` : "";
     return `<label class="dismantle-row ${protectedState ? "is-protected" : ""} ${soleBadge ? "is-sole" : ""}" style="--element:${ELEMENT_STYLES[tower.wuxing].color}">
       <input type="checkbox" data-dismantle-id="${tower.id}" ${dismantleSelection.has(tower.id) ? "checked" : ""} ${protectedState || !active ? "disabled" : ""}>
-      ${spiritPortraitMarkup(tower.char, tower.wuxing, "workbench-spirit--dismantle")}<b>${escapeHtml(tower.char)}</b><span><strong>${soleBadge}${tower.wuxing}행 · ${towerProgressionLabel(tower)} · #${tower.id}</strong><small>${protectedState ? protectedReasons.map(escapeHtml).join(" · ") : (assessment?.reasons ?? []).map(escapeHtml).join(" · ") || "분해 가능"}</small></span><em>${protectedState ? "보호" : `${tower.wuxing}+${essence}`}</em>
+      ${spiritPortraitMarkup(tower.char, tower.wuxing, "workbench-spirit--dismantle")}<b>${escapeHtml(tower.char)}</b><span><strong>${soleBadge}${tower.wuxing}행 · ${towerProgressionLabel(tower)} · #${tower.id}</strong><small>${protectedState ? protectedReasons.map(escapeHtml).join(" · ") : (assessment?.reasons ?? []).map(escapeHtml).join(" · ") || "분해 가능"}</small></span><em>${protectedState ? "보호" : essenceAmountChip(tower.wuxing, essence)}</em>
     </label>`;
   }).join("") : `<div class="workbench-empty"><b>조건에 맞는 인벤토리 자령이 없습니다</b><span>필터를 바꾸거나 소환 자령을 인벤토리에 보관하세요.</span><button type="button" data-goto-inventory>인벤 탭 열기</button></div>`;
 
   const quote = ctx.engine.quoteDismantle([...dismantleSelection], dismantleOptions());
-  const gainLabel = (Object.entries(quote.gains) as Array<[Wuxing, number]>).filter(([, amount]) => amount > 0).map(([wuxing, amount]) => `${wuxing}+${amount}`).join(" · ");
-  const scoreLabel = (Object.entries(quote.scoreGains) as Array<[Wuxing, number]>).filter(([, amount]) => amount > 0).map(([wuxing, amount]) => `${wuxing}점수+${amount}`).join(" · ");
+  // [J-1] "木+3" 은 무엇이 3인지 안 말한다 — 문기·분해 점수 각각에 단위를 붙인다.
+  const gainLabel = essenceGainsLabel(quote.gains);
+  const scoreLabel = (Object.entries(quote.scoreGains) as Array<[Wuxing, number]>).filter(([, amount]) => amount > 0).map(([wuxing, amount]) => `${wuxing} 분해 점수 +${amount}`).join(" · ");
   must<HTMLElement>("#dismantle-selection-summary").textContent = `${dismantleSelection.size}기 선택${quote.blocked.length > 0 ? ` · 보호 충돌 ${quote.blocked.length}` : ""}`;
   must<HTMLElement>("#dismantle-gain-summary").textContent = gainLabel ? `${gainLabel}${scoreLabel ? ` · ${scoreLabel}` : ""}` : "예상 문기 없음";
   must<HTMLButtonElement>("#dismantle-confirm-button").disabled = !active || quote.ids.length === 0 || quote.blocked.length > 0;
@@ -118,7 +126,8 @@ export function renderGrowth(): void {
     const quoteForAmount = scope === "global" ? ctx.engine.quoteGlobalUpgrade(stat, amount) : ctx.engine.quoteElementUpgrade(ctx.growthElement, stat, amount);
     // "투자 불가" 는 비용이 아니라 사유다 — 뒤에 화폐를 붙이면 "투자 불가 엽전" 같은 비문이 된다.
     const label = upgradeAmountLabel(scope, stat, null, amount);
-    const currency = label === UPGRADE_UNAVAILABLE_LABEL ? "" : scope === "global" ? " 엽전" : ` ${ctx.growthElement}`;
+    // [J-1] 오행 강화가 먹는 것은 그 오행의 문기다 — 글자 하나만 두면 무엇인지 모른다.
+    const currency = label === UPGRADE_UNAVAILABLE_LABEL ? "" : scope === "global" ? " 엽전" : ` ${ctx.growthElement} 문기`;
     // FB7-강화: 이번 투자가 10단계 이정표를 지나면 버튼에 里 표식을 얹는다.
     const crossesMilestone = quoteForAmount.levels > 0 && upgradeMilestoneCount(quoteForAmount.toLevel) > upgradeMilestoneCount(quoteForAmount.fromLevel);
     return `<button type="button" data-growth-upgrade-scope="${scope}" data-growth-stat="${stat}" data-growth-amount="${amount}" ${!active || quoteForAmount.levels <= 0 || !quoteForAmount.affordable ? "disabled" : ""}>${label}${currency}${crossesMilestone ? ` <i class="growth-milestone-flag" title="10단계 이정표 도달 · 추가 보너스">里</i>` : ""}</button>`;
@@ -148,7 +157,7 @@ export function renderGrowth(): void {
     const buttons = ([1, 5, "max"] as const).map((amount) => {
       const traitQuote = ctx.engine.quoteElementTraitUpgrade(ctx.growthElement, traitIndex, amount);
       const label = upgradeAmountLabel("trait", null, traitIndex, amount);
-      return `<button type="button" data-growth-upgrade-scope="trait" data-growth-trait="${traitIndex}" data-growth-amount="${amount}" ${!active || !unlocked || traitQuote.levels <= 0 || !traitQuote.affordable ? "disabled" : ""}>${label}${label === UPGRADE_UNAVAILABLE_LABEL ? "" : ` ${ctx.growthElement}`}</button>`;
+      return `<button type="button" data-growth-upgrade-scope="trait" data-growth-trait="${traitIndex}" data-growth-amount="${amount}" ${!active || !unlocked || traitQuote.levels <= 0 || !traitQuote.affordable ? "disabled" : ""}>${label}${label === UPGRADE_UNAVAILABLE_LABEL ? "" : ` ${ctx.growthElement} 문기`}</button>`;
     }).join("");
     return `<article class="growth-trait-row ${unlocked ? "is-unlocked" : "is-locked"}" style="--element:${ELEMENT_STYLES[ctx.growthElement].color}"><div class="trait-seal"><b>${traitIndex + 1}</b><small>${unlocked ? "개방" : `${unlockScore}점`}</small></div><div><strong>${trait.name} <em>Lv.${level}/${ELEMENT_TRAIT_MAX_LEVEL}</em></strong><span>${trait.summary} +${trait.perLevel}${trait.unit}/단계${trait.milestone ? ` · ${trait.milestone}` : ""}</span><small>${unlocked ? `다음 비용 ${elementTraitUpgradeCost(level) ?? "최고"} 문기` : `분해 점수 ${ctx.engine.state.elementDismantleScore[ctx.growthElement]}/${unlockScore}`}</small></div><nav>${buttons}</nav></article>`;
   }).join("");
@@ -204,7 +213,7 @@ export function wireGrowth2(): void {
     if (quote.ids.length === 0 || quote.blocked.length > 0) return;
     const towers = quote.ids.map((id) => ctx.engine.state.inventoryTowers.find((tower) => tower.id === id)).filter((tower): tower is Tower => Boolean(tower));
     const towerLabel = towers.map((tower) => `${tower.char}(${tower.wuxing} ${towerProgressionLabel(tower)})`).join(" · ");
-    const gainLabel = (Object.entries(quote.gains) as Array<[Wuxing, number]>).filter(([, amount]) => amount > 0).map(([wuxing, amount]) => `${wuxing}+${amount}`).join(" · ");
+    const gainLabel = essenceGainsLabel(quote.gains);
     if (!window.confirm(`${towers.length}기를 한 번에 분해합니다.\n${towerLabel}\n획득: ${gainLabel}`)) return;
     const result = ctx.engine.dismantleTowers(quote.ids, dismantleOptions());
     if (result.ok) dismantleSelection.clear();

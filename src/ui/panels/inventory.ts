@@ -18,7 +18,14 @@ import {
   type RunInventorySort,
   sound
 } from "../app-context";
-import { casualStarOf, escapeHtml, visualBackgroundStyle } from "../format";
+import {
+  casualStarOf,
+  escapeHtml,
+  essenceAmountChip,
+  essenceAmountLabel,
+  essenceGainsLabel,
+  visualBackgroundStyle
+} from "../format";
 import { handleAction, setFocusFrame, setPanelTab, showToast, syncPanel } from "../hud";
 import { dismantleOptions } from "./growth";
 
@@ -53,11 +60,9 @@ function runInventoryAbilityLine(tower: Tower): string {
   return `${ability.name} · ${ability.summary}`;
 }
 
+/** [J-1] "木+3" 은 무엇이 3인지 안 말한다 — 단위를 붙인 공용 표기를 쓴다. */
 function essenceGainLabel(gains: Record<Wuxing, number>): string {
-  return (Object.entries(gains) as Array<[Wuxing, number]>)
-    .filter(([, amount]) => amount > 0)
-    .map(([wuxing, amount]) => `${wuxing}+${amount}`)
-    .join(" · ");
+  return essenceGainsLabel(gains);
 }
 
 /*
@@ -98,6 +103,7 @@ function renderRunInventoryDetail(selected: Tower | undefined, stackSize: number
     <p><i>${selected.wuxing}행</i><u>${escapeHtml(progression)}</u></p>
     <small>${escapeHtml(runInventoryAbilityLine(selected))}</small>
     <em>보관 ${stackSize}기${concentration > 0 ? ` · 농축 ${concentration}단계` : ""}${selected.locked ? " · 鎖 잠금" : ""}</em>
+    <em class="detail-yield">분해하면 ${escapeHtml(essenceAmountLabel(selected.wuxing, ctx.engine.towerDismantleEssenceValue(selected)))}</em>
   </div>`;
 }
 
@@ -130,7 +136,7 @@ function renderRunInventoryActions(
     bar.classList.toggle("is-idle", quote.ids.length === 0);
     confirm.disabled = !active || quote.ids.length === 0;
     confirm.textContent = quote.ids.length > 0 ? `선택 ${quote.ids.length}기 분해 · ${gainLabel}` : "선택 0기 분해";
-    confirm.title = quote.ids.length > 0 ? `${quote.ids.length}기를 한 번에 분해해 ${gainLabel} 을 회수합니다.` : "분해할 자령을 카드에서 담으세요.";
+    confirm.title = quote.ids.length > 0 ? `${quote.ids.length}기를 한 번에 분해해 ${gainLabel} 를 회수합니다.` : "분해할 자령을 카드에서 담으세요.";
     must<HTMLButtonElement>("#run-inventory-bulk-clear").disabled = runInventoryBulkSelection.size === 0;
     must<HTMLElement>("#run-inventory-bulk-hint").textContent = quote.ids.length > 0
       ? `담은 ${quote.ids.length}기${quote.blocked.length > 0 ? ` · 보호 제외 ${quote.blocked.length}기` : ""}`
@@ -150,11 +156,16 @@ function renderRunInventoryActions(
   const dismantle = must<HTMLButtonElement>("#run-inventory-dismantle");
   const essence = selected ? ctx.engine.towerDismantleEssenceValue(selected) : 0;
   dismantle.disabled = !active || !dismantleReady;
-  dismantle.textContent = !selected ? "분해" : dismantleReady ? `분해 +${essence}문기` : "분해 불가";
+  // [J-1] 회수물이 문기라는 사실은 버튼 안에서 오행색으로 먼저 읽혀야 한다.
+  dismantle.innerHTML = !selected
+    ? "분해"
+    : dismantleReady
+      ? `분해 · ${essenceAmountChip(selected.wuxing, essence)}`
+      : "분해 불가";
   dismantle.title = !selected
     ? "먼저 카드를 고르세요"
     : dismantleReady
-      ? `${selected.wuxing}행 문기 +${essence} 를 회수하고 이 자령을 없앱니다. 되돌릴 수 없습니다.`
+      ? `${essenceAmountLabel(selected.wuxing, essence)} 를 회수하고 이 자령을 없앱니다. 되돌릴 수 없습니다.`
       : `보호 중 · ${(assessment?.protectedReasons ?? ["보호 상태를 확인할 수 없습니다."]).join(" · ")}`;
 
   const lock = must<HTMLButtonElement>("#run-inventory-lock");

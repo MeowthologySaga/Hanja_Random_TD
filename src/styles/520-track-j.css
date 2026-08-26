@@ -1,0 +1,48 @@
+/* ════════════════════════════════════════════════════════════════
+   ===== 트랙 J — 가방·분해 명료화 =====
+
+   실플레이 지적 4건을 한 묶음으로 받는다.
+
+     J-1  "분해랑 판매 버튼에 숫자에 표시가 없어서 문기인지 엽전인지
+          헷갈린다."  → 문기 조각에 오행색을 입혀 엽전과 눈으로 가른다.
+     J-2  "잠금 안 했는데 분해 안 되는 애가 있는데 이건 뭐지?"
+          → title 툴팁에만 있던 보호 사유를 라벨 한 줄로 승격한다.
+     J-3  "인벤토리 내에서 잠금 표시한 게 티가 안 난다."
+          → 격자 카드에 자물쇠 배지와 잠금 링을 세운다.
+     J-4  화면 문자열의 '인벤/인벤토리/보관고' 를 '가방' 으로 통일한다
+          (문자열 작업이라 CSS 몫은 없다).
+
+   이 파일은 440(FB3) 뒤·900(FB6 자극 완화) 앞에 든다 — 앞선 절이 정한
+   카드·버튼 문법을 되덮되, 맥동을 끄는 마지막 두 묶음보다는 앞이다.
+   ══════════════════════════════════════════════════════════════════ */
+
+/* ── J-1. 문기 조각 — 오행색을 데리고 다니는 단위 표기 ──────────
+   엽전은 판 전체가 쓰는 한 가지라 글자만으로 충분하지만, 문기는 오행마다
+   따로 쌓인다. 그래서 "木 문기 +3" 의 앞머리를 그 오행의 색으로 물들여
+   버튼 안에서도 어느 통에 들어가는지 색으로 먼저 읽히게 한다. */
+.unit-essence {
+  color: color-mix(in srgb, var(--unit-element, #9b7137) 74%, #2b1d07);
+  font-size: 0.94em;
+  font-style: normal;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+}
+
+/* 인주 바탕(판매·분해) 위에서는 오행색이 가라앉는다 — 밝은 쪽으로 섞는다. */
+#sell-button .unit-essence,
+.run-inventory-action--dismantle:not(:disabled) .unit-essence,
+.dismantle-row:not(.is-protected) em .unit-essence {
+  color: color-mix(in srgb, var(--unit-element, #e0d3b2) 58%, #fff2ec);
+}
+
+/* 자령 카드의 판매·분해는 두 줄이 된다 — 값 줄을 아래로 내려 붙인다.
+   (판매는 엽전 + 농축 환급 문기라 값이 둘일 수 있다.) */
+.selected-actions button .action-price {
+  display: block;
+  margin-top: 1px;
+  font-size: 10.5px;
+  font-weight: 900;
+  letter-spacing: -0.03em;
+  opacity: 0.95;
+}
