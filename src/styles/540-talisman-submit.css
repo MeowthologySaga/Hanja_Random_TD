@@ -9,8 +9,9 @@
    ② 통과 순간의 자령 강림 — 부적에 응답한 자령이 내려와 보상을 놓고
       떠난다. 초상은 공방 공용 .workbench-spirit 을 그대로 쓰고 크기 변형만
       더한다(새 에셋 없음).
-   ③ 한 웨이브 = 부적 3장 한 세트 — 진행 인장 3칸, 다음 장으로 넘어가는
-      종이 넘김, 세트를 채우면 잠기는 종이.
+   ③ 남은 장수(트랙 C3) — 웨이브마다 3장이 더해지고 쓰지 않으면 쌓인다.
+      머리글은 「남은 부적 n장」 + 이번 웨이브 적립분이고, 다음 장으로
+      넘어가는 종이 넘김은 그대로, 종이는 남은 장수가 0일 때만 잠긴다.
 
    맥동·이동류는 차분한 화면(.game-shell[data-calm-screen="1"])과
    prefers-reduced-motion 두 게이트를 존중한다 — 그 경우 정보(인장·초상·
@@ -117,34 +118,41 @@
   font-weight: 700;
 }
 
-/* ── ②b 진행 인장 3칸 — 이번 웨이브 세트를 얼마나 채웠는가 ────── */
-.talisman-progress {
+/* ── ②b 남은 장수 — 이 머리글의 주인공 (트랙 C3) ────────────── */
+/* 예전의 "n / 3" 인장 3칸은 소진율을 세는 표기라 남은 시간을 재촉했다.
+   장수가 이월되는 지금은 「남은 부적 n장」이 주인공이고, 아래 작은 줄이
+   "안 써도 계속 쌓인다"는 사실(이번 웨이브 적립분)을 받쳐 준다. */
+.talisman-charges {
   display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 3px;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0;
 }
 
-.talisman-progress > i {
-  width: 11px;
-  height: 11px;
-  border: 1px solid rgba(122, 25, 16, 0.42);
-  border-radius: 3px;
-  background: rgba(120, 100, 66, 0.16);
-}
-
-.talisman-progress > i.is-done {
-  border-color: rgba(122, 25, 16, 0.75);
-  background: radial-gradient(circle at 38% 32%, #b8453a, var(--seal) 70%);
-  box-shadow: 0 1px 3px rgba(90, 20, 12, 0.4);
-}
-
-.talisman-progress > b {
-  margin-left: 3px;
-  color: var(--text-400);
-  font-size: 10.5px;
+.talisman-charges > b {
+  padding: 1px 7px;
+  color: #fbf2dd;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #b8453a 0%, var(--seal) 100%);
+  box-shadow: 0 1px 3px rgba(90, 20, 12, 0.38), inset 0 0 0 1px rgba(255, 236, 214, 0.28);
+  font-size: 12px;
   font-weight: 900;
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.talisman-charges > em {
+  color: var(--text-400);
+  font-size: 9.5px;
+  font-style: normal;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* 상한에 닿았으면 "더 쌓이지 않는다"를 색으로도 알린다. */
+.talisman-charges > em.is-capped {
+  color: var(--gold-500);
 }
 
 /* ── ②c 종이 넘김 — 다음 장이 자동으로 차오른다 ─────────────── */
@@ -159,8 +167,8 @@
   100% { transform: perspective(620px) rotateY(0deg); filter: brightness(1); }
 }
 
-/* 세트 완주 — 종이가 잠겨 다음 웨이브를 기다린다. */
-.talisman-paper.is-set-done {
+/* 남은 장수 0 — 이때만 종이가 잠겨 다음 웨이브 적립을 기다린다. */
+.talisman-paper.is-out-of-charges {
   opacity: 0.58;
   filter: grayscale(0.3);
 }
