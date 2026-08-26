@@ -1016,6 +1016,8 @@ function defaultMapOffset(): Point {
 }
 let mapZoom = DEFAULT_MAP_ZOOM;
 let mapOffset: Point = defaultMapOffset();
+/** 휠 확대·축소 1회 또는 팬 1회마다 오른다. 코치 2단계 자동 진행의 근거. */
+let mapCameraGestures = 0;
 type GameSpeed = 1 | 2 | 3;
 let gameSpeed: GameSpeed = 1;
 const hanjiPaperUrl = `${import.meta.env.BASE_URL}assets/map/hanji-ink-field/hanji-paper-base.png`;
@@ -1250,6 +1252,7 @@ function startRun(useNewSeed = false): void {
   engine.begin();
   previousPhase = "prep";
   manualPause = false;
+  mapCameraGestures = 0;
   titleOverlay.classList.remove("modal-layer--visible");
   endOverlay.classList.remove("modal-layer--visible");
   sound.unlock();
@@ -1386,6 +1389,12 @@ function hideSummonReveal(): void {
 
 function showSummonReveal(events: Array<Extract<GameEvent, { type: "summon" }>>): void {
   if (events.length === 0) return;
+  // 코치가 전장 조작을 안내하는 동안에는 카드가 스포트라이트를 덮고
+  // wheel 을 삼키므로 아예 띄우지 않는다.
+  if (coachIsPointingAtBoard()) {
+    hideSummonReveal();
+    return;
+  }
   window.clearTimeout(summonRevealTimer);
   const newCount = events.filter((event) => event.newDiscovery).length;
   const helpfulCount = events.filter((event) => event.helpful).length;
@@ -4903,6 +4912,7 @@ canvas.addEventListener("pointermove", (event) => {
     const distance = Math.hypot(point.x - mapPanStartScreen.x, point.y - mapPanStartScreen.y);
     if (!mapPanMoved && distance >= 7) {
       mapPanMoved = true;
+      mapCameraGestures += 1;
       canvas.classList.add("is-panning");
     }
     if (!mapPanMoved) return;
@@ -5003,7 +5013,9 @@ canvas.addEventListener("auxclick", (event) => {
 canvas.addEventListener("wheel", (event) => {
   event.preventDefault();
   const anchor = canvasScreenPoint(event);
+  const before = mapZoom;
   setMapZoom(mapZoom * Math.exp(-event.deltaY * 0.0012), anchor);
+  if (mapZoom !== before) mapCameraGestures += 1;
 }, { passive: false });
 must<HTMLButtonElement>("#map-zoom-reset").addEventListener("click", resetMapCamera);
 must<HTMLButtonElement>("#hanja-emphasis-toggle").addEventListener("click", toggleHanjaEmphasis);
@@ -5802,7 +5814,8 @@ const COACH_STEPS: readonly CoachStep[] = [
     title: "전장을 살펴보세요",
     body: "휠을 굴려 확대·축소하고, 빈 곳을 끌어 화면을 옮깁니다. 자령을 끌면 자리를 맞바꿉니다.",
     control: "wheel",
-    satisfied: () => false
+    // 설계 의도대로 "실제로 해내면 넘어간다" — 확대·축소 1회 또는 팬 1회.
+    satisfied: () => mapCameraGestures > coachGestureBaseline
   },
   {
     target: "#early-button",
@@ -5822,6 +5835,8 @@ const COACH_STEPS: readonly CoachStep[] = [
 let coachIndex = -1;
 /** 지금 실제로 짚고 있는 셀렉터. 대체 대상으로 넘어간 것을 알아채는 데 쓴다. */
 let coachResolvedTarget = "";
+/** 단계에 들어선 순간의 카메라 조작 횟수. 이보다 늘면 그 단계를 해낸 것이다. */
+let coachGestureBaseline = 0;
 
 /**
  * 대상이 화면에 없거나 크기가 0 이면 대체 대상으로 돌린다.
@@ -5924,6 +5939,23 @@ function renderCoach(): void {
   layoutCoach();
 }
 
+/**
+ * 코치가 전장을 짚는 동안에는 소환 결과 카드(660×314)가 링 한가운데를
+ * 그대로 덮어 wheel 을 삼킨다 — 안내대로 휠을 굴려도 줌이 변하지 않았다.
+ * 해당 단계에 들어서면 카드를 곧바로 접는다.
+ */
+function coachIsPointingAtBoard(): boolean {
+  return coachIndex >= 0 && COACH_STEPS[coachIndex]?.target === "#battle-canvas";
+}
+
+/** 단계에 들어설 때 카메라 조작 기준선을 다시 잡고, 방해물을 치운다. */
+function enterCoachStep(): void {
+  coachGestureBaseline = mapCameraGestures;
+  coachResolvedTarget = COACH_STEPS[coachIndex] ? resolveCoachStep(COACH_STEPS[coachIndex]).step.target : "";
+  if (coachIsPointingAtBoard()) hideSummonReveal();
+  renderCoach();
+}
+
 function advanceCoach(): void {
   if (coachIndex < 0) return;
   if (coachIndex >= COACH_STEPS.length - 1) {
@@ -5931,7 +5963,7 @@ function advanceCoach(): void {
     return;
   }
   coachIndex += 1;
-  renderCoach();
+  enterCoachStep();
 }
 
 function endCoach(): void {
@@ -5943,7 +5975,7 @@ function endCoach(): void {
 function startCoach(force = false): void {
   if (!force && coachAlreadySeen()) return;
   coachIndex = 0;
-  renderCoach();
+  enterCoachStep();
 }
 
 /** 해당 조작을 실제로 해내면 안내가 저절로 넘어간다. */
