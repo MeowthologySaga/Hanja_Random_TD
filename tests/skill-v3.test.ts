@@ -4,6 +4,10 @@
  *  1. 유폭 낙인(同歸) — 낙인 적립·전파 반경·전파 인원 상한·연쇄 유폭 차단
  *  2. 획수 공명(畫數共鳴) — 같은 진·같은 계급 중첩 상한·진 경계·자동배치 간섭
  *  3. 진흙밭(泥田) — 무효화 대상(장갑·재생) 실재·무효 판정·이동 불간섭
+ *  4. 회향(回響) — 3합 여운 지속·전투 전용 시계·공격 가산·모드 경계
+ *
+ * 기획서(15종) 가운데 남은 항목은 수성(守成) 하나이며, 판정 정의가 서지 않아
+ * 구현하지 않았다 — 사유는 트랙 보고에 실측과 함께 남겼다.
  *
  * 공통 원칙: 어떤 스킬도 적을 뒤로 밀지 않는다(감속·제자리 정지·장판만).
  * 그래서 모든 통합 테스트는 효과가 걸린 뒤 `progress` 가 줄지 않았음을 함께 본다.
@@ -16,6 +20,11 @@ import {
   DEMISE_RADIUS_PER_STAR,
   DEMISE_STORE_RATIO,
   demiseSpreadRadius,
+  ECHO_BASE_SECONDS,
+  ECHO_CAP_SECONDS,
+  ECHO_DAMAGE_BONUS,
+  ECHO_PER_STAR,
+  echoSeconds,
   hasActiveSkills,
   MIRE_MIN_ENEMIES,
   MIRE_SUPPRESS_GRACE,
@@ -29,10 +38,11 @@ import {
   strokeResonanceStacks,
   WARFARE_BRAND_DURATION
 } from "../src/core/abilities";
+import { casualNaturalStar } from "../src/core/casual";
 import { BOARD_CELLS, CELLS_PER_FORMATION, positionOnPath, wavePlan } from "../src/core/content";
 import { GameEngine } from "../src/core/game";
 import { getCatalog } from "../src/core/hanzi";
-import type { Enemy, EnemyArchetype, GameEvent, HanziDefinition, SemanticFamily, Tower } from "../src/core/types";
+import type { CasualStar, Enemy, EnemyArchetype, GameEvent, HanziDefinition, SemanticFamily, Tower, Wuxing } from "../src/core/types";
 
 const REGIONS = ["KR", "JP", "CN"] as const;
 
@@ -151,6 +161,51 @@ function abilityEvents(engine: GameEngine): Array<Extract<GameEvent, { type: "ab
  */
 function soloDemiseDefinition(region: (typeof REGIONS)[number]): HanziDefinition {
   return familyDefinition(region, "demise", (definition) => definition.wuxing !== "火" && definition.wuxing !== "水");
+}
+
+/** 잠금·목표·성어·일반 합성식 어디에도 걸리지 않는 같은 오행·같은 별 정의들. */
+function safeCasualDefinitions(engine: GameEngine, count: number): HanziDefinition[] {
+  const parentChars = new Set(engine.catalog.recipes.flatMap((definition) => definition.parents));
+  const targetPath = engine.evolution.getTargetPath(engine.state.targetChar);
+  const idiomChars = new Set(engine.idioms().flatMap((idiom) => [...idiom.chars]));
+  const grouped = new Map<string, HanziDefinition[]>();
+  for (const definition of engine.catalog.activePool) {
+    const star = casualNaturalStar(definition.char);
+    if (star === null || star >= 8) continue;
+    if (parentChars.has(definition.char) || targetPath.has(definition.char) || idiomChars.has(definition.char)) continue;
+    const key = `${definition.wuxing}:${star}`;
+    const group = grouped.get(key) ?? [];
+    group.push(definition);
+    grouped.set(key, group);
+    if (group.length >= count) return group.slice(0, count);
+  }
+  throw new Error(`No safe casual fixture of size ${count} found`);
+}
+
+function casualTower(definition: HanziDefinition, id: number, cell: number, star: CasualStar): Tower {
+  return {
+    ...makeTower(definition, id, { cell }),
+    concentration: 0,
+    concentrationPath: null,
+    naturalStar: casualNaturalStar(definition.char) ?? undefined,
+    casualStar: star
+  };
+}
+
+/** 캐주얼 1기 대치 장면 — 회향 여운이 실제 피해에 얹히는지 재기 위한 무대. */
+function casualDuel(seed: string, tower: Tower): { engine: GameEngine; enemy: Enemy } {
+  const engine = new GameEngine(seed, "KR", "casual");
+  engine.begin();
+  engine.state.towers = [tower];
+  engine.state.summonCount = 1;
+  engine.state.startingFormationIndex = 0;
+  engine.state.unlockedFormations = [0];
+  engine.consumeEvents();
+  engine.startWaveEarly();
+  const enemy = makeEnemy(-30, "normal", { progress: progressNearCell(tower.cell), weakness: "木" });
+  engine.state.enemies = [enemy];
+  engine.state.spawned = 9999;
+  return { engine, enemy };
 }
 
 describe("[SKILL-V3] 신설 글자군", () => {
@@ -628,5 +683,108 @@ describe("[SKILL-V3] 획수 공명 (畫數共鳴)", () => {
     for (const tower of engine.state.towers) {
       expect(engine.strokeResonanceStacks(tower)).toBe(expectedStacks(tower));
     }
+  });
+});
+
+describe("[SKILL-V3] 회향 (回響)", () => {
+  it("여운 지속 — 기본 10초, 결과 별당 +0.5초, 상한 13초", () => {
+    expect(echoSeconds(1)).toBeCloseTo(ECHO_BASE_SECONDS, 6);
+    expect(echoSeconds(2)).toBeCloseTo(ECHO_BASE_SECONDS + ECHO_PER_STAR, 6);
+    expect(echoSeconds(5)).toBeCloseTo(ECHO_BASE_SECONDS + 4 * ECHO_PER_STAR, 6);
+    expect(echoSeconds(8)).toBeCloseTo(ECHO_CAP_SECONDS, 6);
+    expect(echoSeconds(99)).toBeCloseTo(ECHO_CAP_SECONDS, 6);
+  });
+
+  it("3합 승급 결과 자령이 사라진 셋의 여운을 물려받는다", () => {
+    const engine = new GameEngine("skill-echo-grant", "KR", "casual");
+    engine.begin();
+    const definitions = safeCasualDefinitions(engine, 3);
+    const star = casualNaturalStar((definitions[0] as HanziDefinition).char) as CasualStar;
+    const materials = definitions.map((definition, index) => casualTower(definition, 700 + index, -1, star));
+    engine.state.inventoryTowers = materials;
+    // 재료에는 여운이 없다.
+    for (const material of materials) expect(material.echoRemaining).toBeUndefined();
+
+    const result = engine.fuseCasual(materials.map((tower) => tower.id));
+    expect(result).toMatchObject({ ok: true });
+    const gained = [...engine.state.towers, ...engine.state.inventoryTowers]
+      .find((tower) => !materials.some((material) => material.id === tower.id));
+    expect(gained).toBeDefined();
+    const resultStar = (gained?.casualStar ?? gained?.naturalStar ?? 1) as CasualStar;
+    expect(gained?.echoRemaining).toBeCloseTo(echoSeconds(resultStar), 6);
+    expect(engine.state.lastMessage).toContain("회향 여운");
+    expect(engine.echoStatus(gained as Tower)).toMatchObject({ bonus: ECHO_DAMAGE_BONUS });
+  });
+
+  it("여운 시계는 전투 중에만 흐른다 — 준비 시간에는 줄지 않는다 (판정 경계)", () => {
+    const engine = new GameEngine("skill-echo-clock", "KR", "casual");
+    engine.begin();
+    const definition = safeCasualDefinitions(engine, 1)[0] as HanziDefinition;
+    const star = Math.max(2, casualNaturalStar(definition.char) ?? 2) as CasualStar;
+    const tower = casualTower(definition, 720, 0, star);
+    tower.echoRemaining = echoSeconds(star);
+    engine.state.towers = [tower];
+    engine.state.summonCount = 1;
+    engine.state.startingFormationIndex = 0;
+    engine.state.unlockedFormations = [0];
+
+    // 준비 단계 — 런 시계는 흘러도 여운은 그대로다.
+    expect(engine.state.phase).toBe("prep");
+    const beforePrep = tower.echoRemaining;
+    const elapsedBefore = engine.state.elapsed;
+    for (let step = 0; step < 5; step += 1) engine.update(0.1);
+    expect(engine.state.elapsed).toBeGreaterThan(elapsedBefore);
+    expect(tower.echoRemaining).toBe(beforePrep);
+
+    // 전투에 들어서면 그때부터 줄어든다.
+    engine.startWaveEarly();
+    engine.state.enemies = [];
+    engine.state.spawned = 0;
+    engine.update(0.1);
+    expect(tower.echoRemaining ?? 0).toBeLessThan(beforePrep as number);
+
+    // 다 타면 완전히 사라진다.
+    tower.echoRemaining = 0.05;
+    engine.update(0.1);
+    expect(tower.echoRemaining).toBeUndefined();
+    expect(engine.echoStatus(tower)).toBeNull();
+  });
+
+  it("여운이 남은 동안 공격이 20% 무거워진다 — 여운이 끝나면 원래대로", () => {
+    const base = new GameEngine("skill-echo-fixture", "KR", "casual");
+    base.begin();
+    // 금(치명타 확률)과 화·수(광역·연쇄)는 한 방 비교를 흐리므로 뺀다.
+    const definition = base.catalog.activePool.find((candidate) => {
+      const star = casualNaturalStar(candidate.char);
+      return star !== null && star >= 2 && !(["金", "火", "水"] as Wuxing[]).includes(candidate.wuxing);
+    }) as HanziDefinition;
+    expect(definition).toBeDefined();
+    const star = casualNaturalStar(definition.char) as CasualStar;
+
+    /** 같은 시드·같은 자령으로 한 방의 피해를 잰다 — 여운만 다르게 준다. */
+    const measure = (echo: number): number => {
+      const tower = casualTower(definition, 740, 0, star);
+      if (echo > 0) tower.echoRemaining = echo;
+      const { engine, enemy } = casualDuel("skill-echo-damage", tower);
+      const hpBefore = enemy.hp;
+      engine.update(0.02);
+      expect(tower.shotCount).toBe(1);
+      return hpBefore - enemy.hp;
+    };
+
+    const plain = measure(0);
+    const echoed = measure(echoSeconds(star));
+    expect(plain).toBeGreaterThan(0);
+    expect(echoed / plain).toBeCloseTo(1 + ECHO_DAMAGE_BONUS, 6);
+  });
+
+  it("표준 모드에는 여운이 없다 — 3합 자체가 캐주얼 전용 규칙이다 (모드 경계)", () => {
+    const standard = new GameEngine("skill-echo-standard", "KR");
+    standard.begin();
+    const definition = standard.catalog.activePool[0] as HanziDefinition;
+    const tower = makeTower(definition, 760, { cell: 0 });
+    tower.echoRemaining = 10; // 값이 남아 있어도 표준에서는 읽지 않는다.
+    expect(standard.echoStatus(tower)).toBeNull();
+    expect(standard.fuseCasual([1, 2, 3])).toMatchObject({ ok: false });
   });
 });

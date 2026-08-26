@@ -209,6 +209,10 @@ export interface Tower {
   harvestKills?: number;
   // [SKILL-V2] 참명(reaper): 다음 참격이 가능해지는 시각(숨 고르기).
   reaperReadyAt?: number;
+  // [SKILL-V3] 회향(回響): 3합 승급으로 태어난 자령이 물려받은 여운(남은 초).
+  // 준비 시간에는 흐르지 않고 **전투 중에만** 줄어든다 — 준비 화면에서 합쳐도
+  // 여운이 그냥 타 버리지 않게 하려는 규칙이다.
+  echoRemaining?: number;
 }
 
 export interface Enemy {

@@ -4,6 +4,8 @@ import {
   CHAINSEAL_STORE_RATIO,
   chainsealMaxStacks,
   commandRallySeconds,
+  ECHO_DAMAGE_BONUS,
+  echoSeconds,
   DEMISE_MAX_TARGETS,
   DEMISE_STORE_RATIO,
   demiseSpreadRadius,
@@ -456,6 +458,10 @@ export class GameEngine {
       return;
     }
 
+    // [SKILL-V3] 회향 여운은 전투 중에만 흐른다. 전장과 가방을 모두 태워
+    // "가방에 넣어 두면 여운이 얼어붙는" 우회를 막는다.
+    for (const tower of this.state.towers) this.decayEcho(tower, delta);
+    for (const tower of this.state.inventoryTowers) this.decayEcho(tower, delta);
     this.updateEnemies(delta);
     if (this.state.phase !== "combat") return;
     this.refreshCombatCache();
@@ -711,6 +717,29 @@ export class GameEngine {
     return (enemy.traitsSuppressedUntil ?? 0) > this.state.elapsed;
   }
 
+  /** [SKILL-V3] 회향 여운 감쇠. 전투 갱신에서만 부른다. */
+  private decayEcho(tower: Tower, delta: number): void {
+    const remaining = tower.echoRemaining ?? 0;
+    if (remaining <= 0) return;
+    const next = remaining - delta;
+    if (next > 0) tower.echoRemaining = next;
+    else tower.echoRemaining = undefined;
+  }
+
+  /**
+   * [SKILL-V3] 회향 UI 상태. 여운이 없으면 null — 칩·카드를 아예 그리지 않는다.
+   * 3합이 캐주얼 전용 규칙이므로 표준 모드에서는 언제나 null이다.
+   */
+  echoStatus(tower: Tower): { remaining: number; total: number; bonus: number } | null {
+    const remaining = tower.echoRemaining ?? 0;
+    if (this.state.mode !== "casual" || remaining <= 0) return null;
+    return {
+      remaining,
+      total: echoSeconds(tower.casualStar ?? tower.naturalStar ?? 1),
+      bonus: ECHO_DAMAGE_BONUS
+    };
+  }
+
   /**
    * [SKILL-V2] 소흔(scorch) 잔불 — 잔화 지대 문법을 빌린 처치 지점 지속 피해 지대.
    * 트리거만 처치일 뿐 판정·연출은 기존 장판과 같다. 자령당 1개(최근 처치 자리).
@@ -935,6 +964,8 @@ export class GameEngine {
     // the free starting formation's map position from deciding a run before
     // the player can buy a second formation, then disappears after wave 10.
     if (this.state.wave <= 10 && towerFormationIndex === this.state.startingFormationIndex) damage *= 1.15;
+    // [SKILL-V3] 회향: 3합으로 사라진 셋이 남긴 여운. 남아 있는 동안만 곱한다.
+    if (this.state.mode === "casual" && (tower.echoRemaining ?? 0) > 0) damage *= 1 + ECHO_DAMAGE_BONUS;
     // FB7-8성 「극성 개안」: 8★ 자령이 서 있는 오행의 아군 전체 공격 +15%.
     // Set 기반이라 같은 오행 오라는 몇 기가 있어도 최대 1개만 산다.
     if (this.combatPolarisElements.has(tower.wuxing)) damage *= 1 + CASUAL_POLARIS_AURA.damageBonus;

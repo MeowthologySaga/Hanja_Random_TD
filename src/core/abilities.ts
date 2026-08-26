@@ -650,6 +650,39 @@ export const MIRE_MIN_ENEMIES = 3;
  */
 export const MIRE_SUPPRESS_GRACE = 0.25;
 
+/**
+ * 회향(回響) — 캐주얼 3합 승급의 전역 규칙.
+ *
+ * 3합은 재료 세 기가 전부 사라지는 규칙이라 "내 자령이 없어진다"는 아쉬움이
+ * 남는다. 사라진 셋이 결과 자령에게 잠시 힘을 남기게 해 그 아쉬움을 서사로
+ * 갚는다 — 기획서 무(戊) 기맥계의 마지막 항목이다.
+ *
+ * 여운 시계는 **전투 중에만** 흐른다. 3합은 대개 준비 시간에 이뤄지는데,
+ * 런 시계로 재면 여운이 전투 시작 전에 다 타 버려 규칙이 죽는다.
+ */
+export const ECHO_DAMAGE_BONUS = 0.2;
+export const ECHO_BASE_SECONDS = 10;
+export const ECHO_PER_STAR = 0.5;
+export const ECHO_CAP_SECONDS = 13;
+
+/** 승급 결과 별 → 여운 지속(초). 기본 10초, 결과 별당 +0.5초, 상한 13초. */
+export function echoSeconds(resultStar: number): number {
+  return Math.min(ECHO_CAP_SECONDS, ECHO_BASE_SECONDS + Math.max(0, resultStar - 1) * ECHO_PER_STAR);
+}
+
+/** 회향 카드·칩용 스펙. 기존 fx(lineage)를 재사용한다 — "물려받은 힘"이라서다. */
+export const ECHO_ABILITY: AbilitySpec = {
+  id: "casual-echo",
+  name: "회향",
+  glyph: "回",
+  category: "lineage",
+  fx: "lineage",
+  trigger: "3합 승급 직후",
+  summary: "여운 공격 +20%",
+  description: "3합 승급으로 사라진 세 자령이 결과 자령에게 힘의 여운을 남깁니다. 여운이 남은 동안 공격이 20% 오릅니다. 여운은 전투 중에만 흐릅니다 — 준비 시간에 승급해도 그냥 타 버리지 않습니다.",
+  color: "#9ce8ff"
+};
+
 /** 획수 공명 카드·칩용 스펙. 기존 fx(resonance)를 재사용한다. */
 export const STROKE_RESONANCE_ABILITY: AbilitySpec = {
   id: "graph-stroke-resonance",
