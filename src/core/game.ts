@@ -2088,7 +2088,7 @@ export class GameEngine {
   setIdiomTarget(id: string): ActionResult {
     const idiom = idiomById(this.state.region, id);
     if (!idiom) return { ok: false, message: "이 지역에서 사용할 수 없는 성어입니다." };
-    if (this.state.idiomSeals.some((seal) => seal.idiomId === id)) return { ok: false, message: `${idiom.reading}은 이미 봉인했습니다.` };
+    if (this.state.idiomSeals.some((seal) => seal.idiomId === id)) return { ok: false, message: `${idiom.reading}은 이미 발동했습니다.` };
     const current = this.trackedIdioms().map((entry) => entry.id).filter((candidate) => candidate !== id);
     this.state.trackedIdiomIds = [id, ...current].slice(0, MAX_TRACKED_IDIOMS);
     this.ensureFeaturedIdiom(id);
@@ -2497,7 +2497,7 @@ export class GameEngine {
       this.state.lastMessage = "자동배치 · 이미 최적입니다. 다음 성어 재료를 모아 보세요.";
       return { ok: true, message: this.state.lastMessage };
     }
-    const idiomLabel = sealed > 0 ? `성어 ${sealed}개 봉인 · ` : "";
+    const idiomLabel = sealed > 0 ? `성어 ${sealed}개 발동 · ` : "";
     const inventoryLabel = deployed.length > 0 ? `인벤토리 ${deployed.length}기 투입 · ` : "";
     this.state.lastMessage = `자동배치 · ${inventoryLabel}${idiomLabel}오행 공명 ${resonanceBefore}→${resonanceAfter}단계 · ${moved}기 이동`;
     return { ok: true, message: this.state.lastMessage };
@@ -3126,7 +3126,7 @@ export class GameEngine {
   }
 
   private announceIdiom(idiom: IdiomDefinition, cells: readonly number[], rejoined: boolean): void {
-    this.state.lastMessage = idiom.name + " · " + idiom.reading + (rejoined ? " 재봉인 · " : " 자동 봉인 · ") + idiom.bonus.label;
+    this.state.lastMessage = idiom.name + " · " + idiom.reading + (rejoined ? " 재발동 · " : " 자동 발동 · ") + idiom.bonus.label;
     this.events.push({
       type: "idiom",
       idiomId: idiom.id,
@@ -3145,7 +3145,7 @@ export class GameEngine {
     const cells = [...seal.cells];
     seal.active = false;
     seal.cells = [];
-    this.state.lastMessage = idiom.name + " · " + idiom.reading + " 봉인 해제 · 줄이 흩어졌습니다";
+    this.state.lastMessage = idiom.name + " · " + idiom.reading + " 발동 해제 · 줄이 흩어졌습니다";
     this.events.push({
       type: "idiomBroken",
       idiomId: idiom.id,

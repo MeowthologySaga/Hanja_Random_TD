@@ -107,7 +107,7 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
         <div><span>엽전 <em id="interest-preview">이자 +2</em></span><strong id="gold-value">${GAME_CONFIG.startingGold}</strong></div>
         <div><span>적 한계</span><strong id="enemy-cap-value">${MAX_ENEMIES}체</strong></div>
         <div title="전장에 배치된 자령 수 / 열린 진의 칸 수"><span>배치</span><strong id="tower-count-value">0 / 16</strong></div>
-        <div title="이번 런에 봉인한 성어 수 / 이번 런 성어 목표 수"><span>성어 봉인</span><strong id="goal-count-value">0 / 5</strong></div>
+        <div title="이번 런에 발동한 성어 수 / 이번 런 성어 목표 수"><span>성어 발동</span><strong id="goal-count-value">0 / 5</strong></div>
       </section>
 
       <section class="wave-card">
@@ -164,7 +164,7 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
             </section>
           </div>
           <div id="shop-pinned" class="shop-pinned">
-            <button id="auto-arrange-button" class="action-button action-button--auto-arrange" type="button" data-testid="auto-arrange-button" title="발동 가능한 사자성어를 봉인하고 오행진 공명을 최적화합니다">
+            <button id="auto-arrange-button" class="action-button action-button--auto-arrange" type="button" data-testid="auto-arrange-button" title="완성 가능한 사자성어를 발동하고 오행진 공명을 최적화합니다">
               <b>자동배치</b><small>성어·오행 최적화</small>
             </button>
           </div>
@@ -220,7 +220,7 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
             <strong id="idiom-name">이심전심</strong>
             <p id="idiom-meaning">말하지 않아도 서로 마음이 통함</p>
             <b id="idiom-bonus" class="idiom-bonus">모든 자령 사거리 +28</b>
-            <small id="idiom-hint">글자 순서가 맞으면 자동 봉인</small>
+            <small id="idiom-hint">글자 순서가 맞으면 자동 발동</small>
           </div>
           <div id="idiom-result" class="idiom-result" aria-label="최근 자동 사자성어 발동">
             <b id="idiom-result-glyph">四</b>
@@ -231,7 +231,7 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
             </span>
             <mark id="idiom-result-bonus">자동 판정</mark>
           </div>
-          <div id="idiom-seal-status" class="idiom-seal-status" aria-label="봉인 상태" hidden></div>
+          <div id="idiom-seal-status" class="idiom-seal-status" aria-label="발동 상태" hidden></div>
         </section>
 
         <section id="run-inventory-panel" class="run-inventory-panel panel-view" data-panel-view="inventory" aria-label="이번 판 자령 인벤토리">
@@ -393,7 +393,7 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
             <li><b>소환</b><span>획이 많은 한자일수록 별이 높아요 · 기본 1~3★ / 중급 2~5★ / 고급 3~8★</span></li>
             <li><b>승급</b><span>같은 오행·같은 별 3기 → 다음 별 자령 1기, 무엇이 나올지는 무작위</span></li>
             <li><b>강화</b><span>안 쓰는 자령을 분해해 문기를 얻고, 그 오행 전원을 키워요</span></li>
-            <li><b>사자성어</b><span>한 줄에 4자 순서대로 — 줄을 지키는 동안만 보너스가 살아 있어요</span></li>
+            <li><b>사자성어</b><span>한 줄에 4자 순서대로 — 발동! 보너스는 줄을 지키는 동안만 살아 있어요</span></li>
           </ul>
           <button id="tutorial-finish" class="tutorial-finish" type="button" data-testid="tutorial-finish">본편 출정</button>
         </div>
@@ -446,7 +446,7 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
         </div>
 
         <button id="tutorial-button" class="s00-training" type="button" data-testid="tutorial-button"
-          aria-label="수련장. 소환부터 사자성어 봉인까지 여덟 걸음으로 배우는 연습 판. 처음이라면 여기부터">
+          aria-label="수련장. 소환부터 사자성어 발동까지 여덟 걸음으로 배우는 연습 판. 처음이라면 여기부터">
           <b>수련장</b><small>처음이라면 여기부터</small><em>八</em>
         </button>
 
@@ -586,7 +586,7 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
             <h3 class="help-subhead">꼭 알아 둘 여섯 낱말</h3>
             <div class="help-term-grid">
               <article class="help-term" style="--element:#73df8d"><i aria-hidden="true">靈</i><div><b>자령<em>타워</em></b><span>글자에 깃든 타워. 오행진 한 칸에 한 기가 섭니다.</span></div></article>
-              <article class="help-term" style="--element:#ff755a"><i aria-hidden="true">封</i><div><b>봉인<em>처치</em></b><span>적을 쓰러뜨리는 일, 그리고 사자성어가 완성되는 일.</span></div></article>
+              <article class="help-term" style="--element:#ff755a"><i aria-hidden="true">封</i><div><b>봉인<em>처치</em></b><span>적을 쓰러뜨리는 일. 사자성어가 한 줄로 완성되는 일은 '발동'이라고 해요.</span></div></article>
               <article class="help-term" style="--element:#f5c65b"><i aria-hidden="true">錢</i><div><b>엽전<em>골드</em></b><span>이 게임의 돈. 소환·진 해금·공용 강화에 씁니다.</span></div></article>
               <article class="help-term" style="--element:#61c8ff"><i aria-hidden="true">文</i><div><b>문기<em>오행 재료</em></b><span>자령을 분해해 얻습니다. 오행 강화와 농축에 씁니다.</span></div></article>
               <article class="help-term" style="--element:#a98cff"><i aria-hidden="true">濃</i><div><b>농축<em>최고 3</em></b><span>같은 글자를 겹쳐 한 기를 키우는 단계입니다.</span></div></article>
@@ -694,7 +694,7 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
           </section>
 
           <section class="help-panel" id="help-panel-idiom" role="tabpanel" aria-labelledby="help-tab-idiom" data-help-panel="idiom">
-            <p class="help-lead">같은 진 안 <b>한 직선</b> 네 칸에 글자를 순서대로 놓으면 사자성어가 자동으로 봉인됩니다.</p>
+            <p class="help-lead">같은 진 안 <b>한 직선</b> 네 칸에 글자를 순서대로 놓으면 사자성어가 자동으로 발동합니다.</p>
             <section class="idiom-rule-guide help-idiom-guide" aria-label="성어 발동 규칙">
               <div class="idiom-rule-figures" aria-hidden="true">
                 <figure class="idiom-rule-figure idiom-rule-figure--row">
@@ -723,7 +723,7 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
               <div><span class="help-cell is-placed" aria-hidden="true">③</span><div><b>순번 인장</b><span>추적 중인 성어의 글자를 가진 자령에 몇 번째 글자인지 인장이 붙습니다.</span></div></div>
               <div><span class="help-cell is-next" aria-hidden="true">④</span><div><b>다음 칸 점선</b><span>다음 글자를 놓을 수 있는 빈 칸을 금색 점선 테와 순번으로 표시합니다.</span></div></div>
             </div>
-            <p class="help-note">직접 선을 그을 필요는 없습니다. 순서가 맞는 순간 자동으로 발동하고, <b>보너스는 네 자령이 그 줄을 지키는 동안만</b> 발동합니다. 한 기라도 자리를 뜨면 봉인이 풀리고, 줄을 다시 세우면 재발동합니다. 역순으로 읽어도 인정합니다.</p>
+            <p class="help-note">직접 선을 그을 필요는 없습니다. 순서가 맞는 순간 자동으로 발동하고, <b>보너스는 네 자령이 그 줄을 지키는 동안만</b> 발동합니다. 한 기라도 자리를 뜨면 발동이 풀리고, 줄을 다시 세우면 재발동합니다. 역순으로 읽어도 인정합니다.</p>
             <!-- [SKILL-V1] 성어의 가호 안내 -->
             <p class="help-note"><b>성어의 가호</b> — 발동 중인 성어와 같은 진에 배치된 자령 전원의 공격이 +10% 강해지고, 같은 진에 성어가 하나 더 발동할 때마다 +5%p 씩 더해집니다. 성어가 흩어지면 가호도 즉시 사라집니다.</p>
             <p class="help-note">발동 중인 네 자령은 명패에 <b>금색 鎖</b> 표식이 붙고 자동배치가 건드리지 않습니다. 손으로 옮기는 것은 언제든 가능합니다.</p>

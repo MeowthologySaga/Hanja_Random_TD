@@ -243,7 +243,7 @@ export function wireHud1(): void {
 
 export function handleAction(result: ActionResult, options: { invalidatePanels?: boolean } = {}): void {
   sound.playActionOutcome(result.ok);
-  if (!result.ok || !result.message.includes("자동 봉인")) showToast(result.message, !result.ok);
+  if (!result.ok || !result.message.includes("자동 발동")) showToast(result.message, !result.ok);
   if (options.invalidatePanels !== false) {
     ctx.evolutionRenderKey = "";
     ctx.goalRenderKey = "";
@@ -338,7 +338,7 @@ export function showWaveBanner(): void {
  * 웨이브 배너를 한 번 빌려 전장 왼쪽 스택을 가리킨다. 런마다 처음 한 번뿐이다.
  */
 export function firstSealCelebration(reading: string): void {
-  bossBanner.textContent = `첫 봉인 ${reading}! 발동 중 성어는 전장 왼쪽에 표시됩니다`;
+  bossBanner.textContent = `첫 발동 ${reading}! 발동 중 성어는 전장 왼쪽에 표시됩니다`;
   bossBanner.classList.remove("boss-banner--boss");
   bossBanner.classList.add("boss-banner--idiom");
   showWaveBanner();

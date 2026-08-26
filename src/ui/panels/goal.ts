@@ -53,7 +53,7 @@ export function renderGoal(): void {
   const seals = engine.state.idiomSeals.length;
   const bestReadiness = tracked.reduce((best, idiom) => Math.max(best, engine.idiomProgress(idiom.id).readiness), 0);
   must<HTMLElement>("#goal-tab-progress").textContent = `${Math.round(bestReadiness * 100)}%`;
-  must<HTMLElement>("#goal-owned-summary").innerHTML = `<b>추적 ${tracked.length}/${MAX_TRACKED_IDIOMS}구</b><span>봉인 ${seals}/${engine.idioms().length}</span>`;
+  must<HTMLElement>("#goal-owned-summary").innerHTML = `<b>추적 ${tracked.length}/${MAX_TRACKED_IDIOMS}구</b><span>발동 ${seals}/${engine.idioms().length}</span>`;
   must<HTMLElement>("#goal-panel-summary").innerHTML = `추적 중 성어 <b>${tracked.length}구</b> · 최고 진행 <b>${Math.round(bestReadiness * 100)}%</b>`;
 
   must<HTMLElement>("#goal-selector-list").innerHTML = renderIdiomCards(ownedCounts, trackedIds, selectedId);
@@ -105,7 +105,7 @@ function renderIdiomCards(ownedCounts: ReadonlyMap<string, number>, trackedIds: 
     const selected = idiom.id === selectedId;
     const percent = Math.round(progress.owned / Math.max(1, progress.total) * 100);
     const status = sealed
-      ? live ? "발동 중" : "봉인 이력 · 흩어짐"
+      ? live ? "발동 중" : "발동 이력 · 흩어짐"
       : isTracked
         ? `추적 ${trackedIndex + 1}순위`
         : progress.owned === progress.total ? "배치 준비" : `${progress.owned}/${progress.total}자`;
@@ -120,7 +120,7 @@ function renderIdiomCards(ownedCounts: ReadonlyMap<string, number>, trackedIds: 
       <span class="goal-idiom-glyphs">${ownedIdiomGlyphMarkup(idiom.chars, ownedCounts)}</span>
       <span class="goal-idiom-copy"><strong>${escapeHtml(idiom.reading)}</strong><small>${escapeHtml(idiom.meaning)}</small></span>
       <span class="goal-idiom-progress" aria-label="보유 ${progress.owned}/${progress.total}자"><i style="width:${percent}%"></i><em>${progress.owned}/${progress.total}</em></span>
-      <button type="button" class="goal-idiom-track" data-goal-track="${escapeHtml(idiom.id)}" aria-pressed="${String(isTracked)}" ${sealed ? "disabled" : ""}>${sealed ? "봉인 완료" : isTracked ? "추적 중 ✓" : "추적"}</button>
+      <button type="button" class="goal-idiom-track" data-goal-track="${escapeHtml(idiom.id)}" aria-pressed="${String(isTracked)}" ${sealed ? "disabled" : ""}>${sealed ? "발동 완료" : isTracked ? "추적 중 ✓" : "추적"}</button>
       <mark>${escapeHtml(status)}</mark>
     </div>`;
   }).join("");
@@ -134,9 +134,9 @@ function renderIdiomDetail(selectedId: string, ownedCounts: ReadonlyMap<string, 
   const live = engine.isIdiomSealActive(idiom.id);
   const trackedIndex = trackedIds.indexOf(idiom.id);
   const sourceLabel = idiom.source === "cheonjamun" ? `천자문 제${idiom.sourceOrder}구` : "상용 사자성어";
-  const stateLabel = live ? "발동 중" : sealed ? "봉인 이력 · 지금은 흩어짐" : trackedIndex >= 0 ? `추적 ${trackedIndex + 1}순위` : "서책 수록";
+  const stateLabel = live ? "발동 중" : sealed ? "발동 이력 · 지금은 흩어짐" : trackedIndex >= 0 ? `추적 ${trackedIndex + 1}순위` : "서책 수록";
   const trackButton = sealed
-    ? `<button type="button" class="goal-detail-track is-sealed" disabled>봉인 완료 — 목표에서 은퇴</button>`
+    ? `<button type="button" class="goal-detail-track is-sealed" disabled>발동 완료 — 목표에서 은퇴</button>`
     : trackedIndex >= 0
       ? `<button type="button" class="goal-detail-track is-on" data-goal-track="${escapeHtml(idiom.id)}" aria-pressed="true">추적 해제</button>`
       : `<button type="button" class="goal-detail-track" data-goal-track="${escapeHtml(idiom.id)}" aria-pressed="false">이 성어 추적 (${trackedIds.length}/${MAX_TRACKED_IDIOMS})</button>`;
@@ -146,7 +146,7 @@ function renderIdiomDetail(selectedId: string, ownedCounts: ReadonlyMap<string, 
     <p class="goal-detail-kicker">${escapeHtml(sourceLabel)} · ${escapeHtml(stateLabel)}</p>
     <h3 class="goal-detail-reading">${escapeHtml(idiom.reading)}</h3>
     <p class="goal-detail-meaning">${escapeHtml(idiom.meaning)}</p>
-    <article class="goal-detail-bonus"><b>${escapeHtml(idiom.bonus.label)}</b><span>같은 진의 한 줄(가로·세로·대각선)에 ①→④ 순서로 놓으면 자동 봉인 — 효과는 줄을 지키는 동안만 삽니다.</span></article>
+    <article class="goal-detail-bonus"><b>${escapeHtml(idiom.bonus.label)}</b><span>같은 진의 한 줄(가로·세로·대각선)에 ①→④ 순서로 놓으면 자동 발동 — 효과는 줄을 지키는 동안만 삽니다.</span></article>
     ${trackButton}
     ${renderMissingSection(idiom, ownedCounts)}
   </div>`;

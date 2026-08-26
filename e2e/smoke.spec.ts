@@ -1018,12 +1018,12 @@ test("automatically seals four correctly placed towers with readable feedback", 
   await expect(page.locator("#idiom-tab-count")).toHaveText("1/5");
   await page.getByRole("tab", { name: /성어/ }).click();
   await expect(page.locator("#idiom-panel")).toBeVisible();
-  await expect(page.locator("#idiom-result-name")).toHaveText("이심전심 자동 봉인");
+  await expect(page.locator("#idiom-result-name")).toHaveText("이심전심 자동 발동");
   await expect(page.locator("#idiom-result-meaning")).toContainText("마음이 통함");
   await expect(page.locator("#idiom-result-bonus")).toHaveText("모든 자령 사거리 +28");
   // 자동 판정 안내는 패널 바닥 조작 팁(.canvas-tip)이 아니라 성어 패널 자체가 설명한다.
   await expect(page.locator(".canvas-tip")).toContainText("화면 이동");
-  await expect(page.locator("#idiom-panel")).toContainText("자동 봉인");
+  await expect(page.locator("#idiom-panel")).toContainText("자동 발동");
   await expect(page.locator("#idiom-panel")).not.toContainText("선을 그");
   await page.screenshot({ path: "artifacts/idiom-seal-1280x720.png", fullPage: true });
 
@@ -1048,13 +1048,13 @@ test("automatically seals four correctly placed towers with readable feedback", 
   await expect(page.locator("#battle-canvas")).not.toHaveAttribute("data-selected-tower-id", "");
   await page.locator("#battle-canvas").click({ position: await canvasPositionForWorld(page, ...worldXY(parkCell)) });
 
-  await expect(page.locator("#toast")).toContainText("『이심전심』 봉인 해제");
+  await expect(page.locator("#toast")).toContainText("『이심전심』 발동 해제");
   await expect(page.locator("#active-idioms .active-idiom")).toHaveCount(0);
   await expect(page.locator("#battle-canvas")).toHaveAttribute("data-idiom-seal-cells", "");
   await page.getByRole("tab", { name: /성어/ }).click();
   await expect(page.locator("#idiom-seal-status .idiom-seal-row.is-scattered")).toHaveCount(1);
-  await expect(page.locator("#idiom-seal-status")).toContainText("봉인 이력 · 지금은 흩어짐");
-  await expect(page.locator("#idiom-result-name")).toHaveText("이심전심 봉인 해제");
+  await expect(page.locator("#idiom-seal-status")).toContainText("발동 이력 · 지금은 흩어짐");
+  await expect(page.locator("#idiom-result-name")).toHaveText("이심전심 발동 해제");
   // 달성 기록은 그대로다 — 카운트는 여전히 1/5 이고 도감도 발동 이력을 지우지 않는다.
   await expect(page.locator("#idiom-count")).toHaveText("1 / 5");
   await page.screenshot({ path: "artifacts/idiom-hold-broken-1280x720.png", fullPage: true });
@@ -1063,7 +1063,7 @@ test("automatically seals four correctly placed towers with readable feedback", 
   await page.locator("#battle-canvas").click({ position: await canvasPositionForWorld(page, ...worldXY(sealedCell)) });
   await expect(page.locator("#active-idioms .active-idiom")).toHaveCount(1);
   await expect(page.locator("#idiom-seal-status .idiom-seal-row.is-live")).toHaveCount(1);
-  await expect(page.locator("#idiom-result-name")).toHaveText("이심전심 재봉인");
+  await expect(page.locator("#idiom-result-name")).toHaveText("이심전심 재발동");
   await expect(page.locator("#idiom-count")).toHaveText("1 / 5");
   await page.screenshot({ path: "artifacts/idiom-hold-rejoined-1280x720.png", fullPage: true });
 

@@ -64,7 +64,7 @@ test("dev tools panel stages the tracked idiom and fires the seal", async ({ pag
   // [끝까지 자동] — 마지막 글자가 줄에 서고 자동 봉인이 발동한다.
   await page.locator("#dev-idiom-full").click();
   await expect(page.locator("[data-active-idiom]")).toHaveCount(1);
-  await expect(page.locator("#message-value")).toContainText("자동 봉인");
+  await expect(page.locator("#message-value")).toContainText("자동 발동");
   await page.screenshot({ path: "artifacts/dev-tools-idiom-fired-1280x720.png", fullPage: true });
 
   // 개발자 모드를 끄면 버튼·패널이 즉시 소멸한다.
