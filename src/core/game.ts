@@ -1186,7 +1186,7 @@ export class GameEngine {
       warnings: []
     };
     if (this.state.mode !== "casual") {
-      quote.blocked.push({ towerId: null, text: "캐주얼 8성전에서만 같은 오행 3체 조합을 사용할 수 있습니다." });
+      quote.blocked.push({ towerId: null, text: "별승급 진법에서만 같은 오행 3체 조합을 사용할 수 있습니다." });
       return quote;
     }
     if (materialIds.length !== 2) {
@@ -1505,7 +1505,7 @@ export class GameEngine {
 
   evolve(recipeId: string): ActionResult {
     if (!this.isRunActive()) return { ok: false, message: "진행 중인 수비전이 없습니다." };
-    if (this.state.mode === "casual") return { ok: false, message: "캐주얼 8성전에서는 같은 오행·같은 별 자령 3기를 선택해 조합합니다." };
+    if (this.state.mode === "casual") return { ok: false, message: "별승급 진법에서는 같은 오행·별 3기를 모아 다음 별 자령을 얻습니다." };
     const option = this.availableEvolutions().find((candidate) => candidate.recipeId === recipeId);
     if (!option) return { ok: false, message: "현재 보유한 자령으로 그 합성을 만들 수 없습니다." };
     const ownedTowers = [...this.state.towers, ...this.state.inventoryTowers];

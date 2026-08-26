@@ -9211,3 +9211,60 @@ span.codex-jaryeong-category { color: #4a3f30 !important; }
     inset 0 2px 6px rgba(78, 58, 22, 0.5),
     0 1px 0 rgba(0, 0, 0, 0.4);
 }
+
+/* ══════════════════════════════════════════════════════════════════
+   R7-B. 용어·명칭 묶음이 데려온 표시 손질 (항목 10~13)
+   ══════════════════════════════════════════════════════════════════ */
+
+/* 11. 도움말 용어표는 화면에서 가장 자주 되돌아오는 줄인데 11.5px 이었다 */
+#help-dialog .help-quickstart > small.help-glossary {
+  font-size: 12.5px !important;
+  font-weight: 700;
+  color: #5c4a2e !important;
+}
+
+/* 11. 목적 소환 4종 풀이의 <em> 은 이름표라 기울임 대신 먹으로 굵게 */
+#help-dialog ol li span em {
+  color: var(--text-100);
+  font-style: normal;
+  font-weight: 800;
+}
+
+/* 12. 목표 재료 카운터 — 11px·3.18:1 이던 자리 */
+.goal-materials span {
+  font-size: var(--fs-2xs) !important;
+  color: var(--text-100) !important;
+}
+
+.goal-materials span b {
+  color: var(--text-100) !important;
+}
+
+.goal-materials .goal-clue {
+  color: var(--text-200) !important;
+}
+
+/* 13. 코치 스텝 카운터·건너뛰기 — 한지 말풍선 위에서 옅어 잘 안 보였다 */
+.coach-step {
+  color: var(--gold-200);
+  font-weight: 800;
+}
+
+.coach-skip {
+  color: var(--text-200);
+}
+
+/* 13. 설정의 '처음 안내 다시 보기'는 스위치가 아니라 행동 버튼이다 */
+.settings-toggle--action > i {
+  width: auto !important;
+  padding: 0 12px;
+  background: var(--mat-brass) !important;
+}
+
+.settings-toggle--action > i em {
+  position: static;
+  color: var(--gold-100) !important;
+  background: none !important;
+  box-shadow: none !important;
+  text-shadow: none;
+}

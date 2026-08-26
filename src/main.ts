@@ -182,7 +182,7 @@ app.innerHTML = `
       <div class="stage-topbar" aria-live="polite">
         <div class="stage-chip"><span>웨이브</span><strong id="stage-wave">0 / ${GAME_CONFIG.maxWaves}</strong></div>
         <div class="stage-chip stage-chip--region"><span>지역</span><strong id="stage-region">한국</strong></div>
-        <div class="stage-chip stage-chip--chapter" title="10웨이브마다 보스가 오는 장(章) 진행"><span>챕터</span><strong id="stage-chapter">1 / 10</strong></div>
+        <div class="stage-chip stage-chip--chapter" title="10웨이브마다 우두머리가 오는 장(章) 진행"><span>장</span><strong id="stage-chapter">1 / 10</strong></div>
         <div class="stage-chip stage-chip--phase"><i id="phase-dot"></i><strong id="stage-phase">준비 전</strong></div>
         <button id="early-button" class="early-start" type="button" data-testid="early-wave">시작 보너스</button>
         <div id="enemy-limit-chip" class="stage-chip"><span>적 한계</span><strong id="stage-enemies">0 / ${MAX_ENEMIES}</strong></div>
@@ -229,8 +229,8 @@ app.innerHTML = `
       <section class="resource-grid" aria-label="현재 자원">
         <div><span>엽전 <em id="interest-preview">이자 +2</em></span><strong id="gold-value">${GAME_CONFIG.startingGold}</strong></div>
         <div><span>적 한계</span><strong id="enemy-cap-value">${MAX_ENEMIES}체</strong></div>
-        <div><span>진법</span><strong id="tower-count-value">0 / 16</strong></div>
-        <div><span>완성</span><strong id="goal-count-value">0</strong></div>
+        <div title="전장에 배치된 자령 수 / 열린 진의 칸 수"><span>배치</span><strong id="tower-count-value">0 / 16</strong></div>
+        <div title="이번 런에 완성한 목표 한자 수 / 목표 개수"><span>목표</span><strong id="goal-count-value">0</strong></div>
       </section>
 
       <section class="wave-card">
@@ -302,7 +302,8 @@ app.innerHTML = `
             <button id="evolve-button" class="action-button action-button--evolve" type="button" data-testid="evolve-button">
               <span class="hotkey">2</span><b id="evolve-action-label">합성</b><small><em id="evolve-ready-count">0</em><span id="evolve-action-detail">개 조합 확인</span></small>
             </button>
-            <button id="research-button" class="action-button action-button--research" type="button" data-testid="research-button">
+            <button id="research-button" class="action-button action-button--research" type="button" data-testid="research-button"
+              title="인연 연구 — 엽전을 들여 목표 재료가 나올 확률을 올립니다. 최고 5단계 (3키)">
               <span class="hotkey">3</span><b>인연 연구</b><small><em id="research-cost">10W 개방</em> · <i id="research-level">0</i>/5</small>
             </button>
             <button id="auto-arrange-button" class="action-button action-button--auto-arrange" type="button" data-testid="auto-arrange-button" title="발동 가능한 사자성어를 봉인하고 오행진 공명을 최적화합니다">
@@ -511,25 +512,25 @@ app.innerHTML = `
         </div>
 
         <button id="custom-formation-button" class="s00-custom" type="button"
-          title="맞춤 진법 — 범위·표기·규칙 (설정 화면 준비 중)" aria-label="맞춤 진법. 범위·표기·규칙 설정. 아직 준비 중입니다">
+          title="맞춤 진법 — 한자 범위·읽기 표기·진법 규칙을 한 화면에서" aria-label="맞춤 진법. 한자 범위와 읽기 표기, 진법 규칙을 설정합니다">
           <i class="s00-skin" aria-hidden="true"></i><b>맞춤 진법</b><small>범위 · 표기 · 규칙</small><small class="s00-reason">설정 열기</small>
         </button>
 
         <div class="s00-regions" role="radiogroup" aria-label="지역 한자 체계">
           <button type="button" class="s00-region region-option is-selected" data-region="KR" role="radio" aria-checked="true">
-            <i class="s00-skin" aria-hidden="true"></i><b>한국</b><small class="s00-badge">심사 권장</small>
+            <i class="s00-skin" aria-hidden="true"></i><b>한국</b><small class="s00-badge">기본 추천</small>
           </button>
           <button type="button" class="s00-region region-option" data-region="JP" role="radio" aria-checked="false">
-            <i class="s00-skin" aria-hidden="true"></i><b>일본</b><small class="s00-badge s00-badge--ea">EARLY ACCESS</small>
+            <i class="s00-skin" aria-hidden="true"></i><b>일본</b><small class="s00-badge s00-badge--ea">미리 해보기</small>
           </button>
           <button type="button" class="s00-region region-option" data-region="CN" role="radio" aria-checked="false">
-            <i class="s00-skin" aria-hidden="true"></i><b>중국</b><small class="s00-badge s00-badge--ea">EARLY ACCESS</small>
+            <i class="s00-skin" aria-hidden="true"></i><b>중국</b><small class="s00-badge s00-badge--ea">미리 해보기</small>
           </button>
         </div>
 
         <div class="s00-summary" aria-live="polite">
           <strong id="s00-summary-main">한국 · 자형연성 진법</strong>
-          <span id="title-note">심사 권장 · 현재 제출 기준 콘텐츠</span>
+          <span id="title-note">가장 완성된 콘텐츠</span>
           <span id="title-lead" hidden></span>
         </div>
         <p class="s00-ea-note">일본·중국은 도감·현지화·밸런스 보강 중입니다.</p>
@@ -544,9 +545,9 @@ app.innerHTML = `
 
       <dialog id="p00-dialog" class="p00-dialog" data-popup-id="P00" aria-labelledby="p00-title">
         <div class="p00-frame">
-          <p class="s00-mode-label">얼리 액세스 안내</p>
+          <p class="s00-mode-label">미리 해보기 안내</p>
           <h3 id="p00-title">일본 한자 체계</h3>
-          <p id="p00-body">이 지역은 도감·현지화·밸런스를 보강하는 중입니다.<br />심사 권장 기준은 한국 천자문 1,000종입니다.</p>
+          <p id="p00-body">이 지역은 도감 설명과 읽기, 난이도를 아직 다듬는 중입니다.<br />가장 완성된 체계는 한국 천자문 1,000자입니다.</p>
           <div class="p00-actions">
             <button id="p00-return" type="button" autofocus>한국으로 돌아가기</button>
             <button id="p00-continue" type="button">일본으로 계속</button>
@@ -609,13 +610,15 @@ app.innerHTML = `
     <dialog id="help-dialog" class="help-dialog">
       <form method="dialog">
         <div class="dialog-heading"><div><p class="eyebrow">놀이 방법</p><h2>봉인술 입문</h2></div><button aria-label="도움말 닫기">×</button></div>
-        <div class="help-quickstart"><b>처음이라면</b><span><i>①</i> 소환(1키)으로 자령 뽑기</span><span><i>②</i> 첫 오행진이 무료로 열림</span><span><i>③</i> 시작 버튼으로 웨이브 개시</span><small>자령=타워 · 봉인=처치 · 엽전=골드 · 문기=오행 재료 · 농축=중복 강화</small></div>
+        <div class="help-quickstart"><b>처음이라면</b><span><i>①</i> 소환(1키)으로 자령 뽑기</span><span><i>②</i> 첫 오행진이 무료로 열림</span><span><i>③</i> 시작 버튼으로 웨이브 개시</span><small class="help-glossary">자령=타워 · 엽전=골드 · 문기=오행 재료 · 濃=농축 단계(최고 3) · 봉인=적 처치, 또는 사자성어 발동</small></div>
         <ol>
-          <li><b>소환</b><span>지역별 1단계 한자를 품은 자령이 무작위로 나옵니다. 목표의 부족한 재료는 소프트 천장으로 조금씩 유리해집니다.</span></li>
-          <li><b>목적 소환</b><span>균형·탐색·계보·중복 수집 중 원하는 목적을 고릅니다. 중복 수집은 농축과 분해에 쓸 보유 한자를 다시 부릅니다.</span></li>
+          <li><b>소환</b><span>지역별 1단계 한자를 품은 자령이 무작위로 나옵니다. 목표에 모자란 재료는 뽑을수록 확률이 올라갑니다.</span></li>
+          <li><b>목적 소환</b><span>네 가지 중 하나를 고릅니다. <em>균형</em>은 목표와 성어 재료를 고루 섞고, <em>탐색</em>은 아직 못 본 한자를 우선하며, <em>계보</em>는 목표 계보의 재료만 노리고(12회마다 재료 1기 보장 · 30회 누적 시 확정 지급), <em>중복 수집</em>은 농축과 분해에 쓸 보유 한자를 다시 부릅니다.</span></li>
+          <li><b>오행 공명</b><span>같은 진에 그 진의 오행 자령을 4·8·12·16기 모으면 단계가 올라가고, 단계마다 그 진의 피해가 더해집니다. 자동배치가 알려 주는 "오행 공명 N→M단계"가 이 값입니다.</span></li>
+          <li><b>인연 연구</b><span>엽전을 들여 목표 재료가 나올 가중치를 올립니다. 최고 5단계이며 각 단계는 정해진 웨이브를 지나야 열립니다(3키).</span></li>
           <li><b>10연 소환</b><span>10웨이브를 지키면 개방됩니다. Q키 또는 10연 버튼으로 현재 소환 비용 10회를 한 번에 지불합니다.</span></li>
           <li><b>합성</b><span>실제 구성식의 재료를 모두 보유하면 조합 서책에 카드가 열립니다. 木+木처럼 같은 글자 두 개도 각각 필요합니다.</span></li>
-          <li><b>캐주얼 8성전</b><span>천자문 실제 획수로 기본 별이 정해집니다. 같은 오행·같은 현재 별 자령 3기를 고르면 남길 본체가 1성 오르며 최고 8성입니다. 속성별 자동조합도 소모 목록을 먼저 확인합니다.</span></li>
+          <li><b>별승급 진법</b><span>천자문 실제 획수로 기본 별이 정해집니다. 같은 오행·별 3기를 모아 다음 별 자령을 얻으며 최고 8성입니다. 속성별 자동조합도 소모 목록을 먼저 확인합니다.</span></li>
           <li><b>방식</b><span>반자동은 가능한 조합만 제안합니다. 목표 자동은 목표 경로의 조합만 자동 실행하며, 수동은 선택한 한자가 포함된 조합만 봅니다.</span></li>
           <li><b>사자성어</b><span>이웃한 네 칸에 글자를 올바른 순서로 배치하면 자동 봉인됩니다. 직접 선을 그을 필요가 없으며, 보너스는 그 런 동안 계속 유지됩니다.</span></li>
           <li><b>첫 오행진</b><span>열린 진 없이 상점에서 시작합니다. 첫 소환 자령과 같은 오행진이 무료로 열리고, 나머지는 원하는 순서로 18·32·52·78엽전에 개방합니다.</span></li>
@@ -631,10 +634,10 @@ app.innerHTML = `
           <li><b>농축 공방</b><span>같은 한자 중복 1기 또는 같은 오행 문기 4·6·8을 직접 고릅니다. 최초 연속·심화 분기는 영구 고정되며 실행 전 전후 전투 수치를 비교합니다.</span></li>
           <li><b>지도 배율</b><span>기존 260% 크기를 새 100% 기준으로 사용합니다. 휠로 약 28%~200% 확대·축소하고, 빈 칸·길에서 좌클릭 드래그하거나 휠 버튼을 누른 채 드래그하면 지도를 이동합니다. 왼쪽 아래 배율 버튼은 중앙 정렬된 100%로 돌아갑니다.</span></li>
           <li><b>게임 배속</b><span>오른쪽 위 배속 버튼이나 F키로 1×·2×·3×를 순환합니다.</span></li>
-          <li><b>게임오버</b><span>적은 경로 끝에서 사라지지 않고 계속 순환합니다. 전장에 ${MAX_ENEMIES}체가 쌓이거나 보스를 제한시간 안에 처치하지 못하면 즉시 실패합니다. 제어 능력은 적을 뒤로 밀지 않고 현재 공격권 안에서 감속·봉쇄합니다.</span></li>
+          <li><b>게임오버</b><span>적은 경로 끝에서 사라지지 않고 계속 순환합니다. 전장에 ${MAX_ENEMIES}체가 쌓이거나 우두머리를 제한시간 안에 처치하지 못하면 즉시 실패합니다. 제어 능력은 적을 뒤로 밀지 않고 현재 공격권 안에서 감속·봉쇄합니다.</span></li>
         </ol>
         <div class="key-guide"><span><kbd>1</kbd> 소환</span><span><kbd>Q</kbd> 10연</span><span><kbd>2</kbd> 첫 합성</span><span><kbd>3</kbd> 연구</span><span><kbd>Space</kbd> 한자 강조</span><span><kbd>F</kbd> 배속</span><span><kbd>P</kbd> 일시정지</span><span><kbd>C</kbd> 도감</span><span><kbd>M</kbd> 음소거</span></div>
-        <p>장갑·질풍·군집·회생 적의 특성을 미리 확인하세요. 놓친 적도 사라지지 않고 다음 바퀴를 돌기 때문에 누적 수를 계속 관리해야 합니다.</p>
+        <p>정예 철갑 강시(방어 높음)·질풍 아귀(빠름)·백귀야행(다수)·회생 요괴(체력 회복)의 특성을 미리 확인하세요. 놓친 적도 사라지지 않고 다음 바퀴를 돌기 때문에 누적 수를 계속 관리해야 합니다.</p>
       </form>
     </dialog>
 
@@ -665,7 +668,7 @@ app.innerHTML = `
       <section class="audio-settings" aria-labelledby="audio-settings-title">
         <div class="audio-settings-heading"><b id="audio-settings-title">오디오 믹스</b><small>첫 조작 뒤 재생 · 선택은 브라우저에 저장</small></div>
         <div class="audio-setting-row">
-          <span><b>배경음악</b><small>웨이브 구간·보스 상태에 따라 3초 크로스페이드</small></span>
+          <span><b>배경음악</b><small>웨이브 구간·우두머리 상태에 따라 3초 크로스페이드</small></span>
           <label for="bgm-volume"><span>음량</span><input id="bgm-volume" type="range" min="0" max="100" step="1" aria-label="배경음악 음량" /><output id="bgm-volume-output" for="bgm-volume">60%</output></label>
           <button id="bgm-mute-button" class="audio-mute-button" type="button" role="switch" aria-checked="true">ON</button>
         </div>
@@ -675,6 +678,10 @@ app.innerHTML = `
           <button id="sfx-mute-button" class="audio-mute-button" type="button" role="switch" aria-checked="true">ON</button>
         </div>
       </section>
+      <button id="replay-coach-button" class="settings-toggle settings-toggle--action" type="button">
+        <span><b>처음 안내 다시 보기</b><small>소환·전장 조작·웨이브 시작을 짚어 주는 3단계 안내를 다시 띄웁니다.</small></span>
+        <i aria-hidden="true"><em>보기</em></i>
+      </button>
       <p class="settings-source">자령 머리 위에는 짧은 훈음을 표시하고, 자세한 부수 정보는 선택 카드와 도감에서 확인할 수 있습니다.</p>
     </dialog>
 
@@ -803,6 +810,19 @@ let selectedRegion: RegionCode = "KR";
 let pendingRegion: RegionCode | null = null;
 let formationUnlockHintShown = false;
 let selectedGameMode: GameMode = "standard";
+
+/*
+ * 진법 이름은 여기서만 만든다.
+ *
+ * 같은 모드가 화면마다 '전략 조합전'·'캐주얼 8성전'·'자형연성 진법'·
+ * '별승급 진법' 네 이름으로 불려서, 메뉴에서 고른 것과 시작 토스트·
+ * 종료 화면에 뜨는 것이 서로 다른 게임처럼 읽혔다. S00 메뉴가 쓰는
+ * 이름으로 통일한다.
+ */
+function gameModeLabel(mode: GameMode): string {
+  return mode === "casual" ? "별승급 진법" : "자형연성 진법";
+}
+
 let displayMode: DisplayMode = initialDisplayMode;
 let engine = new GameEngine(initialSeed, selectedRegion, selectedGameMode);
 let mapSynthesisDepths = buildSynthesisDepths(engine.catalog.definitions.values());
@@ -1191,17 +1211,19 @@ function syncTitleModeSelection(): void {
     button.classList.toggle("is-selected", selected);
     button.setAttribute("aria-checked", String(selected));
   });
-  const modeName = selectedGameMode === "casual" ? "별승급 진법" : "자형연성 진법";
-  must<HTMLElement>("#s00-summary-main").textContent = `${REGION_MENU_INFO[selectedRegion].name} · ${modeName}`;
+  must<HTMLElement>("#s00-summary-main").textContent = `${REGION_MENU_INFO[selectedRegion].name} · ${gameModeLabel(selectedGameMode)}`;
   const s13 = document.querySelector<HTMLDialogElement>("#s13-dialog");
   if (s13?.open) syncS13();
   must<HTMLElement>("#s00-start-sub").textContent = REGION_MENU_INFO[selectedRegion].pool;
   must<HTMLElement>("#title-lead").innerHTML = selectedGameMode === "casual"
     ? "획수가 희귀도를 정하고, 같은 오행 세 자령이 한 별을 올립니다.<br />남길 본체를 직접 골라 8성 대봉인까지 성장시키세요."
     : "운으로 글자를 부르고, 실제 구성 원리로 합성하라.<br />열 개의 장과 백 번의 망령 행렬을 넘어 대봉인을 완성하세요.";
+  // 개발용 표현(심사·제출)은 dev 모드에서만 남긴다. 플레이어에게는
+  // "무엇이 가장 잘 갖춰져 있는가"만 말한다.
+  const devLabels = shell.dataset.devMode === "1";
   must<HTMLElement>("#title-note").textContent = selectedRegion === "KR"
-    ? "심사 권장 · 현재 제출 기준 콘텐츠"
-    : "EARLY ACCESS · 도감·현지화·밸런스 보강 중";
+    ? devLabels ? "심사 권장 · 현재 제출 기준 콘텐츠" : "가장 완성된 콘텐츠"
+    : "미리 해보기 · 도감·현지화·밸런스 보강 중";
 }
 
 function setSelectedGameMode(mode: GameMode): void {
@@ -1303,7 +1325,7 @@ function startRun(useNewSeed = false): void {
   towerDragTowerId = null;
   towerDragStart = null;
   towerDragMoved = false;
-  showToast(`${engine.catalog.title} · ${engine.state.mode === "casual" ? "캐주얼 8성전" : "전략 조합전"}을 시작합니다.`);
+  showToast(`${engine.catalog.title} · ${gameModeLabel(engine.state.mode)}을 시작합니다.`);
   syncPanel();
 }
 
@@ -1800,14 +1822,14 @@ function showEndScreen(phase: "victory" | "defeat"): void {
   const previousBest = loadBestWave();
   const renewed = state.wave > previousBest;
   const bestWave = Math.max(previousBest, state.wave);
-  must<HTMLElement>("#end-kicker").textContent = victory ? "SEAL COMPLETE" : "DEFENSE FAILED";
+  must<HTMLElement>("#end-kicker").textContent = victory ? "봉인 완수" : "수비 실패";
   must<HTMLElement>("#end-heading").textContent = victory ? "천자문 대봉인 완성" : "수비에 실패했습니다";
   must<HTMLElement>("#end-message").textContent = state.lastMessage;
   must<HTMLElement>("#end-stats").innerHTML = `
-    <div><span>게임 모드</span><b>${state.mode === "casual" ? "캐주얼 8성전" : "전략 조합전"}</b></div>
+    <div><span>진법</span><b>${gameModeLabel(state.mode)}</b></div>
     <div><span>도달 웨이브</span><b>${state.wave} / ${state.maxWaves}</b></div>
     <div${renewed ? ' class="is-record"' : ""}><span>최고 기록</span><b>${bestWave}웨이브${renewed ? "<em>갱신!</em>" : ""}</b></div>
-    <div><span>처치한 망령</span><b>${state.killCount}</b></div>
+    <div><span>처치한 적</span><b>${state.killCount}</b></div>
     <div><span>${state.mode === "casual" ? "3체 조합" : "한자 합성"}</span><b>${state.mode === "casual" ? state.casualFusionCount : state.evolutionCount}</b></div>
     <div><span>목표 완성</span><b>${state.goalsCompleted.length}</b></div>
     <div><span>사자성어 봉인</span><b>${state.idiomSeals.length} / ${engine.idioms().length}</b></div>
@@ -1962,9 +1984,9 @@ function syncPanel(): void {
   const previewBossLimit = preview?.boss ? bossTimeLimitForWave(preview.wave) : null;
   must<HTMLElement>(".wave-card").classList.toggle("is-boss", bossRemaining !== null || previewBossLimit !== null);
   must<HTMLElement>("#wave-kicker").textContent = state.phase === "prep"
-    ? state.summonCount === 0 ? "첫 소환 전 · 시간 정지" : previewBossLimit !== null ? "보스전 · 제한 " + String(previewBossLimit) + "초" : "준비 " + state.prepRemaining.toFixed(1) + "초"
+    ? state.summonCount === 0 ? "첫 소환 전 · 시간 정지" : previewBossLimit !== null ? "우두머리전 · 제한 " + String(previewBossLimit) + "초" : "준비 " + state.prepRemaining.toFixed(1) + "초"
     : bossRemaining !== null
-      ? "보스 제한 " + bossRemaining.toFixed(1) + "초"
+      ? "우두머리 제한 " + bossRemaining.toFixed(1) + "초"
       : nextWaveRemaining !== null
         ? "다음 웨이브 " + nextWaveRemaining.toFixed(1) + "초"
         : state.phase === "combat" ? formatTime(state.waveElapsed) + " 경과" : "봉인전 종료";
@@ -1975,8 +1997,8 @@ function syncPanel(): void {
     ? "첫 자령의 오행에 맞는 4×4 진이 무료로 열립니다. 소환 전에는 준비 시간과 런 시간이 흐르지 않습니다."
     : preview
     ? preview.briefing
-      + ` · 제${Math.ceil(preview.wave / 10)}장 · 다음 장 보스 ${Math.ceil(preview.wave / 10) * 10}웨이브`
-      + (previewBossLimit !== null ? " · 제한시간 내 보스 처치 필수" : "")
+      + ` · 제${Math.ceil(preview.wave / 10)}장 · 다음 장 우두머리 ${Math.ceil(preview.wave / 10) * 10}웨이브`
+      + (previewBossLimit !== null ? " · 제한시간 내 우두머리 처치 필수" : "")
       + (nextWaveRemaining !== null ? ` · 잔존 ${state.enemies.length}체와 함께 다음 웨이브가 합류합니다.` : "")
     : "적 " + String(MAX_ENEMIES) + "체 도달 시 즉시 게임오버";
   const weakness = preview?.weakness ?? "木";
@@ -2046,7 +2068,9 @@ function renderGoal(): void {
   const targetNaturalStar = casualNaturalStar(progress.target.char);
   must<HTMLElement>("#goal-stage").textContent = engine.state.mode === "casual"
     ? `${targetNaturalStar ?? 1}★ · ${casualStrokeCount(progress.target.char) ?? "?"}획 · 직접 소환 가능`
-    : STAGE_NAMES[progress.target.stage] + " · " + (targetDirectLocked ? `${targetUnlockWave}W 직접 소환 개방` : progress.target.acquisition === "direct" ? "직접 소환 가능" : progress.target.combat.abilities.role.name);
+    // STAGE_NAMES[2]='결합' 과 역할 이름이 맨몸으로 붙어 '결합 · 재화연성'
+    // 처럼 무엇과 무엇인지 알 수 없는 줄이 됐다. 각 조각에 이름표를 준다.
+    : `${progress.target.stage}단 ${STAGE_NAMES[progress.target.stage]} · ` + (targetDirectLocked ? `${targetUnlockWave}W 직접 소환 개방` : progress.target.acquisition === "direct" ? "직접 소환 가능" : `역할 ${progress.target.combat.abilities.role.name}`);
   must<HTMLElement>("#goal-recipe").textContent = engine.state.mode === "casual"
     ? `${progress.target.char} 자령을 한 번 소환하면 달성`
     : progress.target.acquisition === "direct"
@@ -2057,7 +2081,9 @@ function renderGoal(): void {
   must<HTMLElement>("#goal-materials").innerHTML = progress.directMaterials.map((material) => {
     const complete = material.owned >= material.needed;
     return `<span class="${complete ? "is-complete" : ""}"><b>${escapeHtml(material.char)}</b> ${material.owned}/${material.needed}</span>`;
-  }).join("") + `<span class="goal-clue"><b>단서</b> ${engine.state.lineageClueProgress}/12</span><span class="goal-clue"><b>확정</b> ${engine.state.lineageTargetProgress}/30</span>`;
+  }).join("")
+    + `<span class="goal-clue" title="계보 소환 12회마다 재료 1기 보장"><b>단서</b> ${engine.state.lineageClueProgress}/12</span>`
+    + `<span class="goal-clue" title="계보 소환 30회 누적 시 목표 한자 확정 지급"><b>확정</b> ${engine.state.lineageTargetProgress}/30</span>`;
   const goalPercent = Math.round(progress.progress * 100);
   must<HTMLElement>("#goal-progress-fill").style.width = String(goalPercent) + "%";
 
@@ -2138,7 +2164,7 @@ function renderHanziGoalChoices(definitions: readonly HanziDefinition[], ownedCo
               ? `재료 ${percent}%`
               : engine.state.mode === "casual"
                 ? `${casualNaturalStar(definition.char) ?? 1}★ 직접 소환`
-                : definition.acquisition === "direct" ? "직접 소환" : `${STAGE_NAMES[definition.stage]} 합성`;
+                : definition.acquisition === "direct" ? "직접 소환" : `${definition.stage}단 ${STAGE_NAMES[definition.stage]}`;
     const unlockWave = summonStageUnlockWave(definition.stage);
     const directLocked = engine.state.mode === "standard" && definition.acquisition === "direct" && engine.state.wave < unlockWave;
     const naturalStar = casualNaturalStar(definition.char);
@@ -2153,7 +2179,7 @@ function renderHanziGoalChoices(definitions: readonly HanziDefinition[], ownedCo
     return `<button type="button" class="goal-choice-card ${classes}" data-goal-char="${escapeHtml(definition.char)}" style="--goal-accent:${ELEMENT_STYLES[definition.wuxing].color}" aria-pressed="${String(selected)}">
       <span class="goal-choice-spirit" style="${spriteStyle(definition)}" aria-hidden="true"></span>
       <b class="goal-choice-glyph">${escapeHtml(definition.char)}</b>
-      <span class="goal-choice-copy"><strong>${escapeHtml(learning.readingLabel)}</strong><small>${escapeHtml(learning.short)}</small><em>${escapeHtml(materialLabel)}</em></span>
+      <span class="goal-choice-copy"><strong>${escapeHtml(learning.short)}</strong><small>${escapeHtml(learning.readingLabel)}</small><em>${escapeHtml(materialLabel)}</em></span>
       <mark>${escapeHtml(status)}</mark>
     </button>`;
   }).join("");
@@ -2814,7 +2840,7 @@ function renderIdiomHud(): void {
 
 const ROLE_STRATEGY: Record<HanziDefinition["combat"]["role"], string> = {
   rapid: "공격 간격이 짧아 빠른 적과 단일 잔여 적을 정리하기 좋습니다.",
-  burst: "충전 뒤 큰 피해를 주므로 보스전과 고체력 적에게 집중 배치하세요.",
+  burst: "충전 뒤 큰 피해를 주므로 우두머리전과 고체력 적에게 집중 배치하세요.",
   splash: "군집을 빠르게 줄입니다. 길이 겹치는 모서리 구간에서 효율이 높습니다.",
   control: "이동 방해로 공격 시간을 벌어줍니다. 화력 자령 앞쪽에 배치하세요.",
   support: "주변 자령의 공격 흐름을 보조합니다. 여러 자령이 닿는 중앙이 유리합니다.",
@@ -5149,7 +5175,7 @@ s13Dialog.addEventListener("click", (event) => {
       selectedRegion = "KR";
       syncTitleModeSelection();
     } else {
-      // 얼리 액세스 확인(P00)을 우회하지 않는다.
+      // 미리 해보기 확인(P00)을 우회하지 않는다.
       s13Dialog.close();
       openP00(region);
     }
@@ -5432,6 +5458,11 @@ must<HTMLButtonElement>("#hover-glyph-toggle").addEventListener("click", () => {
   sound.playUiConfirm();
 });
 must<HTMLButtonElement>("#settings-close").addEventListener("click", () => settingsDialog.close());
+must<HTMLButtonElement>("#replay-coach-button").addEventListener("click", () => {
+  // 한 번 본 뒤에는 다시 볼 길이 없었다. 설정에서 강제로 되돌린다.
+  settingsDialog.close();
+  startCoach(true);
+});
 document.querySelectorAll<HTMLButtonElement>("[data-display-mode-option]").forEach((button) => {
   button.addEventListener("click", () => {
     setDisplayMode(button.dataset.displayModeOption as DisplayMode);
@@ -5863,7 +5894,7 @@ const COACH_STORAGE_KEY = "hanja-td:coach-seen-v1";
 const COACH_STEPS: readonly CoachStep[] = [
   {
     target: "#summon-button",
-    title: "먼저 자령을 소환하세요",
+    title: "먼저 자령(=타워)을 소환하세요",
     body: "엽전을 써서 자령을 뽑습니다. 첫 자령의 오행에 맞는 4×4 진이 무료로 열립니다.",
     control: "click",
     satisfied: () => engine.state.summonCount >= 1
