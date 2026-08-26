@@ -4481,18 +4481,20 @@ function drawHoveredTowerCard(): void {
   context.fillStyle = "rgba(218, 229, 241, 0.16)";
   context.fillRect(x + 10, y + 98, width - 20, 1);
   context.fillStyle = style.color;
-  context.font = '950 10px "Malgun Gothic", sans-serif';
+  context.font = '950 11px "Malgun Gothic", sans-serif';
   context.fillText("쉬운 뜻", x + 12, y + 114);
   context.fillStyle = "#d8e2ed";
-  context.font = '800 11px "Malgun Gothic", sans-serif';
+  // R7-25: 뜻 11 → 12px, 아래 조작 힌트 9 → 11px. 카드 안에서 가장 오래
+  // 읽는 두 줄인데 바닥선 아래에 있었다.
+  context.font = '800 12px "Malgun Gothic", sans-serif';
   const meaningLines = canvasWrappedLines(explanation.short, width - 24, 2);
   meaningLines.forEach((line, index) => context.fillText(line, x + 12, y + 131 + index * 14, width - 24));
 
   context.fillStyle = "rgba(218, 229, 241, 0.13)";
   context.fillRect(x + 10, y + 154, width - 20, 1);
-  context.fillStyle = "#8ea1b8";
-  context.font = '800 9px "Malgun Gothic", sans-serif';
-  context.fillText("클릭: 선택 · 끌기: 교환 · 자세한 뜻은 자령 도감", x + 12, y + 168, width - 24);
+  context.fillStyle = "#a8bcd2";
+  context.font = '800 11px "Malgun Gothic", sans-serif';
+  context.fillText("클릭: 선택 · 끌기: 교환 · 자세한 뜻은 자령 도감", x + 12, y + 169, width - 24);
   context.restore();
 }
 function drawEnemy(enemy: Enemy, point = positionOnPath(enemy.progress)): void {

@@ -8999,3 +8999,113 @@ span.codex-jaryeong-category { color: #4a3f30 !important; }
   font-style: normal;
   font-weight: 900;
 }
+
+/* ══════════════════════════════════════════════════════════════════
+   R7-25. 설정·HUD — 어두운 판 위에 먹 글자가 얹힌 자리 반전 + 12px 바닥
+   28절의 먹색 일괄 강제가 "밝은 한지면" 전제로 깔려 있어서, 뒤늦게
+   어두워진 판(설정 토글 트랙·한자 강조 켜짐·공부 모드 미리보기) 위에서만
+   그대로 사고가 났다. 판을 되돌리는 대신 그 위 글자만 뒤집는다.
+   ══════════════════════════════════════════════════════════════════ */
+
+/* ── 25-A. 설정 토글 ON/OFF 알약 — 7px·1.55:1 → 12px·반전 ────────── */
+.settings-toggle > i {
+  width: 62px !important;
+  height: 30px !important;
+}
+
+.settings-toggle > i em {
+  min-width: 30px;
+  padding: 0 6px;
+  color: #fff4d8 !important;
+  font-size: var(--fs-2xs) !important;
+  font-weight: 900 !important;
+  letter-spacing: 0.04em;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+/* ── 25-B. 공부 모드 미리보기 — 어두운 원판 위 '나무 목' 2.91:1 ──── */
+.mode-preview--study {
+  display: flex !important;
+  flex-direction: column;
+  gap: 2px;
+  justify-content: center;
+  align-items: center;
+  /* 큰 한자와 캡션이 같은 자리에 겹쳐 찍히던 것을 세로로 가른다 */
+  line-height: 1.05;
+}
+
+.mode-preview--study b {
+  color: #fdf6e4 !important;
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.9);
+}
+
+.mode-preview--study small {
+  color: #f2e6c8 !important;
+  font-size: var(--fs-2xs) !important;
+  font-weight: 800;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.95);
+}
+
+/* ── 25-C. 설정 12px 바닥 ────────────────────────────────────────── */
+#settings-dialog .dialog-heading .eyebrow,
+#settings-dialog .settings-source,
+#settings-dialog .settings-toggle > span small,
+#settings-dialog .audio-settings-heading small,
+#settings-dialog .audio-setting-row span small,
+#settings-dialog .audio-setting-row label span,
+#settings-dialog .display-mode-option em,
+#bgm-volume-output,
+#sfx-volume-output,
+#bgm-mute-button,
+#sfx-mute-button {
+  font-size: var(--fs-2xs) !important;
+}
+
+/* 78절이 `#settings-dialog .audio-setting-row output`(1,1,1) 로 11px 을
+   못박아 뒀다. ID 하나짜리로는 못 이기므로 같은 형태로 되짚는다. */
+#settings-dialog .audio-setting-row output,
+#settings-dialog .audio-setting-row label,
+#settings-dialog .audio-setting-row > span small,
+#settings-dialog .audio-setting-row .audio-mute-button {
+  font-size: var(--fs-2xs) !important;
+}
+
+/* ── 25-D. 한자 강조 — 켜짐 상태만 어두운 판이라 라벨이 잠겼다 ──── */
+.hanja-emphasis-control.is-on span {
+  color: #e8dcc0 !important;
+}
+
+.hanja-emphasis-control.is-on strong {
+  color: #ffd46f !important;
+}
+
+/* ── 25-E. HUD 12px 바닥 — 탭 카운터·푸터 상태·자원 라벨 ────────── */
+.panel-tabs button small,
+#shop-pool-count,
+#run-inventory-count,
+#goal-tab-progress,
+#idiom-tab-count,
+#discover-count,
+#codex-button b,
+#message-value,
+#interest-preview,
+.resource-grid > div > span,
+.wave-card .weakness-seal span,
+.brand-row .eyebrow,
+.canvas-tip i,
+.map-zoom-control small {
+  font-size: var(--fs-2xs) !important;
+}
+
+/* 탭 카운터가 12px 이 되면 8px 자리에서 넘치므로 배지 자리를 넓힌다 */
+.panel-tabs button small {
+  top: 0 !important;
+  right: 2px !important;
+  padding: 0 3px;
+  border-radius: 999px;
+  background: rgba(247, 240, 221, 0.82);
+  line-height: 1.25;
+}
+
+/* 25-F(캔버스 호버 카드 힌트·뜻)는 CSS 로 닿지 않는다 —
+   drawHoveredTowerCard 의 context.font 에서 직접 올렸다. */
