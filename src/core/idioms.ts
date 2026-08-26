@@ -138,29 +138,124 @@ export function validateIdiomCells(cells: readonly number[]): string | null {
   return null;
 }
 
+function idiomCandidateCells(towers: readonly Tower[]): Map<string, number[]> {
+  const byCharacter = new Map<string, number[]>();
+  for (const tower of [...towers].sort((left, right) => left.cell - right.cell)) {
+    if (tower.cell < 0 || tower.cell >= BOARD_CELLS.length) continue;
+    const cells = byCharacter.get(tower.char);
+    if (cells) cells.push(tower.cell);
+    else byCharacter.set(tower.char, [tower.cell]);
+  }
+  return byCharacter;
+}
+
+/** 주어진 글자 차례대로 인접 사슬을 이루는 셀 경로. 대각선·꺾임 허용. */
+function searchIdiomChain(byCharacter: ReadonlyMap<string, number[]>, characters: readonly string[]): number[] | null {
+  const search = (characterIndex: number, path: number[]): number[] | null => {
+    if (characterIndex >= characters.length) return path;
+    const previous = path[path.length - 1];
+    for (const cell of byCharacter.get(characters[characterIndex] as string) ?? []) {
+      if (path.includes(cell)) continue;
+      if (previous !== undefined && !neighboringCells(previous, cell)) continue;
+      const result = search(characterIndex + 1, [...path, cell]);
+      if (result) return result;
+    }
+    return null;
+  };
+  return search(0, []);
+}
+
+/**
+ * 네 글자를 순서대로 이은 사슬을 찾는다. 정방향(1→4)이 없으면 역방향(4→1)도
+ * 인정한다. 어느 쪽으로 찾았든 돌려주는 셀 배열은 항상 글자 순서 기준이라
+ * cells[0] 이 1번 글자의 칸이다.
+ */
 export function findIdiomPath(
   towers: readonly Tower[],
   idiom: IdiomDefinition
 ): number[] | null {
   const characters = [...idiom.chars];
-  const candidates = [...towers]
-    .filter((tower) => tower.cell >= 0 && tower.cell < BOARD_CELLS.length)
-    .sort((left, right) => left.cell - right.cell);
+  const byCharacter = idiomCandidateCells(towers);
+  const forward = searchIdiomChain(byCharacter, characters);
+  if (forward) return forward;
+  const backward = searchIdiomChain(byCharacter, [...characters].reverse());
+  return backward ? [...backward].reverse() : null;
+}
 
-  const search = (characterIndex: number, path: number[]): number[] | null => {
-    if (characterIndex >= characters.length) return path;
-    const expected = characters[characterIndex];
+export interface PartialIdiomChain {
+  /** 사슬을 이루는 칸 — 실제로 놓인 순서(정방향이면 1→k, 역방향이면 4→4-k+1). */
+  readonly cells: readonly number[];
+  /** 사슬에 담긴 글자 수. 0 이면 아직 어떤 글자도 진 위에 없다. */
+  readonly length: number;
+  /** 다음에 이어야 할 글자. 사슬이 완성됐으면 null. */
+  readonly nextChar: string | null;
+  /** 다음 글자의 순번(1부터). 표시용. */
+  readonly nextOrder: number | null;
+  /** 다음 글자를 맞대야 하는 기준 칸. 사슬이 비어 있으면 null. */
+  readonly anchorCell: number | null;
+  /** 역방향(4→1)으로 자라는 사슬인지. */
+  readonly reversed: boolean;
+  readonly complete: boolean;
+}
+
+const EMPTY_CHAIN: PartialIdiomChain = {
+  cells: [],
+  length: 0,
+  nextChar: null,
+  nextOrder: null,
+  anchorCell: null,
+  reversed: false,
+  complete: false
+};
+
+function longestIdiomPrefix(byCharacter: ReadonlyMap<string, number[]>, characters: readonly string[]): number[] {
+  let best: number[] = [];
+  const search = (characterIndex: number, path: number[]): void => {
+    if (path.length > best.length) best = [...path];
+    if (best.length === characters.length || characterIndex >= characters.length) return;
     const previous = path[path.length - 1];
-    for (const tower of candidates) {
-      if (tower.char !== expected || path.includes(tower.cell)) continue;
-      if (previous !== undefined && !neighboringCells(previous, tower.cell)) continue;
-      const result = search(characterIndex + 1, [...path, tower.cell]);
-      if (result) return result;
+    for (const cell of byCharacter.get(characters[characterIndex] as string) ?? []) {
+      if (path.includes(cell)) continue;
+      if (previous !== undefined && !neighboringCells(previous, cell)) continue;
+      search(characterIndex + 1, [...path, cell]);
+      if (best.length === characters.length) return;
     }
-    return null;
   };
+  search(0, []);
+  return best;
+}
 
-  return search(0, []);
+/**
+ * 이미 이어져 있는 가장 긴 부분 사슬. 배치 안내(다음 글자를 어디에 놓을지)에 쓴다.
+ * 정방향·역방향 중 더 길게 이어진 쪽을 돌려주고, 같으면 정방향을 고른다.
+ */
+export function partialIdiomChain(towers: readonly Tower[], idiom: IdiomDefinition): PartialIdiomChain {
+  const characters = [...idiom.chars];
+  const byCharacter = idiomCandidateCells(towers);
+  const forward = longestIdiomPrefix(byCharacter, characters);
+  const reversedCharacters = [...characters].reverse();
+  const backward = forward.length === characters.length ? [] : longestIdiomPrefix(byCharacter, reversedCharacters);
+  const reversed = backward.length > forward.length;
+  const cells = reversed ? backward : forward;
+  if (cells.length === 0) return EMPTY_CHAIN;
+  const source = reversed ? reversedCharacters : characters;
+  const complete = cells.length === characters.length;
+  const nextChar = complete ? null : (source[cells.length] as string);
+  const nextOrder = complete ? null : reversed ? characters.length - cells.length : cells.length + 1;
+  return {
+    cells,
+    length: cells.length,
+    nextChar,
+    nextOrder,
+    anchorCell: cells[cells.length - 1] as number,
+    reversed,
+    complete
+  };
+}
+
+/** 두 칸이 같은 진 안에서 8방으로 맞닿아 있는지. 배치 안내가 재사용한다. */
+export function idiomCellsAreNeighbors(first: number, second: number): boolean {
+  return neighboringCells(first, second);
 }
 
 export function helpfulDirectCharsForIdiom(catalog: HanziCatalog, towers: readonly Tower[], idiom: IdiomDefinition): Set<string> {
