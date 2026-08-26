@@ -2761,10 +2761,16 @@ function casualGroupCardMarkup(bucket: CasualFusionBucket, allTowers: readonly T
   const more = bucket.groups.length > 1 ? ` · 외 ${bucket.groups.length - 1}묶음` : "";
   const fallback = first?.starFallback ? `<em class="casual-group-badge is-fallback">${bucket.star + 1}★ 없음 → ${toStar}★</em>` : "";
   const roster = first?.rosterFallback ? `<em class="casual-group-badge is-fallback">지역 로스터 보충</em>` : "";
+  // 사라질 3기가 누구인지는 글자 목록보다 얼굴이 빠르다. 실제 소모 예정
+  // 묶음(first.materialIds)의 초상만 세운다 — 4기 이상 보유해도 3기 기준.
+  const materialStrip = materials.length > 0
+    ? `<span class="casual-group-materials" aria-hidden="true">${materials.map((tower) => spiritPortraitMarkup(tower.char, tower.wuxing, "workbench-spirit--group")).join("")}</span>`
+    : "";
   return `<article class="casual-group-card" style="${style}">
     <i class="casual-group-glyph" aria-hidden="true">${bucket.wuxing}</i>
     <div class="casual-group-body">
       <b>${headline}</b>
+      ${materialStrip}
       <small>${useLine}${poolLine}${more}</small>
       ${boardMaterials > 0 ? `<em class="casual-group-badge">전장 ${boardMaterials}기 소모</em>` : ""}${fallback}${roster}
     </div>

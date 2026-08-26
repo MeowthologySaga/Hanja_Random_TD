@@ -10352,6 +10352,8 @@ span.codex-jaryeong-category { color: #4a3f30 !important; }
 .workbench-spirit--dismantle .workbench-spirit-fallback { font-size: 15px; }
 .workbench-spirit--focus { width: 56px; height: 56px; border-radius: 7px; }
 .workbench-spirit--focus .workbench-spirit-fallback { font-size: 30px; }
+.workbench-spirit--group { width: 26px; height: 26px; border-radius: 4px; }
+.workbench-spirit--group .workbench-spirit-fallback { font-size: 14px; }
 
 /* 초상이 새 첫 칸으로 들어왔으므로 두 목록의 격자를 한 칸씩 넓힌다.
    75절·90-B 절이 !important 로 두 칸을 못박아 두었기에 같은 무게로 되짚는다.
@@ -10402,6 +10404,16 @@ span.codex-jaryeong-category { color: #4a3f30 !important; }
 .concentration-focus > header > b { font-size: 34px !important; }
 
 .focus-frame-body .concentration-focus > header > b { font-size: 36px !important; }
+
+/* ── R12-3. 캐주얼 3체 조합 그룹 카드의 소모 예정 3기 ────────────
+   "火 2★ ×4 → 3★ 무작위 1기"는 무엇이 사라지는지 글자로만 알려 줬다.
+   실제 소모 묶음의 얼굴을 헤드라인 바로 밑에 세운다. */
+
+.casual-group-materials {
+  display: flex;
+  gap: 4px;
+  margin: 1px 0 2px;
+}
 
 /* ══════════════════════════════════════════════════════════════════
    ===== R8 고정무대 =====
