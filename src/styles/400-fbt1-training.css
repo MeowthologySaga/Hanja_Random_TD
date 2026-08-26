@@ -1,0 +1,334 @@
+/* src/ui-skin.css 12851~13184줄에서 그대로 옮겨 왔다 — FBT-1 수련장(튜토리얼 모드) — 자기완결 절. 순서는 ui-skin.css 배럴이 지킨다. */
+/* ══════════════════════════════════════════════════════════════════
+   [FBT-1] 수련장(튜토리얼 모드) — 자기완결 절
+   ══════════════════════════════════════════════════════════════════
+
+   S00 세 번째 진입점(수련장 목패)과 8걸음 각본의 스포트라이트·말풍선·
+   수료막. 코치(절 16)의 시각 언어(금테 링 + 거대 spread 어둠 + 한지
+   말풍선)를 빌리되 셀렉터는 전부 tutorial-* 로 분리해 서로를 건드리지
+   않는다. 기존 절 순서(R18→R19→R8→94~99)는 그대로다. */
+
+/* ── FBT-1a. S00 진입점 — 서갈피 아래 수련 목패 ─────────────────── */
+
+#tutorial-button {
+  left: 23px;
+  top: 385px;
+  width: 258px;
+  height: 74px;
+  display: grid;
+  align-content: center;
+  justify-items: start;
+  gap: 2px;
+  padding-left: 22px;
+  text-align: left;
+  border-radius: 10px;
+  background:
+    linear-gradient(180deg, rgba(58, 46, 28, 0.92) 0%, rgba(34, 26, 15, 0.94) 100%);
+  box-shadow:
+    inset 0 0 0 1px rgba(151, 118, 60, 0.55),
+    inset 0 0 22px rgba(0, 0, 0, 0.5),
+    0 4px 10px rgba(0, 0, 0, 0.45);
+}
+
+#tutorial-button b {
+  color: #f2e3bd;
+  font-size: 17px;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.75);
+}
+
+#tutorial-button small {
+  color: #cdb277;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+/* 수련 인장(八) — 오른쪽에 옅은 도장처럼 */
+#tutorial-button em {
+  position: absolute;
+  right: 14px;
+  top: 50%;
+  translate: 0 -50%;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  color: #e8c874;
+  font-size: 20px;
+  font-style: normal;
+  font-weight: 900;
+  border: 1.5px solid rgba(232, 200, 116, 0.55);
+  border-radius: 50%;
+  background: rgba(20, 14, 7, 0.4);
+}
+
+#tutorial-button:hover {
+  box-shadow:
+    inset 0 0 0 1px rgba(232, 200, 116, 0.8),
+    inset 0 0 22px rgba(0, 0, 0, 0.5),
+    0 4px 14px rgba(155, 113, 55, 0.4);
+}
+
+#tutorial-button[data-loading="1"] {
+  cursor: progress;
+  filter: saturate(0.7) brightness(0.85);
+}
+
+/* 첫 방문(수료 기록 없음)에는 은은한 금빛 맥동으로 "여기부터"를 짚는다. */
+#tutorial-button.is-fresh {
+  animation: fbt-entry-pulse 2.4s ease-in-out infinite;
+}
+
+@keyframes fbt-entry-pulse {
+  0%, 100% {
+    box-shadow:
+      inset 0 0 0 1px rgba(151, 118, 60, 0.55),
+      inset 0 0 22px rgba(0, 0, 0, 0.5),
+      0 0 0 0 rgba(232, 200, 116, 0);
+  }
+  50% {
+    box-shadow:
+      inset 0 0 0 1px rgba(232, 200, 116, 0.9),
+      inset 0 0 22px rgba(0, 0, 0, 0.5),
+      0 0 18px 2px rgba(232, 200, 116, 0.35);
+  }
+}
+
+/* 3D 서재에서는 서갈피가 왼쪽으로 물리므로 같이 물린다. */
+.s00-stage.is-3d #tutorial-button {
+  left: 8px;
+  top: 372px;
+  rotate: -0.8deg;
+}
+
+/* ── FBT-1b. 수련 레이어 — 링 + 말풍선 + 건너뛰기 ───────────────── */
+
+.tutorial-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 62;
+  pointer-events: none;
+}
+
+.tutorial-layer[hidden] {
+  display: none;
+}
+
+/* 코치와 같은 기법: 거대한 spread 그림자로 대상만 남기고 어둡게 덮는다.
+   soft-lock 은 스크립트가 캡처 단계에서 클릭을 걷어내고, 이 어둠이 그
+   사실을 눈으로 말한다. */
+.tutorial-ring {
+  position: absolute;
+  border: 2px solid var(--gold-200, #e8c874);
+  border-radius: var(--r-md, 8px);
+  box-shadow:
+    0 0 0 9999px rgba(8, 6, 4, 0.58),
+    0 0 22px rgba(155, 113, 55, 0.55),
+    inset 0 0 18px rgba(155, 113, 55, 0.28);
+  animation: fbt-ring-pulse 1.7s ease-in-out infinite;
+}
+
+@keyframes fbt-ring-pulse {
+  0%, 100% { border-color: var(--gold-300, #d8b46a); }
+  50% { border-color: var(--gold-100, #f7e6bb); }
+}
+
+.tutorial-bubble {
+  position: absolute;
+  width: 272px;
+  padding: var(--sp-3, 12px) var(--sp-3, 12px) var(--sp-2, 8px);
+  pointer-events: auto;
+  clip-path: var(--clip-cut-sm, none);
+  background:
+    var(--grain, none),
+    linear-gradient(180deg, #f7f0dd 0%, #e5d8b6 100%);
+  box-shadow:
+    var(--bevel-up, inset 0 1px 0 rgba(255, 255, 255, 0.12)),
+    0 0 0 2px var(--wood-800, #2c2216),
+    var(--lift-2, 0 6px 18px rgba(0, 0, 0, 0.4));
+}
+
+.tutorial-step-count {
+  margin: 0 0 2px;
+  color: #8a5b23;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.16em;
+}
+
+.tutorial-bubble b {
+  display: block;
+  margin-bottom: 4px;
+  color: #3a2c14;
+  font-size: var(--fs-md, 14px);
+  font-weight: 900;
+}
+
+.tutorial-bubble p#tutorial-body {
+  margin: 0;
+  color: #574325;
+  font-size: var(--fs-xs, 11.5px);
+  line-height: 1.55;
+}
+
+/* 조작 픽토그램 — 코치와 같은 팩(p0-v1 control-icons)을 우상단에 얹는다. */
+.tutorial-bubble[data-tutorial-control]::after {
+  content: "";
+  position: absolute;
+  top: 9px;
+  right: 13px;
+  width: 24px;
+  height: 24px;
+  opacity: 0.9;
+  pointer-events: none;
+  background-image: var(--tutorial-control-icon, none);
+  background-size: contain;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+.tutorial-bubble[data-tutorial-control="wheel"] { --tutorial-control-icon: url("/assets/ui/p0-v1/control-icons/control-wheel-72-v1.png"); }
+.tutorial-bubble[data-tutorial-control="click"] { --tutorial-control-icon: url("/assets/ui/p0-v1/control-icons/control-left-click-72-v1.png"); }
+.tutorial-bubble[data-tutorial-control="drag"] { --tutorial-control-icon: url("/assets/ui/p0-v1/control-icons/control-drag-72-v1.png"); }
+
+/* 허용 밖 클릭 — 말풍선이 살짝 몸을 흔들어 "여기부터"를 되짚는다. */
+.tutorial-bubble.is-nudge {
+  animation: fbt-nudge 0.42s ease;
+}
+
+@keyframes fbt-nudge {
+  0%, 100% { translate: 0 0; }
+  25% { translate: -5px 0; }
+  55% { translate: 4px 0; }
+  80% { translate: -2px 0; }
+}
+
+/* 우상단 상시 [수련 건너뛰기] — 전장 위, 패널을 넘보지 않는 자리. */
+.tutorial-exit {
+  position: absolute;
+  top: 56px;
+  right: 390px;
+  padding: 6px 13px;
+  pointer-events: auto;
+  cursor: pointer;
+  color: #eadfc0;
+  border: 0;
+  border-radius: var(--r-sm, 5px);
+  font-size: var(--fs-2xs, 10.5px);
+  font-weight: 800;
+  background: rgba(14, 10, 6, 0.92);
+  box-shadow: inset 0 0 0 1px rgba(196, 158, 88, 0.75);
+}
+
+.tutorial-exit:hover {
+  color: #f7f0dd;
+  box-shadow: inset 0 0 0 1px rgba(232, 200, 116, 0.85);
+}
+
+.tutorial-exit[hidden] {
+  display: none;
+}
+
+/* ── FBT-1c. 수료막 — 배운 것 4줄 + 본편 출정 ───────────────────── */
+
+.tutorial-complete {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  display: grid;
+  place-items: center;
+  pointer-events: auto;
+  background: rgba(8, 6, 4, 0.66);
+}
+
+.tutorial-complete[hidden] {
+  display: none;
+}
+
+.tutorial-complete-card {
+  width: 460px;
+  padding: 22px 26px 20px;
+  clip-path: var(--clip-cut-sm, none);
+  background:
+    var(--grain, none),
+    linear-gradient(180deg, #f7f0dd 0%, #e5d8b6 100%);
+  box-shadow:
+    0 0 0 2px var(--wood-800, #2c2216),
+    0 0 34px rgba(155, 113, 55, 0.4);
+}
+
+.tutorial-complete-card .eyebrow {
+  margin: 0 0 2px;
+  color: #8a5b23;
+  letter-spacing: 0.2em;
+}
+
+.tutorial-complete-card h2 {
+  margin: 0 0 12px;
+  color: #3a2c14;
+  font-size: 21px;
+  font-weight: 900;
+}
+
+.tutorial-summary {
+  display: grid;
+  gap: 7px;
+  margin: 0 0 16px;
+  padding: 0;
+  list-style: none;
+}
+
+.tutorial-summary li {
+  display: grid;
+  grid-template-columns: 64px 1fr;
+  gap: 8px;
+  align-items: baseline;
+  padding: 7px 10px;
+  border-radius: 6px;
+  background: rgba(58, 44, 20, 0.08);
+  box-shadow: inset 0 0 0 1px rgba(90, 66, 30, 0.22);
+}
+
+.tutorial-summary b {
+  color: #7c4a12;
+  font-size: 12.5px;
+  font-weight: 900;
+}
+
+.tutorial-summary span {
+  color: #574325;
+  font-size: 11.5px;
+  line-height: 1.45;
+}
+
+.tutorial-finish {
+  display: block;
+  width: 100%;
+  padding: 11px 0;
+  cursor: pointer;
+  color: #f7f0dd;
+  border: 0;
+  border-radius: var(--r-sm, 6px);
+  font-size: 15px;
+  font-weight: 900;
+  letter-spacing: 0.3em;
+  text-indent: 0.3em;
+  background: linear-gradient(180deg, #2a2723 0%, #17150f 100%);
+  box-shadow:
+    inset 0 0 0 1px rgba(232, 200, 116, 0.5),
+    0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+.tutorial-finish:hover {
+  box-shadow:
+    inset 0 0 0 1px rgba(232, 200, 116, 0.95),
+    0 0 16px rgba(232, 200, 116, 0.35);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tutorial-ring,
+  #tutorial-button.is-fresh {
+    animation: none;
+  }
+}

@@ -1,0 +1,343 @@
+/* src/ui-skin.css 10879~11221줄에서 그대로 옮겨 왔다 — R16 승급 카드. 순서는 ui-skin.css 배럴이 지킨다. */
+/* ══════════════════════════════════════════════════════════════════
+   ===== R16 승급 카드 =====
+
+   "승급 UI 가 못생기고 이해하기 힘들다 — 숫자가 많고 폰트가 비슷하다"에
+   대한 처방. 84-B 의 카드는 한 장에 수치 6종(현재 별·보유 수·결과 별·획득
+   수·후보 글자 수·전장 소모 수)을 같은 굵기로 늘어놓아 "읽어야" 이해됐다.
+
+   R16 은 카드를 그림 한 문장으로 바꾼다.
+     [오행 인장]  [초상 3연속 (+여분)]  →  [ ? 결과 칸 ]   [승급]
+     다음 별 자령 1기 — 무작위
+     (필요할 때만) 전장 3기 소모
+
+   원칙 셋.
+   1) 소모 수는 초상 3개만이 말한다. 보유 수 `×N` 은 폐지했다 — `1★ ×4 → 2★`
+      를 보고 "왜 4개를 합치냐"고 읽은 실제 오독이 있었다. 쓰이지 않고 남는
+      자령은 초상 뒤 흐린 `+N` 스택 칩으로만 보인다.
+   2) 지운 수치는 버리지 않고 카드 title 툴팁으로 내린다
+      (`보유 4기 중 3기 소모 · 여분 1기 유지 · 소모 野·紡·組 · 3★ 후보 35자`).
+   3) 남는 숫자(★n · (N회))는 금박·900·tabular-nums 로 본문 먹글씨와 서체
+      등록부를 갈라 "비슷한 폰트" 문제 자체를 없앤다.
+   ══════════════════════════════════════════════════════════════════ */
+
+/* ── R16-1. 숫자 배지 — 본문과 다른 등록부 ─────────────────────────
+   ★n 은 글이 아니라 표식이다. 금박 알약 + tabular-nums 로 먹색 본문에서
+   분리해 두면 훑는 눈이 별과 문장을 따로 집는다. */
+.casual-star-tag {
+  position: relative;
+  display: inline-block;
+  padding: 0 4px;
+  color: #4a3411;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #f2d78d 0%, #dcb75f 100%);
+  box-shadow: 0 0 0 1px rgba(93, 66, 16, 0.5);
+  font-size: 9px;
+  font-style: normal;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.01em;
+  line-height: 1.55;
+  white-space: nowrap;
+}
+
+/* ── R16-2. 카드 격자 — 그림 줄이 주인공, 글줄은 아래 ─────────────── */
+.casual-group-card {
+  grid-template-columns: 34px minmax(0, 1fr) auto;
+  grid-template-areas:
+    "glyph scene run"
+    "glyph body  run";
+  align-items: center;
+  gap: 4px 10px;
+  min-height: 66px;
+  padding: 7px 8px;
+}
+
+.casual-group-card > .casual-group-glyph { grid-area: glyph; align-self: center; }
+.casual-group-card > .casual-group-scene { grid-area: scene; }
+.casual-group-card > .casual-group-body { grid-area: body; }
+
+.casual-group-card > .casual-group-run {
+  grid-area: run;
+  align-self: center;
+  min-width: 66px;
+  min-height: 40px;
+  padding: 4px 15px;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+/* ── R16-3. 그림 한 문장: 초상 3연속 → 물음표 칸 ────────────────── */
+.casual-group-scene {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+}
+
+.casual-group-materials {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+}
+
+.casual-group-material {
+  position: relative;
+  display: block;
+  flex: 0 0 auto;
+  width: 40px;
+  height: 40px;
+}
+
+.casual-group-material > .casual-star-tag {
+  position: absolute;
+  top: -4px;
+  left: -4px;
+  z-index: 2;
+}
+
+.casual-group-materials .workbench-spirit--group {
+  width: 40px;
+  height: 40px;
+  border-radius: 5px;
+}
+
+.casual-group-materials .workbench-spirit--group .workbench-spirit-fallback { font-size: 21px; }
+
+/* 부족분은 세지 말고 보이게 — 빈 초상 실루엣이 곧 "몇 기 더" 다 */
+.casual-group-material.is-empty {
+  display: grid;
+  place-items: center;
+  border-radius: 5px;
+  background: repeating-linear-gradient(-45deg, rgba(142, 42, 30, 0.09) 0 4px, transparent 4px 9px);
+  box-shadow: inset 0 0 0 1.5px rgba(142, 42, 30, 0.32);
+}
+
+.casual-group-material.is-empty > i {
+  color: rgba(142, 42, 30, 0.62);
+  font-size: 17px;
+  font-style: normal;
+  font-weight: 900;
+}
+
+/* 여분 스택 — "3기가 쓰이고 N기는 남는다"를 겹친 종잇장으로 */
+.casual-group-spare {
+  position: relative;
+  display: block;
+  flex: 0 0 auto;
+  width: 40px;
+  height: 40px;
+  margin-left: 4px;
+}
+
+.casual-group-spare::before {
+  content: "";
+  position: absolute;
+  inset: 4px -5px 4px 5px;
+  border-radius: 5px;
+  background: linear-gradient(180deg, #d9cba7 0%, #c9b98f 100%);
+  box-shadow: 0 0 0 1px rgba(122, 90, 42, 0.28);
+}
+
+.casual-group-spare .workbench-spirit--group {
+  position: relative;
+  z-index: 1;
+  width: 40px;
+  height: 40px;
+  border-radius: 5px;
+  opacity: 0.4;
+  filter: saturate(0.45);
+}
+
+.casual-group-spare .workbench-spirit--group .workbench-spirit-fallback { font-size: 21px; }
+
+.casual-group-spare > i {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  z-index: 2;
+  padding: 0 5px;
+  color: #4a3411;
+  border-radius: 999px;
+  background: rgba(250, 243, 222, 0.92);
+  box-shadow: 0 0 0 1px rgba(122, 90, 42, 0.45);
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.5;
+  transform: translate(-50%, -50%);
+}
+
+.casual-group-arrow {
+  flex: 0 0 auto;
+  color: #4a3f30;
+  font-size: 16px;
+  font-style: normal;
+  font-weight: 700;
+  line-height: 1;
+}
+
+/* 결과 칸이 카드의 주인공 — 한지 바탕 + 금테 + 큰 물음표 */
+.casual-group-result {
+  position: relative;
+  display: grid;
+  grid-template-rows: 1fr auto;
+  flex: 0 0 auto;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  padding: 2px 0 4px;
+  border-radius: 7px;
+  background:
+    radial-gradient(circle at 50% 28%, rgba(255, 249, 226, 0.95), transparent 72%),
+    linear-gradient(180deg, #f8f0da 0%, #e9ddbd 100%);
+  box-shadow:
+    inset 0 0 0 1.5px color-mix(in srgb, var(--result-star, #b8934a) 40%, #b08a2c),
+    0 0 0 1px rgba(122, 90, 42, 0.3),
+    var(--lift-1);
+}
+
+.casual-group-result > b {
+  align-self: center;
+  color: #2e2212 !important;
+  font-family: "Noto Serif KR", "Batang", serif;
+  font-size: 28px !important;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.casual-group-result > .casual-star-tag {
+  position: static;
+  padding: 0 5px;
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.casual-group-result.is-blocked {
+  background: linear-gradient(180deg, #e5ddc7 0%, #d4c9a9 100%);
+  box-shadow: inset 0 0 0 1.5px rgba(122, 90, 42, 0.42), 0 0 0 1px rgba(122, 90, 42, 0.24);
+}
+
+.casual-group-result.is-blocked > b { color: #7b684a !important; }
+.casual-group-result.is-blocked > .casual-star-tag { opacity: 0.7; filter: saturate(0.3); }
+
+/* ── R16-4. 글자는 두 줄만 ──────────────────────────────────────── */
+.casual-group-body {
+  display: grid;
+  align-content: center;
+  gap: 3px;
+  min-width: 0;
+}
+
+.casual-group-body b.casual-group-title {
+  overflow: hidden;
+  color: #2e2212 !important;
+  font-size: 12.5px !important;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.casual-group-card.is-blocked .casual-group-body b.casual-group-title {
+  color: #8e2a1e !important;
+  white-space: normal;
+}
+
+.casual-group-notes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.casual-group-notes .casual-group-badge {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 전장 자령이 빠지는 것만은 경고다 — 인주 칩으로 따로 세운다 */
+.casual-group-badge.is-board {
+  color: #8e2a1e;
+  background: rgba(142, 42, 30, 0.13);
+  box-shadow: inset 0 0 0 1px rgba(142, 42, 30, 0.42);
+}
+
+/* ── R16-5. 헤더 3중 카운트 → [한 번에 승급 (N회)] 하나로 ─────────── */
+.casual-fuse-all {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  min-height: 44px;
+  padding: 6px 12px;
+}
+
+.casual-fuse-all .casual-fuse-all-count {
+  color: #6d4a06 !important;
+  font-size: 15px !important;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+}
+
+.casual-fuse-all:disabled .casual-fuse-all-count { color: #5f5341 !important; }
+
+/* styles.css 7876절이 이 배지에 display 를 못박아 [hidden] 이 먹히지 않는다 */
+#evolution-count[hidden] { display: none !important; }
+
+/* ── R16-6. 확장 폭은 카드가 실제로 요구하는 만큼만 ─────────────────
+   93절이 승급 작업대를 전장 위로 -333px 끌어냈던 이유는 옛 카드가 글줄
+   하나에 수식 표기를 길게 늘어놓았기 때문이다. R16 의 가로 문장은
+   인장 34 + 초상 40x3 + 여분 44 + 화살 16 + 결과 52 + 버튼 66 + 여백,
+   실측 400px 아래에서 성립한다. 전장을 덜 가리는 쪽이 언제나 옳다.
+   93절이 파일 뒤쪽에서 같은 선택자로 -333px 를 못박고 있어(선택자가 같아
+   순서로는 못 이긴다) 여기서만 같은 무게로 되짚는다. */
+.game-shell[data-game-mode="casual"][data-panel-tab="evolution"] .evolution-workbench.is-active {
+  left: -110px !important;
+}
+
+/* ── R16-7. 직접 고르기도 같은 어휘 — 표기만 ★n 으로 ─────────────── */
+.casual-fusion-tower strong .casual-star-tag,
+.casual-fusion-slot div strong .casual-star-tag {
+  padding: 0 3px;
+  font-size: 8.5px;
+  line-height: 1.5;
+}
+
+.casual-fusion-result > strong .casual-star-tag { font-size: 11px; }
+.casual-fusion-status > b .casual-star-tag { font-size: 10px; }
+
+/* ── R16-8. 좁아진 폭에 맞춘 직접 고르기 3슬롯 ─────────────────────
+   7975절의 casual 슬롯은 [48 스프라이트][32 한자][나머지] 3열 한 줄이라
+   작업대가 699 -> 476px 로 좁아지자 셋째 열이 0px 로 접히고 `사라집니다`가
+   한 글자씩 세로로 흘렀다. 화살표·결과 칸을 아래 줄로 내려 슬롯 폭을
+   98 -> 146px 로 되돌리고, 재료가 없는 슬롯은 2열로 되편다. */
+.game-shell[data-game-mode="casual"][data-panel-tab="evolution"] .casual-fusion-slots {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.game-shell[data-game-mode="casual"][data-panel-tab="evolution"] .casual-fusion-slots > i {
+  grid-column: 1 / -1;
+  justify-self: center;
+  transform: rotate(90deg);
+}
+
+.game-shell[data-game-mode="casual"][data-panel-tab="evolution"] .casual-fusion-slots > .casual-fusion-result {
+  grid-column: 1 / -1;
+  min-height: 76px;
+}
+
+.game-shell[data-game-mode="casual"][data-panel-tab="evolution"] .casual-fusion-slot {
+  grid-template-columns: 40px 28px minmax(0, 1fr);
+}
+
+.game-shell[data-game-mode="casual"][data-panel-tab="evolution"] .casual-fusion-slot:not(.is-filled) {
+  grid-template-columns: 34px minmax(0, 1fr);
+}
+
+.game-shell[data-game-mode="casual"][data-panel-tab="evolution"] .casual-fusion-slot-sprite {
+  width: 40px;
+  height: 40px;
+}

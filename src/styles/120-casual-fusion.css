@@ -1,0 +1,383 @@
+/* src/ui-skin.css 7697~8079줄에서 그대로 옮겨 왔다 — 절 84~87 — 캐주얼 3체 조합 v2와 S00 대비 재수술. 순서는 ui-skin.css 배럴이 지킨다. */
+/* ══════════════════════════════════════════════════════════════════
+   84. 캐주얼 3체 조합 v2 — 위계 뒤집기
+   "3개 고르다 보면 재료 부족인 애를 고르게 된다"는 지적에 따라
+   [한 번에 승급] · 그룹 카드가 기본이고 수동 3슬롯은 접힘으로 내려갔다.
+   ══════════════════════════════════════════════════════════════════ */
+
+/* ── 84-A. [한 번에 승급] 대형 금박 버튼 ────────────────────────── */
+.casual-fuse-all {
+  display: grid;
+  align-content: center;
+  gap: 1px;
+  min-height: 46px;
+  padding: 5px 10px;
+  color: #2b2009 !important;
+  text-align: left;
+  border: 0 !important;
+  border-radius: var(--r-sm, 6px);
+  background: var(--mat-brass) !important;
+  box-shadow: var(--bevel-up), var(--lift-1) !important;
+  cursor: pointer;
+}
+
+.casual-fuse-all b { color: #2b2009 !important; font-size: 15px !important; letter-spacing: -0.02em; }
+.casual-fuse-all span { color: #4a3411 !important; font-size: 11.5px !important; font-weight: 800; }
+.casual-fuse-all:hover:not(:disabled) { background: var(--mat-brass-hot) !important; }
+
+.casual-fuse-all:disabled {
+  color: #5f5341 !important;
+  background: linear-gradient(180deg, #d6c9a8 0%, #c4b491 100%) !important;
+  box-shadow: inset 0 0 0 1px rgba(122, 90, 42, 0.26) !important;
+  cursor: default;
+}
+
+.casual-fuse-all:disabled b,
+.casual-fuse-all:disabled span { color: #5f5341 !important; }
+
+.casual-fuse-all-note {
+  margin: 0;
+  color: #4a3f30 !important;
+  font-size: 11px !important;
+  line-height: 1.35;
+}
+
+/* ── 84-B. 승급 가능 그룹 카드 ───────────────────────────────────── */
+.casual-group-list { display: grid; gap: 5px; margin-bottom: 8px; }
+
+.casual-group-card {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  min-height: 52px;
+  padding: 5px 7px;
+  border: 0;
+  border-radius: var(--r-sm, 6px);
+  background: linear-gradient(180deg, #f2e8cd 0%, #e2d4b2 100%);
+  box-shadow: var(--bevel-up), 0 0 0 1px rgba(122, 90, 42, 0.3), inset 4px 0 0 var(--element, #b8934a);
+}
+
+.casual-group-glyph {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  color: color-mix(in srgb, var(--element, #b8934a) 55%, #241c0e);
+  border-radius: 4px;
+  background:
+    radial-gradient(circle at 50% 34%, color-mix(in srgb, var(--element, #b8934a) 24%, transparent), transparent 72%),
+    linear-gradient(180deg, #cdbb92 0%, #ded1b0 100%);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--element, #b8934a) 40%, rgba(122, 90, 42, 0.4));
+  font-size: 20px;
+  font-style: normal;
+  font-weight: 900;
+}
+
+.casual-group-body { display: grid; gap: 2px; min-width: 0; }
+.casual-group-body b { color: #2e2212; font-size: 13px; letter-spacing: -0.02em; }
+.casual-group-body small { overflow: hidden; color: #6d5a3c; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+
+.casual-group-badge {
+  justify-self: start;
+  margin-top: 1px;
+  padding: 1px 6px;
+  color: #7d4f0d;
+  border-radius: 999px;
+  background: rgba(169, 112, 28, 0.16);
+  box-shadow: inset 0 0 0 1px rgba(169, 112, 28, 0.42);
+  font-size: 10.5px;
+  font-style: normal;
+  font-weight: 900;
+}
+
+.casual-group-run {
+  min-width: 62px;
+  min-height: 34px;
+  padding: 4px 11px;
+  color: #2b2009;
+  border: 0;
+  border-radius: var(--r-sm, 6px);
+  background: var(--mat-brass);
+  box-shadow: var(--bevel-up), var(--lift-1);
+  font-size: 12.5px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.casual-group-run:hover:not(:disabled) { background: var(--mat-brass-hot); }
+
+.casual-group-run:disabled,
+.casual-group-run.is-disabled {
+  display: grid;
+  place-items: center;
+  color: #5f5341;
+  background: linear-gradient(180deg, #d6c9a8 0%, #c4b491 100%);
+  box-shadow: inset 0 0 0 1px rgba(122, 90, 42, 0.26);
+  cursor: default;
+}
+
+/* 보호로 3체가 안 되는 묶음은 인주 왼줄로 "지금은 못 한다"를 먼저 말한다 */
+.casual-group-card.is-blocked {
+  box-shadow: var(--bevel-up), 0 0 0 1px rgba(122, 90, 42, 0.3), inset 4px 0 0 var(--seal, #8e2a1e);
+}
+
+.casual-group-card.is-blocked .casual-group-body b { color: #8e2a1e; }
+.casual-group-card.is-blocked .casual-group-body small { white-space: normal; }
+
+/* ── 84-C. 빈 상태 ──────────────────────────────────────────────── */
+.casual-group-empty {
+  display: grid;
+  justify-items: start;
+  gap: 5px;
+  padding: 13px 12px;
+  border-radius: var(--r-sm, 6px);
+  background: linear-gradient(180deg, #f2e8cd 0%, #e2d4b2 100%);
+  box-shadow: var(--bevel-up), 0 0 0 1px rgba(122, 90, 42, 0.3);
+}
+
+.casual-group-empty b { color: #2e2212; font-size: 13px; line-height: 1.4; }
+.casual-group-empty span { color: #6d5a3c; font-size: 11.5px; }
+
+.casual-goto-shop {
+  min-height: 32px;
+  margin-top: 2px;
+  padding: 4px 14px;
+  color: #2b2009;
+  border: 0;
+  border-radius: var(--r-sm, 6px);
+  background: var(--mat-brass);
+  box-shadow: var(--bevel-up), var(--lift-1);
+  font-size: 12px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.casual-goto-shop:hover { background: var(--mat-brass-hot); }
+
+/* ── 84-D. [직접 고르기] 접힘 섹션 ──────────────────────────────── */
+.casual-manual {
+  border-radius: var(--r-sm, 6px);
+  background: linear-gradient(180deg, #efe4c6 0%, #e0d1ac 100%);
+  box-shadow: inset 0 0 0 1px rgba(122, 90, 42, 0.28);
+}
+
+.casual-manual > summary {
+  display: grid;
+  align-content: center;
+  gap: 1px;
+  min-height: 42px;
+  padding: 5px 10px 5px 26px;
+  border-radius: var(--r-sm, 6px);
+  cursor: pointer;
+  list-style: none;
+}
+
+.casual-manual > summary::-webkit-details-marker { display: none; }
+
+.casual-manual > summary::before {
+  position: absolute;
+  margin-left: -17px;
+  color: #7a5a2a;
+  font-size: 11px;
+  content: "▸";
+}
+
+.casual-manual[open] > summary::before { content: "▾"; }
+.casual-manual > summary b { color: #2e2212; font-size: 12.5px; }
+.casual-manual > summary small { color: #6d5a3c; font-size: 11px; }
+.casual-manual > summary:hover { background: linear-gradient(180deg, #f7edd3 0%, #e8dab6 100%); }
+.casual-manual[open] > summary { box-shadow: inset 0 -1px 0 rgba(122, 90, 42, 0.28); }
+.casual-manual > *:not(summary) { margin-left: 7px; margin-right: 7px; }
+.casual-manual > .casual-rarity-rule { margin-top: 7px; }
+.casual-manual > .casual-fusion-candidates { padding-bottom: 8px; }
+
+/* 3체 미달·보호 사유 뱃지 — 후보 카드 오른쪽 끝 */
+.evolution-options .casual-fusion-tower.is-short > em {
+  max-width: 76px;
+  padding: 1px 5px;
+  color: #8e2a1e !important;
+  border-radius: 999px;
+  background: rgba(142, 42, 30, 0.13);
+  box-shadow: inset 0 0 0 1px rgba(142, 42, 30, 0.35);
+  font-size: 10px !important;
+  line-height: 1.25;
+  text-align: center;
+  white-space: normal;
+}
+
+/* ── 84-E. 위계 교정 — styles.css 7901절이 툴바를 `order:3` 으로 맨 아래에
+   내려 두었다. v2 에서는 [한 번에 승급] 이 첫 화면 맨 위여야 한다. ────── */
+.game-shell[data-game-mode="casual"][data-panel-tab="evolution"] .casual-fusion-toolbar {
+  order: 0 !important;
+  flex: 0 0 auto !important;
+  grid-template-columns: minmax(206px, 0.85fr) minmax(0, 1.5fr) !important;
+  margin: 0 0 7px !important;
+  padding: 6px 8px !important;
+  border-radius: var(--r-sm, 6px) !important;
+}
+
+.game-shell[data-game-mode="casual"][data-panel-tab="evolution"] .evolution-options { order: 1; }
+
+/* 대형 버튼은 "여기를 누르면 된다"가 한눈에 보여야 한다 */
+.casual-fuse-all {
+  box-shadow: var(--bevel-up), var(--lift-1), 0 0 0 2px var(--gold-400, #d9b463) !important;
+}
+
+.casual-fuse-all:disabled {
+  box-shadow: inset 0 0 0 1px rgba(122, 90, 42, 0.26) !important;
+}
+
+.casual-group-run { box-shadow: var(--bevel-up), var(--lift-1), 0 0 0 1px rgba(122, 90, 42, 0.4); }
+
+/* 좁은 폭: 안내문은 접고 버튼만 남긴다(styles.css 가 .casual-rule-copy 에
+   대해 하던 처리를 새 요소에 옮긴 것). */
+@media (max-width: 1180px), (max-height: 700px) {
+  .game-shell[data-game-mode="casual"][data-panel-tab="evolution"] .casual-fusion-toolbar {
+    grid-template-columns: 1fr !important;
+  }
+
+  .casual-fuse-all-note { display: none; }
+}
+
+/* 7891절의 6행 grid 는 옛 6자식(눈금·슬롯·상태·버튼·머리말·후보) 전용이라
+   v2 의 2자식 구조에서는 빈 행이 남고 overflow:hidden 이 내용을 잘랐다. */
+.game-shell[data-game-mode="casual"][data-panel-tab="evolution"] .evolution-options.is-casual {
+  display: block !important;
+  grid-template-rows: none !important;
+  padding: 0 2px 0 0 !important;
+  overflow: auto !important;
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   85. S00 대비 재수술 — 국소 스크림 + 글자색 반전
+   68·74절의 그림자 보강으로는 부족하다는 재지적. 스크린샷 픽셀 실측
+   (`.claude/uiux/r3/s00-contrast2.mjs`)에서 4.5:1 미만이던 전 항목을
+   (1) 글자 뒤 국소 스크림, (2) 배경 반대극 글자색 두 기법으로만 고친다.
+   ══════════════════════════════════════════════════════════════════ */
+
+/* ── 85-A. 지역 배지 — 69절의 `.region-option small{color:var(--text-300)}`
+   가 (0,1,1) 로 `.s00-badge`(0,1,0) 를 이겨 어두운 알약에 어두운 글자가
+   앉아 있었다(실측 2.65:1). 알약 자체가 스크림이므로 글자만 되돌린다. ── */
+.s00-stage .s00-region .s00-badge,
+.s00-stage .s00-badge {
+  color: #fff2cd !important;
+  background: rgba(38, 13, 8, 0.95) !important;
+  box-shadow:
+    inset 0 0 0 1px rgba(226, 194, 122, 0.6),
+    0 1px 3px rgba(0, 0, 0, 0.7) !important;
+}
+
+.s00-stage .s00-region .s00-badge--ea,
+.s00-stage .s00-badge--ea {
+  color: #f6ead0 !important;
+  background: rgba(14, 13, 12, 0.95) !important;
+  box-shadow:
+    inset 0 0 0 1px rgba(170, 152, 120, 0.66),
+    0 1px 3px rgba(0, 0, 0, 0.7) !important;
+}
+
+/* 비활성 지역(일본·중국) 버튼의 흐리기가 배지까지 먹지 않게 */
+.s00-stage .s00-region:disabled .s00-badge { opacity: 1; }
+
+/* ── 85-B. 요약 스트립 부제 — 밝은 한지 리본 위 연갈색(실측 2.43:1).
+   2순위 기법: 배경 반대극인 먹으로 반전한다. ─────────────────────── */
+.s00-stage .s00-summary span,
+.s00-stage.is-3d .s00-summary span {
+  color: #2e2212 !important;
+  font-weight: 700;
+  text-shadow: none;
+}
+
+/* ── 85-C. 서갈피 '선택됨' 인장 — 인주 알약 위 금박(실측 3.75:1).
+   알약을 더 진한 인주로 낮추고 글자를 한지색으로 올린다. ─────────── */
+.s00-stage .s00-mode em,
+.s00-stage .s00-mode.is-selected > em {
+  color: #fff7e6 !important;
+  background: rgba(104, 21, 13, 0.94) !important;
+  box-shadow: inset 0 0 0 1px rgba(255, 233, 186, 0.4);
+  text-shadow: 0 1px 2px rgba(24, 4, 2, 0.9);
+}
+
+/* ── 85-D. 3D 위 "아트 위 문장" 국소 스크림.
+   출정 부제·맞춤 진법 쪽지 사유는 그림·나뭇결 위에 바로 얹혀 있어
+   글자색만으로는 한계다. 1순위 기법인 국소 받침을 깐다. ──────────── */
+.s00-stage.is-3d #s00-start-sub {
+  padding: 1px 7px;
+  color: #fbf0d6 !important;
+  border-radius: 4px;
+  background: rgba(18, 12, 6, 0.55);
+}
+
+/* 맞춤 진법 쪽지는 밝은 한지라 반대로 — 밝은 받침 + 먹 글자 */
+.s00-stage .s00-custom .s00-reason {
+  padding: 0 5px;
+  color: #2e2212 !important;
+  border-radius: 3px;
+  background: rgba(250, 241, 217, 0.72);
+  font-weight: 800;
+}
+
+/* 현판 영문은 장식이라 3:1 이면 충분하지만, 실측 4.76:1 을 지키도록
+   한지 판 위에서 먹 계열을 유지한다(회귀 방지용 고정). */
+.s00-title-plaque small { color: #b6a069; }
+
+/* ══════════════════════════════════════════════════════════════════
+   86. 팝오버 큰 한자 — S13 '읽기·표기' 줄이 4칸이 되었다
+   `.s13-options` 는 flex:1 1 0 등분이라 네 번째 버튼이 들어오면 앞의
+   두 카드 부제가 말줄임된다. 이 줄만 2×2 로 접어 문안을 전부 살린다.
+   ══════════════════════════════════════════════════════════════════ */
+.s13-group[aria-label="읽기 표기"] .s13-options { flex-wrap: wrap; }
+
+.s13-group[aria-label="읽기 표기"] .s13-options > button {
+  flex: 1 1 calc(50% - 3px);
+}
+
+/* 줄이 하나 늘어난 만큼 칸 높이를 줄여, 두루마리 상단 봉이 '맞춤 진법'
+   윗글을 덮지 않게 한다(전체 높이 427 → 두루마리 안쪽으로 복귀). */
+#s13-dialog .s13-options button { min-height: 44px; }
+
+/* ══════════════════════════════════════════════════════════════════
+   87. 3D 서갈피 부제 — 가죽 노출부 밖으로 흐르던 글자
+   Codex `layout-audit-response-v1` §1 결정 반영. 3D 에서는 짧은 표시용
+   부제(compact)만 쓰고 접근성 이름에는 전체 설명을 남긴다. 오브젝트·
+   히트영역(300x92)·좌표는 그대로 두고 글자 상자만 가죽 안으로 가둔다.
+   실측 가죽 노출부: 1번 x=28..210 / 2번 x=22..158.
+   ══════════════════════════════════════════════════════════════════ */
+
+.s00-mode-sub--compact { display: none; }
+
+.s00-stage.is-3d .s00-mode-sub--full { display: none; }
+.s00-stage.is-3d .s00-mode-sub--compact { display: inline; }
+
+/* 68절의 `.s00-stage .s00-mode b{font-size:19px!important}` 를 이겨야 한다 */
+.s00-stage.is-3d .s00-mode b {
+  font-size: 16px !important;
+  line-height: 1.1;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+/* small 의 14px 들여쓰기는 300px 폭 시절 정렬이라 3D 에서는 없앤다 */
+.s00-stage.is-3d .s00-mode small {
+  padding-left: 0 !important;
+  font-size: 9px !important;
+  line-height: 1.1;
+  white-space: nowrap;
+}
+
+/* 1번 갈피: 46px 들여쓰고 글자 상자 최대 154px (46+154=200 < 210) */
+.s00-stage.is-3d .s00-modes .s00-mode:nth-of-type(1) { padding-left: 46px; }
+
+.s00-stage.is-3d .s00-modes .s00-mode:nth-of-type(1) b,
+.s00-stage.is-3d .s00-modes .s00-mode:nth-of-type(1) small { max-width: 154px; }
+
+/* 2번 갈피: 56px 들여쓰고 글자 상자 최대 98px (56+98=154 < 158) */
+.s00-stage.is-3d .s00-modes .s00-mode:nth-of-type(2) { padding-left: 56px; }
+
+.s00-stage.is-3d .s00-modes .s00-mode:nth-of-type(2) b,
+.s00-stage.is-3d .s00-modes .s00-mode:nth-of-type(2) small { max-width: 98px; }
+
+/* '선택됨' 인장도 300px 폭 오른쪽 끝(x≈292)이 아니라 가죽 안쪽 끝에 붙인다 */
+.s00-stage.is-3d .s00-modes .s00-mode:nth-of-type(1) em { right: 100px; }
+.s00-stage.is-3d .s00-modes .s00-mode:nth-of-type(2) em { right: 142px; }

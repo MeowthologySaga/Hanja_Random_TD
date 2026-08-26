@@ -1,0 +1,731 @@
+/* src/ui-skin.css 144~874줄에서 그대로 옮겨 왔다 — 절 1~12 — 바탕·셸부터 접근성까지 기본 표면. 순서는 ui-skin.css 배럴이 지킨다. */
+/* ══════════════════════════════════════════════════════
+   1. 바탕과 셸
+   ══════════════════════════════════════════════════════ */
+
+body {
+  background:
+    radial-gradient(ellipse 70% 50% at 50% 0%, rgba(150, 112, 50, 0.12), transparent 70%),
+    radial-gradient(ellipse 80% 60% at 50% 100%, rgba(70, 48, 26, 0.14), transparent 70%),
+    var(--ji-900);
+}
+
+.game-shell {
+  background: var(--ji-900);
+  border: 0;
+  box-shadow:
+    0 0 0 1px rgba(122, 90, 42, 0.16),
+    0 0 0 2px rgba(0, 0, 0, 0.8),
+    0 40px 120px rgba(0, 0, 0, 0.8);
+}
+
+/* 전장과 명령부 사이의 웹 구분선을 지우고, 빛이 스며드는 이음매로 바꾼다 */
+.battle-stage {
+  border-right: 0;
+}
+
+.battle-stage::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  pointer-events: none;
+  background:
+    linear-gradient(90deg, rgba(0, 0, 0, 0.5), transparent 5%, transparent 94%, rgba(0, 0, 0, 0.55)),
+    linear-gradient(180deg, rgba(0, 0, 0, 0.55), transparent 7%, transparent 90%, rgba(0, 0, 0, 0.6));
+  box-shadow:
+    inset -1px 0 0 rgba(122, 90, 42, 0.28),
+    inset 0 0 90px rgba(0, 0, 0, 0.55);
+}
+
+/* ══════════════════════════════════════════════════════
+   2. 명령부 — 황동 계기반
+   ══════════════════════════════════════════════════════ */
+
+.control-panel {
+  gap: var(--sp-1);
+  padding: var(--sp-2) var(--sp-3) var(--sp-2);
+  background:
+    var(--changho),
+    var(--grain),
+    linear-gradient(180deg, #241d15 0%, #16110c 34%, #100c08 100%);
+  box-shadow: inset 1px 0 0 rgba(122, 90, 42, 0.16);
+}
+
+/* 세로 예산 재배분: 크롬을 줄이고 작업 영역(context-deck)을 늘린다.
+   기존 40/50/58/1fr/70/26/28 -> 34/56/52/1fr/40/22/24 (크롬 74px 절감) */
+@media (min-width: 800px) {
+  .control-panel {
+    grid-template-rows: 34px 56px 52px minmax(0, 1fr) 40px 22px 24px;
+  }
+}
+
+@media (min-width: 1500px) and (min-height: 850px) {
+  .control-panel {
+    grid-template-rows: 40px 64px 60px minmax(0, 1fr) 46px 26px 28px;
+  }
+}
+
+/* ── 머리글 ── */
+.brand-row {
+  min-height: 0;
+  align-items: center;
+}
+
+.eyebrow {
+  margin: 0;
+  color: var(--gold-500);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.22em;
+}
+
+.brand-row h1 {
+  color: var(--gold-100);
+  font-size: var(--fs-xl);
+  font-weight: 900;
+  letter-spacing: 0.03em;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.9), 0 0 22px rgba(155, 113, 55, 0.28);
+}
+
+/* ── 상단 아이콘 조작 ── */
+.icon-button,
+.speed-button {
+  color: var(--gold-200);
+  border: 0;
+  border-radius: var(--r-sm);
+  background: var(--mat-brass);
+  box-shadow: var(--bevel-up), var(--lift-1);
+  transition: none;
+}
+
+.icon-button:hover,
+.speed-button:hover,
+.speed-button.is-accelerated {
+  color: var(--gold-100);
+  background: var(--mat-brass-hot);
+  box-shadow: var(--bevel-up), var(--lift-1), 0 0 16px rgba(155, 113, 55, 0.4);
+}
+
+.icon-button:active,
+.speed-button:active {
+  box-shadow: var(--bevel-in);
+  transform: translateY(1px);
+}
+
+/* ══════════════════════════════════════════════════════
+   3. 자원 표시 — 파인 홈 + 잘림 방지
+   ══════════════════════════════════════════════════════ */
+
+.resource-grid {
+  overflow: visible;
+  align-items: stretch;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  gap: 2px;
+}
+
+.resource-grid div {
+  display: grid;
+  align-content: center;
+  gap: 1px;
+  min-width: 0;
+  padding: var(--sp-1) 6px;
+  border: 0;
+  border-radius: var(--r-sm);
+  background: var(--mat-well);
+  box-shadow:
+    var(--bevel-in),
+    0 0 0 1px rgba(122, 90, 42, 0.16);
+}
+
+.resource-grid div:first-child {
+  background: linear-gradient(180deg, #231a09 0%, #120d05 100%);
+  box-shadow:
+    var(--bevel-in),
+    0 0 0 1px rgba(155, 113, 55, 0.34),
+    inset 0 0 18px rgba(122, 90, 42, 0.14);
+}
+
+.resource-grid span {
+  overflow: hidden;
+  color: var(--text-400);
+  font-size: var(--fs-2xs);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.resource-grid span em {
+  color: var(--jade);
+  font-size: 10px;
+  font-style: normal;
+}
+
+.resource-grid strong {
+  overflow: hidden;
+  color: var(--text-100);
+  font-size: var(--fs-md);
+  font-weight: 900;
+  line-height: 1.05;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.resource-grid div:first-child strong {
+  color: var(--gold-200);
+  font-size: var(--fs-lg);
+  text-shadow: 0 0 14px rgba(155, 113, 55, 0.45);
+}
+
+/* ══════════════════════════════════════════════════════
+   4. 웨이브 카드 — 경보 판
+   ══════════════════════════════════════════════════════ */
+
+.wave-card {
+  clip-path: var(--clip-cut-sm);
+  align-items: center;
+  padding: 6px var(--sp-2);
+  border: 0;
+  border-radius: 0;
+  background: var(--mat-plate);
+  box-shadow:
+    var(--bevel-up),
+    inset 3px 0 0 var(--seal-red-deep);
+}
+
+.wave-card span,
+.wave-card small {
+  color: var(--text-400);
+  font-size: var(--fs-2xs);
+}
+
+.wave-card strong {
+  color: var(--text-100);
+  font-size: var(--fs-sm);
+  font-weight: 900;
+}
+
+.weakness-seal {
+  padding: 2px 6px;
+  border-radius: var(--r-sm);
+  background: rgba(0, 0, 0, 0.45);
+  box-shadow: inset 0 0 0 1px rgba(122, 90, 42, 0.3);
+}
+
+.weakness-seal span {
+  font-size: 10px;
+}
+
+.weakness-seal b {
+  font-size: var(--fs-lg);
+}
+
+/* ══════════════════════════════════════════════════════
+   5. 작업 영역 — 파인 홈
+   ══════════════════════════════════════════════════════ */
+
+.context-deck {
+  border-radius: var(--r-md);
+  background: var(--mat-well);
+  box-shadow:
+    var(--bevel-in),
+    0 0 0 1px rgba(122, 90, 42, 0.13);
+}
+
+.panel-view {
+  padding: var(--sp-2);
+}
+
+/* 섹션 머리글: 금색 소문자 + 실선 */
+.section-heading,
+.evolution-heading,
+.shop-workbench-heading,
+.goal-workbench-heading {
+  border-bottom: 1px solid rgba(122, 90, 42, 0.18);
+  padding-bottom: 3px;
+}
+
+.section-heading span,
+.evolution-heading span {
+  color: var(--gold-500);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.2em;
+}
+
+.section-heading b,
+.evolution-heading strong {
+  color: var(--gold-100);
+  font-size: var(--fs-md);
+  font-weight: 900;
+}
+
+/* ══════════════════════════════════════════════════════
+   6. 조작부 — 솟은 황동판
+   ══════════════════════════════════════════════════════ */
+
+.action-button {
+  clip-path: var(--clip-cut-sm);
+  border: 0;
+  border-radius: 0;
+  background: var(--mat-brass);
+  box-shadow: var(--bevel-up), var(--lift-1);
+  transition: none;
+}
+
+.action-button:hover:not(:disabled) {
+  background: var(--mat-brass-hot);
+  box-shadow: var(--bevel-up), var(--lift-1), 0 0 18px rgba(155, 113, 55, 0.34);
+}
+
+.action-button:active:not(:disabled) {
+  box-shadow: var(--bevel-in);
+  transform: translateY(1px);
+}
+
+.action-button:disabled {
+  filter: none;
+  opacity: 1;
+  color: var(--text-400);
+  background: linear-gradient(180deg, #1d1811 0%, #120e0a 100%);
+  box-shadow: inset 0 0 0 1px rgba(128, 108, 74, 0.16);
+}
+
+.action-button b {
+  color: var(--gold-100);
+  font-size: var(--fs-sm);
+  font-weight: 900;
+}
+
+.action-button small,
+.action-button em,
+.action-button i {
+  color: var(--gold-300);
+  font-size: var(--fs-2xs);
+}
+
+.action-button:disabled b {
+  color: var(--text-300);
+}
+
+.action-button:disabled small,
+.action-button:disabled em {
+  color: var(--text-400);
+}
+
+.action-button--summon {
+  background: linear-gradient(180deg, #6a5226 0%, #4a3819 48%, #2c210e 100%);
+  box-shadow:
+    var(--bevel-up),
+    var(--lift-1),
+    0 0 22px rgba(155, 113, 55, 0.22);
+}
+
+.hotkey {
+  color: var(--gold-600);
+  background: rgba(0, 0, 0, 0.5);
+  border-radius: var(--r-sm);
+  box-shadow: inset 0 0 0 1px rgba(122, 90, 42, 0.24);
+  font-size: 9px;
+  font-weight: 900;
+}
+
+/* 소형 버튼 */
+.small-button {
+  color: var(--gold-200);
+  border: 0;
+  border-radius: var(--r-sm);
+  background: var(--mat-brass);
+  box-shadow: var(--bevel-up), 0 1px 0 rgba(0, 0, 0, 0.5);
+  font-size: var(--fs-2xs);
+  font-weight: 800;
+}
+
+.small-button:hover:not(:disabled) {
+  color: var(--gold-100);
+  background: var(--mat-brass-hot);
+}
+
+.small-button:active:not(:disabled) {
+  box-shadow: var(--bevel-in);
+  transform: translateY(1px);
+}
+
+.small-button:disabled {
+  opacity: 1;
+  color: var(--text-400);
+  background: linear-gradient(180deg, #1d1811 0%, #120e0a 100%);
+  box-shadow: inset 0 0 0 1px rgba(128, 108, 74, 0.14);
+}
+
+/* ══════════════════════════════════════════════════════
+   7. 탭 — 한 줄 각인 띠
+   ══════════════════════════════════════════════════════ */
+
+.panel-tabs {
+  gap: 2px;
+  padding: 2px;
+  border: 0;
+  border-radius: var(--r-md);
+  background: var(--mat-well);
+  box-shadow: var(--bevel-in), 0 0 0 1px rgba(122, 90, 42, 0.14);
+}
+
+.panel-tabs button {
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 0;
+  padding: 0 2px;
+  color: var(--text-400);
+  border: 0;
+  border-radius: var(--r-sm);
+  background: transparent;
+  box-shadow: none;
+  font-size: var(--fs-2xs);
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+
+.panel-tabs button:hover {
+  color: var(--gold-200);
+  background: rgba(122, 90, 42, 0.1);
+}
+
+.panel-tabs button.is-active,
+.panel-tabs button[aria-selected="true"] {
+  color: var(--gold-100);
+  background: var(--mat-brass-hot);
+  box-shadow:
+    var(--bevel-up),
+    0 0 14px rgba(155, 113, 55, 0.3);
+}
+
+.panel-tabs button small {
+  color: var(--gold-500);
+  font-size: 9px;
+  font-weight: 900;
+}
+
+.panel-tabs button.is-active small,
+.panel-tabs button[aria-selected="true"] small {
+  color: var(--gold-300);
+}
+
+/* 소환 목적 탭 등 내부 소형 탭 */
+.mode-tabs button,
+.summon-intent-tabs button,
+.goal-mode-tabs button {
+  color: var(--text-400);
+  border: 0;
+  border-radius: var(--r-sm);
+  background: rgba(0, 0, 0, 0.4);
+  box-shadow: inset 0 0 0 1px rgba(128, 108, 74, 0.13);
+  font-size: var(--fs-2xs);
+  font-weight: 800;
+}
+
+.mode-tabs button.is-active,
+.summon-intent-tabs button.is-active,
+.goal-mode-tabs button.is-active {
+  color: var(--gold-100);
+  background: var(--mat-brass-hot);
+  box-shadow: var(--bevel-up);
+}
+
+/* ══════════════════════════════════════════════════════
+   8. 카드 — 잘린 모서리 + 재질
+   ══════════════════════════════════════════════════════ */
+
+.selected-card,
+.goal-card,
+.evolution-card,
+.idiom-target-card,
+.opening-guide,
+.formation-unlock-bar,
+.concentration-max-card,
+.growth-trait-row {
+  border: 0;
+  border-radius: var(--r-md);
+  background: var(--mat-plate);
+  box-shadow:
+    var(--bevel-up),
+    0 0 0 1px rgba(122, 90, 42, 0.12);
+}
+
+.evolution-card {
+  clip-path: var(--clip-cut-sm);
+  border-radius: 0;
+}
+
+.evolution-card:hover,
+.evolution-card:focus-visible {
+  background: linear-gradient(180deg, #352b1e 0%, #221a13 100%);
+  box-shadow: var(--bevel-up), 0 0 0 1px rgba(155, 113, 55, 0.4);
+}
+
+.evolution-card.is-target {
+  box-shadow:
+    var(--bevel-up),
+    0 0 0 1px var(--gold-300),
+    0 0 20px rgba(155, 113, 55, 0.3);
+}
+
+/* 자령 초상 자리 */
+.selected-glyph,
+.goal-glyph {
+  border: 0;
+  border-radius: var(--r-md);
+  background:
+    radial-gradient(circle at 50% 34%, rgba(122, 90, 42, 0.16), transparent 68%),
+    var(--mat-well);
+  box-shadow:
+    var(--bevel-in),
+    0 0 0 1px rgba(122, 90, 42, 0.26);
+}
+
+/* 빈 상태 */
+.empty-selection,
+.empty-evolution {
+  border: 1px dashed rgba(122, 90, 42, 0.22);
+  border-radius: var(--r-md);
+  background: rgba(0, 0, 0, 0.3);
+}
+
+.empty-selection b,
+.empty-evolution b {
+  color: var(--gold-300);
+  font-size: var(--fs-sm);
+}
+
+.empty-selection span,
+.empty-evolution span {
+  color: var(--text-400);
+  font-size: var(--fs-2xs);
+}
+
+/* 능력 알약 */
+.ability-pills span,
+.selected-ability-summary {
+  border: 0;
+  border-radius: var(--r-sm);
+  background: rgba(0, 0, 0, 0.42);
+  box-shadow: inset 0 0 0 1px rgba(122, 90, 42, 0.18);
+}
+
+/* 진행 바 */
+.goal-progress,
+.wave-progress {
+  border-radius: 999px;
+  background: var(--ji-900);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.9);
+}
+
+.goal-progress i,
+.wave-progress i {
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--gold-500), var(--gold-200));
+  box-shadow: 0 0 12px rgba(155, 113, 55, 0.55);
+}
+
+/* ══════════════════════════════════════════════════════
+   9. 전장 위 HUD
+   ══════════════════════════════════════════════════════ */
+
+.stage-chip {
+  clip-path: var(--clip-cut-sm);
+  border: 0;
+  border-radius: 0;
+  background: linear-gradient(180deg, rgba(38, 31, 22, 0.94), rgba(14, 11, 8, 0.94));
+  box-shadow:
+    var(--bevel-up),
+    0 0 0 1px rgba(122, 90, 42, 0.2),
+    var(--lift-1);
+  backdrop-filter: blur(6px);
+}
+
+.stage-chip span {
+  color: var(--text-400);
+  font-size: var(--fs-2xs);
+  font-weight: 700;
+}
+
+.stage-chip strong {
+  color: var(--text-100);
+  font-size: var(--fs-sm);
+  font-weight: 900;
+}
+
+.stage-chip--phase {
+  box-shadow:
+    var(--bevel-up),
+    0 0 0 1px rgba(159, 47, 35, 0.42),
+    var(--lift-1);
+}
+
+.map-zoom-control,
+.hanja-emphasis-control {
+  clip-path: var(--clip-cut-sm);
+  border: 0;
+  border-radius: 0;
+  background: linear-gradient(180deg, rgba(38, 31, 22, 0.92), rgba(14, 11, 8, 0.94));
+  box-shadow:
+    var(--bevel-up),
+    0 0 0 1px rgba(122, 90, 42, 0.2),
+    var(--lift-1);
+}
+
+.map-zoom-control span,
+.map-zoom-control small,
+.hanja-emphasis-control span {
+  color: var(--text-400);
+  font-size: var(--fs-2xs);
+}
+
+.map-zoom-control strong,
+.hanja-emphasis-control strong {
+  color: var(--gold-200);
+  font-size: var(--fs-sm);
+}
+
+.hanja-emphasis-control.is-on {
+  box-shadow:
+    var(--bevel-up),
+    0 0 0 1px rgba(155, 113, 55, 0.44),
+    var(--lift-1),
+    0 0 16px rgba(155, 113, 55, 0.22);
+}
+
+/* 토스트 · 경보 */
+.toast {
+  clip-path: var(--clip-cut-sm);
+  border: 0;
+  border-radius: 0;
+  background: linear-gradient(180deg, rgba(44, 36, 25, 0.97), rgba(15, 12, 8, 0.97));
+  box-shadow: var(--bevel-up), 0 0 0 1px rgba(122, 90, 42, 0.28), var(--lift-2);
+  color: var(--text-100);
+  font-size: var(--fs-sm);
+}
+
+.toast--warning {
+  box-shadow: var(--bevel-up), 0 0 0 1px rgba(159, 47, 35, 0.6), var(--lift-2);
+  color: #ffd9d2;
+}
+
+.boss-banner {
+  clip-path: var(--clip-cut);
+  border: 0;
+  border-radius: 0;
+  background: linear-gradient(180deg, rgba(62, 20, 14, 0.96), rgba(20, 8, 6, 0.96));
+  box-shadow:
+    var(--bevel-up),
+    0 0 0 1px rgba(159, 47, 35, 0.68),
+    0 0 40px rgba(159, 47, 35, 0.3),
+    var(--lift-2);
+}
+
+/* 오행 상생 띠 */
+.synergy-strip {
+  gap: 2px;
+}
+
+.synergy-strip span {
+  border: 0;
+  border-radius: var(--r-sm);
+  background: rgba(0, 0, 0, 0.4);
+  box-shadow: inset 0 0 0 1px rgba(128, 108, 74, 0.12);
+  font-size: var(--fs-2xs);
+}
+
+.synergy-strip span.is-active {
+  background: var(--mat-brass-hot);
+  box-shadow: var(--bevel-up);
+}
+
+/* 바닥 안내 */
+.panel-footer {
+  color: var(--text-400);
+  font-size: 10px;
+}
+
+.panel-footer b {
+  color: var(--text-300);
+}
+
+/* ══════════════════════════════════════════════════════
+   10. 모달 · 도감
+   ══════════════════════════════════════════════════════ */
+
+.modal-layer {
+  background:
+    radial-gradient(ellipse at 50% 40%, rgba(0, 0, 0, 0.72), rgba(0, 0, 0, 0.9)),
+    rgba(3, 5, 9, 0.6);
+  backdrop-filter: blur(3px);
+}
+
+.title-card,
+.end-card {
+  clip-path: var(--clip-cut);
+  border: 0;
+  border-radius: 0;
+  background:
+    var(--grain),
+    linear-gradient(180deg, #282016 0%, #1a150e 46%, #100c08 100%);
+  box-shadow:
+    var(--bevel-up),
+    0 0 0 1px rgba(122, 90, 42, 0.34),
+    0 0 60px rgba(0, 0, 0, 0.8);
+}
+
+/* ══════════════════════════════════════════════════════
+   11. 스크롤바 — 각인 홈 + 황동 손잡이
+   ══════════════════════════════════════════════════════ */
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--gold-500) rgba(0, 0, 0, 0.5);
+}
+
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+*::-webkit-scrollbar-track {
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.55);
+  box-shadow: inset 0 0 3px rgba(0, 0, 0, 0.9);
+}
+
+*::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: linear-gradient(180deg, var(--gold-400), var(--gold-600));
+  box-shadow: inset 0 1px 0 rgba(255, 238, 200, 0.3);
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, var(--gold-300), var(--gold-500));
+}
+
+/* ══════════════════════════════════════════════════════
+   12. 접근성 유지
+   ══════════════════════════════════════════════════════ */
+
+button:focus-visible,
+input:focus-visible {
+  outline: 2px solid var(--gold-200);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .action-button,
+  .small-button,
+  .icon-button,
+  .speed-button {
+    transition: none;
+  }
+}

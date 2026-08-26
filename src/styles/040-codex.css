@@ -1,0 +1,381 @@
+/* src/ui-skin.css 1226~1606줄에서 그대로 옮겨 왔다 — 절 19~21 — 자령 도감과 폼 컨트롤. 순서는 ui-skin.css 배럴이 지킨다. */
+/* ══════════════════════════════════════════════════════
+   19. 자령 도감 — 유리판 목록에서 한지 서책으로
+   ══════════════════════════════════════════════════════ */
+
+.codex-dialog {
+  clip-path: var(--clip-cut);
+  border: 0;
+  border-radius: 0;
+  background:
+    var(--changho),
+    var(--grain),
+    radial-gradient(ellipse 90% 50% at 50% 0%, rgba(122, 90, 42, 0.1), transparent 68%),
+    linear-gradient(180deg, #241d15 0%, #17120d 42%, #100c08 100%);
+  box-shadow:
+    var(--bevel-up),
+    0 0 0 1px rgba(122, 90, 42, 0.4),
+    0 0 80px rgba(0, 0, 0, 0.8);
+}
+
+/* 서책 머리 — 금박 제목띠 */
+.codex-dialog > header {
+  padding-bottom: var(--sp-2);
+  border-bottom: 1px solid rgba(122, 90, 42, 0.26);
+}
+
+.codex-dialog > header .eyebrow,
+.codex-dialog > header p {
+  color: var(--gold-500);
+  letter-spacing: 0.2em;
+}
+
+.codex-dialog > header h2,
+.codex-dialog > header h3 {
+  color: var(--gold-100);
+  font-weight: 900;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.9), 0 0 20px rgba(122, 90, 42, 0.24);
+}
+
+/* 갈피 — 상단 큰 탭 */
+.codex-mode-tabs {
+  gap: var(--sp-1);
+  padding: 3px;
+  border: 0;
+  border-radius: var(--r-md);
+  background: var(--mat-well);
+  box-shadow: var(--bevel-in), 0 0 0 1px rgba(122, 90, 42, 0.14);
+}
+
+.codex-mode-tabs button {
+  color: var(--text-400);
+  border: 0;
+  border-radius: var(--r-sm);
+  background: transparent;
+  font-size: var(--fs-sm);
+  font-weight: 800;
+}
+
+.codex-mode-tabs button:hover {
+  color: var(--gold-200);
+  background: rgba(122, 90, 42, 0.09);
+}
+
+.codex-mode-tabs button.is-active,
+.codex-mode-tabs button[aria-selected="true"] {
+  color: var(--gold-100);
+  background: var(--mat-brass-hot);
+  box-shadow: var(--bevel-up), 0 0 14px rgba(155, 113, 55, 0.26);
+}
+
+/* 필터 칩 — 인장 조각 */
+.codex-toolbar,
+.codex-search-row,
+.codex-synthesis-filters {
+  gap: var(--sp-1);
+}
+
+.codex-toolbar button,
+.codex-synthesis-filters button {
+  color: var(--text-300);
+  border: 0;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.4);
+  box-shadow: inset 0 0 0 1px rgba(128, 108, 74, 0.2);
+  font-size: var(--fs-2xs);
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.codex-toolbar button:hover,
+.codex-synthesis-filters button:hover {
+  color: var(--gold-200);
+  box-shadow: inset 0 0 0 1px rgba(122, 90, 42, 0.4);
+}
+
+.codex-toolbar button.is-active,
+.codex-synthesis-filters button.is-active {
+  color: var(--gold-100);
+  background: var(--mat-brass-hot);
+  box-shadow: var(--bevel-up);
+}
+
+.codex-filter-label {
+  color: var(--gold-500);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+}
+
+.codex-filter-divider {
+  background: rgba(122, 90, 42, 0.22);
+}
+
+.codex-search-row input,
+.codex-dialog input[type="search"] {
+  color: var(--text-100);
+  border: 0;
+  border-radius: var(--r-sm);
+  background: var(--mat-well);
+  box-shadow: var(--bevel-in), 0 0 0 1px rgba(128, 108, 74, 0.22);
+  font-size: var(--fs-sm);
+}
+
+.codex-search-row input::placeholder {
+  color: var(--text-400);
+}
+
+.codex-search-row input:focus {
+  box-shadow: var(--bevel-in), 0 0 0 1px rgba(122, 90, 42, 0.55);
+}
+
+/* 목록 홈 */
+.codex-list {
+  border-radius: var(--r-md);
+  background: var(--mat-well);
+  box-shadow: var(--bevel-in), 0 0 0 1px rgba(122, 90, 42, 0.1);
+}
+
+/* 낱장 — 목록 카드 */
+.codex-jaryeong-card,
+.codex-recipe-card,
+.codex-idiom-card,
+.codex-review-card,
+.codex-jaryeong-entry {
+  clip-path: var(--clip-cut-sm);
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: linear-gradient(180deg, #2a2218 0%, #1a150e 100%) !important;
+  box-shadow:
+    var(--bevel-up),
+    0 0 0 1px rgba(122, 90, 42, 0.14);
+}
+
+.codex-jaryeong-card:hover,
+.codex-recipe-card:hover,
+.codex-idiom-card:hover,
+.codex-review-card:hover {
+  background: linear-gradient(180deg, #362b1d 0%, #221b12 100%) !important;
+  box-shadow: var(--bevel-up), 0 0 0 1px rgba(122, 90, 42, 0.42);
+}
+
+.codex-jaryeong-card.is-selected,
+.codex-recipe-card.is-selected,
+.codex-idiom-card.is-selected,
+.codex-review-card.is-selected {
+  box-shadow:
+    var(--bevel-up),
+    0 0 0 2px var(--gold-300),
+    0 0 22px rgba(155, 113, 55, 0.26);
+}
+
+.codex-jaryeong-number {
+  color: var(--gold-500);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+}
+
+.codex-jaryeong-name {
+  color: var(--text-100);
+}
+
+/* 초상 — 감실에 모신 듯 파낸 자리 */
+.codex-jaryeong-portrait,
+.codex-jaryeong-card-portrait,
+.codex-jaryeong-detail-sprite,
+.codex-detail-glyph,
+.codex-review-preview {
+  border: 0 !important;
+  border-radius: var(--r-md) !important;
+  background:
+    radial-gradient(circle at 50% 32%, rgba(122, 90, 42, 0.16), transparent 68%),
+    var(--mat-well) !important;
+  box-shadow:
+    var(--bevel-in),
+    0 0 0 1px rgba(122, 90, 42, 0.24);
+}
+
+/* 상세 — 오른쪽 서책 면 */
+.codex-detail,
+.codex-jaryeong-detail {
+  border: 0;
+  border-radius: var(--r-md);
+  background:
+    var(--grain),
+    linear-gradient(180deg, #2a2218 0%, #191309 100%);
+  box-shadow: var(--bevel-up), 0 0 0 1px rgba(122, 90, 42, 0.2);
+}
+
+.codex-jaryeong-detail-hero,
+.codex-detail-hero,
+.codex-review-detail-hero {
+  border-bottom: 1px solid rgba(122, 90, 42, 0.2);
+}
+
+.codex-jaryeong-facts > *,
+.codex-stats > *,
+.codex-review-metadata > * {
+  border: 0 !important;
+  border-radius: var(--r-sm) !important;
+  background: rgba(0, 0, 0, 0.4) !important;
+  box-shadow: inset 0 0 0 1px rgba(128, 108, 74, 0.18);
+}
+
+.codex-jaryeong-observation,
+.codex-jaryeong-trait,
+.codex-meaning-explanation,
+.codex-note {
+  border: 0;
+  border-left: 3px solid var(--gold-500);
+  border-radius: var(--r-sm);
+  background: rgba(0, 0, 0, 0.34);
+  color: var(--text-200);
+  font-size: var(--fs-xs);
+  line-height: 1.6;
+}
+
+.codex-jaryeong-tags span,
+.codex-jaryeong-badges span,
+.codex-progression-badges span,
+.codex-review-badges span {
+  border: 0 !important;
+  border-radius: 999px !important;
+  background: rgba(0, 0, 0, 0.42) !important;
+  box-shadow: inset 0 0 0 1px rgba(122, 90, 42, 0.26);
+  font-size: var(--fs-2xs);
+  font-weight: 800;
+}
+
+.codex-independent-badge {
+  color: var(--gold-100) !important;
+  background: var(--mat-brass-hot) !important;
+  box-shadow: var(--bevel-up) !important;
+}
+
+.codex-tier-stars {
+  color: var(--gold-200);
+}
+
+.codex-empty {
+  color: var(--text-400);
+  font-size: var(--fs-sm);
+}
+
+/* ══════════════════════════════════════════════════════
+   20. 도감 — 더 구체적인 기존 규칙을 덮는다
+   ══════════════════════════════════════════════════════ */
+
+/* styles.css:4447 의 .codex-dialog.is-jaryeong-dex 가 청록 radial 을 얹어
+   서책 전체를 다시 남색으로 되돌리고 있었다. 같은 특정도로 덮는다. */
+.codex-dialog.is-jaryeong-dex {
+  border-color: rgba(122, 90, 42, 0.5);
+  background:
+    var(--changho),
+    var(--grain),
+    radial-gradient(ellipse 90% 46% at 50% 0%, rgba(122, 90, 42, 0.12), transparent 66%),
+    linear-gradient(160deg, #251e15 0%, #17120d 48%, #100c08 100%);
+  box-shadow:
+    var(--bevel-up),
+    0 0 0 1px rgba(122, 90, 42, 0.4),
+    inset 0 0 70px rgba(6, 4, 3, 0.6),
+    0 28px 90px rgba(0, 0, 0, 0.8);
+}
+
+.codex-dialog.is-jaryeong-dex .codex-heading .eyebrow {
+  color: var(--gold-500);
+  letter-spacing: 0.2em;
+}
+
+.codex-dialog.is-jaryeong-dex .codex-heading h2 {
+  color: var(--gold-100);
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.9), 0 0 20px rgba(122, 90, 42, 0.24);
+}
+
+.codex-dialog.is-jaryeong-dex .codex-detail {
+  border: 0;
+  background:
+    var(--grain),
+    linear-gradient(180deg, #2a2218 0%, #191309 100%);
+  box-shadow: var(--bevel-up), 0 0 0 1px rgba(122, 90, 42, 0.2);
+}
+
+/* 카드 왼쪽 오행 색 띠는 속성 정보이므로 유지하되, 서책 바탕과 어울리게 폭만 정리 */
+.codex-jaryeong-card {
+  border-left: 3px solid var(--codex, var(--gold-400)) !important;
+}
+
+/* ══════════════════════════════════════════════════════
+   21. 폼 컨트롤 — 브라우저 기본 위젯이 웹페이지 인상을 만든다
+   ══════════════════════════════════════════════════════ */
+
+select,
+.growth-filters select,
+.dismantle-toolbar select {
+  appearance: none;
+  padding: 4px 22px 4px 8px;
+  color: var(--text-100);
+  border: 0;
+  border-radius: var(--r-sm);
+  background:
+    linear-gradient(45deg, transparent 50%, var(--gold-300) 50%) calc(100% - 11px) 50% / 5px 5px no-repeat,
+    linear-gradient(135deg, var(--gold-300) 50%, transparent 50%) calc(100% - 6px) 50% / 5px 5px no-repeat,
+    var(--mat-brass);
+  box-shadow: var(--bevel-up);
+  font-size: var(--fs-2xs);
+  font-weight: 800;
+  cursor: pointer;
+}
+
+select:hover {
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--gold-100) 50%),
+    linear-gradient(135deg, var(--gold-100) 50%, transparent 50%),
+    var(--mat-brass-hot);
+}
+
+select option {
+  color: var(--text-100);
+  background: #1b1510;
+}
+
+input[type="text"],
+input[type="search"],
+input[type="number"] {
+  color: var(--text-100);
+  border: 0;
+  border-radius: var(--r-sm);
+  background: var(--mat-well);
+  box-shadow: var(--bevel-in), 0 0 0 1px rgba(128, 108, 74, 0.22);
+  font-size: var(--fs-sm);
+}
+
+input::placeholder {
+  color: var(--text-400);
+}
+
+input:focus {
+  box-shadow: var(--bevel-in), 0 0 0 1px rgba(122, 90, 42, 0.55);
+}
+
+input[type="range"] {
+  appearance: none;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--ji-900);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.9);
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  appearance: none;
+  width: 15px;
+  height: 15px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, var(--gold-200), var(--gold-500));
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.6), 0 0 9px rgba(155, 113, 55, 0.45);
+  cursor: pointer;
+}
+
+input[type="checkbox"] {
+  accent-color: var(--gold-400);
+}

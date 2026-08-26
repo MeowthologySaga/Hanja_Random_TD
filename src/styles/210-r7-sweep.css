@@ -1,0 +1,550 @@
+/* src/ui-skin.css 9684~10233줄에서 그대로 옮겨 왔다 — R7 — 4축 스윕 70건 수정. 순서는 ui-skin.css 배럴이 지킨다. */
+/* ══════════════════════════════════════════════════════════════════
+   ===== R7 ===== 4축 스윕 발견 70건 수정 (spec-round7-sweep.md)
+   기존 절과 섞이지 않도록 파일 끝에 R7-n 독립 절로만 쌓는다.
+   ══════════════════════════════════════════════════════════════════ */
+
+/* ──────────────────────────────────────────────────────────────────
+   R7-1. 종료 화면 행동 버튼 — 남색 판을 걷어낸다
+   28절의 `.end-card *{ color: var(--text-200) }` 먹색 강제가
+   styles.css `.secondary-button`(#dce5f1 on #1b2635) 의 "글자만" 덮어써서
+   먹 글자가 남색 판 위에 얹혀 1.10:1 이 되어 있었다. 글자색을 되돌리는
+   대신 남색 판 자체를 걷어내고 한지 스킨으로 재정의한다 — 종료 카드가
+   이미 밝은 한지면이라 어두운 판이 이물이었다.
+   ────────────────────────────────────────────────────────────────── */
+
+.end-actions .start-button,
+.end-actions .secondary-button {
+  clip-path: var(--clip-cut-sm);
+  border: 0;
+  border-radius: 0;
+  font-size: var(--fs-md);
+  font-weight: 900;
+  letter-spacing: 0.03em;
+  cursor: pointer;
+}
+
+/* 주버튼 — 금박판 + 먹 글자 */
+.end-actions .start-button {
+  color: #2b2009;
+  background: linear-gradient(180deg, #ffeec4 0%, #f0d189 46%, #c99a45 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 253, 240, 0.85),
+    inset 0 -2px 0 rgba(94, 68, 24, 0.45),
+    0 3px 0 rgba(66, 48, 20, 0.35),
+    0 8px 20px rgba(0, 0, 0, 0.32);
+}
+
+/* 보조버튼 — 밝은 한지판 + 먹 글자. 금박과 같은 밝기 계열이라
+   "두 번째 선택지"임을 채도로만 구분한다. */
+.end-actions .secondary-button {
+  color: var(--text-100);
+  background: linear-gradient(180deg, var(--ji-400) 0%, var(--ji-600) 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 250, 0.9),
+    inset 0 0 0 1px rgba(88, 70, 44, 0.34),
+    0 3px 0 rgba(66, 48, 20, 0.22),
+    0 8px 20px rgba(0, 0, 0, 0.26);
+}
+
+/* ──────────────────────────────────────────────────────────────────
+   R7-3. 일시정지 칩 — 전장 한가운데 위쪽에 한 줄
+   모달을 열면 전투가 서고, 그 사실이 전장 위에서 바로 읽혀야 한다.
+   상단바(z 6)·배너보다 위, 토스트와 같은 층에 둔다.
+   ────────────────────────────────────────────────────────────────── */
+
+.pause-chip {
+  position: absolute;
+  left: 50%;
+  top: 96px;
+  z-index: 8;
+  display: flex;
+  gap: var(--sp-2);
+  align-items: baseline;
+  clip-path: var(--clip-cut-sm);
+  padding: 7px 16px;
+  background: linear-gradient(180deg, var(--ji-400) 0%, var(--ji-600) 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 250, 0.9),
+    inset 0 0 0 1px rgba(88, 70, 44, 0.4),
+    0 6px 18px rgba(0, 0, 0, 0.45);
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+.pause-chip[hidden] {
+  display: none;
+}
+
+.pause-chip b {
+  color: var(--seal);
+  font-size: var(--fs-sm);
+  font-weight: 900;
+  letter-spacing: 0.02em;
+}
+
+.pause-chip span {
+  color: var(--text-100);
+  font-size: var(--fs-2xs);
+  font-weight: 700;
+}
+
+/* ──────────────────────────────────────────────────────────────────
+   R7-6. 종료 화면 막다른 길 — 세 번째 버튼과 최고 기록 줄
+   버튼이 셋이 되면서 한 줄 180px×3 이 카드를 넘긴다. 줄바꿈을 허용하고
+   폭을 조금 줄인다. 최고 기록 갱신 칸은 금박 테두리로 눈에 띄게 한다.
+   ────────────────────────────────────────────────────────────────── */
+
+.end-actions {
+  flex-wrap: wrap;
+}
+
+.end-actions .start-button,
+.end-actions .secondary-button {
+  min-width: 158px;
+}
+
+/* 갱신된 최고 기록만 금박 테를 두른다 — 나머지 칸과 같은 판이되
+   테두리 하나로 "이번에 넘어섰다"가 읽힌다. */
+.end-stats > .is-record {
+  box-shadow:
+    var(--bevel-up),
+    0 0 0 1px rgba(176, 138, 69, 0.85),
+    0 0 14px rgba(176, 138, 69, 0.28) !important;
+}
+
+.end-stats > .is-record b em {
+  margin-left: 5px;
+  padding: 1px 6px;
+  color: #2b2009;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #ffeec4, #dbb96e);
+  font-size: var(--fs-2xs);
+  font-style: normal;
+  font-weight: 900;
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   R7-25. 설정·HUD — 어두운 판 위에 먹 글자가 얹힌 자리 반전 + 12px 바닥
+   28절의 먹색 일괄 강제가 "밝은 한지면" 전제로 깔려 있어서, 뒤늦게
+   어두워진 판(설정 토글 트랙·한자 강조 켜짐·공부 모드 미리보기) 위에서만
+   그대로 사고가 났다. 판을 되돌리는 대신 그 위 글자만 뒤집는다.
+   ══════════════════════════════════════════════════════════════════ */
+
+/* ── 25-A. 설정 토글 ON/OFF 알약 — 7px·1.55:1 → 12px·반전 ────────── */
+.settings-toggle > i {
+  width: 62px !important;
+  height: 30px !important;
+}
+
+.settings-toggle > i em {
+  min-width: 30px;
+  padding: 0 6px;
+  color: #fff4d8 !important;
+  font-size: var(--fs-2xs) !important;
+  font-weight: 900 !important;
+  letter-spacing: 0.04em;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+/* ── 25-B. 공부 모드 미리보기 — 어두운 원판 위 '나무 목' 2.91:1 ──── */
+.mode-preview--study {
+  display: flex !important;
+  flex-direction: column;
+  gap: 2px;
+  justify-content: center;
+  align-items: center;
+  /* 큰 한자와 캡션이 같은 자리에 겹쳐 찍히던 것을 세로로 가른다 */
+  line-height: 1.05;
+}
+
+.mode-preview--study b {
+  color: #fdf6e4 !important;
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.9);
+}
+
+.mode-preview--study small {
+  color: #f2e6c8 !important;
+  font-size: var(--fs-2xs) !important;
+  font-weight: 800;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.95);
+}
+
+/* ── 25-C. 설정 12px 바닥 ────────────────────────────────────────── */
+#settings-dialog .dialog-heading .eyebrow,
+#settings-dialog .settings-source,
+#settings-dialog .settings-toggle > span small,
+#settings-dialog .audio-settings-heading small,
+#settings-dialog .audio-setting-row span small,
+#settings-dialog .audio-setting-row label span,
+#settings-dialog .display-mode-option em,
+#bgm-volume-output,
+#sfx-volume-output,
+#bgm-mute-button,
+#sfx-mute-button {
+  font-size: var(--fs-2xs) !important;
+}
+
+/* 78절이 `#settings-dialog .audio-setting-row output`(1,1,1) 로 11px 을
+   못박아 뒀다. ID 하나짜리로는 못 이기므로 같은 형태로 되짚는다. */
+#settings-dialog .audio-setting-row output,
+#settings-dialog .audio-setting-row label,
+#settings-dialog .audio-setting-row > span small,
+#settings-dialog .audio-setting-row .audio-mute-button {
+  font-size: var(--fs-2xs) !important;
+}
+
+/* ── 25-D. 한자 강조 — 켜짐 상태만 어두운 판이라 라벨이 잠겼다 ──── */
+.hanja-emphasis-control.is-on span {
+  color: #e8dcc0 !important;
+}
+
+.hanja-emphasis-control.is-on strong {
+  color: #ffd46f !important;
+}
+
+/* ── 25-E. HUD 12px 바닥 — 탭 카운터·푸터 상태·자원 라벨 ────────── */
+.panel-tabs button small,
+#shop-pool-count,
+#run-inventory-count,
+#goal-tab-progress,
+#idiom-tab-count,
+#discover-count,
+#codex-button b,
+#message-value,
+#interest-preview,
+.resource-grid > div > span,
+.wave-card .weakness-seal span,
+.brand-row .eyebrow,
+.canvas-tip i,
+.map-zoom-control small {
+  font-size: var(--fs-2xs) !important;
+}
+
+/* 탭 카운터가 12px 이 되면 8px 자리에서 넘치므로 배지 자리를 넓힌다 */
+.panel-tabs button small {
+  top: 0 !important;
+  right: 2px !important;
+  padding: 0 3px;
+  border-radius: 999px;
+  background: rgba(247, 240, 221, 0.82);
+  line-height: 1.25;
+}
+
+/* 25-F(캔버스 호버 카드 힌트·뜻)는 CSS 로 닿지 않는다 —
+   drawHoveredTowerCard 의 context.font 에서 직접 올렸다. */
+
+/* ══════════════════════════════════════════════════════════════════
+   R7-22. hover 사망 클러스터 — !important 패스가 :hover 를 눌러 죽였다
+   28절이 판을 종이로 갈아끼우며 `background: ... !important` 를 깔았는데
+   그 아래 있던 :hover 는 !important 가 없어 전부 무력화됐다. 실측 18곳
+   중 11곳이 호버에 아무 변화가 없었다 — 누를 수 있는 것인지 화면에서
+   알 수 없다는 뜻이다. 2711~2719 이 쓰던 `:hover ... !important` 짝
+   패턴으로 일괄 복구하고, 규칙이 아예 없던 것은 새로 낸다.
+   ※ #early-button 은 R4 핫픽스가 잡고 있어 이 절에서 손대지 않는다.
+   ══════════════════════════════════════════════════════════════════ */
+
+/* ── 22-A. 누를 수 있는데 화살표가 뜨던 4곳 ─────────────────────── */
+.goal-mode-tabs button,
+.codex-mode-tabs button,
+.codex-synthesis-filters button,
+.audio-mute-button {
+  cursor: pointer;
+}
+
+/* ── 22-B. 황동 계열 — 이미 쓰던 brass-hot 으로 맞춘다 ──────────── */
+.coach-next:hover,
+.audio-mute-button:hover,
+.summon-reveal > header button:hover,
+.codex-dialog > header button:hover {
+  background: var(--mat-brass-hot) !important;
+  box-shadow: var(--bevel-up), 0 0 0 1px rgba(122, 90, 42, 0.5) !important;
+}
+
+/* 오디오 음소거만 78절이 `#settings-dialog .audio-mute-button`(1,1,0) 으로
+   판을 못박아 둬서 클래스 하나짜리 호버로는 못 이긴다. 같은 형태로 되짚고,
+   켜짐 상태는 이미 brass-hot 이라 테두리로 구분한다. */
+#settings-dialog .audio-mute-button:hover {
+  background: var(--mat-brass-hot) !important;
+  box-shadow: var(--bevel-up), 0 0 0 2px var(--gold-400) !important;
+}
+
+#settings-dialog .audio-mute-button.is-on:hover {
+  box-shadow: var(--bevel-up), 0 0 0 2px var(--seal) !important;
+}
+
+/* ── 22-C. 닫기 × — 호버 규칙이 아예 없었다. 인주로 물든다 ──────── */
+#codex-close:hover,
+#settings-close:hover,
+#element-upgrade-close:hover,
+#ability-guide-close:hover,
+#summon-reveal-close:hover,
+#help-dialog .dialog-heading button:hover {
+  color: #fff4e8 !important;
+  background: var(--seal) !important;
+  box-shadow: var(--bevel-up), 0 0 0 1px rgba(112, 30, 22, 0.7) !important;
+}
+
+/* ── 22-D. 설정 토글 — 판 전체가 눌리는 곳이라 판을 밝힌다 ──────── */
+.settings-toggle:hover {
+  background: linear-gradient(180deg, #fffaf0 0%, #f3ead4 100%) !important;
+  box-shadow: var(--bevel-up), 0 0 0 1px rgba(122, 90, 42, 0.44) !important;
+}
+
+.settings-toggle:hover > i {
+  box-shadow: var(--bevel-in), inset 0 0 0 1px rgba(128, 108, 74, 0.5) !important;
+}
+
+/* ── 22-E. 표시 모드 옵션 — 고르는 카드인데 반응이 없었다 ───────── */
+.display-mode-option:hover {
+  background: linear-gradient(180deg, #fffaf0 0%, #f1e7cf 100%) !important;
+  box-shadow: var(--bevel-up), 0 0 0 1px rgba(122, 90, 42, 0.5) !important;
+}
+
+/* ── 22-F. 한자 강조 — 켜짐(어두운 판)·꺼짐(밝은 판) 양쪽 ───────── */
+.hanja-emphasis-control:hover {
+  box-shadow:
+    var(--bevel-up),
+    0 0 0 1px rgba(255, 209, 113, 0.75),
+    var(--lift-2) !important;
+}
+
+.hanja-emphasis-control.is-on:hover {
+  background: rgba(38, 34, 24, 0.95) !important;
+}
+
+/* ── 22-G. 목표 모드 탭 ─────────────────────────────────────────── */
+.goal-mode-tabs button:hover:not(.is-active) {
+  color: var(--text-100) !important;
+  background: var(--mat-brass-hot) !important;
+}
+
+/* ── 22-H. 종료 화면 버튼 — R7-1 이 세운 판을 그대로 밝힌다 ─────── */
+.end-actions .start-button:hover {
+  background: linear-gradient(180deg, #fff8e2 0%, #f8dfa2 46%, #d6a851 100%);
+}
+
+.end-actions .secondary-button:hover {
+  background: linear-gradient(180deg, #fffdf6 0%, #f2e9d3 100%);
+}
+
+.end-actions .start-button:active,
+.end-actions .secondary-button:active {
+  transform: translateY(2px);
+  box-shadow:
+    inset 0 2px 6px rgba(78, 58, 22, 0.5),
+    0 1px 0 rgba(0, 0, 0, 0.4);
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   R7-B. 용어·명칭 묶음이 데려온 표시 손질 (항목 10~13)
+   ══════════════════════════════════════════════════════════════════ */
+
+/* 11. 도움말 용어표는 화면에서 가장 자주 되돌아오는 줄인데 11.5px 이었다 */
+#help-dialog .help-quickstart > small.help-glossary {
+  font-size: 12.5px !important;
+  font-weight: 700;
+  color: #5c4a2e !important;
+}
+
+/* 11. 목적 소환 4종 풀이의 <em> 은 이름표라 기울임 대신 먹으로 굵게 */
+#help-dialog ol li span em {
+  color: var(--text-100);
+  font-style: normal;
+  font-weight: 800;
+}
+
+/* 12. 목표 재료 카운터 — 11px·3.18:1 이던 자리 */
+.goal-materials span {
+  font-size: var(--fs-2xs) !important;
+  color: var(--text-100) !important;
+}
+
+.goal-materials span b {
+  color: var(--text-100) !important;
+}
+
+.goal-materials .goal-clue {
+  color: var(--text-200) !important;
+}
+
+/* 13. 코치 스텝 카운터·건너뛰기 — 한지 말풍선 위에서 옅어 잘 안 보였다 */
+.coach-step {
+  color: var(--gold-200);
+  font-weight: 800;
+}
+
+.coach-skip {
+  color: var(--text-200);
+}
+
+/* 13. 설정의 '처음 안내 다시 보기'는 스위치가 아니라 행동 버튼이다 */
+.settings-toggle--action > i {
+  width: auto !important;
+  padding: 0 12px;
+  background: var(--mat-brass) !important;
+}
+
+.settings-toggle--action > i em {
+  position: static;
+  color: var(--gold-100) !important;
+  background: none !important;
+  box-shadow: none !important;
+  text-shadow: none;
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   R7-C. 도감 묶음 (항목 15~20 · 26~27)
+   ══════════════════════════════════════════════════════════════════ */
+
+/* ── 15. 조합표 카드 잘림 — styles.css `.codex-list button`(0,1,1) 의
+   min-height:80px 에 `.codex-recipe-card`(0,1,0) 98px 가 지고 있었다.
+   140식 전부 같은 지점에서 잘려 "실제 구성 원리"의 유일한 증거 화면이
+   시각적으로 부정됐다. 같은 (0,2,0) 으로 올려 되찾는다. ── */
+.codex-list .codex-recipe-card {
+  min-height: 98px;
+}
+
+/* ── 16. 카드 번호 — 10px 영문 일련번호를 한국어 12px 로 ── */
+.codex-jaryeong-number {
+  font-size: var(--fs-2xs) !important;
+  font-weight: 800;
+  letter-spacing: 0;
+  color: var(--text-300) !important;
+}
+
+/* 16·26. dex 항목이 없는 자령의 스프라이트는 안쪽 칸에 그린다.
+   바깥 칸의 "우물" 배경이 !important 라 같은 요소에 얹으면 지워졌다. */
+.codex-sprite-fill {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background-repeat: no-repeat;
+}
+
+/* ── 18. 성어 순번 — 2.5~4:1 옅은 숫자를 먹 원판 + 밝은 숫자로 반전.
+   R6 의 순번 인장과 같은 어휘를 쓴다. ── */
+.idiom-codex-glyphs span small {
+  display: grid;
+  width: 17px;
+  height: 17px;
+  place-items: center;
+  color: #fbf3dd !important;
+  border-radius: 999px;
+  background: var(--text-100) !important;
+  box-shadow: 0 0 0 1px rgba(250, 243, 221, 0.55);
+  font-size: var(--fs-2xs) !important;
+  font-weight: 900;
+  line-height: 1;
+}
+
+/* ── 19. 필터·요약·주석 — --text-400 군이 도감 한지면에서 옅었다 ── */
+#codex-summary,
+#codex-note,
+.codex-filter-label,
+#codex-kicker {
+  color: var(--text-200) !important;
+}
+
+/* ── 19·27. 이번 런 발견 마킹 ── */
+.codex-jaryeong-card {
+  position: relative;
+}
+
+.codex-found-mark {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  z-index: 2;
+  padding: 1px 6px;
+  color: #2b2009;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #ffeec4, #dbb96e);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+  font-size: 11px;
+  font-weight: 900;
+  line-height: 1.35;
+}
+
+.codex-list .codex-jaryeong-card.is-found {
+  box-shadow:
+    var(--bevel-up),
+    0 0 0 1px rgba(176, 138, 69, 0.75);
+}
+
+/* ── 17. 성어 카드 선택 표시 — 한자 카드와 같은 어휘 ── */
+.codex-list .codex-idiom-card.is-selected {
+  box-shadow:
+    var(--bevel-up),
+    inset 0 -3px 0 var(--seal),
+    0 0 0 1px rgba(122, 90, 42, 0.55);
+}
+
+/* ── 20. 12px 바닥 — 조합 경로·훈 풀이·사실표 계열 49건 ── */
+.codex-dialog .codex-jaryeong-badges em,
+.codex-dialog .codex-progression-badges span,
+.codex-dialog .codex-meaning-explanation span,
+.codex-dialog .codex-meaning-explanation h4 small,
+.codex-dialog .codex-meaning-explanation em,
+.codex-dialog .codex-meaning-explanation p,
+.codex-dialog .codex-jaryeong-entry span,
+.codex-dialog .codex-jaryeong-facts div span,
+.codex-dialog .codex-jaryeong-category,
+.codex-dialog .codex-jaryeong-recipe,
+.codex-dialog .codex-jaryeong-identity-panel .eyebrow,
+.codex-dialog .codex-jaryeong-name div p,
+.codex-dialog .codex-mode-tabs button small,
+.codex-dialog #codex-synthesis-filters button small,
+.codex-dialog #codex-kicker,
+.codex-dialog .codex-recipe-card small,
+.codex-dialog .codex-idiom-card small,
+.codex-dialog #codex-detail .eyebrow,
+.codex-dialog .idiom-strategy span,
+.codex-dialog .idiom-strategy small,
+.codex-dialog .idiom-material-guide button span,
+.codex-dialog .idiom-material-guide button small,
+.codex-dialog .codex-jaryeong-trait p,
+.codex-dialog .codex-jaryeong-observation p,
+.codex-dialog .codex-jaryeong-observation span,
+.codex-dialog .codex-abilities article small,
+.codex-dialog .codex-abilities article em,
+.codex-dialog .recipe-guide ol li span,
+.codex-dialog .recipe-guide p button,
+.codex-dialog .recipe-guide-main small,
+.codex-dialog .strategy-note span,
+.codex-dialog .codex-stats span small {
+  font-size: var(--fs-2xs) !important;
+}
+
+/* 78절이 `#codex-detail .idiom-material-guide button span`(1,2,0) 으로
+   11px 을 못박아 뒀다. 클래스만으로는 못 이기므로 같은 형태로 되짚는다. */
+#codex-detail .idiom-material-guide button span,
+#codex-detail .idiom-material-guide button small {
+  font-size: var(--fs-2xs) !important;
+}
+
+/* 조합식의 '+'·'→' 이음표가 4.0:1 로 아슬아슬했다. 식을 읽는 축이라
+   28절의 일괄 먹(--text-200)보다 한 단계 더 짙게 못박는다. */
+.codex-recipe-card .codex-recipe-formula em,
+.codex-jaryeong-detail .recipe-guide-main em {
+  color: var(--text-100) !important;
+  font-weight: 800;
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   R7-30. P00·S13 두루마리 유령 팝업
+   프레임 그림이 "첫 오픈 시점"에야 내려받아지므로, 도착 전까지 먹 글자와
+   버튼만 메뉴 위에 둥둥 떠 보였다(실측 재현: 그림 500ms 지연 시 30ms
+   시점에 배경색 rgba(0,0,0,0)·그림자 none). 그림이 없어도 읽히는 한지
+   바탕을 깔아 두고, 부트에서 미리 받아 둔다.
+   ══════════════════════════════════════════════════════════════════ */
+
+.p00-frame {
+  /* 두루마리 그림은 상자보다 작고 가장자리가 비어 있다. 바탕을 상자 전체에
+     깔면 그림이 도착한 뒤 크림색 테가 둘러 보이므로, 그림의 종이 면적
+     안쪽(86%×76%)에만 깐다 — 그림이 오면 그 아래로 완전히 가려지고,
+     오지 않으면 글자가 얹힐 판이 된다. */
+  background:
+    url("/assets/ui/main-menu-b/ui/p00-scroll-frame-v1.png") center / 100% 100% no-repeat,
+    linear-gradient(#efe2c1, #efe2c1) center / 86% 76% no-repeat;
+}

@@ -1,0 +1,101 @@
+/* src/ui-skin.css 13392~13492줄에서 그대로 옮겨 왔다 — FB4 — 이벤트 트리거형 1회성 안내. 순서는 ui-skin.css 배럴이 지킨다. */
+/* ══════════════════════════════════════════════════════════════════
+   [FB4-] 절 100. 이벤트 트리거형 1회성 안내 + 획수→별 규칙 노출
+   (자기완결 — 코치 말풍선의 시각 언어를 빌리되, 게임을 막는
+    전체 암전 스포트라이트는 걷고 대상 버튼만 금빛 링으로 짚는다)
+   ══════════════════════════════════════════════════════════════════ */
+
+/* 소환 공개 연출(z60) 위에도 안내가 서야 한다. 코치(z60)와는 동시에
+   뜨지 않도록 hint.ts 가 게이트를 건다. */
+.hint-layer {
+  z-index: 61;
+}
+
+/* 코치 링의 0 0 0 9999px 암전을 빼고, 은은한 금빛 맥동만 남긴다. */
+.hint-ring {
+  box-shadow:
+    0 0 0 2px rgba(155, 113, 55, 0.35),
+    0 0 14px rgba(214, 162, 58, 0.45);
+  animation: fb4-hint-ring 1.5s ease-in-out infinite;
+}
+
+@keyframes fb4-hint-ring {
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 2px rgba(155, 113, 55, 0.35),
+      0 0 12px rgba(214, 162, 58, 0.4);
+  }
+
+  50% {
+    box-shadow:
+      0 0 0 4px rgba(155, 113, 55, 0.52),
+      0 0 24px rgba(214, 162, 58, 0.72);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hint-ring {
+    animation: none;
+  }
+}
+
+/* 본문 문단 — 코치는 p#coach-body 로 좁혀 두어서 여기 몫을 따로 준다. */
+#hint-body {
+  margin: 0 0 var(--sp-2);
+  color: var(--text-300);
+  font-size: var(--fs-xs);
+  line-height: 1.5;
+}
+
+/* 확인 버튼 하나뿐이라 오른끝 정렬로 코치의 2버튼 줄과 구분한다. */
+.hint-bubble .coach-actions {
+  justify-content: flex-end;
+}
+
+/* ── 도움말 · 소환 갈피의 획수→별 구간표(FB2).
+   help-band(별 구간 트랙)와 같은 한지 우물 위에, 별 색을 섞은 8칸. */
+#help-dialog .help-stroke-bins {
+  display: grid;
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+  gap: 4px;
+  padding: 9px 10px;
+  border-radius: var(--r-md);
+  background: var(--mat-well);
+  box-shadow: var(--bevel-in), 0 0 0 1px rgba(122, 90, 42, 0.26);
+}
+
+#help-dialog .help-stroke-bins i {
+  display: grid;
+  justify-items: center;
+  gap: 1px;
+  padding: 5px 2px 4px;
+  font-style: normal;
+  border-radius: 3px;
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--star, #d6a23a) 30%, #f4ecd6) 0%,
+    color-mix(in srgb, var(--star, #d6a23a) 18%, #d9c592) 100%
+  );
+  box-shadow: inset 0 0 0 1px rgba(70, 52, 20, 0.34);
+}
+
+#help-dialog .help-stroke-bins b {
+  color: #241c0e !important;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+#help-dialog .help-stroke-bins span {
+  color: #2b1d07 !important;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  white-space: nowrap;
+}
+
+#help-dialog .help-stroke-bins small {
+  color: #4a3f30 !important;
+  font-size: 9.5px;
+  font-weight: 700;
+}

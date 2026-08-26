@@ -1,0 +1,184 @@
+/* src/ui-skin.css 12645~12828줄에서 그대로 옮겨 왔다 — 절 94~98 · R11-1 — 감사 수술 묶음. 순서는 ui-skin.css 배럴이 지킨다. */
+/* ══════════════════════════════════════════════════════════════════
+   94. 상점 고정 바 — 자동배치는 이 게임의 핵심 행동
+   R5 가 상점을 스크롤로 바꾸면서 자동배치가 화면 밖으로 밀렸다.
+   [FB1 수정] sticky 부양은 목록 위에 떠서 마지막 카드를 가리는 부작용을
+   낳았다. 이제 #shop-pinned 는 스크롤 영역(#shop-scroll) **밖**의 형제라
+   구조적으로 아무것도 가릴 수 없다 — position/z-index/margin 부양분을
+   걷어내고 정적 하단 바로 눕힌다(2행 구조 본체는 EOF [FB1-1] 절).
+   ══════════════════════════════════════════════════════════════════ */
+
+.shop-pinned {
+  flex: 0 0 auto;
+  padding: 6px 2px 2px;
+  /* 투명 페이드는 밑으로 지나가는 카드가 비쳐 겹침처럼 보인다 — 불투명 + 먹선 */
+  background: #f1e6c9;
+  border-top: 1px solid rgba(122, 90, 42, 0.4);
+  box-shadow: 0 -7px 12px -8px rgba(46, 32, 14, 0.45);
+}
+
+/* 바가 패널 바닥 모서리에 밀착하도록 패딩은 바 자신이 흡수한다. */
+#shop-panel.shop-workbench { padding-bottom: 0; }
+
+.shop-pinned .action-button--auto-arrange {
+  width: 100%;
+  min-height: 40px;
+  box-shadow:
+    inset 0 0 0 1px rgba(122, 90, 42, 0.45),
+    0 -4px 10px -6px rgba(46, 32, 14, 0.4);
+}
+
+/* ── 94-2. 토스트 높이 고정 — 조작 칩과 절대 겹치지 않게
+   실측에서 토스트 바닥이 18px 로 내려앉아 칩(12~34px)과 겹쳤다.
+   출처 불명의 규칙을 이기도록 핀포인트 + !important 로 못박는다. */
+.battle-stage > #toast.toast { bottom: 46px !important; }
+/* ===== R11 로딩 ===== */
+
+/* ══════════════════════════════════════════════════════════════════
+   R11-1. 출정 버튼 진행 인디케이터
+
+   부팅 막(index.html 인라인)이 걷힌 뒤에도 전투용 에셋 61장은 뒤에서
+   계속 내려온다. 출정 클릭이 그보다 빨랐을 때만 버튼 아래에 얇은 먹띠가
+   차오르고, 다 차면(또는 상한 1.5초) 전장으로 들어간다. 이미 받아 뒀으면
+   이 상태 자체가 생기지 않으므로 평소 출정 감각은 그대로다.
+
+   버튼의 위치·크기·히트 영역은 건드리지 않는다. 띠는 의사요소 장식층이다.
+   ══════════════════════════════════════════════════════════════════ */
+
+.s00-start[data-loading="1"] { cursor: progress; }
+
+.s00-start[data-loading="1"]::after {
+  content: "";
+  position: absolute;
+  left: 22%;
+  right: 22%;
+  bottom: 16px;
+  z-index: 2;
+  height: 3px;
+  border-radius: 2px;
+  background: rgba(18, 10, 5, 0.62);
+  box-shadow: inset 0 0 0 1px rgba(255, 233, 184, 0.22);
+  pointer-events: none;
+}
+
+/* 차오르는 먹띠. --p2-progress 는 main.ts 가 프레임마다 0~1 로 채운다. */
+.s00-start[data-loading="1"]::before {
+  content: "";
+  position: absolute;
+  left: 22%;
+  bottom: 16px;
+  z-index: 3;
+  width: calc((100% - 44%) * var(--p2-progress, 0));
+  height: 3px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, #a8763a, #ffe9b8);
+  pointer-events: none;
+  transition: width 160ms linear;
+}
+
+/* 3D 서재에서는 버튼이 걸쇠 모델 위로 재투영돼 판 안쪽이 좁다. 띠를 당긴다. */
+.s00-stage.is-3d .s00-start[data-loading="1"]::before,
+.s00-stage.is-3d .s00-start[data-loading="1"]::after { bottom: 8px; }
+
+/* ══════════════════════════════════════════════════════════════════
+   95. 자원 칸·웨이브 카드 — 장식 테두리와 콘텐츠 박스 분리
+   지적: "9-slice 안 썼니? 칸 넘어가고 테두리랑 글이 겹친다."
+   원인 셋: (a) .wave-card 가 3열 그리드인데 자식이 2개라 유령 열이
+   생겨 약점 인장이 좁은 칸에 눌림, (b) 브리핑이 한 줄 말줄임 가정인데
+   여러 줄로 풀리며 테두리 침범, (c) 엽전 칸이 어두운 우물+밝은 칩
+   이중 프레임. 프레임 안쪽에 일정한 내부 여백 박스를 세운다.
+   ══════════════════════════════════════════════════════════════════ */
+
+.wave-card {
+  grid-template-columns: minmax(0, 1fr) auto;
+  column-gap: 10px;
+  align-items: center;
+  padding: 8px 10px 8px 12px;
+}
+
+/* 브리핑: 테두리 안에서 정확히 2줄로 끝낸다 — 침범도, 중간 절단도 없이 */
+.wave-card small {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-height: 1.38;
+  white-space: normal;
+  text-overflow: clip;
+}
+
+.weakness-seal {
+  align-self: center;
+  justify-self: end;
+  margin: 0;
+}
+
+/* 자원 4칸: 같은 우물, 같은 안쪽 여백 — 엽전 칸은 금테로만 강조 */
+.resource-grid div {
+  padding: 6px 8px;
+}
+
+.resource-grid div:first-child {
+  background: var(--mat-well);
+  box-shadow:
+    var(--bevel-in),
+    0 0 0 1px rgba(155, 113, 55, 0.45);
+}
+
+.resource-grid div:first-child strong {
+  color: var(--gold-200);
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   96. 획득 공개 카드는 언제나 맨 위
+   캐주얼 승급 작업대가 전장 위로 확장되면서(-333px) 공개 카드(z 18)를
+   덮어 오른쪽이 잘려 보였다. 공개는 그 순간의 주인공 — 모든 패널·프레임
+   위(z 60)에서 뜨고, 클릭·3초면 걷히니 흐름을 막지 않는다.
+   ══════════════════════════════════════════════════════════════════ */
+.summon-reveal { z-index: 60; }
+
+/* ── 96-3. 1번 판 글줄이 왼쪽 걸쇠 장식 위에 얹혀 첫 글자 대비가 죽는다
+   — 걸쇠를 지나 시작하도록 들여쓰기 46→58px (상자 154 유지, 우측 여유 실측 내) */
+.s00-stage.is-3d .s00-modes .s00-mode:nth-of-type(1) { padding-left: 58px; }
+
+/* ── 97. 바닥 줄 오른끝 얼룩 — 스트립 PNG 의 투명한 끝단으로 아래
+   액자 모서리가 비쳐 찢긴 종잇조각처럼 보였다. 불투명 한지 받침을 깔고
+   인주 인장은 유지한다. */
+.panel-footer { background-color: #efe3c4; }
+
+/* 인주 인장 장식(seal-cinnabar)이 이 크기에선 찢긴 조각처럼 보인다 — 제거.
+   확보됐던 우측 여백도 본문에 돌려준다. */
+.panel-footer::after { content: none; }
+.panel-footer { padding-right: 11px; }
+
+/* ══════════════════════════════════════════════════════════════════
+   98. 최종 감사 수술 묶음 (final-audit H1·M2·M3·L2·L5)
+   ══════════════════════════════════════════════════════════════════ */
+
+/* H1. [FB1 에서 해소] 고정 바가 카드를 반쯤 가리던 문제는 완화(스크롤
+   힌트 그림자)가 아니라 구조로 풀렸다 — 바가 스크롤 영역 밖으로 나갔고
+   목록은 1280x720 에서 스크롤 없이 다 앉는다(EOF [FB1-1] 절). 가릴 것이
+   없어진 힌트 그림자 띠와 바 밑 여백은 걷어낸다. */
+
+/* M2. 집중 프레임이 열려 있는 동안, 그 프레임을 여는 패널 요약(열기 버튼·
+   ①② 안내)은 중복 조작이다 — 프레임과 일치할 때 숨긴다. */
+.game-shell[data-focus-frame="growth"] #growth-panel .focus-panel-summary,
+.game-shell[data-focus-frame="concentration"] #concentration-panel .focus-panel-summary,
+.game-shell[data-focus-frame="inventory"] #run-inventory-panel .focus-panel-summary { display: none; }
+
+/* M3. 강화 '선택 분해'가 그 줄의 유일한 행동인데 9px 투명 배경이었다. */
+#dismantle-confirm-button {
+  font-size: 12.5px !important;
+  font-weight: 900;
+  padding: 6px 12px;
+  color: #2e2212;
+  background: linear-gradient(180deg, #e9d9b2, #d9c592);
+  box-shadow: inset 0 0 0 1px rgba(122, 90, 42, 0.5);
+}
+
+/* L2. 타이틀 잔글씨 반 단계 상향(서갈피 판 폭 실측 내). */
+.s00-stage.is-3d .s00-mode-sub--compact { font-size: 9.5px; }
+#title-note { font-size: 10.5px; }
+
+/* L5. 푸터 메시지가 뷰포트 오른쪽을 3.3px 넘던 것 — 안쪽에서 끝낸다. */
+.panel-footer > span { max-width: 100%; overflow: hidden; }
