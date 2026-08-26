@@ -12,6 +12,9 @@ import { describe, expect, it } from "vitest";
 import {
   CHAINSEAL_SEAL_SECONDS,
   chainsealMaxStacks,
+  REAPER_BOSS_CHIP_RATIO,
+  REAPER_EXECUTE_CAP,
+  reaperExecuteThreshold,
   SEMANTIC_ABILITY_TABLE,
   hasActiveSkills,
   semanticCharGroup
@@ -174,5 +177,68 @@ describe("[SKILL-V2] 연환 인장 (連環)", () => {
     expect(enemy.stunnedUntil - engine.state.elapsed).toBeLessThanOrEqual(CHAINSEAL_SEAL_SECONDS + 0.0001);
     // 절대 원칙: 봉인은 정지일 뿐, 진행도를 되돌리지 않는다.
     expect(enemy.progress).toBeGreaterThanOrEqual(progressBefore);
+  });
+});
+
+describe("[SKILL-V2] 참명 (斬命)", () => {
+  it("처형 문턱 — 기본 12%, 캐주얼 별당 +1%p, 상한 15%를 절대 넘지 않는다", () => {
+    expect(reaperExecuteThreshold(null)).toBeCloseTo(0.12, 6);
+    expect(reaperExecuteThreshold(1)).toBeCloseTo(0.12, 6);
+    expect(reaperExecuteThreshold(3)).toBeCloseTo(0.14, 6);
+    expect(reaperExecuteThreshold(4)).toBeCloseTo(REAPER_EXECUTE_CAP, 6);
+    expect(reaperExecuteThreshold(99)).toBeCloseTo(REAPER_EXECUTE_CAP, 6);
+    expect(REAPER_EXECUTE_CAP).toBe(0.15);
+  });
+
+  it("문턱 이하의 일반 적은 즉시 소멸하고 보상은 정상 지급된다", () => {
+    const definition = familyDefinition("KR", "reaper");
+    const engine = new GameEngine("skill-reaper-execute", "KR");
+    const { tower, enemy } = arrangeDuel(engine, definition);
+    enemy.hp = enemy.maxHp * 0.11; // 문턱 12% 바로 아래.
+    const killsBefore = engine.state.killCount;
+    const goldBefore = engine.state.gold;
+    engine.update(0.02);
+    expect(tower.shotCount).toBe(1);
+    const events = engine.consumeEvents();
+    expect(events.some((event) => event.type === "ability" && event.effect.includes("즉시 소멸"))).toBe(true);
+    expect(events.find((event) => event.type === "kill")).toMatchObject({ type: "kill", reward: enemy.reward });
+    expect(engine.state.enemies.some((candidate) => candidate.id === enemy.id)).toBe(false);
+    expect(engine.state.killCount).toBe(killsBefore + 1);
+    expect(engine.state.gold).toBeGreaterThanOrEqual(goldBefore + enemy.reward);
+  });
+
+  it("우두머리·정예는 즉시 소멸에 면역이고, 주기 공격이 현재 체력 3%를 벤다", () => {
+    const definition = familyDefinition("KR", "reaper");
+    const engine = new GameEngine("skill-reaper-immune", "KR");
+    // 일반 공격 — 문턱 이하라도 우두머리는 살아남는다.
+    const { tower, enemy: boss } = arrangeDuel(engine, definition);
+    boss.boss = true;
+    boss.archetype = "boss";
+    boss.hp = boss.maxHp * 0.05;
+    engine.update(0.02);
+    expect(engine.state.enemies.some((candidate) => candidate.id === boss.id)).toBe(true);
+
+    // 정예(철갑)도 면역이다.
+    const elite = makeEnemy(-4, "armored", { progress: boss.progress, hp: 100000 * 0.05 });
+    engine.state.enemies = [elite];
+    tower.cooldownLeft = 0;
+    engine.update(0.02);
+    expect(engine.state.enemies.some((candidate) => candidate.id === elite.id)).toBe(true);
+
+    // 주기 발동 — 우두머리에게 현재 체력 3% 고정 참격이 들어간다.
+    const engine2 = new GameEngine("skill-reaper-chip", "KR");
+    const { tower: tower2, enemy: boss2 } = arrangeDuel(engine2, definition, {
+      shotCount: definition.combat.abilities.tuning.semanticEvery - 1
+    });
+    boss2.boss = true;
+    boss2.archetype = "boss";
+    const hpBefore = boss2.hp;
+    engine2.update(0.02);
+    expect(tower2.shotCount % definition.combat.abilities.tuning.semanticEvery).toBe(0);
+    const chipEvent = engine2.consumeEvents().some((event) => event.type === "ability" && event.effect.includes("참격"));
+    expect(chipEvent).toBe(true);
+    // 최소한 참격분(현재 체력 3% 언저리)은 깎였어야 한다.
+    expect(hpBefore - boss2.hp).toBeGreaterThanOrEqual(hpBefore * REAPER_BOSS_CHIP_RATIO * 0.9);
+    expect(engine2.state.enemies.some((candidate) => candidate.id === boss2.id)).toBe(true);
   });
 });

@@ -14,6 +14,8 @@ import {
   idiomBlessingBonus,
   MOMENTUM_STACK_BONUS,
   momentumMaxStacks,
+  REAPER_BOSS_CHIP_RATIO,
+  reaperExecuteThreshold,
   WARFARE_BRAND_DURATION,
   warfareBrandPower
 } from "./abilities";
@@ -835,6 +837,17 @@ export class GameEngine {
       }
     }
 
+    // [SKILL-V2] 참명: 체력 문턱 이하의 일반 적은 즉시 소멸(보상 정상 지급).
+    // 우두머리·정예(철갑)는 면역 — 대신 주기 발동이 현재 체력 3%를 벤다.
+    if (activeSkills && abilities.semanticFamily === "reaper" && this.state.enemies.includes(target)
+      && !target.boss && target.archetype !== "armored") {
+      const threshold = reaperExecuteThreshold(this.state.mode === "casual" ? tower.casualStar ?? tower.naturalStar ?? 1 : null);
+      if (target.hp / target.maxHp <= threshold) {
+        this.emitAbility(tower, abilities.semantic, origin, targetPoint, 1, `참명 · 체력 ${Math.round(threshold * 100)}% 이하 즉시 소멸`);
+        this.damageEnemy(target, target.hp + 10, false, false, 1);
+      }
+    }
+
     if (activeSkills && tower.wuxing === "火") {
       // 수술 5: 캐주얼에서는 별이 곧 광역의 크기다(표준은 배율 1).
       const splashRadius = (tuning.splashRadius + signatureControlBonus * 80) * (1 + this.elementTraitLevel("火", 1) * 0.02) * this.casualSplashRadiusScale(tower);
@@ -1005,6 +1018,16 @@ export class GameEngine {
       effect = "최고 체력 적 간파 · 이번 공격 ×" + tuning.semanticMultiplier.toFixed(2);
     } else if (family === "metalwork") {
       effect = "최고 장갑 적 우선 · 추가 관통 22%";
+    } else if (family === "reaper") {
+      // [SKILL-V2] 참명 주기: 우두머리·정예 한정 현재 체력 3% 참격(즉시 소멸 면역 보상).
+      const threshold = reaperExecuteThreshold(this.state.mode === "casual" ? tower.casualStar ?? tower.naturalStar ?? 1 : null);
+      if ((target.boss || target.archetype === "armored") && this.state.enemies.includes(target)) {
+        const chip = Math.max(1, target.hp * REAPER_BOSS_CHIP_RATIO);
+        this.damageEnemy(target, chip, false, false, 1);
+        effect = `우두머리·정예 참격 · 현재 체력 ${Math.round(REAPER_BOSS_CHIP_RATIO * 100)}% 고정 피해`;
+      } else {
+        effect = `참명 대기 · 체력 ${Math.round(threshold * 100)}% 이하 즉시 소멸`;
+      }
     } else if (family === "warfare" && this.state.enemies.includes(target)) {
       // [SKILL-V1] 상극 각인: 대상에게 자기 오행의 상극 낙인(4초). 밀거나 되돌리지 않는다.
       const brandPower = warfareBrandPower(this.state.mode === "casual" ? tower.casualStar ?? tower.naturalStar ?? 1 : null);
