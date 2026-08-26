@@ -5775,6 +5775,17 @@ interface CoachStep {
   /** 조작 픽토그램(p0-ui-components-pack-v1). 글보다 먼저 읽히는 그림 한 장. */
   readonly control?: "wheel" | "click" | "drag";
   readonly satisfied: () => boolean;
+  /**
+   * 대상이 아직 화면에 없을 때 대신 짚을 곳과 문구.
+   * 예: 소환 전에는 웨이브 시작 버튼이 display:none 이라 스포트라이트가
+   * (-6,-6) 12px 점으로 붕괴하고 말풍선만 고아로 남았다.
+   */
+  readonly fallback?: {
+    readonly target: string;
+    readonly title: string;
+    readonly body: string;
+    readonly control?: "wheel" | "click" | "drag";
+  };
 }
 
 const COACH_STORAGE_KEY = "hanja-td:coach-seen-v1";
@@ -5798,11 +5809,39 @@ const COACH_STEPS: readonly CoachStep[] = [
     title: "준비되면 웨이브를 시작합니다",
     body: "즉시 시작하면 남은 준비 시간만큼 엽전을 더 받습니다.",
     control: "click",
-    satisfied: () => engine.state.wave >= 1
+    satisfied: () => engine.state.wave >= 1,
+    fallback: {
+      target: "#summon-button",
+      title: "먼저 소환부터",
+      body: "상점의 소환으로 자령을 뽑으세요. 한 기라도 서면 전장 위에 웨이브 시작 버튼이 나타납니다.",
+      control: "click"
+    }
   }
 ];
 
 let coachIndex = -1;
+/** 지금 실제로 짚고 있는 셀렉터. 대체 대상으로 넘어간 것을 알아채는 데 쓴다. */
+let coachResolvedTarget = "";
+
+/**
+ * 대상이 화면에 없거나 크기가 0 이면 대체 대상으로 돌린다.
+ * 둘 다 없으면 target 을 null 로 돌려 말풍선을 화면 아래 가운데로 보낸다.
+ */
+function resolveCoachStep(step: CoachStep): { step: CoachStep; target: HTMLElement | null } {
+  const laidOut = (selector: string): HTMLElement | null => {
+    const element = document.querySelector<HTMLElement>(selector);
+    if (!element) return null;
+    const rect = element.getBoundingClientRect();
+    return rect.width >= 1 && rect.height >= 1 ? element : null;
+  };
+  const direct = laidOut(step.target);
+  if (direct) return { step, target: direct };
+  if (step.fallback) {
+    const alternate = laidOut(step.fallback.target);
+    if (alternate) return { step: { ...step, ...step.fallback }, target: alternate };
+  }
+  return { step, target: null };
+}
 
 function coachAlreadySeen(): boolean {
   try {
@@ -5821,14 +5860,20 @@ function markCoachSeen(): void {
 }
 
 function layoutCoach(): void {
-  const step = COACH_STEPS[coachIndex];
-  if (!step) return;
-  const target = document.querySelector<HTMLElement>(step.target);
-  const layer = must<HTMLElement>("#coach-layer");
+  const base = COACH_STEPS[coachIndex];
+  if (!base) return;
+  const { step, target } = resolveCoachStep(base);
+  const ring = must<HTMLElement>("#coach-ring");
+  const bubble = must<HTMLElement>("#coach-bubble");
   if (!target) {
-    layer.hidden = true;
+    // 짚을 것이 아무것도 없으면 링을 걷고 말풍선만 화면 아래 가운데에 세운다.
+    // 예전에는 레이어를 통째로 숨겨서 안내가 소리 없이 사라졌다.
+    ring.hidden = true;
+    bubble.style.top = `${Math.max(8, shell.offsetHeight - 172)}px`;
+    bubble.style.left = `${Math.max(8, (shell.offsetWidth - 258) / 2)}px`;
     return;
   }
+  ring.hidden = false;
   // 셸이 transform: scale 로 확대되므로 화면 좌표를 셸 좌표계로 되돌린다.
   const shellRect = shell.getBoundingClientRect();
   const scaleX = shellRect.width / Math.max(1, shell.offsetWidth);
@@ -5845,13 +5890,11 @@ function layoutCoach(): void {
   const focusLeft = left + (width - focusWidth) / 2;
   const focusTop = top + (height - focusHeight) / 2;
 
-  const ring = must<HTMLElement>("#coach-ring");
   ring.style.left = `${focusLeft - 6}px`;
   ring.style.top = `${focusTop - 6}px`;
   ring.style.width = `${focusWidth + 12}px`;
   ring.style.height = `${focusHeight + 12}px`;
 
-  const bubble = must<HTMLElement>("#coach-bubble");
   const bubbleWidth = 258;
   const below = focusTop + focusHeight + 14;
   const fitsBelow = below + 132 <= shell.offsetHeight;
@@ -5861,11 +5904,13 @@ function layoutCoach(): void {
 
 function renderCoach(): void {
   const layer = must<HTMLElement>("#coach-layer");
-  const step = COACH_STEPS[coachIndex];
-  if (!step) {
+  const base = COACH_STEPS[coachIndex];
+  if (!base) {
     layer.hidden = true;
     return;
   }
+  // 대상이 아직 없으면 문구도 대체 문구로 바꿔 읽는다.
+  const { step } = resolveCoachStep(base);
   layer.hidden = false;
   must<HTMLElement>("#coach-index").textContent = String(coachIndex + 1);
   must<HTMLElement>("#coach-total").textContent = String(COACH_STEPS.length);
@@ -5904,8 +5949,16 @@ function startCoach(force = false): void {
 /** 해당 조작을 실제로 해내면 안내가 저절로 넘어간다. */
 function syncCoachProgress(): void {
   if (coachIndex < 0) return;
-  const step = COACH_STEPS[coachIndex];
-  if (step && step.satisfied()) advanceCoach();
+  const base = COACH_STEPS[coachIndex];
+  if (!base) return;
+  // 대상이 나타나거나 사라지면(소환 직후의 웨이브 시작 버튼) 문구와
+  // 스포트라이트를 그 자리에서 갈아 끼운다.
+  const resolved = resolveCoachStep(base).step.target;
+  if (resolved !== coachResolvedTarget) {
+    coachResolvedTarget = resolved;
+    renderCoach();
+  }
+  if (base.satisfied()) advanceCoach();
 }
 
 /*
