@@ -94,3 +94,44 @@
   pointer-events: none;
   transform: translateY(-8px);
 }
+
+/* ══════════════════════════════════════════════════════════════════
+   [트랙 R] 절 112. 분해 빈 상태의 원인 지목 — P-07
+   [유일 자령 보호] 기본 ON + 서로 다른 한자로 찬 가방 = 분해 가능 0기.
+   원인과 푸는 길을 목록 첫 칸에 세운다(기본값 자체는 그대로 둔다).
+   ══════════════════════════════════════════════════════════════════ */
+
+.growth-dismantle-list .dismantle-unique-notice {
+  min-height: 0;
+  margin-bottom: 5px;
+  padding: 9px 10px;
+  gap: 5px;
+  border: 1px solid rgba(159, 47, 35, 0.42);
+  border-radius: var(--r-sm);
+  background: rgba(159, 47, 35, 0.09);
+}
+
+.growth-dismantle-list .dismantle-unique-notice span {
+  max-width: 34ch;
+  color: #4a3f30 !important;
+  font-size: 11px !important;
+  line-height: 1.35;
+}
+
+.growth-dismantle-list .dismantle-unique-notice [data-dismantle-unique-off] {
+  margin-top: 2px;
+  min-height: 26px;
+  padding: 0 13px;
+  border: 0;
+  border-radius: var(--r-sm);
+  background: var(--mat-brass);
+  box-shadow: var(--bevel-up), var(--lift-1);
+  color: #2b2009 !important;
+  font-size: 11.5px !important;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.growth-dismantle-list .dismantle-unique-notice [data-dismantle-unique-off]:hover {
+  background: var(--mat-brass-hot);
+}
