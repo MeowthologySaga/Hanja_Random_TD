@@ -1783,19 +1783,21 @@ interface SummonProductMeta {
 
 // 캐주얼 순서는 기본 → 중급 → 고급 → 탐색 → 중복, 자형연성은 기본 → 탐색 → 계보 → 중복.
 // 하나의 배열을 모드별로 걸러 두 순서를 동시에 만족시킨다.
+// 중급·고급은 별 개수(2개/3개)가 그림 안에 들어 있는 v5 전용 아이콘을 쓴다.
+// 두 티어가 같은 별 아이콘을 쓰면 색만이 유일한 구분이 되어 색각 차이에서 무너진다.
 const SUMMON_PRODUCTS: readonly SummonProductMeta[] = Object.freeze([
-  { intent: "balanced", label: "기본 소환", effect: "전체 풀", tint: "#a8791f", icon: "shop-default-coin-v1" },
-  { intent: "midstar", label: "중급 소환", effect: "2★ 이상 확정", tint: "#3a5794", icon: "shop-high-star-v1" },
-  { intent: "highstar", label: "고급 소환", effect: "3★ 이상 확정", tint: "#9f2f23", icon: "shop-high-star-v1" },
-  { intent: "discovery", label: "탐색 소환", effect: "새 한자 ×3.4", tint: "#3f7d6e", icon: "shop-explore-compass-lantern-v1" },
-  { intent: "lineage", label: "계보 소환", effect: "목표·성어 재료 ×3.2", tint: "#3a5794", icon: "shop-lineage-scroll-v1" },
-  { intent: "concentration", label: "중복 소환", effect: "보유 중복 ↑ · 농축 재료", tint: "#9a6d16", icon: "shop-duplicate-cards-v1" }
+  { intent: "balanced", label: "기본 소환", effect: "전체 풀", tint: "#a8791f", icon: "v4/shop/shop-default-coin-v1" },
+  { intent: "midstar", label: "중급 소환", effect: "2★ 이상 확정", tint: "#306f89", icon: "v5/shop/shop-tier-mid-v1" },
+  { intent: "highstar", label: "고급 소환", effect: "3★ 이상 확정", tint: "#af3629", icon: "v5/shop/shop-tier-high-v1" },
+  { intent: "discovery", label: "탐색 소환", effect: "새 한자 ×3.4", tint: "#3f7d6e", icon: "v4/shop/shop-explore-compass-lantern-v1" },
+  { intent: "lineage", label: "계보 소환", effect: "목표·성어 재료 ×3.2", tint: "#3a5794", icon: "v4/shop/shop-lineage-scroll-v1" },
+  { intent: "concentration", label: "중복 소환", effect: "보유 중복 ↑ · 농축 재료", tint: "#9a6d16", icon: "v4/shop/shop-duplicate-cards-v1" }
 ] as const);
 
 /** 세 티어 공통으로 걸리는 캐주얼 짝 맞추기 보정 안내. */
 const PAIR_BOOST_NOTE = "짝이 맞는 자령이 더 자주 나옵니다";
 
-const SUMMON_ICON_BASE = `${import.meta.env.BASE_URL}assets/ui/v4/shop/`;
+const SUMMON_ICON_BASE = `${import.meta.env.BASE_URL}assets/ui/`;
 let summonShopRenderKey = "";
 
 function summonCardMarkup(options: {
@@ -1870,7 +1872,7 @@ function renderSummonShop(): void {
     label: "10연 소환",
     effect: multiUnlocked ? "기본 확률 10회" : "10웨이브에 개방",
     tint: "#a8791f",
-    icon: "shop-ten-pull-coin-bundle-v1",
+    icon: "v4/shop/shop-ten-pull-coin-bundle-v1",
     price: multiUnlocked ? `${tenCost} 엽전` : "10W 개방",
     disabled: !active || !multiUnlocked || state.gold < tenCost,
     affordable: !active || !multiUnlocked || state.gold >= tenCost,
