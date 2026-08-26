@@ -1,4 +1,4 @@
-import type { HanziCatalog, IdiomBonusKind, RegionCode, Tower } from "./types";
+import type { GameMode, HanziCatalog, IdiomBonusKind, RegionCode, Tower } from "./types";
 import { BOARD_CELLS, CELLS_PER_FORMATION, FORMATION_COLUMNS, FORMATION_ROWS } from "./content";
 import { CHEONJAMUN_PHRASES } from "../data/cheonjamun-phrases";
 import { SeededRng } from "./rng";
@@ -311,6 +311,44 @@ export function helpfulDirectCharsForIdiom(catalog: HanziCatalog, towers: readon
 
   for (const char of idiom.chars) collect(char);
   return new Set([...needed].filter(([char, count]) => (owned.get(char) ?? 0) < count).map(([char]) => char));
+}
+
+/**
+ * 성어 기원 소환의 후보 글자 — "추적 성어들"의 부족 글자 합집합.
+ *
+ * [병합 지점] 목표 체계 개편(성어=목표, 복수 추적 3)과 만나는 자리다.
+ * 부족 글자 집합 계산은 이 함수 하나에만 있으므로, 개편 트랙과 병합할 때는
+ * 호출부(`GameEngine.idiomWishTargets`)가 넘기는 `idioms` 배열을 복수 추적으로
+ * 바꾸기만 하면 된다 — 이 함수·상점 카드·소환 본체는 손대지 않는다.
+ *
+ * 부족 판정은 기존 추적 경로와 같은 문법을 그대로 쓴다(R18 유지형 성어).
+ *  - 캐주얼: `idiomProgress` 와 같은 1:1 대응 — 보유 자령을 글자당 하나씩
+ *    소비하고 남는 요구 글자가 "부족"이다(같은 글자 2회 요구도 올바로 센다).
+ *  - 자형연성: `helpfulDirectCharsForIdiom` — 부족 글자를 합성으로 만들 때
+ *    아직 더 필요한 "직접 소환" 재료만 부른다. 합성 전용 글자를 뽑기로
+ *    우회시키지 않아야 기존 합성 루프와 전투력 곡선이 그대로 남는다.
+ */
+export function idiomWishChars(
+  catalog: HanziCatalog,
+  towers: readonly Tower[],
+  idioms: readonly IdiomDefinition[],
+  mode: GameMode
+): Set<string> {
+  const union = new Set<string>();
+  for (const idiom of idioms) {
+    if (mode === "casual") {
+      const counts = new Map<string, number>();
+      for (const tower of towers) counts.set(tower.char, (counts.get(tower.char) ?? 0) + 1);
+      for (const char of idiom.chars) {
+        const owned = counts.get(char) ?? 0;
+        if (owned > 0) counts.set(char, owned - 1);
+        else union.add(char);
+      }
+    } else {
+      for (const char of helpfulDirectCharsForIdiom(catalog, towers, idiom)) union.add(char);
+    }
+  }
+  return union;
 }
 
 export function idiomDirectPoolChars(catalog: HanziCatalog, idioms: readonly IdiomDefinition[] = idiomsForRegion(catalog.region)): Set<string> {

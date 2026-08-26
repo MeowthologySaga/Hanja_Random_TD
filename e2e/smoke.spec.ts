@@ -133,6 +133,10 @@ test("shows a readable single summon reveal and explains the ten-pull milestone"
   await page.locator("#battle-canvas").click({ position: { x: 40, y: 110 } });
   await expect(page.locator("#summon-reveal")).not.toHaveClass(/is-active/u);
 
+  // 트랙 F: 성어 기원 카드 — 첫 소환 뒤에 열리며 추적 성어의 부족 글자만 판다(전투력 비연동).
+  await expect(page.getByTestId("idiom-wish-button")).toBeEnabled();
+  await expect(page.getByTestId("idiom-wish-button")).toContainText("성어 기원");
+
   await page.reload();
   await page.getByTestId("start-run").click();
   await openShop(page);
