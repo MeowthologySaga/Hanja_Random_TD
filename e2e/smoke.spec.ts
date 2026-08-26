@@ -887,7 +887,8 @@ test("shows synthesis branches, highlights board materials, protects locked Jary
 
   await page.getByRole("tab", { name: "자령" }).click();
   await expect(page.locator("#selected-card .selected-ability-summary")).toContainText("기술 5개 · 모두 자동 판정");
-  await expect(page.locator("#selected-card .selected-ability-summary")).toContainText("주기 3 · 공격 연동 1 · 조건 특성 1");
+  // [S/문구 점검] "조건 특성" → "조건 적용" — 알약의 낱말(「진법 특성 · 조건 적용」)에 맞췄다.
+  await expect(page.locator("#selected-card .selected-ability-summary")).toContainText("주기 3 · 공격 연동 1 · 조건 적용 1");
   await page.locator("#selected-card .selected-ability-summary").click();
   await expect(page.getByRole("heading", { name: /기술 구성/u })).toBeVisible();
   await expect(page.locator(".ability-guide-rule")).toContainText("직접 누르는 기술은 없습니다");

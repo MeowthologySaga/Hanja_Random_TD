@@ -74,7 +74,9 @@ export function renderGoal(): void {
   const badge = must<HTMLElement>("#goal-tab-progress");
   badge.textContent = `준비 ${percent}%`;
   badge.title = READINESS_NOTE;
-  badge.setAttribute("aria-label", `목표 성어 준비도 ${percent}%`);
+  // 갈피 이름은 "목표" + 이 배지다 — 여기에 "성어"를 넣으면 옆 「성어」 갈피와
+  // 접근명이 겹친다(실증: 역할 선택이 두 갈피에 걸렸다).
+  badge.setAttribute("aria-label", `준비도 ${percent}%`);
   must<HTMLElement>("#goal-owned-summary").innerHTML = `<b>추적 ${tracked.length}/${MAX_TRACKED_IDIOMS}구</b><span>발동 ${seals}/${engine.idioms().length}</span>`;
   const summary = must<HTMLElement>("#goal-panel-summary");
   summary.innerHTML = `추적 중 성어 <b>${tracked.length}구</b> · 최고 준비도 <b>${percent}%</b>`;
