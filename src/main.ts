@@ -2167,7 +2167,9 @@ const SUMMON_PRODUCTS: readonly SummonProductMeta[] = Object.freeze([
 /** 세 티어 공통으로 걸리는 캐주얼 짝 맞추기 보정 안내. */
 const PAIR_BOOST_NOTE = "짝이 맞는 자령이 더 자주 나옵니다";
 
-const SUMMON_ICON_BASE = `${import.meta.env.BASE_URL}assets/ui/`;
+// 인라인 style 의 var() 에 담긴 상대 url() 을 크롬은 "사용하는 CSS 파일" 기준으로
+// 풀어 버린다(/assets/index.css → /assets/assets/… 404). 문서 기준 절대 URL 로 고정.
+const SUMMON_ICON_BASE = new URL(`${import.meta.env.BASE_URL}assets/ui/`, document.baseURI).toString();
 let summonShopRenderKey = "";
 
 function summonCardMarkup(options: {

@@ -126,7 +126,7 @@ test("freezes the opening until the first summon opens its matching formation", 
   await page.getByTestId("start-run").click();
   await expect(page.locator("#shop-panel")).toBeVisible();
   await expect(page.locator("#shop-tab")).toHaveClass(/is-active/u);
-  await expect(page.locator(".panel-tabs > button")).toHaveCount(8);
+  await expect(page.locator(".panel-tabs > button")).toHaveCount(9);
   await expect(page.locator("#formation-unlock-list > button")).toHaveCount(5);
   await expect(page.locator("#formation-unlock-list > button.is-unlocked")).toHaveCount(0);
   await expect(page.getByTestId("early-wave")).toBeDisabled();
@@ -276,7 +276,7 @@ test("runs the casual eight-star entry and readable one-click promotion workshop
 test("uses tabbed owned-aware goals and summons from all one thousand Cheonjamun sprites", async ({ page }) => {
   await page.goto("/?seed=EVO-E2E-2");
   await page.getByTestId("start-run").click();
-  await expect(page.locator(".panel-tabs > button")).toHaveCount(8);
+  await expect(page.locator(".panel-tabs > button")).toHaveCount(9);
   await expect(page.locator("#selected-card")).toBeHidden();
   await expect(page.locator("#goal-panel")).toBeHidden();
   await expect(page.locator("#shop-panel")).toBeVisible();
@@ -316,7 +316,7 @@ test("uses tabbed owned-aware goals and summons from all one thousand Cheonjamun
   expect(await page.locator("#codex-list .codex-jaryeong-card").count()).toBeGreaterThanOrEqual(1_000);
   await page.locator("#codex-list .codex-jaryeong-card").first().click();
   await expect(page.locator("#codex-detail .codex-jaryeong-portrait img")).toBeVisible();
-  await expect(page.locator("#codex-detail")).toContainText(/CHEONJAMUN No\.\d{3}/u);
+  await expect(page.locator("#codex-detail")).toContainText(/천자문 제\d+자/u);
   await expect(page.locator("#codex-detail")).toContainText("자령 기록");
   await expect(page.locator("#codex-detail")).not.toContainText(/QC|검토|pending/iu);
   await page.screenshot({ path: "artifacts/cheonjamun-jaryeong-dex-1000-1280x720.png", fullPage: true });
@@ -472,7 +472,7 @@ test("starts a KR run and exposes the finished core loop at 1280x720", async ({ 
   await expect(page.locator("#tower-count-value")).toHaveText("4 / 16");
   await page.screenshot({ path: "artifacts/auto-arrange-1280x720.png", fullPage: true });
 
-  await page.getByTestId("early-wave").click();
+  await page.getByTestId("early-wave").click({ force: true }); // 맥동(early-beacon) 이 stable 판정을 막는다
   await expect(page.locator("#stage-wave")).toHaveText("1 / 100");
   await expect(page.locator("#stage-phase")).toHaveText("교전 중");
   await expect(page.locator(".game-shell")).toHaveAttribute("data-phase", "combat");
@@ -504,7 +504,7 @@ test("advances on the reinforcement clock while surviving enemies keep circulati
   await page.locator("#speed-button").click();
   await page.locator("#speed-button").click();
   await expect(page.locator("#speed-button")).toHaveText("3×");
-  await page.getByTestId("early-wave").click();
+  await page.getByTestId("early-wave").click({ force: true }); // 맥동(early-beacon) 이 stable 판정을 막는다
   await expect(page.locator("#stage-wave")).toHaveText("1 / 100");
   await expect(page.locator("#wave-kicker")).toContainText("다음 웨이브", { timeout: 7_000 });
   await expect(page.locator("#stage-wave")).toHaveText("2 / 100", { timeout: 8_000 });
