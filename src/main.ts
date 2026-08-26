@@ -5819,9 +5819,16 @@ function layoutCoach(): void {
 
   const bubble = must<HTMLElement>("#coach-bubble");
   const bubbleWidth = 258;
+  const bubbleHeight = bubble.offsetHeight || 132;
   const below = focusTop + focusHeight + 14;
-  const fitsBelow = below + 132 <= shell.offsetHeight;
-  bubble.style.top = fitsBelow ? `${below}px` : `${Math.max(8, focusTop - 140)}px`;
+  // 아래로 놓을 자리를 셸 바닥이 아니라 패널 탭 띠 위까지로 본다. 첫 단계의
+  // 대상(자령 소환)은 패널 아래쪽에 있어서, 바닥까지 여유가 있어 보여도
+  // 말풍선이 탭 띠를 덮어 다음 조작을 가로막았다. 그때는 위로 뒤집는다.
+  const tabs = document.querySelector<HTMLElement>(".panel-tabs");
+  const tabsTop = tabs ? (tabs.getBoundingClientRect().top - shellRect.top) / scaleY : shell.offsetHeight;
+  const bottomLimit = Math.min(shell.offsetHeight - 8, tabsTop - 6);
+  const fitsBelow = below + bubbleHeight <= bottomLimit;
+  bubble.style.top = fitsBelow ? `${below}px` : `${Math.max(8, focusTop - bubbleHeight - 14)}px`;
   bubble.style.left = `${Math.max(8, Math.min(shell.offsetWidth - bubbleWidth - 8, focusLeft + focusWidth / 2 - bubbleWidth / 2))}px`;
 }
 
