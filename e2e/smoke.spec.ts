@@ -120,8 +120,8 @@ test("freezes the opening until the first summon opens its matching formation", 
 
 test("runs the casual eight-star entry and readable one-click promotion workshop", async ({ page }) => {
   await page.goto("/?seed=CASUAL-EIGHT-STAR-E2E");
-  await expect(page.getByRole("radio", { name: /전략 조합전/ })).toBeChecked();
-  await page.getByRole("radio", { name: /캐주얼 8성전/ }).click();
+  await expect(page.getByRole("radio", { name: /자형연성 진법/ })).toBeChecked();
+  await page.getByRole("radio", { name: /별승급 진법/ }).click();
   await expect(page.locator('[data-region="KR"]')).toBeChecked();
   await expect(page.locator('[data-region="JP"]')).toBeDisabled();
   await expect(page.locator('[data-region="CN"]')).toBeDisabled();

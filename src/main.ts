@@ -466,11 +466,13 @@ app.innerHTML = `
 
         <p class="s00-mode-label">진법 선택</p>
         <div class="s00-modes" role="radiogroup" aria-label="진법 선택">
-          <button type="button" class="s00-mode game-mode-option is-selected" data-game-mode-option="standard" role="radio" aria-checked="true">
-            <i class="s00-skin" aria-hidden="true"></i><b>자형연성 진법</b><small>실제 한자 구성식 · 목표 계보</small><em>선택됨</em>
+          <button type="button" class="s00-mode game-mode-option is-selected" data-game-mode-option="standard" role="radio" aria-checked="true"
+            aria-label="자형연성 진법. 실제 한자 구성식으로 합성하고 목표 계보를 완성하는 진법">
+            <i class="s00-skin" aria-hidden="true"></i><b>자형연성 진법</b><small aria-hidden="true"><span class="s00-mode-sub s00-mode-sub--full">실제 한자 구성식 · 목표 계보</span><span class="s00-mode-sub s00-mode-sub--compact">구성식 합성 · 계보 목표</span></small><em>선택됨</em>
           </button>
-          <button type="button" class="s00-mode game-mode-option" data-game-mode-option="casual" role="radio" aria-checked="false">
-            <i class="s00-skin" aria-hidden="true"></i><b>별승급 진법</b><small>1기는 남기고 2기를 재료로 · 최고 8성</small><em>선택됨</em>
+          <button type="button" class="s00-mode game-mode-option" data-game-mode-option="casual" role="radio" aria-checked="false"
+            aria-label="별승급 진법. 1기는 남기고 2기를 재료로 사용해 최고 8성까지 승급하는 진법">
+            <i class="s00-skin" aria-hidden="true"></i><b>별승급 진법</b><small aria-hidden="true"><span class="s00-mode-sub s00-mode-sub--full">1기는 남기고 2기를 재료로 · 최고 8성</span><span class="s00-mode-sub s00-mode-sub--compact">1+2 승급 · 최고 8성</span></small><em>선택됨</em>
           </button>
         </div>
 

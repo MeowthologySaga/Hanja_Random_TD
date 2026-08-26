@@ -8077,3 +8077,48 @@ span.codex-jaryeong-category { color: #4a3f30 !important; }
 /* 줄이 하나 늘어난 만큼 칸 높이를 줄여, 두루마리 상단 봉이 '맞춤 진법'
    윗글을 덮지 않게 한다(전체 높이 427 → 두루마리 안쪽으로 복귀). */
 #s13-dialog .s13-options button { min-height: 44px; }
+
+/* ══════════════════════════════════════════════════════════════════
+   87. 3D 서갈피 부제 — 가죽 노출부 밖으로 흐르던 글자
+   Codex `layout-audit-response-v1` §1 결정 반영. 3D 에서는 짧은 표시용
+   부제(compact)만 쓰고 접근성 이름에는 전체 설명을 남긴다. 오브젝트·
+   히트영역(300x92)·좌표는 그대로 두고 글자 상자만 가죽 안으로 가둔다.
+   실측 가죽 노출부: 1번 x=28..210 / 2번 x=22..158.
+   ══════════════════════════════════════════════════════════════════ */
+
+.s00-mode-sub--compact { display: none; }
+
+.s00-stage.is-3d .s00-mode-sub--full { display: none; }
+.s00-stage.is-3d .s00-mode-sub--compact { display: inline; }
+
+/* 68절의 `.s00-stage .s00-mode b{font-size:19px!important}` 를 이겨야 한다 */
+.s00-stage.is-3d .s00-mode b {
+  font-size: 16px !important;
+  line-height: 1.1;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+/* small 의 14px 들여쓰기는 300px 폭 시절 정렬이라 3D 에서는 없앤다 */
+.s00-stage.is-3d .s00-mode small {
+  padding-left: 0 !important;
+  font-size: 9px !important;
+  line-height: 1.1;
+  white-space: nowrap;
+}
+
+/* 1번 갈피: 46px 들여쓰고 글자 상자 최대 154px (46+154=200 < 210) */
+.s00-stage.is-3d .s00-modes .s00-mode:nth-of-type(1) { padding-left: 46px; }
+
+.s00-stage.is-3d .s00-modes .s00-mode:nth-of-type(1) b,
+.s00-stage.is-3d .s00-modes .s00-mode:nth-of-type(1) small { max-width: 154px; }
+
+/* 2번 갈피: 56px 들여쓰고 글자 상자 최대 98px (56+98=154 < 158) */
+.s00-stage.is-3d .s00-modes .s00-mode:nth-of-type(2) { padding-left: 56px; }
+
+.s00-stage.is-3d .s00-modes .s00-mode:nth-of-type(2) b,
+.s00-stage.is-3d .s00-modes .s00-mode:nth-of-type(2) small { max-width: 98px; }
+
+/* '선택됨' 인장도 300px 폭 오른쪽 끝(x≈292)이 아니라 가죽 안쪽 끝에 붙인다 */
+.s00-stage.is-3d .s00-modes .s00-mode:nth-of-type(1) em { right: 100px; }
+.s00-stage.is-3d .s00-modes .s00-mode:nth-of-type(2) em { right: 142px; }
