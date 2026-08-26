@@ -6800,9 +6800,10 @@ dialog,
   gap: 6px;
   margin-bottom: 7px;
   padding: 8px 9px 7px;
-  border: 1px solid rgba(255, 207, 118, 0.22);
   border-radius: 9px;
-  background: linear-gradient(180deg, rgba(38, 27, 12, 0.62), rgba(6, 11, 18, 0.72));
+  /* 성어 진법 패널과 같은 한지 면. 여기만 어두우면 도식이 이물질로 보인다. */
+  background: rgba(201, 183, 143, 0.44);
+  box-shadow: inset 0 0 0 1px rgba(122, 90, 42, 0.26);
 }
 
 .idiom-rule-chain {
@@ -6814,6 +6815,7 @@ dialog,
   gap: 2px;
 }
 
+/* 전장 칸을 그대로 축소한 한지 타일 + 인주색 순번. 배지와 같은 언어로 읽히게. */
 .idiom-rule-chain i {
   grid-row: var(--r);
   grid-column: var(--c);
@@ -6821,29 +6823,32 @@ dialog,
   place-items: center;
   width: 26px;
   height: 26px;
-  color: #ffe9b6;
+  color: var(--seal);
   font-size: 14px;
   font-style: normal;
   font-weight: 900;
-  border: 1px solid rgba(255, 207, 118, 0.42);
   border-radius: 5px;
-  background: rgba(80, 56, 20, 0.42);
+  background: var(--hanji-100);
+  box-shadow: inset 0 0 0 1px rgba(122, 90, 42, 0.42);
 }
 
 .idiom-rule-chain b {
   grid-row: var(--r);
   grid-column: var(--c);
-  color: rgba(255, 214, 137, 0.72);
+  color: var(--gold-300);
   font-size: 13px;
   font-weight: 900;
   text-align: center;
 }
 
-.idiom-rule-chain b.is-diagonal { color: #ffcf76; }
+.idiom-rule-chain b.is-diagonal {
+  color: var(--seal);
+  font-size: 15px;
+}
 
 .idiom-rule-guide p {
   margin: 0;
-  color: #e6d5ac;
+  color: var(--text-100);
   font-size: 11.5px;
   font-weight: 800;
   letter-spacing: -0.03em;
@@ -6858,6 +6863,13 @@ dialog,
  */
 .is-hint-pulsing {
   animation: idiom-tab-hint 0.82s ease-in-out 3;
+}
+
+/* 두 줄짜리 성어 안내는 지도·한자 강조 버튼 위로 올려 앉힌다. */
+.toast--idiom-hint {
+  bottom: 96px;
+  max-width: 528px;
+  box-shadow: var(--bevel-up), 0 0 0 1px rgba(255, 207, 118, 0.55), var(--lift-2);
 }
 
 @keyframes idiom-tab-hint {

@@ -1619,9 +1619,10 @@ function processEvent(event: GameEvent): void {
           duration: reducedMotion ? 0.34 : 0.66
         });
       }
+      // 대형 플래시가 `이심전심 · 봉인` 을 이미 크게 말한다. 같은 자리에 뜨던
+      // `이심전심 자동 봉인!` 플로터까지 겹치면 배너·플래시·플로터가 한 문장을
+      // 세 번 반복해 정작 어느 칸이 봉인됐는지가 안 보인다.
       idiomFlash = { chars: event.chars, reading: event.reading, color: event.color, at: center, age: 0, duration: reducedMotion ? 0.6 : 1.2 };
-      const flourishAt = { x: center.x, y: Math.min(WORLD_HEIGHT - 100, center.y + 115) };
-      pushPooled(floaters, floaterPool, takeFloater(flourishAt, event.reading + " 자동 봉인!", event.color, 1.25, true), 48);
       showIdiomResult(event.reading, event.meaning, event.bonus, event.color);
       addCombatFeed("四", event.reading, event.bonus, event.color);
       idiomRenderKey = "";
@@ -2548,6 +2549,9 @@ function maybeShowIdiomHint(target: IdiomDefinition | undefined): void {
   if (idiomHintAlreadySeen()) return;
   markIdiomHintSeen();
   showToast(`${target.chars} 재료가 모이고 있어요 — 같은 진에서 ①→④ 순서로 이웃하게 놓으면 봉인 발동! (역순도 가능)`);
+  // 두 줄짜리 안내라 평소 자리(bottom 45px)에서는 지도·강조 버튼과 겹친다.
+  toast.classList.add("toast--idiom-hint");
+  window.setTimeout(() => toast.classList.remove("toast--idiom-hint"), 2000);
   pulseIdiomGoalTab();
 }
 
