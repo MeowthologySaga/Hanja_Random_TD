@@ -8925,3 +8925,179 @@ span.codex-jaryeong-category { color: #4a3f30 !important; }
   font-size: 10px !important;
   text-shadow: none !important;
 }
+
+/* ══════════════════════════════════════════════════════════════════
+   ===== R8 고정무대 =====
+
+   1280x720 설계 해상도를 한 덩어리(#stage)로 묶어 균일 배율로만 키우고
+   줄인다. 남는 자리는 먹지색 레터박스 띠로 두어 액자처럼 보이게 한다.
+   목적은 "해상도마다 다른 화면"을 없애는 것 — 모두가 같은 그림을 배율만
+   다르게 본다.
+
+   앞선 절들의 @media 는 그대로 둔다(무대 안에서는 잔글씨 조정일 뿐이다).
+   다만 창을 스택 레이아웃으로 접거나 스크롤을 여는 구조 규칙만은 여기서
+   되돌린다 — 그것들은 무대 자체를 깨뜨린다.
+   ══════════════════════════════════════════════════════════════════ */
+
+/* ── R8-1. 페이지는 액자, #stage 는 1280x720 화폭 ────────────────
+   html/body 를 뷰포트에 못박고 스크롤바를 없앤다. @media (max-width: 1099px),
+   (max-height: 679px) 가 열어 두는 overflow:auto / min-height:100% 를 여기서
+   눌러 어떤 창 크기에서도 스크롤바 0 을 보장한다. */
+html,
+body {
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  margin: 0;
+  overflow: hidden;
+}
+
+/* 레터박스 띠는 그라디언트 없이 단일 먹지 토큰 하나로만 칠한다.
+   앞선 두 body 규칙은 방사 그라디언트 + #1a1713 이라, 3440x1440 필러박스에서
+   띠 안쪽(무대 가장자리)과 미세한 톤 차가 세로줄로 읽혔다. 한 토큰으로
+   평평하게 깔면 띠 자체에는 이음선이 생길 여지가 없다. */
+:root {
+  --stage-mat: #171310;
+}
+
+body {
+  background: var(--stage-mat);
+}
+
+#app {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* 무대 경계는 "우연히 생긴 색 단차"가 아니라 "일부러 두른 액자"여야 한다.
+   먹선 한 겹 + 바깥으로 퍼지는 그림자가 그 경계를 의도된 것으로 읽히게 한다. */
+#stage {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  width: 1280px;
+  height: 720px;
+  box-shadow:
+    0 0 0 1px rgba(8, 6, 4, 0.92),
+    0 0 60px 18px rgba(0, 0, 0, 0.55);
+  transform: translate(-50%, -50%) scale(var(--stage-scale, 1));
+  transform-origin: 50% 50%;
+}
+
+/* ── R8-2. 셸·전장·패널을 설계 치수로 못박는다 ─────────────────
+   v0.7 유동 레이아웃(width: min(100vw, 177.7778vh))과 좁은 창 스택 레이아웃을
+   함께 되돌린다. 이제 크기 조절은 오직 #stage 의 transform 한 곳에서만
+   일어난다. */
+.game-shell {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  display: grid;
+  grid-template-columns: 880px 400px;
+  width: 1280px;
+  min-width: 0;
+  height: 720px;
+  max-height: none;
+  aspect-ratio: auto;
+  overflow: hidden;
+  transform: translate(-50%, -50%);
+}
+
+.battle-stage {
+  width: 880px;
+  height: 720px;
+  margin: 0;
+  aspect-ratio: auto;
+}
+
+#battle-canvas {
+  width: 880px;
+  height: 720px;
+}
+
+.control-panel {
+  width: 400px;
+  height: 720px;
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+}
+
+.modal-layer {
+  position: absolute;
+}
+
+.s00-stage {
+  width: 1280px;
+  height: 720px;
+}
+
+/* ── R8-3. <dialog> top-layer 보정 ─────────────────────────────
+   showModal() 로 열린 dialog 는 top layer 로 승격되어 조상의 transform 을
+   무시한다. 무대 밖에 홀로 서므로 같은 --stage-scale 을 직접 먹인다.
+   기본 max-width/height 도 창이 아니라 설계 화폭을 기준으로 다시 잡는다.
+   가운데 정렬은 UA 기본값(inset:0 + margin:auto) 대신 left/top 50% +
+   translate(-50%,-50%) 로 바꾼다. 축소 배율에서는 레이아웃 폭(예: 도감
+   1248px)이 창보다 넓을 수 있는데, 그때 margin:auto 는 과잉제약으로 무너져
+   왼쪽에 붙어 버린다. translate 는 폭이 창을 넘어도 정확히 가운데를 잡는다.
+
+   ::backdrop 은 그대로 화면 전체를 덮는다(레터박스 띠까지 어둡게). */
+dialog {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  right: auto;
+  bottom: auto;
+  max-width: 1280px;
+  max-height: 720px;
+  margin: 0;
+  transform: translate(-50%, -50%) scale(var(--stage-scale, 1));
+  transform-origin: 50% 50%;
+}
+
+/* ── R8-4. 뷰포트 단위를 설계 좌표로 되돌린다 ──────────────────
+   100vw/100vh 는 무대가 아니라 실제 창을 잰다. 무대 안에서 창은 언제나
+   1280x720 이므로, 각 원본 규칙에 그 값을 대입한 결과를 박아 둔다. */
+#help-dialog {
+  width: 660px;              /* min(660px, 100vw - 40px) @1280 */
+}
+
+#help-dialog > form {
+  max-height: 533px;         /* min(74vh, 618px) @720 */
+}
+
+#settings-dialog {
+  width: 650px;
+}
+
+#codex-dialog {
+  width: 1248px;             /* min(1248px, 100vw - 16px) @1280 */
+  height: 708px;             /* min(708px, 100vh - 12px) @720 */
+}
+
+#element-upgrade-dialog {
+  width: 960px;
+  max-height: 634px;         /* min(88vh, 820px) @720 */
+}
+
+#ability-guide-dialog {
+  width: 780px;
+  height: 650px;
+}
+
+#casual-fusion-confirm-dialog {
+  width: 760px;
+  max-height: 680px;
+}
+
+.casual-fusion-confirm-content {
+  max-height: 500px;         /* min(500px, 100vh - 175px) @720 */
+}
+
+/* 캐주얼 승급 공방의 좌측 확장폭도 설계 좌표(-26vw @1280)로 고정한다. */
+.game-shell[data-game-mode="casual"][data-panel-tab="evolution"] .evolution-workbench.is-active {
+  left: -333px;
+}
