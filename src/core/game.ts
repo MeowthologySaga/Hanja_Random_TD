@@ -9,6 +9,7 @@ import {
   SUMMON_CELL_ORDER,
   WAVE_REINFORCEMENT_DELAY,
   bossHpFactorForWave,
+  bossSpawnProgress,
   bossTimeLimitForWave,
   isBoardCellUnlocked,
   isFormationUnlocked,
@@ -772,7 +773,11 @@ export class GameEngine {
       maxHp: hp,
       // Bosses keep circulating; the explicit boss clock is their deadline.
       speed: plan.speed * (isBoss ? 0.34 : 0.92 + this.rng.next() * 0.16),
-      progress: spawnProgressForEnemy(this.state.spawned),
+      // 수술 9: 보스만 시작 진의 최적 관문에서 등장한다 — 느린 보스가 제한시간을
+      // 이동에 다 태우는 시작 진 복불복을 걷는다. 일반 적은 4관문 순환 그대로.
+      progress: isBoss
+        ? bossSpawnProgress(this.state.startingFormationIndex, this.state.spawned)
+        : spawnProgressForEnemy(this.state.spawned),
       reward: isBoss ? plan.reward : plan.boss ? 1 + Math.floor((plan.wave - 1) / 25) : plan.reward,
       boss: isBoss,
       archetype,
