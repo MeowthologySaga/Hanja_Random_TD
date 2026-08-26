@@ -14,6 +14,7 @@ import {
   chainsealMaxStacks,
   commandRallySeconds,
   COMMAND_RALLY_CAP_SECONDS,
+  HARVEST_KILLS_PER_ESSENCE,
   REAPER_BOSS_CHIP_RATIO,
   REAPER_EXECUTE_CAP,
   reaperExecuteThreshold,
@@ -356,5 +357,35 @@ describe("[SKILL-V2] 소흔 (燒痕)", () => {
     for (let step = 0; step < 10; step += 1) engine.update(0.05);
     expect(follower.hp).toBeLessThan(hpBefore);
     expect(follower.progress).toBeGreaterThanOrEqual(progressBefore);
+  });
+});
+
+describe("[SKILL-V2] 채기 (采氣)", () => {
+  it("N번째 처치마다 자기 오행 문기 +1 — 주기 밖 처치는 아무것도 더하지 않는다", () => {
+    const definition = familyDefinition("KR", "harvest");
+    const engine = new GameEngine("skill-harvest-cycle", "KR");
+    const { tower, enemy } = arrangeDuel(engine, definition, {
+      harvestKills: HARVEST_KILLS_PER_ESSENCE - 2
+    });
+    const wuxing = tower.wuxing;
+    const essenceBefore = engine.state.elementEssence[wuxing];
+    const generatedBefore = engine.state.elementEssenceGenerated[wuxing];
+    // (N-1)번째 처치 — 아직 아무것도 없다. 둘째 적은 확산에 휩쓸리지 않게
+    // 체력을 높여 두고, 제 차례에 체력을 낮춰 따로 처치한다.
+    enemy.hp = 1;
+    const second = makeEnemy(-4, "normal", { progress: enemy.progress });
+    engine.state.enemies = [enemy, second];
+    engine.update(0.02);
+    expect(tower.harvestKills).toBe(HARVEST_KILLS_PER_ESSENCE - 1);
+    expect(engine.state.elementEssence[wuxing]).toBe(essenceBefore);
+    // N번째 처치 — 문기 +1 과 생성 통계가 함께 오른다.
+    second.hp = 1;
+    tower.cooldownLeft = 0;
+    engine.update(0.02);
+    expect(tower.harvestKills).toBe(HARVEST_KILLS_PER_ESSENCE);
+    expect(engine.state.elementEssence[wuxing]).toBe(essenceBefore + 1);
+    expect(engine.state.elementEssenceGenerated[wuxing]).toBe(generatedBefore + 1);
+    const harvestEvent = engine.consumeEvents().some((event) => event.type === "ability" && event.effect.includes("문기 +1"));
+    expect(harvestEvent).toBe(true);
   });
 });

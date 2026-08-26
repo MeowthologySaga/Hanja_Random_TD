@@ -11,6 +11,7 @@ import {
   GWICHEON_MIN_STAR,
   GWICHEON_RUSH_THRESHOLD,
   gwicheonChargeSeconds,
+  HARVEST_KILLS_PER_ESSENCE,
   hasActiveSkills,
   idiomBlessingBonus,
   MOMENTUM_STACK_BONUS,
@@ -663,15 +664,29 @@ export class GameEngine {
   }
 
   /**
-   * [SKILL-V2] 소흔의 처치 훅. 직접 타격 계열(기본 공격·확산·연쇄·기술
+   * [SKILL-V2] 채기(harvest) — N번째 처치마다 자기 오행 문기 +1.
+   * 문기 인플레 방지를 위해 주기는 상수 하나로 관리하고 시뮬 게이트로 검증한다.
+   */
+  private harvestEssence(tower: Tower, at: Point): void {
+    tower.harvestKills = (tower.harvestKills ?? 0) + 1;
+    if (tower.harvestKills % HARVEST_KILLS_PER_ESSENCE !== 0) return;
+    this.state.elementEssence[tower.wuxing] += 1;
+    this.state.elementEssenceGenerated[tower.wuxing] += 1;
+    const definition = definitionForTower(this.catalog, tower.definitionId);
+    const origin = BOARD_CELLS[tower.cell] as Point;
+    this.emitAbility(tower, definition.combat.abilities.semantic, origin, at, 1, `${tower.wuxing} 문기 +1 · ${HARVEST_KILLS_PER_ESSENCE}처치 수확`);
+  }
+
+  /**
+   * [SKILL-V2] 소흔·채기의 처치 훅. 직접 타격 계열(기본 공격·확산·연쇄·기술
    * 추가타)에만 출처 자령이 붙는다 — 독·장판 틱 처치는 출처 없이 그대로 둔다
-   * (보수적 선택: 간접 처치까지 세면 잔불이 눈덩이처럼 커진다).
+   * (보수적 선택: 간접 처치까지 세면 수확·잔불이 눈덩이처럼 커진다).
    */
   private handleTowerKill(tower: Tower, victim: Enemy, at: Point): void {
-    void at;
     if (!this.towerHasActiveSkills(tower)) return;
     const family = definitionForTower(this.catalog, tower.definitionId).combat.abilities.semanticFamily;
     if (family === "scorch") this.deployEmberZone(tower, victim);
+    else if (family === "harvest") this.harvestEssence(tower, at);
   }
 
   /** [SKILL-V2] 호령 — 이 진에 살아 있는 집중 명령. 없거나 끝났으면 null. */
@@ -808,9 +823,11 @@ export class GameEngine {
     const semanticTrigger = activeSkills && tower.shotCount % semanticEvery === 0
       // [SKILL-V1] 파죽(momentum)은 별도 발동 주기가 없는 패시브라 주기 기술에서 뺀다.
       && abilities.semanticFamily !== "momentum"
-      // [SKILL-V2] 연환 인장(공격마다)·소흔(처치)도 주기 기술이 아니다.
+      // [SKILL-V2] 연환 인장(공격마다)·소흔(처치)·채기(처치)도 주기 기술이 아니다.
+      // 참명·호령은 주기 발동이 남는다(참명 주기는 우두머리 참격 전용).
       && abilities.semanticFamily !== "chainseal"
       && abilities.semanticFamily !== "scorch"
+      && abilities.semanticFamily !== "harvest"
       && (abilities.semanticFamily !== "weather" || this.state.enemies.length >= 5);
     // At most one active skill may resolve from a tower on the same attack.
     const signature = activeSkills && !semanticTrigger && tower.shotCount % tuning.signatureEvery === 0;
