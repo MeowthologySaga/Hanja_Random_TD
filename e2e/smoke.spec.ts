@@ -1445,3 +1445,48 @@ test("gives ability pills a text column wide enough to read", async ({ page }) =
   }
   await page.screenshot({ path: "artifacts/track-n-ability-pills-1280x720.png" });
 });
+
+/**
+ * 부팅 표시: 걸음마다 이름을 대고, 「0%」 로 멈춘 척하지 않는다.
+ *
+ * 부팅 막은 스쳐 지나가므로 사후 단언으로는 잡히지 않는다. 첫 프레임부터
+ * 걸음 이름과 진행률 문자열을 프레임 단위로 적어 두고, 막이 걷힌 뒤에 그
+ * 기록을 검사한다.
+ */
+test("names every boot step so the bar never reads as stuck", async ({ page }) => {
+  await page.addInitScript(() => {
+    const stages: string[] = [];
+    const percents: string[] = [];
+    let waitingAtFirstPaint: boolean | null = null;
+    Object.assign(window, { __bootWatch: { stages, percents, get waiting() { return waitingAtFirstPaint; } } });
+    const tick = (): void => {
+      const stage = document.getElementById("boot-stage");
+      const percent = document.getElementById("boot-percent");
+      const track = document.getElementById("boot-track");
+      if (waitingAtFirstPaint === null && track) waitingAtFirstPaint = track.classList.contains("is-waiting");
+      if (stage?.textContent && stages[stages.length - 1] !== stage.textContent) stages.push(stage.textContent);
+      if (percent?.textContent && percents[percents.length - 1] !== percent.textContent) percents.push(percent.textContent);
+      if (document.getElementById("boot-loader")) requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  });
+  await page.goto("/?seed=TRACK-N-BOOT");
+  await expect(page.getByTestId("start-run")).toBeVisible({ timeout: 30_000 });
+
+  const readWatch = async (): Promise<{ stages: string[]; percents: string[]; waiting: boolean | null }> =>
+    page.evaluate(() => {
+      const w = (window as unknown as { __bootWatch: { stages: string[]; percents: string[]; waiting: boolean | null } }).__bootWatch;
+      return { stages: [...w.stages], percents: [...w.percents], waiting: w.waiting };
+    });
+  await expect.poll(async () => (await readWatch()).stages.length, { timeout: 30_000 }).toBe(4);
+  const watch = await readWatch();
+
+  // 네 걸음이 모두 제 이름을 대고 지나간다.
+  expect(watch.stages).toEqual(["본문을 펼치는 중", "그림을 들이는 중", "서재를 세우는 중", "서재를 펼치는 중"]);
+  // 셀 수 없는 첫 구간은 빗금으로 살아 있음을 말한다.
+  expect(watch.waiting).toBe(true);
+  // 그리고 「0%」 는 한 프레임도 나오지 않는다 — 그것이 멈춤으로 읽히던 글자다.
+  expect(watch.percents.filter((text) => text.startsWith("0%"))).toEqual([]);
+  // 마지막에 100% 를 말하고, 그때는 정말로 끝났다.
+  expect(watch.percents[watch.percents.length - 1]).toBe("100%");
+});
