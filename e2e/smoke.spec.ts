@@ -379,13 +379,17 @@ test("dismantles a deployed jaryeong straight from the selected card", async ({ 
   await expect(dismantle).toBeVisible();
   // 유일 보유 1기는 보호로 잠기고, 사유는 title 이 말한다.
   await expect(dismantle).toBeDisabled();
-  await expect(dismantle).toHaveAttribute("title", /보호 중/u);
+  // 트랙 J: 사유가 툴팁에만 숨지 않고 라벨로도 선다("분해 불가 — 유일 보유 한자 …").
+  await expect(dismantle).toHaveAttribute("title", /분해 불가 — /u);
+  await expect(dismantle).toContainText("분해 불가");
   // 제련소 [유일 보유 보호] 토글과 같은 ctx 플래그를 끄면 버튼이 열린다.
   await page.evaluate(() => {
     (window as unknown as { __HANJA_CTX_QA__: { dismantleProtectsUnique: boolean } }).__HANJA_CTX_QA__.dismantleProtectsUnique = false;
   });
   await expect(dismantle).toBeEnabled();
-  await expect(dismantle).toHaveText(/^분해 \+\d+문기$/u);
+  // 회수량은 오행 문기 칩으로 붙는다(트랙 J 단위 표기).
+  await expect(dismantle).toContainText("분해");
+  await expect(dismantle).toContainText(/[木火土金水]\s*문기\s*\+\d+/u);
   await expect(page.locator("#tower-count-value")).toHaveText("1 / 16");
   page.once("dialog", (dialog) => {
     expect(dialog.message()).toContain("되돌릴 수 없습니다");
