@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-26T08:58:36+09:00",
+  "generatedAt": "2026-08-26T14:30:00+09:00",
   "rawSources": ".codex_tmp/suno-audio-v033/raw and .codex_tmp/suno-audio-v034/raw (local, Git-ignored)",
   "targets": {
     "bgm": "ffmpeg two-pass loudnorm I=-20:TP=-1.5:LRA=11",
@@ -179,6 +179,123 @@
       "maxPeakDbfs": -0.9,
       "bytes": 190717,
       "sha256": "ff01b5d837ee6f8048784a8078b6390acdd0a2da2b4a38e665ff59ddd89595d1"
+    },
+    {
+      "id": "ui-paper-tab",
+      "kind": "sfx",
+      "file": "assets/audio/sfx/ui-paper-tab.mp3",
+      "durationSeconds": 2.014,
+      "maxPeakDbfs": -0.9,
+      "bytes": 50199,
+      "sha256": "55d8f9eafc20a582e4c03f12d3d99b1ce61e6f9306b466e155e1f7cc4bb2ab58"
+    },
+    {
+      "id": "ui-brush-hover",
+      "kind": "sfx",
+      "file": "assets/audio/sfx/ui-brush-hover.mp3",
+      "durationSeconds": 2.814,
+      "maxPeakDbfs": -0.9,
+      "bytes": 69007,
+      "sha256": "57e4b78aee8167d17d1e24bf0661748025f0be2d9568ecbb623cc17de4564154"
+    },
+    {
+      "id": "ui-seal-stamp",
+      "kind": "sfx",
+      "file": "assets/audio/sfx/ui-seal-stamp.mp3",
+      "durationSeconds": 2.014,
+      "maxPeakDbfs": -1.0,
+      "bytes": 50199,
+      "sha256": "fcc0630c374730ecabc95d6448d56a290adb4f8cf7cea2b7e533e51e06887535"
+    },
+    {
+      "id": "ui-coin-string",
+      "kind": "sfx",
+      "file": "assets/audio/sfx/ui-coin-string.mp3",
+      "durationSeconds": 3.014,
+      "maxPeakDbfs": -0.9,
+      "bytes": 74022,
+      "sha256": "c12cb6cde1d620f56bf52150e25d4433906dbd694a8280932dc657e65bf32e96"
+    },
+    {
+      "id": "ui-ink-drop",
+      "kind": "sfx",
+      "file": "assets/audio/sfx/ui-ink-drop.mp3",
+      "durationSeconds": 2.014,
+      "maxPeakDbfs": -0.9,
+      "bytes": 50199,
+      "sha256": "292d38c99bcb3b22cd30711ed47468b77be48e305685f860b4d1bcd0f306d7e3"
+    },
+    {
+      "id": "ui-scroll-open",
+      "kind": "sfx",
+      "file": "assets/audio/sfx/ui-scroll-open.mp3",
+      "durationSeconds": 2.014,
+      "maxPeakDbfs": -1.1,
+      "bytes": 50199,
+      "sha256": "f27acdf756d434cd6e8e6b64bd845cf85381280e6597b4a6fcc44b9c56ef24c6"
+    },
+    {
+      "id": "ui-scroll-close",
+      "kind": "sfx",
+      "file": "assets/audio/sfx/ui-scroll-close.mp3",
+      "durationSeconds": 2.014,
+      "maxPeakDbfs": -1.0,
+      "bytes": 50199,
+      "sha256": "9f8ee0cf33262d40d9bcb7d1acf69c676c2378ec767b848b937e306778e1cb1c"
+    },
+    {
+      "id": "ui-locked-thud",
+      "kind": "sfx",
+      "file": "assets/audio/sfx/ui-locked-thud.mp3",
+      "durationSeconds": 2.414,
+      "maxPeakDbfs": -1.0,
+      "bytes": 59603,
+      "sha256": "414bd69b0d8b85f529b76e7e773f09e5097fe95fc9c9ec52bf21271bb5547fe4"
+    },
+    {
+      "id": "fx-enemy-dissolve",
+      "kind": "sfx",
+      "file": "assets/audio/sfx/fx-enemy-dissolve.mp3",
+      "durationSeconds": 4.414,
+      "maxPeakDbfs": -1.0,
+      "bytes": 107250,
+      "sha256": "5edf4ca85e3f3f481f03f4f6d6eaf9532a658a39382f86fa51a9e29195b67383"
+    },
+    {
+      "id": "fx-idiom-seal",
+      "kind": "sfx",
+      "file": "assets/audio/sfx/fx-idiom-seal.mp3",
+      "durationSeconds": 2.014,
+      "maxPeakDbfs": -1.2,
+      "bytes": 50199,
+      "sha256": "3340ed7ae462a8e0f66c6dbe6fe19dba2d9da2a8a8db58fee520f40b75ba95af"
+    },
+    {
+      "id": "fx-formation-unlock",
+      "kind": "sfx",
+      "file": "assets/audio/sfx/fx-formation-unlock.mp3",
+      "durationSeconds": 2.374,
+      "maxPeakDbfs": -0.9,
+      "bytes": 58349,
+      "sha256": "9e817b64aef9f573c3bed66ed3e6afd8303aa8bd262dee3d435161e71befb6e5"
+    },
+    {
+      "id": "fx-star-ascend",
+      "kind": "sfx",
+      "file": "assets/audio/sfx/fx-star-ascend.mp3",
+      "durationSeconds": 4.894,
+      "maxPeakDbfs": -0.9,
+      "bytes": 119162,
+      "sha256": "8bca601d39030bd3cd3284b838f291aebe35e1854e7ab436a2518f0862075515"
+    },
+    {
+      "id": "fx-boss-drum",
+      "kind": "sfx",
+      "file": "assets/audio/sfx/fx-boss-drum.mp3",
+      "durationSeconds": 3.614,
+      "maxPeakDbfs": -1.1,
+      "bytes": 88442,
+      "sha256": "038a4755007f6e0f431338a82faee278fdce31b5bcd07f001c7dbae87b5ba1c5"
     }
   ]
 }

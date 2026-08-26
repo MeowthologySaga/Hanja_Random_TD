@@ -230,6 +230,176 @@
       "durationSeconds": 4.414,
       "use": "defeat result",
       "sourceId": "93c4a557-c4fc-4774-b077-fb2737b6ebda"
+    },
+    {
+      "id": "ui-paper-tab",
+      "kind": "sfx",
+      "title": "Paper Tab Switch",
+      "file": "assets/audio/sfx/ui-paper-tab.mp3",
+      "prompt": "Codex SFX v3 pack; see handoff/to-claude/sfx-v3-audio-pack-v1/PROMPTS_ACTUAL.md",
+      "sunoMode": "Sounds One-Shot v5.5",
+      "format": "MP3",
+      "durationSeconds": 2.014,
+      "use": "하단 패널 탭 전환",
+      "sourceId": "5a9161a5-29b0-49da-8356-0174659f72c8"
+    },
+    {
+      "id": "ui-brush-hover",
+      "kind": "sfx",
+      "title": "Brush Hover",
+      "file": "assets/audio/sfx/ui-brush-hover.mp3",
+      "prompt": "Codex SFX v3 pack; see handoff/to-claude/sfx-v3-audio-pack-v1/PROMPTS_ACTUAL.md",
+      "sunoMode": "Sounds One-Shot v5.5",
+      "format": "MP3",
+      "durationSeconds": 2.814,
+      "use": "버튼 hover·키보드 포커스",
+      "sourceId": "87837d8b-c2ea-4880-afe3-17cb253a1071"
+    },
+    {
+      "id": "ui-seal-stamp",
+      "kind": "sfx",
+      "title": "Seal Stamp Confirm",
+      "file": "assets/audio/sfx/ui-seal-stamp.mp3",
+      "prompt": "Codex SFX v3 pack; see handoff/to-claude/sfx-v3-audio-pack-v1/PROMPTS_ACTUAL.md",
+      "sunoMode": "Sounds One-Shot v5.5",
+      "format": "MP3",
+      "durationSeconds": 2.014,
+      "use": "액션 성공 확정 인장",
+      "sourceId": "f424b4d8-2ee4-44c8-baa0-f37ad16aeefc"
+    },
+    {
+      "id": "ui-coin-string",
+      "kind": "sfx",
+      "title": "Coin String",
+      "file": "assets/audio/sfx/ui-coin-string.mp3",
+      "prompt": "Codex SFX v3 pack; see handoff/to-claude/sfx-v3-audio-pack-v1/PROMPTS_ACTUAL.md",
+      "sunoMode": "Sounds One-Shot v5.5",
+      "format": "MP3",
+      "durationSeconds": 3.014,
+      "use": "소환 비용 차감",
+      "sourceId": "6f1d2809-6d80-498c-8ad7-682a7e13878c"
+    },
+    {
+      "id": "ui-ink-drop",
+      "kind": "sfx",
+      "title": "Ink Drop Placement",
+      "file": "assets/audio/sfx/ui-ink-drop.mp3",
+      "prompt": "Codex SFX v3 pack; see handoff/to-claude/sfx-v3-audio-pack-v1/PROMPTS_ACTUAL.md",
+      "sunoMode": "Sounds One-Shot v5.5",
+      "format": "MP3",
+      "durationSeconds": 2.014,
+      "use": "유효 셀 배치 완료",
+      "sourceId": "246494d2-35eb-4c07-9b85-796a90790a2b"
+    },
+    {
+      "id": "ui-scroll-open",
+      "kind": "sfx",
+      "title": "Scroll Open",
+      "file": "assets/audio/sfx/ui-scroll-open.mp3",
+      "prompt": "Codex SFX v3 pack; see handoff/to-claude/sfx-v3-audio-pack-v1/PROMPTS_ACTUAL.md",
+      "sunoMode": "Sounds One-Shot v5.5",
+      "format": "MP3",
+      "durationSeconds": 2.014,
+      "use": "도감·모달 열림",
+      "sourceId": "3cba9722-7fef-498e-ba14-09b29e0d4acf"
+    },
+    {
+      "id": "ui-scroll-close",
+      "kind": "sfx",
+      "title": "Scroll Close",
+      "file": "assets/audio/sfx/ui-scroll-close.mp3",
+      "prompt": "Codex SFX v3 pack; see handoff/to-claude/sfx-v3-audio-pack-v1/PROMPTS_ACTUAL.md",
+      "sunoMode": "Sounds One-Shot v5.5",
+      "format": "MP3",
+      "durationSeconds": 2.014,
+      "use": "도감·모달 닫힘",
+      "sourceId": "91af25ee-65cc-46e3-8595-c199829001f9"
+    },
+    {
+      "id": "ui-locked-thud",
+      "kind": "sfx",
+      "title": "Locked Thud",
+      "file": "assets/audio/sfx/ui-locked-thud.mp3",
+      "prompt": "Codex SFX v3 pack; see handoff/to-claude/sfx-v3-audio-pack-v1/PROMPTS_ACTUAL.md",
+      "sunoMode": "Sounds One-Shot v5.5",
+      "format": "MP3",
+      "durationSeconds": 2.414,
+      "use": "잠김·자원 부족 액션",
+      "sourceId": "eeeb460f-41d0-4983-90cb-bf35ae04c59e"
+    },
+    {
+      "id": "fx-enemy-dissolve",
+      "kind": "sfx",
+      "title": "Enemy Dissolve",
+      "file": "assets/audio/sfx/fx-enemy-dissolve.mp3",
+      "prompt": "Codex SFX v3 pack; see handoff/to-claude/sfx-v3-audio-pack-v1/PROMPTS_ACTUAL.md",
+      "sunoMode": "Sounds One-Shot v5.5",
+      "format": "MP3",
+      "durationSeconds": 4.414,
+      "use": "적 처치 소멸 연출",
+      "sourceId": "d3c018fb-db5c-44c0-b280-3eab66113876"
+    },
+    {
+      "id": "fx-idiom-seal",
+      "kind": "sfx",
+      "title": "Idiom Seal",
+      "file": "assets/audio/sfx/fx-idiom-seal.mp3",
+      "prompt": "Codex SFX v3 pack; see handoff/to-claude/sfx-v3-audio-pack-v1/PROMPTS_ACTUAL.md",
+      "sunoMode": "Sounds One-Shot v5.5",
+      "format": "MP3",
+      "durationSeconds": 2.014,
+      "use": "사자성어 4글자 완성",
+      "sourceId": "cf52a544-596c-46b4-a239-82b17186d6ba"
+    },
+    {
+      "id": "fx-formation-unlock",
+      "kind": "sfx",
+      "title": "Formation Unlock",
+      "file": "assets/audio/sfx/fx-formation-unlock.mp3",
+      "prompt": "Codex SFX v3 pack; see handoff/to-claude/sfx-v3-audio-pack-v1/PROMPTS_ACTUAL.md",
+      "sunoMode": "Sounds One-Shot v5.5",
+      "format": "MP3",
+      "durationSeconds": 2.374,
+      "use": "오행진 단계 해금",
+      "sourceId": "3c2fda2c-b42c-4b26-b785-daef82421c48"
+    },
+    {
+      "id": "fx-star-ascend",
+      "kind": "sfx",
+      "title": "Star Ascend",
+      "file": "assets/audio/sfx/fx-star-ascend.mp3",
+      "prompt": "Codex SFX v3 pack; see handoff/to-claude/sfx-v3-audio-pack-v1/PROMPTS_ACTUAL.md",
+      "sunoMode": "Sounds One-Shot v5.5",
+      "format": "MP3",
+      "durationSeconds": 4.894,
+      "use": "캐주얼 별 승급",
+      "sourceId": "ae5cdbe8-15da-4093-b6cd-a2c897a6efa3"
+    },
+    {
+      "id": "fx-boss-drum",
+      "kind": "sfx",
+      "title": "Boss Drum",
+      "file": "assets/audio/sfx/fx-boss-drum.mp3",
+      "prompt": "Codex SFX v3 pack; see handoff/to-claude/sfx-v3-audio-pack-v1/PROMPTS_ACTUAL.md",
+      "sunoMode": "Sounds One-Shot v5.5",
+      "format": "MP3",
+      "durationSeconds": 3.614,
+      "use": "보스 등장 연출",
+      "sourceId": "c6d16ca5-e659-4f72-84ab-aede4ab3172b"
+    }
+  ],
+  "packs": [
+    {
+      "name": "suno-audio-v033",
+      "generatedAt": "2026-08-25",
+      "assets": 17
+    },
+    {
+      "name": "sfx-v3-audio-pack-v1",
+      "generatedAt": "2026-08-26",
+      "assets": 13,
+      "source": "handoff/to-claude/sfx-v3-audio-pack-v1",
+      "normalization": "44.1 kHz stereo MP3 192 kbps; metadata removed; peak -1.2..-0.9 dBFS"
     }
   ]
 }
