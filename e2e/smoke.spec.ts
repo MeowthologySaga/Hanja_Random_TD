@@ -1199,6 +1199,15 @@ test("opens the rules and exposes synthesis keyboard guidance", async ({ page })
 
   await page.locator("#help-tab-summon").click();
   await expect(page.locator("#help-panel-summon")).toContainText("자동배치");
+  // gripe #10 — 확률 공개: 소프트 상한 문구와 티어별 확률표(% 수치)가 서 있다.
+  await expect(page.locator("#help-panel-summon")).toContainText("주로 1~3★");
+  await expect(page.locator("#help-panel-summon")).toContainText("아주 낮은 확률");
+  const oddsRows = page.locator("#help-panel-summon .help-odds .help-odds-row");
+  await expect(oddsRows).toHaveCount(4); // 머리행 + 기본·중급·고급
+  await expect(oddsRows.nth(1)).toContainText("%");
+  // 기본 소환 행: 1★ 최빈(53%) + 8★ 로또 꼬리(0.0004%)까지 여덟 칸 전부 수치가 있다.
+  await expect(oddsRows.nth(1).locator("span")).toHaveCount(8);
+  await expect(oddsRows.nth(1).locator("span.is-tail")).toHaveCount(5);
   await page.locator("#help-tab-growth").click();
   await expect(page.locator("#help-panel-growth")).toContainText("능력 조합");
   await page.locator("#help-tab-idiom").click();
@@ -1242,11 +1251,18 @@ test("teaches summon tiers and the stroke-to-star rule with one-shot hints", { t
   await page.goto("/?seed=HINT-E2E-01");
   await page.getByTestId("start-run").click();
 
-  // 중급 소환(2~5★)이 열려 있는 순간 — 카드가 링으로 짚인다.
+  // 중급 소환(2★ 확정 · 주로 2~5★)이 열려 있는 순간 — 카드가 링으로 짚인다.
   await expect(page.locator("#hint-layer")).toBeVisible();
   await expect(page.locator("#hint-title")).toContainText("별 확률");
+  await expect(page.locator("#hint-body")).toContainText("확정, 주로");
   await page.locator("#hint-dismiss").click();
   await expect(page.locator("#hint-layer")).toBeHidden();
+
+  // gripe #10 — 확률 공개: 밴드 카드 툴팁에 엔진 분포에서 계산한 % 확률 줄이 붙고,
+  // 카드 문구는 "하한 확정 + 주로 밴드"로 소프트 상한을 광고한다.
+  await expect(page.getByTestId("summon-button")).toHaveAttribute("title", /확률 1★ \d+% · .*4★\+ \d+(?:\.\d+)?%/u);
+  await expect(page.locator('[data-summon-product="midstar"]')).toContainText("2★ 확정");
+  await expect(page.locator('[data-summon-product="midstar"]')).toHaveAttribute("title", /확률 2★ \d+%/u);
 
   // 첫 소환 공개 연출 위에 획수→별 규칙 안내가 1회 선다.
   await page.getByTestId("summon-button").click();

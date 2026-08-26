@@ -99,3 +99,76 @@
   font-size: 9.5px;
   font-weight: 700;
 }
+
+/* ── gripe #10 — 소프트 상한 시각화 + 티어별 별 확률표.
+   is-tail: 밴드 상한 위 잭팟 꼬리 칸. 켜진 칸(is-on)의 별색을 아주 옅게만
+   남겨 "나오긴 하되 아주 드묾"을 색으로 말한다. */
+#help-dialog .help-band-track i.is-tail {
+  color: #4a3f28 !important;
+  background: color-mix(in srgb, var(--star, #d6a23a) 16%, rgba(122, 90, 42, 0.1));
+  box-shadow: inset 0 0 0 1px rgba(122, 90, 42, 0.3);
+}
+
+/* 확률표 — 획수→별 구간표와 같은 한지 우물. 수치는 templates.ts 가
+   casualSummonStarDistribution 에서 계산해 채운다(문구 하드코딩 금지). */
+#help-dialog .help-odds {
+  display: grid;
+  gap: 4px;
+  padding: 9px 10px;
+  border-radius: var(--r-md);
+  background: var(--mat-well);
+  box-shadow: var(--bevel-in), 0 0 0 1px rgba(122, 90, 42, 0.26);
+}
+
+#help-dialog .help-odds-row {
+  display: grid;
+  grid-template-columns: 96px repeat(8, minmax(0, 1fr));
+  gap: 3px;
+  align-items: stretch;
+}
+
+#help-dialog .help-odds-row > b {
+  align-self: center;
+  color: var(--text-100) !important;
+  font-size: 11.5px;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+}
+
+#help-dialog .help-odds-row > span {
+  display: grid;
+  place-items: center;
+  min-height: 17px;
+  padding: 2px 1px;
+  color: #4a3f28 !important;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  border-radius: 3px;
+  background: rgba(122, 90, 42, 0.08);
+  box-shadow: inset 0 0 0 1px rgba(122, 90, 42, 0.16);
+}
+
+#help-dialog .help-odds-row.is-head > span {
+  color: #241c0e !important;
+  font-size: 11px;
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--star, #d6a23a) 60%, #fff8e8) 0%,
+    color-mix(in srgb, var(--star, #d6a23a) 46%, #8a682c) 100%
+  );
+  box-shadow: inset 0 0 0 1px rgba(70, 52, 20, 0.4);
+}
+
+#help-dialog .help-odds-row > span.is-on {
+  color: #241c0e !important;
+  background: color-mix(in srgb, var(--star, #d6a23a) 24%, #f0e6cc);
+  box-shadow: inset 0 0 0 1px rgba(70, 52, 20, 0.32);
+}
+
+/* 꼬리 칸은 켜진 칸보다 옅다 — 표에서도 "확 떨어짐"이 색으로 보인다. */
+#help-dialog .help-odds-row > span.is-tail {
+  color: #43371f !important;
+  background: color-mix(in srgb, var(--star, #d6a23a) 10%, rgba(122, 90, 42, 0.08));
+  box-shadow: inset 0 0 0 1px rgba(122, 90, 42, 0.24);
+}

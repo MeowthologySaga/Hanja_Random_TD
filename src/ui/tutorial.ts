@@ -158,7 +158,7 @@ const STEPS: readonly TutorialStep[] = [
     view: () => ({
       target: '[data-summon-product="balanced"]',
       title: "첫 자령을 뽑아 보세요",
-      body: "[기본 소환]을 누르면 한자를 품은 자령이 나와요. 획이 많은 한자일수록 별이 높고, 기본 소환은 1~3★에서 나와요.",
+      body: "[기본 소환]을 누르면 한자를 품은 자령이 나와요. 획이 많은 한자일수록 별이 높고, 기본 소환은 주로 1~3★이 나와요.",
       control: "click"
     }),
     allow: () => ['[data-summon-product="balanced"]'],
@@ -263,7 +263,7 @@ const STEPS: readonly TutorialStep[] = [
       ? {
         target: '[data-summon-product="midstar"]',
         title: "더 높은 별을 노려 보세요",
-        body: "소환마다 별 구간이 달라요 — 기본 1~3★ · 중급 2~5★ · 고급 3~8★. 중급 소환 값은 드렸으니 한 번 뽑아 보세요.",
+        body: "소환마다 별 확률이 달라요 — 기본 주로 1~3★ · 중급 2★ 확정 · 고급 3★ 확정. 아주 가끔은 구간 위 별도 터져요. 중급 소환 값은 드렸으니 한 번 뽑아 보세요.",
         control: "click"
       }
       : {

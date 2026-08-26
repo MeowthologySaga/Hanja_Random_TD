@@ -65,6 +65,53 @@ export interface SummonStarBand {
   readonly max: number;
 }
 
+/**
+ * 밴드 안에서 별이 하나 오를 때마다 곱해지는 감쇠. 밴드 하한이 가장 흔하고
+ * 상한이 가장 귀하다. 글자 수(1★ 332자 · 8★ 18자)에 눌리지 않도록 별 단위
+ * 목표 분포로 먼저 나눈 뒤 같은 별의 글자들이 그 몫을 나눠 갖는다.
+ */
+export const CASUAL_STAR_DECAY = 0.55;
+
+/**
+ * 밴드 상한 위 "잭팟 꼬리" 감쇠 — 원 기획 복원(gripe #10).
+ *
+ * 하한은 하드다("2★ 확정"의 확정은 하한 보장). 상한만 소프트여서, 기본
+ * 소환도 아주 낮은 확률로 상한 위 별이 나온다 — 별이 오를수록 확률이 확
+ * 떨어진다. 상한 초과 별은 [상한 몫 × 이 값^(초과 칸수)]를 받는다.
+ * 0.12 기준 기본 소환(1~3★ 밴드): 4★ 1.9% · 5★ 0.23% · 8★ 0.0004%(로또).
+ */
+export const CASUAL_STAR_TAIL_DECAY = 0.12;
+
+/**
+ * 별 하나가 받는 목표 분포 몫(정규화 전). 하한 밑은 0(하드), 밴드 안은
+ * `CASUAL_STAR_DECAY^(별-하한)`, 상한 위는 상한 몫에 꼬리 감쇠를 곱해 8★까지 잇는다.
+ */
+export function casualStarBandShare(star: number, band: SummonStarBand): number {
+  const min = band.min;
+  const max = Math.max(band.min, band.max);
+  if (star < min) return 0;
+  if (star <= max) return Math.pow(CASUAL_STAR_DECAY, star - min);
+  return Math.pow(CASUAL_STAR_DECAY, max - min) * Math.pow(CASUAL_STAR_TAIL_DECAY, star - max);
+}
+
+/**
+ * 소환 별 분포표(1~8★, 합 1). 확률 공개 UI·보고의 단일 원천 — 수치를 문구에
+ * 하드코딩하지 말고 반드시 여기서 계산해 렌더한다(상수를 바꾸면 표가 따라온다).
+ * `presentStars` 를 주면 실제 후보가 있는 별만 남겨 재정규화하므로
+ * `GameEngine.applyStarBandDecay` 가 만드는 실측 분포와 정확히 일치한다.
+ */
+export function casualSummonStarDistribution(
+  band: SummonStarBand,
+  presentStars?: ReadonlySet<number>
+): ReadonlyArray<{ star: CasualStar; share: number }> {
+  const rows = ([1, 2, 3, 4, 5, 6, 7, 8] as CasualStar[]).map((star) => ({
+    star,
+    share: presentStars !== undefined && !presentStars.has(star) ? 0 : casualStarBandShare(star, band)
+  }));
+  const total = rows.reduce((sum, row) => sum + row.share, 0);
+  return rows.map((row) => ({ star: row.star, share: total > 0 ? row.share / total : 0 }));
+}
+
 export function interestForGold(gold: number): number {
   return Math.min(20, Math.max(0, Math.floor(gold / 20)));
 }
