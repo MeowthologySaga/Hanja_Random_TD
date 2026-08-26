@@ -10,6 +10,7 @@ import { syncEssenceFeedback } from "./essence-feedback";
 import { processEvent } from "./events";
 import { syncOneShotHints } from "./hint";
 import { showToast, syncPanel } from "./hud";
+import { syncScrollAffordances } from "./scroll-affordance";
 import { showCasualFusionReveal, showSummonReveal } from "./summon-reveal";
 
 /**
@@ -83,6 +84,8 @@ export function frame(now: number): void {
   // 일시정지 중에는 이펙트도 0 으로 굴려 "적은 멈췄는데 탄만 난다"를 막는다.
   drawWorld(paused ? 0 : delta);
   syncPanel();
+  // 접힘 신호는 패널을 다시 그린 "뒤"에 재야 방금 바뀐 내용 높이를 읽는다.
+  syncScrollAffordances();
   syncCoachProgress();
   // 1회성 안내는 코치보다 뒤에서 판정한다 — 코치가 떠 있으면 항상 기다린다.
   syncOneShotHints();

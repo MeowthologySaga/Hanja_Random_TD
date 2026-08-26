@@ -1,0 +1,96 @@
+/* ══════════════════════════════════════════════════════════════════
+   [트랙 R] 절 111. 스크롤 접힘 신호 — 공용 처방 1벌
+   플레이테스트 감사 P-02·P-04·P-05·P-06.
+
+   실측(감사 원문 + 재현): 스크롤 면 6곳의 스크롤바 폭이 0px 이라 "아래에 더
+   있다"를 알 길이 없었다. 자령 탭 `#selected-card` 219~328px(능력 카드 4장과
+   [전체 설명] 버튼 전부), 3체 조합 `#evolution-options` 367px, 설정
+   다이얼로그 191~196px(효과음 음량 줄 전체), 성어 탭 `#idiom-scroll` 178px,
+   상점 `#shop-scroll` 51px 이 접힘 아래 숨어 있었다.
+
+   원인은 감사가 지목한 전역 `* { scrollbar-width: thin }` 이 아니라 두 겹이다.
+   실측으로 갈라 두었다(합성 div 로 같은 문서 안에서 잰 값).
+
+     · 폭 0px 의 진짜 원인 — 오버레이 스크롤바.
+       헤드리스 크롬 151: `overflow:auto` 만으로는 `scrollbar-width` 를 무엇으로
+       주든 gutter 0px(auto·thin·initial 전부 0). `scrollbar-gutter: stable`
+       을 걸어야 비로소 자리가 생긴다(thin 10px · auto 15px).
+       헤드풀 크롬 151: 전역 thin 이 먹어 10px. 두 환경을 한 값으로 맞추려면
+       역시 `scrollbar-gutter: stable` 이 필요하다.
+
+     · `::-webkit-scrollbar` 규칙이 죽은 원인 — 전역 `scrollbar-color`.
+       크로미엄은 표준 `scrollbar-color` 가 서 있는 요소의 웹킷 의사요소를
+       통째로 무시한다. 헤드풀 실측: `scrollbar-width:auto` 는 15px 인데
+       `scrollbar-color:auto` 를 같이 주면 8px(= 전역 `*::-webkit-scrollbar`
+       의 값)로 되살아난다. 그래서 `.selected-card::-webkit-scrollbar{width:7px}`
+       (styles.css 3166) 는 처음부터 아무 일도 하지 않았다.
+       → 폭·색은 표준 속성으로만 정한다. 웹킷 규칙은 건드리지 않고 둔다.
+
+   처방은 두 겹이다.
+     ① 넘칠 때만 스크롤바 자리를 고정한다(`data-scrollable`, ui/scroll-affordance.ts).
+        늘 고정하면 넘치지도 않는 면이 폭 10px 을 영구히 헌납한다.
+     ② 아래에 내용이 남아 있을 때만 하단 페이드 + `▾` 를 세운다
+        (`data-scroll-more`). 끝까지 내리면 저절로 걷힌다.
+   ══════════════════════════════════════════════════════════════════ */
+
+/* 면마다 종이색이 조금씩 다르므로 페이드도 그 색이어야 "회색 띠"가 아니라
+   "종이가 이어진다"로 읽힌다. 기본값은 선택 카드 한지, 나머지는 아래에서 되짚는다. */
+.scroll-surface {
+  --scroll-fade: 231, 219, 188;
+  --scroll-hint-ink: #6b4d1d;
+}
+
+#evolution-options.scroll-surface,
+#growth-dismantle-list.scroll-surface {
+  --scroll-fade: 222, 209, 176;
+}
+
+/* flex 세로 면은 칸 간격이 곧 의사요소의 추가 높이다 — 실측 6px. */
+#shop-scroll.scroll-surface,
+#idiom-scroll.scroll-surface {
+  --scroll-hint-gap: 6px;
+}
+
+/* 다이얼로그도 한지다(060-hanji-theme: `#f6eed9 → #eadfc1 → #dbcdab`) —
+   먹빛으로 잡았다가 종이 위에 검은 띠가 서는 것을 실측으로 잡아 바닥색에 맞췄다. */
+#settings-dialog.scroll-surface {
+  --scroll-fade: 219, 205, 171;
+}
+
+/* ① 넘치는 동안에만 자리를 고정한다. 색은 표준 속성으로만 — 위 머리말 참조.
+   thin 은 10px 로, 전역 금박보다 한 단계 진하게 잡아 한지 위에서도 보인다. */
+.scroll-surface[data-scrollable="1"] {
+  scrollbar-width: thin;
+  scrollbar-color: var(--gold-500) rgba(88, 68, 34, 0.22);
+  scrollbar-gutter: stable;
+}
+
+/* ② 하단 페이드 + ▾.
+   높이 0 인 sticky 의사요소로 그린다 — 그림자와 transform 은 레이아웃에도
+   스크롤 넘침 계산에도 잡히지 않으므로, 신호를 켜는 것이 스크롤 길이를 늘려
+   신호가 안 꺼지는 되먹임이 원천적으로 생기지 않는다. */
+.scroll-surface[data-scroll-more="1"]::after {
+  content: "▾";
+  position: sticky;
+  z-index: 6;
+  bottom: 0;
+  display: block;
+  /* 격자 면(#selected-card)에서는 의사요소도 칸 하나를 차지한다 — 첫 열에만
+     띠가 서서 ▾ 가 왼쪽으로 쏠렸다(실측). 줄 전체를 쓰게 못박는다. */
+  grid-column: 1 / -1;
+  width: 100%;
+  height: 0;
+  /* 높이가 0 이어도 flex/grid 면에서는 "칸 사이 간격" 한 벌이 새로 붙는다.
+     상점은 P-17 이 은닉 0px 을 목표로 하는 면이라 그 6px 이 곧 걸쇠가 된다
+     (신호가 만든 6px 이 다시 신호를 세우는 latch). 간격만큼 되당긴다. */
+  margin: calc(-1 * var(--scroll-hint-gap, 0px)) 0 0;
+  color: var(--scroll-hint-ink);
+  box-shadow:
+    0 0 14px 9px rgb(var(--scroll-fade)),
+    0 -10px 16px 2px rgba(var(--scroll-fade), 0.72);
+  font-size: 13px;
+  line-height: 0;
+  text-align: center;
+  pointer-events: none;
+  transform: translateY(-8px);
+}
