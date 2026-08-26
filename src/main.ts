@@ -686,10 +686,10 @@ app.innerHTML = `
         <div class="help-quickstart"><b>처음이라면</b><span><i>①</i> 소환(1키)으로 자령 뽑기</span><span><i>②</i> 첫 오행진이 무료로 열림</span><span><i>③</i> 시작 버튼으로 웨이브 개시</span><small class="help-glossary">자령=타워 · 엽전=골드 · 문기=오행 재료 · 濃=농축 단계(최고 3) · 봉인=적 처치, 또는 사자성어 발동</small></div>
         <ol>
           <li><b>소환</b><span>지역별 1단계 한자를 품은 자령이 무작위로 나옵니다. 목표에 모자란 재료는 뽑을수록 확률이 올라갑니다.</span></li>
-          <li><b>목적 소환</b><span>네 가지 중 하나를 고릅니다. <em>균형</em>은 목표와 성어 재료를 고루 섞고, <em>탐색</em>은 아직 못 본 한자를 우선하며, <em>계보</em>는 목표 계보의 재료만 노리고(12회마다 재료 1기 보장 · 30회 누적 시 확정 지급), <em>중복 수집</em>은 농축과 분해에 쓸 보유 한자를 다시 부릅니다.</span></li>
+          <li><b>목적 소환</b><span>네 가지 중 하나를 고릅니다. <em>균형</em>은 목표와 성어 재료를 고루 섞고, <em>탐색</em>은 아직 못 본 한자를 우선하며, <em>계보</em>는 목표 계보의 재료만 노리고(12회마다 재료 1기 보장 · 30회 누적 시 확정 지급), <em>중복 수집</em>은 농축과 분해에 쓸 보유 한자를 다시 부릅니다. 별승급 진법에서는 상품마다 나오는 별 구간이 정해져 있습니다 — <em>기본·탐색·중복</em> 1~3★, <em>중급</em> 2~5★, <em>고급</em> 3~8★ 이며 구간 안에서도 낮은 별이 더 흔합니다. 상위 별은 뽑기가 아니라 3기 조합으로 올립니다.</span></li>
           <li><b>오행 공명</b><span>같은 진에 그 진의 오행 자령을 4·8·12·16기 모으면 단계가 올라가고, 단계마다 그 진의 피해가 더해집니다. 자동배치가 알려 주는 "오행 공명 N→M단계"가 이 값입니다.</span></li>
           <li><b>인연 연구</b><span>엽전을 들여 목표 재료가 나올 가중치를 올립니다. 최고 5단계이며 각 단계는 정해진 웨이브를 지나야 열립니다(3키).</span></li>
-          <li><b>10연 소환</b><span>10웨이브를 지키면 개방됩니다. Q키 또는 10연 버튼으로 현재 소환 비용 10회를 한 번에 지불합니다.</span></li>
+          <li><b>10연 소환</b><span>10웨이브를 지키면 개방됩니다. Q키 또는 10연 버튼으로 현재 소환 비용 10회를 한 번에 지불합니다. 별승급 진법에서는 열 장 안에 기본 밴드 상단인 3★ 1기가 보장됩니다.</span></li>
           <li><b>합성</b><span>실제 구성식의 재료를 모두 보유하면 조합 서책에 카드가 열립니다. 木+木처럼 같은 글자 두 개도 각각 필요합니다.</span></li>
           <li><b>별승급 진법</b><span>천자문 실제 획수로 기본 별이 정해집니다. 같은 오행·같은 현재 별 자령 3기를 고르면 3기가 모두 사라지고 같은 오행의 다음 별 자령 1기를 무작위로 얻으며 최고 8성입니다. 잠금·농축·목표·사자성어 자령은 소모 대상에서 빠집니다.</span></li>
           <li><b>방식</b><span>반자동은 가능한 조합만 제안합니다. 목표 자동은 목표 경로의 조합만 자동 실행하며, 수동은 선택한 한자가 포함된 조합만 봅니다.</span></li>
@@ -2324,8 +2324,8 @@ interface SummonProductMeta {
 // 두 티어가 같은 별 아이콘을 쓰면 색만이 유일한 구분이 되어 색각 차이에서 무너진다.
 const SUMMON_PRODUCTS: readonly SummonProductMeta[] = Object.freeze([
   { intent: "balanced", label: "기본 소환", effect: "전체 풀", tint: "#a8791f", icon: "v4/shop/shop-default-coin-v1" },
-  { intent: "midstar", label: "중급 소환", effect: "2★ 이상 확정", tint: "#306f89", icon: "v5/shop/shop-tier-mid-v1" },
-  { intent: "highstar", label: "고급 소환", effect: "3★ 이상 확정", tint: "#af3629", icon: "v5/shop/shop-tier-high-v1" },
+  { intent: "midstar", label: "중급 소환", effect: "2~5★ 확정", tint: "#306f89", icon: "v5/shop/shop-tier-mid-v1" },
+  { intent: "highstar", label: "고급 소환", effect: "3~8★ 확정", tint: "#af3629", icon: "v5/shop/shop-tier-high-v1" },
   { intent: "discovery", label: "탐색 소환", effect: "새 한자 ×3.4", tint: "#3f7d6e", icon: "v4/shop/shop-explore-compass-lantern-v1" },
   { intent: "lineage", label: "계보 소환", effect: "목표·성어 재료 ×3.2", tint: "#3a5794", icon: "v4/shop/shop-lineage-scroll-v1" },
   { intent: "concentration", label: "중복 소환", effect: "보유 중복 ↑ · 농축 재료", tint: "#9a6d16", icon: "v4/shop/shop-duplicate-cards-v1" }
@@ -2376,24 +2376,30 @@ function renderSummonShop(): void {
   const products = SUMMON_PRODUCTS
     .filter((product) => engine.isSummonProductAvailable(product.intent))
     .map((product) => {
-      // 좁은 지역 풀에서는 보장 별이 한 단계 내려간다. 카드 문구도 실효 값을 따른다.
-      const floor = engine.summonTierFloor(product.intent);
-      return floor === null ? product : { ...product, effect: `${floor}★ 이상 확정` };
+      // 좁은 지역 풀에서는 밴드 하한이 한 단계 내려간다. 카드 문구도 실효 밴드를 따른다.
+      const band = engine.summonStarBand(product.intent);
+      if (band === null) return { ...product, band: null, bandLabel: "" };
+      const bandLabel = `${band.min}~${band.max}★${band.min > 1 ? " 확정" : ""}`;
+      // 탐색·중복은 밴드가 아니라 가중이 정체성이므로 효과 문구를 그대로 두고
+      // 밴드는 툴팁으로만 알린다. 기본·티어는 밴드 자체가 상품 설명이다.
+      const showsBand = product.intent === "balanced" || band.min > 1;
+      return { ...product, band, bandLabel, effect: showsBand ? bandLabel : product.effect };
     });
-  const casualTier = state.mode === "casual";
+  // 10연은 균형 밴드를 그대로 쓰므로 보장선도 그 상한(기본 3★)이다.
+  const multiBand = engine.summonStarBand("balanced");
   const key = `${state.mode}|${base}|${tenCost}|${multiUnlocked ? "10" : "-"}|${state.gold}|${active ? "on" : "off"}`
+    + `|${multiBand === null ? "-" : multiBand.max}`
     + `|${products.map((product) => `${product.intent}:${product.effect}`).join(",")}`;
   if (key === summonShopRenderKey) return;
   summonShopRenderKey = key;
   const cards = products.map((product) => {
     const price = base + SUMMON_SURCHARGE[product.intent];
     const affordable = state.gold >= price;
-    const tiered = casualTier && (product.intent === "balanced" || engine.summonTierFloor(product.intent) !== null);
-    const effect = tiered && product.intent === "balanced" ? "전체 풀 · 짝 맞춤 보정" : product.effect;
+    const banded = product.band !== null;
     return summonCardMarkup({
       key: product.intent,
       label: product.label,
-      effect,
+      effect: product.effect,
       tint: product.tint,
       icon: product.icon,
       price: `${price} 엽전`,
@@ -2403,13 +2409,14 @@ function renderSummonShop(): void {
       testId: product.intent === "balanced" ? "summon-button" : undefined,
       title: `${product.label} · ${product.effect} · ${price}엽전`
         + (product.intent === "balanced" ? "" : ` (기본 ${base} + 목적 ${SUMMON_SURCHARGE[product.intent]})`)
-        + (tiered ? ` · ${PAIR_BOOST_NOTE}` : "")
+        + (banded && product.effect !== product.bandLabel ? ` · ${product.bandLabel}` : "")
+        + (banded ? ` · 낮은 별이 더 흔합니다 · ${PAIR_BOOST_NOTE}` : "")
     });
   });
   cards.push(summonCardMarkup({
     key: "multi",
     label: "10연 소환",
-    effect: multiUnlocked ? "기본 확률 10회" : "10웨이브에 개방",
+    effect: multiUnlocked ? (multiBand === null ? "기본 확률 10회" : `${multiBand.max}★ 1기 보장`) : "10웨이브에 개방",
     tint: "#a8791f",
     icon: "v4/shop/shop-ten-pull-coin-bundle-v1",
     price: multiUnlocked ? `${tenCost} 엽전` : "10W 개방",
@@ -2418,7 +2425,10 @@ function renderSummonShop(): void {
     hotkey: "Q",
     wide: cards.length % 2 === 1,
     testId: "multi-summon-button",
-    title: multiUnlocked ? `10연 소환 · ${tenCost}엽전 · 할증 없음` : "10웨이브를 지키면 열립니다"
+    title: multiUnlocked
+      ? `10연 소환 · ${tenCost}엽전 · 할증 없음`
+        + (multiBand === null ? "" : ` · 기본 밴드 ${multiBand.min}~${multiBand.max}★ · ${multiBand.max}★ 1기 보장`)
+      : "10웨이브를 지키면 열립니다"
   }));
   must<HTMLElement>("#summon-shop").innerHTML = cards.join("");
 }

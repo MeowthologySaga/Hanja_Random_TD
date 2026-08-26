@@ -379,14 +379,15 @@ describe("casual eight-star mode", () => {
     expect(engine.state.inventoryTowers).toHaveLength(1);
   });
 
-  it("guarantees the advertised star floor for tier summons and charges the exact surcharge", () => {
+  it("keeps every casual summon inside its advertised star band and charges the exact surcharge", () => {
     // 뽑기 별이 완전 무작위면 "같은 오행·같은 별 3기"라는 조합 루프가 성립하지 않는다.
-    // 중급·고급은 가중이 아니라 후보 풀 필터이므로 200회 전부 보장을 지켜야 한다.
-    for (const [intent, floor] of [["midstar", 2], ["highstar", 3]] as const) {
-      const engine = new GameEngine(`casual-tier-${intent}`, "KR", "casual");
+    // 밴드는 가중이 아니라 후보 풀 필터이므로 200회 전부 상·하한을 지켜야 한다.
+    // 특히 기본 밴드 상한 3★ 가 새는 순간 "뽑기로 상위 별"이 되어 조합이 죽는다.
+    for (const [intent, min, max] of [["balanced", 1, 3], ["midstar", 2, 5], ["highstar", 3, 8]] as const) {
+      const engine = new GameEngine(`casual-band-${intent}`, "KR", "casual");
       engine.setAutoPlaceSummons(false);
       engine.begin();
-      expect(engine.summonTierFloor(intent)).toBe(floor);
+      expect(engine.summonStarBand(intent)).toEqual({ min, max });
       expect(engine.isSummonProductAvailable(intent)).toBe(true);
       for (let index = 0; index < 200; index += 1) {
         // 보상·이자가 섞이지 않게 가격 경계로 청구액을 재단한다.
@@ -397,43 +398,97 @@ describe("casual eight-star mode", () => {
         expect(engine.summonProduct(intent)).toMatchObject({ ok: true });
       }
       expect(engine.state.inventoryTowers).toHaveLength(200);
-      expect(engine.state.inventoryTowers.every((tower) => (tower.naturalStar ?? 0) >= floor)).toBe(true);
+      const stars = engine.state.inventoryTowers.map((tower) => tower.naturalStar ?? 0);
+      expect(stars.every((star) => star >= min && star <= max)).toBe(true);
+      // 밴드가 실제로 넓게 쓰이는지도 본다(하한 한 칸에 고정되면 밴드가 아니다).
+      expect(new Set(stars).size).toBeGreaterThan(1);
       // 소환 목적은 카드 한 장 안에서만 유효하다. 상태로 남지 않는다.
       expect(engine.state.summonIntent).toBe("balanced");
     }
-
-    // 기본 소환은 할증이 없고 보장도 없다.
-    const base = new GameEngine("casual-tier-base", "KR", "casual");
-    base.setAutoPlaceSummons(false);
-    base.begin();
     expect(SUMMON_SURCHARGE.balanced).toBe(0);
-    expect(base.summonTierFloor("balanced")).toBeNull();
-    base.state.gold = summonCost(0) - 1;
-    expect(base.summonProduct("balanced")).toMatchObject({ ok: false, message: "엽전이 1 부족합니다." });
-    base.state.gold = summonCost(0);
-    expect(base.summonProduct("balanced")).toMatchObject({ ok: true });
 
-    // 자형연성은 별 수집이 루프가 아니므로 티어 상품을 열지 않는다.
+    // 자형연성은 별 수집이 루프가 아니므로 티어 상품도 밴드도 없다.
     const standard = new GameEngine("standard-tier", "KR", "standard");
     standard.begin();
+    expect(standard.summonStarBand("balanced")).toBeNull();
+    expect(standard.summonStarBand("highstar")).toBeNull();
     expect(standard.isSummonProductAvailable("midstar")).toBe(false);
     expect(standard.isSummonProductAvailable("highstar")).toBe(false);
     expect(standard.isSummonProductAvailable("lineage")).toBe(true);
   });
 
-  it("drops the tier product where the regional pool is too thin to honour a guarantee", () => {
-    // JP·CN 활성 풀은 30여 자뿐이라 3★ 이상 후보가 한 자릿수다. 보장을 그대로
+  it("slopes the in-band distribution so the band floor is common and the ceiling is rare", () => {
+    // 밴드만 걸고 균등하게 뽑으면 글자 수가 가장 많은 별(1★ 332자)이 그대로 이기거나,
+    // 반대로 상단이 흔해져 조합 루프가 무너진다. 별 단위 목표 분포로 눌러
+    // "하한이 가장 흔하고 한 칸 오를 때마다 드물어진다"를 실측으로 지킨다.
+    const sample = (intent: "balanced" | "highstar", trials: number): Map<number, number> => {
+      const engine = new GameEngine(`casual-slope-${intent}`, "KR", "casual");
+      engine.setAutoPlaceSummons(false);
+      engine.begin();
+      const counts = new Map<number, number>();
+      for (let index = 0; index < trials; index += 1) {
+        engine.state.gold = summonCost(engine.state.summonCount) + SUMMON_SURCHARGE[intent];
+        expect(engine.summonProduct(intent)).toMatchObject({ ok: true });
+        const drawn = engine.state.inventoryTowers[engine.state.inventoryTowers.length - 1];
+        const star = drawn?.naturalStar ?? 0;
+        counts.set(star, (counts.get(star) ?? 0) + 1);
+      }
+      return counts;
+    };
+
+    const base = sample("balanced", 400);
+    expect(base.get(1) ?? 0).toBeGreaterThan(base.get(2) ?? 0);
+    expect(base.get(2) ?? 0).toBeGreaterThan(base.get(3) ?? 0);
+    // 기본 밴드에서 4★ 이상은 단 한 번도 나오지 않는다.
+    expect([4, 5, 6, 7, 8].reduce((total, star) => total + (base.get(star) ?? 0), 0)).toBe(0);
+
+    const high = sample("highstar", 400);
+    expect(high.get(3) ?? 0).toBeGreaterThan(high.get(4) ?? 0);
+    expect(high.get(4) ?? 0).toBeGreaterThan(high.get(6) ?? 0);
+    // 고급 밴드 최상단(7·8★)은 "가끔 터지는" 자리다. 흔해져도 사라져도 안 된다.
+    const top = ((high.get(7) ?? 0) + (high.get(8) ?? 0)) / 400;
+    expect(top).toBeGreaterThan(0.02);
+    expect(top).toBeLessThan(0.09);
+  });
+
+  it("guarantees one band-ceiling summon in every casual ten-pull", () => {
+    // 기본 밴드 상한 3★ 는 자연 확률이 1/6 남짓이라 열 장이 통째로 비는 판이 나온다.
+    // 마지막 한 장의 후보를 상한 별로 좁혀 "10연 = 3★ 1기"를 문구 그대로 지킨다.
+    for (let run = 0; run < 40; run += 1) {
+      const engine = new GameEngine(`casual-ten-${run}`, "KR", "casual");
+      engine.setAutoPlaceSummons(false);
+      engine.begin();
+      engine.state.wave = 12;
+      engine.state.gold = 100_000;
+      expect(engine.summonMany(10)).toMatchObject({ ok: true });
+      const stars = engine.state.inventoryTowers.map((tower) => tower.naturalStar ?? 0);
+      expect(stars).toHaveLength(10);
+      expect(stars.every((star) => star >= 1 && star <= 3)).toBe(true);
+      expect(stars.filter((star) => star === 3).length).toBeGreaterThanOrEqual(1);
+    }
+  });
+
+  it("drops the tier product where the regional pool is too thin to honour a band", () => {
+    // JP·CN 활성 풀은 30여 자뿐이라 2★ 이상 후보가 한 자릿수다. 하한을 그대로
     // 걸면 같은 글자만 반복되므로 상품 자체를 닫는다(가짜 보장 판매 금지).
+    // 하한 1인 기본 밴드는 남아 있어야 소환 자체가 막히지 않는다.
     for (const region of ["JP", "CN"] as const) {
       const engine = new GameEngine(`casual-tier-${region}`, region, "casual");
+      engine.setAutoPlaceSummons(false);
       engine.begin();
       const eligible = (floor: number) =>
         engine.summonDefinitions().filter((definition) => (casualNaturalStar(definition.char) ?? 1) >= floor).length;
       expect(eligible(2)).toBeLessThan(MIN_TIER_POOL_SIZE);
-      expect(engine.summonTierFloor("midstar")).toBeNull();
-      expect(engine.summonTierFloor("highstar")).toBeNull();
+      expect(engine.summonStarBand("midstar")).toBeNull();
+      expect(engine.summonStarBand("highstar")).toBeNull();
       expect(engine.isSummonProductAvailable("midstar")).toBe(false);
       expect(engine.summonProduct("highstar")).toMatchObject({ ok: false });
+      expect(engine.summonStarBand("balanced")).toEqual({ min: 1, max: 3 });
+      for (let index = 0; index < 40; index += 1) {
+        engine.state.gold = summonCost(engine.state.summonCount);
+        expect(engine.summonProduct("balanced")).toMatchObject({ ok: true });
+      }
+      expect(engine.state.inventoryTowers.every((tower) => (tower.naturalStar ?? 0) <= 3)).toBe(true);
     }
     const korea = new GameEngine("casual-tier-kr-pool", "KR", "casual");
     korea.begin();

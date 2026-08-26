@@ -399,16 +399,37 @@ export const SUMMON_INTENT_LABELS: Readonly<Record<SummonIntent, string>> = Obje
 });
 
 /**
- * 캐주얼 티어 소환이 요구하는 최소 naturalStar. 가중이 아니라 후보 풀 필터다.
- * 실제 적용 별은 지역 풀 크기에 따라 `GameEngine.summonTierFloor()`가 낮춘다.
+ * 캐주얼 소환의 별 밴드 `[하한, 상한]`. 가중이 아니라 후보 풀 필터이므로
+ * 밴드 밖의 별은 뽑기로 아예 나오지 않는다.
+ *
+ * 기본 계열이 1~3★ 로 닫혀 있어야 "뽑기는 낮은 별, 상위 별은 3기 조합으로"라는
+ * 별승급 루프가 성립한다. 하한을 올려 파는 중급·고급이 곧 상위 별 지름길이다.
+ * 실제 적용 밴드는 지역 풀 크기에 따라 `GameEngine.summonStarBand()`가 조정한다.
  */
-export const SUMMON_TIER_FLOOR: Readonly<Partial<Record<SummonIntent, number>>> = Object.freeze({
-  midstar: 2,
-  highstar: 3
+export const SUMMON_STAR_BANDS: Readonly<Record<SummonIntent, readonly [number, number] | null>> = Object.freeze({
+  balanced: [1, 3],
+  discovery: [1, 3],
+  lineage: null,
+  concentration: [1, 3],
+  midstar: [2, 5],
+  highstar: [3, 8]
 });
 
 /**
- * 티어 보장이 성립하려면 후보가 이만큼은 남아야 한다.
+ * 밴드 안에서 별이 하나 오를 때마다 곱해지는 감쇠. 밴드 하한이 가장 흔하고
+ * 상한이 가장 귀하다. 글자 수(1★ 332자 · 8★ 18자)에 눌리지 않도록 별 단위
+ * 목표 분포로 먼저 나눈 뒤 같은 별의 글자들이 그 몫을 나눠 갖는다.
+ */
+export const CASUAL_STAR_DECAY = 0.55;
+
+/** 하한을 문구로 광고하는 티어 소환인가(= 밴드 하한이 1보다 큰가). */
+export function isTierSummonIntent(intent: SummonIntent): boolean {
+  const band = SUMMON_STAR_BANDS[intent];
+  return band !== null && band[0] > 1;
+}
+
+/**
+ * 티어 밴드가 성립하려면 후보가 이만큼은 남아야 한다.
  * JP·CN 처럼 활성 풀이 좁은 지역에서 같은 글자 서너 개만 반복되는 것을 막는다.
  */
 export const MIN_TIER_POOL_SIZE = 30;
