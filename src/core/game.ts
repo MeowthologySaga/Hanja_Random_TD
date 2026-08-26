@@ -22,7 +22,9 @@ import {
 import { hasActiveSkills } from "./abilities";
 // [SKILL-V1] 스킬 1차 세트 상수·순수 계산.
 import {
+  MOMENTUM_STACK_BONUS,
   WARFARE_BRAND_DURATION,
+  momentumMaxStacks,
   warfareBrandPower
 } from "./abilities";
 import {
@@ -851,6 +853,8 @@ export class GameEngine {
     const statusPower = 1 + this.combinedUpgradeBonus(tower.wuxing, "statusPower");
     const semanticEvery = Math.max(7, tuning.semanticEvery - (concentration >= 3 ? 1 : 0));
     const semanticTrigger = activeSkills && tower.shotCount % semanticEvery === 0
+      // [SKILL-V1] 파죽(momentum)은 별도 발동 주기가 없는 패시브라 주기 기술에서 뺀다.
+      && abilities.semanticFamily !== "momentum"
       && (abilities.semanticFamily !== "weather" || this.state.enemies.length >= 5);
     // At most one active skill may resolve from a tower on the same attack.
     const signature = activeSkills && !semanticTrigger && tower.shotCount % tuning.signatureEvery === 0;
@@ -874,6 +878,21 @@ export class GameEngine {
     // 약점 배율과 같은 층에서 곱해, 이 공격에서 파생되는 확산·연쇄·독도 함께 강해진다.
     if ((target.brandUntil ?? 0) > this.state.elapsed && target.brandWuxing === tower.wuxing) {
       damage *= 1 + (target.brandPower ?? 0);
+    }
+    // [SKILL-V1] 파죽: 같은 적 연속 타격마다 +8%씩 중첩, 대상을 바꾸면 초기화.
+    if (activeSkills && abilities.semanticFamily === "momentum") {
+      const momentumCap = momentumMaxStacks(this.state.mode === "casual" ? tower.casualStar ?? tower.naturalStar ?? 1 : tower.stage);
+      if (tower.momentumTargetId === target.id) {
+        const previousStacks = tower.momentumStacks ?? 0;
+        tower.momentumStacks = Math.min(momentumCap, previousStacks + 1);
+        if (tower.momentumStacks === momentumCap && previousStacks < momentumCap) {
+          this.emitAbility(tower, abilities.semantic, origin, targetPoint, 1, `파죽 최대 중첩 · 피해 +${Math.round(momentumCap * MOMENTUM_STACK_BONUS * 100)}%`);
+        }
+      } else {
+        tower.momentumTargetId = target.id;
+        tower.momentumStacks = 0;
+      }
+      damage *= 1 + (tower.momentumStacks ?? 0) * MOMENTUM_STACK_BONUS;
     }
     if (tower.wuxing === "火" && (target.boss || target.hp / target.maxHp <= 0.3)) {
       damage *= 1 + this.elementTraitLevel("火", 2) * 0.015;
