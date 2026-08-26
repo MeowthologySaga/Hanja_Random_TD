@@ -85,6 +85,51 @@ test("routes destructive actions through the shared in-game confirm dialog", asy
   await expect(page.locator("#message-value")).toContainText("분해");
 });
 
+// ── S/P-14 · 빈 합성 탭이 다음 한 걸음을 말한다 ────────────────────
+// 26웨이브까지 "가능한 합성 0 · 재료를 모으는 중"만 있던 자리다.
+test("tells the next step in the empty synthesis tab", async ({ page }) => {
+  await page.goto("/?seed=TRACK-S-NEXTSTEP&mode=standard");
+  await page.getByTestId("start-run").click();
+
+  // ① 부족 글자가 전부 직접 소환분이면 "다음 한 걸음 — 소환" 과 상점 길이 선다.
+  await page.getByRole("tab", { name: "합성", exact: true }).click();
+  const step = page.locator(".evolution-next-step");
+  await expect(step).toBeVisible();
+  await expect(step).toContainText("다음 한 걸음");
+
+  // ② 합성으로만 만드는 글자(知)를 추적하면 부품 트리와 모을 양이 뜬다.
+  await page.locator("#goal-tab").click();
+  await page.locator("#goal-search").fill("온고지신");
+  await page.locator("#goal-selector-list .goal-idiom-card .goal-idiom-track").first().click();
+  await page.keyboard.press("Escape");
+  await page.getByRole("tab", { name: "합성", exact: true }).click();
+  await expect(step).toContainText("지금 모을 부품");
+  await expect(step.locator(".goal-tree-row").first()).toContainText("知");
+  await expect(step.locator(".goal-tree-row").first()).toContainText("矢");
+
+  // 빈 상자가 남은 높이를 통째로 먹지 않고, 한 칸에 한 줄씩 세로로 선다.
+  const layout = await page.evaluate(() => {
+    const section = document.querySelector<HTMLElement>(".evolution-next-step")!;
+    const heading = section.querySelector<HTMLElement>("h4")!.getBoundingClientRect();
+    const body = section.querySelector<HTMLElement>("p")!.getBoundingClientRect();
+    const options = document.querySelector<HTMLElement>("#evolution-options")!;
+    return {
+      stacked: body.top >= heading.bottom - 1,
+      insideRight: Math.round(options.getBoundingClientRect().right - section.getBoundingClientRect().right),
+      optionsClipY: options.scrollHeight - options.clientHeight,
+      docOverflowY: document.documentElement.scrollHeight - window.innerHeight
+    };
+  });
+  expect(layout.stacked).toBe(true);
+  expect(layout.insideRight).toBeGreaterThanOrEqual(0);
+  expect(layout.optionsClipY).toBeLessThanOrEqual(0);
+  expect(layout.docOverflowY).toBeLessThanOrEqual(0);
+
+  // [목표 서책에서 전체 보기]는 목표 탭으로 데려간다.
+  await step.locator("[data-goto-goal]").click();
+  await expect(page.locator(".game-shell")).toHaveAttribute("data-panel-tab", "goal");
+});
+
 // ── S/P-12 · 전장 부동 라벨의 무대 경계 ────────────────────────────
 // 피해 수치·장판 이름·능력 알약은 월드 좌표를 따라다녀서, 개체가 가장자리에
 // 서면 무대 밖으로 나가 잘리거나 상·하단 붙박이 UI 밑으로 들어갔다.

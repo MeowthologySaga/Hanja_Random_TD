@@ -223,12 +223,24 @@ function renderMissingChar(char: string, ownedCounts: ReadonlyMap<string, number
   </div>`;
 }
 
+/** 지금 가진(전장 + 가방) 한자별 개수. 부품 트리가 "이미 있는 것"을 표시할 때 쓴다. */
+export function ownedCharCounts(): Map<string, number> {
+  const counts = new Map<string, number>();
+  for (const tower of [...ctx.engine.state.towers, ...ctx.engine.state.inventoryTowers]) {
+    counts.set(tower.char, (counts.get(tower.char) ?? 0) + 1);
+  }
+  return counts;
+}
+
 /**
  * 표준 모드 합성 하위 트리 — "이 글자는 이 부품들로" (evolution.getTargetPath
  * 와 같은 부모 재귀·같은 방문 집합 규칙, 화면용 행 전개판).
  * 보유한 부품은 더 쪼개지 않는다 — 이미 손에 있으니 만들 필요가 없다.
+ *
+ * [S/P-14] 합성 탭의 빈 상태도 이 트리를 그대로 빌린다 — 같은 그림이
+ * 두 곳에서 같은 뜻으로 읽히게. 그래서 export 다.
  */
-function synthesisTreeMarkup(char: string, ownedCounts: ReadonlyMap<string, number>): string {
+export function synthesisTreeMarkup(char: string, ownedCounts: ReadonlyMap<string, number>): string {
   const engine = ctx.engine;
   const rows: string[] = [];
   const visited = new Set<string>();
