@@ -1,0 +1,518 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>천자진 피칭 덱 초안</title>
+<!--
+  천자진 — OpenAI Game Builders Seoul Track 1 · 본선 엘리베이터 피칭(3분) 덱 초안.
+  자기완결 HTML 슬라이드 9장. ← → 화살표(또는 Space)로 넘기고, N 키로 발표자 노트를 켭니다.
+  수치는 저장소 문서(README · GAME_DESIGN.md · handoff/LOG.md · .claude/uiux/submission-draft.md ·
+  handoff/to-claude/oai-submission-codex-evidence-v2)에 있는 것만 사용했습니다.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #f6efdf;        /* 한지 바탕 */
+    --paper-deep: #efe5cd;
+    --ink: #2b2115;          /* 먹 */
+    --ink-soft: #57493a;
+    --gold: #8a6a34;         /* 금박 */
+    --gold-soft: #b99a5e;
+    --vermilion: #b8352a;    /* 주홍 인주 */
+    --line: rgba(43, 33, 21, 0.18);
+    --serif: "Gowun Batang", "Noto Serif KR", "Batang", serif;
+    --sans: "Noto Sans KR", "Malgun Gothic", sans-serif;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    background: #211a10; /* 무대 밖 레터박스 — 게임과 같은 문법 */
+    font-family: var(--sans);
+    color: var(--ink);
+    overflow: hidden;
+  }
+
+  /* ── 고정 무대 1280×720 — 게임과 같은 방식으로 균일 확대·축소 ── */
+  #stage {
+    position: absolute; left: 50%; top: 50%;
+    width: 1280px; height: 720px;
+    transform-origin: center center;
+    background:
+      radial-gradient(1200px 800px at 30% 0%, rgba(255, 250, 236, 0.9), transparent 60%),
+      repeating-linear-gradient(0deg, transparent 0 34px, rgba(43, 33, 21, 0.025) 34px 35px),
+      linear-gradient(160deg, var(--paper) 0%, var(--paper-deep) 100%);
+    box-shadow: 0 24px 80px rgba(0, 0, 0, 0.55);
+    border: 1px solid rgba(138, 106, 52, 0.5);
+  }
+
+  .slide {
+    position: absolute; inset: 0;
+    padding: 64px 84px 96px;
+    display: none;
+    flex-direction: column;
+  }
+  .slide.is-active { display: flex; }
+
+  /* 공통 부품 */
+  .eyebrow {
+    font-family: var(--sans);
+    font-size: 15px; font-weight: 900; letter-spacing: 0.32em;
+    color: var(--gold);
+    margin-bottom: 14px;
+  }
+  h1 { font-family: var(--serif); font-weight: 700; color: var(--ink); }
+  h2 {
+    font-family: var(--serif); font-weight: 700; font-size: 40px;
+    color: var(--ink); margin-bottom: 26px; line-height: 1.25;
+  }
+  h2 .accent { color: var(--vermilion); }
+  p.lede { font-size: 20px; line-height: 1.65; color: var(--ink-soft); max-width: 960px; }
+  .rule {
+    height: 3px; width: 74px; margin: 20px 0 26px;
+    background: linear-gradient(90deg, var(--vermilion), var(--gold));
+  }
+  .chips { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 18px; }
+  .chip {
+    font-size: 15px; font-weight: 700; color: var(--ink);
+    background: rgba(255, 252, 244, 0.75);
+    border: 1px solid var(--line); border-left: 3px solid var(--gold);
+    padding: 8px 14px; border-radius: 4px;
+  }
+  .cards { display: grid; gap: 18px; }
+  .card {
+    background: rgba(255, 252, 244, 0.78);
+    border: 1px solid var(--line);
+    border-top: 3px solid var(--gold);
+    padding: 20px 22px; border-radius: 6px;
+  }
+  .card b.num {
+    display: block; font-family: var(--serif);
+    font-size: 40px; color: var(--vermilion); line-height: 1.15;
+  }
+  .card .cap { display: block; font-size: 15px; font-weight: 700; color: var(--ink); margin-top: 6px; }
+  .card .sub { display: block; font-size: 13.5px; color: var(--ink-soft); margin-top: 6px; line-height: 1.5; }
+  .footnote { position: absolute; left: 84px; right: 84px; bottom: 58px; font-size: 12.5px; color: var(--ink-soft); opacity: 0.85; }
+
+  /* ── 1장 훅 ── */
+  #s1 { align-items: center; justify-content: center; text-align: center; }
+  #s1 .hook {
+    font-family: var(--serif); font-size: 58px; line-height: 1.35;
+    max-width: 900px;
+  }
+  #s1 .hook .accent { color: var(--vermilion); }
+  #s1 .world { display: flex; align-items: center; gap: 34px; margin-top: 44px; }
+  .talisman {
+    width: 108px; height: 252px;
+    background: linear-gradient(175deg, #fbf4e2, #f0e2c2);
+    border: 3px solid var(--vermilion);
+    border-radius: 6px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px;
+    box-shadow: 0 10px 26px rgba(43, 33, 21, 0.28);
+    transform: rotate(-3deg);
+  }
+  .talisman .glyph { font-family: var(--serif); font-size: 72px; color: var(--ink); }
+  .talisman .seal {
+    width: 34px; height: 34px; border-radius: 50%;
+    background: var(--vermilion); color: #fbf4e2;
+    font-family: var(--serif); font-size: 19px; font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+  }
+  #s1 .world-copy { text-align: left; font-size: 19px; line-height: 1.8; color: var(--ink-soft); }
+  #s1 .world-copy b { color: var(--ink); }
+  #s1 .title-tag { margin-top: 40px; font-size: 16px; letter-spacing: 0.5em; font-weight: 900; color: var(--gold); }
+
+  /* ── 2장 한 줄 ── */
+  #s2 .oneliner {
+    font-family: var(--serif); font-size: 33px; line-height: 1.55;
+    max-width: 1020px; margin-top: 6px;
+  }
+  #s2 .oneliner .accent { color: var(--vermilion); }
+
+  /* ── 3장 시연 예고 ── */
+  .steps { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-top: 10px; }
+  .step {
+    background: rgba(255, 252, 244, 0.78);
+    border: 1px solid var(--line); border-radius: 6px;
+    padding: 14px 14px 12px; position: relative;
+  }
+  .step .no {
+    font-family: var(--serif); font-size: 15px; font-weight: 700;
+    color: var(--paper); background: var(--ink);
+    width: 26px; height: 26px; border-radius: 50%;
+    display: inline-flex; align-items: center; justify-content: center;
+    margin-bottom: 8px;
+  }
+  .step b { display: block; font-size: 16.5px; }
+  .step span { display: block; font-size: 12.5px; color: var(--ink-soft); margin-top: 4px; line-height: 1.45; }
+  .step.is-money { border: 2px solid var(--vermilion); background: rgba(184, 53, 42, 0.06); }
+  .step.is-money .no { background: var(--vermilion); }
+  .step.is-money::after {
+    content: "확정 체험"; position: absolute; top: -12px; right: 10px;
+    background: var(--vermilion); color: #fbf4e2;
+    font-size: 11.5px; font-weight: 900; padding: 3px 9px; border-radius: 3px;
+  }
+
+  /* ── 5장 협업 ── */
+  .trio { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; margin-top: 4px; }
+  .trio .card b.who { font-family: var(--serif); font-size: 24px; display: block; }
+  .trio .card .role { font-size: 14.5px; color: var(--ink-soft); margin-top: 6px; line-height: 1.55; }
+  .protocol {
+    margin-top: 20px; display: flex; align-items: center; gap: 10px;
+    font-size: 15px; font-weight: 700;
+  }
+  .protocol .node {
+    background: rgba(255, 252, 244, 0.85); border: 1px solid var(--line);
+    border-bottom: 3px solid var(--vermilion);
+    padding: 10px 16px; border-radius: 5px;
+  }
+  .protocol .node small { display: block; font-size: 11.5px; font-weight: 500; color: var(--ink-soft); margin-top: 2px; }
+  .protocol .arrow { color: var(--gold); font-size: 20px; }
+
+  /* ── 6장 학습 ── */
+  .twocol { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; margin-top: 6px; }
+  .twocol .card h3 { font-family: var(--serif); font-size: 23px; margin-bottom: 12px; }
+  .twocol .card h3 .tag {
+    font-family: var(--sans); font-size: 12px; font-weight: 900; letter-spacing: 0.18em;
+    color: #fbf4e2; background: var(--gold); padding: 3px 9px; border-radius: 3px;
+    vertical-align: 4px; margin-right: 10px;
+  }
+  .twocol .card h3 .tag.out { background: var(--vermilion); }
+  .twocol .card ul { list-style: none; }
+  .twocol .card li { font-size: 15.5px; line-height: 1.6; color: var(--ink-soft); padding: 7px 0 7px 20px; position: relative; border-top: 1px dashed var(--line); }
+  .twocol .card li:first-child { border-top: 0; }
+  .twocol .card li::before { content: "・"; position: absolute; left: 2px; color: var(--vermilion); font-weight: 900; }
+  .twocol .card li b { color: var(--ink); }
+
+  /* ── 9장 마무리 ── */
+  #s9 { align-items: center; justify-content: center; text-align: center; }
+  #s9 .play-link {
+    font-family: var(--serif); font-size: 30px; color: var(--vermilion);
+    text-decoration: none; border-bottom: 2px solid var(--gold);
+    padding-bottom: 4px;
+  }
+  #s9 .qr {
+    width: 176px; height: 176px; margin: 34px auto 10px;
+    border: 2px dashed var(--gold); border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    color: var(--gold); font-weight: 900; font-size: 15px; letter-spacing: 0.2em;
+    background: rgba(255, 252, 244, 0.6);
+  }
+  #s9 .sub-links { margin-top: 18px; font-size: 15px; color: var(--ink-soft); line-height: 1.9; }
+  #s9 .sub-links code { font-family: var(--sans); font-weight: 700; color: var(--ink); }
+
+  /* ── 진행 표시·조작 ── */
+  #hud {
+    position: absolute; left: 0; right: 0; bottom: 18px;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    z-index: 5;
+  }
+  #hud .dot {
+    width: 9px; height: 9px; border-radius: 50%;
+    background: rgba(43, 33, 21, 0.22); cursor: pointer;
+  }
+  #hud .dot.is-on { background: var(--vermilion); }
+  #pagenum {
+    position: absolute; right: 26px; bottom: 14px;
+    font-size: 13px; font-weight: 700; color: var(--ink-soft); z-index: 5;
+  }
+  #keyhint {
+    position: absolute; left: 26px; bottom: 14px;
+    font-size: 12px; color: var(--ink-soft); opacity: 0.7; z-index: 5;
+  }
+
+  /* ── 발표자 노트(N 키) ── */
+  #notes {
+    position: absolute; left: 0; right: 0; bottom: 0;
+    background: rgba(28, 21, 12, 0.94); color: #efe5cd;
+    padding: 18px 84px 22px; z-index: 9;
+    font-size: 16.5px; line-height: 1.7;
+    border-top: 3px solid var(--gold);
+    display: none;
+  }
+  #notes.is-open { display: block; }
+  #notes .nt { font-size: 12px; font-weight: 900; letter-spacing: 0.25em; color: var(--gold-soft); margin-bottom: 6px; }
+
+  @media print {
+    body { overflow: visible; background: #fff; }
+    #stage { position: static; transform: none !important; width: auto; height: auto; box-shadow: none; border: 0; }
+    .slide { position: static; display: flex !important; height: 720px; page-break-after: always; }
+    #hud, #keyhint, #pagenum, #notes { display: none !important; }
+  }
+</style>
+</head>
+<body>
+<div id="stage">
+
+  <!-- ① 훅 -->
+  <section class="slide is-active" id="s1"
+    data-notes="한자 암기가 재미있을 수 있을까요 — 이 질문 하나로 시작했습니다. 저희 답은 타워 디펜스였습니다. 이 세계에서 부적은 봉인구이고, 한자의 뜻이 깃든 영 — 자령을 부적으로 봉인해 뽑고, 세우고, 적을 막습니다."
+    data-time="~20초">
+    <p class="hook">한자 암기가 <span class="accent">재미있다면</span>?</p>
+    <div class="world">
+      <div class="talisman"><span class="glyph">封</span><span class="seal">印</span></div>
+      <div class="world-copy">
+        <b>부적(符籍)</b>은 봉인구 —<br>
+        <b>자령(字靈)</b>은 그 한자의 뜻이 깃든, 봉인된 영.<br>
+        부적을 펼쳐 자령을 소환하고, 적도 부적 강시로 옵니다.
+      </div>
+    </div>
+    <p class="title-tag">천자진 · 千字陣</p>
+  </section>
+
+  <!-- ② 게임 한 줄 + 장르 -->
+  <section class="slide" id="s2"
+    data-notes="천자진은 한자 1,000자가 자령이 되어 오행 진법을 지키는 브라우저 타워 디펜스입니다. 획수가 별이 되는 별승급, 실제 부수 조합의 자형연성, 사자성어를 한 줄로 배치하면 발동하는 봉인 — 플레이할수록 한자가 눈에 익도록 설계했습니다. 설치도 로그인도 없이 링크 하나로 바로 실행됩니다."
+    data-time="~20초">
+    <p class="eyebrow">천자진 — THOUSAND GLYPHS: ELEMENTAL DEFENSE</p>
+    <h2>브라우저 <span class="accent">학습형 타워 디펜스</span></h2>
+    <div class="rule"></div>
+    <p class="oneliner">천자문 1,000자가 <span class="accent">수호령</span>이 되어
+      오행 진법을 지킵니다.<br>획이 많은 어려운 한자일수록 별이 높고, 같은 별 셋을 모으면 승급하며,<br>
+      사자성어를 한 줄로 놓으면 <span class="accent">봉인</span>이 터집니다. 놀다 보면 눈에 익는 한자.</p>
+    <div class="chips">
+      <div class="chip">설치·로그인 없음 — 링크 즉시 실행</div>
+      <div class="chip">마우스만으로 전 기능 조작</div>
+      <div class="chip">한국 천자문 · 일본 상용 · 중국 규범 3지역</div>
+      <div class="chip">10장 100웨이브 방어전</div>
+    </div>
+  </section>
+
+  <!-- ③ 라이브 시연 예고 -->
+  <section class="slide" id="s3"
+    data-notes="지금부터 게임 안의 수련장 모드로 직접 보여드리겠습니다. 수련장은 고정 시드 위의 여덟 걸음 각본이라 언제 시연해도 같은 진행이 나옵니다. 특히 일곱 번째 걸음에서 사자성어 봉인 발동을 확정적으로 체험하도록 설계했습니다."
+    data-time="~15초 (이후 라이브 시연으로 전환)">
+    <p class="eyebrow">LIVE DEMO</p>
+    <h2>수련장 — 여덟 걸음, <span class="accent">봉인 발동 확정 체험</span></h2>
+    <div class="rule"></div>
+    <p class="lede">게임에 내장된 각본 튜토리얼입니다. 고정 시드라 언제 열어도 같은 진행 —
+      지금 이 자리에서 그대로 시연합니다.</p>
+    <div class="steps" style="margin-top:26px">
+      <div class="step"><span class="no">1</span><b>소환</b><span>기본 소환 1~3★</span></div>
+      <div class="step"><span class="no">2</span><b>배치</b><span>같은 오행 진 무료 개방</span></div>
+      <div class="step"><span class="no">3</span><b>첫 웨이브</b><span>시작 보너스 → 첫 교전</span></div>
+      <div class="step"><span class="no">4</span><b>3합 승급</b><span>3기 소모 → 상위 별 무작위</span></div>
+      <div class="step"><span class="no">5</span><b>티어 소환</b><span>중급 2~5★ 구간제</span></div>
+      <div class="step"><span class="no">6</span><b>강화</b><span>분해 재료 '문기'로 오행 강화</span></div>
+      <div class="step is-money"><span class="no">7</span><b>사자성어 봉인</b><span>한 줄 네 글자 — 이심전심 발동</span></div>
+      <div class="step"><span class="no">8</span><b>수료</b><span>본편 출정</span></div>
+    </div>
+  </section>
+
+  <!-- ④ 물량 서사 -->
+  <section class="slide" id="s4"
+    data-notes="천자문 1,000자 전 글자의 데이터와 자령 그림을 3일 파이프라인으로 전수 제작했습니다. Codex의 대량 생성이 있었기에 가능한 물량입니다. 여기에 적·제단·UI 스프라이트 150여 장과 Suno 파이프라인의 BGM 6곡, SFX 13종 생성·정규화까지 같은 방식으로 쌓았습니다."
+    data-time="~20초">
+    <p class="eyebrow">SCALE — CODEX 대량생성</p>
+    <h2>1,000자를 <span class="accent">3일</span>에 — 물량이 곧 콘텐츠</h2>
+    <div class="rule"></div>
+    <div class="cards" style="grid-template-columns: repeat(4, 1fr);">
+      <div class="card">
+        <b class="num">1,000자</b>
+        <span class="cap">천자문 전 글자 전수</span>
+        <span class="sub">데이터 + 자령 스프라이트를 3일 파이프라인으로 — 훈음·획수·오행·능력까지</span>
+      </div>
+      <div class="card">
+        <b class="num">150여 장</b>
+        <span class="cap">런타임 스프라이트</span>
+        <span class="sub">적 전용 6종 · 오행 제단 10종 · UI 부품 25종 · 폴리시 29종 등 — 무문자·독립 PNG</span>
+      </div>
+      <div class="card">
+        <b class="num">6곡 + 13종</b>
+        <span class="cap">BGM · SFX</span>
+        <span class="sub">Suno 파이프라인으로 생성하고 −1dBFS 계열로 정규화</span>
+      </div>
+      <div class="card">
+        <b class="num">4,560자</b>
+        <span class="cap">3지역 통합 읽기 데이터</span>
+        <span class="sub">KR 1,001 · JP 2,136 · CN 3,500 로스터 — 같은 구조로 확장 동작 중</span>
+      </div>
+    </div>
+    <p class="footnote">근거: handoff/LOG.md · README.md · GAME_DESIGN.md · .claude/uiux/submission-draft.md — 문서에 있는 수치만 표기.</p>
+  </section>
+
+  <!-- ⑤ 협업 구조 -->
+  <section class="slide" id="s5"
+    data-notes="서로 직접 통신할 수 없는 두 AI를 저장소의 handoff 폴더를 우편함 삼아 한 팀으로 묶었습니다. 요청서, 납품서, 체크섬, LOG 한 줄 — 이 파일 프로토콜로 인계 기록 59행, 커밋 144개 중 121개의 협업 트레일러가 남았습니다. 납품 29장 중 5장만 채택한 반려 기록까지 그대로 남긴 것이 이 협업의 증거입니다."
+    data-time="~25초">
+    <p class="eyebrow">CODEX COLLABORATION</p>
+    <h2>사람 × Codex × Claude — <span class="accent">파일로만 협업</span></h2>
+    <div class="rule"></div>
+    <div class="trio">
+      <div class="card"><b class="who">사람</b><span class="role">방향 · 게임 규칙 · 최종 승인.<br>3합 규칙, 성어 직선 발동, 확률 밴드, 한지·먹 테마를 전부 사람이 결정</span></div>
+      <div class="card"><b class="who">Codex</b><span class="role">에셋 · 오디오 · 구현 명세 · QC.<br>ImageGen 스프라이트와 Suno 오디오를 체크섬과 함께 납품</span></div>
+      <div class="card"><b class="who">Claude</b><span class="role">구현 · 병합 · 검증.<br>납품 명세를 코드에 연결하고 테스트·실측으로 닫음</span></div>
+    </div>
+    <div class="protocol">
+      <div class="node">요청서<small>handoff/to-codex</small></div><span class="arrow">→</span>
+      <div class="node">납품서<small>handoff/to-claude</small></div><span class="arrow">→</span>
+      <div class="node">체크섬<small>해시 대조</small></div><span class="arrow">→</span>
+      <div class="node">LOG 한 줄<small>적용·보류·반려까지</small></div>
+    </div>
+    <div class="chips">
+      <div class="chip">인계 기록 59행 — Codex→Claude 17건 · Claude→Codex 8건</div>
+      <div class="chip">커밋 144개 중 121개 협업 트레일러</div>
+      <div class="chip">납품 29장 중 5장만 채택 — 반려 사유도 기록</div>
+    </div>
+  </section>
+
+  <!-- ⑥ 학습 설계 -->
+  <section class="slide" id="s6"
+    data-notes="학습의 인풋은 이미 게임 전면에 깔려 있습니다. 소환 카드와 자령 창의 훈음 전용 줄, 1,000자 훈음 무결 데이터, 쉬운 뜻풀이 도감까지 — 보고 외우는 쪽은 플레이 동선 그대로가 복습입니다. 아웃풋은 부적 따라쓰기로 잇습니다 — 따라 쓴 그 글자의 자령을 봉인해 얻는 보상 설계로, 기획을 확정해 두었습니다."
+    data-time="~20초">
+    <p class="eyebrow">LEARNING DESIGN</p>
+    <h2>인풋은 <span class="accent">훈음 카드</span>, 아웃풋은 <span class="accent">부적 따라쓰기</span></h2>
+    <div class="rule"></div>
+    <div class="twocol">
+      <div class="card">
+        <h3><span class="tag">INPUT</span>보고 외운다 — 실장 완료</h3>
+        <ul>
+          <li>소환 카드·자령 창의 <b>훈음 전용 줄</b> — 모든 조작 동선에서 뜻·읽기 노출</li>
+          <li>천자문 1,000자 <b>훈음 누락 0</b> (libhangul 976자 + 프로젝트 교정 24자)</li>
+          <li>도감·쉬운 뜻풀이 — 획수가 별이 되고, <b>성어 한 줄 배치</b>가 곧 복습</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3><span class="tag out">OUTPUT</span>써서 외운다 — 다음 확장 예고</h3>
+        <ul>
+          <li><b>부적 따라쓰기</b> — 반투명 글자를 마우스로 따라 쓰면 보상</li>
+          <li>최상위 보상은 <b>따라 쓴 그 글자의 자령</b> — 부적 제작 = 봉인구 제작이라는 세계관 정합</li>
+          <li>타워가 싸우는 동안의 손을 학습으로 채우는 설계 (기획 확정)</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ⑦ 지표·검증 -->
+  <section class="slide" id="s7"
+    data-notes="게임 규칙은 감이 아니라 게이트로 지켰습니다. 자동 플레이 시뮬레이션 승률 게이트를 표준 135런, 캐주얼 45런으로 돌려 전부 통과했고, CI가 푸시마다 데이터 정합 검사부터 빌드까지 다시 돕니다. UI는 대비 4.5:1 전수 실측과 픽셀 diff 검증으로 닫았습니다."
+    data-time="~20초">
+    <p class="eyebrow">QUALITY GATES</p>
+    <h2>감이 아니라 <span class="accent">게이트</span>로 지킨 품질</h2>
+    <div class="rule"></div>
+    <div class="cards" style="grid-template-columns: repeat(2, 1fr);">
+      <div class="card">
+        <b class="num">시뮬 게이트 전부 pass</b>
+        <span class="sub">자동 플레이 시뮬레이션 승률 게이트 — 표준 135런 0.556 · 캐주얼 45런 0.489. 밸런스 수술마다 재검증</span>
+      </div>
+      <div class="card">
+        <b class="num">e2e 20/20 green</b>
+        <span class="sub">Playwright E2E(스모크·오디오·수련장 온보딩) + Vitest 17개 스펙 상시 통과</span>
+      </div>
+      <div class="card">
+        <b class="num">CI → Pages 자동 배포</b>
+        <span class="sub">push마다 데이터 정합 검사 → 테스트 → 시뮬 → 빌드, main 병합 즉시 라이브 갱신</span>
+      </div>
+      <div class="card">
+        <b class="num">화면은 실측으로</b>
+        <span class="sub">명암 대비 4.5:1 전 항목 스크린샷 실측 교정 · 애니메이션 픽셀 diff 검증 · 신입 감사 70건 반영</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ⑧ Hive 확장 -->
+  <section class="slide" id="s8"
+    data-notes="천자문 1,000자로 시작한 콘텐츠 구조가 이미 일본 2,136자, 중국 3,500자 로스터로 확장 동작 중입니다. 한자 팩, 시즌 사자성어, 주간 도전 시드 같은 라이브 콘텐츠가 코드 수정 없이 데이터 추가만으로 열리는 설계입니다. 여기에 Hive의 계정·리더보드·푸시를 얹으면 지역별 서비스 확장이 자연스럽고, 고정 해상도 웹 빌드라 모바일 WebView 이식도 단순합니다."
+    data-time="~20초">
+    <p class="eyebrow">RELEASE POTENTIAL — HIVE</p>
+    <h2>데이터만 부으면 <span class="accent">라이브 콘텐츠</span>가 되는 구조</h2>
+    <div class="rule"></div>
+    <div class="cards" style="grid-template-columns: repeat(3, 1fr);">
+      <div class="card">
+        <b class="num">지역 3종 실장</b>
+        <span class="sub">KR 1,001자 · JP 2,136자 · CN 3,500자 — 지역 선택이 이미 게임 안에서 동작</span>
+      </div>
+      <div class="card">
+        <b class="num">데이터 = 콘텐츠</b>
+        <span class="sub">한자 팩 · 시즌 사자성어 · 주간 도전 시드 — 코드 수정 없이 데이터 추가만으로 열리는 설계</span>
+      </div>
+      <div class="card">
+        <b class="num">Hive 접점</b>
+        <span class="sub">계정 · 리더보드 · 푸시를 얹는 지역별 서비스 확장. 고정 1280×720 웹 빌드라 모바일 WebView 이식 단순</span>
+      </div>
+    </div>
+    <p class="lede" style="margin-top:24px">결정론 시드 — 같은 시드는 같은 런.
+      주간 도전과 리더보드가 <b>공정한 경쟁</b>으로 바로 이어집니다.</p>
+  </section>
+
+  <!-- ⑨ 마무리 -->
+  <section class="slide" id="s9"
+    data-notes="천자진은 지금 이 링크에서 설치 없이 바로 플레이할 수 있습니다. 심사 기간 내내 같은 주소가 유지되고, main 병합마다 자동 배포로 갱신됩니다. 한자 암기가 재미있어지는 순간을 직접 확인해 주시기 바랍니다 — 감사합니다."
+    data-time="~15초">
+    <p class="eyebrow" style="letter-spacing:0.4em">천자진 · 千字陣</p>
+    <h1 style="font-size:44px; margin-bottom:10px">지금, 링크 하나로 출정합니다</h1>
+    <a class="play-link" href="https://meowthologysaga.github.io/Hanja_Random_TD/">meowthologysaga.github.io/Hanja_Random_TD</a>
+    <div class="qr">QR 자리</div>
+    <div class="sub-links">
+      데모 영상 <code>…/Hanja_Random_TD/demo.mp4</code> (1:57 · 성어 실발동 포함)<br>
+      저장소 <code>github.com/MeowthologySaga/Hanja_Random_TD</code> — 협업 기록 전체 공개
+    </div>
+  </section>
+
+  <div id="hud"></div>
+  <div id="pagenum">1 / 9</div>
+  <div id="keyhint">← → 넘김 · N 발표자 노트</div>
+  <div id="notes"><div class="nt">발표자 노트</div><div id="notes-body"></div></div>
+</div>
+
+<script>
+(function () {
+  var slides = Array.prototype.slice.call(document.querySelectorAll(".slide"));
+  var hud = document.getElementById("hud");
+  var pagenum = document.getElementById("pagenum");
+  var notes = document.getElementById("notes");
+  var notesBody = document.getElementById("notes-body");
+  var index = 0;
+  var notesOpen = false;
+
+  slides.forEach(function (_, i) {
+    var dot = document.createElement("span");
+    dot.className = "dot";
+    dot.addEventListener("click", function () { go(i); });
+    hud.appendChild(dot);
+  });
+  var dots = Array.prototype.slice.call(hud.children);
+
+  function go(next) {
+    index = Math.max(0, Math.min(slides.length - 1, next));
+    slides.forEach(function (s, i) { s.classList.toggle("is-active", i === index); });
+    dots.forEach(function (d, i) { d.classList.toggle("is-on", i === index); });
+    pagenum.textContent = (index + 1) + " / " + slides.length;
+    renderNotes();
+    if (history.replaceState) history.replaceState(null, "", "#" + (index + 1));
+  }
+
+  function renderNotes() {
+    var s = slides[index];
+    var time = s.getAttribute("data-time") || "";
+    notesBody.textContent = (time ? "[" + time + "] " : "") + (s.getAttribute("data-notes") || "");
+  }
+
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "ArrowRight" || e.key === " " || e.key === "PageDown") { e.preventDefault(); go(index + 1); }
+    else if (e.key === "ArrowLeft" || e.key === "PageUp") { e.preventDefault(); go(index - 1); }
+    else if (e.key === "Home") { go(0); }
+    else if (e.key === "End") { go(slides.length - 1); }
+    else if (e.key === "n" || e.key === "N") {
+      notesOpen = !notesOpen;
+      notes.classList.toggle("is-open", notesOpen);
+    }
+  });
+
+  /* 고정 무대 균일 스케일 — 게임과 같은 문법 */
+  var stage = document.getElementById("stage");
+  function fit() {
+    var scale = Math.min(window.innerWidth / 1280, window.innerHeight / 720) * 0.97;
+    if (!isFinite(scale) || scale <= 0.05) scale = 1;
+    stage.style.transform = "translate(-50%, -50%) scale(" + scale + ")";
+  }
+  window.addEventListener("resize", fit);
+  fit();
+
+  var hash = parseInt(location.hash.replace("#", ""), 10);
+  go(isNaN(hash) ? 0 : hash - 1);
+})();
+</script>
+</body>
+</html>
