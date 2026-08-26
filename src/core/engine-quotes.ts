@@ -167,4 +167,10 @@ export interface GameEngineOptions {
    * NOTATION_AXIS_READY 가 켜진 뒤에만 S13 이 이 값을 넘긴다.
    */
   readonly notation?: NotationCode;
+  /**
+   * 부적 만들기(트랙 C2)를 켠 런. 적 체력만 5% 오른다 —
+   * engine-tuning.ts 「부적 모드 경제」. 생략하면 1.0 이라 현행과 같고,
+   * 시뮬 봇은 이 옵션을 넘기지 않으므로 게이트 수치가 흔들리지 않는다.
+   */
+  readonly talismanMode?: boolean;
 }
