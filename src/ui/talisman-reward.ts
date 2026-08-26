@@ -11,12 +11,24 @@
  * 자령은 어디까지나 방문객이다. 엔진 상태는 하나도 건드리지 않으므로 보관고에
  * 남지도, 전력이 되지도 않는다(보상만 지급 — 사용자 결정인 랜덤 보상 원안 유지).
  *
- * 연출 예산은 1.6초 안쪽이고 전투 조작을 막지 않는다(전부 pointer-events:none).
- * 트랙 A 의 `+N 문기` 플로팅(essence-feedback.ts)과 시각 언어를 맞추되 부적
- * 보상은 더 크고 더 오래 머문다.
+ * 트랙 C3 — 읽을 시간을 준다. "보상 이펙트가 너무 빨라서 뭐 얻었는지 잘
+ * 모르겠어"(사용자 실황). 총 길이를 1.4초에서 2.7초로 늘리되, 늘린 몫을
+ * 전부 **머무는 시간**에 쓴다: 튀어나온 꾸러미가 자령 발치에서 0.86초 동안
+ * 크게 정지한 뒤에야 자원칸으로 날아간다. 여러 개면 등장 간격을 0.12→0.25초로
+ * 벌려 하나씩 읽히게 한다. 꾸러미에는 무엇을 받았는지 글자로 박는다
+ * ("엽전 +12" · "木 문기 +1" · "무료 소환권 +1") — 숫자만 날아가면 무엇을
+ * 받았는지 알 수 없다. 자원칸 카운트업도 0.42→0.76초로 함께 늘렸다.
+ *
+ * 구간별 예산(보상 1개 · 이동 연출):
+ *   0–320   자령 강림          320–580   꾸러미 팝(0.35→1.14배)
+ *   580–1440 정지 유지(860ms)  1440–2060 자원칸 비행·착탄
+ *   ~1980–2740 엽전 카운트업   ~2700    자령 퇴장
+ * 늘어난 뒤에도 전투 조작은 막지 않는다(전부 pointer-events:none).
  *
  * 차분한 화면·OS 동작 줄이기: 이동·바운스·흔들림은 CSS 게이트가 걷어 가고
- * 자령 초상·인장·숫자 카운트업·최근 보상 줄(정보)은 그대로 남는다.
+ * 자령 초상·인장·숫자 카운트업·최근 보상 줄(정보)은 그대로 남는다. 이때는
+ * 날아가지 않는 대신 제자리에서 2초 넘게(완전 불투명 ≈2.07초) 버틴다 —
+ * 정보는 더 오래 남긴다.
  */
 import { ELEMENT_STYLES } from "../core/hanzi";
 import { type Wuxing } from "../core/types";
@@ -32,27 +44,45 @@ export interface TalismanRewardGrant {
   readonly wuxing?: Wuxing;
   /** 꾸러미에 박히는 한 글자(엽전 錢 · 문기 오행자 · 무료권 券). */
   readonly glyph: string;
-  /** 꾸러미 옆 글줄 — "+22 엽전". */
+  /**
+   * 꾸러미 옆 글줄 — "엽전 +12" · "木 문기 +1" · "무료 소환권 +1".
+   * 무엇인지가 앞, 수량이 뒤다(트랙 C3). 숫자만 날아가면 무엇을 받았는지
+   * 알 수 없다는 사용자 실황의 반영이라, 아이콘 옆에 이름을 반드시 적는다.
+   */
   readonly label: string;
 }
 
 /** 자령이 머무는 총 길이. 540절의 talisman-visit-arc 길이와 맞춘다. */
-const VISIT_MS = 1_400;
+const VISIT_MS = 2_700;
 
 /** 강림 뒤 보상이 발치에서 튀어나오기까지. */
-const GIFT_DELAY_MS = 300;
+const GIFT_DELAY_MS = 320;
 
 /** 튀어나오는 구간(팝). */
-const GIFT_POP_MS = 170;
+const GIFT_POP_MS = 260;
+
+/**
+ * 트랙 C3 의 핵심 — 튀어나온 꾸러미가 **크게 정지해 있는** 구간.
+ * 여기가 "무엇을 받았는지" 읽히는 유일한 시간이라 보상 하나당 0.8초 이상을
+ * 보장한다. 이 구간을 지나야 자원칸으로 날아간다.
+ */
+const GIFT_HOLD_MS = 860;
 
 /** 자원칸까지 호를 그리는 구간. */
-const GIFT_FLIGHT_MS = 520;
+const GIFT_FLIGHT_MS = 620;
 
-/** 가챠 연출 문법 — 여러 개면 이 간격으로 연쇄한다. */
-const GIFT_STAGGER_MS = 120;
+/** 가챠 연출 문법 — 여러 개면 이 간격으로 연쇄한다(하나씩 읽히게 벌렸다). */
+const GIFT_STAGGER_MS = 250;
 
-/** 착탄 뒤 숫자가 굴러가는 길이. */
-const GOLD_ROLL_MS = 420;
+/**
+ * 차분한 화면·동작 줄이기에서 꾸러미가 제자리에 머무는 길이.
+ * 이동이 없어 정보가 오직 이 정지 표시에만 실리므로 이동 연출보다 더 길게
+ * 잡는다 — 완전 불투명 구간이 2초를 넘는다(아래 opacity 오프셋 0.04→0.94).
+ */
+const GIFT_CALM_MS = 2_300;
+
+/** 착탄 뒤 숫자가 굴러가는 길이. 느려진 연출에 맞춰 함께 늘렸다. */
+const GOLD_ROLL_MS = 760;
 
 /** 호의 높이 — 직선 중점에서 이만큼 위로 부푼다. */
 const ARC_LIFT = 46;
@@ -153,7 +183,7 @@ function flashAnchor(anchor: HTMLElement): void {
   // 연속 수령에도 매번 다시 튀도록 강제 리플로 후 재부착(트랙 A 문법).
   void anchor.offsetWidth;
   anchor.classList.add("is-talisman-land");
-  window.setTimeout(() => anchor.classList.remove("is-talisman-land"), 560);
+  window.setTimeout(() => anchor.classList.remove("is-talisman-land"), 700);
 }
 
 function spawnGift(grant: TalismanRewardGrant, origin: ShellPoint, index: number, calm: boolean): void {
@@ -172,34 +202,39 @@ function spawnGift(grant: TalismanRewardGrant, origin: ShellPoint, index: number
   };
 
   if (calm || !anchor) {
-    // 이동 없이 제자리에서 보여 주기만 한다 — 무엇을 받았는지는 남는다.
-    const total = GIFT_POP_MS + GIFT_FLIGHT_MS;
+    // 이동 없이 제자리에서 보여 주기만 한다 — 대신 2초 넘게 버틴다(정보를
+    // 이 정지 표시 하나로만 전하므로 이동 연출보다 오래 남긴다).
     flyer.animate(
-      [{ opacity: 0 }, { opacity: 1, offset: 0.1 }, { opacity: 1, offset: 0.86 }, { opacity: 0 }],
-      { duration: total, delay, easing: "linear", fill: "backwards" }
+      [{ opacity: 0 }, { opacity: 1, offset: 0.04 }, { opacity: 1, offset: 0.94 }, { opacity: 0 }],
+      { duration: GIFT_CALM_MS, delay, easing: "linear", fill: "backwards" }
     );
     window.setTimeout(land, delay + GIFT_POP_MS);
-    window.setTimeout(() => flyer.remove(), delay + total + 60);
+    window.setTimeout(() => flyer.remove(), delay + GIFT_CALM_MS + 60);
     return;
   }
 
   const target = shellCenterOf(anchor);
   const dx = target.x - origin.x;
   const dy = target.y - origin.y;
-  const total = GIFT_POP_MS + GIFT_FLIGHT_MS;
+  const total = GIFT_POP_MS + GIFT_HOLD_MS + GIFT_FLIGHT_MS;
   const popEnd = GIFT_POP_MS / total;
+  const holdEnd = (GIFT_POP_MS + GIFT_HOLD_MS) / total;
+  // 구간마다 결이 다르므로(팝은 튕기고, 유지는 멈추고, 비행은 미끄러진다)
+  // 전체 easing 은 linear 로 두고 키프레임마다 따로 준다.
   flyer.animate(
     [
-      { offset: 0, transform: "translate(0, 0) scale(0.35)", opacity: 0 },
-      { offset: popEnd * 0.55, transform: "translate(0, -6px) scale(1.2)", opacity: 1 },
-      { offset: popEnd, transform: "translate(0, 0) scale(1)", opacity: 1 },
-      { offset: popEnd + (1 - popEnd) * 0.55, transform: `translate(${Math.round(dx * 0.5)}px, ${Math.round(dy * 0.5 - ARC_LIFT)}px) scale(0.94)`, opacity: 1 },
-      { offset: 0.95, transform: `translate(${Math.round(dx)}px, ${Math.round(dy)}px) scale(0.58)`, opacity: 1 },
+      { offset: 0, transform: "translate(0, 0) scale(0.35)", opacity: 0, easing: "cubic-bezier(0.2, 1.5, 0.4, 1)" },
+      { offset: popEnd * 0.6, transform: "translate(0, -9px) scale(1.3)", opacity: 1, easing: "ease-out" },
+      // 여기서부터 GIFT_HOLD_MS 동안 크게 멈춰 선다 — 읽는 구간이다.
+      { offset: popEnd, transform: "translate(0, -4px) scale(1.14)", opacity: 1, easing: "linear" },
+      { offset: holdEnd, transform: "translate(0, -4px) scale(1.14)", opacity: 1, easing: "cubic-bezier(0.35, 0, 0.3, 1)" },
+      { offset: holdEnd + (1 - holdEnd) * 0.55, transform: `translate(${Math.round(dx * 0.5)}px, ${Math.round(dy * 0.5 - ARC_LIFT)}px) scale(0.94)`, opacity: 1 },
+      { offset: 0.96, transform: `translate(${Math.round(dx)}px, ${Math.round(dy)}px) scale(0.58)`, opacity: 1 },
       { offset: 1, transform: `translate(${Math.round(dx)}px, ${Math.round(dy)}px) scale(0.36)`, opacity: 0 }
     ],
-    { duration: total, delay, easing: "cubic-bezier(0.35, 0, 0.3, 1)", fill: "backwards" }
+    { duration: total, delay, easing: "linear", fill: "backwards" }
   );
-  window.setTimeout(land, delay + total * 0.95);
+  window.setTimeout(land, delay + GIFT_POP_MS + GIFT_HOLD_MS + GIFT_FLIGHT_MS * 0.96);
   window.setTimeout(() => flyer.remove(), delay + total + 60);
 }
 
@@ -231,14 +266,18 @@ export function playTalismanRewardVisit(
   shell.append(visit);
   window.setTimeout(() => visit.remove(), VISIT_MS + 80);
 
-  // 보상은 자령 발치에서 튀어나온다 — 초상(84px)과 이름표 아래다. 차분한
-  // 화면에서는 꾸러미가 제자리에 머무르므로 이 여유가 없으면 이름표를 덮는다.
-  const feet: ShellPoint = { x: center.x, y: center.y + 68 };
+  // 보상은 자령 발치에서 튀어나온다 — 초상(84px)과 이름표 아래다. 꾸러미가
+  // 정지해 머무는 구간이 길어졌으므로(트랙 C3) 이 여유가 부족하면 이름표를
+  // 그대로 덮어 버린다 — 꾸러미를 키운 만큼 발치도 함께 내렸다(실측 68→88).
+  // 이름표 아래끝이 중심에서 +51.5px, 유지 구간의 꾸러미 윗변이 발치에서
+  // -27px 이라 +88 이면 9px 이 남는다.
+  const feet: ShellPoint = { x: center.x, y: center.y + 88 };
   grants.forEach((grant, index) => spawnGift(grant, feet, index, calm));
 
   const goldGrant = grants.find((grant) => grant.kind === "gold");
   if (!goldGrant) return;
-  const landAt = GIFT_DELAY_MS + grants.indexOf(goldGrant) * GIFT_STAGGER_MS + (GIFT_POP_MS + GIFT_FLIGHT_MS) * 0.95;
+  const landAt = GIFT_DELAY_MS + grants.indexOf(goldGrant) * GIFT_STAGGER_MS
+    + GIFT_POP_MS + GIFT_HOLD_MS + GIFT_FLIGHT_MS * 0.96;
   startGoldRoll(goldBefore, ctx.engine.state.gold, calm ? 0 : landAt);
 }
 
