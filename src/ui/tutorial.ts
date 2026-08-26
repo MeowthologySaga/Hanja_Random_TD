@@ -82,6 +82,8 @@ interface TutorialRuntime {
   summonBaseline: number;
   essenceBaseline: number;
   growthWuxing: Wuxing;
+  /** 강화 걸음에서 오행 강화 구획을 한 번 화면 안으로 굴렸는가. */
+  growthScrolled: boolean;
   idiomGrantIds: number[];
   idiomLine: number[];
 }
@@ -89,7 +91,7 @@ interface TutorialRuntime {
 let runtime: TutorialRuntime = freshRuntime();
 
 function freshRuntime(): TutorialRuntime {
-  return { summonBaseline: 0, essenceBaseline: 0, growthWuxing: "木", idiomGrantIds: [], idiomLine: [] };
+  return { summonBaseline: 0, essenceBaseline: 0, growthWuxing: "木", growthScrolled: false, idiomGrantIds: [], idiomLine: [] };
 }
 
 function tutorialCompleted(): boolean {
@@ -224,7 +226,18 @@ const STEPS: readonly TutorialStep[] = [
       // 제련소가 열리면 바로 그 오행 갈피가 보이게 맞춰 둔다.
       ctx.growthElement = runtime.growthWuxing;
       ctx.growthRenderKey = "";
+      runtime.growthScrolled = false;
       showToast(`수련 지원 — ${runtime.growthWuxing} 문기 12를 드렸어요`);
+    },
+    tick: () => {
+      // 제련소 목록은 공용 강화가 먼저라 오행 강화 구획이 접힌 아래에 있다.
+      // 프레임이 열리면 한 번만 그 구획을 화면 안으로 굴려 스포트라이트가
+      // 실제로 보이는 자리를 짚게 한다.
+      if (runtime.growthScrolled || ctx.activePanelTab !== "growth") return;
+      const section = document.querySelector<HTMLElement>(`#growth-upgrade-list [data-growth-section="${runtime.growthWuxing}"]`);
+      if (!section) return;
+      section.scrollIntoView({ block: "start" });
+      runtime.growthScrolled = true;
     },
     view: () => ctx.activePanelTab === "growth"
       ? {
