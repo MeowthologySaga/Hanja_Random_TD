@@ -3084,7 +3084,9 @@ export class GameEngine {
       helpful: true,
       helpfulReason: "idiom",
       newDiscovery,
-      utility: newDiscovery ? "new" : "synthesis"
+      utility: newDiscovery ? "new" : "synthesis",
+      // 기원 소환은 결과가 항상 1★이라 잭팟 꼬리가 없다.
+      jackpot: false
     });
     if (definition.char === this.state.targetChar) this.completeGoal(definition.char);
     if (!stored) this.resolveIdiomFormations();
