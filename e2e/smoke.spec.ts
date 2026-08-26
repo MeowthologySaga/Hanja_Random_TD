@@ -1286,6 +1286,9 @@ test("spotlights the first run with a three-step coach that can be skipped for g
 // FB4 — 1회성 안내. 별승급 진법에서 중급 소환 해금 안내가 먼저 서고,
 // 첫 소환 공개 연출에는 획수→별 규칙 안내가 딱 한 번 붙는다.
 test("teaches summon tiers and the stroke-to-star rule with one-shot hints", { tag: HINT_TAG }, async ({ page }) => {
+  // 부적 안내(기본 켜짐)는 이 스펙의 대상이 아니다 — 본 뒤로 표시해 두지 않으면
+  // 중급 안내를 닫는 순간 그 자리를 이어받아 "안내가 안 걷힌다"로 보인다.
+  await page.addInitScript(() => window.localStorage.setItem("hanja-td:hint:talisman:v1", "1"));
   await page.goto("/?seed=HINT-E2E-01");
   await page.getByTestId("start-run").click();
 
