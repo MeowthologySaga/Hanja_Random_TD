@@ -2957,6 +2957,9 @@ export class GameEngine {
    * 부족 글자 합집합(idiomWishChars)·상점 카드·소환 본체는 그대로 붙는다.
    */
   idiomWishTargets(): readonly IdiomDefinition[] {
+    // 목표 서책 개편: 추적 성어(최대 3)의 합집합이 기원 풀이다.
+    const tracked = this.trackedIdioms();
+    if (tracked.length > 0) return tracked;
     const target = this.currentIdiomTarget();
     return target ? [target] : [];
   }
