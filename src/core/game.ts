@@ -451,11 +451,24 @@ const REGION_ENEMY_HP_CURVE: Record<RegionCode, { base: number; chapterGrowth: n
   // board. JP/CN recipe graphs complete substantially more evolutions, so their
   // durability rises by chapter instead of front-loading a punishing wave-10
   // multiplier. This preserves the opening tutorial curve and checks late snowball.
-  KR: { base: 21.6, chapterGrowth: 0 },
-  JP: { base: 23.8, chapterGrowth: 1.04 },
-  CN: { base: 24.2, chapterGrowth: 0.97 }
+  //
+  // 수술 1 재보정(2026-08): 유지형 성어를 지키는 봇 + 강화 이정표·8성 오라·
+  // 광역 별스케일 도입 뒤 세 지역을 45런/지역 시뮬로 승률 0.467~0.578 에
+  // 맞춘 값. 승률은 이 계수에 극도로 민감하다(±1% 체력 ≈ ±5~20%p) —
+  // 손보려면 반드시 --runs=135 로 재고정하라.
+  KR: { base: 25.25, chapterGrowth: 0 },
+  JP: { base: 23.4, chapterGrowth: 0.92 },
+  CN: { base: 23.4, chapterGrowth: 0.67 }
 };
-const CASUAL_ENEMY_HP_SCALE = 2.2;
+
+/**
+ * 수술 1(FB5): 모드별 적 체력 계수.
+ *
+ * "별승급(8성)이랑 다른 모드 난이도가 너무 다르다"는 피드백. 기준점은 메인
+ * 모드인 별승급(캐주얼)이며, 두 모드 모두 자동 시뮬 승률 45~60% 밴드로
+ * 수렴하도록 이 계수만 조정한다 — 웨이브 구성·규칙은 그대로다.
+ */
+const MODE_ENEMY_HP_SCALE: Record<GameMode, number> = { standard: 1, casual: 2.56 };
 
 // The center formation overlaps more of the loop than the east formation.
 // These small route-coverage coefficients make "which element appeared first"
@@ -467,7 +480,7 @@ function regionEnemyHpMultiplier(region: RegionCode, wave: number, mode: GameMod
   const curve = REGION_ENEMY_HP_CURVE[region];
   const completedChapters = Math.max(0, Math.floor((wave - 1) / 10));
   const regional = curve.base + completedChapters * curve.chapterGrowth;
-  return regional * (mode === "casual" ? CASUAL_ENEMY_HP_SCALE : 1);
+  return regional * MODE_ENEMY_HP_SCALE[mode];
 }
 
 /**
