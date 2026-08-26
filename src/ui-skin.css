@@ -10415,6 +10415,63 @@ span.codex-jaryeong-category { color: #4a3f30 !important; }
   margin: 1px 0 2px;
 }
 
+/* ── R12-4. 분해의 "유일 보유 한자" 보호 스위치 ──────────────────
+   필터 줄 아래 한 줄을 통째로 쓰는 스위치. 켜짐이 기본이라 켜진 모습이
+   차분하고, 끄면 붉은 인주로 "지금은 파괴적 상태"임을 계속 알린다. */
+
+.dismantle-unique-toggle {
+  display: flex;
+  grid-column: 1 / -1;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  min-height: 26px;
+  padding: 3px 8px;
+  color: var(--text-100);
+  border: 0;
+  border-radius: var(--r-sm, 6px);
+  background: linear-gradient(180deg, #f2e8cd 0%, #e2d4b2 100%);
+  box-shadow: var(--bevel-up), 0 0 0 1px rgba(122, 90, 42, 0.3);
+  cursor: pointer;
+}
+
+.dismantle-unique-toggle b {
+  color: #3a2c16;
+  font-size: 11.5px;
+}
+
+.dismantle-unique-toggle i {
+  padding: 1px 7px;
+  color: #f4ead1;
+  border-radius: 999px;
+  background: var(--dan-noe, #3f7d6e);
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 900;
+}
+
+.dismantle-unique-toggle:not(.is-on) {
+  background: linear-gradient(180deg, #f6ddd4 0%, #e8c6b9 100%);
+  box-shadow: var(--bevel-up), 0 0 0 1px rgba(159, 47, 35, 0.45);
+}
+
+.dismantle-unique-toggle:not(.is-on) i { background: var(--seal, #9f2f23); }
+
+/* 보호를 껐을 때 남는 마지막 시각 단서. 글줄 맨 앞이라 잘려 나가지 않는다. */
+.dismantle-sole-badge {
+  margin-right: 4px;
+  padding: 0 5px;
+  color: #7a2f1c;
+  border-radius: 999px;
+  background: rgba(159, 47, 35, 0.14);
+  box-shadow: inset 0 0 0 1px rgba(159, 47, 35, 0.4);
+  font-size: 9.5px;
+  font-style: normal;
+  font-weight: 900;
+}
+
+.dismantle-row.is-sole { box-shadow: inset 3px 0 0 var(--seal, #9f2f23); }
+
 /* ══════════════════════════════════════════════════════════════════
    ===== R8 고정무대 =====
 

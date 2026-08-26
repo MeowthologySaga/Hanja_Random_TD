@@ -440,6 +440,7 @@ app.innerHTML = `
                 <select id="dismantle-element-filter" aria-label="분해 오행 필터"><option value="all">모든 오행</option><option>木</option><option>火</option><option>土</option><option>金</option><option>水</option></select>
                 <select id="dismantle-stage-filter" aria-label="분해 단계 필터"><option value="all">모든 단계</option><option value="1">1성</option><option value="2">2성</option><option value="3">3성</option><option value="4">4성</option><option value="5">5성</option><option value="6">6성</option><option value="7">7성</option><option value="8">8성</option></select>
                 <select id="dismantle-status-filter" aria-label="분해 보호 필터"><option value="all">전체 상태</option><option value="eligible">분해 가능</option><option value="protected">보호됨</option></select>
+                <button id="dismantle-unique-toggle" class="dismantle-unique-toggle" type="button" role="switch" aria-checked="true" data-testid="dismantle-unique-toggle" title="끄면 이 한자를 1기만 가진 자령도 분해 후보에 들어옵니다"><b>유일 자령 보호</b><i aria-hidden="true"><em>ON</em></i></button>
               </div>
               <div class="dismantle-toolbar"><button id="dismantle-recommend-button" type="button">추천 후보 선택</button><button id="dismantle-clear-button" type="button">선택 해제</button></div>
               <div id="growth-dismantle-list" class="growth-dismantle-list"></div>
@@ -658,7 +659,7 @@ app.innerHTML = `
           <li><b>은행 이자</b><span>웨이브 종료 시 보유 엽전 20개당 1엽전을 지급하며, 한 번에 최대 20엽전까지만 받을 수 있습니다.</span></li>
           <li><b>훈·독</b><span>기본 자령 모드는 머리 위 한자·훈음을 표시합니다. 한자 강조를 끄면 머리 위 표찰은 숨기고 별만 남깁니다. 설정의 공부 모드는 전장에 큰 한자와 짧은 읽기를 표시하며, 선택 카드와 도감에서는 자세한 훈음·음독·훈독·병음과 뜻을 확인합니다.</span></li>
           <li><b>전투</b><span>웨이브 약점 오행은 피해가 30% 증가합니다. 水→木→火→土→金→水 상생을 함께 배치하면 추가 피해를 줍니다.</span></li>
-          <li><b>강화 탭</b><span>인벤토리 자령을 보호 규칙 아래 일괄 분해하고, 공용·오행 5능력치×99단계와 오행별 고유 특성 3종×10단계를 한 화면에서 투자합니다.</span></li>
+          <li><b>강화 탭</b><span>인벤토리 자령을 보호 규칙 아래 일괄 분해하고, 공용·오행 5능력치×99단계와 오행별 고유 특성 3종×10단계를 한 화면에서 투자합니다. <em>유일 자령 보호</em> 스위치를 끄면 이 한자를 1기만 가진 자령도 후보에 들어오며, 목록에 <em>유일</em> 배지가 남습니다(잠금·농축·목표·성어 보호는 그대로).</span></li>
           <li><b>능력 조합</b><span>모든 한자는 오행 효과·전투 역할·조합망 패시브를 가집니다. 합성 한자는 재료의 오행도 계승해 주기 추가타를 얻습니다.</span></li>
           <li><b>잠금</b><span>선택한 자령을 잠그면 공격·이동은 유지되지만 합성 재료와 판매 대상에서는 제외됩니다.</span></li>
           <li><b>자령 도감</b><span>전체 한자와 천자문 자령을 한 화면에서 봅니다. 별·독립 여부·조합표·쉬운 훈 풀이와 자령 초상화를 함께 확인합니다.</span></li>
@@ -1098,6 +1099,26 @@ let hoverGlyphLarge = ((): boolean => {
     return true;
   }
 })();
+/*
+ * 분해의 "유일 보유 한자" 보호.
+ *
+ * 초보자를 지키는 규칙이지만 문기를 모으려는 사람에게는 인벤토리 절반을
+ * 잠그는 벽이었다. 기본은 ON(현행 유지)이고, 끄면 유일 자령도 후보에 들어온다.
+ * 파괴적 행동이므로 목록의 `유일` 배지는 꺼도 남는다 — 토글 자체가 의사 표시라
+ * 따로 확인 창을 세우지는 않는다.
+ */
+const DISMANTLE_UNIQUE_STORAGE_KEY = "hanja-td:dismantle-protect-unique";
+let dismantleProtectsUnique = ((): boolean => {
+  try {
+    return window.localStorage.getItem(DISMANTLE_UNIQUE_STORAGE_KEY) !== "false";
+  } catch {
+    return true;
+  }
+})();
+/** 분해 경로 전용 옵션. 다른 보호(잠금·농축·공명)와 캐주얼 3합은 건드리지 않는다. */
+function dismantleOptions(): { protectUnique: boolean } {
+  return { protectUnique: dismantleProtectsUnique };
+}
 /*
  * 시작 보너스 버튼 주목성.
  *
@@ -1849,7 +1870,32 @@ function growthStateSignature(): string {
   const traits = WUXING_ORDER.map((wuxing) => engine.state.elementTraits[wuxing].join(",")).join("|");
   const scores = WUXING_ORDER.map((wuxing) => engine.state.elementDismantleScore[wuxing]).join(",");
   const filters = `${must<HTMLSelectElement>("#dismantle-element-filter").value}:${must<HTMLSelectElement>("#dismantle-stage-filter").value}:${must<HTMLSelectElement>("#dismantle-status-filter").value}`;
-  return `${engine.state.mode}:${upgradeStateSignature()}:${inventory}:${traits}:${scores}:${filters}:${[...dismantleSelection].sort((a, b) => a - b).join(",")}:${growthElement}`;
+  return `${engine.state.mode}:${upgradeStateSignature()}:${inventory}:${traits}:${scores}:${filters}:U${dismantleProtectsUnique ? 1 : 0}:${[...dismantleSelection].sort((a, b) => a - b).join(",")}:${growthElement}`;
+}
+
+function syncDismantleUniqueControl(): void {
+  const button = must<HTMLButtonElement>("#dismantle-unique-toggle");
+  button.classList.toggle("is-on", dismantleProtectsUnique);
+  button.setAttribute("aria-checked", String(dismantleProtectsUnique));
+  must<HTMLElement>("#dismantle-unique-toggle i em").textContent = dismantleProtectsUnique ? "ON" : "OFF";
+}
+
+function setDismantleProtectsUnique(enabled: boolean): void {
+  dismantleProtectsUnique = enabled;
+  try {
+    window.localStorage.setItem(DISMANTLE_UNIQUE_STORAGE_KEY, String(enabled));
+  } catch {
+    // 저장이 막혀도 이번 세션 선택은 살린다.
+  }
+  syncDismantleUniqueControl();
+  // 선택은 보호 규칙이 바뀐 순간 낡는다 — 비우고 다시 고르게 한다.
+  dismantleSelection.clear();
+  growthRenderKey = "";
+  renderGrowth();
+  renderRunInventory();
+  showToast(enabled
+    ? "유일 자령 보호 ON · 이 한자를 1기만 가진 자령은 분해 후보에서 빠집니다."
+    : "유일 자령 보호 OFF · 유일 자령도 분해할 수 있습니다. 목록의 유일 배지를 확인하세요.");
 }
 
 const UPGRADE_UNAVAILABLE_LABEL = "투자 불가";
@@ -1869,7 +1915,7 @@ function renderGrowth(): void {
   if (key === growthRenderKey) return;
   growthRenderKey = key;
   const active = engine.state.phase === "prep" || engine.state.phase === "combat";
-  const assessmentMap = new Map(engine.cleanupAssessments().map((assessment) => [assessment.towerId, assessment]));
+  const assessmentMap = new Map(engine.cleanupAssessments(dismantleOptions()).map((assessment) => [assessment.towerId, assessment]));
   const elementFilter = must<HTMLSelectElement>("#dismantle-element-filter").value;
   const stageFilter = must<HTMLSelectElement>("#dismantle-stage-filter").value;
   const statusFilter = must<HTMLSelectElement>("#dismantle-status-filter").value;
@@ -1888,13 +1934,15 @@ function renderGrowth(): void {
     const protectedReasons = assessment?.protectedReasons ?? ["보호 상태 확인 필요"];
     const protectedState = assessment?.protected ?? true;
     const essence = engine.towerDismantleEssenceValue(tower);
-    return `<label class="dismantle-row ${protectedState ? "is-protected" : ""}" style="--element:${ELEMENT_STYLES[tower.wuxing].color}">
+    // 보호를 껐어도 "이 한자는 이 1기뿐"이라는 사실은 남겨 실수를 막는다.
+    const soleBadge = assessment?.soleCopy && !protectedState ? `<i class="dismantle-sole-badge">유일</i>` : "";
+    return `<label class="dismantle-row ${protectedState ? "is-protected" : ""} ${soleBadge ? "is-sole" : ""}" style="--element:${ELEMENT_STYLES[tower.wuxing].color}">
       <input type="checkbox" data-dismantle-id="${tower.id}" ${dismantleSelection.has(tower.id) ? "checked" : ""} ${protectedState || !active ? "disabled" : ""}>
-      ${spiritPortraitMarkup(tower.char, tower.wuxing, "workbench-spirit--dismantle")}<b>${escapeHtml(tower.char)}</b><span><strong>${tower.wuxing}행 · ${towerProgressionLabel(tower)} · #${tower.id}</strong><small>${protectedState ? protectedReasons.map(escapeHtml).join(" · ") : (assessment?.reasons ?? []).map(escapeHtml).join(" · ") || "분해 가능"}</small></span><em>${protectedState ? "보호" : `${tower.wuxing}+${essence}`}</em>
+      ${spiritPortraitMarkup(tower.char, tower.wuxing, "workbench-spirit--dismantle")}<b>${escapeHtml(tower.char)}</b><span><strong>${soleBadge}${tower.wuxing}행 · ${towerProgressionLabel(tower)} · #${tower.id}</strong><small>${protectedState ? protectedReasons.map(escapeHtml).join(" · ") : (assessment?.reasons ?? []).map(escapeHtml).join(" · ") || "분해 가능"}</small></span><em>${protectedState ? "보호" : `${tower.wuxing}+${essence}`}</em>
     </label>`;
   }).join("") : `<div class="workbench-empty"><b>조건에 맞는 인벤토리 자령이 없습니다</b><span>필터를 바꾸거나 소환 자령을 인벤토리에 보관하세요.</span><button type="button" data-goto-inventory>인벤 탭 열기</button></div>`;
 
-  const quote = engine.quoteDismantle([...dismantleSelection]);
+  const quote = engine.quoteDismantle([...dismantleSelection], dismantleOptions());
   const gainLabel = (Object.entries(quote.gains) as Array<[Wuxing, number]>).filter(([, amount]) => amount > 0).map(([wuxing, amount]) => `${wuxing}+${amount}`).join(" · ");
   const scoreLabel = (Object.entries(quote.scoreGains) as Array<[Wuxing, number]>).filter(([, amount]) => amount > 0).map(([wuxing, amount]) => `${wuxing}점수+${amount}`).join(" · ");
   must<HTMLElement>("#dismantle-selection-summary").textContent = `${dismantleSelection.size}기 선택${quote.blocked.length > 0 ? ` · 보호 충돌 ${quote.blocked.length}` : ""}`;
@@ -6631,6 +6679,7 @@ must<HTMLButtonElement>("#settings-button").addEventListener("click", () => {
 });
 // 저장된 선택이 OFF 면 첫 그림부터 반영되도록 초기 1회 맞춘다.
 syncHoverGlyphControl();
+syncDismantleUniqueControl();
 
 must<HTMLButtonElement>("#composition-drawer-close").addEventListener("click", closeCompositionDrawer);
 must<HTMLElement>("#composition-branches").addEventListener("click", (event) => {
@@ -6852,14 +6901,19 @@ must<HTMLButtonElement>("#dismantle-clear-button").addEventListener("click", () 
   growthRenderKey = "";
   renderGrowth();
 });
+must<HTMLButtonElement>("#dismantle-unique-toggle").addEventListener("click", () => {
+  sound.unlock();
+  setDismantleProtectsUnique(!dismantleProtectsUnique);
+  sound.playUiConfirm();
+});
 must<HTMLButtonElement>("#dismantle-confirm-button").addEventListener("click", () => {
-  const quote = engine.quoteDismantle([...dismantleSelection]);
+  const quote = engine.quoteDismantle([...dismantleSelection], dismantleOptions());
   if (quote.ids.length === 0 || quote.blocked.length > 0) return;
   const towers = quote.ids.map((id) => engine.state.inventoryTowers.find((tower) => tower.id === id)).filter((tower): tower is Tower => Boolean(tower));
   const towerLabel = towers.map((tower) => `${tower.char}(${tower.wuxing} ${towerProgressionLabel(tower)})`).join(" · ");
   const gainLabel = (Object.entries(quote.gains) as Array<[Wuxing, number]>).filter(([, amount]) => amount > 0).map(([wuxing, amount]) => `${wuxing}+${amount}`).join(" · ");
   if (!window.confirm(`${towers.length}기를 한 번에 분해합니다.\n${towerLabel}\n획득: ${gainLabel}`)) return;
-  const result = engine.dismantleTowers(quote.ids);
+  const result = engine.dismantleTowers(quote.ids, dismantleOptions());
   if (result.ok) dismantleSelection.clear();
   handleAction(result);
 });

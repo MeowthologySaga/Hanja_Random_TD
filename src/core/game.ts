@@ -196,6 +196,20 @@ export interface CleanupAssessment {
   score: number;
   reasons: string[];
   protectedReasons: string[];
+  /** 이 한자를 이 1기만 갖고 있다. 보호를 껐을 때도 배지로 남겨야 한다. */
+  soleCopy: boolean;
+}
+
+/**
+ * 분해 경로만의 예외.
+ *
+ * "유일 보유 한자"는 초보자를 지키는 규칙이지만, 문기를 모으려는 숙련자에게는
+ * 인벤토리 절반을 잠가 버리는 벽이었다. 이 플래그를 끄면 유일 자령도 후보에
+ * 들어온다 — 잠금·농축·전장 공명 등 나머지 보호는 그대로다. 캐주얼 3체 조합의
+ * 유일 보호는 이 플래그와 무관하다.
+ */
+export interface CleanupOptions {
+  protectUnique?: boolean;
 }
 
 export interface DismantleQuote {
@@ -2308,7 +2322,8 @@ export class GameEngine {
     for (const tower of this.state.towers) tower.cell = assignment.get(tower.id) ?? tower.cell;
   }
 
-  cleanupAssessments(): CleanupAssessment[] {
+  cleanupAssessments(options: CleanupOptions = {}): CleanupAssessment[] {
+    const protectUnique = options.protectUnique ?? true;
     const all = [...this.state.towers, ...this.state.inventoryTowers];
     const counts = new Map<string, number>();
     for (const tower of all) counts.set(tower.char, (counts.get(tower.char) ?? 0) + 1);
@@ -2330,7 +2345,8 @@ export class GameEngine {
 
       if (tower.locked) protectedReasons.push("잠금 자령");
       if (concentration > 0) protectedReasons.push(`농축 ${concentration}단계 투자`);
-      if (count <= 1) protectedReasons.push("유일 보유 한자");
+      const soleCopy = count <= 1;
+      if (soleCopy && protectUnique) protectedReasons.push("유일 보유 한자");
       if (targetPath.has(tower.char)) protectedReasons.push("현재 목표 합성 계보");
       if (unfinishedIdiomChars.has(tower.char)) protectedReasons.push("미완성 사자성어 재료");
       if (readyMaterialIds.has(tower.id)) protectedReasons.push("즉시 합성 가능한 재료");
@@ -2356,21 +2372,22 @@ export class GameEngine {
       const dps = definition.combat.baseDamage * this.towerPowerMultiplier(tower) * definition.combat.budgetMultiplier / this.towerAttackCooldown(tower);
       const progressionRank = this.state.mode === "casual" ? tower.casualStar ?? tower.naturalStar ?? 1 : tower.stage;
       const score = dps + progressionRank * 70 + concentration * 90 + (stored ? -35 : 28) - Math.max(0, count - 1) * 22;
-      return { towerId: tower.id, protected: protectedReasons.length > 0, score, reasons, protectedReasons };
+      return { towerId: tower.id, protected: protectedReasons.length > 0, score, reasons, protectedReasons, soleCopy };
     });
   }
 
-  cleanupCandidates(limit = 12, inventoryOnly = false): CleanupAssessment[] {
-    return this.cleanupAssessments()
+  cleanupCandidates(limit = 12, inventoryOnly = false, options: CleanupOptions = {}): CleanupAssessment[] {
+    return this.cleanupAssessments(options)
       .filter((assessment) => !assessment.protected)
       .filter((assessment) => !inventoryOnly || this.state.inventoryTowers.some((tower) => tower.id === assessment.towerId))
       .sort((left, right) => left.score - right.score || left.towerId - right.towerId)
       .slice(0, Math.max(0, limit));
   }
 
-  quoteDismantle(ids: readonly number[]): DismantleQuote {
+  quoteDismantle(ids: readonly number[], options: CleanupOptions = {}): DismantleQuote {
+    const protectUnique = options.protectUnique ?? true;
     const uniqueIds = [...new Set(ids.filter((id) => Number.isInteger(id)))];
-    const assessments = new Map(this.cleanupAssessments().map((assessment) => [assessment.towerId, assessment]));
+    const assessments = new Map(this.cleanupAssessments(options).map((assessment) => [assessment.towerId, assessment]));
     const allTowers = [...this.state.towers, ...this.state.inventoryTowers];
     const ownedCounts = new Map<string, number>();
     for (const tower of allTowers) ownedCounts.set(tower.char, (ownedCounts.get(tower.char) ?? 0) + 1);
@@ -2395,7 +2412,9 @@ export class GameEngine {
     const selectedCounts = new Map<string, number>();
     for (const tower of preliminary) selectedCounts.set(tower.char, (selectedCounts.get(tower.char) ?? 0) + 1);
     for (const tower of preliminary) {
-      if ((ownedCounts.get(tower.char) ?? 0) - (selectedCounts.get(tower.char) ?? 0) < 1) {
+      // 한 줄씩은 통과해도 묶어서 고르면 마지막 1기까지 사라지는 경우를 막는 2차 검사.
+      // 보호를 끈 상태에서는 그것이 사용자의 의사이므로 막지 않는다.
+      if (protectUnique && (ownedCounts.get(tower.char) ?? 0) - (selectedCounts.get(tower.char) ?? 0) < 1) {
         blocked.push({ towerId: tower.id, reason: "일괄 처리 후 유일 보유 한자가 사라집니다." });
         continue;
       }
@@ -2406,11 +2425,11 @@ export class GameEngine {
     return { ids: eligibleIds, gains, scoreGains, blocked };
   }
 
-  dismantleTowers(ids: readonly number[]): ActionResult {
+  dismantleTowers(ids: readonly number[], options: CleanupOptions = {}): ActionResult {
     if (!this.isRunActive()) return { ok: false, message: "진행 중인 수비전이 없습니다." };
     // Rebuild the quote immediately before mutation so moved, locked, or newly
     // protected material can never be consumed from a stale UI selection.
-    const quote = this.quoteDismantle(ids);
+    const quote = this.quoteDismantle(ids, options);
     if (quote.blocked.length > 0) return { ok: false, message: `분해 중단 · ${quote.blocked[0]?.reason ?? "보호 자령이 포함되었습니다."}` };
     if (quote.ids.length === 0) return { ok: false, message: "분해할 인벤토리 자령을 선택하세요." };
     const selectedIds = new Set(quote.ids);
@@ -2434,16 +2453,16 @@ export class GameEngine {
     return { ok: true, message: this.state.lastMessage };
   }
 
-  dismantleSelected(): ActionResult {
+  dismantleSelected(options: CleanupOptions = {}): ActionResult {
     const selected = this.selectedTower();
     if (!selected) return { ok: false, message: "분해할 자령을 선택하세요." };
-    return this.dismantleTowers([selected.id]);
+    return this.dismantleTowers([selected.id], options);
   }
 
-  dismantleRecommended(limit = 8): ActionResult {
-    const ids = this.cleanupCandidates(limit, true).map((candidate) => candidate.towerId);
+  dismantleRecommended(limit = 8, options: CleanupOptions = {}): ActionResult {
+    const ids = this.cleanupCandidates(limit, true, options).map((candidate) => candidate.towerId);
     if (ids.length === 0) return { ok: false, message: "보호 규칙을 통과한 인벤토리 정리 후보가 없습니다." };
-    return this.dismantleTowers(ids);
+    return this.dismantleTowers(ids, options);
   }
 
   concentrationQuote(targetId: number, path: ConcentrationPath): ConcentrationQuote | null {

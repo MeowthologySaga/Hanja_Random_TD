@@ -123,6 +123,53 @@ describe("safe dismantle, concentration, and element growth", () => {
     expect(engine.state.inventoryTowers.map((tower) => tower.id)).toEqual([locked.id]);
   });
 
+  it("keeps sole-copy protection on by default and releases it only for the dismantle path", () => {
+    const engine = new GameEngine("sole-copy-toggle", "KR");
+    engine.begin();
+    const definition = safeDuplicateDefinition(engine);
+    const sole = towerFor(definition, 400, -1);
+    engine.state.towers = [];
+    engine.state.inventoryTowers = [sole];
+
+    const guarded = engine.cleanupAssessments().find((assessment) => assessment.towerId === sole.id);
+    expect(guarded?.soleCopy).toBe(true);
+    expect(guarded?.protected).toBe(true);
+    expect(guarded?.protectedReasons).toContain("유일 보유 한자");
+    expect(engine.cleanupCandidates(8, true).map((candidate) => candidate.towerId)).not.toContain(sole.id);
+    expect(engine.quoteDismantle([sole.id]).blocked).toHaveLength(1);
+    expect(engine.dismantleTowers([sole.id])).toMatchObject({ ok: false });
+    expect(engine.state.inventoryTowers).toHaveLength(1);
+
+    const released = { protectUnique: false };
+    const open = engine.cleanupAssessments(released).find((assessment) => assessment.towerId === sole.id);
+    // 배지 근거는 남고 보호만 풀린다.
+    expect(open?.soleCopy).toBe(true);
+    expect(open?.protected).toBe(false);
+    expect(open?.protectedReasons).not.toContain("유일 보유 한자");
+    expect(engine.cleanupCandidates(8, true, released).map((candidate) => candidate.towerId)).toContain(sole.id);
+    expect(engine.quoteDismantle([sole.id], released).blocked).toHaveLength(0);
+    expect(engine.dismantleTowers([sole.id], released)).toMatchObject({ ok: true });
+    expect(engine.state.inventoryTowers).toHaveLength(0);
+    expect(engine.state.elementEssence[definition.wuxing]).toBe(dismantleEssenceValue(definition.stage));
+  });
+
+  it("still blocks locked and concentrated towers when sole-copy protection is off", () => {
+    const engine = new GameEngine("sole-copy-other-guards", "KR");
+    engine.begin();
+    const definition = safeDuplicateDefinition(engine);
+    const locked = towerFor(definition, 410, -1, true);
+    const concentrated = { ...towerFor(definition, 411, -1), concentration: 1 as const, concentrationPath: "swift" as const };
+    engine.state.towers = [];
+    engine.state.inventoryTowers = [locked, concentrated];
+
+    const released = { protectUnique: false };
+    const assessments = new Map(engine.cleanupAssessments(released).map((assessment) => [assessment.towerId, assessment]));
+    expect(assessments.get(locked.id)?.protectedReasons).toContain("잠금 자령");
+    expect(assessments.get(concentrated.id)?.protectedReasons).toContain("농축 1단계 투자");
+    expect(engine.dismantleTowers([locked.id, concentrated.id], released)).toMatchObject({ ok: false });
+    expect(engine.state.inventoryTowers).toHaveLength(2);
+  });
+
   it("requires an explicit duplicate or essence payment and permanently fixes the first path", () => {
     const engine = new GameEngine("explicit-concentration", "KR");
     engine.begin();
