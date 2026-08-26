@@ -5,7 +5,7 @@ import { CASUAL_STAR_COLORS, CASUAL_STAR_NAMES, casualStrokeCount } from "../cor
 import { BOARD_FORMATIONS } from "../core/content";
 import { definitionForTower, ELEMENT_STYLES } from "../core/hanzi";
 import { jaryeongVisualFor } from "../core/jaryeongs";
-import { learningInfo } from "../core/learning";
+import { learningInfoForNotation } from "../core/learning";
 import { type GameEvent, type Wuxing } from "../core/types";
 import { ctx, fusionVortex, must, summonReveal } from "./app-context";
 import { coachIsPointingAtBoard } from "./coach";
@@ -62,7 +62,7 @@ export function showCasualFusionReveal(events: Array<Extract<GameEvent, { type: 
     const tower = event.tower;
     const style = ELEMENT_STYLES[tower.wuxing];
     const visual = jaryeongVisualFor(tower.char, tower.wuxing, ctx.engine.state.region);
-    const learning = learningInfo(ctx.engine.state.region, tower.char);
+    const learning = learningInfoForNotation(ctx.engine.state.notation, tower.char);
     const star = casualStarOf(tower);
     return `<article class="summon-result-card is-fusion ${event.newDiscovery ? "is-new" : "is-helpful"}" style="--summon:${style.color};--summon-star:${CASUAL_STAR_COLORS[star]};--summon-delay:${index * 45}ms">
       <span class="summon-result-spirit" style="${visualBackgroundStyle(visual)}" aria-hidden="true"></span>
@@ -116,7 +116,7 @@ export function showSummonReveal(events: Array<Extract<GameEvent, { type: "summo
     const definition = definitionForTower(ctx.engine.catalog, tower.definitionId);
     const style = ELEMENT_STYLES[tower.wuxing];
     const visual = jaryeongVisualFor(tower.char, tower.wuxing, ctx.engine.state.region);
-    const learning = learningInfo(ctx.engine.state.region, tower.char);
+    const learning = learningInfoForNotation(ctx.engine.state.notation, tower.char);
     const helpfulLabel = event.helpfulReason === "both" ? "목표·성어" : event.helpfulReason === "goal" ? "목표 재료" : event.helpfulReason === "idiom" ? "성어 재료" : "";
     const utilityLabel = event.utility === "new" ? "NEW" : event.utility === "synthesis" ? ctx.engine.state.mode === "casual" ? "목표" : "합성" : event.utility === "concentration" ? "중복" : "교체 후보";
     const star = casualStarOf(tower);

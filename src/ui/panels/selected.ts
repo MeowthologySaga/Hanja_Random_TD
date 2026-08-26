@@ -19,7 +19,7 @@ import {
   STAGE_NAMES
 } from "../../core/hanzi";
 import { jaryeongVisualFor } from "../../core/jaryeongs";
-import { learningInfo } from "../../core/learning";
+import { learningInfoForNotation } from "../../core/learning";
 import { radicalGlyph } from "../../core/radicals";
 import { type AbilitySpec, type CompositionBranchPreview, type HanziDefinition, type Tower } from "../../core/types";
 import { abilityGuideDialog, canvas, ctx, must } from "../app-context";
@@ -68,7 +68,7 @@ function openAbilityGuide(focusedAbilityId?: string): void {
   const tower = ctx.engine.selectedTower();
   if (!tower) return;
   const definition = definitionForTower(ctx.engine.catalog, tower.definitionId);
-  const learning = learningInfo(ctx.engine.state.region, tower.char);
+  const learning = learningInfoForNotation(ctx.engine.state.notation, tower.char);
   const abilities = definition.combat.abilities;
   const activeSkills = ctx.engine.towerHasActiveSkills(tower);
   const skillUnlockLabel = ctx.engine.state.mode === "casual" ? "2★ 승급" : "2단 합성";
@@ -152,7 +152,7 @@ export function renderSelected(): void {
   const damage = Math.round(definition.combat.baseDamage * ctx.engine.towerPowerMultiplier(tower) * definition.combat.budgetMultiplier * (1 + ctx.engine.idiomBonus("damage")) * (1 + ctx.engine.combinedUpgradeBonus(tower.wuxing, "damage")) * concentrationDamage * ctx.engine.casualPolarisDamageMultiplier(tower.wuxing));
   const range = definition.combat.range + ctx.engine.towerRangeBonus(tower) + ctx.engine.idiomBonus("range") + concentration * 4 + ctx.engine.combinedUpgradeBonus(tower.wuxing, "range");
   const attacksPerSecond = 1 / ctx.engine.towerAttackCooldown(tower);
-  const learning = learningInfo(ctx.engine.state.region, tower.char);
+  const learning = learningInfoForNotation(ctx.engine.state.notation, tower.char);
   const abilities = definition.combat.abilities;
   const activeSkills = ctx.engine.towerHasActiveSkills(tower);
   const periodicAbilities = activeSkills
@@ -244,7 +244,7 @@ function compositionBranchCard(branch: CompositionBranchPreview): string {
       <i class="composition-result-spirit" style="${visualBackgroundStyle(visual)}" aria-hidden="true"></i>
       <span class="composition-branch-copy">
         <strong>${branch.parents.join(" + ")} <em>→</em> <b>${branch.result.char}</b></strong>
-        <small>${STAGE_NAMES[branch.result.stage]} · ${escapeHtml(learningInfo(ctx.engine.state.region, branch.result.char).short)}</small>
+        <small>${STAGE_NAMES[branch.result.stage]} · ${escapeHtml(learningInfoForNotation(ctx.engine.state.notation, branch.result.char).short)}</small>
         <span class="composition-materials">${branch.materials.map(compositionMaterialChip).join("")}</span>
       </span>
       <mark>${branch.ready ? "합성 가능" : `${missing.join("·") || "재료"} 부족`}</mark>
@@ -272,7 +272,7 @@ export function renderCompositionDrawer(): void {
   must<HTMLElement>("#composition-ready-count").textContent = String(branches.filter((branch) => branch.ready).length);
   must<HTMLElement>("#composition-source").innerHTML = `
     <i class="composition-source-spirit" style="${spriteStyle(definition)}" aria-hidden="true"></i>
-    <span><b>${selected.char}</b><strong>${escapeHtml(learningInfo(ctx.engine.state.region, selected.char).short)}</strong><small>${selected.cell < 0 ? "런 인벤토리" : "전장 배치"} · 직접 파생 ${branches.length}개</small></span>
+    <span><b>${selected.char}</b><strong>${escapeHtml(learningInfoForNotation(ctx.engine.state.notation, selected.char).short)}</strong><small>${selected.cell < 0 ? "런 인벤토리" : "전장 배치"} · 직접 파생 ${branches.length}개</small></span>
   `;
   must<HTMLElement>("#composition-branches").innerHTML = branches.length > 0
     ? branches.map(compositionBranchCard).join("")

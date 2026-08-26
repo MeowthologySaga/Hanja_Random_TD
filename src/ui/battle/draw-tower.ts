@@ -13,7 +13,7 @@ import {
 import { definitionForTower, ELEMENT_STYLES, STAGE_COLORS } from "../../core/hanzi";
 import { jaryeongFrameLayout, jaryeongVisualFor } from "../../core/jaryeongs";
 import { koreanMeaningExplanation } from "../../core/korean-meaning-explanations";
-import { learningInfo } from "../../core/learning";
+import { learningInfoForNotation } from "../../core/learning";
 import { type CasualStar, type HanziDefinition, type Point, type Tower } from "../../core/types";
 import { UNCOMBINABLE_STAGE_ONE_COLOR } from "../codex-synthesis";
 import { jaryeongSpriteImage } from "../jaryeong-sprites";
@@ -116,7 +116,7 @@ function drawStudyTower(tower: Tower, cell: Point, definition: HanziDefinition, 
   context.textBaseline = "alphabetic";
   context.font = '900 8px "Malgun Gothic", sans-serif';
   context.fillStyle = "#efe4c8";
-  context.fillText(learningInfo(ctx.engine.state.region, tower.char).short, cell.x, cell.y + 24, 40);
+  context.fillText(learningInfoForNotation(ctx.engine.state.notation, tower.char).short, cell.x, cell.y + 24, 40);
 }
 
 /**
@@ -173,7 +173,7 @@ export function plaqueIsGlyphOnly(): boolean {
 
 function drawSpiritTowerLabel(tower: Tower, cell: Point, selected: boolean, material: boolean): void {
   const style = ELEMENT_STYLES[tower.wuxing];
-  const learning = learningInfo(ctx.engine.state.region, tower.char);
+  const learning = learningInfoForNotation(ctx.engine.state.notation, tower.char);
   // 한자 강조 OFF 는 명패 래스터와 글자를 통째로 숨긴다. glyph-only 명패도 남기지 않는다.
   if (!ctx.hanjaEmphasis) return;
 
@@ -393,7 +393,7 @@ function neighborCellIndex(cell: number, columnStep: number, rowStep: number): n
 function drawTowerDetailPopover(tower: Tower, cell: Point): void {
   if (!ctx.hanjaEmphasis) return;
   const style = ELEMENT_STYLES[tower.wuxing];
-  const learning = learningInfo(ctx.engine.state.region, tower.char);
+  const learning = learningInfoForNotation(ctx.engine.state.notation, tower.char);
   const layout = NAMEPLATE_LAYOUT.detail;
   const previousFont = context.font;
   context.font = plaqueReadingFont(11);
@@ -682,7 +682,7 @@ export function drawHoveredTowerCard(): void {
 
   const definition = definitionForTower(ctx.engine.catalog, tower.definitionId);
   const style = ELEMENT_STYLES[tower.wuxing];
-  const learning = learningInfo(ctx.engine.state.region, tower.char);
+  const learning = learningInfoForNotation(ctx.engine.state.notation, tower.char);
   const explanation = koreanMeaningExplanation(tower.char, learning.short, learning.meaning);
   const visual = jaryeongVisualFor(tower.char, tower.wuxing, ctx.engine.state.region);
   const image = jaryeongSpriteImage(visual);
