@@ -877,6 +877,15 @@ const summonReveal = must<HTMLElement>("#summon-reveal");
 const fusionVortex = must<HTMLElement>("#fusion-vortex");
 const sound = new SoundManager();
 sound.attachUiSfx(document);
+// 자동재생 정책은 "사용자 제스처"만 요구한다 — 버튼일 필요가 없다.
+// 첫 클릭·터치·키 입력이 화면 어디에 떨어지든 오디오(메뉴 BGM)를 깨운다.
+const wakeAudioOnFirstGesture = (): void => {
+  sound.unlock();
+  document.removeEventListener("pointerdown", wakeAudioOnFirstGesture, true);
+  document.removeEventListener("keydown", wakeAudioOnFirstGesture, true);
+};
+document.addEventListener("pointerdown", wakeAudioOnFirstGesture, true);
+document.addEventListener("keydown", wakeAudioOnFirstGesture, true);
 if (import.meta.env.DEV) Object.assign(window, { __HANJA_AUDIO_QA__: sound });
 const initialSeed = new URLSearchParams(window.location.search).get("seed")?.slice(0, 24) || createRunSeed();
 seedInput.value = initialSeed;
