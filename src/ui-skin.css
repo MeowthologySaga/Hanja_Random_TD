@@ -8376,3 +8376,290 @@ span.codex-jaryeong-category { color: #4a3f30 !important; }
   .selected-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .selected-actions button { min-height: 38px; font-size: 12px !important; }
 }
+
+/* ══════════════════════════════════════════════════════════════════
+   89. 집중 프레임 공통 + S06 강화 제련소
+   에셋: public/assets/ui/v4/focus-frames/focus-frame-forge-v1.png
+        (1640x1344 원본 -> 820x672 고정 표시 = 정확히 0.5배)
+   근거: spec-round4-focus-frames.md B절 / 코덱스 IMPLEMENTATION.md 1절
+
+   9-slice 대신 `background-size: 100% 100%` 를 쓴다. 권장 표시 크기가
+   원본의 정확히 0.5배라 왜곡이 없고, border-image 는 border-width 가
+   레이아웃을 밀어 안쪽 좌표(제목띠·본문 여백)를 어긋나게 만든다
+   — 이전 라운드에서 확인된 함정이다.
+
+   프레임 그림에는 x≈195px 자리에 세로 구분선이 그려져 있지만 스펙 B 는
+   ① 분해 350px 을 요구한다. 두 값이 충돌해 스펙을 택했고, 대신 좌우
+   작업대에 불투명 한지 바탕을 깔아 그려진 구분선을 덮는다. 그림은
+   테두리와 제목띠 역할만 한다.
+   ══════════════════════════════════════════════════════════════════ */
+
+.focus-dim {
+  position: absolute;
+  z-index: 19;
+  inset: 0;
+  background: rgba(10, 7, 5, 0.55);
+}
+
+.focus-dim[hidden],
+.focus-frame[hidden] {
+  display: none;
+}
+
+/* DELTA 좌표는 x430 y24 w820 h672 지만 전장은 880x720 이고 상단 HUD 띠가
+   y12~50 을 쓴다. 그 띠를 덮지 않으면서(코덱스 완료 판정 1항) 최대 크기를
+   잡으면 원본 비율 그대로 800x652, y54 가 된다. */
+.focus-frame {
+  position: absolute;
+  z-index: 20;
+  top: 54px;
+  right: 16px;
+  box-sizing: border-box;
+  width: 800px;
+  max-width: calc(100% - 24px);
+  height: 652px;
+  max-height: calc(100% - 66px);
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 100% 100%;
+}
+
+.focus-frame--forge {
+  background-image: url("/assets/ui/v4/focus-frames/focus-frame-forge-v1.png");
+}
+
+/* 제목띠(원본 y 100~205 -> 800x652 표시에서 49~99) 위에 코드 텍스트를 얹는다.
+   좁은 화면에서 프레임이 max-width/height 로 줄면 px 여백은 그림과 어긋난다
+   — 그림 비율 그대로인 % 로 고정한다. */
+.focus-frame-head {
+  position: absolute;
+  top: 7.52%;
+  left: 8%;
+  right: 7.38%;
+  display: flex;
+  height: 7.67%;
+  min-height: 34px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.focus-frame-head > div {
+  display: flex;
+  min-width: 0;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.focus-frame-head strong {
+  color: #2a211a;
+  font-family: "Batang", "Malgun Gothic", serif;
+  font-size: 18px;
+  font-weight: 900;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+
+.focus-frame-head span {
+  min-width: 0;
+  overflow: hidden;
+  color: #665846;
+  font-size: 12.5px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.focus-frame-close {
+  flex: 0 0 auto;
+  min-height: 30px;
+  padding: 4px 12px;
+  color: #fff2ec;
+  font-size: 12.5px;
+  font-weight: 800;
+  cursor: pointer;
+  border: 0;
+  border-radius: var(--r-sm);
+  background: linear-gradient(180deg, #b13a2c 0%, #8a2a20 100%);
+  box-shadow: var(--bevel-up), 0 0 0 1px rgba(110, 32, 24, 0.7);
+}
+
+.focus-frame-close:hover {
+  background: linear-gradient(180deg, #c4442f 0%, #9a3024 100%);
+}
+
+/* 본문 한지(원본 y 240~1195 -> 800x652 표시에서 117~580) */
+.focus-frame-body {
+  position: absolute;
+  top: 17.94%;
+  right: 7.38%;
+  bottom: 11.04%;
+  left: 8%;
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* 46·75절의 `.growth-workbench` 기본 판(어두운 상자·10px 여백)이
+   프레임 본문에도 걸린다 — 그림이 이미 판이므로 걷어낸다. */
+.focus-frame-body.growth-workbench {
+  width: auto;
+  height: auto;
+  flex-direction: row;
+  gap: 0;
+  padding: 0;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: none !important;
+  box-shadow: none !important;
+  clip-path: none !important;
+}
+
+/* ── 89-A. S06 2단 배치 — ① 분해 350px · ② 오행 강화 나머지 ── */
+
+.focus-frame-body .growth-layout {
+  display: grid !important;
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+  grid-template-columns: 350px minmax(0, 1fr) !important;
+  gap: 12px;
+  overflow: visible;
+}
+
+.focus-frame-body .dismantle-workbench,
+.focus-frame-body .element-growth-workbench {
+  min-height: 0;
+  max-height: none;
+  flex: 1 1 auto;
+  gap: 7px;
+  padding: 10px;
+  border: 0 !important;
+  border-radius: 6px !important;
+  /* 그려진 세로 구분선을 덮는 불투명 한지 */
+  background: linear-gradient(180deg, #f4ecd6 0%, #ece0c2 100%) !important;
+  box-shadow: inset 0 0 0 1px rgba(122, 90, 42, 0.26) !important;
+}
+
+.focus-frame-body .growth-dismantle-list,
+.focus-frame-body .growth-upgrade-list {
+  min-height: 0;
+  max-height: none;
+  flex: 1 1 auto;
+}
+
+/* 프레임에는 376px 제약이 없다 — 본문 13px, 소제목 14px */
+/* 두 줄로 접힌 안내가 flex 축소에 눌려 오행 카드 위로 겹쳤다 */
+.focus-frame-body .subheading {
+  flex: 0 0 auto;
+  min-height: 0;
+  align-items: baseline;
+  white-space: normal;
+}
+
+.focus-frame-body .subheading b { font-size: 14px !important; }
+
+.focus-frame-body .subheading small {
+  overflow: visible;
+  font-size: 12px !important;
+  line-height: 1.25;
+  text-align: right;
+  text-overflow: clip;
+}
+.focus-frame-body .dismantle-row :is(b, span, small, strong, em) { font-size: 12.5px !important; }
+.focus-frame-body .dismantle-row b { font-size: 20px !important; }
+.focus-frame-body .dismantle-toolbar button,
+.focus-frame-body .dismantle-quote span,
+.focus-frame-body .dismantle-quote strong { font-size: 12.5px !important; }
+.focus-frame-body .growth-filters select { font-size: 12.5px !important; }
+
+.focus-frame-body .growth-stat-row,
+.focus-frame-body .growth-trait-row {
+  min-height: 40px;
+}
+
+.focus-frame-body .growth-stat-row :is(b, strong) { font-size: 13px !important; }
+.focus-frame-body .growth-stat-row :is(span, small) { font-size: 12px !important; }
+.focus-frame-body .growth-trait-row :is(b, strong) { font-size: 13px !important; }
+.focus-frame-body .growth-trait-row :is(span, small) { font-size: 12px !important; }
+
+.focus-frame-body .growth-stat-row nav button,
+.focus-frame-body .growth-trait-row nav button,
+.focus-frame-body .growth-stat-row span button {
+  min-height: 34px;
+  font-size: 12px !important;
+}
+
+/* 오행 카드 5개 가로 1줄 */
+.focus-frame-body .growth-element-tabs {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.focus-frame-body .growth-element-tabs button {
+  min-height: 72px;
+}
+
+.focus-frame-body .growth-element-tabs button b { font-size: 22px !important; }
+
+/* 5칸을 315px 안에 나누면 칸당 57px — "분해 점수 0" 이 들어가야 한다 */
+.focus-frame-body .growth-element-tabs button :is(span, small) {
+  overflow: visible;
+  font-size: 10px !important;
+  letter-spacing: -0.03em;
+  text-overflow: clip;
+  white-space: nowrap;
+}
+
+/* ── 89-B. 패널 잔여 요약 — 문기 · 분해 가능 N기 · [열기] ── */
+
+.focus-panel-summary {
+  display: grid;
+  gap: 7px;
+  padding: 10px;
+  border-radius: var(--r-sm);
+  background: linear-gradient(180deg, #f4ecd6 0%, #e7dbbc 100%);
+  box-shadow: inset 0 0 0 1px rgba(122, 90, 42, 0.24);
+}
+
+.focus-panel-summary p {
+  margin: 0;
+  color: #4a3f2a;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.focus-open-button {
+  min-height: 44px;
+  color: var(--gold-100);
+  font-size: 14px;
+  font-weight: 900;
+  cursor: pointer;
+  border: 0;
+  border-radius: var(--r-sm);
+  background: var(--mat-brass);
+  box-shadow: var(--bevel-up), 0 0 0 1px rgba(122, 90, 42, 0.3);
+}
+
+.focus-open-button:hover {
+  background: var(--mat-brass-hot);
+}
+
+/* 좁은 화면(<1100px)에서는 프레임이 max-width/height 로 줄어 본문이 557px
+   안팎이 된다 — 고정 350px 좌열을 유지하면 우측이 195px 로 무너진다. */
+@media (max-width: 1099px), (max-height: 679px) {
+  .focus-frame-body .growth-layout {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important;
+    gap: 8px;
+  }
+
+  .focus-frame-body .dismantle-workbench,
+  .focus-frame-body .element-growth-workbench { padding: 7px; }
+
+  .focus-frame-body .growth-element-tabs { gap: 4px; }
+  .focus-frame-body .growth-element-tabs button { min-height: 62px; }
+  .focus-frame-body .growth-element-tabs button b { font-size: 18px !important; }
+  .focus-frame-body .growth-element-tabs button :is(span, small) { font-size: 9px !important; }
+}

@@ -195,6 +195,15 @@ app.innerHTML = `
         <p id="summon-reveal-summary"></p>
         <div id="summon-reveal-list" class="summon-reveal-list"></div>
       </section>
+
+      <div id="focus-dim" class="focus-dim" hidden></div>
+      <section id="growth-frame" class="focus-frame focus-frame--forge" role="dialog" aria-modal="false" aria-labelledby="growth-frame-title" hidden>
+        <header class="focus-frame-head">
+          <div><strong id="growth-frame-title">강화 제련소</strong><span>안 쓰는 자령을 힘으로</span></div>
+          <button id="growth-frame-close" class="focus-frame-close" type="button" data-focus-close="growth" aria-label="강화 제련소 닫기">닫기 ✕</button>
+        </header>
+        <div id="growth-frame-body" class="focus-frame-body growth-workbench"></div>
+      </section>
     </section>
 
     <aside class="control-panel" aria-label="합성과 수비 조작 패널">
@@ -393,6 +402,10 @@ app.innerHTML = `
               <div id="growth-element-tabs" class="growth-element-tabs"></div>
               <div id="growth-upgrade-list" class="growth-upgrade-list"></div>
             </section>
+          </div>
+          <div class="focus-panel-summary">
+            <p id="growth-panel-dismantle">분해 가능 0기</p>
+            <button id="growth-frame-open" class="focus-open-button" type="button">제련소 열기</button>
           </div>
         </section>
       </div>
@@ -1007,6 +1020,50 @@ preloadFormationPlates();
 preloadP0ComponentSprites();
 preloadPolishSprites();
 
+/*
+ * 집중 프레임(S06 강화 · S07 농축).
+ *
+ * 376px 패널 안에 "대상 고르기 + 재료 + 실행"을 전부 밀어 넣은 탓에 글자가
+ * 작아지고 과부하가 걸렸다. 작업대 DOM 을 통째로 전장 위 대형 프레임으로
+ * **옮긴다**(복제가 아니다 — 기존 id·리스너·렌더러가 그대로 동작한다).
+ * 패널에는 요약 몇 줄과 [열기] 버튼만 남는다.
+ * 엔진은 계속 돌기 때문에 aria-modal 은 false 다.
+ */
+type FocusFrameId = "growth" | "concentration";
+
+const FOCUS_FRAME_MOUNTS: ReadonlyArray<{ id: FocusFrameId; source: string; target: string }> = [
+  { id: "growth", source: ".growth-layout", target: "#growth-frame-body" }
+];
+
+let openFocusFrame: FocusFrameId | null = null;
+
+function mountFocusFrames(): void {
+  for (const mount of FOCUS_FRAME_MOUNTS) {
+    const source = document.querySelector<HTMLElement>(mount.source);
+    const target = document.querySelector<HTMLElement>(mount.target);
+    if (source && target && source.parentElement !== target) target.append(source);
+  }
+}
+
+function setFocusFrame(id: FocusFrameId | null): void {
+  openFocusFrame = id;
+  for (const mount of FOCUS_FRAME_MOUNTS) {
+    const frame = must<HTMLElement>(`#${mount.id}-frame`);
+    const open = mount.id === id;
+    frame.hidden = !open;
+    frame.classList.toggle("is-open", open);
+  }
+  must<HTMLElement>("#focus-dim").hidden = id === null;
+  shell.dataset.focusFrame = id ?? "none";
+  if (id === "growth") {
+    growthRenderKey = "";
+    renderGrowth();
+  } else if (id === "concentration") {
+    concentrationRenderKey = "";
+    renderConcentration();
+  }
+}
+
 function setPanelTab(tab: PanelTab): void {
   if (tab !== "unit") closeCompositionDrawer();
   activePanelTab = tab;
@@ -1028,7 +1085,11 @@ function setPanelTab(tab: PanelTab): void {
     growthRenderKey = "";
     renderGrowth();
   }
+  // 탭 진입은 곧 집중 프레임 진입이다. 다른 탭으로 나가면 프레임도 닫힌다.
+  setFocusFrame(FOCUS_FRAME_MOUNTS.some((mount) => mount.id === tab) ? (tab as FocusFrameId) : null);
 }
+
+mountFocusFrames();
 
 function syncDisplayModeControls(): void {
   document.querySelectorAll<HTMLButtonElement>("[data-display-mode-option]").forEach((button) => {
@@ -1525,6 +1586,8 @@ function renderGrowth(): void {
     .sort((left, right) => Number(Boolean(left.assessment?.protected)) - Number(Boolean(right.assessment?.protected)) || (engine.state.mode === "casual" ? casualStarOf(left.tower) - casualStarOf(right.tower) : left.tower.stage - right.tower.stage) || left.tower.id - right.tower.id);
 
   must<HTMLElement>("#growth-resource-summary").textContent = "문기 " + WUXING_ORDER.map((wuxing) => `${wuxing}${engine.state.elementEssence[wuxing]}`).join(" ");
+  const dismantleReady = engine.state.inventoryTowers.filter((tower) => !assessmentMap.get(tower.id)?.protected).length;
+  must<HTMLElement>("#growth-panel-dismantle").textContent = `분해 가능 ${dismantleReady}기 · 선택 ${dismantleSelection.size}기`;
   must<HTMLElement>("#growth-dismantle-list").innerHTML = rows.length > 0 ? rows.map(({ tower, assessment }) => {
     const protectedReasons = assessment?.protectedReasons ?? ["보호 상태 확인 필요"];
     const protectedState = assessment?.protected ?? true;
@@ -5177,6 +5240,19 @@ must<HTMLElement>("#formation-unlock-list").addEventListener("click", (event) =>
 });
 must<HTMLButtonElement>("#auto-arrange-button").addEventListener("click", () => { sound.unlock(); handleAction(engine.autoArrangeTowers()); });
 must<HTMLButtonElement>("#element-upgrade-button").addEventListener("click", () => setPanelTab("growth"));
+
+// 집중 프레임 여닫기 — dim 클릭 · [닫기] · Esc. 게임은 멈추지 않는다.
+must<HTMLElement>("#focus-dim").addEventListener("click", () => setFocusFrame(null));
+document.querySelectorAll<HTMLButtonElement>("[data-focus-close]").forEach((button) => {
+  button.addEventListener("click", () => setFocusFrame(null));
+});
+must<HTMLButtonElement>("#growth-frame-open").addEventListener("click", () => setFocusFrame("growth"));
+window.addEventListener("keydown", (event) => {
+  if (event.key !== "Escape" || openFocusFrame === null) return;
+  if (helpDialog.open || settingsDialog.open || elementUpgradeDialog.open || abilityGuideDialog.open || casualFusionConfirmDialog.open || codexDialog.open) return;
+  event.preventDefault();
+  setFocusFrame(null);
+});
 must<HTMLButtonElement>("#element-upgrade-close").addEventListener("click", () => elementUpgradeDialog.close());
 must<HTMLButtonElement>("#ability-guide-close").addEventListener("click", () => abilityGuideDialog.close());
 must<HTMLButtonElement>("#casual-fusion-confirm-close").addEventListener("click", closeCasualFusionReview);
