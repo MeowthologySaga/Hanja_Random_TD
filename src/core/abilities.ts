@@ -115,13 +115,19 @@ export const SEMANTIC_ABILITY_TABLE: Record<SemanticFamily, SemanticPattern> = {
   metalwork: semanticPattern("metalwork", "armored", 5, 1.28, "파갑 단조", "鍛", "burst", "5번째 공격", "장갑 적 우선", "장갑이 두꺼운 적을 우선 베고 방어를 크게 관통합니다.", "#ffd66c"),
   heart: semanticPattern("heart", "front", 7, 0.14, "심맥 공조", "心", "resonance", "7번째 공격", "진 전체 호흡", "모든 자령의 공격 대기를 조금씩 앞당겨 진법의 호흡을 맞춥니다.", "#ff9fb8"),
   wealth: semanticPattern("wealth", "valuable", 6, 1, "현상금 낙인", "財", "coin", "6번째 공격", "고가치 적 추적", "보상이 큰 적을 노려 공격하고 추가 엽전을 얻습니다.", "#ffe279"),
+  // [SKILL-V1] 스킬 1차 세트 — 신설 의미 계열 3종.
+  warfare: semanticPattern("warfare", "strongest", 6, 0.3, "상극 각인", "克", "burst", "6번째 공격", "상극 낙인 새김", "적에게 자기 오행의 상극 낙인을 새깁니다. 낙인이 남은 동안 같은 오행 공격이 주는 피해가 커집니다.", "#ff9472"),
+  momentum: semanticPattern("momentum", "strongest", 6, 0.08, "파죽", "勢", "rapid", "같은 적 연속 타격", "연속 타격 중첩", "같은 적을 연속으로 타격할 때마다 피해가 겹겹이 쌓입니다. 대상을 바꾸면 기세가 처음부터 다시 시작됩니다.", "#b9e28c"),
+  frost: semanticPattern("frost", "cluster", 6, 0.4, "서리길", "霜", "spread", "6번째 공격", "서리 지대 감속", "공격이 꽂힌 자리에 서릿길을 깔아 일정 시간 밟는 적의 걸음을 늦춥니다.", "#bfe8ff"),
+  // [SKILL-V1] 끝.
   general: semanticPattern("general", "front", 6, 1.18, "자의 구현", "字", "solo", "6번째 공격", "뜻의 힘 증폭", "한자의 뜻을 기운으로 구현해 다음 일격을 강화합니다.", "#c7d0e0")
 };
 
 const SEMANTIC_CHAR_GROUPS: Readonly<Record<Exclude<SemanticFamily, "general">, ReadonlySet<string>>> = {
   sight: new Set([..."目見視觀明景照覽"]),
   gate: new Set([..."門戶宇宙宮室闕關開閉"]),
-  weather: new Set([..."雨雲露霜雪風寒暑陽陰冬"]),
+  // [SKILL-V1] 한기 글자(霜雪寒冬)는 frost 계열로 분가했다.
+  weather: new Set([..."雨雲露風暑陽陰"]),
   mountain: new Set([..."山地土岡崑嶽巖堅重黃陵谷岳"]),
   speech: new Set([..."言文字符聲鳴奏律呂銘詩書"]),
   motion: new Set([..."走行翔騰往來流川潛進退步"]),
@@ -129,7 +135,13 @@ const SEMANTIC_CHAR_GROUPS: Readonly<Record<Exclude<SemanticFamily, "general">, 
   flame: new Set([..."火赤熱烈暉炎光日煥"]),
   metalwork: new Set([..."金銀珠利器劍刀玉鐵鋒"]),
   heart: new Set([..."心人仁情愛女母父慈信"]),
-  wealth: new Set([..."財貨貝有百千萬富寶錢"])
+  wealth: new Set([..."財貨貝有百千萬富寶錢"]),
+  // [SKILL-V1] 신설 글자군. 기획 후보 중 실제 지역 로스터(KR_1000·JP_2136·CN_3500)에
+  // 존재하는 글자만 담았고(戰·擊은 어느 로스터에도 없음), 기존 글자군과 겹치지 않는다.
+  // momentum 은 進이 motion 군에 있으므로 제외한 連擊突進 계열이다.
+  warfare: new Set([..."武兵將軍弓矢勇威"]),
+  momentum: new Set([..."連突逐奔疾追驅馳"]),
+  frost: new Set([..."霜雪寒冬"])
 };
 
 export function semanticPatternFor(char: string, wuxing: Wuxing): SemanticPattern {
@@ -344,7 +356,15 @@ export function composeAbilityLoadout(input: AbilityComposeInput): AbilityLoadou
   };
   return {
     element: { ...ELEMENT_ABILITY_TABLE[input.wuxing] },
-    semantic: { ...semantic.ability, trigger: semantic.family === "weather" ? `적 5기 이상 · ${semanticEvery}번째 공격` : `${semanticEvery}번째 공격` },
+    // [SKILL-V1] momentum(파죽)은 발동 주기가 없는 패시브라 문구를 그대로 둔다.
+    semantic: {
+      ...semantic.ability,
+      trigger: semantic.family === "weather"
+        ? `적 5기 이상 · ${semanticEvery}번째 공격`
+        : semantic.family === "momentum"
+          ? semantic.ability.trigger
+          : `${semanticEvery}번째 공격`
+    },
     semanticFamily: semantic.family,
     targetPriority: semantic.targetPriority,
     role,
@@ -354,4 +374,86 @@ export function composeAbilityLoadout(input: AbilityComposeInput): AbilityLoadou
     comboKey: [input.wuxing, semantic.family, input.role, input.graphRole, lineageWuxing ?? "none", "S" + input.stage].join("|"),
     tuning
   };
+}
+
+/* ============================================================================
+ * [SKILL-V1] 스킬 1차 세트 상수·순수 계산.
+ *
+ * 병합 안내: 이 블록 전체가 스킬 트랙의 신규 코드다. 밸런스 트랙과 충돌하면
+ * 이 블록은 통째로 유지하고 위쪽 기존 표의 충돌만 수동으로 푼다.
+ * 절대 원칙: 어떤 스킬도 적을 뒤로 밀지 않는다 — 이동 간섭은 감속뿐이다.
+ * ========================================================================== */
+
+/** 상극 각인(warfare): 낙인 지속 시간(초). */
+export const WARFARE_BRAND_DURATION = 4;
+/** 상극 각인: 낙인 동안 같은 오행 공격 피해 증폭(기본 +18%). */
+export const WARFARE_BRAND_BONUS = 0.18;
+/** 상극 각인: 캐주얼 별당 +2%p (1★ 기준 0, 별-1 스케일). */
+export const WARFARE_BRAND_STAR_BONUS = 0.02;
+
+/** 낙인 증폭 배율. 캐주얼이 아니면 별 스케일 없이 기본치만 쓴다. */
+export function warfareBrandPower(casualStar: number | null): number {
+  return WARFARE_BRAND_BONUS + (casualStar === null ? 0 : Math.max(0, casualStar - 1) * WARFARE_BRAND_STAR_BONUS);
+}
+
+/** 파죽(momentum): 연속 타격 1중첩당 피해 증폭(+8%). */
+export const MOMENTUM_STACK_BONUS = 0.08;
+
+/** 파죽 최대 중첩 = 5 + floor(계급/2). 캐주얼은 별, 표준은 단계가 계급이다. */
+export function momentumMaxStacks(rank: number): number {
+  return 5 + Math.floor(Math.max(0, rank) / 2);
+}
+
+/** 서리길(frost): 지대 지속 시간(초)·반경. */
+export const FROST_ZONE_DURATION = 3;
+export const FROST_ZONE_RADIUS = 110;
+/** 서리길 기본 감속 25%, 캐주얼 별당 +2%p, 총 감속 캡 60%. */
+export const FROST_SLOW_BASE = 0.25;
+export const FROST_SLOW_PER_STAR = 0.02;
+export const FROST_SLOW_CAP = 0.6;
+
+/** 서리길 감속률(0.25 = 25% 감속). 캡 60%를 절대 넘지 않는다. */
+export function frostSlowRatio(casualStar: number | null): number {
+  const scaled = FROST_SLOW_BASE + (casualStar === null ? 0 : Math.max(0, casualStar - 1) * FROST_SLOW_PER_STAR);
+  return Math.min(FROST_SLOW_CAP, scaled);
+}
+
+/** 귀천(歸天): 6★ 이상 자령의 충전 스킬. */
+export const GWICHEON_MIN_STAR = 6;
+export const GWICHEON_BASE_CHARGE_SECONDS = 30;
+export const GWICHEON_CHARGE_PER_STAR = 2;
+/** 적 한계 대비 이 비율 이상 차면 충전 2배속. */
+export const GWICHEON_RUSH_THRESHOLD = 0.75;
+
+/** 귀천 충전 시간(초). 해금 별(6★) 기준 30초, 별당 −2초. */
+export function gwicheonChargeSeconds(casualStar: number): number {
+  return Math.max(10, GWICHEON_BASE_CHARGE_SECONDS - Math.max(0, casualStar - GWICHEON_MIN_STAR) * GWICHEON_CHARGE_PER_STAR);
+}
+
+/** 귀천 발동 카드·연출용 스펙. 기존 fx(execute)를 재사용한다. */
+export const GWICHEON_ABILITY: AbilitySpec = {
+  id: "skill-gwicheon",
+  name: "귀천",
+  glyph: "歸",
+  category: "semantic",
+  fx: "execute",
+  trigger: "30초 충전 · 자동 발동",
+  summary: "일반 적 1기 정화",
+  description: "충전이 끝나면 화면에서 가장 오래 버틴 일반 망령 하나를 하늘로 돌려보냅니다. 보상은 그대로 받으며, 우두머리와 정예에게는 통하지 않습니다.",
+  color: "#ffe1a8"
+};
+
+/** 성어의 가호: 발동 중 성어와 같은 진의 자령 전원 공격 증폭. */
+export const IDIOM_BLESSING_BASE = 0.1;
+export const IDIOM_BLESSING_PER_EXTRA = 0.05;
+
+/** 같은 진에 선 발동 중 성어 수 → 가호 배율(첫 구 +10%, 추가 구당 +5%p). */
+export function idiomBlessingBonus(activeSealsInFormation: number): number {
+  if (activeSealsInFormation <= 0) return 0;
+  return IDIOM_BLESSING_BASE + (activeSealsInFormation - 1) * IDIOM_BLESSING_PER_EXTRA;
+}
+
+/** 테스트·검증용: 의미 계열 글자군 조회(사본 반환). */
+export function semanticCharGroup(family: Exclude<SemanticFamily, "general">): ReadonlySet<string> {
+  return new Set(SEMANTIC_CHAR_GROUPS[family]);
 }
