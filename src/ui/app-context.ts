@@ -169,6 +169,15 @@ export const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)
 export const HOVER_GLYPH_STORAGE_KEY = "hanja-td:hover-glyph-large";
 
 /*
+ * FB6 차분한 화면.
+ *
+ * "게임이 눈이 피곤함" 피드백의 2층 대응 중 토글층. 켜면 맥동·플래시·먹물
+ * 흐름 상시 애니메이션을 멈추고 결 무늬를 더 옅게 깐다. 명시적 선택이 없으면
+ * OS "동작 줄이기"(prefers-reduced-motion)를 따른다 — 우선순위: 설정 > OS.
+ */
+export const CALM_SCREEN_STORAGE_KEY = "hanja-td:calm-screen";
+
+/*
  * 분해의 "유일 보유 한자" 보호.
  *
  * 초보자를 지키는 규칙이지만 문기를 모으려는 사람에게는 인벤토리 절반을
@@ -310,6 +319,17 @@ class AppContext {
       return true;
     }
   })();
+  /** FB6: 저장된 명시적 선택. null 이면 아직 고르지 않아 OS 값을 따른다. */
+  calmScreenChoice: boolean | null = ((): boolean | null => {
+    try {
+      const stored = window.localStorage.getItem(CALM_SCREEN_STORAGE_KEY);
+      return stored === "true" ? true : stored === "false" ? false : null;
+    } catch {
+      return null;
+    }
+  })();
+  /** FB6: 실효값(설정 > OS). settings.ts 의 applyCalmScreen 이 갱신한다. */
+  calmScreen = this.calmScreenChoice ?? reducedMotion;
   mapZoom = DEFAULT_MAP_ZOOM;
   mapOffset: Point = defaultMapOffset();
   /** 휠 확대·축소 1회 또는 팬 1회마다 오른다. 코치 2단계 자동 진행의 근거. */
@@ -346,3 +366,11 @@ class AppContext {
 export const ctx = new AppContext();
 
 ctx.engine.state.autoPlaceSummons = initialAutoPlaceSummons;
+
+/**
+ * FB6: 전장 캔버스의 상시 연출(맥동·플래시·먹물 흐름)을 멈춰야 하는가.
+ * OS 동작 줄이기는 접근성 계약이라 차분한 화면을 꺼도 모션은 계속 줄인다.
+ */
+export function calmBattlefield(): boolean {
+  return reducedMotion || ctx.calmScreen;
+}

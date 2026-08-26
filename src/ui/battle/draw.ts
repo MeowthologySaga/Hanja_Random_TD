@@ -46,7 +46,7 @@ import { jaryeongSpriteImage } from "../jaryeong-sprites";
 import { isLockSpriteReady, LOCK_SPRITE_SIZE, lockSpriteImage } from "../lock-sprites";
 import { CELL_SOCKET_SIZE, cellSocketImage, isCellSocketReady } from "../p0-component-sprites";
 import { EXIT_SEAL_SIZE, exitSealImage, isReady as isPolishSpriteReady } from "../polish-sprites";
-import { canvas, context, ctx, reducedMotion } from "../app-context";
+import { calmBattlefield, canvas, context, ctx, reducedMotion } from "../app-context";
 import { casualStarOf } from "../format";
 import { drawHoveredTowerCard, drawTower, flushTowerPlaques } from "./draw-tower";
 import { type IdiomRippleFx, idiomRipples, pushPooled, ringPool, rings, takeRing, updateAndDrawFx } from "./fx";
@@ -124,7 +124,8 @@ function drawAbilityZones(): void {
     const remaining = Math.max(0, zone.expiresAt - ctx.engine.state.elapsed);
     const life = Math.min(1, remaining / 1.2);
     const image = elementZoneImage(zone.wuxing);
-    const pulse = reducedMotion ? 1 : 1 + Math.sin(ctx.engine.state.elapsed * 1.45 + zone.id) * 0.018;
+    // FB6: 진폭 0.018 → 0.013 (-28%). 차분한 화면에서는 맥동 자체를 멈춘다.
+    const pulse = calmBattlefield() ? 1 : 1 + Math.sin(ctx.engine.state.elapsed * 1.45 + zone.id) * 0.013;
     const layout = abilityZoneSpriteLayout(zone.progress, zone.radius, pulse);
 
     // 생성 순간: 먹 고리 + 0.35초 스케일-인. "기술이 나갔다"를 읽게 한다.
@@ -182,7 +183,7 @@ function drawAbilityZones(): void {
     context.strokeStyle = zone.color;
     context.lineWidth = 1.6;
     context.setLineDash([7, 9]);
-    context.lineDashOffset = reducedMotion ? 0 : -ctx.engine.state.elapsed * 14;
+    context.lineDashOffset = calmBattlefield() ? 0 : -ctx.engine.state.elapsed * 14;
     context.beginPath();
     context.arc(point.x, point.y, zone.radius * spawnScale, 0, Math.PI * 2);
     context.stroke();
@@ -190,7 +191,7 @@ function drawAbilityZones(): void {
     context.restore();
 
     // 판정 안에서 피해를 받는 적 위로 오행색 불티가 튄다.
-    if (!reducedMotion) {
+    if (!calmBattlefield()) {
       for (const enemy of ctx.engine.state.enemies) {
         const enemyPoint = positionOnPath(enemy.progress);
         const dx = enemyPoint.x - point.x;
@@ -335,7 +336,8 @@ function drawTrack(): void {
   context.globalAlpha = 1;
 
   // 5. 다음 이동 구간을 읽을 수 있도록 젖은 먹방울이 같은 방향으로 순환한다.
-  const currentOffset = reducedMotion ? 0.02 : (ctx.engine.state.elapsed * 0.018) % 1;
+  //    FB6: 차분한 화면에서는 먹물 흐름을 멈추고 정지 배치만 남긴다.
+  const currentOffset = calmBattlefield() ? 0.02 : (ctx.engine.state.elapsed * 0.018) % 1;
   canvas.dataset.inkCurrentOffset = currentOffset.toFixed(4);
   for (let index = 0; index < 10; index += 1) {
     const progress = currentOffset + index / 10;
@@ -537,7 +539,8 @@ function drawBoard(): void {
       context.lineWidth = 2.6;
       context.lineCap = "round";
       context.shadowColor = formation.color;
-      context.shadowBlur = 9;
+      // FB6: 공명 꺾쇠 발광 9 → 7 (-22%).
+      context.shadowBlur = 7;
       for (const [sx, sy] of [[-1, -1], [1, -1], [-1, 1], [1, 1]] as const) {
         const bx = cx + sx * 84;
         const by = cy + sy * 84;
@@ -676,7 +679,7 @@ function drawFormationLocks(): void {
   const unlockCost = ctx.engine.nextFormationUnlockCost();
   const purchasable = unlockCost !== null && ctx.engine.state.startingFormationIndex !== null;
   const affordable = purchasable && ctx.engine.state.gold >= unlockCost;
-  const pulse = reducedMotion ? 0 : (performance.now() % 1_600) / 1_600;
+  const pulse = calmBattlefield() ? 0 : (performance.now() % 1_600) / 1_600;
 
   for (let formationIndex = 0; formationIndex < BOARD_FORMATIONS.length; formationIndex += 1) {
     if (ctx.engine.isFormationUnlocked(formationIndex)) continue;
@@ -687,10 +690,11 @@ function drawFormationLocks(): void {
     const scale = hovered && !reducedMotion ? 1.14 : 1;
 
     // 살 수 있는 진은 금색 링이 1.6초 주기로 번지며 시선을 끈다.
-    if (affordable && !reducedMotion) {
-      const radius = 26 + pulse * 20;
+    // FB6: 반경 성장 20 → 15, 시작 알파 0.62 → 0.46 (-25%).
+    if (affordable && !calmBattlefield()) {
+      const radius = 26 + pulse * 15;
       context.save();
-      context.globalAlpha = (1 - pulse) * 0.62;
+      context.globalAlpha = (1 - pulse) * 0.46;
       context.strokeStyle = "#ffd98a";
       context.lineWidth = 2.4;
       context.beginPath();
@@ -857,13 +861,14 @@ function drawIdiomPlacementCells(): void {
   const guide = ctx.idiomPlacementGuide;
   if (!guide || guide.nextCells.length === 0 || guide.chain.nextOrder === null) return;
   const order = guide.chain.nextOrder as IdiomOrder;
-  const breath = reducedMotion ? 0.72 : 0.58 + Math.sin(ctx.engine.state.elapsed * 3.1) * 0.22;
+  // FB6: 숨쉬기 진폭 0.22 → 0.16 (-27%), 발광 blur 8 → 6 (-25%).
+  const breath = calmBattlefield() ? 0.72 : 0.58 + Math.sin(ctx.engine.state.elapsed * 3.1) * 0.16;
   context.save();
   context.setLineDash([5, 4]);
   context.lineWidth = 1.8;
   context.strokeStyle = "#ffd479";
   context.shadowColor = "rgba(255, 205, 105, 0.7)";
-  context.shadowBlur = 8;
+  context.shadowBlur = 6;
   context.globalAlpha = breath;
   for (const cell of guide.nextCells) {
     const point = BOARD_CELLS[cell] as Point;
@@ -919,7 +924,8 @@ function drawIdiomSeals(): void {
     const idiom = idiomById(ctx.engine.state.region, seal.idiomId);
     if (!idiom) continue;
     const points = seal.cells.map((cell) => BOARD_CELLS[cell] as Point);
-    const breath = reducedMotion ? 0.6 : 0.5 + (Math.sin((ctx.engine.state.elapsed / 1.8) * Math.PI * 2) * 0.5 + 0.5) * 0.5;
+    // FB6: 숨쉬기 진폭 0.5 → 0.36 (-28%). 차분한 화면에서는 정지 0.6.
+    const breath = calmBattlefield() ? 0.6 : 0.5 + (Math.sin((ctx.engine.state.elapsed / 1.8) * Math.PI * 2) * 0.5 + 0.5) * 0.36;
     context.save();
 
     // 1. 봉인된 칸 자체가 숨쉬듯 발광한다.
@@ -932,7 +938,8 @@ function drawIdiomSeals(): void {
       context.globalAlpha = Math.min(1, breath + 0.25);
       context.strokeStyle = idiom.color;
       context.shadowColor = idiom.color;
-      context.shadowBlur = 12 * breath + 4;
+      // FB6: 발광 12·4 → 9·3 (-25%).
+      context.shadowBlur = 9 * breath + 3;
       context.lineWidth = 2;
       context.beginPath();
       context.roundRect(point.x - 19, point.y - 19, 38, 38, 5);
@@ -946,7 +953,8 @@ function drawIdiomSeals(): void {
     context.lineJoin = "round";
     context.strokeStyle = idiom.color;
     context.shadowColor = idiom.color;
-    context.shadowBlur = 18;
+    // FB6: 사슬 빔 발광 18 → 13 (-28%).
+    context.shadowBlur = 13;
     context.lineWidth = 12;
     context.beginPath();
     context.moveTo(points[0]?.x ?? 0, points[0]?.y ?? 0);
@@ -959,7 +967,7 @@ function drawIdiomSeals(): void {
     context.stroke();
 
     // 3. 광점 1개가 1번 칸에서 4번 칸으로 흐르며 순서 방향을 알린다.
-    if (!reducedMotion) {
+    if (!calmBattlefield()) {
       const spark = pointAlongPolyline(points, ((ctx.engine.state.elapsed + seal.completedAt) / 2.2) % 1);
       if (spark) {
         context.globalAlpha = 0.95;
@@ -995,8 +1003,10 @@ function drawIdiomSeals(): void {
  * 부르므로 updateAndDrawFx 안에서만 호출한다.
  */
 export function drawIdiomRipples(): void {
+  // FB6: 차분한 화면에서는 파문 플래시를 그리지 않는다(수명 관리는 아래에서 계속).
   const sprite = idiomRipples.length > 0 ? tintedIdiomRipple(idiomRipples[0]?.color ?? "#ffffff") : null;
   for (const ripple of idiomRipples) {
+    if (calmBattlefield()) break;
     const live = ripple.age - ripple.delay;
     if (live < 0) continue;
     if (!isWorldPointVisible(ripple.at, 120)) continue;
@@ -1010,7 +1020,8 @@ export function drawIdiomRipples(): void {
       context.strokeStyle = ripple.color;
       context.lineWidth = 5 - ratio * 3.4;
       context.shadowColor = ripple.color;
-      context.shadowBlur = 16;
+      // FB6: 파문 폴백 발광 16 → 12 (-25%).
+      context.shadowBlur = 12;
       context.beginPath();
       context.arc(ripple.at.x, ripple.at.y, size / 2, 0, Math.PI * 2);
       context.stroke();
@@ -1042,7 +1053,8 @@ function drawIdiomFlash(): void {
   // 튀어 오르고(0~18%) 머무르다(~62%) 사라진다.
   const rise = Math.min(1, ratio / 0.18);
   const fade = ratio < 0.62 ? 1 : 1 - (ratio - 0.62) / 0.38;
-  const scale = reducedMotion ? 1 : 0.82 + rise * 0.24 - Math.max(0, ratio - 0.62) * 0.16;
+  // FB6: 차분한 화면에서는 튀어 오르는 플래시 없이 정지 표기만 남긴다.
+  const scale = calmBattlefield() ? 1 : 0.82 + rise * 0.24 - Math.max(0, ratio - 0.62) * 0.16;
   const x = Math.min(WORLD_WIDTH - 150, Math.max(150, ctx.mapOffset.x + flash.at.x * ctx.mapZoom));
   const y = Math.min(WORLD_HEIGHT - 120, Math.max(120, ctx.mapOffset.y + flash.at.y * ctx.mapZoom));
   context.save();
@@ -1058,7 +1070,8 @@ function drawIdiomFlash(): void {
   context.strokeStyle = "rgba(4, 8, 14, 0.92)";
   context.strokeText(flash.chars, 0, 0);
   context.shadowColor = flash.color;
-  context.shadowBlur = 26;
+  // FB6: 플래시 발광 26 → 19 (-27%).
+  context.shadowBlur = 19;
   context.fillStyle = "#fff6dd";
   context.fillText(flash.chars, 0, 0);
   context.shadowBlur = 0;
@@ -1154,7 +1167,8 @@ function drawEnemy(enemy: Enemy, point = positionOnPath(enemy.progress)): void {
   const top = point.y - artTop;
   context.save();
   context.translate(point.x, point.y);
-  if (enemy.boss) context.rotate(Math.sin(ctx.engine.state.elapsed * 2) * 0.025);
+  // FB6: 우두머리 흔들림도 상시 맥동이라 차분한 화면에서는 멈춘다.
+  if (enemy.boss && !calmBattlefield()) context.rotate(Math.sin(ctx.engine.state.elapsed * 2) * 0.025);
 
   // 적과 아군 자령은 같은 스프라이트 세트를 공유하므로, 그림 자체로는 구분되지
   // 않는다. 발밑 표식과 테두리 광원으로 위협을 알린다.
@@ -1189,7 +1203,8 @@ function drawEnemy(enemy: Enemy, point = positionOnPath(enemy.progress)): void {
   context.strokeStyle = weaknessColor + "b4";
   context.lineWidth = enemy.boss ? 3.4 : 2.4;
   context.shadowColor = weaknessColor;
-  context.shadowBlur = enemy.boss ? 16 : 7;
+  // FB6: 톱니 고리 발광 16/7 → 12/5 (-25~29%).
+  context.shadowBlur = enemy.boss ? 12 : 5;
   context.stroke();
   context.shadowBlur = 0;
   context.restore();
@@ -1201,7 +1216,8 @@ function drawEnemy(enemy: Enemy, point = positionOnPath(enemy.progress)): void {
     const frameHeight = sheetReady ? ENEMY_FRAME_SIZE : image.naturalHeight / 2;
     // 적대 윤곽은 진사(cinnabar) 계열 광원으로만 알린다. 원본을 재착색하지 않는다.
     context.shadowColor = enemy.boss ? "#c4392a" : "#9f2f23";
-    context.shadowBlur = enemy.boss ? 16 : 8;
+    // FB6: 주홍 윤곽 발광 16/8 → 12/6 (-25%).
+    context.shadowBlur = enemy.boss ? 12 : 6;
     context.drawImage(image, frame * frameWidth, 0, frameWidth, frameHeight, -drawSize / 2, -drawSize / 2, drawSize, drawSize);
     context.shadowBlur = 0;
 

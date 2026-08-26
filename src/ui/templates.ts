@@ -682,6 +682,10 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
         <span><b>팝오버 큰 한자</b><small>자령에 마우스를 올리면 한자를 크게 보여줍니다.</small></span>
         <i aria-hidden="true"><em>ON</em></i>
       </button>
+      <button id="calm-screen-toggle" class="settings-toggle" type="button" role="switch" aria-checked="false" data-testid="calm-screen-toggle">
+        <span><b>차분한 화면</b><small>맥동·플래시·먹물 흐름 애니메이션을 멈추고 배경 결 무늬를 옅게 합니다. OS 동작 줄이기 설정이면 자동 적용됩니다.</small></span>
+        <i aria-hidden="true"><em>OFF</em></i>
+      </button>
       <section class="audio-settings" aria-labelledby="audio-settings-title">
         <div class="audio-settings-heading"><b id="audio-settings-title">오디오 믹스</b><small>첫 조작 뒤 재생 · 선택은 브라우저에 저장</small></div>
         <div class="audio-setting-row">
