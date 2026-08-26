@@ -10,7 +10,7 @@
  * 트랙 C2 ①: 판정 시점은 사람이 정한다.
  *   예전에는 획을 뗄 때마다 채점해 임계를 넘는 순간 제멋대로 완성 처리했다 —
  *   "다 쓰지도 않았는데 끝나 버린다"(사용자 실황). 이제 획마다 갱신되는 것은
- *   상태 줄(정확·덮음)뿐이고, [부적 봉인] 을 눌러야 판정한다. 미달이면 벌 없이
+ *   상태 줄(정확·덮음)뿐이고, [부적 완성] 을 눌러야 판정한다. 미달이면 벌 없이
  *   안내만 남기고 먹선을 그대로 둬 이어 그릴 수 있다.
  * 트랙 C2 ②: 통과하면 그 글자의 자령이 내려와 보상을 놓고 간다
  *   (talisman-reward.ts). 엔진 상태에는 남지 않는 방문객이다.
@@ -247,7 +247,7 @@ function setStatus(text: string, tone: "plain" | "pass" | "hint" = "plain"): voi
   status.classList.add("is-hint");
 }
 
-/** 획이 하나도 없으면 제출할 것이 없다. 봉인이 끝난 부적도 다시 낼 수 없다. */
+/** 획이 하나도 없으면 제출할 것이 없다. 이미 완성된 부적도 다시 낼 수 없다. */
 function syncSubmitButton(hasInk: boolean): void {
   const submit = must<HTMLButtonElement>("#talisman-submit");
   submit.disabled = sealed || !hasInk;
@@ -275,7 +275,7 @@ function presentDefinition(definition: HanziDefinition): void {
   hideSeal();
   const info = learningInfo(definition.region, definition.char);
   must<HTMLElement>("#talisman-reading").textContent = `${info.readingLabel} · ${info.reading}`;
-  setStatus("반투명 글자를 따라 쓰고 [부적 봉인]");
+  setStatus("반투명 글자를 따라 쓰고 [부적 완성]");
   must<HTMLButtonElement>("#talisman-redraw").textContent = "다시 뽑기";
   syncSubmitButton(false);
   setControlsEnabled(true);
@@ -351,7 +351,7 @@ function completeTalisman(score: TalismanScore): void {
     void seal.offsetWidth;
     seal.classList.add("is-stamped");
   }
-  // 인장이 쾅 찍히는 순간의 종이 번쩍·파문·아주 약한 흔들림 + 묵직한 봉인음.
+  // 인장이 쾅 찍히는 순간의 종이 번쩍·파문·아주 약한 흔들림 + 묵직한 인장음.
   playTalismanImpact();
   sound.playTalismanSeal();
   setStatus(`부적 완성! 정확 ${Math.round(score.insideRatio * 100)}% · 덮음 ${Math.round(score.coverageRatio * 100)}%`, "pass");
@@ -370,7 +370,7 @@ function completeTalisman(score: TalismanScore): void {
 }
 
 /**
- * 지금 먹선을 채점해 상태 줄과 [부적 봉인] 활성 여부를 맞춘다.
+ * 지금 먹선을 채점해 상태 줄과 [부적 완성] 활성 여부를 맞춘다.
  * 판정(완성 처리)은 하지 않는다 — 그것은 제출 버튼만의 권한이다.
  */
 function refreshScore(): TalismanScore | null {
@@ -379,7 +379,7 @@ function refreshScore(): TalismanScore | null {
   const score = scoreTalismanDrawing(maskData, data, PAPER_WIDTH, PAPER_HEIGHT);
   if (!sealed) {
     syncSubmitButton(score.inkPixels > 0);
-    if (score.inkPixels === 0) setStatus("반투명 글자를 따라 쓰고 [부적 봉인]");
+    if (score.inkPixels === 0) setStatus("반투명 글자를 따라 쓰고 [부적 완성]");
     else setStatus(`정확 ${Math.round(score.insideRatio * 100)}% · 덮음 ${Math.round(score.coverageRatio * 100)}%`);
   }
   return score;
@@ -435,7 +435,7 @@ function shortfallHint(score: TalismanScore): string {
 }
 
 /**
- * [부적 봉인] — 사람이 "다 썼다"고 선언하는 지점.
+ * [부적 완성] — 사람이 "다 썼다"고 선언하는 지점.
  * 통과면 완성 연출·보상, 미달이면 안내만 남기고 그린 것을 그대로 둔다.
  */
 function submitTalisman(): void {
@@ -531,7 +531,7 @@ function syncTabPresence(): void {
   button.setAttribute("role", "tab");
   button.setAttribute("aria-selected", "false");
   button.textContent = "부적";
-  button.title = "부적 만들기 — 한자를 따라 써서 봉인 부적을 완성합니다";
+  button.title = "부적 만들기 — 한자를 따라 써서 부적을 완성합니다";
   button.addEventListener("click", () => {
     setPanelTab("talisman");
     ensureDefinition();
@@ -607,11 +607,11 @@ const PANEL_MARKUP = `
     <div id="talisman-seal" class="talisman-seal" hidden aria-hidden="true"><i>封</i></div>
   </div>
   <div class="talisman-footer">
-    <p id="talisman-status" class="talisman-status">반투명 글자를 따라 쓰고 [부적 봉인]</p>
+    <p id="talisman-status" class="talisman-status">반투명 글자를 따라 쓰고 [부적 완성]</p>
     <div class="talisman-actions">
       <button id="talisman-clear" class="small-button" type="button" data-testid="talisman-clear">지우기</button>
       <button id="talisman-redraw" class="small-button" type="button" data-testid="talisman-redraw">다시 뽑기</button>
-      <button id="talisman-submit" class="small-button talisman-submit" type="button" data-testid="talisman-submit" disabled>부적 봉인</button>
+      <button id="talisman-submit" class="small-button talisman-submit" type="button" data-testid="talisman-submit" disabled>부적 완성</button>
     </div>
     <p id="talisman-economy-note" class="talisman-economy-note">부적 모드에서는 적이 ${Math.round((TALISMAN_MODE_ENEMY_HP_SCALE - 1) * 100)}% 강해집니다 — 그 대신 부적 보상을 얻습니다</p>
   </div>`;
@@ -641,7 +641,7 @@ function mountTalismanPanel(): void {
       return;
     }
     clearInk();
-    setStatus("반투명 글자를 따라 쓰고 [부적 봉인]");
+    setStatus("반투명 글자를 따라 쓰고 [부적 완성]");
     syncSubmitButton(false);
   });
   must<HTMLButtonElement>("#talisman-redraw").addEventListener("click", () => {
