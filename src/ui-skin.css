@@ -10268,6 +10268,210 @@ span.codex-jaryeong-category { color: #4a3f30 !important; }
     url("/assets/ui/main-menu-b/ui/p00-scroll-frame-v1.png") center / 100% 100% no-repeat,
     linear-gradient(#efe2c1, #efe2c1) center / 86% 76% no-repeat;
 }
+
+/* ═══════════════════════════════════════════════════════════════════
+   ===== R12 농축단일·초상 =====
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* ── R12-1. 농축 분기 선택이 사라진 자리 ──────────────────────────
+   두 장짜리 선택 카드를 걷어냈다. 대신 "왜 이 농축인가"를 비교표 바로 위에
+   한 줄로 못박는다 — 역할 · 방향 · 단계당 증가폭이 늘 같은 자리에 있다. */
+
+.concentration-identity {
+  display: grid;
+  gap: 2px;
+  padding: 7px 9px;
+  border: 1px solid color-mix(in srgb, var(--element, #b8934a) 34%, rgba(122, 90, 42, 0.3));
+  border-left: 3px solid color-mix(in srgb, var(--element, #b8934a) 62%, #8a6a2c);
+  border-radius: 8px;
+  background: linear-gradient(180deg, #f2e8cd 0%, #e4d7b6 100%);
+  box-shadow: var(--bevel-up), 0 0 0 1px rgba(122, 90, 42, 0.18);
+}
+
+.concentration-identity b {
+  color: #2e2212;
+  font-size: 13px;
+  letter-spacing: -0.01em;
+}
+
+.concentration-identity b i {
+  color: #7a2f1c;
+  font-style: normal;
+  font-weight: 900;
+}
+
+.concentration-identity small {
+  color: #6d5a3c;
+  font-size: 11px;
+  line-height: 1.3;
+}
+
+.focus-frame-body .concentration-identity { padding: 9px 11px; }
+.focus-frame-body .concentration-identity b { font-size: 15px !important; }
+.focus-frame-body .concentration-identity small { font-size: 12px !important; }
+
+/* ── R12-2. 공방 목록의 자령 초상 ─────────────────────────────────
+   글자만 있는 줄은 "어느 자령인지"를 매번 읽어서 풀어야 했다. 소환 카드가
+   쓰는 것과 같은 시트 crop 을 목록 크기로 줄여 왼쪽에 붙인다.
+
+   그림이 늦거나 끝내 오지 않을 수 있으므로 두 겹으로 쌓는다 — 아래층은
+   오행색 원판+한자, 위층이 시트다. 위층이 비면 아래층이 그대로 남는다. */
+
+.workbench-spirit {
+  position: relative;
+  display: block;
+  overflow: hidden;
+  flex: 0 0 auto;
+  align-self: center;
+  border-radius: 5px;
+  background:
+    radial-gradient(circle at 50% 34%, color-mix(in srgb, var(--element, #b8934a) 26%, transparent), transparent 72%),
+    linear-gradient(180deg, #cdbb92 0%, #ded1b0 100%);
+  box-shadow: var(--bevel-in), 0 0 0 1px color-mix(in srgb, var(--element, #b8934a) 40%, rgba(122, 90, 42, 0.42));
+}
+
+.workbench-spirit > i {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-style: normal;
+}
+
+.workbench-spirit-fallback {
+  color: color-mix(in srgb, var(--element, #b8934a) 55%, #2e2212);
+  font-family: "Noto Serif KR", serif;
+  font-weight: 800;
+}
+
+.workbench-spirit-art { background-repeat: no-repeat; }
+
+.workbench-spirit--target { width: 32px; height: 32px; }
+.workbench-spirit--target .workbench-spirit-fallback { font-size: 17px; }
+.workbench-spirit--dismantle { width: 28px; height: 28px; border-radius: 4px; }
+.workbench-spirit--dismantle .workbench-spirit-fallback { font-size: 15px; }
+.workbench-spirit--focus { width: 56px; height: 56px; border-radius: 7px; }
+.workbench-spirit--focus .workbench-spirit-fallback { font-size: 30px; }
+.workbench-spirit--group { width: 26px; height: 26px; border-radius: 4px; }
+.workbench-spirit--group .workbench-spirit-fallback { font-size: 14px; }
+
+/* 초상이 새 첫 칸으로 들어왔으므로 두 목록의 격자를 한 칸씩 넓힌다.
+   75절·90-B 절이 !important 로 두 칸을 못박아 두었기에 같은 무게로 되짚는다.
+   대신 글줄이 눌리지 않도록 프레임의 왼쪽 기둥을 200 → 248px 로 벌린다. */
+
+.focus-frame-body .concentration-layout {
+  grid-template-columns: 248px minmax(0, 1fr) !important;
+}
+
+.concentration-target-list > button {
+  grid-template-columns: 32px 26px minmax(0, 1fr) !important;
+  column-gap: 5px;
+}
+
+.concentration-target-list > button > b {
+  width: 26px !important;
+  height: 26px !important;
+  font-size: 15px !important;
+}
+
+.concentration-target-list > button > .workbench-spirit { width: 32px; height: 32px; }
+.concentration-target-list > button > .workbench-spirit .workbench-spirit-fallback { font-size: 17px; }
+
+/* 상태 배지(em)는 90-C 절이 둘째 줄 전폭으로 못박아 뒀다 — 그대로 둔다.
+   초상이 늘어난 만큼 잃은 글줄 폭은 위의 기둥 확장으로 되돌린다. */
+
+.focus-frame-body .concentration-target-list > button {
+  grid-template-columns: 40px 34px minmax(0, 1fr) !important;
+  column-gap: 7px;
+}
+
+.focus-frame-body .concentration-target-list > button > b {
+  width: 34px !important;
+  height: 34px !important;
+  font-size: 19px !important;
+}
+
+.focus-frame-body .concentration-target-list > button > .workbench-spirit { width: 40px; height: 40px; }
+.focus-frame-body .concentration-target-list > button > .workbench-spirit .workbench-spirit-fallback { font-size: 21px; }
+
+.dismantle-row { grid-template-columns: 18px 28px 26px minmax(0, 1fr) auto; }
+
+.concentration-focus > header {
+  grid-template-columns: 56px 44px minmax(0, 1fr);
+  gap: 8px;
+}
+
+.concentration-focus > header > b { font-size: 34px !important; }
+
+.focus-frame-body .concentration-focus > header > b { font-size: 36px !important; }
+
+/* ── R12-3. 캐주얼 3체 조합 그룹 카드의 소모 예정 3기 ────────────
+   "火 2★ ×4 → 3★ 무작위 1기"는 무엇이 사라지는지 글자로만 알려 줬다.
+   실제 소모 묶음의 얼굴을 헤드라인 바로 밑에 세운다. */
+
+.casual-group-materials {
+  display: flex;
+  gap: 4px;
+  margin: 1px 0 2px;
+}
+
+/* ── R12-4. 분해의 "유일 보유 한자" 보호 스위치 ──────────────────
+   필터 줄 아래 한 줄을 통째로 쓰는 스위치. 켜짐이 기본이라 켜진 모습이
+   차분하고, 끄면 붉은 인주로 "지금은 파괴적 상태"임을 계속 알린다. */
+
+.dismantle-unique-toggle {
+  display: flex;
+  grid-column: 1 / -1;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  min-height: 26px;
+  padding: 3px 8px;
+  color: var(--text-100);
+  border: 0;
+  border-radius: var(--r-sm, 6px);
+  background: linear-gradient(180deg, #f2e8cd 0%, #e2d4b2 100%);
+  box-shadow: var(--bevel-up), 0 0 0 1px rgba(122, 90, 42, 0.3);
+  cursor: pointer;
+}
+
+.dismantle-unique-toggle b {
+  color: #3a2c16;
+  font-size: 11.5px;
+}
+
+.dismantle-unique-toggle i {
+  padding: 1px 7px;
+  color: #f4ead1;
+  border-radius: 999px;
+  background: var(--dan-noe, #3f7d6e);
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 900;
+}
+
+.dismantle-unique-toggle:not(.is-on) {
+  background: linear-gradient(180deg, #f6ddd4 0%, #e8c6b9 100%);
+  box-shadow: var(--bevel-up), 0 0 0 1px rgba(159, 47, 35, 0.45);
+}
+
+.dismantle-unique-toggle:not(.is-on) i { background: var(--seal, #9f2f23); }
+
+/* 보호를 껐을 때 남는 마지막 시각 단서. 글줄 맨 앞이라 잘려 나가지 않는다. */
+.dismantle-sole-badge {
+  margin-right: 4px;
+  padding: 0 5px;
+  color: #7a2f1c;
+  border-radius: 999px;
+  background: rgba(159, 47, 35, 0.14);
+  box-shadow: inset 0 0 0 1px rgba(159, 47, 35, 0.4);
+  font-size: 9.5px;
+  font-style: normal;
+  font-weight: 900;
+}
+
+.dismantle-row.is-sole { box-shadow: inset 3px 0 0 var(--seal, #9f2f23); }
+
 /* ══════════════════════════════════════════════════════════════════
    ===== R8 고정무대 =====
 

@@ -31,7 +31,9 @@ import {
   GameEngine,
   FIRST_PREP_SECONDS,
   MAX_CONCENTRATION_LEVEL,
+  autoConcentrationPath,
   concentrationEssenceCost,
+  concentrationPathLabel,
   interestForGold
 } from "./core/game";
 import {
@@ -111,7 +113,6 @@ import type {
   AutomationMode,
   CasualStar,
   CompositionBranchPreview,
-  ConcentrationPath,
   Enemy,
   EvolutionOption,
   GameEvent,
@@ -413,7 +414,7 @@ app.innerHTML = `
         <section id="concentration-panel" class="concentration-workbench panel-view" data-panel-view="concentration" aria-label="자령 농축 공방">
           <header class="workbench-heading">
             <div><span>같은 자령을 더 강하게</span><strong>농축 공방</strong></div>
-            <p class="concentration-guide"><i>①</i> 왼쪽에서 자령 선택 <i>②</i> 연속·심화 중 택1 <i>③</i> 재료 지불 → 능력치 영구 상승</p>
+            <p class="concentration-guide"><i>①</i> 왼쪽에서 자령 선택 <i>②</i> 재료 지불 → 능력치 영구 상승 · 농축 방향은 역할이 정합니다</p>
           </header>
           <div id="concentration-layout" class="concentration-layout">
             <aside><div class="subheading"><b>① 대상 선택</b><small id="concentration-target-summary">0기</small></div><div id="concentration-target-list" class="concentration-target-list"></div></aside>
@@ -437,6 +438,7 @@ app.innerHTML = `
                 <select id="dismantle-element-filter" aria-label="분해 오행 필터"><option value="all">모든 오행</option><option>木</option><option>火</option><option>土</option><option>金</option><option>水</option></select>
                 <select id="dismantle-stage-filter" aria-label="분해 단계 필터"><option value="all">모든 단계</option><option value="1">1성</option><option value="2">2성</option><option value="3">3성</option><option value="4">4성</option><option value="5">5성</option><option value="6">6성</option><option value="7">7성</option><option value="8">8성</option></select>
                 <select id="dismantle-status-filter" aria-label="분해 보호 필터"><option value="all">전체 상태</option><option value="eligible">분해 가능</option><option value="protected">보호됨</option></select>
+                <button id="dismantle-unique-toggle" class="dismantle-unique-toggle" type="button" role="switch" aria-checked="true" data-testid="dismantle-unique-toggle" title="끄면 이 한자를 1기만 가진 자령도 분해 후보에 들어옵니다"><b>유일 자령 보호</b><i aria-hidden="true"><em>ON</em></i></button>
               </div>
               <div class="dismantle-toolbar"><button id="dismantle-recommend-button" type="button">추천 후보 선택</button><button id="dismantle-clear-button" type="button">선택 해제</button></div>
               <div id="growth-dismantle-list" class="growth-dismantle-list"></div>
@@ -655,12 +657,12 @@ app.innerHTML = `
           <li><b>은행 이자</b><span>웨이브 종료 시 보유 엽전 20개당 1엽전을 지급하며, 한 번에 최대 20엽전까지만 받을 수 있습니다.</span></li>
           <li><b>훈·독</b><span>기본 자령 모드는 머리 위 한자·훈음을 표시합니다. 한자 강조를 끄면 머리 위 표찰은 숨기고 별만 남깁니다. 설정의 공부 모드는 전장에 큰 한자와 짧은 읽기를 표시하며, 선택 카드와 도감에서는 자세한 훈음·음독·훈독·병음과 뜻을 확인합니다.</span></li>
           <li><b>전투</b><span>웨이브 약점 오행은 피해가 30% 증가합니다. 水→木→火→土→金→水 상생을 함께 배치하면 추가 피해를 줍니다.</span></li>
-          <li><b>강화 탭</b><span>인벤토리 자령을 보호 규칙 아래 일괄 분해하고, 공용·오행 5능력치×99단계와 오행별 고유 특성 3종×10단계를 한 화면에서 투자합니다.</span></li>
+          <li><b>강화 탭</b><span>인벤토리 자령을 보호 규칙 아래 일괄 분해하고, 공용·오행 5능력치×99단계와 오행별 고유 특성 3종×10단계를 한 화면에서 투자합니다. <em>유일 자령 보호</em> 스위치를 끄면 이 한자를 1기만 가진 자령도 후보에 들어오며, 목록에 <em>유일</em> 배지가 남습니다(잠금·농축·목표·성어 보호는 그대로).</span></li>
           <li><b>능력 조합</b><span>모든 한자는 오행 효과·전투 역할·조합망 패시브를 가집니다. 합성 한자는 재료의 오행도 계승해 주기 추가타를 얻습니다.</span></li>
           <li><b>잠금</b><span>선택한 자령을 잠그면 공격·이동은 유지되지만 합성 재료와 판매 대상에서는 제외됩니다.</span></li>
           <li><b>자령 도감</b><span>전체 한자와 천자문 자령을 한 화면에서 봅니다. 별·독립 여부·조합표·쉬운 훈 풀이와 자령 초상화를 함께 확인합니다.</span></li>
           <li><b>런 인벤토리</b><span>동일한 한자는 한 스택으로 묶입니다. 인벤토리 자령을 고른 뒤 빈 칸을 누르면 배치하고, 찬 칸을 누르면 기존 자령을 인벤토리로 보내며 즉시 교체합니다.</span></li>
-          <li><b>농축 공방</b><span>같은 한자 중복 1기 또는 같은 오행 문기 4·6·8을 직접 고릅니다. 최초 연속·심화 분기는 영구 고정되며 실행 전 전후 전투 수치를 비교합니다.</span></li>
+          <li><b>농축 공방</b><span>같은 한자 중복 1기 또는 같은 오행 문기 4·6·8을 직접 고릅니다. 농축 방향은 자령의 역할이 정합니다 — 연사·지원은 공속(濃당 +7.5%), 나머지는 피해(濃당 +12%). 실행 전 전후 전투 수치를 비교합니다.</span></li>
           <li><b>지도 배율</b><span>기존 260% 크기를 새 100% 기준으로 사용합니다. 휠로 약 28%~200% 확대·축소하고, 빈 칸·길에서 좌클릭 드래그하거나 휠 버튼을 누른 채 드래그하면 지도를 이동합니다. 왼쪽 아래 배율 버튼은 중앙 정렬된 100%로 돌아갑니다.</span></li>
           <li><b>게임 배속</b><span>오른쪽 위 배속 버튼이나 F키로 1×·2×·3×를 순환합니다.</span></li>
           <li><b>게임오버</b><span>적은 경로 끝에서 사라지지 않고 계속 순환합니다. 전장에 ${MAX_ENEMIES}체가 쌓이거나 우두머리를 제한시간 안에 처치하지 못하면 즉시 실패합니다. 제어 능력은 적을 뒤로 밀지 않고 현재 공격권 안에서 감속·봉쇄합니다.</span></li>
@@ -916,7 +918,6 @@ let goalPanelMode: GoalPanelMode = "hanzi";
 let goalSearchQuery = "";
 let activePanelTab: PanelTab = "shop";
 let concentrationTargetId: number | null = null;
-let concentrationPath: ConcentrationPath = "swift";
 let concentrationPayment: "essence" | number = "essence";
 let growthElement: Wuxing = "木";
 const dismantleSelection = new Set<number>();
@@ -1096,6 +1097,26 @@ let hoverGlyphLarge = ((): boolean => {
     return true;
   }
 })();
+/*
+ * 분해의 "유일 보유 한자" 보호.
+ *
+ * 초보자를 지키는 규칙이지만 문기를 모으려는 사람에게는 인벤토리 절반을
+ * 잠그는 벽이었다. 기본은 ON(현행 유지)이고, 끄면 유일 자령도 후보에 들어온다.
+ * 파괴적 행동이므로 목록의 `유일` 배지는 꺼도 남는다 — 토글 자체가 의사 표시라
+ * 따로 확인 창을 세우지는 않는다.
+ */
+const DISMANTLE_UNIQUE_STORAGE_KEY = "hanja-td:dismantle-protect-unique";
+let dismantleProtectsUnique = ((): boolean => {
+  try {
+    return window.localStorage.getItem(DISMANTLE_UNIQUE_STORAGE_KEY) !== "false";
+  } catch {
+    return true;
+  }
+})();
+/** 분해 경로 전용 옵션. 다른 보호(잠금·농축·공명)와 캐주얼 3합은 건드리지 않는다. */
+function dismantleOptions(): { protectUnique: boolean } {
+  return { protectUnique: dismantleProtectsUnique };
+}
 /*
  * 시작 보너스 버튼 주목성.
  *
@@ -1447,7 +1468,6 @@ function startRun(useNewSeed = false): void {
   hideSummonReveal();
   closeCompositionDrawer();
   concentrationTargetId = null;
-  concentrationPath = "swift";
   concentrationPayment = "essence";
   growthElement = "木";
   dismantleSelection.clear();
@@ -1752,7 +1772,28 @@ function concentrationStateSignature(): string {
   const towers = [...engine.state.towers, ...engine.state.inventoryTowers]
     .map((tower) => `${tower.id}:${tower.char}:${tower.cell}:${tower.locked ? 1 : 0}:${tower.concentration ?? 0}:${tower.concentrationPath ?? "-"}`)
     .join("|");
-  return `${engine.state.phase}:${towers}:${WUXING_ORDER.map((wuxing) => engine.state.elementEssence[wuxing]).join(",")}:${concentrationTargetId ?? "-"}:${concentrationPath}:${concentrationPayment}`;
+  return `${engine.state.phase}:${towers}:${WUXING_ORDER.map((wuxing) => engine.state.elementEssence[wuxing]).join(",")}:${concentrationTargetId ?? "-"}:${concentrationPayment}`;
+}
+
+/**
+ * "왜 이 농축인가"를 한 줄로 적는다.
+ *
+ * 분기 선택 카드를 걷어낸 자리에는 설명이 남아야 한다 — 역할이 방향을 정했고,
+ * 그 방향이 무엇을 얼마나 올리는지가 비교표 바로 위에서 늘 보인다.
+ */
+function concentrationIdentityMarkup(tower: Tower): string {
+  const path = autoConcentrationPath(tower);
+  const gain = path === "swift" ? "+7.5%/濃" : "+12%/濃";
+  const detail = path === "swift"
+    ? "공격 대기 감소 · 濃당 피해 +5.5% · 사거리 +4"
+    : "피해 상승 · 濃당 대기 -2% · 의미 기술 +3.5% · 사거리 +4";
+  const roleDefault = tower.combatRole === "rapid" || tower.combatRole === "support" ? "swift" : "potent";
+  const legacy = tower.concentrationPath !== null && tower.concentrationPath !== undefined && tower.concentrationPath !== roleDefault;
+  return `<p class="concentration-identity">
+    <b>${ROLE_LABELS[tower.combatRole]}형 자령 — ${concentrationPathLabel(path)} <i>(${gain})</i></b>
+    <small>${detail}</small>
+    <small>${legacy ? "이전 런에서 고정된 방향이라 그대로 이어집니다." : "연사·지원은 공속, 나머지는 피해 — 역할이 방향을 정합니다."}</small>
+  </p>`;
 }
 
 function renderConcentration(): void {
@@ -1777,7 +1818,7 @@ function renderConcentration(): void {
   must<HTMLElement>("#concentration-target-list").innerHTML = rows.length > 0 ? rows.map(({ tower, level, duplicateCount, cost, maxed, actionable }) => {
     const stateLabel = maxed ? "최대 단계" : actionable ? "농축 가능" : "재료 부족";
     return `<button type="button" data-concentration-target="${tower.id}" class="${tower.id === concentrationTargetId ? "is-selected" : ""} ${actionable ? "is-ready" : ""}" style="--element:${ELEMENT_STYLES[tower.wuxing].color}">
-      <b>${escapeHtml(tower.char)}</b><span><strong>${tower.wuxing}행 · ${towerProgressionLabel(tower)} · 濃 ${level}/3</strong><small>${tower.cell < 0 ? "인벤토리" : `${BOARD_FORMATIONS[Math.floor(tower.cell / CELLS_PER_FORMATION)]?.label ?? "전장"} 배치`} · ${duplicateCount > 0 ? `중복 ${duplicateCount}기` : `문기 ${cost}`}</small></span><em>${stateLabel}</em>
+      ${spiritPortraitMarkup(tower.char, tower.wuxing, "workbench-spirit--target")}<b>${escapeHtml(tower.char)}</b><span><strong>${tower.wuxing}행 · ${towerProgressionLabel(tower)} · 濃 ${level}/3</strong><small>${tower.cell < 0 ? "인벤토리" : `${BOARD_FORMATIONS[Math.floor(tower.cell / CELLS_PER_FORMATION)]?.label ?? "전장"} 배치`} · ${duplicateCount > 0 ? `중복 ${duplicateCount}기` : `문기 ${cost}`}</small></span><em>${stateLabel}</em>
     </button>`;
   }).join("") : `<div class="workbench-empty"><b>농축할 자령이 없습니다</b><span>상점에서 자령을 먼저 소환하세요.</span></div>`;
 
@@ -1787,15 +1828,13 @@ function renderConcentration(): void {
     detail.innerHTML = `<div class="workbench-empty"><b>대상을 선택하세요</b><span>전장과 인벤토리 자령을 모두 확인할 수 있습니다.</span></div>`;
     return;
   }
-  const fixedPath = target.concentrationPath ?? null;
-  if (fixedPath) concentrationPath = fixedPath;
-  const quote = engine.concentrationQuote(target.id, concentrationPath);
+  // 방향은 사람이 고르지 않는다 — 역할이 정하고, 이미 박힌 자령은 그대로 간다.
+  const path = autoConcentrationPath(target);
+  const quote = engine.concentrationQuote(target.id, path);
   if (quote && typeof concentrationPayment === "number" && !quote.duplicateIds.includes(concentrationPayment)) concentrationPayment = "essence";
-  const pathLocked = fixedPath !== null;
-  const swiftSelected = concentrationPath === "swift";
   const currentLevel = target.concentration ?? 0;
   if (!quote) {
-    detail.innerHTML = `<article class="concentration-max-card" style="--element:${ELEMENT_STYLES[target.wuxing].color}"><b>${escapeHtml(target.char)}</b><div><span>${target.wuxing}행 · ${towerProgressionLabel(target)}</span><strong>濃 ${currentLevel}/3 · ${fixedPath === "potent" ? "심화" : "연속"} 농축 완성</strong><small>더 이상 재료를 소모하지 않습니다.</small></div></article>`;
+    detail.innerHTML = `<article class="concentration-max-card" style="--element:${ELEMENT_STYLES[target.wuxing].color}"><b>${escapeHtml(target.char)}</b><div><span>${target.wuxing}행 · ${towerProgressionLabel(target)}</span><strong>濃 ${currentLevel}/3 · ${concentrationPathLabel(path)} 완성</strong><small>더 이상 재료를 소모하지 않습니다.</small></div></article>`;
     return;
   }
   const essenceAvailable = engine.state.elementEssence[target.wuxing] >= quote.essenceCost;
@@ -1808,23 +1847,19 @@ function renderConcentration(): void {
   }).join("");
   detail.innerHTML = `
     <article class="concentration-focus" style="--element:${ELEMENT_STYLES[target.wuxing].color}">
-      <header><b>${escapeHtml(target.char)}</b><div><span>${target.wuxing}행 · ${towerProgressionLabel(target)} · ${target.cell < 0 ? "인벤토리" : "전장"}</span><strong>濃 ${quote.currentLevel} → ${quote.nextLevel}</strong><small>${pathLocked ? "선택한 분기는 영구 고정" : "첫 분기 선택 후 변경 불가"}</small></div></header>
-      <div class="subheading"><b>② 분기 선택</b><small>${pathLocked ? "이 자령의 분기는 이미 고정됨" : "처음 한 번만 고를 수 있습니다"}</small></div>
-      <div class="concentration-paths" role="radiogroup" aria-label="농축 분기">
-        <button type="button" data-concentration-path="swift" class="${swiftSelected ? "is-selected" : ""}" ${pathLocked && !swiftSelected ? "disabled" : ""}><b>迅 연속 농축</b><span>단계당 피해 +5.5%</span><span>공격 대기 -7.5% · 사거리 +4</span></button>
-        <button type="button" data-concentration-path="potent" class="${!swiftSelected ? "is-selected" : ""}" ${pathLocked && swiftSelected ? "disabled" : ""}><b>深 심화 농축</b><span>단계당 피해 +12%</span><span>대기 -2% · 의미 기술 +3.5% · 사거리 +4</span></button>
-      </div>
+      <header>${spiritPortraitMarkup(target.char, target.wuxing, "workbench-spirit--focus")}<b>${escapeHtml(target.char)}</b><div><span>${target.wuxing}행 · ${towerProgressionLabel(target)} · ${target.cell < 0 ? "인벤토리" : "전장"}</span><strong>濃 ${quote.currentLevel} → ${quote.nextLevel}</strong><small>${ROLE_LABELS[target.combatRole]} · ${concentrationPathLabel(path)}</small></div></header>
+      ${concentrationIdentityMarkup(target)}
       <div class="concentration-compare">
         <div><span>공격력</span><b>${Math.round(quote.current.damage)}</b><i>→</i><strong>${Math.round(quote.next.damage)}</strong></div>
         <div><span>초당 공격</span><b>${quote.current.attacksPerSecond.toFixed(1)}</b><i>→</i><strong>${quote.next.attacksPerSecond.toFixed(1)}</strong></div>
         <div><span>사거리</span><b>${Math.round(quote.current.range)}</b><i>→</i><strong>${Math.round(quote.next.range)}</strong></div>
         <div><span>기술 효과</span><b>${Math.round((quote.current.abilityEffect - 1) * 100)}%</b><i>→</i><strong>${Math.round((quote.next.abilityEffect - 1) * 100)}%</strong></div>
       </div>
-      <section class="concentration-payment"><div class="subheading"><b>③ 재료 지불</b><small>전장 자령과 잠긴 자령은 후보에서 제외</small></div><div class="payment-grid">
+      <section class="concentration-payment"><div class="subheading"><b>② 재료 지불</b><small>전장 자령과 잠긴 자령은 후보에서 제외</small></div><div class="payment-grid">
         ${paymentRows}
         <label class="payment-option is-essence ${concentrationPayment === "essence" ? "is-selected" : ""} ${essenceAvailable ? "" : "is-unavailable"}"><input type="radio" name="concentration-payment" value="essence" ${concentrationPayment === "essence" ? "checked" : ""} ${essenceAvailable ? "" : "disabled"}><b>${target.wuxing}</b><span>${target.wuxing} 문기 ${quote.essenceCost}</span><small>보유 ${engine.state.elementEssence[target.wuxing]}</small></label>
       </div></section>
-      <button id="concentration-confirm-button" class="workbench-primary" type="button" ${paymentReady ? "" : "disabled"}>${pathLocked ? "다음 단계 농축" : "분기 고정 후 농축"}</button>
+      <button id="concentration-confirm-button" class="workbench-primary" type="button" ${paymentReady ? "" : "disabled"}>濃 ${quote.currentLevel} → ${quote.nextLevel} 농축 실행</button>
     </article>`;
 }
 
@@ -1833,7 +1868,32 @@ function growthStateSignature(): string {
   const traits = WUXING_ORDER.map((wuxing) => engine.state.elementTraits[wuxing].join(",")).join("|");
   const scores = WUXING_ORDER.map((wuxing) => engine.state.elementDismantleScore[wuxing]).join(",");
   const filters = `${must<HTMLSelectElement>("#dismantle-element-filter").value}:${must<HTMLSelectElement>("#dismantle-stage-filter").value}:${must<HTMLSelectElement>("#dismantle-status-filter").value}`;
-  return `${engine.state.mode}:${upgradeStateSignature()}:${inventory}:${traits}:${scores}:${filters}:${[...dismantleSelection].sort((a, b) => a - b).join(",")}:${growthElement}`;
+  return `${engine.state.mode}:${upgradeStateSignature()}:${inventory}:${traits}:${scores}:${filters}:U${dismantleProtectsUnique ? 1 : 0}:${[...dismantleSelection].sort((a, b) => a - b).join(",")}:${growthElement}`;
+}
+
+function syncDismantleUniqueControl(): void {
+  const button = must<HTMLButtonElement>("#dismantle-unique-toggle");
+  button.classList.toggle("is-on", dismantleProtectsUnique);
+  button.setAttribute("aria-checked", String(dismantleProtectsUnique));
+  must<HTMLElement>("#dismantle-unique-toggle i em").textContent = dismantleProtectsUnique ? "ON" : "OFF";
+}
+
+function setDismantleProtectsUnique(enabled: boolean): void {
+  dismantleProtectsUnique = enabled;
+  try {
+    window.localStorage.setItem(DISMANTLE_UNIQUE_STORAGE_KEY, String(enabled));
+  } catch {
+    // 저장이 막혀도 이번 세션 선택은 살린다.
+  }
+  syncDismantleUniqueControl();
+  // 선택은 보호 규칙이 바뀐 순간 낡는다 — 비우고 다시 고르게 한다.
+  dismantleSelection.clear();
+  growthRenderKey = "";
+  renderGrowth();
+  renderRunInventory();
+  showToast(enabled
+    ? "유일 자령 보호 ON · 이 한자를 1기만 가진 자령은 분해 후보에서 빠집니다."
+    : "유일 자령 보호 OFF · 유일 자령도 분해할 수 있습니다. 목록의 유일 배지를 확인하세요.");
 }
 
 const UPGRADE_UNAVAILABLE_LABEL = "투자 불가";
@@ -1853,7 +1913,7 @@ function renderGrowth(): void {
   if (key === growthRenderKey) return;
   growthRenderKey = key;
   const active = engine.state.phase === "prep" || engine.state.phase === "combat";
-  const assessmentMap = new Map(engine.cleanupAssessments().map((assessment) => [assessment.towerId, assessment]));
+  const assessmentMap = new Map(engine.cleanupAssessments(dismantleOptions()).map((assessment) => [assessment.towerId, assessment]));
   const elementFilter = must<HTMLSelectElement>("#dismantle-element-filter").value;
   const stageFilter = must<HTMLSelectElement>("#dismantle-stage-filter").value;
   const statusFilter = must<HTMLSelectElement>("#dismantle-status-filter").value;
@@ -1872,13 +1932,15 @@ function renderGrowth(): void {
     const protectedReasons = assessment?.protectedReasons ?? ["보호 상태 확인 필요"];
     const protectedState = assessment?.protected ?? true;
     const essence = engine.towerDismantleEssenceValue(tower);
-    return `<label class="dismantle-row ${protectedState ? "is-protected" : ""}" style="--element:${ELEMENT_STYLES[tower.wuxing].color}">
+    // 보호를 껐어도 "이 한자는 이 1기뿐"이라는 사실은 남겨 실수를 막는다.
+    const soleBadge = assessment?.soleCopy && !protectedState ? `<i class="dismantle-sole-badge">유일</i>` : "";
+    return `<label class="dismantle-row ${protectedState ? "is-protected" : ""} ${soleBadge ? "is-sole" : ""}" style="--element:${ELEMENT_STYLES[tower.wuxing].color}">
       <input type="checkbox" data-dismantle-id="${tower.id}" ${dismantleSelection.has(tower.id) ? "checked" : ""} ${protectedState || !active ? "disabled" : ""}>
-      <b>${escapeHtml(tower.char)}</b><span><strong>${tower.wuxing}행 · ${towerProgressionLabel(tower)} · #${tower.id}</strong><small>${protectedState ? protectedReasons.map(escapeHtml).join(" · ") : (assessment?.reasons ?? []).map(escapeHtml).join(" · ") || "분해 가능"}</small></span><em>${protectedState ? "보호" : `${tower.wuxing}+${essence}`}</em>
+      ${spiritPortraitMarkup(tower.char, tower.wuxing, "workbench-spirit--dismantle")}<b>${escapeHtml(tower.char)}</b><span><strong>${soleBadge}${tower.wuxing}행 · ${towerProgressionLabel(tower)} · #${tower.id}</strong><small>${protectedState ? protectedReasons.map(escapeHtml).join(" · ") : (assessment?.reasons ?? []).map(escapeHtml).join(" · ") || "분해 가능"}</small></span><em>${protectedState ? "보호" : `${tower.wuxing}+${essence}`}</em>
     </label>`;
   }).join("") : `<div class="workbench-empty"><b>조건에 맞는 인벤토리 자령이 없습니다</b><span>필터를 바꾸거나 소환 자령을 인벤토리에 보관하세요.</span><button type="button" data-goto-inventory>인벤 탭 열기</button></div>`;
 
-  const quote = engine.quoteDismantle([...dismantleSelection]);
+  const quote = engine.quoteDismantle([...dismantleSelection], dismantleOptions());
   const gainLabel = (Object.entries(quote.gains) as Array<[Wuxing, number]>).filter(([, amount]) => amount > 0).map(([wuxing, amount]) => `${wuxing}+${amount}`).join(" · ");
   const scoreLabel = (Object.entries(quote.scoreGains) as Array<[Wuxing, number]>).filter(([, amount]) => amount > 0).map(([wuxing, amount]) => `${wuxing}점수+${amount}`).join(" · ");
   must<HTMLElement>("#dismantle-selection-summary").textContent = `${dismantleSelection.size}기 선택${quote.blocked.length > 0 ? ` · 보호 충돌 ${quote.blocked.length}` : ""}`;
@@ -1973,7 +2035,7 @@ function processEvent(event: GameEvent): void {
         pushPooled(rings, ringPool, takeRing(at, ELEMENT_STYLES[event.tower.wuxing].color, 0.9), 32);
         pushPooled(floaters, floaterPool, takeFloater(at, `濃 ${event.level}/3`, ELEMENT_STYLES[event.tower.wuxing].color, 1.05, true), 48);
       }
-      addCombatFeed("濃", `${event.tower.char} ${event.path === "swift" ? "연속" : "심화"} 농축`, event.usedDuplicate ? "동일 한자 중복 소비" : `${event.tower.wuxing} 문기 ${event.essenceCost} 소비`, ELEMENT_STYLES[event.tower.wuxing].color);
+      addCombatFeed("濃", `${event.tower.char} ${concentrationPathLabel(event.path)}`, event.usedDuplicate ? "동일 한자 중복 소비" : `${event.tower.wuxing} 문기 ${event.essenceCost} 소비`, ELEMENT_STYLES[event.tower.wuxing].color);
       break;
     case "statUpgrade": {
       const meta = UPGRADE_STAT_META[event.stat];
@@ -2124,6 +2186,25 @@ function visualBackgroundStyle(visual: JaryeongVisual): string {
     ? "background-size:contain;background-position:center"
     : "background-size:200% 200%;background-position:left top";
   return `background-image:url('${import.meta.env.BASE_URL}${jaryeongAssetPath(visual)}');${framing}`;
+}
+
+/**
+ * 목록 한 줄에 들어가는 자령 초상(공방 공용).
+ *
+ * 소환 공개 카드가 쓰는 `jaryeongVisualFor` + 시트 crop(`visualBackgroundStyle`)
+ * 을 그대로 쓰되, 시트가 아직(혹은 끝내) 오지 않는 경우를 두 겹으로 대비한다 —
+ * 오행색 원판과 한자를 아래층에 깔고 그림을 그 위에 얹는다. 그림이 도착하면
+ * 원판을 덮고, 도착하지 않으면 원판이 그대로 남아 빈 사각형이 생기지 않는다.
+ *
+ * URL 은 자령 하나당 하나이므로 같은 글자가 여러 줄에 나와도 브라우저가
+ * 한 번만 내려받는다 — 목록을 길게 굴려도 요청이 늘지 않는다.
+ */
+function spiritPortraitMarkup(char: string, wuxing: Wuxing, variant: string): string {
+  const visual = jaryeongVisualFor(char, wuxing, engine.state.region);
+  return `<span class="workbench-spirit ${variant}" style="--element:${ELEMENT_STYLES[wuxing].color}" aria-hidden="true">`
+    + `<i class="workbench-spirit-fallback">${escapeHtml(char)}</i>`
+    + `<i class="workbench-spirit-art" style="${visualBackgroundStyle(visual)}"></i>`
+    + `</span>`;
 }
 
 function phaseLabel(phase: RunPhase): string {
@@ -2711,10 +2792,16 @@ function casualGroupCardMarkup(bucket: CasualFusionBucket, allTowers: readonly T
   const more = bucket.groups.length > 1 ? ` · 외 ${bucket.groups.length - 1}묶음` : "";
   const fallback = first?.starFallback ? `<em class="casual-group-badge is-fallback">${bucket.star + 1}★ 없음 → ${toStar}★</em>` : "";
   const roster = first?.rosterFallback ? `<em class="casual-group-badge is-fallback">지역 로스터 보충</em>` : "";
+  // 사라질 3기가 누구인지는 글자 목록보다 얼굴이 빠르다. 실제 소모 예정
+  // 묶음(first.materialIds)의 초상만 세운다 — 4기 이상 보유해도 3기 기준.
+  const materialStrip = materials.length > 0
+    ? `<span class="casual-group-materials" aria-hidden="true">${materials.map((tower) => spiritPortraitMarkup(tower.char, tower.wuxing, "workbench-spirit--group")).join("")}</span>`
+    : "";
   return `<article class="casual-group-card" style="${style}">
     <i class="casual-group-glyph" aria-hidden="true">${bucket.wuxing}</i>
     <div class="casual-group-body">
       <b>${headline}</b>
+      ${materialStrip}
       <small>${useLine}${poolLine}${more}</small>
       ${boardMaterials > 0 ? `<em class="casual-group-badge">전장 ${boardMaterials}기 소모</em>` : ""}${fallback}${roster}
     </div>
@@ -3013,7 +3100,7 @@ function renderSelected(): void {
   const remaining = abilities.tuning.signatureEvery - chargeStep;
   const nextEssenceCost = concentrationEssenceCost(concentration);
   const concentrationStatus = concentration >= MAX_CONCENTRATION_LEVEL
-    ? `濃 3/3 완성 · ${concentrationPath === "potent" ? "심화" : "연속"}`
+    ? `濃 3/3 완성 · ${concentrationPathLabel(concentrationPath ?? autoConcentrationPath(tower))}`
     : duplicateCount > 0 ? `중복 ${duplicateCount}기 사용 가능` : `${tower.wuxing} 문기 ${engine.state.elementEssence[tower.wuxing]}/${nextEssenceCost}`;
   const cleanup = engine.cleanupAssessments().find((assessment) => assessment.towerId === tower.id);
   const cleanupLabel = cleanup?.protected
@@ -6568,6 +6655,7 @@ must<HTMLButtonElement>("#settings-button").addEventListener("click", () => {
 });
 // 저장된 선택이 OFF 면 첫 그림부터 반영되도록 초기 1회 맞춘다.
 syncHoverGlyphControl();
+syncDismantleUniqueControl();
 
 must<HTMLButtonElement>("#composition-drawer-close").addEventListener("click", closeCompositionDrawer);
 must<HTMLElement>("#composition-branches").addEventListener("click", (event) => {
@@ -6744,21 +6832,11 @@ must<HTMLElement>("#concentration-layout").addEventListener("click", (event) => 
     renderConcentration();
     return;
   }
-  const path = target.closest<HTMLButtonElement>("[data-concentration-path]")?.dataset.concentrationPath as ConcentrationPath | undefined;
-  if (path) {
-    concentrationPath = path;
-    concentrationPayment = "essence";
-    concentrationRenderKey = "";
-    renderConcentration();
-    return;
-  }
   if (!target.closest("#concentration-confirm-button") || concentrationTargetId === null) return;
   const selected = engine.selectedTower();
   if (!selected || selected.id !== concentrationTargetId) return;
-  if (!selected.concentrationPath) {
-    const label = concentrationPath === "swift" ? "연속 농축" : "심화 농축";
-    if (!window.confirm(`${selected.char}의 분기를 ${label}으로 고정할까요? 이후 분기 변경과 재설정은 불가능합니다.`)) return;
-  }
+  // 되돌릴 수 없는 선택지가 사라졌으므로 확인 대화상자도 함께 걷는다.
+  const concentrationPath = autoConcentrationPath(selected);
   const payment = concentrationPayment === "essence"
     ? { kind: "essence" as const }
     : { kind: "duplicate" as const, towerId: concentrationPayment };
@@ -6804,14 +6882,19 @@ must<HTMLButtonElement>("#dismantle-clear-button").addEventListener("click", () 
   growthRenderKey = "";
   renderGrowth();
 });
+must<HTMLButtonElement>("#dismantle-unique-toggle").addEventListener("click", () => {
+  sound.unlock();
+  setDismantleProtectsUnique(!dismantleProtectsUnique);
+  sound.playUiConfirm();
+});
 must<HTMLButtonElement>("#dismantle-confirm-button").addEventListener("click", () => {
-  const quote = engine.quoteDismantle([...dismantleSelection]);
+  const quote = engine.quoteDismantle([...dismantleSelection], dismantleOptions());
   if (quote.ids.length === 0 || quote.blocked.length > 0) return;
   const towers = quote.ids.map((id) => engine.state.inventoryTowers.find((tower) => tower.id === id)).filter((tower): tower is Tower => Boolean(tower));
   const towerLabel = towers.map((tower) => `${tower.char}(${tower.wuxing} ${towerProgressionLabel(tower)})`).join(" · ");
   const gainLabel = (Object.entries(quote.gains) as Array<[Wuxing, number]>).filter(([, amount]) => amount > 0).map(([wuxing, amount]) => `${wuxing}+${amount}`).join(" · ");
   if (!window.confirm(`${towers.length}기를 한 번에 분해합니다.\n${towerLabel}\n획득: ${gainLabel}`)) return;
-  const result = engine.dismantleTowers(quote.ids);
+  const result = engine.dismantleTowers(quote.ids, dismantleOptions());
   if (result.ok) dismantleSelection.clear();
   handleAction(result);
 });
