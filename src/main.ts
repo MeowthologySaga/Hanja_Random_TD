@@ -5480,6 +5480,19 @@ must<HTMLButtonElement>("#codex-button").addEventListener("click", () => {
   search.focus();
 });
 must<HTMLButtonElement>("#codex-close").addEventListener("click", () => codexDialog.close());
+
+/*
+ * 바깥 클릭으로 닫기.
+ *
+ * P00·S13 은 진작 되는데 도감·설정·도움말만 안 돼서, 창을 닫으려고
+ * 바깥을 눌렀다가 아무 반응이 없으면 갇힌 것처럼 읽혔다. 같은 규칙으로
+ * 맞춘다 — 배경(백드롭)을 누르면 event.target 이 dialog 자신이 된다.
+ */
+for (const dialog of [codexDialog, settingsDialog, helpDialog]) {
+  dialog.addEventListener("click", (event) => {
+    if (event.target === dialog) dialog.close();
+  });
+}
 document.querySelectorAll<HTMLButtonElement>(".panel-tabs [data-panel-tab]").forEach((button) => {
   button.addEventListener("click", () => setPanelTab(button.dataset.panelTab as PanelTab));
 });
