@@ -480,13 +480,14 @@ const REGION_ENEMY_HP_CURVE: Record<RegionCode, { base: number; chapterGrowth: n
   // durability rises by chapter instead of front-loading a punishing wave-10
   // multiplier. This preserves the opening tutorial curve and checks late snowball.
   //
-  // 수술 1 재보정(2026-08): 유지형 성어를 지키는 봇 + 강화 이정표·8성 오라·
-  // 광역 별스케일 도입 뒤 세 지역을 45런/지역 시뮬로 승률 0.467~0.578 에
-  // 맞춘 값. 승률은 이 계수에 극도로 민감하다(±1% 체력 ≈ ±5~20%p) —
+  // 수술 1 재보정(2026-08, 스킬 1차 세트·수술 9 병합 후 재고정): 유지형
+  // 성어를 지키는 봇 + 강화 이정표·8성 오라·광역 별스케일 + 보스 관문 보정
+  // 기준으로 세 지역을 45런/지역(--runs=135) 시뮬 승률 0.533~0.600 에 맞춘 값.
+  // 승률은 이 계수에 극도로 민감하다(±1% 체력 ≈ ±5~20%p, 런 단위 카오스) —
   // 손보려면 반드시 --runs=135 로 재고정하라.
   KR: { base: 25.25, chapterGrowth: 0 },
-  JP: { base: 23.4, chapterGrowth: 0.92 },
-  CN: { base: 23.4, chapterGrowth: 0.67 }
+  JP: { base: 23.4, chapterGrowth: 0.97 },
+  CN: { base: 23.4, chapterGrowth: 0.85 }
 };
 
 /**
@@ -495,8 +496,27 @@ const REGION_ENEMY_HP_CURVE: Record<RegionCode, { base: number; chapterGrowth: n
  * "별승급(8성)이랑 다른 모드 난이도가 너무 다르다"는 피드백. 기준점은 메인
  * 모드인 별승급(캐주얼)이며, 두 모드 모두 자동 시뮬 승률 45~60% 밴드로
  * 수렴하도록 이 계수만 조정한다 — 웨이브 구성·규칙은 그대로다.
+ * (3.8 은 스킬 1차 세트·농축 중복 기본화가 얹힌 뒤의 재고정값. 수량 0.85 와
+ * 짝이므로 웨이브 총 내구 기준으로는 ×3.23 상당이다.)
  */
-const MODE_ENEMY_HP_SCALE: Record<GameMode, number> = { standard: 1, casual: 2.56 };
+const MODE_ENEMY_HP_SCALE: Record<GameMode, number> = { standard: 1, casual: 3.8 };
+
+/**
+ * 모드별 적 수량 계수. 캐주얼은 웨이브당 몸수를 15% 줄이는 대신 체력 계수를
+ * 그만큼 높게 잡는다 — 총 웨이브 내구는 유지하면서 스폰 구간이 짧아져
+ * 런 시간(중앙값 43~50분 게이트)이 내려온다. 규칙이 아니라 수량 계수다.
+ */
+const MODE_ENEMY_COUNT_SCALE: Record<GameMode, number> = { standard: 1, casual: 0.85 };
+
+/**
+ * 캐주얼 보스 체력 트림.
+ *
+ * 스킬 1차 세트 이후 캐주얼은 체력 계수 하나로는 "승률 0.45~0.60"과
+ * "중앙값 43~50분"을 동시에 만족하는 창이 비어 있었다(3.2 이하 = 승률 초과,
+ * 3.35 이상 = 런 시간 초과). 보스만 트림해 보스전 길이(런 시간)와 일반
+ * 웨이브 난이도(승률)를 분리한다. 규칙 변경이 아니라 체력 계수다.
+ */
+const CASUAL_BOSS_HP_TRIM = 0.78;
 
 // The center formation overlaps more of the loop than the east formation.
 // These small route-coverage coefficients make "which element appeared first"
@@ -764,7 +784,8 @@ export class GameEngine {
     const isBoss = plan.boss && this.state.spawned === plan.count - 1;
     const bossFactor = bossHpFactorForWave(plan.wave);
     const hpJitter = 0.94 + this.rng.next() * 0.12;
-    const hp = plan.hp * (isBoss || !plan.boss ? 1 : 1 / bossFactor) * hpJitter * regionEnemyHpMultiplier(this.state.region, this.state.wave, this.state.mode);
+    const casualBossTrim = isBoss && this.state.mode === "casual" ? CASUAL_BOSS_HP_TRIM : 1;
+    const hp = plan.hp * (isBoss || !plan.boss ? 1 : 1 / bossFactor) * hpJitter * casualBossTrim * regionEnemyHpMultiplier(this.state.region, this.state.wave, this.state.mode);
     const archetype = isBoss ? "boss" : plan.boss ? "normal" : plan.archetype;
     this.state.enemies.push({
       id: this.nextEnemyId++,
@@ -1415,7 +1436,9 @@ export class GameEngine {
   private startNextWave(): void {
     const nextWave = this.state.wave + 1;
     this.state.wave = nextWave;
-    this.currentPlan = wavePlan(nextWave);
+    const plan = wavePlan(nextWave);
+    // 모드 수량 계수: 캐주얼은 몸수를 줄이고 체력 계수로 총 내구를 보존한다.
+    this.currentPlan = { ...plan, count: Math.max(1, Math.round(plan.count * MODE_ENEMY_COUNT_SCALE[this.state.mode])) };
     this.state.phase = "combat";
     this.state.waveElapsed = 0;
     this.state.spawned = 0;
