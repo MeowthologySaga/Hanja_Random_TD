@@ -1,0 +1,626 @@
+/* src/ui-skin.css 3890~4515줄에서 그대로 옮겨 왔다 — 절 36~45 — 스프라이트·자간·넘침·탭 재편 교정. 순서는 ui-skin.css 배럴이 지킨다. */
+/* ══════════════════════════════════════════════════════════════════
+   36. 자령 스프라이트가 사라지던 문제
+   그림은 `visualBackgroundStyle()` 이 인라인 background-image 로 넣는다.
+   스킨이 background 단축 속성을 !important 로 덮으면서 background-image
+   까지 none 으로 밀어버려 합성 카드 등에서 그림이 빈 사각형이 되었다.
+   이 자리들은 배경색만 지정하고 이미지는 인라인 값을 그대로 둔다.
+   ══════════════════════════════════════════════════════════════════ */
+
+.evolution-spirit,
+.run-inventory-spirit,
+.summon-result-spirit,
+.casual-fusion-sprite,
+.casual-fusion-slot-sprite,
+.casual-confirm-sprite,
+.composition-result-spirit,
+.mode-preview--spirit {
+  background-color: #ddd0ad;
+  background-repeat: no-repeat;
+  border: 0;
+  border-radius: var(--r-sm);
+  box-shadow:
+    var(--bevel-in),
+    0 0 0 1px rgba(122, 90, 42, 0.34);
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   37. 소제목 자간이 제목까지 번지던 문제
+   `.evolution-heading span` 이 kicker 와 제목 안쪽 span 을 함께 잡아
+   "조 합 서 책 / 현 재 가능한 합성" 처럼 벌어졌다.
+   ══════════════════════════════════════════════════════════════════ */
+
+.evolution-heading span,
+.section-heading span,
+.eyebrow {
+  letter-spacing: normal;
+}
+
+.eyebrow,
+#evolution-kicker,
+#shop-kicker,
+#goal-kicker,
+.evolution-heading > div > span:first-child,
+.section-heading > span:first-child {
+  letter-spacing: 0.24em;
+  font-size: 10px;
+  color: var(--gold-500);
+}
+
+.evolution-heading strong,
+.evolution-heading strong span,
+.evolution-heading strong b,
+.section-heading b {
+  letter-spacing: 0.01em;
+  font-size: var(--fs-md);
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   38. 합성 카드 넘침
+   `목표 경로` 배지가 카드 밖으로 나가고 "결합 · 財 재화연성" 이 잘렸다.
+   ══════════════════════════════════════════════════════════════════ */
+
+.evolution-card {
+  overflow: hidden;
+  padding-right: 10px;
+  gap: 6px;
+}
+
+.evolution-card mark {
+  flex: 0 0 auto;
+  max-width: 62px;
+  overflow: hidden;
+  padding: 1px 5px;
+  font-size: 9px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.evolution-card small {
+  min-width: 0;
+  overflow: hidden;
+  font-size: 10px;
+  line-height: 1.35;
+}
+
+.evolution-card small b {
+  white-space: nowrap;
+}
+
+.recipe-parents,
+.recipe-result {
+  flex: 0 0 auto;
+}
+
+.evolution-index {
+  flex: 0 0 auto;
+}
+
+/* 39. 자간·크기 강제 — 위 규칙이 캐스케이드에서 밀려 적용되지 않았다 */
+#evolution-kicker,
+#shop-kicker,
+#goal-kicker,
+.evolution-heading > div > span {
+  letter-spacing: 0.02em !important;
+}
+
+#evolution-kicker,
+#shop-kicker,
+#goal-kicker {
+  font-size: 10px !important;
+  letter-spacing: 0.18em !important;
+}
+
+#evolution-heading-label,
+.evolution-heading strong,
+.evolution-heading strong b {
+  font-size: 14px !important;
+  letter-spacing: 0.01em !important;
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   40. 탭 구조 재편 — 10개 -> 8개 + 3그룹
+   도감은 전체화면 모달과 완전 중복이라 상단 아이콘으로 옮겼고,
+   기록은 열어야 보이던 수동 로그라 바닥 상시 티커로 바꿨다.
+   남은 8개를 얻기 / 키우기 / 노리기 로 나눈다.
+   ══════════════════════════════════════════════════════════════════ */
+
+.panel-tabs {
+  display: flex;
+  align-items: stretch;
+  gap: 2px;
+  grid-template-columns: none !important;
+  grid-template-rows: none !important;
+}
+
+.panel-tabs button {
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 32px;
+}
+
+.tab-divider {
+  flex: 0 0 1px;
+  align-self: center;
+  width: 1px;
+  height: 22px;
+  margin: 0 3px;
+  background: linear-gradient(180deg, transparent, rgba(122, 90, 42, 0.55), transparent);
+}
+
+/* 한 줄 8칸이라 라벨을 더 좁게 */
+.panel-tabs button > b,
+.panel-tabs button > span {
+  font-size: 10px !important;
+  letter-spacing: -0.03em;
+}
+
+.panel-tabs button small {
+  top: 0;
+  right: 1px;
+  font-size: 8px;
+}
+
+/* 상단 도감 아이콘 */
+.icon-button--codex {
+  width: auto;
+  min-width: 40px;
+  padding: 0 7px;
+  gap: 3px;
+}
+
+.icon-button--codex b {
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.icon-button--codex small {
+  font-size: 9px;
+  opacity: 0.85;
+}
+
+/* R7-2: 바닥 기록 티커는 사용자 요청으로 DOM 에서 제거됐다(f6604c7).
+   `.record-ticker` 규칙과 "티커 한 줄"을 전제한 8행 격자 예산을 함께
+   지운다. 기록은 이제 패널 탭(data-panel-tab="record")으로 들어간다. */
+
+/* ══════════════════════════════════════════════════════════════════
+   41. 강화 제련소 — 400px 안에 2열을 넣어 글자가 세로로 쪼개졌다
+   각 열이 190px 뿐이라 "오 행 강 화", "木 문 분" 처럼 한 글자씩 끊겼다.
+   분해와 오행 강화는 순서가 있는 흐름이므로 세로로 쌓는다.
+   ══════════════════════════════════════════════════════════════════ */
+
+.growth-layout {
+  display: flex !important;
+  flex-direction: column;
+  gap: var(--sp-2);
+  min-height: 0;
+  overflow-y: auto;
+  grid-template-columns: none !important;
+}
+
+.dismantle-workbench {
+  flex: 0 0 auto;
+  max-height: 216px;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.element-growth-workbench {
+  flex: 1 1 auto;
+  min-height: 190px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+/* 소제목이 세로로 끊기던 것 */
+.growth-workbench .subheading,
+.concentration-workbench .subheading {
+  display: flex;
+  gap: 6px;
+  align-items: baseline;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.growth-workbench .subheading b {
+  flex: 0 0 auto;
+  font-size: 12px;
+}
+
+.growth-workbench .subheading small {
+  overflow: hidden;
+  font-size: 10px;
+  text-overflow: ellipsis;
+}
+
+/* 헤더 요약도 한 줄로 */
+.growth-workbench > header {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  justify-content: space-between;
+  white-space: nowrap;
+}
+
+#growth-resource-summary {
+  overflow: hidden;
+  margin: 0;
+  font-size: 10px;
+  text-overflow: ellipsis;
+}
+
+/* 필터 3개 가로 유지 */
+.growth-filters {
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 4px;
+}
+
+.dismantle-toolbar {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px;
+}
+
+.dismantle-toolbar button {
+  padding: 4px 6px;
+  font-size: 10px;
+  white-space: nowrap;
+}
+
+/* 오행 탭 5칸 가로 — "木 문 분" 세로 쪼개짐 해소 */
+.growth-element-tabs {
+  display: grid !important;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 3px;
+}
+
+.growth-element-tabs button {
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 0;
+  min-height: 38px;
+  padding: 3px 2px;
+  white-space: nowrap;
+}
+
+.growth-element-tabs button b {
+  font-size: 15px;
+  line-height: 1.1;
+}
+
+.growth-element-tabs button small,
+.growth-element-tabs button span {
+  overflow: hidden;
+  max-width: 100%;
+  font-size: 9px;
+  line-height: 1.1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 강화 카드의 투자 버튼 3개가 세로로 깨지던 것 */
+.growth-stat-row,
+.growth-trait-row {
+  display: grid !important;
+  grid-template-columns: 30px minmax(0, 1fr);
+  gap: 6px;
+  align-items: center;
+  padding: 6px 7px;
+}
+
+.growth-stat-row nav,
+.growth-trait-row nav {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 3px;
+}
+
+.growth-stat-row nav button,
+.growth-trait-row nav button {
+  min-height: 30px;
+  padding: 3px 2px;
+  font-size: 9px !important;
+  line-height: 1.15;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+/* 분해 목록·견적 */
+.growth-dismantle-list {
+  flex: 1 1 auto;
+  min-height: 74px;
+}
+
+.dismantle-quote {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 4px 8px;
+  align-items: center;
+  white-space: nowrap;
+}
+
+.dismantle-quote button {
+  grid-column: 1 / -1;
+  min-height: 28px;
+}
+
+.dismantle-quote span,
+.dismantle-quote strong {
+  overflow: hidden;
+  font-size: 10px;
+  text-overflow: ellipsis;
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   42. 탭바 잘림 — status-strip 자산의 구운 인장과 떠 있는 배지
+   status-strip-v1.png 은 우측에 인주 인장이 구워져 있어 8탭 띠에 깔면
+   성어 탭과 겹친다. 탭바·도움말 띠는 무지 종이로 바꾸고,
+   absolute 로 띄워 잘리던 수량 배지는 라벨 옆 인라인 칩으로 내린다.
+   ══════════════════════════════════════════════════════════════════ */
+
+.panel-tabs,
+.shop-help-strip {
+  background:
+    linear-gradient(180deg, #f2e8cd 0%, #e3d6b6 100%) !important;
+  box-shadow:
+    var(--bevel-up),
+    0 0 0 1px rgba(122, 90, 42, 0.34) !important;
+}
+
+.panel-tabs button {
+  overflow: visible;
+}
+
+.panel-tabs button small {
+  position: static !important;
+  display: inline-block;
+  margin-left: 2px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: rgba(122, 90, 42, 0.16);
+  box-shadow: inset 0 0 0 1px rgba(122, 90, 42, 0.3);
+  color: var(--gold-500) !important;
+  font-size: 8px !important;
+  line-height: 1.5;
+  vertical-align: 1px;
+  white-space: nowrap;
+}
+
+.panel-tabs button.is-active small {
+  background: rgba(159, 47, 35, 0.14);
+  color: var(--seal) !important;
+}
+
+/* 활성 탭: 들뜬 종이 카드 + 주홍 하단선 */
+.panel-tabs button.is-active,
+.panel-tabs button[aria-selected="true"] {
+  background: linear-gradient(180deg, #fdf8ea 0%, #f0e5c9 100%) !important;
+  box-shadow:
+    var(--bevel-up),
+    inset 0 -3px 0 var(--seal),
+    0 0 0 1px rgba(122, 90, 42, 0.44),
+    var(--lift-1) !important;
+}
+
+/* 소환 목적 안내 띠: 말줄임 도배 대신 두 줄 허용 */
+.shop-help-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 8px;
+  overflow: hidden;
+  padding: 3px 8px;
+  white-space: normal;
+}
+
+.shop-help-strip b,
+.shop-help-strip span {
+  overflow: visible;
+  font-size: 9.5px !important;
+  text-overflow: clip;
+  white-space: nowrap;
+}
+
+/* 43. 배지 줄바꿈 잘림 + 오행 띠의 잔여 인장 */
+
+/* "상점 1,000" 이 탭 폭 44px 안에서 두 줄로 감겨 바닥에서 잘렸다.
+   배지는 아이콘 우상단 모서리에 겹치는 도장으로 올린다. 탭바는
+   overflow visible 이라 잘리지 않는다. */
+.panel-tabs button small {
+  position: absolute !important;
+  top: -1px;
+  right: 0;
+  z-index: 1;
+  margin: 0;
+  background: #f6eed9;
+  box-shadow:
+    inset 0 0 0 1px rgba(122, 90, 42, 0.4),
+    0 1px 2px rgba(58, 44, 22, 0.3);
+}
+
+/* 오행 상생 띠가 아직 status-strip(우측 인장 구움)을 쓰고 있었다.
+   어두운 칩이 얹히는 띠이므로 옻칠 바탕으로 통일한다. */
+.synergy-strip {
+  background:
+    linear-gradient(180deg, #2a2723 0%, #191715 100%) !important;
+  background-color: #201e1a !important;
+  box-shadow:
+    var(--bevel-in),
+    0 0 0 1px rgba(122, 90, 42, 0.4) !important;
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   44. 우측 패널 잔여 정리 — 확대 검수에서 잡힌 5건
+   ══════════════════════════════════════════════════════════════════ */
+
+/* 44-1. 상단 도감 버튼: 육각 스프라이트(36x36)에 두 글자+배지가 안 들어가
+   "도갑"처럼 잘렸다. 육각 대신 자체 옻칠 알약으로. */
+.icon-button--codex {
+  min-width: 52px;
+  padding: 0 8px;
+  background: linear-gradient(180deg, #2a2723 0%, #17150f 100%) !important;
+  background-color: #1f1c18 !important;
+  border-radius: var(--r-sm) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(233, 222, 194, 0.22),
+    inset 0 -2px 0 rgba(0, 0, 0, 0.55),
+    0 0 0 1px rgba(122, 90, 42, 0.5),
+    var(--lift-1) !important;
+  overflow: visible;
+}
+
+.icon-button--codex b,
+.icon-button--codex small {
+  color: #efe3c6 !important;
+}
+
+/* 44-2. 약점 인장: 세로 공간보다 글자가 커서 木이 카드 밖으로 잘렸다. */
+.weakness-seal {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  align-self: center;
+  padding: 2px 7px;
+  line-height: 1;
+}
+
+.weakness-seal span {
+  font-size: 9px !important;
+}
+
+.weakness-seal b {
+  font-size: 15px !important;
+  line-height: 1.1;
+}
+
+/* 44-3. 단축키 배지(1·Q·2·3)가 카드 모서리 밖으로 나갔다.
+   카드 안쪽 우상단으로 고정. */
+.action-button {
+  overflow: hidden;
+}
+
+.action-button .hotkey {
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  left: auto;
+  width: 15px;
+  height: 15px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  font-size: 9px !important;
+  line-height: 1;
+}
+
+/* 44-4. 상점 탭 한가운데 빈 공간: 안내 띠를 바닥에 밀어 붙여 생긴
+   구멍이다. 내용 바로 아래로 되돌려 여백이 자연스럽게 바닥에 모이게. */
+.shop-help-strip {
+  margin-top: 0;
+}
+
+/* 44-5. 소제목 자간 과다 — "소환과 운영"이 두 줄을 잡아먹었다. */
+.shop-workbench-heading span,
+.goal-workbench-heading span,
+.workbench-heading > div > span,
+.eyebrow,
+.section-heading span,
+.evolution-heading span {
+  letter-spacing: 0.12em !important;
+  font-size: 10px !important;
+}
+
+.shop-workbench-heading,
+.goal-workbench-heading,
+.workbench-heading {
+  min-height: 0;
+}
+
+/* 자원 첫 칸(엽전 강조)이 레일 밖으로 튀어나온 흰 카드처럼 보였다.
+   레일 안 홈과 같은 높이로 눌러 앉힌다. */
+.resource-grid div:first-child {
+  background: linear-gradient(180deg, #fbf2d8 0%, #eee0b8 100%) !important;
+  box-shadow:
+    inset 0 0 0 1px var(--gold-300),
+    inset 0 2px 4px rgba(96, 76, 40, 0.2) !important;
+  border-radius: var(--r-sm);
+}
+
+/* "약점" 라벨이 flex 수축으로 "약.."이 되었다. 두 글자는 항상 지킨다. */
+.weakness-seal span {
+  flex: 0 0 auto;
+  overflow: visible;
+  white-space: nowrap;
+  text-overflow: clip;
+}
+
+.weakness-seal b {
+  flex: 0 0 auto;
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   45. 잘림 스윕 반영 — blanket font 규칙을 걷어낸 뒤의 국소 교정
+   (실측: max(10px,1em)의 1em이 부모 크기라 8~9px 라벨이 16px로 확대됨)
+   ══════════════════════════════════════════════════════════════════ */
+
+/* 자령 상세 요약 한 줄이 146px 안에서 nowrap 으로 잘렸다 → 두 줄 허용 */
+.selected-copy p {
+  white-space: normal;
+  line-height: 1.3;
+}
+
+/* 목표 카드: 고정 88px basis 가 내용을 뚫고 나갔다 */
+.goal-workbench .goal-card {
+  flex: 0 0 auto;
+  min-height: 88px;
+}
+
+/* 온보딩 스텝 문구: 확대분 회수 + 줄바꿈 허용 */
+.opening-guide > div span {
+  font-size: 9px !important;
+  white-space: normal;
+  line-height: 1.2;
+}
+
+/* 농축 비교 4칸 → 2×2, 수치가 자릿수 단위로 잘리던 문제 */
+.concentration-compare {
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 3px;
+}
+
+.concentration-compare > div :is(span, b, i) {
+  font-size: 9px !important;
+}
+
+.concentration-detail {
+  overflow-x: hidden;
+}
+
+.concentration-focus {
+  min-width: 0;
+}
+
+/* 농축 대상 카드: 진행도 0/3 이 잘렸다 */
+.concentration-target-list > button strong {
+  font-size: 8px !important;
+  letter-spacing: -0.03em;
+}
+
+/* 목표 선택 카드 설명 */
+.goal-choice-copy :is(em, small) {
+  font-size: 9px !important;
+}
+
+/* 분해 확정 버튼이 다음 섹션 위로 올라탔다 */
+.dismantle-workbench {
+  max-height: none;
+  flex: 0 0 auto;
+}
+
+.growth-layout {
+  gap: 10px;
+}

@@ -1,0 +1,524 @@
+/* src/ui-skin.css 9161~9683줄에서 그대로 옮겨 왔다 — R5 상점 — 뽑기 상품화·오행진 해금 유도. 순서는 ui-skin.css 배럴이 지킨다. */
+/* ═══════════════════════════════════════════════════════════════
+   ===== R5 상점 =====
+   5라운드: 뽑기 상품화 · 오행진 해금 유도 · 버튼 색 체계.
+   본체에서 R4 가 같은 파일 끝에 덧붙이는 중이라 절 번호를 잇지 않고
+   R5-n 독립 네임스페이스를 쓴다.
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── R5-1. 소환 상품 카드 그리드 ──────────────────────────────
+   목적 탭 + 단일 버튼은 "지금 무슨 목적인가"를 기억해야 하는 숨은 상태였다.
+   카드 한 장 = 상품 한 개로 바꿔 이름·효과·가격·아이콘을 클릭 지점에 모은다.
+   아이콘은 v4-rounds-assets-pack-v1 의 72×72 white-alpha 마스크(24px 표시).
+   ──────────────────────────────────────────────────────────── */
+
+/* 1280×720 기준 상점 패널 세로 예산은 368px 뿐이라 카드 6장(270px)이 들어가지
+   않는다. 카드 격자만 87px 창으로 잘라 두면 상품이 있다는 사실 자체가 숨는다.
+   패널을 통째로 스크롤시켜 카드가 잘리는 대신 이어지게 한다. */
+.shop-workbench {
+  overflow-x: hidden;
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+
+/* 스크롤 컬럼 안에서는 위쪽 판들이 눌려 찌그러지면 안 된다. */
+.shop-workbench > .shop-workbench-heading,
+.shop-workbench > .opening-guide,
+.shop-workbench > .formation-unlock-bar {
+  flex: 0 0 auto;
+}
+
+.shop-workbench .action-row {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-rows: auto auto auto !important;
+  flex: 0 0 auto;
+  max-height: none;
+  align-content: start;
+}
+
+.summon-shop {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-row: 1;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-auto-rows: min-content;
+  gap: 5px;
+  overflow: visible;
+  pointer-events: auto;
+}
+
+.shop-workbench .action-button--evolve {
+  grid-column: 1 / -1;
+  grid-row: 2;
+  min-height: 34px;
+}
+
+.shop-workbench .action-button--research { grid-column: 1 / span 2; grid-row: 3; }
+.shop-workbench .action-button--auto-arrange { grid-column: 3 / span 2; grid-row: 3; }
+.shop-workbench .action-button--element-upgrade { grid-column: 5 / span 2; grid-row: 3; }
+
+.summon-card {
+  position: relative;
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr);
+  align-content: center;
+  gap: 0 8px;
+  box-sizing: border-box;
+  min-width: 0;
+  min-height: 64px;
+  padding: 7px 9px 7px 8px;
+  text-align: left;
+  border: 1px solid color-mix(in srgb, var(--product) 42%, rgba(74, 58, 34, 0.55));
+  border-left: 4px solid var(--product);
+  border-radius: 9px;
+  background: linear-gradient(158deg, color-mix(in srgb, var(--product) 11%, #f4ecd5), #e5dabc);
+  box-shadow: inset 0 1px 0 rgba(255, 253, 244, 0.7), 0 1px 2px rgba(24, 18, 11, 0.3);
+  cursor: pointer;
+  transition: transform 120ms ease, box-shadow 120ms ease, border-color 120ms ease;
+}
+
+.summon-card--wide { grid-column: 1 / -1; min-height: 52px; }
+
+.summon-card > .summon-card-icon {
+  grid-column: 1;
+  grid-row: 1 / span 3;
+  align-self: center;
+  width: 24px;
+  height: 24px;
+  background-color: var(--product);
+  -webkit-mask: var(--product-icon) center / 24px 24px no-repeat;
+  mask: var(--product-icon) center / 24px 24px no-repeat;
+}
+
+.summon-card > b {
+  grid-column: 2;
+  overflow: hidden;
+  color: #2a211a;
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.summon-card > small {
+  grid-column: 2;
+  overflow: hidden;
+  color: #665846;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1.28;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.summon-card > em {
+  grid-column: 2;
+  margin-top: 1px;
+  color: #7a5424;
+  font-size: 11.5px;
+  font-style: normal;
+  font-weight: 900;
+}
+
+.summon-card > .summon-card-key {
+  position: absolute;
+  top: 4px;
+  right: 5px;
+  min-width: 13px;
+  padding: 0 3px;
+  color: #4c3d24;
+  font-size: 9px;
+  font-weight: 900;
+  line-height: 13px;
+  text-align: center;
+  border-radius: 3px;
+  background: rgba(255, 253, 244, 0.72);
+  box-shadow: inset 0 0 0 1px rgba(122, 84, 36, 0.35);
+}
+
+.summon-card:hover:not(:disabled),
+.summon-card:focus-visible {
+  transform: translateY(-1px);
+  border-color: color-mix(in srgb, var(--product) 72%, #2a211a);
+  box-shadow: inset 0 1px 0 rgba(255, 253, 244, 0.82), 0 3px 8px rgba(24, 18, 11, 0.36);
+}
+
+.summon-card:active:not(:disabled) { transform: translateY(0); }
+
+/* 살 수 없는 상품은 가격만 인주색으로 남겨 "왜 못 누르나"를 잃지 않는다. */
+.summon-card--short > em { color: #9f2f23; }
+
+.summon-card:disabled {
+  cursor: not-allowed;
+  border-color: rgba(114, 107, 97, 0.5);
+  border-left-color: rgba(114, 107, 97, 0.72);
+  background: linear-gradient(158deg, #e8e2d2, #d8d1bf);
+  box-shadow: none;
+}
+
+.summon-card:disabled > .summon-card-icon { background-color: #726b61; opacity: 0.48; }
+.summon-card:disabled > b { color: #5a5348; }
+.summon-card:disabled > small { color: #7d7466; }
+
+@media (prefers-reduced-motion: reduce) {
+  .summon-card { transition: none; }
+  .summon-card:hover:not(:disabled),
+  .summon-card:focus-visible { transform: none; }
+}
+
+/* 좁은 패널에서는 카드 높이를 줄이되 아이콘·가격은 그대로 남긴다. */
+@media (max-width: 1099px), (max-height: 679px) {
+  .summon-card { min-height: 54px; padding: 5px 7px 5px 6px; }
+  .summon-card > b { font-size: 12px; }
+  .summon-card > small { font-size: 9px; }
+  .summon-card > em { font-size: 10.5px; }
+}
+
+/* ── R5-2. 오행진 해금 — 자물쇠 커서 · 확인 팝업 · 상점 5칸 ───
+   잠긴 칸을 누르면 이미 해금이 일어나고 있었는데 시각 단서가 하나도 없었다.
+   전장에는 자물쇠 스프라이트를, 클릭에는 확인 팝업을 붙이고, 상점 5칸은
+   오행색을 실제로 드러내 "어느 진을 사는가"가 눈에 먼저 들어오게 한다.
+   ──────────────────────────────────────────────────────────── */
+
+/* 잠긴 진 위에서만 손가락 커서. drawBoard 가 dataset 으로 알린다. */
+#battle-canvas[data-lock-hover="1"] { cursor: pointer; }
+
+.formation-unlock-dialog::backdrop {
+  background: rgba(10, 8, 5, 0.62);
+}
+
+/* 두루마리 배경은 520×310 고정 비율이다. 폭을 줄이면 좌우 봉 장식까지 같이
+   줄어들어 본문이 봉 위로 올라탄다. P00·S13 과 같은 크기를 그대로 쓴다. */
+.formation-unlock-dialog .p00-frame {
+  height: 300px;
+  gap: 4px;
+}
+
+.formation-unlock-dialog h3 {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin: 2px 0 4px;
+  font-size: 20px;
+}
+
+.formation-unlock-dialog h3 > b {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  color: color-mix(in srgb, var(--formation, #c9963e) 72%, #2e2212);
+  font-family: "Batang", serif;
+  font-size: 22px;
+  border: 2px solid var(--formation, #c9963e);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--formation, #c9963e) 16%, #f2e8cd);
+}
+
+#formation-unlock-body {
+  margin: 0 0 6px;
+  color: #665846;
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
+/* 못 사는 이유는 색이 아니라 글로 남긴다. */
+.formation-unlock-reason {
+  margin: 0 0 4px;
+  color: #9f2f23;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+/* P00 과 같은 서책 버튼 재질을 쓴다. 배경을 주지 않으면 흰 사각형이 남는다. */
+#formation-unlock-confirm {
+  color: #ffeec4;
+  background:
+    url("/assets/ui/main-menu-b/ui/button-secondary-default-v1.png") center / 100% 100% no-repeat,
+    #4a1e14;
+}
+
+#formation-unlock-close {
+  color: #d8c9a8;
+  background:
+    url("/assets/ui/main-menu-b/ui/button-secondary-default-v1.png") center / 100% 100% no-repeat,
+    #26221c;
+  filter: grayscale(0.35);
+}
+
+#formation-unlock-confirm:hover:not(:disabled) { filter: brightness(1.12); }
+#formation-unlock-close:hover { filter: grayscale(0) brightness(1.08); }
+
+#formation-unlock-confirm > em {
+  font-style: normal;
+  font-weight: 900;
+}
+
+#formation-unlock-confirm:disabled {
+  cursor: not-allowed;
+  color: #b4a68c;
+  filter: grayscale(0.7) brightness(0.72);
+}
+
+/* 상점 해금 5칸: 크기 56px + 오행색을 종이 위에 명확히.
+   앞 절들이 이 칸을 `!important` 로 놋쇠판에 고정해 두어 오행색이 전혀 드러나지
+   않았다("크기랑 각 속성 맞는 색" 요청). 같은 파일의 관례대로 !important 로
+   되받되, 잠김(선행 미달)만은 스펙대로 회갈로 눌러 둔다. */
+/* 5칸 × 약 66px 이라 글자칸을 24px 로 두면 "18엽전"이 "18…"로 잘린다.
+   오행 글자는 스펙대로 18px 로 키우되 칸 폭과 여백을 깎아 값이 온전히 남게 한다. */
+.shop-workbench .formation-unlock-list button {
+  grid-template-columns: 19px minmax(0, 1fr) !important;
+  column-gap: 3px !important;
+  min-height: 56px !important;
+  padding: 6px 4px !important;
+}
+
+.shop-workbench .formation-unlock-list button:not(.is-unlocked) {
+  border: 1px solid color-mix(in srgb, var(--formation) 46%, rgba(74, 58, 34, 0.5)) !important;
+  border-top: 4px solid var(--formation) !important;
+  background: color-mix(in srgb, var(--formation) 14%, #f2e8cd) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 253, 244, 0.6) !important;
+}
+
+.shop-workbench .formation-unlock-list button:not(.is-unlocked) b {
+  color: color-mix(in srgb, var(--formation) 70%, #2e2212) !important;
+  font-size: 18px !important;
+}
+
+.shop-workbench .formation-unlock-list button:not(.is-unlocked) span {
+  color: #2a211a !important;
+  font-size: 11.5px !important;
+}
+
+.shop-workbench .formation-unlock-list button:not(.is-unlocked) small {
+  color: #7a5424 !important;
+  font-size: 9.5px !important;
+  letter-spacing: -0.05em !important;
+}
+
+/* 5칸 격자에서 "첫 소환 대기" 같은 긴 사유가 칸 밖으로 새어 나가지 않게 자른다. */
+.shop-workbench .formation-unlock-list button :is(span, small) {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* 살 수 있는 진만 금테로 한 겹 더 들어 올린다. */
+.shop-workbench .formation-unlock-list button.is-affordable:not(.is-unlocked) {
+  border-color: #c9963e !important;
+  border-top-color: var(--formation) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 253, 244, 0.7),
+    0 0 0 2px rgba(201, 150, 62, 0.55),
+    0 0 9px rgba(201, 150, 62, 0.35) !important;
+}
+
+.shop-workbench .formation-unlock-list button.is-affordable:not(.is-unlocked) small {
+  color: #8a5a12 !important;
+  font-weight: 900;
+}
+
+/* 선행 조건 미달은 회갈 종이로 눌러 둔다(스펙 유지). 색만이 아니라 사유 글도 남는다. */
+.shop-workbench .formation-unlock-list button:disabled:not(.is-unlocked) {
+  opacity: 1 !important;
+  border-color: rgba(114, 107, 97, 0.45) !important;
+  border-top-color: rgba(114, 107, 97, 0.7) !important;
+  background: #ddd6c6 !important;
+  box-shadow: none !important;
+}
+
+.shop-workbench .formation-unlock-list button:disabled:not(.is-unlocked) b { color: #6d6558 !important; }
+.shop-workbench .formation-unlock-list button:disabled:not(.is-unlocked) span { color: #4a4438 !important; }
+.shop-workbench .formation-unlock-list button:disabled:not(.is-unlocked) small { color: #6b6355 !important; }
+
+/* ── R5-3. 상점 버튼 색 체계 ─────────────────────────────────
+   같은 상점 안에서 인연 연구는 뇌록 테, 자동배치는 중립에 인주선, 강화는
+   또 다른 재질이라 "색이 무엇을 뜻하는가"를 배울 수 없었다. 바탕은 전부 종이로
+   두고 왼쪽 4px 띠 하나만 기능을 가리키게 통일한다. 난색으로 카드를 채우면
+   상품 카드(오행·등급색)와 경쟁하므로 바탕은 건드리지 않는다.
+   ──────────────────────────────────────────────────────────── */
+
+.shop-workbench .action-row > .action-button {
+  border-left: 4px solid var(--fn, #6d5a3c) !important;
+  border-radius: 8px !important;
+}
+
+.shop-workbench .action-button--evolve { --fn: #a8791f; }
+.shop-workbench .action-button--research { --fn: #3f7d6e; }
+.shop-workbench .action-button--auto-arrange { --fn: #6d5a3c; }
+.shop-workbench .action-button--element-upgrade { --fn: #8a5a2a; }
+
+/* 띠 하나로는 좁은 폭에서 놓치기 쉬우므로 값·상태 글자에 같은 색을 한 번 더 준다.
+   본문 라벨은 종이 위 흑단으로 두어 대비를 잃지 않는다. */
+.shop-workbench .action-row > .action-button:not(:disabled) :is(em, i) {
+  color: var(--fn) !important;
+  font-weight: 900;
+}
+
+.shop-workbench .action-row > .action-button .hotkey {
+  color: var(--fn) !important;
+  background: color-mix(in srgb, var(--fn) 14%, transparent) !important;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--fn) 40%, transparent) !important;
+}
+
+/* 비활성은 띠까지 회갈로 눕혀 "지금은 못 쓴다"가 먼저 읽히게 한다. */
+.shop-workbench .action-row > .action-button:disabled {
+  border-left-color: rgba(114, 107, 97, 0.55) !important;
+}
+
+.shop-workbench .action-row > .action-button:disabled .hotkey {
+  color: #8a7c64 !important;
+  background: rgba(122, 90, 42, 0.12) !important;
+  box-shadow: inset 0 0 0 1px rgba(122, 90, 42, 0.25) !important;
+}
+
+/* 10연은 상품군의 맏이라 금박 테 2px 로만 격을 올린다(바탕은 그대로 종이). */
+.summon-card[data-summon-product="multi"]:not(:disabled) {
+  border-width: 2px;
+  border-left-width: 4px;
+  border-color: #c9963e;
+  border-left-color: var(--product);
+}
+
+
+/* ===== R6 성어 ===== */
+
+/*
+ * R6-1. 발동 중 성어 스택.
+ *
+ * 전장 좌측, 칩 줄과 웨이브 게이지 아래. 성어 효과는 네 자령이 그 줄을 지키는
+ * 동안만 살아 있고(R18), 그 사실은 성어 탭을 열어야만 보였다. 지금 발동 중인
+ * 성구만 여기에 세우고, 누르면 그 네 칸으로 카메라가 간다.
+ */
+.active-idioms {
+  position: absolute;
+  top: 68px;
+  left: 18px;
+  z-index: 6;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 168px;
+  pointer-events: none;
+}
+
+.active-idioms:empty { display: none; }
+
+.active-idiom {
+  display: grid;
+  grid-template-columns: minmax(0, auto) minmax(0, 1fr);
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 4px 8px 4px 6px;
+  border: 1px solid color-mix(in srgb, var(--idiom) 34%, rgba(169, 191, 225, 0.16));
+  border-left: 3px solid var(--idiom);
+  border-radius: 7px;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--idiom) 16%, rgba(5, 10, 19, 0.88)), rgba(5, 10, 19, 0.82));
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(8px);
+  cursor: pointer;
+  pointer-events: auto;
+  text-align: left;
+  animation: active-idiom-in 0.28s ease both;
+}
+
+.active-idiom b {
+  color: #fff4d8;
+  font-family: "Malgun Gothic", serif;
+  font-size: 14px;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+}
+
+.active-idiom span {
+  overflow: hidden;
+  color: color-mix(in srgb, var(--idiom) 70%, #f2f6ff);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: -0.035em;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.active-idiom:hover,
+.active-idiom:focus-visible {
+  border-color: var(--idiom);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--idiom) 45%, transparent), 0 8px 20px rgba(0, 0, 0, 0.38);
+  outline: none;
+}
+
+@keyframes active-idiom-in {
+  from { opacity: 0; transform: translateX(-10px); }
+  to { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .active-idiom { animation: none; }
+}
+
+/*
+ * R6-2. 성어 탭 규칙 도식의 바탕.
+ *
+ * "한 줄로"라는 말만으로는 어느 줄까지 되는지 알 수 없다. 도식 자체는 R15 절이
+ * 그리고, 여기서는 성어 패널에 얹히는 한지 면과 아래 한 줄 설명만 잡는다.
+ */
+.idiom-rule-guide {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 7px;
+  padding: 8px 9px 7px;
+  border-radius: 9px;
+  /* 성어 진법 패널과 같은 한지 면. 여기만 어두우면 도식이 이물질로 보인다. */
+  background: rgba(201, 183, 143, 0.44);
+  box-shadow: inset 0 0 0 1px rgba(122, 90, 42, 0.26);
+}
+
+.idiom-rule-guide p {
+  margin: 0;
+  color: var(--text-100);
+  font-size: 11.5px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  text-align: center;
+}
+
+/*
+ * R6-3. 성어 재료가 둘 모인 순간의 1회성 안내와 첫 봉인 배너.
+ *
+ * 토스트만으로는 "그래서 어디를 보라는 건가"가 남아 성어 목표 서브탭을 세 번
+ * 맥동시킨다. 첫 봉인 배너는 우두머리 경고와 색을 갈라 놓는다.
+ */
+.is-hint-pulsing {
+  animation: idiom-tab-hint 0.82s ease-in-out 3;
+}
+
+/* 두 줄짜리 성어 안내는 지도·한자 강조 버튼 위로 올려 앉힌다. */
+.toast--idiom-hint {
+  bottom: 96px;
+  max-width: 528px;
+  box-shadow: var(--bevel-up), 0 0 0 1px rgba(255, 207, 118, 0.55), var(--lift-2);
+}
+
+@keyframes idiom-tab-hint {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255, 207, 118, 0); }
+  45% { box-shadow: 0 0 0 3px rgba(255, 207, 118, 0.42); }
+}
+
+.boss-banner--idiom {
+  color: #ffeec4 !important;
+  border-color: rgba(255, 207, 118, 0.55) !important;
+  background: rgba(72, 48, 14, 0.94) !important;
+  letter-spacing: 0.02em;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .is-hint-pulsing {
+    animation: none;
+    box-shadow: 0 0 0 2px rgba(255, 207, 118, 0.42);
+  }
+}

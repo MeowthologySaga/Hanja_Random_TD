@@ -1,0 +1,41 @@
+/*
+ * 봉인 제단 스킨 — 절 묶음 배럴.
+ *
+ * 예전에는 13,800줄짜리 src/ui-skin.css 한 장이었다. 새 절은 언제나 파일
+ * 끝에 덧붙는 구조였으므로 병렬 트랙이 같은 자리에서 늘 충돌했다. 절 경계
+ * 그대로 쪼개고, 이 파일이 순서만 지킨다 — 캐스케이드는 아래로 갈수록 세다.
+ *
+ * 새 절을 더할 때: 새 파일을 만들고 여기에 @import 한 줄을 더한다.
+ * 규범과 순서 근거는 src/styles/README.md 를 보라.
+ */
+@import "./010-tokens.css";
+@import "./020-surface-core.css";
+@import "./030-layout-fixes.css";
+@import "./040-codex.css";
+@import "./050-panels-screens.css";
+@import "./060-hanji-theme.css";
+@import "./070-panel-repairs.css";
+@import "./080-feedback-r3.css";
+@import "./090-s00-menu.css";
+@import "./100-readability.css";
+@import "./110-asset-packs.css";
+@import "./120-casual-fusion.css";
+@import "./130-focus-frames.css";
+@import "./200-r5-shop.css";
+@import "./210-r7-sweep.css";
+@import "./220-r12-r15.css";
+@import "./230-r14-inventory.css";
+@import "./240-r16-promotion.css";
+@import "./250-r17-help.css";
+@import "./260-r18-idiom.css";
+@import "./270-r19-inventory-hub.css";
+@import "./280-r8-stage.css";
+@import "./300-audit-94-98.css";
+@import "./310-r99-layers.css";
+@import "./400-fbt1-training.css";
+@import "./410-fb7-milestones.css";
+@import "./420-fb1-overflow.css";
+@import "./430-fb4-hints.css";
+@import "./440-fb3-enemy-cap.css";
+@import "./900-fb6-calm.css";
+@import "./910-ssb-title.css";

@@ -1,0 +1,305 @@
+/* src/ui-skin.css 7392~7696줄에서 그대로 옮겨 왔다 — 절 79~83 — P0/P1/P2 부품 팩과 S00 2D 폴백. 순서는 ui-skin.css 배럴이 지킨다. */
+/* ══════════════════════════════════════════════════════════════════
+   79. P0 UI 부품 팩 v1 — 8탭 레일과 상태 띠
+   출처: handoff/to-claude/p0-ui-components-pack-v1/assets/rails/
+   설치: public/assets/ui/p0-v1/rails/
+
+   35·42절이 남긴 두 개의 미해결을 이 팩이 닫는다.
+   - `nav-rail-v1.png` 은 5기능군용 분할선·아이콘이 구워져 있어 8탭에 못 썼고,
+     그동안 `.panel-tabs` 는 무지 그라디언트로 버티고 있었다.
+   - `status-strip-v1.png` 은 우측에 인주 인장이 구워져 성어 탭과 겹쳤다.
+   v2 두 장은 가운데가 완전히 비어 있으므로, 탭 칸·구분선·선택/hover/focus
+   표시는 23·41·42절 코드가 그대로 그린다.
+
+   34절 결론대로 border-image 가 아니라 배경 이미지로 깐다. 고정 격자 안에서
+   border-width 가 상자를 키우면 패널 행이 통째로 밀린다.
+   ══════════════════════════════════════════════════════════════════ */
+
+.panel-tabs {
+  background:
+    url("/assets/ui/p0-v1/rails/nav-rail-empty-381x89-v2.png") center / 100% 100% no-repeat,
+    linear-gradient(180deg, #f2e8cd 0%, #e3d6b6 100%) !important;
+  box-shadow: var(--lift-1) !important;
+}
+
+/* 상태 띠 — 한 줄 상태 문구가 앉는 바닥 판. 우측 22px 은 34절 인주 인장 자리라
+   문구가 그 밑으로 흘러 들어가지 않게 비워 둔다. */
+.panel-footer {
+  min-height: 24px;
+  padding: 4px 28px 4px 11px;
+  align-items: center;
+  color: #4a3a20;
+  background:
+    url("/assets/ui/p0-v1/rails/status-strip-empty-333x43-v2.png") center / 100% 100% no-repeat;
+}
+
+.panel-footer b,
+.panel-footer .footer-seed b { color: #2f2412; }
+
+/* 바닥 줄은 `minmax(0, 1fr) auto` 였다. 상태 문구가 nowrap 이라 auto 칸이 328px
+   를 다 가져가고 조작 칩 칸이 0px 로 접혀 있었다(그래서 칩이 한 번도 보이지
+   않았다). 칩 칸을 내용 폭으로 두고, 길이가 들쭉날쭉한 상태 문구 쪽을 줄인다. */
+.panel-footer {
+  grid-template-columns: auto minmax(0, 1fr);
+}
+
+.panel-footer > span:last-child {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* 종이 띠 위에서는 검은 알약 칩이 구멍처럼 뜬다. 먹선 테두리로 바꾼다.
+   바닥 줄은 네 칩(설명 포함 305px)과 상태 문구를 함께 담을 수 없어서 그동안
+   칩이 통째로 잘려 나가 아무것도 보이지 않았다. 칩을 픽토그램 폭으로 고정해
+   네 조작이 모두 보이게 하고, 설명 글자는 DOM 과 `title` 에 남긴다. */
+.panel-footer .canvas-tip {
+  flex: 0 0 auto;
+  gap: 3px;
+}
+
+.panel-footer .canvas-tip i {
+  width: 21px;
+  overflow: hidden;
+  /* flex-start 여야 픽토그램이 왼쪽에 남고 설명 글자만 오른쪽으로 잘린다.
+     center 면 가운데(=글자)가 보이고 그림이 밀려난다. */
+  justify-content: flex-start;
+  gap: 0;
+  padding: 1px 3px;
+  color: #4a3a20;
+  background: rgba(255, 251, 238, 0.6);
+  box-shadow: inset 0 0 0 1px rgba(122, 90, 42, 0.38);
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   80. P0 UI 부품 팩 v1 — 자원 아이콘 4종
+   원본 60x60. 명세는 20px 을 권하지만 카드 폭이 92px 뿐이라
+   "엽전 이자 +2" 최악 라벨이 곧바로 말줄임된다. 아이콘은 12px 로 줄이고
+   엽전 칸에만 12px 을 더 줘서 네 칸 모두 잘리지 않게 한다.
+   ══════════════════════════════════════════════════════════════════ */
+
+.resource-grid {
+  /* 엽전 칸만 넓힌다. 이자는 최대 "+20" 까지 커진다. */
+  grid-template-columns: 1.28fr 0.906fr 0.906fr 0.906fr;
+}
+
+.resource-grid span::before {
+  content: "";
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  margin-right: 2px;
+  vertical-align: -2px;
+  background-image: var(--resource-icon, none);
+  background-size: contain;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+.resource-grid div:nth-child(1) span { --resource-icon: url("/assets/ui/p0-v1/resource-icons/resource-coin-60-v1.png"); }
+.resource-grid div:nth-child(2) span { --resource-icon: url("/assets/ui/p0-v1/resource-icons/resource-enemy-limit-60-v1.png"); }
+.resource-grid div:nth-child(3) span { --resource-icon: url("/assets/ui/p0-v1/resource-icons/resource-formation-60-v1.png"); }
+.resource-grid div:nth-child(4) span { --resource-icon: url("/assets/ui/p0-v1/resource-icons/resource-completion-60-v1.png"); }
+
+/* ══════════════════════════════════════════════════════════════════
+   81. P0 UI 부품 팩 v1 — 조작 픽토그램 3종
+   원본 72x72. 칩에 픽토그램을 "더하면" 이미 넘치는 바닥 줄이 더 넘치므로,
+   글자 배지(`em`)를 픽토그램으로 "바꾼다". 배지 20~46px 이 14px 이 되어
+   네 칩 합계가 오히려 줄고, 스크린리더에는 원래 글자가 그대로 남는다.
+   ══════════════════════════════════════════════════════════════════ */
+
+.canvas-tip i em {
+  flex: 0 0 auto;
+  width: 15px;
+  height: 15px;
+  padding: 0;
+  overflow: hidden;
+  border-radius: 0;
+  background:
+    var(--control-icon, none) center / contain no-repeat,
+    transparent;
+  /* 글자는 상자 밖으로 밀어 두고 그림만 남긴다. DOM 과 낭독에는 그대로 있다. */
+  text-indent: -999px;
+  white-space: nowrap;
+}
+
+/* 휠 안내는 지도 배율 칩이 담당한다(중복 제거) — 남은 3칩: 끌기·클릭·자령 끌기 */
+.canvas-tip i:nth-child(1) { --control-icon: url("/assets/ui/p0-v1/control-icons/control-drag-72-v1.png"); }
+.canvas-tip i:nth-child(2) { --control-icon: url("/assets/ui/p0-v1/control-icons/control-left-click-72-v1.png"); }
+.canvas-tip i:nth-child(3) { --control-icon: url("/assets/ui/p0-v1/control-icons/control-drag-72-v1.png"); }
+
+/* 지도 배율 조작물에도 같은 휠 픽토그램을 준다. */
+#map-zoom-reset small::before {
+  content: "";
+  display: inline-block;
+  width: 11px;
+  height: 11px;
+  margin-right: 3px;
+  vertical-align: -1px;
+  background: url("/assets/ui/p0-v1/control-icons/control-wheel-72-v1.png") center / contain no-repeat;
+}
+
+/* 코치마크에도 조작 픽토그램을 얹어 첫 안내가 그림으로 먼저 읽히게 한다.
+   장식이므로 aria 트리에 넣지 않는다. */
+.coach-bubble[data-coach-control]::after {
+  content: "";
+  position: absolute;
+  top: 9px;
+  right: 13px;
+  width: 24px;
+  height: 24px;
+  opacity: 0.9;
+  pointer-events: none;
+  background-image: var(--coach-control-icon, none);
+  background-size: contain;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+.coach-bubble[data-coach-control="wheel"] { --coach-control-icon: url("/assets/ui/p0-v1/control-icons/control-wheel-72-v1.png"); }
+.coach-bubble[data-coach-control="click"] { --coach-control-icon: url("/assets/ui/p0-v1/control-icons/control-left-click-72-v1.png"); }
+.coach-bubble[data-coach-control="drag"] { --coach-control-icon: url("/assets/ui/p0-v1/control-icons/control-drag-72-v1.png"); }
+
+/* ══════════════════════════════════════════════════════════════════
+   82. P1/P2 마감 에셋 v1 — 보스 띠와 소환 광채
+   출처: handoff/to-claude/p1-p2-polish-assets-pack-v1/assets/fx/
+   설치: public/assets/ui/polish-v1/
+
+   나머지 항목(옻칠 버튼 4상태·카드 프레임 4상태·서책 모달 프레임·한지/옻칠/
+   창호 타일·금박 모서리·진 접지 그림자)은 이미 코드나 앞선 팩으로 대체돼 있어
+   눈검증에서 더 나아 보이지 않았다. 판단 근거는 인계 보고서에 적었다.
+   ══════════════════════════════════════════════════════════════════ */
+
+/* 웨이브·보스 알림 띠. 880x64 원본을 좌우 60 / 상하 14 로 9-slice 해서
+   가운데 띠만 늘린다. 문구·보스 이름·웨이브·낭독은 전부 DOM 이 유지한다. */
+.boss-banner {
+  padding: 10px 30px;
+  border: 0;
+  border-radius: 0;
+  color: #f6e3c4;
+  border-image: url("/assets/ui/polish-v1/fx/boss-alert-ribbon-880x64-v1.png") 14 60 fill / 14px 30px stretch;
+  background: linear-gradient(180deg, #2a1a10 0%, #170f08 100%);
+  box-shadow: var(--lift-2);
+}
+
+/* 보스일 때만 인주 발광을 얹는다. 색만으로 알리지 않도록 "⚠ 우두머리" 문구는
+   그대로 남는다. */
+.boss-banner--boss {
+  color: #ffe2d2;
+  box-shadow:
+    0 0 34px rgba(159, 47, 35, 0.55),
+    var(--lift-2);
+}
+
+/* 소환 광채 3상태.
+   new  = 첫 도감 발견(rare 를 덮어쓴다)
+   rare = 현재 목표·성어 재료로 실제 판정된 자령(`is-helpful`)
+   common = 그 외
+   확률을 실제 소환표와 다르게 암시하지 않도록, 이미 코드가 판정해 화면에
+   표기 중인 두 상태만 쓴다. 1200px 원본이지만 결과 카드가 110px 대라
+   명세의 400px 대신 96px 로 줄여 초상 뒤에 깐다. */
+.summon-result-card::before {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 50%;
+  z-index: 0;
+  width: 96px;
+  height: 96px;
+  transform: translateX(-50%);
+  pointer-events: none;
+  opacity: 0.85;
+  background: var(--summon-glow, none) center / contain no-repeat;
+}
+
+.summon-result-card { --summon-glow: url("/assets/ui/polish-v1/fx/summon-glow-common-1200-v1.png"); }
+.summon-result-card.is-helpful { --summon-glow: url("/assets/ui/polish-v1/fx/summon-glow-rare-1200-v1.png"); }
+.summon-result-card.is-new { --summon-glow: url("/assets/ui/polish-v1/fx/summon-glow-new-1200-v1.png"); }
+
+/* 글자·초상은 광채 위로. */
+.summon-result-spirit,
+.summon-result-card > strong,
+.summon-result-card > b,
+.summon-result-card > small,
+.summon-result-card > div {
+  position: relative;
+  z-index: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .summon-result-card::before { opacity: 0.7; }
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   83. S00 2D 폴백(`?menu3d=0`) 3레이어 배경
+   출처: handoff/to-claude/s00-layered-bg-pack-v1/assets/
+   설치: public/assets/ui/s00-layers-v1/
+
+   3D 가 기본이므로 이 절은 WebGL 이 없거나 `?menu3d=0` 일 때만 쓰인다.
+   한 장짜리 배경을 책상(-8) / 책(0) / 전경(+24) 으로 갈라 자령(+16)이
+   책과 전경 사이에 서게 만든다. 다섯 먹 고리는 책 레이어 RGB 안에 있어
+   좌표가 그대로다. 세 장이 모두 도착해야 `.is-ready` 가 붙는다.
+   ══════════════════════════════════════════════════════════════════ */
+
+.s00-parallax {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  opacity: 0;
+  pointer-events: none;
+  user-select: none;
+}
+
+.s00-parallax.is-ready { opacity: 1; }
+
+/* 세 장이 다 온 뒤에만 한 장짜리 배경을 끈다. */
+.s00-parallax.is-ready ~ .s00-env--legacy,
+.s00-stage:has(.s00-parallax.is-ready) .s00-env--legacy { opacity: 0; }
+
+/* 책상: ±8px 이동에도 빈 가장자리가 없도록 106% overscan 후 중앙 크롭. */
+.s00-env--desk {
+  z-index: 0;
+  width: 106%;
+  height: 106%;
+  left: -3%;
+  top: -3%;
+  object-fit: cover;
+  transform: translate3d(calc(var(--plx) * -8px), calc(var(--ply) * -5px), 0);
+  will-change: transform;
+}
+
+/* 책: 시차 0. 고리 좌표의 기준면이다. */
+.s00-env--book {
+  z-index: 10;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  left: 0;
+  top: 0;
+  object-fit: fill;
+  transform: none;
+}
+
+/* 전경 소품: 자령(+16)보다 더 앞으로. 이동분만큼 overscan 해 좌우가 비지 않게. */
+.s00-env--foreground {
+  z-index: 30;
+  width: 106%;
+  height: 106%;
+  left: -3%;
+  top: -3%;
+  object-fit: fill;
+  transform: translate3d(calc(var(--plx) * 24px), calc(var(--ply) * 15px), 0);
+  will-change: transform;
+}
+
+/* 자령 무리는 책과 전경 사이에 선다. */
+.s00-stage .s00-showcase { z-index: 20; }
+
+@media (prefers-reduced-motion: reduce) {
+  .s00-env--desk,
+  .s00-env--foreground { transform: none; }
+}
+
+/* 3D 모드에서는 61절이 `.s00-env` 를 통째로 숨기지만, 새 묶음 상자도 함께 끈다. */
+.s00-stage.is-3d .s00-parallax { display: none; }
