@@ -381,9 +381,9 @@ test("starts a KR run and exposes the finished core loop at 1280x720", async ({ 
   page.on("pageerror", (error) => errors.push(error.message));
 
   await page.goto("/?seed=E2E-FIXED-01&mode=standard");
-  await expect(page).toHaveTitle("한자 운명진 · 랜덤 타워 디펜스");
+  await expect(page).toHaveTitle("천자진 · 오행 자령 디펜스");
   await expect(page.locator(".game-shell")).toHaveAttribute("data-display-mode", "spirit");
-  await expect(page.getByRole("heading", { name: "한자 운명진", exact: true }).last()).toBeVisible();
+  await expect(page.getByRole("heading", { name: "천자진", exact: true }).last()).toBeVisible();
   // S00 지역 타일은 이름과 심사 배지만 노출하고, 한자 범위는 접근명·툴팁과 출정 부제로 알린다.
   await expect(page.locator(".region-option.is-selected")).toHaveAttribute("aria-label", /천자문 1,?000/u);
   await expect(page.locator("#s00-start-sub")).toHaveText(/천자문 1,?000/u);

@@ -706,11 +706,12 @@ describe("regional recipe defense run", () => {
     expect(engine.state.interestEarned).toBe(0);
   });
 
+  // 3지역 x 5,400틱 자동주행 — 유휴 8~9초, 부하 시 16초+. 10초 상한이 빠듯했다.
   it("settles automated runs in every region without an infinite loop", () => {
     for (const region of ["KR", "JP", "CN"] as const) {
       const result = runAutoplay("smoke-" + region, region, 5_400);
       expect(result.result).not.toBe("timeout");
       expect(result.region).toBe(region);
     }
-  }, 10_000);
+  }, 30_000);
 });

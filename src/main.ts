@@ -221,7 +221,7 @@ const initialAutoPlaceSummons = loadAutoPlaceSummons();
 
 app.innerHTML = `
   <main class="game-shell" data-phase="title" data-display-mode="${initialDisplayMode}" data-game-mode="casual">
-    <section class="battle-stage" aria-label="한자 랜덤 타워 디펜스 전장">
+    <section class="battle-stage" aria-label="천자진 전장">
       <canvas id="battle-canvas" width="${WORLD_WIDTH}" height="${WORLD_HEIGHT}"></canvas>
       <button id="map-zoom-reset" class="map-zoom-control" type="button" title="지도 확대/축소 초기화">
         <span>지도</span><strong id="map-zoom-value">100%</strong><small>휠 확대·축소</small>
@@ -279,7 +279,7 @@ app.innerHTML = `
 
     <aside class="control-panel" aria-label="합성과 수비 조작 패널">
       <header class="brand-row">
-        <div><p class="eyebrow">한자 랜덤 타워 디펜스</p><h1>한자 운명진</h1></div>
+        <div><p class="eyebrow">오행 자령 디펜스</p><h1>천자진</h1></div>
         <div class="header-actions">
           <button id="speed-button" class="speed-button" type="button" aria-label="게임 배속 1배" title="게임 배속 전환 (F)">1×</button>
           <button id="settings-button" class="icon-button" type="button" aria-label="화면 설정 열기" title="화면 설정">⚙</button>
