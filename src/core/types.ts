@@ -379,6 +379,22 @@ export interface GameState {
   abilityZones: AbilityZone[];
 }
 
+/**
+ * [트랙 V] `GameState` 밖에 사는 엔진 내부 상태의 저장본.
+ *
+ * 런 저장이 상태만 담으면 이어 돌린 판이 갈라진다 — 난수기의 다음 눈과
+ * 아이디 카운터가 초기값으로 되돌아가기 때문이다. 이 다섯 숫자가 그 틈을 메운다.
+ * `rngState` 는 `SeededRng.snapshot()` 이 뜬 uint32 하나이고,
+ * `SeededRng.restore()` 가 같은 수열로 되돌린다.
+ */
+export interface EngineRuntimeSnapshot {
+  rngState: number;
+  nextTowerId: number;
+  nextEnemyId: number;
+  nextAbilityZoneId: number;
+  autoEvolutionCooldown: number;
+}
+
 export type GameEvent =
   | { type: "shot"; from: Point; to: Point; color: string; critical: boolean; wuxing: Wuxing }
   | { type: "damage"; at: Point; amount: number; critical: boolean; weakness: boolean }
