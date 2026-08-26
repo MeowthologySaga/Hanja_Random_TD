@@ -1,0 +1,170 @@
+/*
+ * 설정 창.
+ */
+import { type GameMode } from "../../core/types";
+import { type DisplayMode, saveDisplayMode } from "../display-mode";
+import { saveAutoPlaceSummons } from "../summon-placement";
+import { ctx, HOVER_GLYPH_STORAGE_KEY, must, settingsDialog, shell, sound } from "../app-context";
+import { startCoach } from "../coach";
+import { handleAction, showToast } from "../hud";
+import { setSelectedGameMode } from "../s00-menu";
+
+function syncDisplayModeControls(): void {
+  document.querySelectorAll<HTMLButtonElement>("[data-display-mode-option]").forEach((button) => {
+    const selected = button.dataset.displayModeOption === ctx.displayMode;
+    button.classList.toggle("is-selected", selected);
+    button.setAttribute("aria-checked", String(selected));
+  });
+}
+
+function syncHoverGlyphControl(): void {
+  const button = must<HTMLButtonElement>("#hover-glyph-toggle");
+  button.classList.toggle("is-on", ctx.hoverGlyphLarge);
+  button.setAttribute("aria-checked", String(ctx.hoverGlyphLarge));
+  must<HTMLElement>("#hover-glyph-toggle i em").textContent = ctx.hoverGlyphLarge ? "ON" : "OFF";
+}
+
+export function setHoverGlyphLarge(enabled: boolean): void {
+  ctx.hoverGlyphLarge = enabled;
+  try {
+    window.localStorage.setItem(HOVER_GLYPH_STORAGE_KEY, String(enabled));
+  } catch {
+    // 사생활 보호 모드 등에서 저장이 막혀도 이번 세션 선택은 살린다.
+  }
+  syncHoverGlyphControl();
+  showToast(enabled
+    ? "팝오버 큰 한자 ON · 자령에 마우스를 올리면 한자를 크게 보여줍니다"
+    : "팝오버 큰 한자 OFF · 팝오버는 기존 글줄만 표시합니다");
+}
+
+export function syncAutoPlaceControl(): void {
+  const button = must<HTMLButtonElement>("#auto-place-toggle");
+  const enabled = ctx.engine.state.autoPlaceSummons;
+  button.classList.toggle("is-on", enabled);
+  button.setAttribute("aria-checked", String(enabled));
+  must<HTMLElement>("#auto-place-toggle i em").textContent = enabled ? "ON" : "OFF";
+}
+
+export function syncAudioControls(): void {
+  const settings = sound.audioSettings;
+  const bgmVolume = must<HTMLInputElement>("#bgm-volume");
+  const sfxVolume = must<HTMLInputElement>("#sfx-volume");
+  bgmVolume.value = String(Math.round(settings.bgmVolume * 100));
+  sfxVolume.value = String(Math.round(settings.sfxVolume * 100));
+  must<HTMLOutputElement>("#bgm-volume-output").value = `${bgmVolume.value}%`;
+  must<HTMLOutputElement>("#sfx-volume-output").value = `${sfxVolume.value}%`;
+
+  const bgmButton = must<HTMLButtonElement>("#bgm-mute-button");
+  const sfxButton = must<HTMLButtonElement>("#sfx-mute-button");
+  bgmButton.textContent = settings.bgmMuted ? "OFF" : "ON";
+  sfxButton.textContent = settings.sfxMuted ? "OFF" : "ON";
+  bgmButton.classList.toggle("is-on", !settings.bgmMuted);
+  sfxButton.classList.toggle("is-on", !settings.sfxMuted);
+  bgmButton.setAttribute("aria-checked", String(!settings.bgmMuted));
+  sfxButton.setAttribute("aria-checked", String(!settings.sfxMuted));
+
+  const masterButton = must<HTMLButtonElement>("#sound-button");
+  masterButton.textContent = settings.masterMuted ? "×" : "♪";
+  masterButton.setAttribute("aria-label", settings.masterMuted ? "전체 소리 켜기" : "전체 소리 끄기");
+  masterButton.title = settings.masterMuted ? "전체 소리 켜기 (M)" : "전체 소리 끄기 (M)";
+  shell.dataset.audioMasterMuted = String(settings.masterMuted);
+  shell.dataset.bgmMuted = String(settings.bgmMuted);
+  shell.dataset.sfxMuted = String(settings.sfxMuted);
+}
+
+export function setDisplayMode(mode: DisplayMode, announce = true): void {
+  ctx.displayMode = mode;
+  shell.dataset.displayMode = mode;
+  saveDisplayMode(mode);
+  syncDisplayModeControls();
+  if (announce) {
+    sound.playUiConfirm();
+    showToast(mode === "spirit" ? "자령 모드 · 한자와 훈음을 머리 위에 표시" : "공부 모드 · 큰 한자와 읽기를 전장에 표시");
+  }
+}
+
+/** main.ts 가 원래 순서대로 부르는 배선 묶음. */
+export function wireSettings1(): void {
+  must<HTMLButtonElement>("#settings-button").addEventListener("click", () => {
+    sound.unlock();
+    syncDisplayModeControls();
+    syncAutoPlaceControl();
+    syncHoverGlyphControl();
+    syncAudioControls();
+    settingsDialog.showModal();
+  });
+  // 저장된 선택이 OFF 면 첫 그림부터 반영되도록 초기 1회 맞춘다.
+  syncHoverGlyphControl();
+}
+
+/** main.ts 가 원래 순서대로 부르는 배선 묶음. */
+export function wireSettings2(): void {
+  must<HTMLButtonElement>("#title-settings-button").addEventListener("click", () => {
+    sound.unlock();
+    syncDisplayModeControls();
+    syncAutoPlaceControl();
+    syncHoverGlyphControl();
+    syncAudioControls();
+    settingsDialog.showModal();
+  });
+  must<HTMLButtonElement>("#hover-glyph-toggle").addEventListener("click", () => {
+    sound.unlock();
+    setHoverGlyphLarge(!ctx.hoverGlyphLarge);
+    sound.playUiConfirm();
+  });
+  must<HTMLButtonElement>("#settings-close").addEventListener("click", () => settingsDialog.close());
+  must<HTMLButtonElement>("#replay-coach-button").addEventListener("click", () => {
+    // 한 번 본 뒤에는 다시 볼 길이 없었다. 설정에서 강제로 되돌린다.
+    settingsDialog.close();
+    startCoach(true);
+  });
+  document.querySelectorAll<HTMLButtonElement>("[data-display-mode-option]").forEach((button) => {
+    button.addEventListener("click", () => {
+      setDisplayMode(button.dataset.displayModeOption as DisplayMode);
+      settingsDialog.close();
+    });
+  });
+  document.querySelectorAll<HTMLButtonElement>("[data-game-mode-option]").forEach((button) => {
+    button.addEventListener("click", () => setSelectedGameMode(button.dataset.gameModeOption as GameMode));
+  });
+  must<HTMLButtonElement>("#auto-place-toggle").addEventListener("click", () => {
+    sound.unlock();
+    const enabled = !ctx.engine.state.autoPlaceSummons;
+    saveAutoPlaceSummons(enabled);
+    handleAction(ctx.engine.setAutoPlaceSummons(enabled));
+    syncAutoPlaceControl();
+    sound.playUiConfirm();
+  });
+  must<HTMLInputElement>("#bgm-volume").addEventListener("input", (event) => {
+    sound.setBgmVolume(Number((event.target as HTMLInputElement).value) / 100);
+    syncAudioControls();
+  });
+  must<HTMLInputElement>("#sfx-volume").addEventListener("input", (event) => {
+    sound.setSfxVolume(Number((event.target as HTMLInputElement).value) / 100);
+    syncAudioControls();
+  });
+  must<HTMLInputElement>("#sfx-volume").addEventListener("change", () => sound.playUiConfirm());
+  must<HTMLButtonElement>("#bgm-mute-button").addEventListener("click", () => {
+    sound.unlock();
+    const muted = sound.toggleBgmMuted();
+    syncAudioControls();
+    showToast(muted ? "배경음악 꺼짐" : "배경음악 켜짐");
+  });
+  must<HTMLButtonElement>("#sfx-mute-button").addEventListener("click", () => {
+    sound.unlock();
+    const muted = sound.toggleSfxMuted();
+    syncAudioControls();
+    if (!muted) sound.playUiConfirm();
+    showToast(muted ? "효과음 꺼짐" : "효과음 켜짐");
+  });
+}
+
+/** main.ts 가 원래 순서대로 부르는 배선 묶음. */
+export function wireSettings3(): void {
+  must<HTMLButtonElement>("#sound-button").addEventListener("click", () => {
+    const muted = sound.toggle();
+    syncAudioControls();
+    if (!muted) sound.playUiConfirm();
+    showToast(muted ? "전체 소리 꺼짐" : "전체 소리 켜짐");
+  });
+}
