@@ -369,13 +369,21 @@ app.innerHTML = `
 
         <section id="idiom-panel" class="idiom-panel panel-view" data-panel-view="idiom" aria-label="사자성어 진법" aria-live="polite">
           <section class="idiom-rule-guide" aria-label="성어 발동 규칙">
-            <div class="idiom-rule-chain" aria-hidden="true">
-              <i style="--r:1;--c:1">①</i><b style="--r:1;--c:2">→</b>
-              <i style="--r:1;--c:3">②</i><b style="--r:1;--c:4">→</b>
-              <i style="--r:1;--c:5">③</i><b class="is-diagonal" style="--r:2;--c:6">↘</b>
-              <i style="--r:2;--c:7">④</i>
+            <div class="idiom-rule-figures" aria-hidden="true">
+              <figure class="idiom-rule-figure idiom-rule-figure--row">
+                <div class="idiom-rule-grid">
+                  <i style="--r:1;--c:1">①</i><i style="--r:1;--c:2">②</i><i style="--r:1;--c:3">③</i><i style="--r:1;--c:4">④</i>
+                </div>
+                <figcaption>가로 · 세로</figcaption>
+              </figure>
+              <figure class="idiom-rule-figure idiom-rule-figure--diagonal">
+                <div class="idiom-rule-grid">
+                  <i style="--r:1;--c:1">①</i><i style="--r:2;--c:2">②</i><i style="--r:3;--c:3">③</i><i style="--r:4;--c:4">④</i>
+                </div>
+                <figcaption>대각선</figcaption>
+              </figure>
             </div>
-            <p>순서대로 이웃(대각선 가능) · 역순도 인정 · 같은 진 안에서</p>
+            <p>한 줄로 — 가로·세로·대각선 · 순서대로(역순 인정) · 같은 진 안에서</p>
           </section>
           <div id="idiom-hud" class="idiom-hud">
             <div class="idiom-heading"><span>四字成語 진법</span><b id="idiom-count">0 / 4</b></div>
@@ -389,7 +397,7 @@ app.innerHTML = `
             <b id="idiom-result-glyph">四</b>
             <span>
               <small>최근 자동 감지</small>
-              <strong id="idiom-result-name">네 글자를 순서대로 배치하세요</strong>
+              <strong id="idiom-result-name">네 글자를 한 줄에 순서대로 놓으세요</strong>
               <em id="idiom-result-meaning">배치된 자령을 자동으로 판정합니다.</em>
             </span>
             <mark id="idiom-result-bonus">자동 판정</mark>
@@ -648,7 +656,7 @@ app.innerHTML = `
           <li><b>합성</b><span>실제 구성식의 재료를 모두 보유하면 조합 서책에 카드가 열립니다. 木+木처럼 같은 글자 두 개도 각각 필요합니다.</span></li>
           <li><b>별승급 진법</b><span>천자문 실제 획수로 기본 별이 정해집니다. 같은 오행·같은 현재 별 자령 3기를 고르면 3기가 모두 사라지고 같은 오행의 다음 별 자령 1기를 무작위로 얻으며 최고 8성입니다. 잠금·농축·목표·사자성어 자령은 소모 대상에서 빠집니다.</span></li>
           <li><b>방식</b><span>반자동은 가능한 조합만 제안합니다. 목표 자동은 목표 경로의 조합만 자동 실행하며, 수동은 선택한 한자가 포함된 조합만 봅니다.</span></li>
-          <li><b>사자성어</b><span>이웃한 네 칸에 글자를 올바른 순서로 배치하면 자동 봉인됩니다. 직접 선을 그을 필요가 없으며, 보너스는 그 런 동안 계속 유지됩니다.</span></li>
+          <li><b>사자성어</b><span>같은 진의 한 줄 — 가로·세로·대각선 — 네 칸에 글자를 올바른 순서로 배치하면 자동 봉인됩니다. 역순으로 읽어도 인정하며, 직접 선을 그을 필요가 없고 보너스는 그 런 동안 계속 유지됩니다.</span></li>
           <li><b>첫 오행진</b><span>열린 진 없이 상점에서 시작합니다. 첫 소환 자령과 같은 오행진이 무료로 열리고, 나머지는 원하는 순서로 18·32·52·78엽전에 개방합니다.</span></li>
           <li><b>자동배치</b><span>런 인벤토리 자령을 현재 개방된 오행진에 투입하고, 완성 가능한 사자성어와 오행 공명을 함께 정리합니다.</span></li>
           <li><b>은행 이자</b><span>웨이브 종료 시 보유 엽전 20개당 1엽전을 지급하며, 한 번에 최대 20엽전까지만 받을 수 있습니다.</span></li>
@@ -1388,7 +1396,7 @@ function resetIdiomResult(): void {
   idiomResult.classList.remove("is-active");
   idiomResult.style.removeProperty("--idiom-result-color");
   must<HTMLElement>("#idiom-result-glyph").textContent = "四";
-  must<HTMLElement>("#idiom-result-name").textContent = "네 글자를 순서대로 배치하세요";
+  must<HTMLElement>("#idiom-result-name").textContent = "네 글자를 한 줄에 순서대로 놓으세요";
   must<HTMLElement>("#idiom-result-meaning").textContent = "배치된 자령을 자동으로 판정합니다.";
   must<HTMLElement>("#idiom-result-bonus").textContent = "자동 판정";
 }
@@ -3184,7 +3192,7 @@ function maybeShowIdiomHint(target: IdiomDefinition | undefined): void {
   idiomHintHandled = true;
   if (idiomHintAlreadySeen()) return;
   markIdiomHintSeen();
-  showToast(`${target.chars} 재료가 모이고 있어요 — 같은 진에서 ①→④ 순서로 이웃하게 놓으면 봉인 발동! (역순도 가능)`);
+  showToast(`${target.chars} 재료가 모이고 있어요 — 같은 진의 한 줄(가로·세로·대각선)에 ①→④ 순서로 놓으면 봉인 발동! (역순도 가능)`);
   // 두 줄짜리 안내라 평소 자리(bottom 45px)에서는 지도·강조 버튼과 겹친다.
   toast.classList.add("toast--idiom-hint");
   window.setTimeout(() => toast.classList.remove("toast--idiom-hint"), 2000);
@@ -3230,7 +3238,7 @@ function renderIdiomHud(): void {
     .find((definition) => definition?.acquisition === "craft" && (counts.get(definition.char) ?? 0) === 0);
   must<HTMLElement>("#idiom-hint").textContent = missingCraft
     ? "먼저 " + missingCraft.char + " = " + missingCraft.parents.join("+") + " 조합"
-    : "1→2→3→4 이웃 배치 → 자동 발동";
+    : "한 줄에 1→2→3→4 배치 → 자동 발동";
 }
 
 /**
@@ -3350,7 +3358,7 @@ function setCodexMode(mode: CodexMode): void {
     ? `별은 합성 깊이를 뜻합니다 — 별이 많을수록 여러 번 합성해야 닿는 자령입니다. 한국 1,001자는 국립국어원 한국어기초사전과 글자별 교정표를 바탕으로 모두 쉬운 오늘말 풀이를 제공합니다. 훈음·독음 데이터 ${LEARNING_DATA_META.version}.`
     : mode === "recipes"
       ? "별은 합성 깊이를, 독립 표식은 상위 조합 재료로 쓰이지 않는 자령을 뜻합니다. 별과 독립 여부는 별개의 정보입니다."
-      : "네 글자를 순서대로 이웃 배치하면 해당 사자성어의 봉인 효과가 발동합니다.";
+      : "같은 진의 한 줄 — 가로·세로·대각선 — 에 네 글자를 순서대로 놓으면 해당 사자성어의 봉인 효과가 발동합니다. 역순도 인정합니다.";
   renderCodex(search.value);
 }
 
@@ -3760,7 +3768,7 @@ function renderIdiomCodexDetail(idiom: ReturnType<GameEngine["idioms"]>[number] 
     <div class="idiom-codex-glyphs" style="--codex:${idiom.color}">${[...idiom.chars].map((char, index) => `<span><b>${char}</b><small>${index + 1}</small></span>`).join("")}</div>
     <p class="eyebrow">${sourceLabel} · ${sealed ? "이번 런 발동 완료" : featured ? "이번 런 목표" : "도감 수록"}</p>
     <h3>${idiom.reading}</h3>
-    <article class="idiom-strategy" style="--codex:${idiom.color}"><b>${idiom.bonus.label}</b><span>${idiom.meaning}</span><small>${featured ? "네 글자를 1→2→3→4 순서로 이웃한 칸에 배치하면 자동 발동하며, 효과는 해당 런 동안 유지됩니다." : "이번 런 목표에는 포함되지 않았습니다. 다음 시드에서 목표 성구로 등장할 수 있습니다."}</small></article>
+    <article class="idiom-strategy" style="--codex:${idiom.color}"><b>${idiom.bonus.label}</b><span>${idiom.meaning}</span><small>${featured ? "같은 진의 한 줄(가로·세로·대각선)에 네 글자를 1→2→3→4 순서로 놓으면 자동 발동하며, 효과는 해당 런 동안 유지됩니다. 역순으로 놓아도 인정합니다." : "이번 런 목표에는 포함되지 않았습니다. 다음 시드에서 목표 성구로 등장할 수 있습니다."}</small></article>
     <section class="idiom-material-guide"><h4>필요 한자와 획득법</h4>${[...idiom.chars].map((char) => {
       const definition = engine.catalog.definitions.get(char);
       const learning = learningInfo(engine.state.region, char);
