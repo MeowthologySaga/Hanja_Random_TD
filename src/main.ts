@@ -250,6 +250,13 @@ app.innerHTML = `
         </header>
         <div id="concentration-frame-body" class="focus-frame-body concentration-workbench"></div>
       </section>
+      <section id="inventory-frame" class="focus-frame focus-frame--vault" role="dialog" aria-modal="false" aria-labelledby="inventory-frame-title" hidden>
+        <header class="focus-frame-head">
+          <div><strong id="inventory-frame-title">자령 보관고</strong><span>눌러 고르고, 전장에 배치</span></div>
+          <button id="inventory-frame-close" class="focus-frame-close" type="button" data-focus-close="inventory" aria-label="자령 보관고 닫기">닫기 ✕</button>
+        </header>
+        <div id="inventory-frame-body" class="focus-frame-body run-inventory-vault"></div>
+      </section>
     </section>
 
     <aside class="control-panel" aria-label="합성과 수비 조작 패널">
@@ -399,14 +406,24 @@ app.innerHTML = `
 
         <section id="run-inventory-panel" class="run-inventory-panel panel-view" data-panel-view="inventory" aria-label="이번 판 자령 인벤토리">
           <div class="run-inventory-heading">
-            <div><span>런 인벤토리</span><strong>배치 대기 <b id="run-inventory-heading-count">0개 · 0종</b></strong></div>
+            <div><span>이번 판에 뽑은 자령</span><strong>자령 보관고</strong></div>
             <div class="run-inventory-tools">
               <small id="essence-summary">문기 木0 火0 土0 金0 水0</small>
               <button id="cleanup-recommended-button" type="button">정리 후보 분해</button>
             </div>
           </div>
-          <div id="run-inventory-list" class="run-inventory-list">
-            <div class="empty-run-inventory"><b>대기 중인 자령이 없습니다</b><span>설정에서 자동 배치를 끄거나 전장 자령을 보관하세요.</span></div>
+          <div id="run-inventory-layout" class="run-inventory-layout">
+            <div class="run-inventory-toolbar">
+              <div id="run-inventory-element-filters" class="run-inventory-chips" role="group" aria-label="오행 필터"></div>
+              <button id="run-inventory-sort" type="button" aria-label="보관고 정렬 전환">획득순</button>
+            </div>
+            <div id="run-inventory-list" class="run-inventory-list">
+              <div class="empty-run-inventory"><b>보관 중인 자령이 없습니다</b><span>상점에서 소환하세요</span><button type="button" data-inventory-goto-shop>상점으로</button></div>
+            </div>
+          </div>
+          <div class="focus-panel-summary">
+            <p id="run-inventory-panel-summary">보관 <b id="run-inventory-heading-count">0기 · 0종</b></p>
+            <button id="run-inventory-frame-open" class="focus-open-button" type="button">보관고 열기</button>
           </div>
         </section>
 
@@ -891,6 +908,12 @@ let evolutionRenderKey = "";
 let goalRenderKey = "";
 let selectedRenderKey = "";
 let runInventoryRenderKey = "";
+/* R14 보관고 도구는 상단 한 줄로 최소화한다 — 오행 칩 5 + 정렬 토글 1.
+   한 판 안에서만 쓰는 임시 시야라 localStorage 로 남기지 않는다. */
+type RunInventorySort = "recent" | "element" | "star";
+const RUN_INVENTORY_SORTS: readonly RunInventorySort[] = ["recent", "element", "star"];
+let runInventoryElementFilter: Wuxing | null = null;
+let runInventorySort: RunInventorySort = "recent";
 let idiomRenderKey = "";
 let elementUpgradeRenderKey = "";
 let formationRenderKey = "";
@@ -1202,11 +1225,14 @@ preloadNameplateSprites();
  * 패널에는 요약 몇 줄과 [열기] 버튼만 남는다.
  * 엔진은 계속 돌기 때문에 aria-modal 은 false 다.
  */
-type FocusFrameId = "growth" | "concentration";
+type FocusFrameId = "growth" | "concentration" | "inventory";
 
 const FOCUS_FRAME_MOUNTS: ReadonlyArray<{ id: FocusFrameId; source: string; target: string }> = [
   { id: "growth", source: ".growth-layout", target: "#growth-frame-body" },
-  { id: "concentration", source: "#concentration-layout", target: "#concentration-frame-body" }
+  { id: "concentration", source: "#concentration-layout", target: "#concentration-frame-body" },
+  // R14: 보관고. 많이 뽑는 구조라 376px 패널의 1열 목록으로는 스크롤이 끝없이
+  // 길어졌다. 목록 DOM 을 통째로 전장 위 격자 프레임으로 옮긴다.
+  { id: "inventory", source: "#run-inventory-layout", target: "#inventory-frame-body" }
 ];
 
 let openFocusFrame: FocusFrameId | null = null;
@@ -1237,6 +1263,9 @@ function setFocusFrame(id: FocusFrameId | null): void {
   } else if (id === "concentration") {
     concentrationRenderKey = "";
     renderConcentration();
+  } else if (id === "inventory") {
+    runInventoryRenderKey = "";
+    renderRunInventory();
   }
 }
 
@@ -3702,10 +3731,23 @@ function renderCodexDetail(definition: HanziDefinition | undefined): void {
     </div>
   `;
 }
+function runInventorySortLabel(sort: RunInventorySort): string {
+  return sort === "recent" ? "획득순" : sort === "element" ? "오행순" : engine.state.mode === "casual" ? "별순" : "단계순";
+}
+
+/*
+ * R14 보관고.
+ *
+ * 목록 DOM(#run-inventory-layout)은 집중 프레임 본문에 얹혀 있다. 카드는
+ * 격자 한 칸(약 92x110)이라 한 눈에 들어오는 정보만 남긴다 — 초상 · 한자 ·
+ * 훈음 · 오행 점 · 별. 나머지(기술 이름·농축 단계)는 title 로 내린다.
+ * 같은 한자 묶음(캐주얼은 한자+별)은 계속 한 장으로 겹쳐 ×N 으로 센다.
+ */
 function renderRunInventory(): void {
   const selectedId = engine.state.selectedTowerId;
   const active = engine.state.phase === "prep" || engine.state.phase === "combat";
-  const key = engine.state.inventoryTowers.map((tower) => `${tower.id}:${tower.locked}:S${tower.casualStar ?? 0}:C${tower.concentration ?? 0}:${tower.concentrationPath ?? "-"}`).join("|") + `|${selectedId ?? "none"}|${active ? "active" : "inactive"}|${engine.state.mode}`;
+  const key = engine.state.inventoryTowers.map((tower) => `${tower.id}:${tower.locked}:S${tower.casualStar ?? 0}:C${tower.concentration ?? 0}:${tower.concentrationPath ?? "-"}`).join("|")
+    + `|${selectedId ?? "none"}|${active ? "active" : "inactive"}|${engine.state.mode}|${runInventoryElementFilter ?? "all"}|${runInventorySort}`;
   must<HTMLElement>("#run-inventory-count").textContent = String(engine.state.inventoryTowers.length);
   if (key === runInventoryRenderKey) return;
   runInventoryRenderKey = key;
@@ -3715,20 +3757,41 @@ function renderRunInventory(): void {
     const groupKey = engine.state.mode === "casual" ? `${tower.char}:${casualStarOf(tower)}` : tower.char;
     grouped.set(groupKey, [...(grouped.get(groupKey) ?? []), tower]);
   }
-  must<HTMLElement>("#run-inventory-heading-count").textContent = `${engine.state.inventoryTowers.length}개 · ${grouped.size}종`;
+  must<HTMLElement>("#run-inventory-heading-count").textContent = `${engine.state.inventoryTowers.length}기 · ${grouped.size}종`;
   const cleanupAssessments = new Map(engine.cleanupAssessments().map((assessment) => [assessment.towerId, assessment]));
   const cleanupCandidates = engine.cleanupCandidates(8, true);
   must<HTMLButtonElement>("#cleanup-recommended-button").disabled = !active || cleanupCandidates.length === 0;
   must<HTMLButtonElement>("#cleanup-recommended-button").textContent = cleanupCandidates.length > 0 ? `정리 후보 ${cleanupCandidates.length}기 분해` : "보호 완료";
+  const elementCounts = new Map<Wuxing, number>(WUXING_ORDER.map((wuxing) => [wuxing, 0]));
+  for (const tower of engine.state.inventoryTowers) elementCounts.set(tower.wuxing, (elementCounts.get(tower.wuxing) ?? 0) + 1);
+  must<HTMLElement>("#run-inventory-element-filters").innerHTML = WUXING_ORDER.map((wuxing) => {
+    const on = runInventoryElementFilter === wuxing;
+    return `<button type="button" data-inventory-element="${wuxing}" class="${on ? "is-active" : ""}" aria-pressed="${String(on)}" title="${wuxing}행만 보기 (다시 누르면 전체)" style="--filter-element:${ELEMENT_STYLES[wuxing].color}">${wuxing}<small>${elementCounts.get(wuxing) ?? 0}</small></button>`;
+  }).join("");
+  const sortButton = must<HTMLButtonElement>("#run-inventory-sort");
+  sortButton.textContent = runInventorySortLabel(runInventorySort);
+  sortButton.title = `정렬 · ${runInventorySortLabel(runInventorySort)} (눌러 전환)`;
   if (engine.state.inventoryTowers.length === 0) {
-    list.innerHTML = '<div class="empty-run-inventory"><b>대기 중인 자령이 없습니다</b><span>설정에서 자동 배치를 끄거나 전장 자령을 보관하세요.</span></div>';
+    list.innerHTML = '<div class="empty-run-inventory"><b>보관 중인 자령이 없습니다</b><span>상점에서 소환하세요</span><button type="button" data-inventory-goto-shop>상점으로</button></div>';
     return;
   }
   const selectedTower = engine.state.inventoryTowers.find((tower) => tower.id === selectedId);
-  list.innerHTML = [...grouped.values()].sort((left, right) => {
-    const leftCandidate = left.some((tower) => cleanupAssessments.get(tower.id)?.protected === false) ? 0 : 1;
-    const rightCandidate = right.some((tower) => cleanupAssessments.get(tower.id)?.protected === false) ? 0 : 1;
-    return leftCandidate - rightCandidate || right.length - left.length || left[0]!.char.localeCompare(right[0]!.char);
+  const visible = [...grouped.values()].filter((stack) => runInventoryElementFilter === null || stack[0]!.wuxing === runInventoryElementFilter);
+  if (visible.length === 0) {
+    list.innerHTML = `<div class="empty-run-inventory"><b>${runInventoryElementFilter}행 자령이 없습니다</b><span>오행 칩을 다시 눌러 전체를 보세요</span></div>`;
+    return;
+  }
+  const rank = (stack: Tower[]): number => Math.max(...stack.map((tower) => tower.id));
+  const grade = (tower: Tower): number => (engine.state.mode === "casual" ? casualStarOf(tower) : tower.stage);
+  list.innerHTML = visible.sort((left, right) => {
+    if (runInventorySort === "element") {
+      const gap = WUXING_ORDER.indexOf(left[0]!.wuxing) - WUXING_ORDER.indexOf(right[0]!.wuxing);
+      if (gap !== 0) return gap;
+    } else if (runInventorySort === "star") {
+      const gap = grade(right[0]!) - grade(left[0]!);
+      if (gap !== 0) return gap;
+    }
+    return rank(right) - rank(left);
   }).map((stack) => {
     const tower = selectedTower && stack.some((candidate) => candidate.id === selectedTower.id) ? selectedTower : stack.find((candidate) => !candidate.locked) ?? stack[0]!;
     const visual = jaryeongVisualFor(tower.char, tower.wuxing, engine.state.region);
@@ -3739,11 +3802,15 @@ function renderRunInventory(): void {
     const star = casualStarOf(tower);
     const progression = engine.state.mode === "casual" ? `${star}★ ${CASUAL_STAR_NAMES[star]}` : STAGE_NAMES[tower.stage];
     const skill = engine.towerHasActiveSkills(tower) ? definitionForTower(engine.catalog, tower.definitionId).combat.abilities.semantic.name : engine.state.mode === "casual" ? "기본 공격·2★ 해금" : "기본 공격·합성 재료";
-    return `<button class="run-inventory-card ${selected ? "is-selected" : ""} ${candidates > 0 ? "is-cleanup-candidate" : "is-protected-stack"}" type="button" data-run-inventory-id="${tower.id}" style="--inventory-element:${ELEMENT_STYLES[tower.wuxing].color};--inventory-star:${engine.state.mode === "casual" ? CASUAL_STAR_COLORS[star] : STAGE_COLORS[tower.stage]}">
+    const detail = `${tower.char} ${learning.short} · ${tower.wuxing}행 · ${progression} · ${skill}${concentration > 0 ? ` · 농축 ${concentration}` : ""} · 보관 ${stack.length}기`;
+    return `<button class="run-inventory-card ${selected ? "is-selected" : ""} ${candidates > 0 ? "is-cleanup-candidate" : "is-protected-stack"}" type="button" data-run-inventory-id="${tower.id}" title="${escapeHtml(detail)}" aria-label="${escapeHtml(detail)}" style="--inventory-element:${ELEMENT_STYLES[tower.wuxing].color};--inventory-star:${engine.state.mode === "casual" ? CASUAL_STAR_COLORS[star] : STAGE_COLORS[tower.stage]}">
       <span class="run-inventory-spirit" style="${visualBackgroundStyle(visual)}" aria-hidden="true"></span>
       <b>${tower.char}</b>
-      <span><strong>${escapeHtml(learning.short)} <i>×${stack.length}</i></strong><small>${progression} · ${skill}${concentration > 0 ? ` · 濃 ${concentration}` : ""}</small></span>
-      <em>${selected ? "찬 칸 교체" : candidates > 0 ? `정리 ${candidates}` : "보호"}</em>
+      <span><strong>${escapeHtml(learning.short)}</strong><small>${engine.state.mode === "casual" ? CASUAL_STAR_NAMES[star] : progression}</small></span>
+      <i class="run-inventory-dot" aria-hidden="true">${tower.wuxing}</i>
+      ${stack.length > 1 ? `<mark class="run-inventory-stack">×${stack.length}</mark>` : ""}
+      ${engine.state.mode === "casual" ? `<u class="run-inventory-star">${star}★</u>` : ""}
+      <em>${selected ? "선택됨" : candidates > 0 ? "정리" : "보호"}</em>
     </button>`;
   }).join("");
 }
@@ -6716,14 +6783,38 @@ must<HTMLElement>("#goal-selector-list").addEventListener("click", (event) => {
   }
 });
 must<HTMLElement>("#run-inventory-list").addEventListener("click", (event) => {
-  const id = Number((event.target as HTMLElement).closest<HTMLButtonElement>("[data-run-inventory-id]")?.dataset.runInventoryId);
+  const target = event.target as HTMLElement;
+  if (target.closest("[data-inventory-goto-shop]")) {
+    setPanelTab("shop");
+    return;
+  }
+  const id = Number(target.closest<HTMLButtonElement>("[data-run-inventory-id]")?.dataset.runInventoryId);
   if (!Number.isInteger(id)) return;
   engine.selectTower(id);
   selectedRenderKey = "";
   runInventoryRenderKey = "";
-  showToast("배치할 자령을 선택했습니다. 빈 칸은 배치, 찬 칸은 원자 교체합니다.");
+  // 보관고 프레임은 전장을 덮는다. 고른 즉시 걷어야 다음 클릭이 칸에 닿는다.
+  // 선택 상태는 그대로 남으므로 곧바로 배치할 수 있다(다시 열기 = 인벤 탭).
+  if (openFocusFrame === "inventory") setFocusFrame(null);
+  showToast("전장 빈 칸을 눌러 배치 · 찬 칸은 교체됩니다");
   syncPanel();
 });
+must<HTMLElement>("#run-inventory-layout").addEventListener("click", (event) => {
+  const target = event.target as HTMLElement;
+  const element = target.closest<HTMLButtonElement>("[data-inventory-element]")?.dataset.inventoryElement as Wuxing | undefined;
+  if (element) {
+    runInventoryElementFilter = runInventoryElementFilter === element ? null : element;
+    runInventoryRenderKey = "";
+    renderRunInventory();
+    return;
+  }
+  if (target.closest("#run-inventory-sort")) {
+    runInventorySort = RUN_INVENTORY_SORTS[(RUN_INVENTORY_SORTS.indexOf(runInventorySort) + 1) % RUN_INVENTORY_SORTS.length]!;
+    runInventoryRenderKey = "";
+    renderRunInventory();
+  }
+});
+must<HTMLButtonElement>("#run-inventory-frame-open").addEventListener("click", () => setFocusFrame("inventory"));
 must<HTMLButtonElement>("#cleanup-recommended-button").addEventListener("click", () => {
   const candidates = engine.cleanupCandidates(8, true);
   if (candidates.length === 0) return;
