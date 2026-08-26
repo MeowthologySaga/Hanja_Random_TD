@@ -1088,7 +1088,10 @@ function setPanelTab(tab: PanelTab): void {
   document.querySelectorAll<HTMLElement>("[data-panel-view]").forEach((view) => {
     view.classList.toggle("is-active", view.dataset.panelView === tab);
   });
-  document.querySelectorAll<HTMLButtonElement>("[data-panel-tab]").forEach((button) => {
+  // 셸에도 같은 이름의 data 속성을 심어 두기 때문에(테스트 계약) 전수
+  // 셀렉터로 훑으면 <main> 까지 탭으로 오인해 is-active·aria-selected 를
+  // 뒤집어썼다. 탭 줄 안으로 범위를 좁힌다.
+  document.querySelectorAll<HTMLButtonElement>(".panel-tabs [data-panel-tab]").forEach((button) => {
     const selected = button.dataset.panelTab === tab;
     button.classList.toggle("is-active", selected);
     button.setAttribute("aria-selected", String(selected));
@@ -5477,7 +5480,7 @@ must<HTMLButtonElement>("#codex-button").addEventListener("click", () => {
   search.focus();
 });
 must<HTMLButtonElement>("#codex-close").addEventListener("click", () => codexDialog.close());
-document.querySelectorAll<HTMLButtonElement>("[data-panel-tab]").forEach((button) => {
+document.querySelectorAll<HTMLButtonElement>(".panel-tabs [data-panel-tab]").forEach((button) => {
   button.addEventListener("click", () => setPanelTab(button.dataset.panelTab as PanelTab));
 });
 document.querySelectorAll<HTMLButtonElement>("[data-goal-mode]").forEach((button) => {
