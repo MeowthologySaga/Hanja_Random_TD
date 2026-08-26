@@ -45,6 +45,24 @@ export interface PreloadProgress {
 // ── 매니페스트 ────────────────────────────────────────────────────
 // 경로는 `import.meta.env.BASE_URL` 기준 상대다. 순서 = 우선순위.
 
+/**
+ * 조작물 기본 상태 스킨.
+ *
+ * 3D 에서는 서갈피·인장·걸쇠·쪽지 모델에 crop 해 입히고, 2D 에서는 같은 파일이
+ * 그대로 `.s00-skin` CSS 배경이 된다. 어느 쪽이든 없으면 버튼이 민 상자로
+ * 보이므로 두 모드 공통 P1 이다. hover·pressed 는 실제로 가리키기 전에는
+ * 보이지 않으므로 P2 로 미룬다.
+ */
+const P1_CONTROL_SKINS: readonly string[] = [
+  "assets/ui/main-menu-b/ui/mode-bookmark-default-v1.png",
+  "assets/ui/main-menu-b/ui/mode-bookmark-selected-v1.png",
+  "assets/ui/main-menu-b/ui/region-seal-default-v1.png",
+  "assets/ui/main-menu-b/ui/region-seal-selected-kr-v1.png",
+  "assets/ui/main-menu-b/ui/start-clasp-default-v1.png",
+  "assets/ui/main-menu-b/ui/selection-summary-strip-v1.png",
+  "assets/ui/main-menu-b/ui/custom-note-default-v1.png"
+];
+
 /** S00 3D 서재. 한 장이라도 빠지면 그 면만 절차 재질로 남아 눈에 띈다. */
 const P1_S00_3D: readonly string[] = [
   "assets/ui/s00-3d/book-page-left-v1.png",
@@ -64,16 +82,7 @@ const P1_S00_3D: readonly string[] = [
   "assets/ui/main-menu-b/jaryeongs/menu-earth-pottery-frame-v1.png",
   "assets/ui/main-menu-b/jaryeongs/menu-water-ice-frame-v1.png",
   "assets/ui/main-menu-b/jaryeongs/menu-fire-fox-frame-v1.png",
-  "assets/ui/main-menu-b/jaryeongs/menu-metal-mirror-frame-v1.png",
-  // 3D 조작물의 기본 상태 스킨. hover·pressed 는 실제로 가리키기 전에는
-  // 보이지 않으므로 P2 로 미룬다.
-  "assets/ui/main-menu-b/ui/mode-bookmark-default-v1.png",
-  "assets/ui/main-menu-b/ui/mode-bookmark-selected-v1.png",
-  "assets/ui/main-menu-b/ui/region-seal-default-v1.png",
-  "assets/ui/main-menu-b/ui/region-seal-selected-kr-v1.png",
-  "assets/ui/main-menu-b/ui/start-clasp-default-v1.png",
-  "assets/ui/main-menu-b/ui/selection-summary-strip-v1.png",
-  "assets/ui/main-menu-b/ui/custom-note-default-v1.png"
+  "assets/ui/main-menu-b/jaryeongs/menu-metal-mirror-frame-v1.png"
 ];
 
 /**
@@ -339,7 +348,8 @@ async function run(paths: readonly string[], onProgress?: (progress: PreloadProg
 // ── P1 부팅 게이트 ────────────────────────────────────────────────
 
 export function p1Manifest(mode: S00Mode): readonly string[] {
-  return mode === "3d" ? [...P1_S00_3D, ...P1_COMMON] : [...P1_S00_2D, ...P1_COMMON];
+  const stage = mode === "3d" ? P1_S00_3D : P1_S00_2D;
+  return [...stage, ...P1_CONTROL_SKINS, ...P1_COMMON];
 }
 
 /**
