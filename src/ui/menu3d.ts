@@ -29,6 +29,7 @@ import {
   PerspectiveCamera,
   PlaneGeometry,
   PointLight,
+  RepeatWrapping,
   Scene,
   SpotLight,
   Sprite,
@@ -235,6 +236,58 @@ export function startMenu3d(host: HTMLElement): Menu3dHandle {
     return texture;
   };
 
+  const loader = new TextureLoader();
+
+  // ══════════════════════════════════════════════════════════════
+  //  s00-3d-texture-pack-v1 — 절차 재질을 실물 텍스처로 교체
+  //  출처: handoff/to-claude/s00-3d-texture-pack-v1/assets/
+  //  설치: public/assets/ui/s00-3d/
+  //
+  //  albedo 전용 RGB 8장이다. 정상맵으로 오인할 조명을 더 굽지 않는다.
+  //  좌표·카메라·먹 고리 baking·DOM 앵커는 이 팩의 영향을 받지 않는다.
+  // ══════════════════════════════════════════════════════════════
+  const S00_TEXTURE = (file: string): string => `${import.meta.env.BASE_URL}assets/ui/s00-3d/${file}`;
+
+  interface TextureApplyOptions {
+    /** 로드 성공했을 때만 덮어쓸 재질 값. 실패하면 절차 재질 설정이 남는다. */
+    readonly material?: Partial<Pick<MeshStandardMaterial, "roughness" | "metalness" | "color">>;
+    /**
+     * 같은 텍스처를 자체 발광으로도 물린다. 뒷벽처럼 키라이트가 닿지 않는
+     * 배경이 완전히 검게 죽지 않도록 "저광량"으로만 쓴다.
+     */
+    readonly selfLit?: number;
+    readonly configure?: (texture: Texture) => void;
+  }
+
+  /**
+   * 텍스처가 실제로 도착했을 때만 재질을 교체한다. 한 장이 실패해도 나머지
+   * 성공분은 그대로 붙고, 해당 재질만 절차 생성본으로 남아 화면 진입을 막지
+   * 않는다. 오류는 파일당 한 번만 기록한다.
+   */
+  function applyTexture(material: MeshStandardMaterial, file: string, options: TextureApplyOptions = {}): void {
+    loader.load(
+      S00_TEXTURE(file),
+      (texture) => {
+        texture.colorSpace = SRGBColorSpace;
+        sharpen(texture);
+        options.configure?.(texture);
+        texture.needsUpdate = true;
+        material.map = texture;
+        if (options.material?.roughness !== undefined) material.roughness = options.material.roughness;
+        if (options.material?.metalness !== undefined) material.metalness = options.material.metalness;
+        if (options.material?.color !== undefined) material.color.copy(options.material.color);
+        if (options.selfLit !== undefined) {
+          material.emissiveMap = texture;
+          material.emissive.setHex(0xffffff);
+          material.emissiveIntensity = options.selfLit;
+        }
+        material.needsUpdate = true;
+      },
+      undefined,
+      () => console.warn(`[menu3d] 텍스처 로드 실패, 절차 재질 유지: ${file}`)
+    );
+  }
+
   const scene = new Scene();
   const camera = new PerspectiveCamera(33, 1280 / 720, 0.1, 60);
   const CAMERA_HOME = new Vector3(0, 7.1, 9.55);
@@ -276,7 +329,12 @@ export function startMenu3d(host: HTMLElement): Menu3dHandle {
   }
   const wallTexture = sharpen(new CanvasTexture(wallCanvas));
   wallTexture.colorSpace = SRGBColorSpace;
-  const wall = new Mesh(new PlaneGeometry(64, 28), new MeshStandardMaterial({ map: wallTexture, roughness: 1 }));
+  const wallMaterial = new MeshStandardMaterial({ map: wallTexture, roughness: 1 });
+  // 뒷벽에는 키라이트가 닿지 않아 albedo 만으로는 검게 죽는다. 같은 텍스처를
+  // 낮은 자체 발광으로 물려 서재가 "흐릿하게" 보이게 하되, 책·자령보다
+  // 선명해지지 않도록 세기를 0.4 로 묶는다.
+  applyTexture(wallMaterial, "study-backdrop-v1.png", { material: { roughness: 1, metalness: 0 }, selfLit: 0.4 });
+  const wall = new Mesh(new PlaneGeometry(64, 28), wallMaterial);
   wall.position.set(0, 8, -12);
   scene.add(wall);
 
@@ -306,7 +364,9 @@ export function startMenu3d(host: HTMLElement): Menu3dHandle {
   }
   const deskTexture = sharpen(new CanvasTexture(deskCanvas));
   deskTexture.colorSpace = SRGBColorSpace;
-  const desk = new Mesh(new PlaneGeometry(34, 22), new MeshStandardMaterial({ map: deskTexture, roughness: 0.72, metalness: 0.12 }));
+  const deskMaterial = new MeshStandardMaterial({ map: deskTexture, roughness: 0.72, metalness: 0.12 });
+  applyTexture(deskMaterial, "desk-wood-v1.png", { material: { roughness: 0.68, metalness: 0 } });
+  const desk = new Mesh(new PlaneGeometry(34, 22), deskMaterial);
   desk.rotation.x = -Math.PI / 2;
   desk.position.y = -0.72;
   desk.receiveShadow = true;
@@ -315,11 +375,12 @@ export function startMenu3d(host: HTMLElement): Menu3dHandle {
   // ── 책 ──
   const book = new Group();
   const leather = sharpen(leatherTexture());
+  // 서갈피 판의 측면 띠. 소품 아틀라스가 도착하면 비단으로 갈린다(아래 참조).
+  const bookmarkSide = new MeshStandardMaterial({ map: leather, roughness: 0.62 });
 
-  const cover = new Mesh(
-    new BoxGeometry(10.4, 0.22, 5.9),
-    new MeshStandardMaterial({ map: leather, roughness: 0.58, metalness: 0.14 })
-  );
+  const coverMaterial = new MeshStandardMaterial({ map: leather, roughness: 0.58, metalness: 0.14 });
+  applyTexture(coverMaterial, "book-cover-leather-v1.png", { material: { roughness: 0.72, metalness: 0.04 } });
+  const cover = new Mesh(new BoxGeometry(10.4, 0.22, 5.9), coverMaterial);
   cover.position.y = -0.58;
   cover.receiveShadow = true;
   book.add(cover);
@@ -331,10 +392,9 @@ export function startMenu3d(host: HTMLElement): Menu3dHandle {
     book.add(corner);
   }
 
-  const spine = new Mesh(
-    new CylinderGeometry(0.34, 0.34, 5.8, 18, 1, false, 0, Math.PI),
-    new MeshStandardMaterial({ map: leather, roughness: 0.6 })
-  );
+  const spineMaterial = new MeshStandardMaterial({ map: leather, roughness: 0.6 });
+  applyTexture(spineMaterial, "book-spine-v1.png", { material: { roughness: 0.66, metalness: 0.05 } });
+  const spine = new Mesh(new CylinderGeometry(0.34, 0.34, 5.8, 18, 1, false, 0, Math.PI), spineMaterial);
   spine.rotation.x = Math.PI / 2;
   spine.rotation.y = Math.PI / 2;
   spine.position.set(0, -0.52, 0);
@@ -342,6 +402,15 @@ export function startMenu3d(host: HTMLElement): Menu3dHandle {
 
   const edge = sharpen(pageEdgeTexture());
   const edgeMaterial = new MeshStandardMaterial({ map: edge, roughness: 0.9 });
+  // 512x128 은 4:1 이고 블록 옆면은 5.15:0.62 ≈ 8:1 이라 가로로 두 번 반복해야
+  // 종이 층이 늘어지지 않는다. 세로는 Clamp 로 두어 위아래가 이어지지 않게 한다.
+  applyTexture(edgeMaterial, "book-page-edge-v1.png", {
+    material: { roughness: 0.92, metalness: 0 },
+    configure: (texture) => {
+      texture.wrapS = RepeatWrapping;
+      texture.repeat.set(2, 1);
+    }
+  });
   const blockTopMaterial = new MeshStandardMaterial({ color: 0xdccfa8, roughness: 0.95 });
   for (const side of [-1, 1] as const) {
     const block = new Mesh(
@@ -354,7 +423,6 @@ export function startMenu3d(host: HTMLElement): Menu3dHandle {
     book.add(block);
   }
 
-  const loader = new TextureLoader();
   const pageCanvases: Record<"left" | "right", HTMLCanvasElement> = {
     left: document.createElement("canvas"),
     right: document.createElement("canvas")
@@ -387,10 +455,14 @@ export function startMenu3d(host: HTMLElement): Menu3dHandle {
   }
 
   for (const side of [-1, 1] as const) {
-    const page = new Mesh(
-      curvedPage(side === -1 ? 1 : -1),
-      new MeshStandardMaterial({ map: pageTextures[side === -1 ? "left" : "right"], roughness: 0.95 })
-    );
+    const sideName = side === -1 ? "left" : "right";
+    const pageMaterial = new MeshStandardMaterial({ map: pageTextures[sideName], roughness: 0.95 });
+    // 페이지 괘선·얼룩은 재질 디테일일 뿐 고리 좌표가 아니다. 고리는 아래에서
+    // 별도 평면으로 계속 그려지고 UV 를 굽지 않는다.
+    applyTexture(pageMaterial, `book-page-${sideName}-v1.png`, {
+      material: { roughness: 0.88, metalness: 0 }
+    });
+    const page = new Mesh(curvedPage(side === -1 ? 1 : -1), pageMaterial);
     page.rotation.x = -Math.PI / 2;
     page.rotation.z = side * -0.015;
     page.position.set(side * 2.3, 0.08, 0);
@@ -416,11 +488,50 @@ export function startMenu3d(host: HTMLElement): Menu3dHandle {
   }
 
   // ── 책상 소품 ──
+  // 재질은 1024×1024 2×2 아틀라스 한 장에서 사분면으로 나눠 쓴다.
+  // flipY 기본값(true) 기준 v=1 이 이미지 위쪽이므로
+  // 벼루=좌상, 붓대=우상, 비단=좌하, 황동=우하 로 그대로 대응한다.
+  const PROP_QUADRANTS = {
+    inkstone: [0, 0.5],
+    brush: [0.5, 0.5],
+    silk: [0, 0],
+    brass: [0.5, 0]
+  } as const;
+
+  interface PropSkin {
+    readonly material: MeshStandardMaterial;
+    readonly quadrant: keyof typeof PROP_QUADRANTS;
+    readonly roughness: number;
+    readonly metalness: number;
+  }
+
+  /** 아틀라스는 한 번만 받아 사분면별로 clone 한다. 실패하면 전부 절차 재질 유지. */
+  function applyPropAtlas(skins: readonly PropSkin[]): void {
+    loader.load(
+      S00_TEXTURE("desk-props-atlas-v1.png"),
+      (base) => {
+        for (const skin of skins) {
+          const texture = base.clone();
+          texture.colorSpace = SRGBColorSpace;
+          sharpen(texture);
+          const [u, v] = PROP_QUADRANTS[skin.quadrant];
+          texture.offset.set(u, v);
+          texture.repeat.set(0.5, 0.5);
+          texture.needsUpdate = true;
+          skin.material.map = texture;
+          skin.material.roughness = skin.roughness;
+          skin.material.metalness = skin.metalness;
+          skin.material.needsUpdate = true;
+        }
+      },
+      undefined,
+      () => console.warn("[menu3d] 텍스처 로드 실패, 절차 재질 유지: desk-props-atlas-v1.png")
+    );
+  }
+
   const props = new Group();
-  const inkstone = new Mesh(
-    new CylinderGeometry(0.62, 0.72, 0.2, 24),
-    new MeshStandardMaterial({ color: 0x17120d, roughness: 0.4, metalness: 0.2 })
-  );
+  const inkstoneMaterial = new MeshStandardMaterial({ color: 0x17120d, roughness: 0.4, metalness: 0.2 });
+  const inkstone = new Mesh(new CylinderGeometry(0.62, 0.72, 0.2, 24), inkstoneMaterial);
   inkstone.position.set(-6.7, -0.6, 2.4);
   props.add(inkstone);
   const inkPool = new Mesh(
@@ -429,18 +540,14 @@ export function startMenu3d(host: HTMLElement): Menu3dHandle {
   );
   inkPool.position.set(-6.7, -0.49, 2.4);
   props.add(inkPool);
-  const brush = new Mesh(
-    new CylinderGeometry(0.055, 0.075, 2.3, 10),
-    new MeshStandardMaterial({ color: 0x6b4022, roughness: 0.6 })
-  );
+  const brushMaterial = new MeshStandardMaterial({ color: 0x6b4022, roughness: 0.6 });
+  const brush = new Mesh(new CylinderGeometry(0.055, 0.075, 2.3, 10), brushMaterial);
   brush.rotation.z = Math.PI / 2.25;
   brush.rotation.y = 0.4;
   brush.position.set(-6.1, -0.56, 3.4);
   props.add(brush);
-  const scroll = new Mesh(
-    new CylinderGeometry(0.34, 0.34, 3.1, 16),
-    new MeshStandardMaterial({ map: pageTextures.left, roughness: 0.9 })
-  );
+  const scrollMaterial = new MeshStandardMaterial({ map: pageTextures.left, roughness: 0.9 });
+  const scroll = new Mesh(new CylinderGeometry(0.34, 0.34, 3.1, 16), scrollMaterial);
   scroll.rotation.z = Math.PI / 2;
   scroll.rotation.y = -0.35;
   scroll.position.set(6.9, -0.42, 1.4);
@@ -453,6 +560,16 @@ export function startMenu3d(host: HTMLElement): Menu3dHandle {
     knob.position.set(6.9 + end * 1.5, -0.42, 1.4 + end * -0.55);
     props.add(knob);
   }
+  applyPropAtlas([
+    { material: inkstoneMaterial, quadrant: "inkstone", roughness: 0.42, metalness: 0.1 },
+    { material: brushMaterial, quadrant: "brush", roughness: 0.62, metalness: 0 },
+    // 두루마리 몸통에 비단(짙은 남색)을 물리면 등불 아래에서 검은 덩어리로
+    // 읽혀 종이 두루마리라는 사실이 사라진다. 몸통은 종이로 두고, 비단은
+    // 서갈피 옆면(가죽 판의 측면 띠)에 쓴다.
+    { material: bookmarkSide, quadrant: "silk", roughness: 0.74, metalness: 0 },
+    { material: scrollKnob, quadrant: "brass", roughness: 0.42, metalness: 0.62 },
+    { material: cornerMaterial, quadrant: "brass", roughness: 0.38, metalness: 0.66 }
+  ]);
   scene.add(props);
 
   // ── 자령 빌보드 ──
@@ -523,7 +640,6 @@ export function startMenu3d(host: HTMLElement): Menu3dHandle {
     hover: croppedTexture("ui/mode-bookmark-hover-v1.png"),
     selected: croppedTexture("ui/mode-bookmark-selected-v1.png")
   };
-  const bookmarkSide = new MeshStandardMaterial({ map: leather, roughness: 0.62 });
   // 서갈피: 왼쪽 페이지 블록 층 사이에서 삐져나온 가죽 판.
   // 위 갈피는 위층(-0.10), 아래 갈피는 아래층(-0.30)에 끼워 층이 읽히게 한다.
   const bookmarkSpecs = [
