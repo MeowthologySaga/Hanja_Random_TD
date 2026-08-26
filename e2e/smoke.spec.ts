@@ -1383,3 +1383,65 @@ test("keeps every wave briefing inside the two-line clamp", async ({ page }) => 
   // 그래도 잘리는 날을 대비한 안전망: 전문이 title 로 남는다.
   await expect(page.locator("#wave-briefing")).toHaveAttribute("title", /.+/u);
 });
+
+/** 도감 목록 카드의 뜻 요약: 한 줄 말줄임(87.8% 잘림)이던 것을 두 줄로 폈다. */
+test("unfolds codex list summaries to two lines without growing the card", async ({ page }) => {
+  await page.goto("/?seed=TRACK-N-CODEX&mode=casual");
+  await page.getByTestId("start-run").click();
+  await openCodex(page);
+  await expect(page.locator(".codex-jaryeong-card").first()).toBeVisible();
+
+  const summary = await page.$$eval(".codex-list .codex-jaryeong-category", (nodes) => {
+    const style = getComputedStyle(nodes[0] as HTMLElement);
+    const clipped = nodes.filter((node) => (node as HTMLElement).scrollHeight - (node as HTMLElement).clientHeight > 1).length;
+    return { total: nodes.length, clipped, clamp: style.webkitLineClamp, whiteSpace: style.whiteSpace };
+  });
+  expect(summary.clamp).toBe("2");
+  expect(summary.whiteSpace).toBe("normal");
+  // 한 줄 시절 실측 잘림률은 87.8%(879/1001). 두 줄이면 21% 대로 내려간다.
+  expect(summary.clipped / summary.total).toBeLessThan(0.3);
+  // 두 줄은 카드 안에 이미 있던 여백에서 나온다 — 카드가 커지면 실패다.
+  const cards = await page.$$eval(".codex-jaryeong-card", (nodes) => {
+    const heights = nodes.slice(0, 200).map((node) => Math.round(node.getBoundingClientRect().height));
+    const copyOverflow = nodes.slice(0, 200).map((node) => {
+      const copy = node.querySelector(".codex-jaryeong-copy") as HTMLElement;
+      return copy.scrollHeight - copy.clientHeight;
+    });
+    return { max: Math.max(...heights), copyOverflowMax: Math.max(...copyOverflow) };
+  });
+  expect(cards.max).toBe(154);
+  expect(cards.copyOverflowMax).toBeLessThanOrEqual(0);
+  // 남는 21% 는 title 이 받는다.
+  await expect(page.locator(".codex-list .codex-jaryeong-category").first()).toHaveAttribute("title", /.+/u);
+  await page.screenshot({ path: "artifacts/track-n-codex-summary-1280x720.png" });
+});
+
+/** 능력 알약 칩: 글자 자리 65px 3열에서 126px 2열로. 넘침이 0 이 되어야 한다. */
+test("gives ability pills a text column wide enough to read", async ({ page }) => {
+  await page.goto("/?seed=TRACK-N-ABILITY&mode=casual");
+  await page.getByTestId("start-run").click();
+  for (let index = 0; index < 3; index += 1) {
+    await page.getByTestId("summon-button").click();
+    await page.locator("#summon-reveal-close").click();
+  }
+  await openUnit(page);
+  await expect(page.locator(".ability-pills .ability-card").first()).toBeVisible();
+
+  const pills = await page.$$eval(".ability-pills .ability-card", (nodes) => nodes.map((node) => {
+    const label = node.querySelector("em") as HTMLElement;
+    const summary = node.querySelector("small") as HTMLElement;
+    return {
+      labelOverflow: label.scrollWidth - label.clientWidth,
+      summaryOverflow: summary.scrollHeight - summary.clientHeight,
+      textWidth: summary.clientWidth
+    };
+  }));
+  expect(pills.length).toBeGreaterThan(0);
+  // 65px 시절에는 분류 라벨이 예외 없이 32px 넘쳤고 요약도 전부 잘렸다.
+  for (const pill of pills) {
+    expect(pill.textWidth).toBeGreaterThan(100);
+    expect(pill.labelOverflow).toBeLessThanOrEqual(1);
+    expect(pill.summaryOverflow).toBeLessThanOrEqual(1);
+  }
+  await page.screenshot({ path: "artifacts/track-n-ability-pills-1280x720.png" });
+});
