@@ -9,6 +9,7 @@ import { ctx, must } from "../app-context";
 import { summonAndFocus, summonIdiomWishAndFocus } from "../battle/camera";
 import { escapeHtml } from "../format";
 import { showToast } from "../hud";
+import { summonWithTalismanToken } from "./talisman";
 
 /**
  * 상점 소환 상품표.
@@ -63,19 +64,22 @@ function summonCardMarkup(options: {
   wide?: boolean;
   testId?: string;
   title: string;
+  /** 부적 무료권 등 카드 우상단 배지. */
+  badge?: string;
 }): string {
   const classes = ["summon-card"];
   if (options.wide) classes.push("summon-card--wide");
   if (!options.affordable) classes.push("summon-card--short");
   const testId = options.testId ? ` data-testid="${options.testId}"` : "";
   const hotkey = options.hotkey ? `<span class="summon-card-key">${options.hotkey}</span>` : "";
+  const badge = options.badge ? `<mark class="summon-card-badge">${escapeHtml(options.badge)}</mark>` : "";
   return `<button type="button" class="${classes.join(" ")}" data-summon-product="${options.key}"${testId}`
     + ` style="--product:${options.tint};--product-icon:url('${SUMMON_ICON_BASE}${options.icon}.png')"`
     + ` title="${escapeHtml(options.title)}" aria-label="${escapeHtml(`${options.label} · ${options.effect} · ${options.price}`)}"`
     + `${options.disabled ? " disabled" : ""}>`
     + `<i class="summon-card-icon" aria-hidden="true"></i>`
     + `<b>${escapeHtml(options.label)}</b><small>${escapeHtml(options.effect)}</small>`
-    + `<em>${escapeHtml(options.price)}</em>${hotkey}</button>`;
+    + `<em>${escapeHtml(options.price)}</em>${hotkey}${badge}</button>`;
 }
 
 export function renderSummonShop(): void {
@@ -101,15 +105,19 @@ export function renderSummonShop(): void {
   // 성어 기원(트랙 F) — 추적 성어의 부족 글자만 부르는 전투력 비연동 상품.
   const wish = ctx.engine.idiomWishQuote();
   const wishChars = wish.pool.map((definition) => definition.char);
+  // 부적 무료권(트랙 C)은 기본 소환 카드에서만 쓴다 — 있으면 가격 대신
+  // "무료"가 서고, 엽전이 모자라도 카드가 눌린다(래퍼가 소환가를 먼저 얹는다).
+  const talismanTokens = ctx.talismanFreeSummonTokens;
   const key = `${state.mode}|${base}|${tenCost}|${multiUnlocked ? "10" : "-"}|${state.gold}|${active ? "on" : "off"}`
-    + `|${multiBand === null ? "-" : multiBand.max}`
+    + `|${multiBand === null ? "-" : multiBand.max}|tt:${talismanTokens}`
     + `|wish:${wish.cost}:${wish.reason ?? wishChars.join("")}`
     + `|${products.map((product) => `${product.intent}:${product.effect}`).join(",")}`;
   if (key === summonShopRenderKey) return;
   summonShopRenderKey = key;
   const cards = products.map((product) => {
     const price = base + SUMMON_SURCHARGE[product.intent];
-    const affordable = state.gold >= price;
+    const freeToken = product.intent === "balanced" && talismanTokens > 0;
+    const affordable = freeToken || state.gold >= price;
     const banded = product.band !== null;
     return summonCardMarkup({
       key: product.intent,
@@ -117,12 +125,14 @@ export function renderSummonShop(): void {
       effect: product.effect,
       tint: product.tint,
       icon: product.icon,
-      price: `${price} 엽전`,
+      price: freeToken ? "무료 1회" : `${price} 엽전`,
       disabled: !active || !affordable,
       affordable: !active || affordable,
       hotkey: product.intent === "balanced" ? "1" : undefined,
       testId: product.intent === "balanced" ? "summon-button" : undefined,
+      badge: freeToken ? `부적 ×${talismanTokens}` : undefined,
       title: `${product.label} · ${product.effect} · ${price}엽전`
+        + (freeToken ? ` · 부적 무료권 ${talismanTokens}장 — 다음 1회 무료` : "")
         + (product.intent === "balanced" ? "" : ` (기본 ${base} + 목적 ${SUMMON_SURCHARGE[product.intent]})`)
         + (banded && product.effect !== product.bandLabel ? ` · ${product.bandLabel}` : "")
         + (banded ? ` · 낮은 별이 더 흔합니다 · ${PAIR_BOOST_NOTE}` : "")
@@ -199,6 +209,8 @@ export function wireShop1(): void {
     const product = card.dataset.summonProduct ?? "balanced";
     if (product === "multi") summonAndFocus(10);
     else if (product === "idiom-wish") summonIdiomWishAndFocus();
+    // 부적 무료권이 있으면 기본 소환은 무료 래퍼를 거친다(트랙 C).
+    else if (product === "balanced" && ctx.talismanFreeSummonTokens > 0) summonWithTalismanToken();
     else summonAndFocus(1, product as SummonIntent);
   });
 }

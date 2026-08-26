@@ -20,11 +20,11 @@ const DEFAULT_MAP_ZOOM_LABEL = "77%";
 // FB4 의 1회성 안내(#hint-layer) 말풍선도 클릭을 받는 표면이라 같은 이유로 사전 차단한다.
 // 첫 방문자 안내는 전용 스펙에서 따로 검증하고, 나머지 스펙은 "안내를 이미 본 사용자"로 시작한다.
 test.beforeEach(async ({ page }, testInfo) => {
-  // 리소스 타이밍 단언(/assets/jaryeongs/ 등)은 크롬 기본 버퍼 250entry 절벽
-  // 위에 서 있었다 — dev 서버는 src/ 모듈 하나가 요청 하나라, 소스 파일이
-  // 하나만 늘어도 250번째 자리의 스프라이트 엔트리가 밀려나 단언이 무너진다
-  // (트랙 A 에서 essence-feedback.ts 1개 추가로 실측 재현). 버퍼를 넉넉히 세운다.
-  await page.addInitScript(() => performance.setResourceTimingBufferSize(4_096));
+  // 자원 프리로드 단언(getEntriesByType("resource"))은 기본 250개 버퍼에 기대고
+  // 있었는데, 이 게임은 부팅만으로 버퍼를 가득 채운다. 개발 모드 요청이 하나만
+  // 늘어도(새 CSS 절 등) 늦게 오는 /assets/jaryeongs/ 항목이 밀려나 단언이
+  // 무너지므로(트랙 A·C 각각 실측 재현), 버퍼를 넉넉히 키워 둔다.
+  await page.addInitScript(() => performance.setResourceTimingBufferSize(8192));
   if (testInfo.tags.includes(ONBOARDING_TAG)) return;
   await page.addInitScript((key) => window.localStorage.setItem(key, "1"), COACH_STORAGE_KEY);
   // 시작 보너스 1회 안내(#early-hint)도 이미 본 것으로 시작한다 — FB4 안내 스펙의

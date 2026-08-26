@@ -1,0 +1,176 @@
+/* ══════════════════════════════════════════════════════════════
+   470. 부적 만들기 (트랙 C · gripe #5) — 「부적」 탭 패널
+   부적지(한지 세로 카드) 위 반투명 글자를 따라 쓰는 학습 모드.
+   설정 토글을 켜야 탭이 생기므로 기본 상태의 화면에는 아무 영향이 없다.
+   성공 인장은 인주(--seal) 어휘를 그대로 쓴다. 맥동류 연출은
+   차분한 화면 게이트(JS 의 ctx.calmScreen + 아래 data 게이트)를 존중한다.
+   ══════════════════════════════════════════════════════════════ */
+
+.talisman-workbench.panel-view.is-active {
+  display: flex !important;
+}
+
+/* 작업 영역(.context-deck 368px)을 넘지 않게 세로 예산을 빠듯이 지킨다 —
+   넘치면 하단 버튼 클릭이 컨테이너를 스크롤시켜 부적지 위가 잘린다(실측). */
+.talisman-workbench {
+  flex-direction: column;
+  gap: 4px;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.talisman-reward-note {
+  margin: 0;
+  color: var(--text-400);
+  font-size: 11px;
+  font-weight: 800;
+  text-align: right;
+}
+
+/* ── 부적지 — 한지 세로 카드 + 인주 겹테 ───────────────────── */
+.talisman-paper {
+  position: relative;
+  align-self: center;
+  width: 200px;
+  height: 264px;
+  flex: 0 0 auto;
+  border: 2px solid rgba(159, 47, 35, 0.6);
+  border-radius: 6px;
+  background:
+    var(--grain),
+    linear-gradient(180deg, var(--hanji-100) 0%, var(--hanji-200) 74%, var(--hanji-300) 100%);
+  box-shadow:
+    inset 0 0 0 5px rgba(247, 240, 221, 0.9),
+    inset 0 0 0 6px rgba(159, 47, 35, 0.38),
+    var(--lift-1);
+}
+
+.talisman-paper canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+#talisman-ink {
+  cursor: crosshair;
+  touch-action: none;
+  user-select: none;
+}
+
+/* 성공 후 먹이 더 또렷하게 굳는다(알파 중첩과 함께 2단 강조). */
+#talisman-ink.is-sealed {
+  filter: contrast(1.2);
+}
+
+/* ── 주홍 인장 — 기존 인주 인장 어휘 재사용 ────────────────── */
+.talisman-seal {
+  position: absolute;
+  right: 11px;
+  bottom: 11px;
+  display: grid;
+  width: 48px;
+  height: 48px;
+  place-items: center;
+  border: 2px solid rgba(122, 25, 16, 0.65);
+  border-radius: 10px;
+  background: radial-gradient(circle at 38% 32%, #b8453a, var(--seal) 68%);
+  box-shadow: 0 2px 10px rgba(90, 20, 12, 0.4), inset 0 0 0 2px rgba(255, 236, 214, 0.35);
+  transform: rotate(-7deg);
+  pointer-events: none;
+}
+
+/* display:grid 가 UA 의 [hidden] 규칙을 이겨 버리므로 명시로 되돌린다. */
+.talisman-seal[hidden] {
+  display: none;
+}
+
+.talisman-seal i {
+  color: #ffeedd;
+  font-family: "Batang", "Malgun Gothic", serif;
+  font-size: 28px;
+  font-style: normal;
+  font-weight: 900;
+  text-shadow: 0 1px 2px rgba(90, 20, 12, 0.6);
+}
+
+.talisman-seal.is-stamped {
+  animation: talisman-stamp 0.45s cubic-bezier(0.2, 1.6, 0.4, 1) both;
+}
+
+@keyframes talisman-stamp {
+  0% { opacity: 0; transform: rotate(-7deg) scale(1.9); }
+  62% { opacity: 1; transform: rotate(-7deg) scale(0.92); }
+  100% { opacity: 1; transform: rotate(-7deg) scale(1); }
+}
+
+/* 차분한 화면·OS 동작 줄이기 — 도장은 애니메이션 없이 그냥 놓인다. */
+.game-shell[data-calm-screen="1"] .talisman-seal.is-stamped {
+  animation: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .talisman-seal.is-stamped {
+    animation: none;
+  }
+}
+
+/* ── 훈음 띠(부적지 위 병기)·상태+행동 바닥줄 ──────────────── */
+.talisman-reading {
+  position: absolute;
+  top: 7px;
+  left: 8px;
+  right: 8px;
+  z-index: 1;
+  margin: 0;
+  overflow: hidden;
+  color: var(--text-200);
+  font-size: 11.5px;
+  font-weight: 900;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.talisman-footer {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.talisman-status {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  color: var(--text-400);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.talisman-status.is-pass {
+  color: var(--gold-500);
+  font-weight: 900;
+}
+
+.talisman-footer .small-button {
+  flex: 0 0 auto;
+  min-width: 64px;
+}
+
+/* ── 상점 기본 소환 카드의 부적 무료권 배지 ────────────────── */
+.summon-card-badge {
+  position: absolute;
+  top: 2px;
+  right: 3px;
+  padding: 1px 5px;
+  color: var(--dan-hobun);
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  border-radius: 999px;
+  background: var(--seal);
+  box-shadow: 0 1px 3px rgba(90, 20, 12, 0.4);
+}

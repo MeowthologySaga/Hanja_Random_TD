@@ -136,8 +136,9 @@ export const runInventoryBulkSelection = new Set<number>();
 export const lastAbilityFxByTower = new Map<number, number>();
 
 /* 기록 탭은 gripe #4 확정으로 완전히 걷어냈다 — 능력 발동은 전장 말풍선
-   (showTowerAbilityPopup)이, 상시 메시지는 패널 푸터가 대신한다. 탭은 8개다. */
-export type PanelTab = "shop" | "unit" | "inventory" | "evolution" | "concentration" | "growth" | "goal" | "idiom";
+   (showTowerAbilityPopup)이, 상시 메시지는 패널 푸터가 대신한다. 기본 8탭이고
+   부적 탭(학습 모드 설정)이 켜지면 동적으로 9번째가 선다. */
+export type PanelTab = "shop" | "unit" | "inventory" | "evolution" | "concentration" | "growth" | "goal" | "idiom" | "talisman";
 
 export type CodexMode = "hanzi" | "recipes" | "idioms";
 
@@ -180,6 +181,16 @@ export const CALM_SCREEN_STORAGE_KEY = "hanja-td:calm-screen";
  * 따로 확인 창을 세우지는 않는다.
  */
 export const DISMANTLE_UNIQUE_STORAGE_KEY = "hanja-td:dismantle-protect-unique";
+
+/*
+ * 학습 모드 · 부적 만들기 (트랙 C).
+ *
+ * 설정에서 켜야 「부적」 탭이 나타나는 선택 기능이다. 켬/끔은 브라우저에
+ * 저장하고, 무료 소환권은 코어 무수정 원칙에 따라 UI 층(ctx)에만 든다 —
+ * 상점 기본 소환 카드가 배지로 읽고, 사용 시 소환가만큼 엽전을 먼저 얹은 뒤
+ * 즉시 소환하는 래퍼(panels/talisman.ts)가 소비한다.
+ */
+export const TALISMAN_MODE_STORAGE_KEY = "hanja-td:talisman-mode";
 
 export const MIN_MAP_ZOOM = 0.72;
 
@@ -330,6 +341,16 @@ class AppContext {
   })();
   /** FB6: 실효값(설정 > OS). settings.ts 의 applyCalmScreen 이 갱신한다. */
   calmScreen = this.calmScreenChoice ?? reducedMotion;
+  /** 부적 만들기 토글(설정 저장). 켜면 「부적」 탭이 탭바에 나타난다. */
+  talismanMode = ((): boolean => {
+    try {
+      return window.localStorage.getItem(TALISMAN_MODE_STORAGE_KEY) === "true";
+    } catch {
+      return false;
+    }
+  })();
+  /** 부적 보상으로 얻은 기본 소환 무료권. 코어 무수정 — UI 층에서만 산다. */
+  talismanFreeSummonTokens = 0;
   mapZoom = DEFAULT_MAP_ZOOM;
   mapOffset: Point = defaultMapOffset();
   /** 휠 확대·축소 1회 또는 팬 1회마다 오른다. 코치 2단계 자동 진행의 근거. */
