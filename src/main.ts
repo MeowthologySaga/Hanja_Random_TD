@@ -1122,6 +1122,8 @@ function mountFocusFrames(): void {
 
 function setFocusFrame(id: FocusFrameId | null): void {
   openFocusFrame = id;
+  // 1회성 안내 말풍선(z 22)이 프레임(z 20) 위로 뜨지 않게 먼저 걷는다.
+  if (id !== null) hideEarlyHint();
   for (const mount of FOCUS_FRAME_MOUNTS) {
     const frame = must<HTMLElement>(`#${mount.id}-frame`);
     const open = mount.id === id;
