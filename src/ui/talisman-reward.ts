@@ -231,8 +231,9 @@ export function playTalismanRewardVisit(
   shell.append(visit);
   window.setTimeout(() => visit.remove(), VISIT_MS + 80);
 
-  // 보상은 자령 발치에서 튀어나온다.
-  const feet: ShellPoint = { x: center.x, y: center.y + 44 };
+  // 보상은 자령 발치에서 튀어나온다 — 초상(84px)과 이름표 아래다. 차분한
+  // 화면에서는 꾸러미가 제자리에 머무르므로 이 여유가 없으면 이름표를 덮는다.
+  const feet: ShellPoint = { x: center.x, y: center.y + 68 };
   grants.forEach((grant, index) => spawnGift(grant, feet, index, calm));
 
   const goldGrant = grants.find((grant) => grant.kind === "gold");
