@@ -17,6 +17,7 @@ import { SoundManager } from "./audio";
 import { buildSynthesisDepths, buildUncombinableStageOneChars, type SynthesisTierFilter } from "./codex-synthesis";
 import { type DisplayMode, loadDisplayMode } from "./display-mode";
 import { type IdiomOrder } from "./idiom-sprites";
+import { loadNotationPreference } from "./notation-preference";
 import { initStage } from "./stage";
 import { loadAutoPlaceSummons } from "./summon-placement";
 import { appShellHtml } from "./templates";
@@ -37,6 +38,12 @@ if (!app) throw new Error("#app element is missing.");
 export const s00Mode: S00Mode = new URLSearchParams(window.location.search).get("menu3d") === "0" ? "2d" : "3d";
 
 export const initialDisplayMode = loadDisplayMode();
+
+/**
+ * 지난 판에서 고른 읽기 표기(gripe #6). 고른 적 없으면 null 이고, 그때
+ * 표기는 로스터의 자국 표기를 따라간다 — 현행 화면 그대로.
+ */
+export const initialNotation = loadNotationPreference();
 
 const initialAutoPlaceSummons = loadAutoPlaceSummons();
 
@@ -252,14 +259,15 @@ class AppContext {
   pendingRegion: RegionCode | null = null;
   /**
    * 읽기 표기 축의 명시적 선택(gripe #6). null = 자동(로스터의 자국 표기).
-   * NOTATION_AXIS_READY=false 동안 S13 표기 그룹이 숨어 있어 null 에서
-   * 벗어날 수 없다 — 그래서 현행 동작이 보장된다.
+   *
+   * 저장소에 아무것도 없으면 계속 null 이라, 한 번도 고른 적 없는 사람은
+   * 표기 축이 열린 뒤에도 로스터 자국 표기 그대로다 — 무변경의 출발점.
    */
-  selectedNotation: NotationCode | null = null;
+  selectedNotation: NotationCode | null = initialNotation;
   formationUnlockHintShown = false;
   selectedGameMode: GameMode = modeParam === "standard" ? "standard" : modeParam === "casual" ? "casual" : "casual";
   displayMode: DisplayMode = initialDisplayMode;
-  engine = new GameEngine(initialSeed, this.selectedRegion, this.selectedGameMode);
+  engine = new GameEngine(initialSeed, this.selectedRegion, this.selectedGameMode, initialNotation ? { notation: initialNotation } : {});
   mapSynthesisDepths = buildSynthesisDepths(this.engine.catalog.definitions.values());
   mapUncombinableStageOne = buildUncombinableStageOneChars(this.engine.catalog.definitions.values());
   previousPhase: RunPhase = "title";

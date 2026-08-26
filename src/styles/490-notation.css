@@ -19,6 +19,18 @@
   letter-spacing: 0.02em;
 }
 
+/* 표를 받는 동안 — 반쯤 채워진 라벨이 스치지 않도록 버튼을 잠근다. */
+.s13-notation-group.is-loading .s13-options {
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+.s13-notation-group.is-loading .s13-group-label::after {
+  content: " · 자료 받는 중";
+  font-weight: 400;
+  opacity: 0.7;
+}
+
 /* 표기 그룹 아래 한 줄 안내 — 무엇을 고르는 축인지 먼저 말한다. */
 .s13-group-note {
   grid-column: 1 / -1;

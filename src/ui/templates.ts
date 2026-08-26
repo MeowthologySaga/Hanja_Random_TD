@@ -568,8 +568,9 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
             </div>
           </div>
 
-          <!-- gripe #6: 범위와 독립인 읽기 표기 축. 통합 표기 테이블(요청서 v8)
-               도착 전에는 NOTATION_AXIS_READY=false 로 숨긴다 — 플래그만 켜면 열린다. -->
+          <!-- gripe #6: 범위와 독립인 읽기 표기 축. 통합 표기 테이블 v2 가
+               도착해 NOTATION_AXIS_READY 를 켜면서 열렸다. 위 「한자 범위」가
+               어떤 글자가 나오는지를, 여기는 그 글자를 어떻게 읽는지를 정한다. -->
           <div class="s13-group s13-notation-group" role="radiogroup" aria-label="읽기 표기법" ${NOTATION_AXIS_READY ? "" : "hidden"}>
             <span class="s13-group-label">읽기 표기법</span>
             <div class="s13-options">
@@ -577,6 +578,7 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
               <button type="button" data-s13-notation="jp-onkun" role="radio"><b>${NOTATION_LABELS["jp-onkun"].name}</b><small>${NOTATION_LABELS["jp-onkun"].sample}</small></button>
               <button type="button" data-s13-notation="cn-pinyin" role="radio"><b>${NOTATION_LABELS["cn-pinyin"].name}</b><small>${NOTATION_LABELS["cn-pinyin"].sample}</small></button>
             </div>
+            <p class="s13-group-note">범위가 <b>어떤 글자가 나오는가</b>라면, 표기는 <b>그 글자를 어떻게 읽는가</b>입니다. 둘은 따로 고를 수 있어 중국 3,500자를 한국 훈음으로 익히는 식도 됩니다.<br>고른 표기에 그 글자의 사전 독음이 없으면 <span class="notation-mark notation-mark--derived">정자 기준</span> 또는 <span class="notation-mark notation-mark--substitute">대체 표기</span> 배지를 달아 빌려 온 값임을 밝힙니다.</p>
           </div>
 
           <div class="s13-group" aria-label="읽기 표기">
@@ -785,6 +787,8 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
             <div class="help-cards help-cards--tight">
               <article class="help-card"><b>자령 도감<em><kbd>C</kbd></em></b><span>전체 한자와 천자문 자령을 한 화면에서 봅니다. 별·독립 여부·조합표·쉬운 훈 풀이와 자령 초상화를 함께 확인합니다.</span></article>
               <article class="help-card"><b>자세한 읽기</b><span>선택 카드와 도감에서는 훈음·음독·훈독·병음과 뜻까지 확인합니다.</span></article>
+              <article class="help-card"><b>읽기 표기법</b><span>맞춤 진법에서 <b>한자 범위</b>와 따로 고릅니다. 범위는 어떤 글자가 나오는지를, 표기는 그 글자를 어떻게 읽는지를 정하므로 중국 3,500자를 한국 훈음으로 익히는 조합도 됩니다.</span></article>
+              <article class="help-card"><b>읽기 곁의 배지</b><span><span class="notation-mark notation-mark--derived">정자 기준</span>은 그 자형 대신 정자(옛 글자꼴)의 독음을 쓴다는 뜻이고, <span class="notation-mark notation-mark--substitute">대체 표기</span>는 그 문자권에 읽기가 없어 다른 문자권의 표기를 빌려 왔다는 뜻입니다. 빌려 온 뜻은 원문 그대로라 <i lang="en">기울인 글씨</i>로 갈라 둡니다 — 훈음으로 외우지 마세요.</span></article>
             </div>
           </section>
         </div>

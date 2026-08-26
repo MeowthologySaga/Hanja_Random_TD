@@ -1,13 +1,20 @@
 /*
  * 지역 선택(P00)과 맞춤 진법(S13) 창.
  */
-import { defaultNotationForRegion, NOTATION_AXIS_READY } from "../../core/notation";
+import {
+  defaultNotationForRegion,
+  ensureUnifiedReadings,
+  NOTATION_AXIS_READY,
+  notationNeedsUnifiedTable,
+  unifiedReadingsInstalled
+} from "../../core/notation";
 import { type GameMode, type NotationCode, type RegionCode } from "../../core/types";
 import { type DisplayMode } from "../display-mode";
+import { saveNotationPreference } from "../notation-preference";
 import { saveAutoPlaceSummons } from "../summon-placement";
 import { ctx, must, sound } from "../app-context";
 import { toggleHanjaEmphasis } from "../battle/camera";
-import { handleAction } from "../hud";
+import { handleAction, showToast } from "../hud";
 import { setSelectedGameMode, syncTitleModeSelection } from "../s00-menu";
 import { setDisplayMode, setHoverGlyphLarge, syncAutoPlaceControl } from "./settings";
 
@@ -89,9 +96,53 @@ export function wireS131(): void {
   p00Dialog.addEventListener("click", (event) => {
     if (event.target === p00Dialog) closeP00(false);
   });
+  // 지난 판에서 고른 표기가 교차 조합이면 표를 미리 받아 둔다. 제목 화면에서
+  // 시작하므로 읽기가 화면에 나오기 훨씬 전에 끝나고, 늦더라도 캐시 키만
+  // 비워 두면 게임 루프의 다음 syncPanel 이 새 표기로 다시 그린다.
+  // 고른 적 없는 사람(selectedNotation === null)은 이 바이트를 받지 않는다.
+  if (NOTATION_AXIS_READY && ctx.selectedNotation && notationNeedsUnifiedTable(ctx.selectedRegion, ctx.selectedNotation)) {
+    void ensureUnifiedReadings().then(() => {
+      ctx.selectedRenderKey = "";
+      ctx.goalRenderKey = "";
+      ctx.runInventoryRenderKey = "";
+      ctx.compositionRenderKey = "";
+    });
+  }
 }
 
 const s13Dialog = must<HTMLDialogElement>("#s13-dialog");
+
+/**
+ * 표기 선택을 실제로 갈아 끼운다. (트랙 Q)
+ *
+ * 로스터의 자국 표기가 아니면 통합 표기 테이블이 있어야 글자가 채워진다.
+ * 테이블은 별도 청크라 첫 교차 선택에서 한 번 받아 오고, 받는 동안 버튼을
+ * 잠가 반쯤 채워진 화면이 스치지 않게 한다. 받아 온 뒤에야 표기를 바꾸므로
+ * 라벨은 한 프레임에 전부 새 표기로 갈린다.
+ *
+ * 표기는 화면 설정이라 다음 런을 기다리지 않고 지금 런에 바로 반영한다 —
+ * 고른 것이 눈앞에서 바뀌지 않으면 고른 티가 안 난다.
+ */
+async function applyNotation(notation: NotationCode): Promise<void> {
+  const group = s13Dialog.querySelector<HTMLElement>(".s13-notation-group");
+  if (notationNeedsUnifiedTable(ctx.selectedRegion, notation) && !unifiedReadingsInstalled()) {
+    group?.classList.add("is-loading");
+    const loaded = await ensureUnifiedReadings();
+    group?.classList.remove("is-loading");
+    if (!loaded) {
+      // 표를 못 받으면 교차 표기는 빈칸투성이가 된다 — 고르지 않은 것으로 두고 말한다.
+      showToast("읽기 표기 자료를 불러오지 못했습니다 · 자국 표기를 유지합니다");
+      return;
+    }
+  }
+  ctx.selectedNotation = notation;
+  saveNotationPreference(notation);
+  // 합성 서랍은 표기를 캐시 키에 넣지 않는다 — 비워 두지 않으면 옛 읽기가 남는다.
+  ctx.compositionRenderKey = "";
+  // handleAction 이 나머지 패널 캐시를 비우고 syncPanel 로 한 번에 다시 그린다.
+  handleAction(ctx.engine.setNotation(notation));
+  syncS13();
+}
 
 export function syncS13(): void {
   s13Dialog.querySelectorAll<HTMLButtonElement>("[data-s13-region]").forEach((button) => {
@@ -166,12 +217,11 @@ export function wireS132(): void {
     const notationButton = target.closest<HTMLButtonElement>("[data-s13-notation]");
     if (notationButton) {
       // 플래그가 꺼져 있으면 그룹이 hidden 이라 정상 경로로는 오지 못한다.
-      // 방어적으로 한 번 더 막아 테이블 도착 전 표기 이탈을 봉한다.
+      // 방어적으로 한 번 더 막아 표기 이탈을 봉한다.
       if (!NOTATION_AXIS_READY) return;
       sound.unlock();
-      ctx.selectedNotation = notationButton.dataset.s13Notation as NotationCode;
       sound.playUiConfirm();
-      syncS13();
+      void applyNotation(notationButton.dataset.s13Notation as NotationCode);
       return;
     }
     const displayButton = target.closest<HTMLButtonElement>("[data-s13-display]");
