@@ -138,30 +138,32 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
         </section>
 
         <section id="shop-panel" class="shop-workbench panel-view is-active" data-panel-view="shop" aria-label="자령 상점과 운영 행동">
-          <header class="shop-workbench-heading">
-            <div><span>소환과 운영</span><strong>봉인 상점</strong></div>
-            <p id="summon-pool-summary"><b>천자문 1,000종</b><span>단계별 희귀도 적용</span></p>
-          </header>
-          <section id="opening-guide" class="opening-guide" aria-label="초반 진행 안내">
-            <div data-opening-step="1"><b>① 자령 소환</b><span>첫 자령이 시작 오행을 정합니다.</span></div>
-            <i>→</i>
-            <div data-opening-step="2"><b>② 첫 진 자동 개방</b><span>추가 소환 2기를 권장합니다.</span></div>
-            <i>→</i>
-            <div data-opening-step="3"><b>③ 웨이브 시작</b><span>첫 소환 뒤 준비 15초가 흐릅니다.</span></div>
-          </section>
-          <section class="action-row" aria-label="핵심 행동">
-            <div id="summon-shop" class="summon-shop" role="group" aria-label="소환 상품"></div>
-            <button id="evolve-button" class="action-button action-button--evolve" type="button" data-testid="evolve-button">
-              <span class="hotkey">2</span><b id="evolve-action-label">합성</b><small><em id="evolve-ready-count">0</em><span id="evolve-action-detail">개 조합 확인</span></small>
-            </button>
-            <button id="research-button" class="action-button action-button--research" type="button" data-testid="research-button"
-              title="인연 연구 — 엽전을 들여 목표 재료가 나올 확률을 올립니다. 최고 5단계 (3키)">
-              <span class="hotkey">3</span><b>인연 연구</b><small><em id="research-cost">10W 개방</em> · <i id="research-level">0</i>/5</small>
-            </button>
-            <button id="element-upgrade-button" class="action-button action-button--element-upgrade" type="button" data-testid="element-upgrade-button">
-              <b>강화 탭</b><small id="element-upgrade-total">총 0단계</small>
-            </button>
-          </section>
+          <div id="shop-scroll" class="shop-scroll">
+            <header class="shop-workbench-heading">
+              <div><span>소환과 운영</span><strong>봉인 상점</strong></div>
+              <p id="summon-pool-summary"><b>천자문 1,000종</b><span>단계별 희귀도 적용</span></p>
+            </header>
+            <section id="opening-guide" class="opening-guide" aria-label="초반 진행 안내">
+              <div data-opening-step="1"><b>① 자령 소환</b><span>첫 자령이 시작 오행을 정합니다.</span></div>
+              <i>→</i>
+              <div data-opening-step="2"><b>② 첫 진 자동 개방</b><span>추가 소환 2기를 권장합니다.</span></div>
+              <i>→</i>
+              <div data-opening-step="3"><b>③ 웨이브 시작</b><span>첫 소환 뒤 준비 15초가 흐릅니다.</span></div>
+            </section>
+            <section class="action-row" aria-label="핵심 행동">
+              <div id="summon-shop" class="summon-shop" role="group" aria-label="소환 상품"></div>
+              <button id="evolve-button" class="action-button action-button--evolve" type="button" data-testid="evolve-button">
+                <span class="hotkey">2</span><b id="evolve-action-label">합성</b><small><em id="evolve-ready-count">0</em><span id="evolve-action-detail">개 조합 확인</span></small>
+              </button>
+              <button id="research-button" class="action-button action-button--research" type="button" data-testid="research-button"
+                title="인연 연구 — 엽전을 들여 목표 재료가 나올 확률을 올립니다. 최고 5단계 (3키)">
+                <span class="hotkey">3</span><b>인연 연구</b><small><em id="research-cost">10W 개방</em> · <i id="research-level">0</i>/5</small>
+              </button>
+              <button id="element-upgrade-button" class="action-button action-button--element-upgrade" type="button" data-testid="element-upgrade-button">
+                <b>강화 탭</b><small id="element-upgrade-total">총 0단계</small>
+              </button>
+            </section>
+          </div>
           <div id="shop-pinned" class="shop-pinned">
             <button id="auto-arrange-button" class="action-button action-button--auto-arrange" type="button" data-testid="auto-arrange-button" title="발동 가능한 사자성어를 봉인하고 오행진 공명을 최적화합니다">
               <b>자동배치</b><small>성어·오행 최적화</small>

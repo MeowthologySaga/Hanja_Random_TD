@@ -12645,31 +12645,27 @@ dialog {
 /* ══════════════════════════════════════════════════════════════════
    94. 상점 고정 바 — 자동배치는 이 게임의 핵심 행동
    R5 가 상점을 스크롤로 바꾸면서 자동배치가 화면 밖으로 밀렸다.
-   패널 바닥에 sticky 로 박아 스크롤과 무관하게 항상 보이게 한다.
-   (새 셀렉터 전용이라 R8 고정무대 절과 상호작용 없음 — EOF 추가 허용)
+   [FB1 수정] sticky 부양은 목록 위에 떠서 마지막 카드를 가리는 부작용을
+   낳았다. 이제 #shop-pinned 는 스크롤 영역(#shop-scroll) **밖**의 형제라
+   구조적으로 아무것도 가릴 수 없다 — position/z-index/margin 부양분을
+   걷어내고 정적 하단 바로 눕힌다(2행 구조 본체는 EOF [FB1-1] 절).
    ══════════════════════════════════════════════════════════════════ */
 
 .shop-pinned {
-  position: sticky;
-  bottom: 0;
-  z-index: 3;
-  margin-top: 10px;
-  padding: 7px 2px 3px;
+  flex: 0 0 auto;
+  padding: 6px 2px 2px;
   /* 투명 페이드는 밑으로 지나가는 카드가 비쳐 겹침처럼 보인다 — 불투명 + 먹선 */
   background: #f1e6c9;
   border-top: 1px solid rgba(122, 90, 42, 0.4);
   box-shadow: 0 -7px 12px -8px rgba(46, 32, 14, 0.45);
 }
 
-/* 스크롤러의 자체 하단 패딩만큼 바가 위에 떠서 그 틈으로 내용이 비친다.
-   패딩을 바에 흡수시켜 바닥에 밀착시킨다. */
+/* 바가 패널 바닥 모서리에 밀착하도록 패딩은 바 자신이 흡수한다. */
 #shop-panel.shop-workbench { padding-bottom: 0; }
-
-.shop-pinned { margin-bottom: 0; }
 
 .shop-pinned .action-button--auto-arrange {
   width: 100%;
-  min-height: 44px;
+  min-height: 40px;
   box-shadow:
     inset 0 0 0 1px rgba(122, 90, 42, 0.45),
     0 -4px 10px -6px rgba(46, 32, 14, 0.4);
@@ -12802,21 +12798,10 @@ dialog {
    98. 최종 감사 수술 묶음 (final-audit H1·M2·M3·L2·L5)
    ══════════════════════════════════════════════════════════════════ */
 
-/* H1. 상점: 고정 바 밑에 카드가 "반쯤 잘린 채" 스크롤 단서가 없었다.
-   바 위에 위로 향한 옅은 그림자 띠(스크롤 힌트) + 마지막 내용이 바를
-   지나 올라올 여백. */
-#shop-panel .action-row { padding-bottom: 6px; }
-
-.shop-pinned::before {
-  content: "";
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: -14px;
-  height: 14px;
-  pointer-events: none;
-  background: linear-gradient(180deg, rgba(46, 32, 14, 0) 0%, rgba(46, 32, 14, 0.16) 100%);
-}
+/* H1. [FB1 에서 해소] 고정 바가 카드를 반쯤 가리던 문제는 완화(스크롤
+   힌트 그림자)가 아니라 구조로 풀렸다 — 바가 스크롤 영역 밖으로 나갔고
+   목록은 1280x720 에서 스크롤 없이 다 앉는다(EOF [FB1-1] 절). 가릴 것이
+   없어진 힌트 그림자 띠와 바 밑 여백은 걷어낸다. */
 
 /* M2. 집중 프레임이 열려 있는 동안, 그 프레임을 여는 패널 요약(열기 버튼·
    ①② 안내)은 중복 조작이다 — 프레임과 일치할 때 숨긴다. */
@@ -12862,6 +12847,181 @@ dialog {
 .boss-banner {
   z-index: 22;
 }
+
+/* ══════════════════════════════════════════════════════════════════
+   [FB1-1] 절 100. 상점 2행 재편 — 스크롤 목록 + 바깥 고정 바
+   외부 피드백 FB1 "UI 넘침·짤림" + 사용자 지시 "자동배치 바를 스크롤
+   밖으로". 상점 패널을 [#shop-scroll(flex:1, overflow-y:auto)] +
+   [#shop-pinned(정적 하단 바, 절 94)] 의 2행 구조로 바꾼다 — 바가 목록
+   위에 떠서 카드를 가리는 일이 구조적으로 불가능해진다. 그 위에서 안내
+   3칸·소환 카드·운영 버튼을 압축하고 10연 카드가 낭비하던 반 행을
+   되찾아(panels/shop.ts wide 조건) 1280x720 기준 캐주얼(6상품)·표준
+   (5상품) 모두 스크롤 0 으로 한 화면에 앉힌다. 스크롤이 되살아나는
+   예외 상태에서는 전역 8px 금장 스크롤바가 그대로 보인다.
+   ══════════════════════════════════════════════════════════════════ */
+
+/* R5-1 이 상점 패널 자체에 걸던 스크롤을 되돌린다(패널은 이제 액자다). */
+#shop-panel.shop-workbench {
+  overflow: hidden;
+}
+
+/* 스크롤은 목록 래퍼 한 곳으로만 모은다. */
+#shop-scroll {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+/* R5-1 의 직계(>) 고정 규칙은 래퍼가 끼면서 끊겼다 — 같은 뜻으로 다시. */
+#shop-scroll > .shop-workbench-heading,
+#shop-scroll > .opening-guide,
+#shop-scroll > .action-row { flex: 0 0 auto; }
+
+/* 머리글: styles.css 의 min-height 44 는 실내용(32px)보다 큰 헛키다. */
+#shop-panel .shop-workbench-heading { min-height: 0; }
+#shop-panel .shop-workbench-heading :is(span, strong, b) { line-height: 1.2; }
+#shop-panel .shop-workbench-heading p { gap: 1px; }
+
+/* 초반 안내 3칸: 62 → 46px대. 문구·3단계 구조는 그대로 둔다. */
+#shop-panel .opening-guide { max-height: 52px; padding: 4px 5px; }
+#shop-panel .opening-guide > div { min-height: 28px; gap: 1px; padding: 3px 5px; }
+#shop-panel .opening-guide > div b { font-size: 10.5px !important; line-height: 1.2; }
+#shop-panel .opening-guide > div span { font-size: 9.5px !important; line-height: 1.2; }
+
+/* 소환 카드: 64 → 48px. 이름·효과·가격 3줄과 아이콘은 전부 남긴다.
+   행간을 명시하지 않으면 상속 1.5 행간이 압축분을 도로 먹는다. */
+#shop-panel .summon-card { min-height: 46px; padding: 3px 8px 3px 7px; }
+#shop-panel .summon-card > b { font-size: 12px; line-height: 1.25; }
+#shop-panel .summon-card > small { font-size: 9.5px; line-height: 1.25; }
+#shop-panel .summon-card > em { font-size: 10.5px; line-height: 1.25; margin-top: 0; }
+#shop-panel .summon-card--wide { min-height: 44px; }
+
+/* 운영 3버튼(합성·연구·강화 탭)을 한 행으로 — R5 3행 격자에서 자동배치가
+   빠진 자리를 접는다. 연구·강화 폭(2/6칸)은 이전과 같아 문구 손실이 없다. */
+#shop-panel .action-row { grid-template-rows: auto auto !important; }
+#shop-panel .action-row > .action-button {
+  min-height: 38px;
+  max-height: none;
+  padding-top: 3px;
+  padding-bottom: 3px;
+}
+#shop-panel .action-row > .action-button :is(b, small, em, i, span) { line-height: 1.25; }
+#shop-panel .action-row > .action-button--evolve { grid-column: 1 / span 2; grid-row: 2; }
+#shop-panel .action-row > .action-button--research { grid-column: 3 / span 2; grid-row: 2; }
+#shop-panel .action-row > .action-button--element-upgrade { grid-column: 5 / span 2; grid-row: 2; }
+
+/* 하단 고정 바(절 94)도 같은 행간 예산을 쓴다. */
+.shop-pinned .action-button--auto-arrange :is(b, small) { line-height: 1.25; }
+
+/* ══════════════════════════════════════════════════════════════════
+   [FB1-2] 절 101. 자원 4칸 — 4등분 구운 레일 아트와 가변 칸의 어긋남
+   resource-rail-v1.png 은 같은 폭 4칸(구분선 25·50·75%)을 구워 놓은
+   유물인데, 격자는 repeat(4, 1fr) 이라 첫 칸(엽전)이 내용 폭만큼 자라
+   117px, 나머지가 83px 로 밀린다. 그 결과 구운 칸 경계·밝은 종이 조각이
+   실제 칸 한가운데 얹혀 "적 한계 뒤 흰 서류 탭", "배치|목표 사이 흰 세로
+   조각"으로 보였다. 칸 폭을 아트에 맞추는 대신(문구가 잘린다) 2~4번 칸에
+   불투명 종이를 깔아 구운 경계를 전부 덮고, 구분선은 DOM 칸 경계에 직접
+   긋는다 — 폭이 어떻게 변해도 다시는 어긋나지 않는다. 1번 칸(엽전)은
+   원래 불투명 금테 강조라 그대로 둔다.
+   ══════════════════════════════════════════════════════════════════ */
+
+.resource-grid div:not(:first-child) {
+  background: linear-gradient(180deg, #d9cca6 0%, #cfc098 100%) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 250, 235, 0.4),
+    inset 0 -1px 0 rgba(96, 76, 40, 0.22),
+    inset -1px 0 0 rgba(101, 78, 44, 0.42) !important;
+}
+
+.resource-grid div:last-child {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 250, 235, 0.4),
+    inset 0 -1px 0 rgba(96, 76, 40, 0.22) !important;
+}
+
+/* 값 글줄이 상속 행간(1.5)으로 칸보다 2px 크게 계산돼 스윕에 y잘림으로
+   잡혔다(시각 절단은 없음). 행간을 칸에 맞춰 수치도 깨끗이 한다. */
+.resource-grid strong { line-height: 1.1; }
+.resource-grid div:first-child strong { line-height: 1; }
+
+/* ══════════════════════════════════════════════════════════════════
+   [FB1-3] 절 102. 전 화면 오버플로 스윕 수술 묶음
+   sweep-all.mjs(캐주얼·표준 27화면) 실측 발견분 중 실제 정보 손실이
+   있는 것만 고친다. 도감 목록 말줄임·능력 알약 2줄 클램프·웨이브 브리핑
+   2줄 클램프는 설계된 요약(상세는 전용 화면에 있음)이라 두었다.
+   ══════════════════════════════════════════════════════════════════ */
+
+/* ── FB1-3a. 자령 탭: 선택 카드 내용이 219px 넘치는데 스크롤이 없어
+   능력 알약·역할 기술 충전 게이지가 탭 띠 뒤에 통째로 숨었다. */
+#selected-card.panel-view.is-active {
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+/* ── FB1-3b. (M1) 집중 프레임 농축 대상 줄 "…행 · N★ … 濃 0/3"이
+   4px 모자라 끝이 말줄임됐다. 반 단계 줄이고 자간을 죈다.
+   (85절과 같은 셀렉터로는 자간만 이겨서 id 로 반 단계 승격) */
+#concentration-frame .focus-frame-body .concentration-target-list > button strong {
+  font-size: 11px !important;
+  letter-spacing: -0.015em;
+}
+
+/* ── FB1-3c. 캐주얼 승급 작업대 "획수 기본 별" 눈금 8칸의 획수 구간이
+   칸 폭(34px)보다 7px 넓어 잘렸다. 참조용 눈금이므로 잘림 없는 9px 로. */
+.casual-rarity-rule > i small {
+  font-size: 9px !important;
+  letter-spacing: -0.02em;
+}
+
+/* ── FB1-3d. 목표 탭 성어 모드 — 성어 카드의 보너스·부족 글자(em)와
+   뜻(small)이 한 줄 말줄임으로 잘려 "어떤 글자가 부족한가"를 잃었다.
+   목록은 세로 스크롤러라 두 줄로 펴도 잃는 것이 없다. */
+#goal-panel .goal-choice-card--idiom .goal-choice-copy :is(small, em) {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-height: 1.25;
+  white-space: normal;
+  text-overflow: clip;
+}
+
+/* 현재 성어 목표 카드도 같은 결: 머리띠(span)는 반 단계 줄여 온전히,
+   뜻(small)은 두 줄로 편다. */
+#idiom-target-card .idiom-target-copy > span { font-size: 10px !important; }
+#idiom-target-card .idiom-target-copy > small {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-height: 1.25;
+  white-space: normal;
+  text-overflow: clip;
+}
+
+/* ── FB1-3e. 상점 초반 안내의 → 화살표가 12px 기둥에서 3px 잘렸다. */
+#shop-panel .opening-guide > i { font-size: 10px; }
+
+/* ── FB1-3g. 자령 탭 기술 요약 줄 "주기 2 · 공격 연동 1 · 조건 특성 1"이
+   한 줄 말줄임으로 끝이 잘렸다 — 두 줄까지 편다(카드는 3a 로 스크롤됨). */
+.selected-ability-summary > span {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-height: 1.25;
+  white-space: normal;
+  text-overflow: clip;
+}
+
+/* ── FB1-3f. 타이틀 진법 버튼 라벨 "자형연성 진법"이 2px 잘렸다.
+   3D 서재의 +0.02em 자간(절 63)이 원인이라 같은 셀렉터로 되받는다. */
+.s00-mode > b,
+.s00-stage.is-3d .s00-mode b { letter-spacing: -0.01em; }
 
 /* ══════════════════════════════════════════════════════════════════
    [FB4-] 절 100. 이벤트 트리거형 1회성 안내 + 획수→별 규칙 노출
