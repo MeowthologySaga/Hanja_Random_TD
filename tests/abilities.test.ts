@@ -8,7 +8,8 @@ describe("combinatorial Hanzi ability table", () => {
     expect(Object.keys(ELEMENT_ABILITY_TABLE)).toHaveLength(5);
     expect(Object.keys(ROLE_ABILITY_TABLE)).toHaveLength(6);
     expect(Object.keys(GRAPH_ABILITY_TABLE)).toHaveLength(4);
-    expect(Object.keys(SEMANTIC_ABILITY_TABLE)).toHaveLength(12);
+    // [SKILL-V1] warfare·momentum·frost 3계열이 더해져 15가 됐다.
+    expect(Object.keys(SEMANTIC_ABILITY_TABLE)).toHaveLength(15);
     expect(new Set(Object.values(ELEMENT_ABILITY_TABLE).map((ability) => ability.fx)).size).toBe(5);
     expect(new Set(Object.values(ROLE_ABILITY_TABLE).map((ability) => ability.fx)).size).toBe(6);
     expect(new Set(Object.values(GRAPH_ABILITY_TABLE).map((ability) => ability.fx)).size).toBe(4);

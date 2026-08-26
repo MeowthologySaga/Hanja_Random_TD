@@ -20,6 +20,21 @@ import {
   wavePlan
 } from "./content";
 import { hasActiveSkills } from "./abilities";
+// [SKILL-V1] 스킬 1차 세트 상수·순수 계산.
+import {
+  FROST_ZONE_DURATION,
+  FROST_ZONE_RADIUS,
+  GWICHEON_ABILITY,
+  GWICHEON_MIN_STAR,
+  GWICHEON_RUSH_THRESHOLD,
+  MOMENTUM_STACK_BONUS,
+  WARFARE_BRAND_DURATION,
+  frostSlowRatio,
+  gwicheonChargeSeconds,
+  idiomBlessingBonus,
+  momentumMaxStacks,
+  warfareBrandPower
+} from "./abilities";
 import {
   CASUAL_POLARIS_AURA,
   CASUAL_SPLASH_STAR_SCALE,
@@ -558,6 +573,8 @@ export class GameEngine {
   private readonly combatCharCounts = new Map<string, number>();
   private readonly combatSynergies = new Set<Wuxing>();
   private readonly combatFormationBonuses = [0, 0, 0, 0, 0];
+  // [SKILL-V1] 성어의 가호: 진별 가호 배율 캐시(발동 중 봉인 기준).
+  private readonly combatIdiomBlessings = [0, 0, 0, 0, 0];
   private combatDistinctElements = 0;
   /** FB7-8성: 이번 틱에 극성 개안 오라가 살아 있는 오행. 오행당 최대 1개. */
   private readonly combatPolarisElements = new Set<Wuxing>();
@@ -811,6 +828,24 @@ export class GameEngine {
       const tier = matching >= 16 ? 4 : matching >= 12 ? 3 : matching >= 8 ? 2 : matching >= 4 ? 1 : 0;
       this.combatFormationBonuses[index] = [0, 0.06, 0.12, 0.18, 0.25][tier] ?? 0;
     }
+    // [SKILL-V1] 성어의 가호: 발동 중 봉인이 선 진의 자령 전원이 공격 증폭을 받는다.
+    for (let index = 0; index < this.combatIdiomBlessings.length; index += 1) {
+      this.combatIdiomBlessings[index] = this.idiomBlessingBonusAt(index);
+    }
+  }
+
+  /**
+   * [SKILL-V1] 성어의 가호 — 이 진에 선 "발동 중" 성어 수로 계산한 공격 배율.
+   * 첫 구 +10%, 같은 진의 추가 구당 +5%p. 봉인이 흩어지면(active=false) 즉시 0.
+   */
+  idiomBlessingBonusAt(formationIndex: number): number {
+    let seals = 0;
+    for (const seal of this.activeIdiomSeals()) {
+      const anchorCell = seal.cells[0];
+      if (anchorCell === undefined) continue;
+      if (Math.floor(anchorCell / CELLS_PER_FORMATION) === formationIndex) seals += 1;
+    }
+    return idiomBlessingBonus(seals);
   }
 
   private enemyPoint(enemy: Enemy): Point {
@@ -827,9 +862,12 @@ export class GameEngine {
       const center = positionOnPath(zone.progress);
       for (const enemy of this.state.enemies) {
         if (distance(this.enemyPoint(enemy), center) > zone.radius) continue;
-        const armorPenetration = zone.kind === "caltrops" ? 0.42 : 0;
-        this.damageEnemy(enemy, zone.damagePerSecond * delta, false, enemy.weakness === zone.wuxing, armorPenetration);
-        if (!this.state.enemies.includes(enemy)) continue;
+        // [SKILL-V1] 서리길처럼 피해 없는 지대는 타격·피격 연출 없이 상태만 건다.
+        if (zone.damagePerSecond > 0) {
+          const armorPenetration = zone.kind === "caltrops" ? 0.42 : 0;
+          this.damageEnemy(enemy, zone.damagePerSecond * delta, false, enemy.weakness === zone.wuxing, armorPenetration);
+          if (!this.state.enemies.includes(enemy)) continue;
+        }
         if (zone.kind === "roots") {
           enemy.poisonDps = Math.max(enemy.poisonDps, zone.damagePerSecond * 0.24);
           enemy.poisonUntil = Math.max(enemy.poisonUntil, this.state.elapsed + 0.65 * (1 + this.elementTraitLevel("木", 2) * 0.025));
@@ -839,6 +877,10 @@ export class GameEngine {
         } else if (zone.kind === "rain") {
           enemy.slowFactor = Math.min(enemy.slowFactor, 0.64);
           enemy.slowUntil = Math.max(enemy.slowUntil, this.state.elapsed + 0.25 * (1 + this.elementTraitLevel("水", 1) * 0.025));
+        } else if (zone.kind === "frost") {
+          // [SKILL-V1] 서리길: 총 감속 캡 60%(이동 배율 0.4 미만 금지)를 지킨다.
+          enemy.slowFactor = Math.min(enemy.slowFactor, Math.max(0.4, zone.slowFactor ?? 1));
+          enemy.slowUntil = Math.max(enemy.slowUntil, this.state.elapsed + 0.2);
         }
       }
     }
@@ -872,10 +914,37 @@ export class GameEngine {
     return { label: spec.label, duration, damagePerSecond };
   }
 
+  /**
+   * [SKILL-V1] 서리길(frost) 지대 — 비구름 장판 문법을 그대로 빌린 순수 감속 지대.
+   * 피해 0, 밀치기 0. 밟는 동안만 걸음이 늦어지고 벗어나면 곧 풀린다.
+   */
+  private deployFrostZone(tower: Tower, target: Enemy): { label: string; duration: number; damagePerSecond: number } {
+    const star = this.state.mode === "casual" ? tower.casualStar ?? tower.naturalStar ?? 1 : null;
+    const slowRatio = frostSlowRatio(star);
+    const existing = this.state.abilityZones.find((zone) => zone.towerId === tower.id);
+    const zone: AbilityZone = {
+      id: existing?.id ?? this.nextAbilityZoneId++,
+      towerId: tower.id,
+      kind: "frost",
+      wuxing: tower.wuxing,
+      progress: target.progress,
+      radius: FROST_ZONE_RADIUS,
+      damagePerSecond: 0,
+      expiresAt: this.state.elapsed + FROST_ZONE_DURATION,
+      color: "#bfe8ff",
+      slowFactor: 1 - slowRatio
+    };
+    if (existing) Object.assign(existing, zone);
+    else this.state.abilityZones.push(zone);
+    if (this.state.abilityZones.length > 20) this.state.abilityZones.shift();
+    return { label: "서리길", duration: FROST_ZONE_DURATION, damagePerSecond: 0 };
+  }
+
   private updateTowers(delta: number): void {
     for (const tower of this.state.towers) {
       tower.pulse = Math.max(0, tower.pulse - delta * 3);
       tower.abilityFlash = Math.max(0, tower.abilityFlash - delta * 2.4);
+      this.chargeGwicheon(tower, delta);
       tower.cooldownLeft -= delta;
       if (tower.cooldownLeft > 0) continue;
       const target = this.findTarget(tower);
@@ -887,6 +956,57 @@ export class GameEngine {
   gateOpeningRangeBonus(tower: Tower): number {
     if (this.state.wave > GATE_OPENING_WARD.untilWave || tower.cell < 0 || this.state.startingFormationIndex === null) return 0;
     return Math.floor(tower.cell / CELLS_PER_FORMATION) === this.state.startingFormationIndex ? GATE_OPENING_WARD.rangeBonus : 0;
+  }
+
+  /**
+   * [SKILL-V1] 귀천(歸天) — 6★ 이상 자령의 충전 스킬.
+   * 30초(별당 −2초) 충전 후 자동 발동해 가장 오래 버틴 일반 적 1기를 정화한다.
+   * 적 한계 75% 이상이면 충전 2배속. 대상이 없으면 가득 찬 채 다음 적을 기다린다.
+   */
+  private chargeGwicheon(tower: Tower, delta: number): void {
+    if (this.state.mode !== "casual") return;
+    const star = tower.casualStar ?? tower.naturalStar ?? 1;
+    if (star < GWICHEON_MIN_STAR) return;
+    const required = gwicheonChargeSeconds(star);
+    const rush = this.state.enemies.length >= MAX_ENEMIES * GWICHEON_RUSH_THRESHOLD ? 2 : 1;
+    tower.ascendCharge = Math.min(required, (tower.ascendCharge ?? 0) + delta * rush);
+    if (tower.ascendCharge >= required && this.castGwicheon(tower)) tower.ascendCharge = 0;
+  }
+
+  /**
+   * [SKILL-V1] 귀천 대상 — 화면에서 가장 오래 산(가장 먼저 나타난) 일반 적.
+   * 우두머리(boss)와 정예(armored, "정예 철갑 강시")는 면역이다.
+   */
+  findGwicheonTarget(): Enemy | undefined {
+    let oldest: Enemy | undefined;
+    for (const enemy of this.state.enemies) {
+      if (enemy.boss || enemy.archetype === "boss" || enemy.archetype === "armored") continue;
+      if (!oldest || enemy.id < oldest.id) oldest = enemy;
+    }
+    return oldest;
+  }
+
+  /** [SKILL-V1] 귀천 발동 — 즉시 소멸이되 보상·처치 집계는 정상 경로로 지급한다. */
+  private castGwicheon(tower: Tower): boolean {
+    const target = this.findGwicheonTarget();
+    if (!target) return false;
+    const origin = BOARD_CELLS[tower.cell] as Point;
+    const at = this.enemyPoint(target);
+    // 장갑 완전 관통 + 잔여 체력 이상의 피해 = 확정 정화. 보상은 damageEnemy 가 지급한다.
+    this.damageEnemy(target, target.hp + 10, false, false, 1);
+    this.emitAbility(tower, GWICHEON_ABILITY, origin, at, 1, "가장 오래 버틴 일반 망령 정화 · 보상 지급");
+    return true;
+  }
+
+  /**
+   * [SKILL-V1] 귀천 UI 상태. 자격이 없으면 null — 카드·게이지를 아예 그리지 않는다.
+   */
+  gwicheonStatus(tower: Tower): { charge: number; required: number } | null {
+    if (this.state.mode !== "casual") return null;
+    const star = tower.casualStar ?? tower.naturalStar ?? 1;
+    if (star < GWICHEON_MIN_STAR) return null;
+    const required = gwicheonChargeSeconds(star);
+    return { charge: Math.min(required, tower.ascendCharge ?? 0), required };
   }
 
   private findTarget(tower: Tower): Enemy | undefined {
@@ -938,6 +1058,8 @@ export class GameEngine {
     const statusPower = 1 + this.combinedUpgradeBonus(tower.wuxing, "statusPower");
     const semanticEvery = Math.max(7, tuning.semanticEvery - (concentration >= 3 ? 1 : 0));
     const semanticTrigger = activeSkills && tower.shotCount % semanticEvery === 0
+      // [SKILL-V1] 파죽(momentum)은 별도 발동 주기가 없는 패시브라 주기 기술에서 뺀다.
+      && abilities.semanticFamily !== "momentum"
       && (abilities.semanticFamily !== "weather" || this.state.enemies.length >= 5);
     // At most one active skill may resolve from a tower on the same attack.
     const signature = activeSkills && !semanticTrigger && tower.shotCount % tuning.signatureEvery === 0;
@@ -951,6 +1073,8 @@ export class GameEngine {
     const towerFormationIndex = Math.floor(tower.cell / CELLS_PER_FORMATION);
     damage *= 1 + (this.combatFormationBonuses[towerFormationIndex] ?? 0);
     damage *= FORMATION_ROUTE_COVERAGE_MULTIPLIER[towerFormationIndex] ?? 1;
+    // [SKILL-V1] 성어의 가호: 발동 중 성어와 같은 진에 선 자령 전원 공격 증폭.
+    damage *= 1 + (this.combatIdiomBlessings[towerFormationIndex] ?? 0);
     // Every elemental start receives the same first-chapter ward. It prevents
     // the free starting formation's map position from deciding a run before
     // the player can buy a second formation, then disappears after wave 10.
@@ -960,6 +1084,26 @@ export class GameEngine {
     if (this.combatPolarisElements.has(tower.wuxing)) damage *= 1 + CASUAL_POLARIS_AURA.damageBonus;
     if (synergy) damage *= 1 + GAME_CONFIG.synergyBonus + (profile.role === "support" ? 0.08 : 0);
     if (weakness) damage *= GAME_CONFIG.weaknessMultiplier;
+    // [SKILL-V1] 상극 각인: 낙인이 남은 동안 같은 오행 공격이 주는 피해가 커진다.
+    // 약점 배율과 같은 층에서 곱해, 이 공격에서 파생되는 확산·연쇄·독도 함께 강해진다.
+    if ((target.brandUntil ?? 0) > this.state.elapsed && target.brandWuxing === tower.wuxing) {
+      damage *= 1 + (target.brandPower ?? 0);
+    }
+    // [SKILL-V1] 파죽: 같은 적 연속 타격마다 +8%씩 중첩, 대상을 바꾸면 초기화.
+    if (activeSkills && abilities.semanticFamily === "momentum") {
+      const momentumCap = momentumMaxStacks(this.state.mode === "casual" ? tower.casualStar ?? tower.naturalStar ?? 1 : tower.stage);
+      if (tower.momentumTargetId === target.id) {
+        const previousStacks = tower.momentumStacks ?? 0;
+        tower.momentumStacks = Math.min(momentumCap, previousStacks + 1);
+        if (tower.momentumStacks === momentumCap && previousStacks < momentumCap) {
+          this.emitAbility(tower, abilities.semantic, origin, targetPoint, 1, `파죽 최대 중첩 · 피해 +${Math.round(momentumCap * MOMENTUM_STACK_BONUS * 100)}%`);
+        }
+      } else {
+        tower.momentumTargetId = target.id;
+        tower.momentumStacks = 0;
+      }
+      damage *= 1 + (tower.momentumStacks ?? 0) * MOMENTUM_STACK_BONUS;
+    }
     if (tower.wuxing === "火" && (target.boss || target.hp / target.maxHp <= 0.3)) {
       damage *= 1 + this.elementTraitLevel("火", 2) * 0.015;
     }
@@ -1083,7 +1227,10 @@ export class GameEngine {
     const potency = 1 + (tower.concentrationPath === "potent" ? (tower.concentration ?? 0) * 0.035 : 0);
     const abilityPower = 1 + this.combinedUpgradeBonus(tower.wuxing, "abilityPower");
     const statusPower = 1 + this.combinedUpgradeBonus(tower.wuxing, "statusPower");
-    const zone = this.deployElementZone(tower, target, damage, potency, abilityPower);
+    // [SKILL-V1] 서리길은 오행 장판 대신 전용 감속 지대를 깐다(비구름 문법 재사용).
+    const zone = family === "frost"
+      ? this.deployFrostZone(tower, target)
+      : this.deployElementZone(tower, target, damage, potency, abilityPower);
     const activeZone = this.state.abilityZones.find((candidate) => candidate.towerId === tower.id);
     const zoneTargets = activeZone
       ? this.state.enemies.filter((enemy) => distance(this.enemyPoint(enemy), targetPoint) <= activeZone.radius).length
@@ -1159,11 +1306,24 @@ export class GameEngine {
       effect = "최고 체력 적 간파 · 이번 공격 ×" + tuning.semanticMultiplier.toFixed(2);
     } else if (family === "metalwork") {
       effect = "최고 장갑 적 우선 · 추가 관통 22%";
+    } else if (family === "warfare" && this.state.enemies.includes(target)) {
+      // [SKILL-V1] 상극 각인: 대상에게 자기 오행의 상극 낙인(4초). 밀거나 되돌리지 않는다.
+      const brandPower = warfareBrandPower(this.state.mode === "casual" ? tower.casualStar ?? tower.naturalStar ?? 1 : null);
+      target.brandWuxing = tower.wuxing;
+      target.brandPower = brandPower;
+      target.brandUntil = this.state.elapsed + WARFARE_BRAND_DURATION;
+      effect = `${tower.wuxing}행 상극 낙인 ${WARFARE_BRAND_DURATION}초 · 같은 오행 피해 +${Math.round(brandPower * 100)}%`;
+    } else if (family === "frost") {
+      // [SKILL-V1] 서리길: 적중 지점 서리 지대 — 감속만 있고 피해·밀치기는 없다.
+      const slowRatio = frostSlowRatio(this.state.mode === "casual" ? tower.casualStar ?? tower.naturalStar ?? 1 : null);
+      targets = Math.max(1, zoneTargets);
+      effect = `서리길 ${zone.duration.toFixed(1)}초 · 밟는 적 ${Math.round(slowRatio * 100)}% 감속`;
     } else {
       effect = "뜻 구현 · 이번 공격 ×" + tuning.semanticMultiplier.toFixed(2);
     }
 
-    if (family !== "weather") effect += ` · ${zone.label} ${zone.duration.toFixed(1)}초`;
+    // [SKILL-V1] frost 는 장판 자체가 본 효과라 꼬리 문구를 겹쳐 붙이지 않는다.
+    if (family !== "weather" && family !== "frost") effect += ` · ${zone.label} ${zone.duration.toFixed(1)}초`;
 
     this.emitAbility(tower, abilities.semantic, origin, targetPoint, targets, effect, persistent);
   }
