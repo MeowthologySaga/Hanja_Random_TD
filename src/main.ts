@@ -4987,10 +4987,19 @@ function cellAtPoint(point: Point): number {
   return BOARD_CELLS.findIndex((candidate) => Math.hypot(candidate.x - point.x, candidate.y - point.y) <= 21);
 }
 
-/** 잠긴 진 판(182×182) 위 어디를 눌러도 해금 확인으로 이어진다. */
+/**
+ * 잠긴 진 중앙 자물쇠의 히트 영역.
+ *
+ * 자물쇠는 판 정중앙에 놓이는데 그 지점은 어느 칸의 반경(21px)에도 들지 않는다.
+ * 그래서 칸 판정과 별개로 중앙 원을 따로 잡는다. 판 전체를 히트 영역으로 두면
+ * 여백을 스칠 때마다 확인 창이 떠 오히려 방해가 되므로 자물쇠 크기(40px)에
+ * 맞춘 반경만 받는다.
+ */
+const LOCK_HIT_RADIUS = 34;
+
 function lockedFormationAtPoint(point: Point): number | null {
   const index = BOARD_FORMATIONS.findIndex((formation) =>
-    Math.abs(formation.center.x - point.x) <= 91 && Math.abs(formation.center.y - point.y) <= 91);
+    Math.hypot(formation.center.x - point.x, formation.center.y - point.y) <= LOCK_HIT_RADIUS);
   if (index < 0 || engine.isFormationUnlocked(index)) return null;
   return index;
 }
@@ -5065,11 +5074,12 @@ canvas.addEventListener("pointermove", (event) => {
   const hoverCell = cellAtPoint(hoverPoint);
   hoveredTowerId = hoverCell >= 0 ? towerAtCell(hoverCell)?.id ?? null : null;
   canvas.dataset.hoveredTowerId = hoveredTowerId === null ? "" : String(hoveredTowerId);
-  // 잠긴 진 위에서는 자물쇠를 키우고 커서를 손가락으로 바꿔 "눌린다"를 알린다.
-  hoveredLockFormation = engine.state.phase === "prep" || engine.state.phase === "combat"
-    ? lockedFormationAtPoint(hoverPoint)
-    : null;
-  canvas.dataset.lockHover = hoveredLockFormation === null ? "" : "1";
+  // 자물쇠 위에서는 확대하고 커서를 손가락으로 바꿔 "눌린다"를 알린다.
+  // 잠긴 칸도 같은 팝업으로 이어지므로 커서는 같이 바꾼다.
+  const runActive = engine.state.phase === "prep" || engine.state.phase === "combat";
+  hoveredLockFormation = runActive ? lockedFormationAtPoint(hoverPoint) : null;
+  const overLockedCell = runActive && hoverCell >= 0 && !engine.isCellUnlocked(hoverCell);
+  canvas.dataset.lockHover = hoveredLockFormation !== null || overLockedCell ? "1" : "";
   if (event.pointerId !== towerDragPointerId || !towerDragStart) return;
   const point = canvasPoint(event);
   if (Math.hypot(point.x - towerDragStart.x, point.y - towerDragStart.y) >= 10) towerDragMoved = true;
@@ -5113,20 +5123,21 @@ function finishMapPan(event: PointerEvent, applyClick: boolean): boolean {
   mapPanClickCell = -1;
   canvas.classList.remove("is-panning");
   if (applyClick && button === 0 && !moved) {
-    // 잠긴 진은 칸을 눌렀든 판 여백을 눌렀든 같은 확인 팝업으로 모은다.
-    // 예전에는 클릭 즉시 엽전이 빠져나가 무슨 일이 벌어졌는지 알 수 없었다.
-    const lockedFormation = clickCell >= 0 && !engine.isCellUnlocked(clickCell)
-      ? Math.floor(clickCell / CELLS_PER_FORMATION)
-      : lockedFormationAtPoint(canvasPoint(event));
-    if (lockedFormation !== null) {
-      openFormationUnlockDialog(lockedFormation);
-    } else if (clickCell < 0) {
-      engine.selectTower(null);
-      evolutionRenderKey = "";
-      selectedRenderKey = "";
-      syncPanel();
+    // 잠긴 칸과 판 중앙 자물쇠는 같은 확인 팝업으로 모은다. 예전에는 클릭 즉시
+    // 엽전이 빠져나가 무슨 일이 벌어졌는지 알 수 없었다.
+    if (clickCell >= 0) {
+      if (!engine.isCellUnlocked(clickCell)) openFormationUnlockDialog(Math.floor(clickCell / CELLS_PER_FORMATION));
+      else handleAction(engine.moveSelectedToCell(clickCell));
     } else {
-      handleAction(engine.moveSelectedToCell(clickCell));
+      const lockedFormation = lockedFormationAtPoint(canvasPoint(event));
+      if (lockedFormation !== null) {
+        openFormationUnlockDialog(lockedFormation);
+      } else {
+        engine.selectTower(null);
+        evolutionRenderKey = "";
+        selectedRenderKey = "";
+        syncPanel();
+      }
     }
   }
   return true;

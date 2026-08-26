@@ -33,6 +33,15 @@ async function openShop(page: Page): Promise<void> {
   await expect(page.locator("#shop-panel")).toBeVisible();
 }
 
+// 잠긴 칸을 누르면 해금 확인 창이 뜬다(5라운드). 전장을 훑는 검사는 창을 닫고 계속한다.
+async function dismissFormationUnlock(page: Page): Promise<void> {
+  const dialog = page.locator("#formation-unlock-dialog");
+  if (await dialog.evaluate((element: HTMLDialogElement) => element.open).catch(() => false)) {
+    await page.locator("#formation-unlock-close").click();
+    await expect(dialog).toBeHidden();
+  }
+}
+
 async function openUnit(page: Page): Promise<void> {
   await page.getByRole("tab", { name: "자령", exact: true }).click();
   await expect(page.locator("#selected-card")).toBeVisible();
@@ -548,6 +557,7 @@ test("shows synthesis branches, highlights board materials, protects locked Jary
   for (const x of [374, 422, 470, 518]) {
     const towerPosition = await canvasPositionForWorld(page, x, 294);
     await page.locator("#battle-canvas").click({ position: towerPosition });
+    await dismissFormationUnlock(page);
     readySourceFound = await page.getByTestId("derivative-composition").evaluate((element) => element.classList.contains("has-ready"));
     if (readySourceFound) break;
   }
