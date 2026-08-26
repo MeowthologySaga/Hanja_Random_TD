@@ -47,6 +47,18 @@ export function elementZoneKind(wuxing: Wuxing): AbilityZone["kind"] {
  */
 export const TIERED_SUMMON_INTENTS: ReadonlySet<SummonIntent> = new Set<SummonIntent>(["balanced", "midstar", "highstar"]);
 
+/**
+ * 인연 연구가 성어 부족 글자에 얹는 가중 배율(트랙 B — "성어가 곧 목표").
+ *
+ * 목표 한자 경로는 connectionBonus×3.2 를 받는데, 성어 경로는 연구와 무관했다.
+ * 목표 서책이 성어 축으로 통합되면서 연구의 절반은 성어 부족 글자를 향해야
+ * 한다. 곱해지는 값은 0단계 기저(0.12)를 뺀 "실제로 산 연구"만이라 연구 전
+ * 분포는 통합 이전과 동일하다. 같은 3.2 에서 시작하되 성어 줄 전체에 ×0.7 이
+ * 곱해지므로 실효는 목표 경로의 약 2.24 다. 시뮬 게이트(--runs=135 표준 /
+ * 45 캐주얼)를 벗어나면 이 값부터 줄인다.
+ */
+export const IDIOM_RESEARCH_CONNECTION_SCALE = 3.2;
+
 /** 캐주얼 소환의 실효 별 밴드. 상·하한 모두 포함하는 닫힌 구간이다. */
 export interface SummonStarBand {
   readonly min: number;
