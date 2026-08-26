@@ -418,7 +418,9 @@ export function syncPanel(): void {
     ? state.summonCount === 0 ? "① 상점에서 첫 자령을 소환하세요" : String(state.wave + 1) + "웨이브 · " + (preview?.label ?? "")
     : plan?.label ?? state.lastMessage;
   must<HTMLElement>("#wave-briefing").textContent = state.summonCount === 0
-    ? "첫 자령의 오행에 맞는 4×4 진이 무료로 열립니다. 소환 전에는 준비 시간과 런 시간이 흐르지 않습니다."
+    // 카드 브리핑은 2줄 클램프(절 95)라 이 문장은 284px 두 줄 안에 끝나야
+    // 한다 — 길면 "…런 시간이 흐르지" 에서 잘린 채 보인다(사용자 보고).
+    ? "첫 자령의 오행에 맞는 진이 무료로 열립니다. 소환 전에는 시간이 멈춥니다."
     : preview
     ? preview.briefing
       + ` · 제${Math.ceil(preview.wave / 10)}장 · 다음 장 우두머리 ${Math.ceil(preview.wave / 10) * 10}웨이브`
