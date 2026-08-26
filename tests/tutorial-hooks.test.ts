@@ -74,8 +74,11 @@ describe("수련장 엔진 훅", () => {
     const normal = run(false);
     const relaxed = run(true);
     const plan = wavePlan(1);
-    expect(normal.getCurrentPlan()?.count).toBe(plan.count);
-    expect(relaxed.getCurrentPlan()?.count).toBe(Math.max(3, Math.round(plan.count * TUTORIAL_ENEMY_COUNT_SCALE)));
+    // 수련장 완화는 모드 수량 계수(캐주얼 0.85) "위에" 얹힌다 — 일반 캐주얼
+    // 런과 같은 기준선에서 반드시 더 적어야 하기 때문.
+    const casualCount = Math.max(1, Math.round(plan.count * 0.85));
+    expect(normal.getCurrentPlan()?.count).toBe(casualCount);
+    expect(relaxed.getCurrentPlan()?.count).toBe(Math.max(3, Math.round(casualCount * TUTORIAL_ENEMY_COUNT_SCALE)));
     const normalHp = normal.state.enemies[0]?.maxHp ?? 0;
     const relaxedHp = relaxed.state.enemies[0]?.maxHp ?? 0;
     expect(normalHp).toBeGreaterThan(0);
