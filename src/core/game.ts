@@ -81,6 +81,7 @@ import type {
   ConcentrationLevel,
   ConcentrationPayment,
   ConcentrationPath,
+  DefeatCause,
   Enemy,
   EvolutionOption,
   GameEvent,
@@ -504,6 +505,7 @@ export class GameEngine {
       region,
       mode,
       phase: "title",
+      defeatCause: null,
       wave: 0,
       maxWaves: GAME_CONFIG.maxWaves,
       gold: GAME_CONFIG.startingGold,
@@ -561,6 +563,7 @@ export class GameEngine {
     const targetChar = this.catalog.goalOrder[0] ?? this.catalog.activePool[0]?.char ?? "";
     Object.assign(this.state, {
       phase: "prep",
+      defeatCause: null,
       wave: 0,
       gold: GAME_CONFIG.startingGold,
       researchLevel: 0,
@@ -643,7 +646,7 @@ export class GameEngine {
     }
 
     if (this.state.enemies.length >= MAX_ENEMIES) {
-      this.endRun("defeat", `적 ${MAX_ENEMIES}체가 전장을 뒤덮었습니다.`);
+      this.endRun("defeat", `적 ${MAX_ENEMIES}체가 전장을 뒤덮었습니다.`, "enemy-limit");
       return;
     }
 
@@ -655,7 +658,7 @@ export class GameEngine {
     this.updateTowers(delta);
     const bossLimit = bossTimeLimitForWave(plan.wave);
     if (bossLimit !== null && !this.state.bossDefeated && this.state.waveElapsed >= bossLimit) {
-      this.endRun("defeat", `제한시간 ${bossLimit}초 안에 보스를 처치하지 못했습니다.`);
+      this.endRun("defeat", `제한시간 ${bossLimit}초 안에 보스를 처치하지 못했습니다.`, "boss-timeout");
       return;
     }
     const allSpawned = this.state.spawned >= plan.count;
@@ -3033,8 +3036,10 @@ export class GameEngine {
     return this.state.phase === "prep" || this.state.phase === "combat";
   }
 
-  private endRun(phase: "victory" | "defeat", message: string): void {
+  private endRun(phase: "victory" | "defeat", message: string, cause: DefeatCause | null = null): void {
     this.state.phase = phase;
+    // FB3: 패배일 때만 원인을 남긴다. 승리는 항상 null 로 되돌린다.
+    this.state.defeatCause = phase === "defeat" ? cause : null;
     this.state.lastMessage = message;
     this.events.push({ type: "phase", phase });
   }
