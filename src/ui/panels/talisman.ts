@@ -21,12 +21,13 @@
  * state 에 먼저 얹고 즉시 소환하는 래퍼다(실패 시 얹은 엽전을 물려 권 보존).
  */
 import { type GameEngine } from "../../core/game";
-import { summonCost } from "../../core/hanzi";
+import { summonCost, WUXING_ORDER } from "../../core/hanzi";
 import { learningInfo } from "../../core/learning";
-import { type HanziDefinition } from "../../core/types";
+import { type HanziDefinition, type Wuxing } from "../../core/types";
 import { ctx, must, TALISMAN_MODE_STORAGE_KEY, sound } from "../app-context";
 import { summonAndFocus } from "../battle/camera";
 import { setPanelTab, showToast } from "../hud";
+import { playTalismanImpact, playTalismanRewardVisit, type TalismanRewardGrant } from "../talisman-reward";
 import { rasterizeImageAlpha, scoreTalismanDrawing, TALISMAN_THRESHOLDS, type TalismanCellGrid, type TalismanScore } from "./talisman-score";
 
 /**
@@ -91,21 +92,53 @@ let rewardWave = -1;
 
 let rewardsGranted = 0;
 
+/**
+ * 이번 웨이브에 실제로 받은 것의 누적. 연출은 1.4초면 지나가지만 "뭘 받았는지
+ * 모르겠어"(사용자 실황)를 막으려면 놓친 뒤에도 확인할 자리가 있어야 한다.
+ */
+interface RecentRewardTally {
+  gold: number;
+  essence: Partial<Record<Wuxing, number>>;
+  tokens: number;
+}
+
+function emptyTally(): RecentRewardTally {
+  return { gold: 0, essence: {}, tokens: 0 };
+}
+
+let recentRewards: RecentRewardTally = emptyTally();
+
 function rewardBudgetLeft(): number {
   const state = ctx.engine.state;
   if (rewardEngine !== ctx.engine || rewardWave !== state.wave) {
     rewardEngine = ctx.engine;
     rewardWave = state.wave;
     rewardsGranted = 0;
+    recentRewards = emptyTally();
   }
   return Math.max(0, REWARDS_PER_WAVE - rewardsGranted);
+}
+
+function recentRewardText(): string {
+  const parts: string[] = [];
+  if (recentRewards.gold > 0) parts.push(`엽전 +${recentRewards.gold}`);
+  for (const wuxing of WUXING_ORDER) {
+    const amount = recentRewards.essence[wuxing] ?? 0;
+    if (amount > 0) parts.push(`${wuxing} 문기 +${amount}`);
+  }
+  if (recentRewards.tokens > 0) parts.push(`무료권 +${recentRewards.tokens}`);
+  return parts.join(" · ");
 }
 
 function syncRewardNote(): void {
   const left = rewardBudgetLeft();
   must<HTMLElement>("#talisman-reward-note").textContent = left > 0
     ? `이번 웨이브 보상 ${left}/${REWARDS_PER_WAVE}회`
-    : "이번 웨이브 보상 소진 · 다음 웨이브에 3회";
+    : `이번 웨이브 보상 소진 · 다음 웨이브에 ${REWARDS_PER_WAVE}회`;
+  const recent = must<HTMLElement>("#talisman-recent-reward");
+  const text = recentRewardText();
+  recent.textContent = text === "" ? "최근 보상 · 아직 없음" : `최근 보상 · ${text}`;
+  recent.classList.toggle("is-empty", text === "");
 }
 
 /** 현재 지역 로스터에서 다음 글자를 뽑는다(직전 글자는 피한다). */
@@ -210,32 +243,46 @@ function runActive(): boolean {
   return phase === "prep" || phase === "combat";
 }
 
-/** 가중 랜덤 보상. 엔진 상태 직접 변형은 디버그 QA 핸들과 같은 UI 층 선례다. */
+/**
+ * 가중 랜덤 보상. 엔진 상태 직접 변형은 디버그 QA 핸들과 같은 UI 층 선례다.
+ *
+ * 지급이 끝나면 그 글자의 자령이 부적지 위로 내려와 받은 것을 자원칸에 놓고
+ * 떠난다(talisman-reward.ts). 자령은 방문객일 뿐이라 엔진에는 남지 않는다.
+ */
 function grantReward(): void {
   if (!runActive()) {
     showToast("부적 완성! 자령이 깃들 봉인구가 늘었습니다");
     return;
   }
   if (rewardBudgetLeft() <= 0) {
-    showToast("부적 완성! 이번 웨이브 보상은 소진되었습니다 — 웨이브가 넘어가면 다시 3회");
+    showToast(`부적 완성! 이번 웨이브 보상은 소진되었습니다 — 웨이브가 넘어가면 다시 ${REWARDS_PER_WAVE}회`);
     return;
   }
+  if (!currentDefinition) return;
   rewardsGranted += 1;
   const state = ctx.engine.state;
+  const goldBefore = state.gold;
+  const { char, wuxing } = currentDefinition;
+  const grants: TalismanRewardGrant[] = [];
   const roll = Math.random();
   if (roll < REWARD_GOLD_WEIGHT) {
     const amount = REWARD_GOLD_MIN + Math.floor(Math.random() * (REWARD_GOLD_MAX - REWARD_GOLD_MIN + 1));
     state.gold += amount;
-    showToast(`부적 완성! 보상 — 엽전 +${amount}`);
-  } else if (roll < REWARD_GOLD_WEIGHT + REWARD_ESSENCE_WEIGHT && currentDefinition) {
-    const wuxing = currentDefinition.wuxing;
+    recentRewards.gold += amount;
+    grants.push({ kind: "gold", amount, glyph: "錢", label: `+${amount} 엽전` });
+  } else if (roll < REWARD_GOLD_WEIGHT + REWARD_ESSENCE_WEIGHT) {
     state.elementEssence[wuxing] += 1;
     state.elementEssenceGenerated[wuxing] += 1;
-    showToast(`부적 완성! 보상 — ${wuxing} 문기 +1`);
+    recentRewards.essence[wuxing] = (recentRewards.essence[wuxing] ?? 0) + 1;
+    grants.push({ kind: "essence", amount: 1, wuxing, glyph: wuxing, label: "+1 문기" });
   } else {
     ctx.talismanFreeSummonTokens += 1;
-    showToast("부적 완성! 보상 — 기본 소환 무료권 +1 · 상점에서 사용");
+    recentRewards.tokens += 1;
+    grants.push({ kind: "token", amount: 1, glyph: "券", label: "+1 소환 무료권" });
   }
+  const summary = grants.map((grant) => grant.label).join(" · ");
+  showToast(`${char} 자령이 응답했습니다 — 보상을 두고 갑니다 · ${summary}`);
+  playTalismanRewardVisit(char, wuxing, grants, goldBefore);
 }
 
 /** 완성 연출 — 먹선이 또렷해지고 주홍 인장이 찍힌다(calm-screen 은 맥동 없이). */
@@ -253,7 +300,9 @@ function completeTalisman(score: TalismanScore): void {
     void seal.offsetWidth;
     seal.classList.add("is-stamped");
   }
-  sound.playUiConfirm();
+  // 인장이 쾅 찍히는 순간의 종이 번쩍·파문·아주 약한 흔들림 + 묵직한 봉인음.
+  playTalismanImpact();
+  sound.playTalismanSeal();
   setStatus(`부적 완성! 정확 ${Math.round(score.insideRatio * 100)}% · 덮음 ${Math.round(score.coverageRatio * 100)}%`, "pass");
   must<HTMLButtonElement>("#talisman-redraw").textContent = "새 부적 쓰기";
   syncSubmitButton(false);
@@ -442,7 +491,10 @@ export function summonWithTalismanToken(): void {
 const PANEL_MARKUP = `
   <header class="workbench-heading">
     <div><span>따라 쓰는 봉인구</span><strong>부적 만들기</strong></div>
-    <p id="talisman-reward-note" class="talisman-reward-note">이번 웨이브 보상 ${REWARDS_PER_WAVE}/${REWARDS_PER_WAVE}회</p>
+    <div class="talisman-reward-column">
+      <p id="talisman-reward-note" class="talisman-reward-note">이번 웨이브 보상 ${REWARDS_PER_WAVE}/${REWARDS_PER_WAVE}회</p>
+      <p id="talisman-recent-reward" class="talisman-recent-reward is-empty">최근 보상 · 아직 없음</p>
+    </div>
   </header>
   <div id="talisman-paper" class="talisman-paper">
     <p id="talisman-reading" class="talisman-reading">글자를 준비하는 중</p>

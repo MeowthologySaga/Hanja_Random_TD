@@ -1,13 +1,18 @@
 /* ══════════════════════════════════════════════════════════════
-   540. 부적 만들기 — 제출 버튼 (트랙 C2 ①)
+   540. 부적 만들기 — 제출 버튼과 자령 강림 (트랙 C2 ①·②)
 
-   470절(부적 패널) 뒤에 서서 판정을 사람이 여는 [부적 봉인] 을 얹는다.
-   바닥줄이 상태 줄 한 행 + 버튼 세 개 한 행의 2행으로 바뀐다(470절의
-   1행 flex 를 되짚는다). 세로 예산은 여전히 .context-deck 368px 이므로
-   버튼 높이를 26px 로 눌러 부적지(264px)를 밀어내지 않는다.
+   470절(부적 패널) 뒤에 서서 두 가지를 얹는다.
+   ① 판정을 사람이 여는 [부적 봉인] — 바닥줄이 상태 줄 한 행 + 버튼 세 개
+      한 행의 2행으로 바뀐다(470절의 1행 flex 를 되짚는다). 세로 예산은
+      여전히 .context-deck 368px 이라 버튼 높이를 26px 로 눌러 부적지
+      (264px)를 밀어내지 않는다.
+   ② 통과 순간의 자령 강림 — 부적에 응답한 자령이 내려와 보상을 놓고
+      떠난다. 초상은 공방 공용 .workbench-spirit 을 그대로 쓰고 크기 변형만
+      더한다(새 에셋 없음).
 
-   맥동류는 차분한 화면(.game-shell[data-calm-screen="1"])과
-   prefers-reduced-motion 두 게이트를 존중한다.
+   맥동·이동류는 차분한 화면(.game-shell[data-calm-screen="1"])과
+   prefers-reduced-motion 두 게이트를 존중한다 — 그 경우 정보(인장·초상·
+   숫자·최근 보상 줄)는 남고 움직임만 사라진다.
    ══════════════════════════════════════════════════════════════ */
 
 .talisman-footer {
@@ -63,12 +68,244 @@
   background: linear-gradient(180deg, #c95346 0%, #ac3427 100%) !important;
 }
 
-.game-shell[data-calm-screen="1"] .talisman-status.is-hint {
+/* ── ② 최근 보상 줄 — 머리글 오른쪽, 보상 잔여 횟수 아래 ────────── */
+.talisman-reward-column {
+  min-width: 0;
+  margin-left: auto;
+}
+
+.talisman-recent-reward {
+  margin: 0;
+  overflow: hidden;
+  color: var(--gold-500);
+  font-size: 10.5px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.talisman-recent-reward.is-empty {
+  color: var(--text-400);
+  font-weight: 700;
+}
+
+/* ── ③ 인장 — "쾅" 하고 찍힌다 ──────────────────────────────── */
+/* 470절의 talisman-stamp(1.9→1)를 같은 선택자·나중 파일로 되짚는다.
+   1.4 에서 떨어져 0.9 로 눌렸다가 튀어 오르는 도장 타격이다. */
+.talisman-seal.is-stamped {
+  animation: talisman-stamp-hit 0.5s cubic-bezier(0.22, 1.4, 0.36, 1) both;
+}
+
+@keyframes talisman-stamp-hit {
+  0% { opacity: 0; transform: rotate(-7deg) scale(1.4); }
+  46% { opacity: 1; transform: rotate(-7deg) scale(0.9); }
+  72% { transform: rotate(-7deg) scale(1.08); }
+  100% { opacity: 1; transform: rotate(-7deg) scale(1); }
+}
+
+/* 종이 번쩍 + 결을 따라 퍼지는 금빛 파문 1회. */
+.talisman-paper.is-burst {
+  animation: talisman-paper-flash 0.42s ease-out;
+}
+
+@keyframes talisman-paper-flash {
+  0% { box-shadow: inset 0 0 0 5px rgba(255, 246, 214, 0.96), inset 0 0 0 6px rgba(240, 213, 139, 0.9), 0 0 22px 6px rgba(240, 213, 139, 0.55); }
+  100% { box-shadow: inset 0 0 0 5px rgba(247, 240, 221, 0.9), inset 0 0 0 6px rgba(159, 47, 35, 0.38), var(--lift-1); }
+}
+
+.talisman-paper.is-burst::after {
+  content: "";
+  position: absolute;
+  z-index: 3;
+  top: 50%;
+  left: 50%;
+  width: 40px;
+  height: 40px;
+  margin: -20px 0 0 -20px;
+  border: 2px solid rgba(240, 213, 139, 0.85);
+  border-radius: 50%;
+  animation: talisman-ripple 0.62s ease-out forwards;
+  pointer-events: none;
+}
+
+@keyframes talisman-ripple {
+  0% { opacity: 0.9; transform: scale(0.4); }
+  100% { opacity: 0; transform: scale(7); }
+}
+
+/* 아주 약한 타격감 — 2px, 120ms 두 번. 전투 중이라 이 이상은 방해가 된다. */
+#talisman-panel.is-hit {
+  animation: talisman-hit-shake 0.12s steps(4, end) 2;
+}
+
+@keyframes talisman-hit-shake {
+  0% { transform: translate(0, 0); }
+  25% { transform: translate(2px, -1px); }
+  50% { transform: translate(-2px, 1px); }
+  75% { transform: translate(1px, 1px); }
+  100% { transform: translate(0, 0); }
+}
+
+/* ── ④ 자령 강림 — 부적에 응답해 내려와 보상을 놓고 떠난다 ────── */
+/* 셸 좌표계 절대 배치(essence-floater 문법). 자리는 JS 가 실측으로 잡는다. */
+.talisman-visit {
+  position: absolute;
+  z-index: 47;
+  display: grid;
+  justify-items: center;
+  gap: 3px;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+.talisman-visit-halo {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 118px;
+  height: 118px;
+  margin: -59px 0 0 -59px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(240, 213, 139, 0.55) 0%, rgba(240, 213, 139, 0.18) 46%, transparent 70%);
+  animation: talisman-halo 0.9s ease-out forwards;
+}
+
+@keyframes talisman-halo {
+  0% { opacity: 0; transform: scale(0.4); }
+  30% { opacity: 1; transform: scale(1.05); }
+  100% { opacity: 0; transform: scale(1.35); }
+}
+
+.workbench-spirit--talisman {
+  width: 84px;
+  height: 84px;
+  border-radius: 12px;
+  box-shadow: var(--bevel-in), 0 0 0 2px rgba(240, 213, 139, 0.7), 0 6px 18px rgba(58, 44, 22, 0.5);
+}
+
+.workbench-spirit--talisman .workbench-spirit-fallback {
+  font-size: 46px;
+}
+
+.talisman-visit-name {
+  padding: 1px 8px;
+  color: #f6ecd4;
+  border-radius: 999px;
+  background: rgba(20, 15, 9, 0.88);
+  box-shadow: 0 0 0 1px rgba(240, 213, 139, 0.5);
+  font-size: 11px;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+/* 강림(1.3→1.0)과 인사하듯 흐려지는 퇴장은 한 애니메이션의 앞뒤다.
+   총 길이는 JS 의 VISIT_MS 와 맞춘다. */
+.talisman-visit.is-motion {
+  animation: talisman-visit-arc 1.4s ease-out forwards;
+}
+
+@keyframes talisman-visit-arc {
+  0% { opacity: 0; transform: translate(-50%, -38%) scale(1.3); }
+  14% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  70% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -66%) scale(0.96); }
+}
+
+/* 차분한 화면 — 자령은 제자리에 그냥 나타났다 사라진다(정보는 남는다). */
+.talisman-visit.is-calm {
+  animation: talisman-visit-calm 1.4s linear forwards;
+}
+
+@keyframes talisman-visit-calm {
+  0% { opacity: 0; }
+  8% { opacity: 1; }
+  84% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+/* ── ⑤ 보상 꾸러미 — 자령 발치에서 튀어나와 자원칸에 꽂힌다 ──── */
+/* 바깥 껍질만 JS 가 호를 그려 옮기고, 안쪽이 중심 맞춤을 맡는다. */
+.talisman-gift-fly {
+  position: absolute;
+  z-index: 48;
+  pointer-events: none;
+}
+
+.talisman-gift {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 11px 4px 6px;
+  color: #fbf2dd;
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(46, 34, 18, 0.96), rgba(20, 15, 9, 0.96));
+  box-shadow:
+    0 0 0 1.5px color-mix(in srgb, var(--gift, #d9b463) 72%, transparent),
+    0 3px 12px rgba(0, 0, 0, 0.5);
+  font-size: 14px;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  transform: translate(-50%, -50%);
+}
+
+.talisman-gift > i {
+  display: grid;
+  width: 24px;
+  height: 24px;
+  place-items: center;
+  color: #2b1f0d;
+  border-radius: 50%;
+  background: radial-gradient(circle at 38% 30%, #ffe9a8, var(--gift, #d9b463) 74%);
+  font-family: "Batang", "Malgun Gothic", serif;
+  font-size: 14px;
+  font-style: normal;
+}
+
+.talisman-gift > em {
+  font-style: normal;
+}
+
+/* ── ⑥ 자원칸 착탄 — 한 번 크게 튀고 반짝 ───────────────────── */
+.is-talisman-land {
+  animation: talisman-land 0.5s cubic-bezier(0.2, 1.5, 0.4, 1);
+  border-radius: 5px;
+}
+
+@keyframes talisman-land {
+  0% { transform: scale(1); }
+  34% { color: #f6e2a4; text-shadow: 0 0 10px rgba(240, 213, 139, 0.85); transform: scale(1.28); }
+  100% { transform: scale(1); }
+}
+
+/* ── ⑦ 두 게이트: 차분한 화면 · OS 동작 줄이기 ──────────────── */
+/* 움직임(이동·바운스·흔들림·파문)만 걷고, 인장·초상·숫자는 남긴다. */
+.game-shell[data-calm-screen="1"] .talisman-status.is-hint,
+.game-shell[data-calm-screen="1"] .talisman-seal.is-stamped,
+.game-shell[data-calm-screen="1"] .talisman-paper.is-burst,
+.game-shell[data-calm-screen="1"] #talisman-panel.is-hit,
+.game-shell[data-calm-screen="1"] .talisman-visit-halo,
+.game-shell[data-calm-screen="1"] .is-talisman-land {
   animation: none;
 }
 
+.game-shell[data-calm-screen="1"] .talisman-paper.is-burst::after {
+  content: none;
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .talisman-status.is-hint {
+  .talisman-status.is-hint,
+  .talisman-seal.is-stamped,
+  .talisman-paper.is-burst,
+  #talisman-panel.is-hit,
+  .talisman-visit-halo,
+  .is-talisman-land {
     animation: none;
+  }
+
+  .talisman-paper.is-burst::after {
+    content: none;
   }
 }

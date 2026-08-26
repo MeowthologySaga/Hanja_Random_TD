@@ -45,6 +45,7 @@ import { renderActiveIdioms, renderIdiomHud } from "./panels/idiom";
 import { renderRunInventory, setRunInventoryBulkMode } from "./panels/inventory";
 import { closeCompositionDrawer, renderCompositionDrawer, renderSelected } from "./panels/selected";
 import { renderFormationUnlocks, renderSummonShop } from "./panels/shop";
+import { talismanGoldRoll } from "./talisman-reward";
 
 /*
  * 시작 보너스 버튼 주목성.
@@ -365,7 +366,9 @@ export function syncPanel(): void {
   must<HTMLElement>("#stage-phase").textContent = phaseLabel(state.phase);
   must<HTMLElement>("#stage-enemies").textContent = String(state.enemies.length) + " / " + String(MAX_ENEMIES);
   syncEnemyLimitWarning(state.enemies.length);
-  must<HTMLElement>("#gold-value").textContent = String(state.gold);
+  // 트랙 C2: 부적 보상이 자원칸에 꽂히는 순간에만 숫자가 굴러간다. 굴리는 중이
+  // 아니거나 다른 수입·지출이 끼어들면 즉시 실제 보유량으로 돌아온다.
+  must<HTMLElement>("#gold-value").textContent = String(talismanGoldRoll(state.gold) ?? state.gold);
   must<HTMLElement>("#interest-preview").textContent = "이자 +" + String(interestForGold(state.gold));
   must<HTMLElement>("#enemy-cap-value").textContent = String(MAX_ENEMIES) + "체";
   must<HTMLElement>("#tower-count-value").textContent = String(state.towers.length) + " / " + String(ctx.engine.deployedTowerCapacity());

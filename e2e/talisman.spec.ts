@@ -20,7 +20,7 @@ const HINT_STORAGE_KEYS = ["stroke-star", "midstar-open", "research-open", "firs
 
 interface TalismanQaWindow {
   __HANJA_TALISMAN_QA__: { autoTrace(): void; submit(): void; isSealed(): boolean };
-  __HANJA_CTX_QA__: { talismanFreeSummonTokens: number };
+  __HANJA_CTX_QA__: { talismanFreeSummonTokens: number; engine: { state: { gold: number } } };
 }
 
 test.beforeEach(async ({ page }) => {
@@ -55,6 +55,7 @@ test("settings toggle opens the talisman tab and submitting a traced glyph earns
   await expect(page.locator("#talisman-panel")).toBeVisible();
   await expect(page.locator("#talisman-reading")).not.toHaveText("글자를 준비하는 중");
   await expect(page.locator("#talisman-reward-note")).toContainText("3/3");
+  await expect(page.locator("#talisman-recent-reward")).toContainText("아직 없음");
   // 획이 하나도 없으면 제출할 것이 없다.
   await expect(page.getByTestId("talisman-submit")).toBeDisabled();
   await page.screenshot({ path: "artifacts/talisman-blank-1280x720.png", fullPage: true });
@@ -86,11 +87,18 @@ test("settings toggle opens the talisman tab and submitting a traced glyph earns
   await expect(page.locator("#talisman-seal")).toBeHidden();
   await expect(page.getByTestId("talisman-submit")).toBeEnabled();
 
-  // ④ 제출 → 완성 인장 · 보상.
+  // ④ 제출 → 완성 인장 · 자령 강림 · 보상.
   await page.getByTestId("talisman-submit").click();
   await expect(page.locator("#talisman-status")).toContainText("부적 완성");
   await expect(page.locator("#talisman-seal")).toBeVisible();
-  await expect(page.locator("#toast")).toContainText("부적 완성!");
+  await expect(page.locator("#toast")).toContainText("자령이 응답했습니다");
+  // 그 글자의 자령이 부적지 위로 내려와 보상 꾸러미를 놓는다.
+  await expect(page.locator(".talisman-visit")).toHaveCount(1);
+  await expect(page.locator(".talisman-visit-name")).toContainText("자령");
+  await expect(page.locator(".talisman-gift")).toHaveCount(1);
+  await page.screenshot({ path: "artifacts/talisman-reward-visit-1280x720.png", fullPage: true });
+  // 연출이 지나가도 "최근 보상" 줄에 누적이 남는다.
+  await expect(page.locator("#talisman-recent-reward")).not.toContainText("아직 없음");
   await expect(page.getByTestId("talisman-submit")).toBeDisabled();
   await page.screenshot({ path: "artifacts/talisman-sealed-1280x720.png", fullPage: true });
 
@@ -104,6 +112,7 @@ test("settings toggle opens the talisman tab and submitting a traced glyph earns
   }
   await expect(page.locator("#toast")).toContainText("이번 웨이브 보상은 소진");
   await expect(page.locator("#talisman-reward-note")).toContainText("소진");
+  await page.screenshot({ path: "artifacts/talisman-recent-reward-1280x720.png", fullPage: true });
 
   // ⑥ 기본 소환 무료권 — 배지가 서고, 쓰면 엽전이 줄지 않고 권만 준다.
   await page.evaluate(() => {
@@ -113,11 +122,15 @@ test("settings toggle opens the talisman tab and submitting a traced glyph earns
   await expect(page.getByTestId("summon-button")).toContainText("무료 1회");
   await expect(page.locator(".summon-card-badge")).toHaveText("부적 ×2");
   await page.screenshot({ path: "artifacts/talisman-token-shop-1280x720.png", fullPage: true });
-  const goldBefore = (await page.locator("#gold-value").textContent()) ?? "";
+  // 엽전 칸은 보상 착탄 순간 잠시 카운트업 표시값을 보여 주므로, 여기서는
+  // 연출과 무관한 실제 보유량(엔진 상태)으로 "권을 쓰면 엽전이 줄지 않는다"를 본다.
+  const readGold = (): Promise<number> =>
+    page.evaluate(() => (window as unknown as TalismanQaWindow).__HANJA_CTX_QA__.engine.state.gold);
+  const goldBefore = await readGold();
   await page.getByTestId("summon-button").click();
   await page.locator("#summon-reveal-close").click();
-  await expect(page.locator("#gold-value")).toHaveText(goldBefore);
   await expect(page.locator(".summon-card-badge")).toHaveText("부적 ×1");
+  expect(await readGold()).toBe(goldBefore);
 
   // 토글은 브라우저에 저장된다 — 새로고침해도 탭이 그대로 선다.
   await page.reload();
