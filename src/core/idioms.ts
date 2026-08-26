@@ -327,6 +327,8 @@ export function helpfulDirectCharsForIdiom(catalog: HanziCatalog, towers: readon
  *  - 자형연성: `helpfulDirectCharsForIdiom` — 부족 글자를 합성으로 만들 때
  *    아직 더 필요한 "직접 소환" 재료만 부른다. 합성 전용 글자를 뽑기로
  *    우회시키지 않아야 기존 합성 루프와 전투력 곡선이 그대로 남는다.
+ *    (상품 자체는 실측 승률 누출로 별승급 전용이 됐지만, 이 갈래는 목표
+ *    개편 트랙이 자형연성 성어 경로를 다시 열 때를 위해 계약으로 남긴다.)
  */
 export function idiomWishChars(
   catalog: HanziCatalog,

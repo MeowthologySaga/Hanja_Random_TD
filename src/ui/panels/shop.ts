@@ -130,12 +130,14 @@ export function renderSummonShop(): void {
     });
   });
   // 성어 기원 — 부족 글자가 없으면(추적 없음/완성) 비활성 + 사유를 효과 줄에 적는다.
-  // 결과는 항상 1★(캐주얼)라 전투력이 아니라 성어 완성을 사는 상품이다.
-  cards.push(summonCardMarkup({
+  // 결과는 항상 1★라 전투력이 아니라 성어 완성을 사는 상품이다. 별승급(캐주얼)
+  // 전용 — 자형연성은 부족 글자가 곧 합성 재료라 승률로 새는 것이 실측돼
+  // (짝시드 90런 0.556→0.733) 계보 소환에 남긴다. 티어 카드와 같은 노출 규칙.
+  if (state.mode === "casual") cards.push(summonCardMarkup({
     key: "idiom-wish",
     label: "성어 기원",
     effect: wish.reason === null
-      ? `부족 ${wishChars.slice(0, 4).join("·")}${wishChars.length > 4 ? "…" : ""}${state.mode === "casual" ? " · 1★" : ""}`
+      ? `부족 ${wishChars.slice(0, 4).join("·")}${wishChars.length > 4 ? "…" : ""} · 1★`
       : wish.reason,
     tint: "#96324a",
     icon: "v4/shop/shop-lineage-scroll-v1",
@@ -143,9 +145,7 @@ export function renderSummonShop(): void {
     disabled: !active || wish.reason !== null || state.gold < wish.cost,
     affordable: !active || wish.reason !== null || state.gold >= wish.cost,
     testId: "idiom-wish-button",
-    title: (state.mode === "casual"
-      ? "성어 기원 · 추적 성어의 부족 글자를 부릅니다(1★)"
-      : "성어 기원 · 추적 성어의 부족 재료(직접 소환 글자)를 부릅니다")
+    title: "성어 기원 · 추적 성어의 부족 글자를 부릅니다(1★)"
       + ` · ${wish.cost}엽전 (기본 ${base} × ${IDIOM_WISH_COST_MULTIPLIER})`
       + " · 부적에 기원을 적어 올리는 소환 — 전투력이 아니라 성어 완성을 삽니다"
       + (wish.reason === null ? ` · 부족 ${wishChars.join("·")}` : ` · ${wish.reason}`)

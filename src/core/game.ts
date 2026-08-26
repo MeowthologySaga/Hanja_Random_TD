@@ -2885,17 +2885,27 @@ export class GameEngine {
     return pool;
   }
 
-  /** 성어 기원 카드 한 장이 필요로 하는 전부 — 후보·가격·비활성 사유. */
+  /**
+   * 성어 기원 카드 한 장이 필요로 하는 전부 — 후보·가격·비활성 사유.
+   *
+   * 별승급(캐주얼) 전용이다. 자형연성에서는 부족 글자가 곧 합성 재료라
+   * "반드시 유용한 소환"이 진화 루프(전투력)로 직결된다 — 45런 짝시드 실험
+   * 2회에서 승률 +24.5pp/+11.1pp(합산 0.556→0.733)가 재현됐고 성어 봉인은
+   * 오히려 줄었다(0.16→0.13, 0.27→0.16). 성어 가중 3배 기각과 같은 결이라
+   * 자형연성은 기존 계보 소환(확률 가중)에 남긴다.
+   */
   idiomWishQuote(): { pool: readonly HanziDefinition[]; cost: number; reason: string | null } {
     const pool = this.idiomWishPool();
     const cost = idiomWishCost(summonCost(this.state.summonCount));
-    const reason = this.state.summonCount === 0
-      ? "첫 소환으로 오행진을 먼저 여세요"
-      : this.idiomWishTargets().length === 0
-        ? "추적 성어가 없습니다"
-        : pool.length === 0
-          ? "부족 글자가 없습니다 — 성어 재료 완성"
-          : null;
+    const reason = this.state.mode !== "casual"
+      ? "별승급 진법 전용 — 자형연성은 계보 소환이 성어 재료를 맡습니다"
+      : this.state.summonCount === 0
+        ? "첫 소환으로 오행진을 먼저 여세요"
+        : this.idiomWishTargets().length === 0
+          ? "추적 성어가 없습니다"
+          : pool.length === 0
+            ? "부족 글자가 없습니다 — 성어 재료 완성"
+            : null;
     return { pool, cost, reason };
   }
 

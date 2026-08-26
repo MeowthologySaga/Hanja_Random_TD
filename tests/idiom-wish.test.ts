@@ -132,27 +132,26 @@ describe("idiom wish summon (성어 기원)", () => {
     expect(engine.summonIdiomWish()).toMatchObject({ ok: false });
   });
 
-  it("summons only still-needed direct materials in standard mode", () => {
+  it("stays casual-only: standard mode keeps the pool contract but refuses the purchase", () => {
+    // 실측(짝시드 90런): 자형연성에서 이 상품은 승률 0.556→0.733 으로 새고
+    // 성어 봉인은 오히려 줄었다 — 부족 글자가 곧 합성 재료라 "반드시 유용한
+    // 소환"이 진화 루프(전투력)로 직결된다. 그래서 상품은 별승급 전용이다.
     const engine = engineOf("wish-standard", "standard");
     expect(engine.setIdiomTarget("heart")).toMatchObject({ ok: true });
     engine.state.summonCount = 1;
     const target = engine.currentIdiomTarget();
     if (!target) throw new Error("Missing tracked idiom");
-    const pool = engine.idiomWishPool();
-    expect(pool.length).toBeGreaterThan(0);
-    // 자형연성 부족 판정은 기존 추적 경로(helpfulDirectCharsForIdiom)와 동일해야 한다.
+    // 부족 글자 계약(합집합 함수)의 자형연성 갈래는 목표 개편 트랙을 위해
+    // 유지된다 — 기존 추적 경로(helpfulDirectCharsForIdiom)와 동일해야 한다.
     const expected = helpfulDirectCharsForIdiom(engine.catalog, [], target);
-    expect(pool.map((definition) => definition.char).sort()).toEqual([...expected].sort());
-    // 합성 전용 글자를 뽑기로 우회시키지 않는다 — 직접 소환 글자만 나온다.
-    for (const definition of pool) {
-      expect(definition.acquisition === "direct" || definition.parents.length === 0).toBe(true);
-    }
+    const chars = idiomWishChars(engine.catalog, [], [target], "standard");
+    expect([...chars].sort()).toEqual([...expected].sort());
+    expect(chars.size).toBeGreaterThan(0);
+    // 상품 자체는 잠긴다: 사유가 붙고 구매는 엽전이 충분해도 거절된다.
     engine.state.gold = 500;
-    const cost = idiomWishCost(summonCost(engine.state.summonCount));
-    expect(engine.summonIdiomWish()).toMatchObject({ ok: true });
-    expect(engine.state.gold).toBe(500 - cost);
-    const summoned = [...engine.state.towers, ...engine.state.inventoryTowers].at(-1);
-    expect(expected.has(summoned?.char ?? "")).toBe(true);
+    expect(engine.idiomWishQuote().reason).toContain("별승급");
+    expect(engine.summonIdiomWish()).toMatchObject({ ok: false });
+    expect(engine.state.gold).toBe(500);
   });
 
   it("prices the wish inside the agreed 2.5x-3x band of the base summon curve", () => {
