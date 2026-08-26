@@ -6682,6 +6682,11 @@ must<HTMLButtonElement>("#sfx-mute-button").addEventListener("click", () => {
   showToast(muted ? "효과음 꺼짐" : "효과음 켜짐");
 });
 must<HTMLButtonElement>("#codex-button").addEventListener("click", () => {
+  // 별승급 진법에는 구성식 합성이 없다 — 조합표 분류는 랜덤 규칙과 무관하므로 숨긴다.
+  const casualRun = engine.state.mode === "casual";
+  const recipesTab = must<HTMLButtonElement>('[data-codex-mode="recipes"]');
+  recipesTab.hidden = casualRun;
+  if (casualRun && codexMode === "recipes") setCodexMode("hanzi");
   const search = must<HTMLInputElement>("#codex-search");
   search.value = "";
   renderCodex("");
