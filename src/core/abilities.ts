@@ -602,3 +602,38 @@ export function demiseSpreadRadius(casualStar: number | null): number {
   const scaled = DEMISE_RADIUS_BASE + (casualStar === null ? 0 : Math.max(0, casualStar - 1) * DEMISE_RADIUS_PER_STAR);
   return Math.min(DEMISE_RADIUS_CAP, scaled);
 }
+
+/**
+ * 획수 공명(畫數共鳴) — 진법 특성(graph) 축의 조건 패시브.
+ *
+ * 같은 진에 **자기와 같은 계급**의 자령이 몇 기나 서 있느냐가 조건이다. 캐주얼
+ * 8성전에서 계급은 별이고 별은 곧 획수라, 규칙 문장이 "같은 획수끼리 울린다"로
+ * 그대로 읽힌다. 표준 모드에서는 단계가 계급이다(momentum·chainseal 과 같은 관례).
+ *
+ * 자기 자신은 세지 않는다 — 같은 계급 동료 1기당 1중첩, 4중첩이 상한이다.
+ */
+export const STROKE_RESONANCE_HASTE_PER_STACK = 0.04;
+export const STROKE_RESONANCE_MAX_STACKS = 4;
+
+/** 같은 진·같은 계급 동료 수 → 중첩 수(상한 4). */
+export function strokeResonanceStacks(sameRankAllies: number): number {
+  return Math.max(0, Math.min(STROKE_RESONANCE_MAX_STACKS, Math.floor(sameRankAllies)));
+}
+
+/** 중첩 수 → 공격 대기에 곱할 배율. 4중첩이면 ×0.84(공속 +16% 상당). */
+export function strokeResonanceCooldownScale(stacks: number): number {
+  return 1 - strokeResonanceStacks(stacks) * STROKE_RESONANCE_HASTE_PER_STACK;
+}
+
+/** 획수 공명 카드·칩용 스펙. 기존 fx(resonance)를 재사용한다. */
+export const STROKE_RESONANCE_ABILITY: AbilitySpec = {
+  id: "graph-stroke-resonance",
+  name: "획수 공명",
+  glyph: "畫",
+  category: "graph",
+  fx: "resonance",
+  trigger: "같은 진 · 같은 계급 배치",
+  summary: "동급 1기당 공속 +4%",
+  description: "같은 오행진에 자기와 같은 계급(별승급은 별=획수, 표준은 합성 단계)의 자령이 함께 서 있으면 1기당 공격 속도가 4%씩 빨라집니다. 최대 4중첩(+16%)까지 쌓입니다.",
+  color: "#f0d7ff"
+};

@@ -25,6 +25,9 @@ import {
   SCORCH_DPS_RATIO,
   SCORCH_ZONE_RADIUS,
   scorchZoneSeconds,
+  STROKE_RESONANCE_MAX_STACKS,
+  strokeResonanceCooldownScale,
+  strokeResonanceStacks,
   WARFARE_BRAND_DURATION,
   warfareBrandPower
 } from "./abilities";
@@ -2235,7 +2238,49 @@ export class GameEngine {
     const progressionHaste = this.state.mode === "casual"
       ? ((tower.casualStar ?? tower.naturalStar ?? 1) - 1) * CASUAL_STAR_HASTE_PER_STAR
       : (tower.stage - 1) * 0.035;
-    return Math.max(0.28, profile.cooldown * (1 - progressionHaste) * (1 - concentrationHaste) / (1 + upgradeHaste));
+    // [SKILL-V3] 획수 공명: 같은 진에 선 동급 자령 1기당 공격 대기 −4%(4중첩 상한).
+    const resonanceScale = strokeResonanceCooldownScale(this.strokeResonanceStacks(tower));
+    return Math.max(0.28, profile.cooldown * (1 - progressionHaste) * (1 - concentrationHaste) * resonanceScale / (1 + upgradeHaste));
+  }
+
+  /**
+   * [SKILL-V3] 이 자령의 계급 — 캐주얼은 별(=획수 구간), 표준은 합성 단계다.
+   * 파죽·연환 인장이 쓰는 관례와 같은 축이다.
+   */
+  towerProgressionRank(tower: Tower): number {
+    return this.state.mode === "casual" ? tower.casualStar ?? tower.naturalStar ?? 1 : tower.stage;
+  }
+
+  /**
+   * [SKILL-V3] 획수 공명 중첩 — 같은 진에 선 **자기와 같은 계급** 동료 수(자신 제외),
+   * 4중첩 상한.
+   *
+   * 가방(inventoryTowers)은 세지 않는다 — `state.towers` 만이 진에 서 있는 자령이다.
+   * 발동 중 성어로 칸이 고정된(핀) 자령도 진에 서 있는 한 그대로 센다. 자동배치는
+   * 오행과 실화력만 보고 자리를 정하므로 이 축을 최적화하지 않는다 — 공명은
+   * 자동배치가 만들어 주는 보너스가 아니라, 배치를 손보는 사람이 노려서 얻는
+   * 보너스다(그래서 자동배치와 서로 간섭하지 않는다).
+   */
+  strokeResonanceStacks(tower: Tower): number {
+    if (tower.cell < 0 || !this.towerHasActiveSkills(tower)) return 0;
+    const formationIndex = Math.floor(tower.cell / CELLS_PER_FORMATION);
+    const rank = this.towerProgressionRank(tower);
+    let allies = 0;
+    for (const candidate of this.state.towers) {
+      if (candidate.id === tower.id || candidate.cell < 0) continue;
+      if (Math.floor(candidate.cell / CELLS_PER_FORMATION) !== formationIndex) continue;
+      if (this.towerProgressionRank(candidate) !== rank) continue;
+      allies += 1;
+      if (allies >= STROKE_RESONANCE_MAX_STACKS) break;
+    }
+    return strokeResonanceStacks(allies);
+  }
+
+  /** [SKILL-V3] 획수 공명 UI 상태. 중첩이 없으면 null — 칩을 아예 그리지 않는다. */
+  strokeResonanceStatus(tower: Tower): { stacks: number; rank: number; haste: number } | null {
+    const stacks = this.strokeResonanceStacks(tower);
+    if (stacks <= 0) return null;
+    return { stacks, rank: this.towerProgressionRank(tower), haste: 1 - strokeResonanceCooldownScale(stacks) };
   }
 
   towerPowerMultiplier(tower: Tower): number {

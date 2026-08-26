@@ -2,6 +2,7 @@
  * [SKILL-V3] 스킬 3차 세트 단위·통합 테스트.
  *
  *  1. 유폭 낙인(同歸) — 낙인 적립·전파 반경·전파 인원 상한·연쇄 유폭 차단
+ *  2. 획수 공명(畫數共鳴) — 같은 진·같은 계급 중첩 상한·진 경계·자동배치 간섭
  *
  * 공통 원칙: 어떤 스킬도 적을 뒤로 밀지 않는다(감속·제자리 정지·장판만).
  * 그래서 모든 통합 테스트는 효과가 걸린 뒤 `progress` 가 줄지 않았음을 함께 본다.
@@ -17,9 +18,14 @@ import {
   hasActiveSkills,
   SEMANTIC_ABILITY_TABLE,
   semanticCharGroup,
+  STROKE_RESONANCE_ABILITY,
+  STROKE_RESONANCE_HASTE_PER_STACK,
+  STROKE_RESONANCE_MAX_STACKS,
+  strokeResonanceCooldownScale,
+  strokeResonanceStacks,
   WARFARE_BRAND_DURATION
 } from "../src/core/abilities";
-import { BOARD_CELLS, positionOnPath } from "../src/core/content";
+import { BOARD_CELLS, CELLS_PER_FORMATION, positionOnPath } from "../src/core/content";
 import { GameEngine } from "../src/core/game";
 import { getCatalog } from "../src/core/hanzi";
 import type { Enemy, EnemyArchetype, GameEvent, HanziDefinition, SemanticFamily, Tower } from "../src/core/types";
@@ -298,7 +304,7 @@ describe("[SKILL-V3] 유폭 낙인 (同歸)", () => {
     for (const neighbour of crowd) expect(neighbour.brandStored ?? 0).toBe(0);
   });
 
-  it("적립 비율은 받은 피해에 비례한다 — 낙인이 만료되면 적립도 멈춘다", () => {
+  it("적립 비율은 받은 피해에 비례한다 — 낙인이 만료되면 적립도 멈춘다 (경계)", () => {
     const definition = soloDemiseDefinition("KR");
     const engine = new GameEngine("skill-demise-store", "KR");
     const { tower, enemy } = arrangeDuel(engine, definition, {
@@ -318,5 +324,131 @@ describe("[SKILL-V3] 유폭 낙인 (同歸)", () => {
     tower.cooldownLeft = 0;
     engine.update(0.02);
     expect(enemy.brandStored ?? 0).toBeCloseTo(storedAfterHit, 6);
+  });
+});
+
+describe("[SKILL-V3] 획수 공명 (畫數共鳴)", () => {
+  it("중첩은 같은 계급 동료 1기당 1이고 4에서 멈춘다 — 중첩 상한", () => {
+    expect(strokeResonanceStacks(0)).toBe(0);
+    expect(strokeResonanceStacks(1)).toBe(1);
+    expect(strokeResonanceStacks(STROKE_RESONANCE_MAX_STACKS)).toBe(STROKE_RESONANCE_MAX_STACKS);
+    expect(strokeResonanceStacks(STROKE_RESONANCE_MAX_STACKS + 9)).toBe(STROKE_RESONANCE_MAX_STACKS);
+    expect(strokeResonanceStacks(-3)).toBe(0);
+    expect(strokeResonanceCooldownScale(0)).toBeCloseTo(1, 6);
+    expect(strokeResonanceCooldownScale(1)).toBeCloseTo(1 - STROKE_RESONANCE_HASTE_PER_STACK, 6);
+    expect(strokeResonanceCooldownScale(99)).toBeCloseTo(1 - STROKE_RESONANCE_MAX_STACKS * STROKE_RESONANCE_HASTE_PER_STACK, 6);
+    expect(STROKE_RESONANCE_ABILITY.category).toBe("graph");
+  });
+
+  it("같은 진의 같은 계급만 센다 — 다른 진·다른 계급·가방은 세지 않는다 (판정 경계)", () => {
+    const engine = new GameEngine("skill-resonance-scope", "KR");
+    engine.begin();
+    engine.state.summonCount = 1;
+    engine.state.startingFormationIndex = 0;
+    engine.state.unlockedFormations = [0, 1, 2, 3, 4];
+    const pool = [...getCatalog("KR").definitions.values()].filter(hasActiveSkills);
+    const anchorStage = (pool[0] as HanziDefinition).stage;
+    const sameRank = pool.filter((definition) => definition.stage === anchorStage);
+    const otherRank = pool.find((definition) => definition.stage !== anchorStage);
+    expect(sameRank.length).toBeGreaterThan(5);
+    expect(otherRank).toBeDefined();
+
+    // 1진(cell 0~15)에 같은 계급 3기.
+    const trio = sameRank.slice(0, 3).map((definition, index) => makeTower(definition, 8000 + index, { cell: index }));
+    // 같은 진의 다른 계급 1기 — 중첩에 끼지 않는다.
+    const mismatched = makeTower(otherRank as HanziDefinition, 8100, { cell: 3 });
+    // 다른 진(cell 16~31)의 같은 계급 1기 — 진 경계를 넘지 않는다.
+    const neighbourFormation = makeTower(sameRank[3] as HanziDefinition, 8200, { cell: CELLS_PER_FORMATION });
+    // 가방 자령(cell -1)은 진에 서 있지 않다.
+    const stored = makeTower(sameRank[4] as HanziDefinition, 8300, { cell: -1 });
+    engine.state.towers = [...trio, mismatched, neighbourFormation];
+    engine.state.inventoryTowers = [stored];
+
+    for (const tower of trio) expect(engine.strokeResonanceStacks(tower)).toBe(2);
+    expect(engine.strokeResonanceStacks(mismatched)).toBe(0);
+    expect(engine.strokeResonanceStacks(neighbourFormation)).toBe(0);
+    expect(engine.strokeResonanceStacks(stored)).toBe(0);
+    expect(engine.strokeResonanceStatus(mismatched)).toBeNull();
+    expect(engine.strokeResonanceStatus(trio[0] as Tower)).toMatchObject({ stacks: 2 });
+  });
+
+  it("중첩만큼 공격 대기가 실제로 줄고, 상한 위로는 더 줄지 않는다", () => {
+    const engine = new GameEngine("skill-resonance-cooldown", "KR");
+    engine.begin();
+    engine.state.summonCount = 1;
+    engine.state.startingFormationIndex = 0;
+    engine.state.unlockedFormations = [0];
+    const pool = [...getCatalog("KR").definitions.values()].filter(hasActiveSkills);
+    const definition = pool[0] as HanziDefinition;
+    const sameRank = pool.filter((candidate) => candidate.stage === definition.stage);
+    expect(sameRank.length).toBeGreaterThan(STROKE_RESONANCE_MAX_STACKS + 2);
+
+    const solo = makeTower(definition, 8400, { cell: 0 });
+    engine.state.towers = [solo];
+    const soloCooldown = engine.towerAttackCooldown(solo);
+    expect(engine.strokeResonanceStacks(solo)).toBe(0);
+
+    // 동급 동료를 한 기씩 더한다 — 중첩 1·2·3·4 에서 대기가 계단처럼 줄어든다.
+    for (let allies = 1; allies <= STROKE_RESONANCE_MAX_STACKS; allies += 1) {
+      engine.state.towers = [
+        solo,
+        ...sameRank.slice(1, allies + 1).map((candidate, index) => makeTower(candidate, 8410 + index, { cell: index + 1 }))
+      ];
+      expect(engine.strokeResonanceStacks(solo)).toBe(allies);
+      expect(engine.towerAttackCooldown(solo)).toBeCloseTo(soloCooldown * strokeResonanceCooldownScale(allies), 6);
+    }
+
+    // 상한을 넘겨도 더 줄지 않는다.
+    const cappedCooldown = engine.towerAttackCooldown(solo);
+    engine.state.towers = [
+      solo,
+      ...sameRank.slice(1, STROKE_RESONANCE_MAX_STACKS + 3).map((candidate, index) => makeTower(candidate, 8450 + index, { cell: index + 1 }))
+    ];
+    expect(engine.strokeResonanceStacks(solo)).toBe(STROKE_RESONANCE_MAX_STACKS);
+    expect(engine.towerAttackCooldown(solo)).toBeCloseTo(cappedCooldown, 6);
+  });
+
+  it("자동배치와 공존한다 — 핀 고정된 봉인 자령도 그대로 세고, 배치 뒤엔 새 칸으로 다시 센다", () => {
+    const engine = new GameEngine("skill-resonance-autoarrange", "KR");
+    engine.begin();
+    engine.state.summonCount = 1;
+    engine.state.startingFormationIndex = 2;
+    engine.state.unlockedFormations = [0, 1, 2, 3, 4];
+    engine.state.towers = [..."以心傳心"].map((char, index) => {
+      const definition = getCatalog("KR").definitions.get(char) as HanziDefinition;
+      return makeTower(definition, 8500 + index, { cell: index });
+    });
+    // 한 줄 봉인이 서면 그 네 자령은 자동배치에서 칸이 고정된다(핀).
+    expect(engine.resolveIdiomFormations()).toBe(1);
+    const pinned = engine.sealedIdiomTowerIds();
+    expect(pinned.size).toBe(4);
+
+    /** 지금 상태에서 손으로 센 같은 진·같은 계급 동료 수(상한 4). */
+    const expectedStacks = (tower: Tower): number => {
+      if (!engine.towerHasActiveSkills(tower)) return 0;
+      const formation = Math.floor(tower.cell / CELLS_PER_FORMATION);
+      const allies = engine.state.towers.filter((candidate) =>
+        candidate.id !== tower.id
+        && candidate.cell >= 0
+        && Math.floor(candidate.cell / CELLS_PER_FORMATION) === formation
+        && candidate.stage === tower.stage
+      ).length;
+      return Math.min(STROKE_RESONANCE_MAX_STACKS, allies);
+    };
+
+    // 핀 고정 여부와 무관하게, 진에 서 있으면 그대로 센다.
+    for (const tower of engine.state.towers) {
+      expect(pinned.has(tower.id)).toBe(true);
+      expect(engine.strokeResonanceStacks(tower)).toBe(expectedStacks(tower));
+    }
+
+    const cellsBefore = new Map(engine.state.towers.map((tower) => [tower.id, tower.cell] as const));
+    expect(engine.autoArrangeTowers()).toMatchObject({ ok: true });
+    // 발동 중 봉인의 네 칸은 자동배치가 건드리지 않는다.
+    for (const tower of engine.state.towers) expect(tower.cell).toBe(cellsBefore.get(tower.id));
+    // 자동배치 뒤에도 공명은 "지금 칸" 기준으로 다시 계산된다.
+    for (const tower of engine.state.towers) {
+      expect(engine.strokeResonanceStacks(tower)).toBe(expectedStacks(tower));
+    }
   });
 });
