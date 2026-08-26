@@ -85,11 +85,11 @@
   display: none;
 }
 
-/* 92px 카드의 꼬리표는 두 글자가 한계다 — "보호·유일" 까지만 싣고 나머지
-   설명은 우측 미니 상세와 행동 바가 받는다. */
+/* 92px 카드의 꼬리표는 두 글자가 한계다 — 사유를 "유일"·"잠금" 두 글자로
+   줄여 옛 "보호" 와 같은 자리·같은 폭에 앉힌다(별 이름과 겹치면 안 된다).
+   나머지 설명은 우측 미니 상세와 행동 바가 받는다. */
 #run-inventory-layout .run-inventory-card.is-protected-stack em {
   color: #8a5a3c;
-  letter-spacing: -0.05em;
 }
 
 /* 우측 미니 상세의 회수량·보호 사유 — 전문을 여기서 편다. */
@@ -112,4 +112,72 @@
 .run-inventory-detail-card .detail-protection {
   color: #7a2c1c;
   background: rgba(159, 47, 35, 0.1);
+}
+
+/* ── J-3. 가방 잠금 표시 ───────────────────────────────────────
+   지금까지 격자 카드는 잠금을 아예 그리지 않았다. 대표 자령을 고를 때
+   잠기지 않은 것을 먼저 집었으므로, 잠근 자령은 화면에서 사라졌다.
+   자물쇠 배지 + 카드 전체의 금빛 링 + 살짝 식힌 초상 셋으로 말한다 —
+   선택(금테)·보호(꼬리표)와 겹쳐 떠도 서로 구분되게 층을 나눈다. */
+#run-inventory-layout .run-inventory-lock {
+  position: absolute;
+  z-index: 2;
+  top: 20px;
+  left: 2px;
+  display: grid;
+  min-width: 17px;
+  height: 17px;
+  padding: 0 3px;
+  place-items: center;
+  color: #fff6e2;
+  font-size: 10px;
+  font-weight: 900;
+  line-height: 1;
+  letter-spacing: -0.04em;
+  border-radius: 6px;
+  background: linear-gradient(180deg, #8a6a2a 0%, #5d4218 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 240, 200, 0.4),
+    0 0 0 1.5px rgba(255, 246, 226, 0.85),
+    0 1px 3px rgba(31, 22, 10, 0.5);
+}
+
+/* 묶음 일부만 잠긴 카드 — 자물쇠에 수를 달되 링은 세우지 않는다. */
+#run-inventory-layout .run-inventory-card.is-part-locked .run-inventory-lock {
+  background: linear-gradient(180deg, #9a8c6d 0%, #6f6449 100%);
+}
+
+/* 묶음 전체가 잠긴 카드 — 식힌 유리 바탕 + 금빛 자물쇠 링. */
+#run-inventory-layout .run-inventory-card.is-locked {
+  background: linear-gradient(180deg, #ece5d3 0%, #cfc6ad 100%) !important;
+  box-shadow:
+    var(--bevel-up),
+    0 0 0 2px #8a6a2a,
+    inset 0 0 0 1px rgba(255, 246, 226, 0.55) !important;
+}
+
+#run-inventory-layout .run-inventory-card.is-locked:hover {
+  background: linear-gradient(180deg, #f4eddb 0%, #d8cfb5 100%) !important;
+  box-shadow:
+    var(--bevel-up),
+    0 0 0 2.5px #a07f38,
+    0 0 12px rgba(138, 106, 42, 0.35) !important;
+}
+
+/* 초상은 한 겹 식혀 "지금 꺼내 쓸 것" 무리에서 물러나게 한다. */
+#run-inventory-layout .run-inventory-card.is-locked .run-inventory-spirit {
+  filter: grayscale(0.45) brightness(0.96);
+}
+
+/* 선택은 잠금보다 위 층위다 — 고른 카드는 금테가 이긴다. */
+#run-inventory-layout .run-inventory-card.is-locked.is-selected {
+  background: linear-gradient(180deg, #fff3cf 0%, #ecdfb6 100%) !important;
+  box-shadow:
+    var(--bevel-up),
+    0 0 0 3px var(--gold-500),
+    0 0 16px rgba(196, 150, 62, 0.45) !important;
+}
+
+#run-inventory-layout .run-inventory-card.is-locked.is-selected .run-inventory-spirit {
+  filter: none;
 }

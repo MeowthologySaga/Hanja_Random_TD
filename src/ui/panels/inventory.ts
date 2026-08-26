@@ -297,16 +297,26 @@ export function renderRunInventory(): void {
     const star = casualStarOf(tower);
     const progression = ctx.engine.state.mode === "casual" ? `${star}★ ${CASUAL_STAR_NAMES[star]}` : STAGE_NAMES[tower.stage];
     const skill = ctx.engine.towerHasActiveSkills(tower) ? definitionForTower(ctx.engine.catalog, tower.definitionId).combat.abilities.semantic.name : ctx.engine.state.mode === "casual" ? "기본 공격·2★ 해금" : "기본 공격·합성 재료";
+    /*
+     * [J-3] 잠금은 여태 격자에서 보이지 않았다.
+     *
+     * 사용자 원문: "인벤토리 내에서 잠금 표시한 게 티가 안 난다." 대표 자령을
+     * 고를 때 잠기지 않은 것을 먼저 집으므로(위 `stack.find`), 묶음에 한 기라도
+     * 안 잠긴 게 있으면 자물쇠는 화면에서 통째로 사라졌다. 묶음 단위로 세어
+     * 전부 잠김 / 일부 잠김을 갈라 배지와 링으로 말한다.
+     */
+    const lockedCount = stack.filter((candidate) => candidate.locked).length;
+    const allLocked = lockedCount > 0 && lockedCount === stack.length;
     // [J-2] 보호 사유를 92px 카드가 감당할 두 글자로 줄여 꼬리표에 싣는다.
     const stackReasons = stack.flatMap((candidate) => cleanupAssessments.get(candidate.id)?.protectedReasons ?? []);
     const protectionTag = protectionShortLabel(stackReasons);
-    const detail = `${tower.char} ${learning.short} · ${tower.wuxing}행 · ${progression} · ${skill}${concentration > 0 ? ` · 농축 ${concentration}` : ""} · 보관 ${stack.length}기`;
+    const detail = `${tower.char} ${learning.short} · ${tower.wuxing}행 · ${progression} · ${skill}${concentration > 0 ? ` · 농축 ${concentration}` : ""} · 보관 ${stack.length}기${lockedCount > 0 ? ` · 鎖 잠금 ${lockedCount}기` : ""}`;
     const hint = ctx.runInventoryBulkMode
       ? eligible.length === 0 ? `보호 중(${protectionTag}) — 담을 수 없습니다` : checked > 0 ? `담김 ${checked}기 · 눌러 빼기` : `눌러 ${eligible.length}기 담기`
       : eligible.length === 0 ? `${dismantleBlockNote(stackReasons)} · 클릭 = 고르기` : "클릭 = 고르기 · 더블클릭 = 바로 배치";
     const stateClass = ctx.runInventoryBulkMode
-      ? `is-bulk ${eligible.length === 0 ? "is-bulk-blocked" : ""} ${checked > 0 ? "is-checked" : ""}`
-      : `${selected ? "is-selected" : ""} ${eligible.length > 0 ? "is-cleanup-candidate" : "is-protected-stack"}`;
+      ? `is-bulk ${eligible.length === 0 ? "is-bulk-blocked" : ""} ${checked > 0 ? "is-checked" : ""} ${allLocked ? "is-locked" : lockedCount > 0 ? "is-part-locked" : ""}`
+      : `${selected ? "is-selected" : ""} ${eligible.length > 0 ? "is-cleanup-candidate" : "is-protected-stack"} ${allLocked ? "is-locked" : lockedCount > 0 ? "is-part-locked" : ""}`;
     return `<button class="run-inventory-card ${stateClass}" type="button" data-run-inventory-id="${tower.id}" data-run-inventory-eligible="${eligible.map((candidate) => candidate.id).join(",")}" ${ctx.runInventoryBulkMode ? `aria-pressed="${String(checked > 0)}"` : ""} title="${escapeHtml(`${detail} · ${hint}`)}" aria-label="${escapeHtml(`${detail} · ${hint}`)}" style="--inventory-element:${ELEMENT_STYLES[tower.wuxing].color};--inventory-star:${ctx.engine.state.mode === "casual" ? CASUAL_STAR_COLORS[star] : STAGE_COLORS[tower.stage]}">
       <span class="run-inventory-spirit" style="${visualBackgroundStyle(visual)}" aria-hidden="true"></span>
       <b>${tower.char}</b>
@@ -315,7 +325,8 @@ export function renderRunInventory(): void {
       ${stack.length > 1 ? `<mark class="run-inventory-stack">×${stack.length}</mark>` : ""}
       ${ctx.engine.state.mode === "casual" ? `<u class="run-inventory-star">${star}★</u>` : ""}
       ${ctx.runInventoryBulkMode ? `<span class="run-inventory-check" aria-hidden="true">${eligible.length === 0 ? "보호" : checked > 0 ? `✓${checked}` : ""}</span>` : ""}
-      <em>${selected ? "선택됨" : eligible.length > 0 ? "정리" : `보호·${protectionTag}`}</em>
+      <em>${selected ? "선택됨" : eligible.length > 0 ? "정리" : protectionTag}</em>
+      ${lockedCount > 0 ? `<span class="run-inventory-lock" aria-hidden="true">鎖${allLocked ? "" : lockedCount}</span>` : ""}
     </button>`;
   }).join("");
 }
