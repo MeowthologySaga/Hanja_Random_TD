@@ -1286,6 +1286,9 @@ test("spotlights the first run with a three-step coach that can be skipped for g
 // FB4 — 1회성 안내. 별승급 진법에서 중급 소환 해금 안내가 먼저 서고,
 // 첫 소환 공개 연출에는 획수→별 규칙 안내가 딱 한 번 붙는다.
 test("teaches summon tiers and the stroke-to-star rule with one-shot hints", { tag: HINT_TAG }, async ({ page }) => {
+  // 부적 안내(기본 켜짐)는 이 스펙의 대상이 아니다 — 본 뒤로 표시해 두지 않으면
+  // 중급 안내를 닫는 순간 그 자리를 이어받아 "안내가 안 걷힌다"로 보인다.
+  await page.addInitScript(() => window.localStorage.setItem("hanja-td:hint:talisman:v1", "1"));
   await page.goto("/?seed=HINT-E2E-01");
   await page.getByTestId("start-run").click();
 
@@ -1345,4 +1348,148 @@ test("hints research unlock and first Munki once in standard mode", { tag: HINT_
   });
   await expect(page.locator("#hint-layer")).toBeVisible();
   await expect(page.locator("#hint-title")).toContainText("문기");
+});
+
+/*
+ * ── 트랙 N — 지난 감사의 "설계 판단" 보류분 ────────────────────────────
+ *
+ * 말줄임을 남길지 풀지는 눈이 아니라 자로 정한다. 아래 스펙들은 그 자를
+ * 코드에 박아 둔 것이다 — 조판이 밀리면 사람이 아니라 게이트가 먼저 안다.
+ */
+
+/** 웨이브 브리핑: 1~100 웨이브 × 잔존 유무 전수를 실제 조판으로 잰다. */
+test("keeps every wave briefing inside the two-line clamp", async ({ page }) => {
+  await page.goto("/?seed=TRACK-N-BRIEF&mode=casual");
+  await page.getByTestId("start-run").click();
+  await expect(page.locator("#wave-briefing")).toBeVisible();
+
+  const overflowing = await page.evaluate(async () => {
+    // 문자열을 변수로 돌려 tsc 의 정적 해석을 피한다 — 이 경로는 dev 서버가 푼다.
+    const specifier = "/src/core/content.ts";
+    const module = await import(specifier) as typeof import("../src/core/content");
+    const element = document.getElementById("wave-briefing") as HTMLElement;
+    const original = element.textContent;
+    const bad: Array<{ wave: number; survivors: number | null; text: string; overflow: number }> = [];
+    for (let wave = 1; wave <= 100; wave += 1) {
+      const plan = module.wavePlan(wave);
+      for (const survivors of [null, 9, 99]) {
+        const text = module.composeWaveBriefing(plan.briefing, wave, plan.boss, survivors);
+        element.textContent = text;
+        const overflow = element.scrollHeight - element.clientHeight;
+        if (overflow > 1) bad.push({ wave, survivors, text, overflow });
+      }
+    }
+    element.textContent = original;
+    return bad;
+  });
+  expect(overflowing).toEqual([]);
+  // 그래도 잘리는 날을 대비한 안전망: 전문이 title 로 남는다.
+  await expect(page.locator("#wave-briefing")).toHaveAttribute("title", /.+/u);
+});
+
+/** 도감 목록 카드의 뜻 요약: 한 줄 말줄임(87.8% 잘림)이던 것을 두 줄로 폈다. */
+test("unfolds codex list summaries to two lines without growing the card", async ({ page }) => {
+  await page.goto("/?seed=TRACK-N-CODEX&mode=casual");
+  await page.getByTestId("start-run").click();
+  await openCodex(page);
+  await expect(page.locator(".codex-jaryeong-card").first()).toBeVisible();
+
+  const summary = await page.$$eval(".codex-list .codex-jaryeong-category", (nodes) => {
+    const style = getComputedStyle(nodes[0] as HTMLElement);
+    const clipped = nodes.filter((node) => (node as HTMLElement).scrollHeight - (node as HTMLElement).clientHeight > 1).length;
+    return { total: nodes.length, clipped, clamp: style.webkitLineClamp, whiteSpace: style.whiteSpace };
+  });
+  expect(summary.clamp).toBe("2");
+  expect(summary.whiteSpace).toBe("normal");
+  // 한 줄 시절 실측 잘림률은 87.8%(879/1001). 두 줄이면 21% 대로 내려간다.
+  expect(summary.clipped / summary.total).toBeLessThan(0.3);
+  // 두 줄은 카드 안에 이미 있던 여백에서 나온다 — 카드가 커지면 실패다.
+  const cards = await page.$$eval(".codex-jaryeong-card", (nodes) => {
+    const heights = nodes.slice(0, 200).map((node) => Math.round(node.getBoundingClientRect().height));
+    const copyOverflow = nodes.slice(0, 200).map((node) => {
+      const copy = node.querySelector(".codex-jaryeong-copy") as HTMLElement;
+      return copy.scrollHeight - copy.clientHeight;
+    });
+    return { max: Math.max(...heights), copyOverflowMax: Math.max(...copyOverflow) };
+  });
+  expect(cards.max).toBe(154);
+  expect(cards.copyOverflowMax).toBeLessThanOrEqual(0);
+  // 남는 21% 는 title 이 받는다.
+  await expect(page.locator(".codex-list .codex-jaryeong-category").first()).toHaveAttribute("title", /.+/u);
+  await page.screenshot({ path: "artifacts/track-n-codex-summary-1280x720.png" });
+});
+
+/** 능력 알약 칩: 글자 자리 65px 3열에서 126px 2열로. 넘침이 0 이 되어야 한다. */
+test("gives ability pills a text column wide enough to read", async ({ page }) => {
+  await page.goto("/?seed=TRACK-N-ABILITY&mode=casual");
+  await page.getByTestId("start-run").click();
+  for (let index = 0; index < 3; index += 1) {
+    await page.getByTestId("summon-button").click();
+    await page.locator("#summon-reveal-close").click();
+  }
+  await openUnit(page);
+  await expect(page.locator(".ability-pills .ability-card").first()).toBeVisible();
+
+  const pills = await page.$$eval(".ability-pills .ability-card", (nodes) => nodes.map((node) => {
+    const label = node.querySelector("em") as HTMLElement;
+    const summary = node.querySelector("small") as HTMLElement;
+    return {
+      labelOverflow: label.scrollWidth - label.clientWidth,
+      summaryOverflow: summary.scrollHeight - summary.clientHeight,
+      textWidth: summary.clientWidth
+    };
+  }));
+  expect(pills.length).toBeGreaterThan(0);
+  // 65px 시절에는 분류 라벨이 예외 없이 32px 넘쳤고 요약도 전부 잘렸다.
+  for (const pill of pills) {
+    expect(pill.textWidth).toBeGreaterThan(100);
+    expect(pill.labelOverflow).toBeLessThanOrEqual(1);
+    expect(pill.summaryOverflow).toBeLessThanOrEqual(1);
+  }
+  await page.screenshot({ path: "artifacts/track-n-ability-pills-1280x720.png" });
+});
+
+/**
+ * 부팅 표시: 걸음마다 이름을 대고, 「0%」 로 멈춘 척하지 않는다.
+ *
+ * 부팅 막은 스쳐 지나가므로 사후 단언으로는 잡히지 않는다. 첫 프레임부터
+ * 걸음 이름과 진행률 문자열을 프레임 단위로 적어 두고, 막이 걷힌 뒤에 그
+ * 기록을 검사한다.
+ */
+test("names every boot step so the bar never reads as stuck", async ({ page }) => {
+  await page.addInitScript(() => {
+    const stages: string[] = [];
+    const percents: string[] = [];
+    let waitingAtFirstPaint: boolean | null = null;
+    Object.assign(window, { __bootWatch: { stages, percents, get waiting() { return waitingAtFirstPaint; } } });
+    const tick = (): void => {
+      const stage = document.getElementById("boot-stage");
+      const percent = document.getElementById("boot-percent");
+      const track = document.getElementById("boot-track");
+      if (waitingAtFirstPaint === null && track) waitingAtFirstPaint = track.classList.contains("is-waiting");
+      if (stage?.textContent && stages[stages.length - 1] !== stage.textContent) stages.push(stage.textContent);
+      if (percent?.textContent && percents[percents.length - 1] !== percent.textContent) percents.push(percent.textContent);
+      if (document.getElementById("boot-loader")) requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  });
+  await page.goto("/?seed=TRACK-N-BOOT");
+  await expect(page.getByTestId("start-run")).toBeVisible({ timeout: 30_000 });
+
+  const readWatch = async (): Promise<{ stages: string[]; percents: string[]; waiting: boolean | null }> =>
+    page.evaluate(() => {
+      const w = (window as unknown as { __bootWatch: { stages: string[]; percents: string[]; waiting: boolean | null } }).__bootWatch;
+      return { stages: [...w.stages], percents: [...w.percents], waiting: w.waiting };
+    });
+  await expect.poll(async () => (await readWatch()).stages.length, { timeout: 30_000 }).toBe(4);
+  const watch = await readWatch();
+
+  // 네 걸음이 모두 제 이름을 대고 지나간다.
+  expect(watch.stages).toEqual(["본문을 펼치는 중", "그림을 들이는 중", "서재를 세우는 중", "서재를 펼치는 중"]);
+  // 셀 수 없는 첫 구간은 빗금으로 살아 있음을 말한다.
+  expect(watch.waiting).toBe(true);
+  // 그리고 「0%」 는 한 프레임도 나오지 않는다 — 그것이 멈춤으로 읽히던 글자다.
+  expect(watch.percents.filter((text) => text.startsWith("0%"))).toEqual([]);
+  // 마지막에 100% 를 말하고, 그때는 정말로 끝났다.
+  expect(watch.percents[watch.percents.length - 1]).toBe("100%");
 });

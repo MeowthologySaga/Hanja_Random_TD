@@ -7,8 +7,8 @@
 import { CASUAL_STAR_BINS, CASUAL_STAR_COLORS } from "../core/casual";
 import { MAX_ENEMIES, WORLD_HEIGHT, WORLD_WIDTH } from "../core/content";
 import { CHEONJAMUN_JARYEONG_DEX_META } from "../core/cheonjamun-jaryeong-dex";
-import { casualSummonStarDistribution, type SummonStarBand } from "../core/engine-tuning";
-import { GAME_CONFIG, SUMMON_STAR_BANDS } from "../core/hanzi";
+import { casualSummonStarDistribution, SUMMON_COST_MULTIPLIER, type SummonStarBand } from "../core/engine-tuning";
+import { GAME_CONFIG, SUMMON_INTENT_LABELS, SUMMON_STAR_BANDS } from "../core/hanzi";
 import { NOTATION_AXIS_READY, NOTATION_LABELS } from "../core/notation";
 import type { CasualStar } from "../core/types";
 import type { DisplayMode } from "./display-mode";
@@ -66,6 +66,20 @@ function helpSummonOddsHtml(): string {
     return `<div class="help-odds-row"><b>${label}</b>${cells}</div>`;
   });
   return head + rows.join("");
+}
+
+/**
+ * 목적 소환 값의 배수표 — 상수(SUMMON_COST_MULTIPLIER)에서 그대로 읽어 그린다.
+ *
+ * 정찰료가 정액이던 시절에는 "+5·+12" 를 도움말에 적어도 틀리지 않았지만,
+ * 정률로 바꾼 뒤에는 기본가마다 실액이 달라진다. 문구를 손으로 적어 두면
+ * 계수를 만질 때마다 낡으므로 배수 자체를 보여 준다.
+ */
+function helpSummonPriceRatiosHtml(): string {
+  return (["discovery", "concentration", "lineage", "midstar", "highstar"] as const)
+    .filter((intent) => SUMMON_COST_MULTIPLIER[intent] !== 1)
+    .map((intent) => `${SUMMON_INTENT_LABELS[intent]} ${SUMMON_COST_MULTIPLIER[intent]}배`)
+    .join(" · ");
 }
 
 /** `#app` 에 넣을 게임 셸 전체 마크업. */
@@ -277,6 +291,12 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
                 </figure>
               </div>
               <p>한 줄로 — 가로·세로·대각선 · 순서대로(역순 인정) · 같은 진 안에서</p>
+              <!--
+                트랙 N: ①②③④ 는 이 도식과 전장 명패에 같은 모양으로 뜨는데,
+                전장 쪽 인장이 무엇을 뜻하는지는 도움말에만 있었다. 도식 바로
+                아래에서 두 표시를 한 줄로 이어 준다.
+              -->
+              <p class="idiom-rule-legend"><i aria-hidden="true">③</i>전장 인장 = <b>성어의 몇 번째 글자</b> · 점선 칸이 다음 차례</p>
               <!-- [SKILL-V1] 성어의 가호 한 줄 규칙 안내 -->
               <p>성어의 가호 — 발동 중 성어와 같은 진의 자령 전원 공격 +10%, 같은 진의 추가 발동 성어당 +5%p. 줄이 흩어지면 즉시 사라집니다.</p>
             </section>
@@ -568,8 +588,9 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
             </div>
           </div>
 
-          <!-- gripe #6: 범위와 독립인 읽기 표기 축. 통합 표기 테이블(요청서 v8)
-               도착 전에는 NOTATION_AXIS_READY=false 로 숨긴다 — 플래그만 켜면 열린다. -->
+          <!-- gripe #6: 범위와 독립인 읽기 표기 축. 통합 표기 테이블 v2 가
+               도착해 NOTATION_AXIS_READY 를 켜면서 열렸다. 위 「한자 범위」가
+               어떤 글자가 나오는지를, 여기는 그 글자를 어떻게 읽는지를 정한다. -->
           <div class="s13-group s13-notation-group" role="radiogroup" aria-label="읽기 표기법" ${NOTATION_AXIS_READY ? "" : "hidden"}>
             <span class="s13-group-label">읽기 표기법</span>
             <div class="s13-options">
@@ -577,6 +598,7 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
               <button type="button" data-s13-notation="jp-onkun" role="radio"><b>${NOTATION_LABELS["jp-onkun"].name}</b><small>${NOTATION_LABELS["jp-onkun"].sample}</small></button>
               <button type="button" data-s13-notation="cn-pinyin" role="radio"><b>${NOTATION_LABELS["cn-pinyin"].name}</b><small>${NOTATION_LABELS["cn-pinyin"].sample}</small></button>
             </div>
+            <p class="s13-group-note">범위가 <b>어떤 글자가 나오는가</b>라면, 표기는 <b>그 글자를 어떻게 읽는가</b>입니다. 둘은 따로 고를 수 있어 중국 3,500자를 한국 훈음으로 익히는 식도 됩니다.<br>고른 표기에 그 글자의 사전 독음이 없으면 <span class="notation-mark notation-mark--derived">정자 기준</span> 또는 <span class="notation-mark notation-mark--substitute">대체 표기</span> 배지를 달아 빌려 온 값임을 밝힙니다.</p>
           </div>
 
           <div class="s13-group" aria-label="읽기 표기">
@@ -669,6 +691,7 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
               <article class="help-card"><b>계보<em class="help-mode-badge is-synth">자형연성</em></b><span>목표 계보의 재료만 노립니다. 12회마다 재료 1기 보장 · 30회 누적 시 확정 지급.</span></article>
               <article class="help-card"><b>중복 수집</b><span>농축과 분해에 쓸 보유 한자를 다시 부릅니다.</span></article>
             </div>
+            <p class="help-note">목적 소환의 값은 <b>기본 소환가의 배수</b>입니다 — ${helpSummonPriceRatiosHtml()}. 뽑을수록 기본가가 올라도 상품 사이의 값 비율은 그대로라, 초반에 유리하던 선택이 후반에 뒤집히지 않습니다.</p>
             <h3 class="help-subhead">더 얻는 길</h3>
             <div class="help-cards">
               <article class="help-card"><b>소환<em><kbd>1</kbd></em></b><span>지역별 1단계 한자를 품은 자령이 무작위로 나옵니다. 목표에 모자란 재료는 뽑을수록 확률이 올라갑니다.</span></article>
@@ -785,6 +808,8 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
             <div class="help-cards help-cards--tight">
               <article class="help-card"><b>자령 도감<em><kbd>C</kbd></em></b><span>전체 한자와 천자문 자령을 한 화면에서 봅니다. 별·독립 여부·조합표·쉬운 훈 풀이와 자령 초상화를 함께 확인합니다.</span></article>
               <article class="help-card"><b>자세한 읽기</b><span>선택 카드와 도감에서는 훈음·음독·훈독·병음과 뜻까지 확인합니다.</span></article>
+              <article class="help-card"><b>읽기 표기법</b><span>맞춤 진법에서 <b>한자 범위</b>와 따로 고릅니다. 범위는 어떤 글자가 나오는지를, 표기는 그 글자를 어떻게 읽는지를 정하므로 중국 3,500자를 한국 훈음으로 익히는 조합도 됩니다.</span></article>
+              <article class="help-card"><b>읽기 곁의 배지</b><span><span class="notation-mark notation-mark--derived">정자 기준</span>은 그 자형 대신 정자(옛 글자꼴)의 독음을 쓴다는 뜻이고, <span class="notation-mark notation-mark--substitute">대체 표기</span>는 그 문자권에 읽기가 없어 다른 문자권의 표기를 빌려 왔다는 뜻입니다. 빌려 온 뜻은 원문 그대로라 <i lang="en">기울인 글씨</i>로 갈라 둡니다 — 훈음으로 외우지 마세요.</span></article>
             </div>
           </section>
         </div>
@@ -820,7 +845,7 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
         <i aria-hidden="true"><em>OFF</em></i>
       </button>
       <button id="talisman-mode-toggle" class="settings-toggle" type="button" role="switch" aria-checked="false" data-testid="talisman-mode-toggle">
-        <span><b>학습 모드 · 부적 만들기</b><small>패널에 「부적」 탭이 섭니다. 부적지의 한자를 따라 쓰고 [부적 봉인]을 누르면 그 글자의 자령이 보상을 두고 갑니다 — 웨이브마다 3장 한 세트입니다. 부적 모드에서는 적이 5% 강해집니다. 그 대신 부적 보상을 얻습니다.</small></span>
+        <span><b>학습 모드 · 부적 만들기</b><small>패널에 「부적」 탭이 섭니다. 부적지의 한자를 따라 쓰고 [부적 완성]을 누르면 그 글자의 자령이 보상을 두고 갑니다 — 웨이브마다 3장이 더해지고 쓰지 않은 장수는 최대 30장까지 그대로 쌓입니다. 부적 모드에서는 적이 5% 강해집니다. 그 대신 부적 보상을 얻습니다.</small></span>
         <i aria-hidden="true"><em>OFF</em></i>
       </button>
       <section class="audio-settings" aria-labelledby="audio-settings-title">

@@ -454,96 +454,8 @@ input:focus-visible {
   box-shadow: 0 0 24px rgba(255, 211, 103, 0.14);
 }
 
-.combat-readout {
-  position: absolute;
-  top: 86px;
-  left: 18px;
-  z-index: 4;
-  width: 250px;
-  pointer-events: none;
-}
-
-.combo-meter {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 5px;
-  padding: 5px 8px;
-  color: #ffe9a7;
-  border: 1px solid rgba(255, 201, 83, 0.34);
-  border-radius: 8px;
-  background: rgba(55, 39, 13, 0.88);
-  opacity: 0;
-  transform: translateX(-8px);
-}
-
-.combo-meter span {
-  font-size: 12px;
-  font-weight: 800;
-}
-
-.combo-meter b {
-  font-size: 17px;
-}
-
-.combo-meter--visible {
-  animation: combo-pop 1.75s ease both;
-}
-
-.combat-feed {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.combat-feed li {
-  display: grid;
-  grid-template-columns: 34px minmax(0, 1fr);
-  align-items: center;
-  min-height: 46px;
-  padding: 5px 7px;
-  border-left: 2px solid var(--feed-color);
-  border-radius: 6px;
-  background: linear-gradient(90deg, color-mix(in srgb, var(--feed-color) 15%, rgba(4, 8, 14, 0.9)), rgba(4, 8, 14, 0.72));
-  animation: feed-slide 0.22s ease both;
-}
-
-.combat-feed li > b {
-  display: grid;
-  width: 28px;
-  height: 28px;
-  place-items: center;
-  color: var(--feed-color);
-  font-family: "Batang", serif;
-  font-size: 18px;
-  border: 1px solid color-mix(in srgb, var(--feed-color) 45%, transparent);
-  border-radius: 50%;
-}
-
-.combat-feed span,
-.combat-feed strong,
-.combat-feed small {
-  display: block;
-  min-width: 0;
-}
-
-.combat-feed strong {
-  overflow: hidden;
-  color: #edf3fb;
-  font-size: 13px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.combat-feed small {
-  margin-top: 1px;
-  color: #8696ad;
-  font-size: 11px;
-  line-height: 1.25;
-}
+/* 기록 탭 철거(트랙 B)와 함께 `.combat-readout`·`.combo-meter`·`.combat-feed`
+   묶음을 걷었다. 전투 알림은 타워 위 말풍선과 패널 푸터가 맡는다. */
 
 .toast {
   position: absolute;
@@ -772,37 +684,8 @@ input:focus-visible {
   cursor: default;
 }
 
-.goal-card {
-  display: grid;
-  grid-template-columns: 76px 1fr;
-  min-height: 90px;
-  padding: 6px;
-  border: 1px solid rgba(225, 190, 113, 0.36);
-  border-radius: 11px;
-  background:
-    linear-gradient(105deg, rgba(232, 209, 157, 0.16), rgba(91, 68, 36, 0.12)),
-    #1c1b18;
-  box-shadow: inset 0 0 22px rgba(231, 200, 128, 0.04);
-}
-
-.goal-glyph {
-  display: grid;
-  width: 62px;
-  height: 74px;
-  place-items: center;
-  color: #fff8e3;
-  font-family: "Batang", "Malgun Gothic", serif;
-  font-size: 47px;
-  font-weight: 900;
-  border: 1px solid color-mix(in srgb, var(--goal-color, #e6bd66) 60%, transparent);
-  border-radius: 8px;
-  background: radial-gradient(circle, color-mix(in srgb, var(--goal-color, #e6bd66) 24%, transparent), rgba(8, 10, 14, 0.8));
-  box-shadow: 0 0 18px color-mix(in srgb, var(--goal-color, #e6bd66) 15%, transparent);
-}
-
-.goal-copy {
-  min-width: 0;
-}
+/* 「성어가 곧 목표」 통합(트랙 B)으로 한자 목표 카드가 사라졌다 —
+   `.goal-card`·`.goal-glyph`·`.goal-copy` 묶음을 걷는다. */
 
 .section-heading {
   display: flex;
@@ -820,68 +703,6 @@ input:focus-visible {
 .section-heading b {
   color: #d8c89c;
   font-size: 11px;
-}
-
-.goal-copy > strong {
-  display: block;
-  margin: 3px 0 5px;
-  color: #f4e6bd;
-  font-family: "Batang", "Malgun Gothic", serif;
-  font-size: 19px;
-}
-
-.goal-reading {
-  display: block;
-  margin: -3px 0 3px;
-  overflow: hidden;
-  color: #d7c79e;
-  font-size: 11px;
-  font-weight: 800;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.goal-materials {
-  display: flex;
-  gap: 4px;
-  min-height: 19px;
-  overflow: hidden;
-}
-
-.goal-materials span {
-  padding: 2px 5px;
-  color: #b4a98d;
-  font-size: 11px;
-  border: 1px solid rgba(206, 182, 125, 0.18);
-  border-radius: 999px;
-  background: rgba(0, 0, 0, 0.18);
-  white-space: nowrap;
-}
-
-.goal-materials span.is-complete {
-  color: #dff4d7;
-  border-color: rgba(123, 206, 131, 0.3);
-  background: rgba(46, 108, 59, 0.18);
-}
-
-.goal-materials b {
-  font-size: 12px;
-}
-
-.goal-progress {
-  height: 4px;
-  margin-top: 5px;
-  overflow: hidden;
-  border-radius: 3px;
-  background: rgba(0, 0, 0, 0.34);
-}
-
-.goal-progress i {
-  display: block;
-  width: 0;
-  height: 100%;
-  background: linear-gradient(90deg, #b48a41, #f0d58b);
-  transition: width 0.2s ease;
 }
 
 .evolution-workbench {
@@ -2228,17 +2049,6 @@ kbd {
   100% { opacity: 0; transform: translate(-50%, 4px) scale(1.01); }
 }
 
-@keyframes feed-slide {
-  from { opacity: 0; transform: translateX(-8px); }
-  to { opacity: 1; transform: translateX(0); }
-}
-
-@keyframes combo-pop {
-  0% { opacity: 0; transform: translateX(-8px) scale(0.96); }
-  10%, 76% { opacity: 1; transform: translateX(0) scale(1); }
-  100% { opacity: 0; transform: translateX(3px) scale(1.02); }
-}
-
 @keyframes toast-show {
   0% { opacity: 0; transform: translate(-50%, 12px); }
   12%, 78% { opacity: 1; transform: translate(-50%, 0); }
@@ -2558,47 +2368,9 @@ body {
   font-size: 13px;
 }
 
-.goal-card {
-  grid-template-columns: 90px minmax(0, 1fr);
-  min-height: 0;
-  padding: 8px;
-  border-color: rgba(229, 191, 105, 0.5);
-  border-radius: 13px;
-  background:
-    linear-gradient(105deg, rgba(26, 102, 123, 0.19), rgba(82, 61, 29, 0.12)),
-    #111a20;
-}
-
-.goal-glyph {
-  width: 76px;
-  height: 94px;
-  font-size: 61px;
-  border-radius: 11px;
-}
-
 .section-heading span,
 .section-heading b {
   font-size: 12px;
-}
-
-.goal-copy > strong {
-  margin: 4px 0 5px;
-  font-size: 21px;
-}
-
-.goal-reading {
-  margin: -1px 0 4px;
-  color: #ead9aa;
-  font-size: 14px;
-}
-
-.goal-materials span {
-  padding: 3px 7px;
-  font-size: 12px;
-}
-
-.goal-materials b {
-  font-size: 14px;
 }
 
 .action-row {
@@ -2768,10 +2540,6 @@ body {
 }
 
 .evolution-workbench.panel-view.is-active {
-  display: flex !important;
-}
-
-.combat-readout.panel-view.is-active {
   display: flex !important;
 }
 
@@ -3484,58 +3252,6 @@ body {
   font-size: 13px;
 }
 
-.combat-readout {
-  position: static;
-  flex-direction: column;
-  width: 100%;
-  height: 100%;
-  padding: 10px;
-  overflow: hidden;
-  border: 1px solid rgba(151, 181, 219, 0.18);
-  border-radius: 12px;
-  background: rgba(4, 9, 16, 0.7);
-}
-
-.record-heading {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  margin-bottom: 6px;
-}
-
-.record-heading span {
-  color: #edf4fc;
-  font-size: 15px;
-  font-weight: 900;
-}
-
-.record-heading small {
-  color: #7f91aa;
-  font-size: 11px;
-}
-
-.combo-meter {
-  flex: 0 0 auto;
-}
-
-.combat-feed {
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
-}
-
-.combat-feed li {
-  min-height: 50px;
-}
-
-.combat-feed strong {
-  font-size: 14px;
-}
-
-.combat-feed small {
-  font-size: 12px;
-}
-
 .ability-banner {
   top: 8px;
   left: 8px;
@@ -3705,9 +3421,6 @@ body {
 
   .brand-row h1 { font-size: 31px; }
   .resource-grid strong { font-size: 22px; }
-  .goal-glyph { width: 86px; height: 106px; font-size: 69px; }
-  .goal-card { grid-template-columns: 100px minmax(0, 1fr); }
-  .goal-copy > strong { font-size: 24px; }
   .selected-glyph { width: 94px; height: 110px; font-size: 66px; }
   .selected-card { grid-template-columns: 100px minmax(0, 1fr) auto; padding: 13px; }
   .selected-copy .selected-learning { font-size: 17px; }
@@ -4313,9 +4026,13 @@ body {
   padding: 5px 0;
 }
 
+/* 고정 3칸이면 별승급(캐주얼)에서 hidden 인 [조합표]가 자기 칸을 그대로
+   비워 둬, 갈피 바 오른쪽에 382px 죽은 칸이 남았다. 보이는 버튼 수만큼만
+   칸을 만든다(도움말은 5칸 template 을 따로 얹으므로 영향 없음). */
 .codex-mode-tabs {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
   gap: 5px;
 }
 
@@ -6574,150 +6291,10 @@ body {
   font-size: 15px;
 }
 
-.goal-mode-tabs {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 3px;
-  padding: 2px;
-  border: 1px solid rgba(148, 173, 207, 0.16);
-  border-radius: 7px;
-  background: rgba(2, 7, 13, 0.7);
-}
+/* 목표 서책 1세대 잔재를 걷는다 — 한자/성어 두 갈피(`.goal-mode-tabs`)와
+   그 갈피가 갈아 끼우던 `.goal-card`·`.idiom-target-card` 한 벌. 지금은
+   성어 카드 격자(`.goal-idiom-card`)와 상세(`.goal-detail-*`)가 대신한다. */
 
-.goal-mode-tabs button {
-  min-width: 74px;
-  height: 25px;
-  padding: 0 8px;
-  color: #8798ad;
-  font-size: 10px;
-  font-weight: 900;
-  border: 1px solid transparent;
-  border-radius: 5px;
-  background: transparent;
-}
-
-.goal-mode-tabs button.is-active {
-  color: #ffe7a7;
-  border-color: rgba(225, 189, 101, 0.42);
-  background: linear-gradient(180deg, rgba(119, 83, 25, 0.54), rgba(51, 37, 18, 0.72));
-}
-
-.goal-workbench .goal-card {
-  grid-template-columns: 68px minmax(0, 1fr);
-  flex: 0 0 88px;
-  padding: 6px;
-  border-radius: 10px;
-}
-
-.goal-workbench .goal-glyph {
-  width: 58px;
-  height: 72px;
-  font-size: 48px;
-  border-radius: 9px;
-}
-
-.goal-workbench .goal-copy > strong {
-  margin: 2px 0;
-  font-size: 17px;
-}
-
-.goal-workbench .goal-reading {
-  margin: 0 0 3px;
-  font-size: 11px;
-}
-
-.goal-workbench .goal-materials {
-  min-height: 20px;
-}
-
-.goal-workbench .goal-materials span {
-  padding: 2px 5px;
-  font-size: 10px;
-}
-
-.goal-workbench .goal-materials b {
-  font-size: 12px;
-}
-
-.idiom-target-card {
-  display: none;
-  min-height: 88px;
-  grid-template-columns: 132px minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 9px;
-  padding: 9px;
-  border: 1px solid color-mix(in srgb, var(--idiom-accent, #d6b567) 38%, rgba(137, 163, 199, 0.18));
-  border-radius: 10px;
-  background: linear-gradient(120deg, color-mix(in srgb, var(--idiom-accent, #d6b567) 10%, transparent), rgba(5, 12, 20, 0.92));
-}
-
-.goal-workbench[data-current-goal-mode="idiom"] .goal-card {
-  display: none;
-}
-
-.goal-workbench[data-current-goal-mode="idiom"] .idiom-target-card {
-  display: grid;
-}
-
-.idiom-target-glyphs,
-.goal-choice-idiom-glyphs {
-  display: flex;
-  gap: 3px;
-}
-
-.idiom-target-glyphs i,
-.goal-choice-idiom-glyphs i {
-  display: grid;
-  place-items: center;
-  color: #657389;
-  font-family: "Noto Serif KR", "Nanum Myeongjo", serif;
-  font-style: normal;
-  font-weight: 900;
-  border: 1px solid rgba(127, 148, 177, 0.2);
-  border-radius: 6px;
-  background: rgba(2, 7, 13, 0.72);
-}
-
-.idiom-target-glyphs i {
-  width: 30px;
-  height: 42px;
-  font-size: 23px;
-}
-
-.idiom-target-glyphs i.is-owned,
-.goal-choice-idiom-glyphs i.is-owned {
-  color: var(--idiom-accent, var(--goal-accent, #f0cf79));
-  border-color: color-mix(in srgb, var(--idiom-accent, var(--goal-accent, #f0cf79)) 50%, transparent);
-  box-shadow: inset 0 0 12px color-mix(in srgb, var(--idiom-accent, var(--goal-accent, #f0cf79)) 10%, transparent);
-}
-
-.idiom-target-copy {
-  display: grid;
-  min-width: 0;
-  gap: 1px;
-}
-
-.idiom-target-copy span,
-.idiom-target-copy small,
-.idiom-target-copy em {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.idiom-target-copy span { color: #8b9aad; font-size: 9px; }
-.idiom-target-copy strong { color: #f2dfb0; font-size: 16px; }
-.idiom-target-copy small { color: #b1bdcd; font-size: 10px; }
-.idiom-target-copy em { color: var(--idiom-accent, #e8c774); font-size: 9px; font-style: normal; }
-
-.idiom-target-status {
-  display: grid;
-  justify-items: end;
-  gap: 3px;
-}
-
-.idiom-target-status b { color: var(--idiom-accent, #e8c774); font-size: 19px; }
-.idiom-target-status span { color: #99a8bb; font-size: 9px; white-space: nowrap; }
 
 .goal-selector-tools {
   display: grid;
@@ -6794,112 +6371,6 @@ body {
   box-shadow: inset 0 0 0 1px rgba(255, 230, 156, 0.18);
 }
 .goal-selector-list::-webkit-scrollbar-button { display: none; width: 0; height: 0; }
-
-.goal-choice-card {
-  position: relative;
-  display: grid;
-  grid-template-columns: 48px 34px minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 7px;
-  width: 100%;
-  min-height: 58px;
-  margin-bottom: 4px;
-  padding: 5px 8px 5px 5px;
-  color: #e7edf5;
-  text-align: left;
-  border: 1px solid rgba(130, 155, 187, 0.17);
-  border-left: 3px solid color-mix(in srgb, var(--goal-accent) 58%, #4f5968);
-  border-radius: 8px;
-  background: linear-gradient(100deg, color-mix(in srgb, var(--goal-accent) 7%, rgba(8, 16, 26, 0.96)), rgba(5, 11, 19, 0.96));
-  cursor: pointer;
-}
-
-.goal-choice-card:hover,
-.goal-choice-card:focus-visible {
-  border-color: color-mix(in srgb, var(--goal-accent) 45%, rgba(138, 161, 191, 0.3));
-  background: linear-gradient(100deg, color-mix(in srgb, var(--goal-accent) 13%, rgba(8, 16, 26, 0.96)), rgba(8, 15, 24, 0.98));
-  outline: 0;
-}
-
-.goal-choice-card.is-current {
-  border-color: color-mix(in srgb, var(--goal-accent) 72%, #e1bd68);
-  box-shadow: inset 0 0 18px color-mix(in srgb, var(--goal-accent) 10%, transparent), 0 0 10px rgba(218, 178, 83, 0.06);
-}
-
-.goal-choice-card.is-complete:not(.is-current) { opacity: 0.54; }
-.goal-choice-card:disabled { cursor: default; filter: saturate(0.55); }
-
-.goal-choice-spirit {
-  width: 46px;
-  height: 46px;
-  background-repeat: no-repeat;
-  background-position: center;
-  background-size: contain;
-  filter: drop-shadow(0 3px 5px rgba(0, 0, 0, 0.65));
-}
-
-.goal-choice-glyph {
-  color: var(--goal-accent);
-  font-family: "Noto Serif KR", "Nanum Myeongjo", serif;
-  font-size: 25px;
-  text-align: center;
-}
-
-.goal-choice-copy {
-  display: grid;
-  min-width: 0;
-  gap: 1px;
-}
-
-.goal-choice-copy strong,
-.goal-choice-copy small,
-.goal-choice-copy em {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.goal-choice-copy strong { color: #e9eff7; font-size: 11px; }
-.goal-choice-copy small { color: #9cabbc; font-size: 9px; }
-.goal-choice-copy em { color: #788a9f; font-size: 8px; font-style: normal; }
-
-.goal-choice-card mark {
-  padding: 4px 6px;
-  color: var(--goal-accent);
-  font-size: 9px;
-  font-weight: 900;
-  border: 1px solid color-mix(in srgb, var(--goal-accent) 32%, transparent);
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--goal-accent) 8%, rgba(3, 8, 14, 0.86));
-  white-space: nowrap;
-}
-
-.goal-clue {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-  padding: 3px 6px;
-  color: #b7c4d4;
-  font-size: 9px;
-  border: 1px solid rgba(211, 173, 82, 0.2);
-  border-radius: 999px;
-  background: rgba(8, 15, 23, 0.78);
-}
-
-.goal-clue b {
-  color: #e2bd68;
-  font-size: 8px;
-}
-
-.goal-choice-card--idiom {
-  grid-template-columns: 116px minmax(0, 1fr) auto;
-}
-
-.goal-choice-idiom-glyphs i {
-  width: 26px;
-  height: 36px;
-  font-size: 19px;
-}
 
 .goal-selector-empty {
   display: grid;
@@ -7097,8 +6568,6 @@ body {
     grid-template-rows: 48px 62px 72px minmax(0, 1fr) 48px 34px 38px;
   }
 
-  .goal-choice-card { min-height: 66px; }
-  .goal-choice-copy strong { font-size: 12px; }
   .panel-tabs button { font-size: 12px; }
 }
 
