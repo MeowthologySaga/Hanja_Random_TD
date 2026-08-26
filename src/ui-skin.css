@@ -10776,3 +10776,52 @@ dialog {
 /* 3D 서재에서는 버튼이 걸쇠 모델 위로 재투영돼 판 안쪽이 좁다. 띠를 당긴다. */
 .s00-stage.is-3d .s00-start[data-loading="1"]::before,
 .s00-stage.is-3d .s00-start[data-loading="1"]::after { bottom: 8px; }
+
+/* ══════════════════════════════════════════════════════════════════
+   95. 자원 칸·웨이브 카드 — 장식 테두리와 콘텐츠 박스 분리
+   지적: "9-slice 안 썼니? 칸 넘어가고 테두리랑 글이 겹친다."
+   원인 셋: (a) .wave-card 가 3열 그리드인데 자식이 2개라 유령 열이
+   생겨 약점 인장이 좁은 칸에 눌림, (b) 브리핑이 한 줄 말줄임 가정인데
+   여러 줄로 풀리며 테두리 침범, (c) 엽전 칸이 어두운 우물+밝은 칩
+   이중 프레임. 프레임 안쪽에 일정한 내부 여백 박스를 세운다.
+   ══════════════════════════════════════════════════════════════════ */
+
+.wave-card {
+  grid-template-columns: minmax(0, 1fr) auto;
+  column-gap: 10px;
+  align-items: center;
+  padding: 8px 10px 8px 12px;
+}
+
+/* 브리핑: 테두리 안에서 정확히 2줄로 끝낸다 — 침범도, 중간 절단도 없이 */
+.wave-card small {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-height: 1.38;
+  white-space: normal;
+  text-overflow: clip;
+}
+
+.weakness-seal {
+  align-self: center;
+  justify-self: end;
+  margin: 0;
+}
+
+/* 자원 4칸: 같은 우물, 같은 안쪽 여백 — 엽전 칸은 금테로만 강조 */
+.resource-grid div {
+  padding: 6px 8px;
+}
+
+.resource-grid div:first-child {
+  background: var(--mat-well);
+  box-shadow:
+    var(--bevel-in),
+    0 0 0 1px rgba(155, 113, 55, 0.45);
+}
+
+.resource-grid div:first-child strong {
+  color: var(--gold-200);
+}
