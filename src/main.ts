@@ -220,7 +220,7 @@ const initialDisplayMode = loadDisplayMode();
 const initialAutoPlaceSummons = loadAutoPlaceSummons();
 
 app.innerHTML = `
-  <main class="game-shell" data-phase="title" data-display-mode="${initialDisplayMode}" data-game-mode="standard">
+  <main class="game-shell" data-phase="title" data-display-mode="${initialDisplayMode}" data-game-mode="casual">
     <section class="battle-stage" aria-label="한자 랜덤 타워 디펜스 전장">
       <canvas id="battle-canvas" width="${WORLD_WIDTH}" height="${WORLD_HEIGHT}"></canvas>
       <button id="map-zoom-reset" class="map-zoom-control" type="button" title="지도 확대/축소 초기화">
@@ -566,13 +566,13 @@ app.innerHTML = `
 
         <p class="s00-mode-label">진법 선택</p>
         <div class="s00-modes" role="radiogroup" aria-label="진법 선택">
-          <button type="button" class="s00-mode game-mode-option is-selected" data-game-mode-option="standard" role="radio" aria-checked="true"
-            aria-label="자형연성 진법. 실제 한자 구성식으로 합성하고 목표 계보를 완성하는 진법">
-            <i class="s00-skin" aria-hidden="true"></i><b>자형연성 진법</b><small aria-hidden="true"><span class="s00-mode-sub s00-mode-sub--full">실제 한자 구성식 · 목표 계보</span><span class="s00-mode-sub s00-mode-sub--compact">구성식 합성 · 계보 목표</span></small><em>선택됨</em>
+          <button type="button" class="s00-mode game-mode-option is-selected" data-game-mode-option="casual" role="radio" aria-checked="true"
+            aria-label="별승급 진법. 같은 별 셋을 모아 다음 별 자령을 무작위로 얻는 본편 진법. 최고 8성">
+            <i class="s00-skin" aria-hidden="true"></i><b>별승급 진법</b><small aria-hidden="true"><span class="s00-mode-sub s00-mode-sub--full">같은 별 셋 → 다음 별 무작위 · 최고 8성</span><span class="s00-mode-sub s00-mode-sub--compact">3합 승급 · 무작위 재미</span></small><em>선택됨</em>
           </button>
-          <button type="button" class="s00-mode game-mode-option" data-game-mode-option="casual" role="radio" aria-checked="false"
-            aria-label="별승급 진법. 같은 오행·같은 별 3기를 모아 다음 별 자령을 얻는 진법. 최고 8성">
-            <i class="s00-skin" aria-hidden="true"></i><b>별승급 진법</b><small aria-hidden="true"><span class="s00-mode-sub s00-mode-sub--full">같은 오행·같은 별 3기 → 다음 별 · 최고 8성</span><span class="s00-mode-sub s00-mode-sub--compact">3합 승급 · 최고 8성</span></small><em>선택됨</em>
+          <button type="button" class="s00-mode game-mode-option" data-game-mode-option="standard" role="radio" aria-checked="false"
+            aria-label="자형연성 진법. 실제 한자의 설계도대로 부수를 부품 삼아 글자를 조립하는 학습 진법">
+            <i class="s00-skin" aria-hidden="true"></i><b>자형연성 진법</b><small aria-hidden="true"><span class="s00-mode-sub s00-mode-sub--full">부수를 부품 삼아 조립 · 학습 특화</span><span class="s00-mode-sub s00-mode-sub--compact">부수 조립 · 한자 학습</span></small><em>선택됨</em>
           </button>
         </div>
 
@@ -655,8 +655,8 @@ app.innerHTML = `
           <div class="s13-group" aria-label="진법 규칙">
             <span class="s13-group-label">진법 규칙</span>
             <div class="s13-options">
-              <button type="button" data-s13-mode="standard" role="radio"><b>자형연성</b><small>실제 구성식 합성</small></button>
-              <button type="button" data-s13-mode="casual" role="radio"><b>별승급</b><small>3기 소모 · 다음 별 무작위</small></button>
+              <button type="button" data-s13-mode="casual" role="radio"><b>별승급</b><small>3합 승급 · 무작위 획득</small></button>
+              <button type="button" data-s13-mode="standard" role="radio"><b>자형연성</b><small>부수 조립 · 학습 특화</small></button>
               <button type="button" id="s13-autoplace" aria-pressed="true"><b>소환 자동 배치</b><small class="s13-state">ON</small></button>
             </div>
           </div>
@@ -916,7 +916,10 @@ seedInput.value = initialSeed;
 let selectedRegion: RegionCode = "KR";
 let pendingRegion: RegionCode | null = null;
 let formationUnlockHintShown = false;
-let selectedGameMode: GameMode = "standard";
+// 본편은 별승급 — 게임적 재미 기준의 사용자 결정. 자형연성은 학습 특화로 위치.
+// `?mode=standard|casual` 딥링크는 e2e·공유용.
+const modeParam = new URLSearchParams(window.location.search).get("mode");
+let selectedGameMode: GameMode = modeParam === "standard" ? "standard" : modeParam === "casual" ? "casual" : "casual";
 
 /*
  * 진법 이름은 여기서만 만든다.
