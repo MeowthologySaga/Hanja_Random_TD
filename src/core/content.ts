@@ -200,6 +200,18 @@ export function directionOnPath(progress: number, smoothingDistance = 36): Point
     : { x: 1, y: 0 };
 }
 
+/**
+ * 수술 8 ⓐ: 초반 순환 가속.
+ *
+ * 첫 소환의 무작위 오행이 첫 개방 진을 정하므로, 경로에서 먼 진이 걸리면
+ * 적이 한 바퀴(웨이브 1 기준 39.8초) 도는 동안 기다리는 시간이 길다.
+ * 1~3웨이브 한정으로 순환 속도를 15% 올려 랩을 34.6초로 줄인다. 경로가
+ * 닫힌 고리라 적이 새지 않으므로 빠른 순환은 오히려 타워 사정권을 더 자주
+ * 지나가게 해 난이도를 올리지 않는다.
+ */
+export const EARLY_LAP_WAVES = 3;
+export const EARLY_LAP_SPEED_MULTIPLIER = 1.15;
+
 export function wavePlan(wave: number): WavePlan {
   const archetype = archetypeForWave(wave);
   const boss = archetype === "boss";
@@ -236,7 +248,7 @@ export function wavePlan(wave: number): WavePlan {
     wave,
     count: Math.max(1, Math.round(baseCount * countFactor)),
     hp: baseHp * hpFactor,
-    speed: (0.025 + Math.min(0.015, wave * 0.00015)) * speedFactor,
+    speed: (0.025 + Math.min(0.015, wave * 0.00015)) * speedFactor * (wave <= EARLY_LAP_WAVES ? EARLY_LAP_SPEED_MULTIPLIER : 1),
     interval: archetype === "swarm" ? 0.38 : boss ? 0.72 : Math.max(0.42, 0.9 - wave * 0.0048),
     reward: boss ? 24 + chapter * 6 : 1 + Math.floor((wave - 1) / 25),
     boss,
