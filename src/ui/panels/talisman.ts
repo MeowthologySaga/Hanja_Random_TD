@@ -326,7 +326,7 @@ function presentDefinition(definition: HanziDefinition): void {
   const info = learningInfoForNotation(ctx.engine.state.notation, definition.char);
   const infoMark = notationBadgeText(info);
   must<HTMLElement>("#talisman-reading").textContent = `${info.readingLabel} · ${info.reading}${infoMark ? ` (${infoMark})` : ""}`;
-  setStatus("반투명 글자를 따라 쓰고 [부적 봉인]");
+  setStatus("반투명 글자를 따라 쓰고 [부적 완성]");
   must<HTMLButtonElement>("#talisman-redraw").textContent = "다시 뽑기";
   syncSubmitButton(false);
   setControlsEnabled(true);
