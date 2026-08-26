@@ -2,7 +2,9 @@
  * 사자성어 패널과 발동 배지.
  */
 import { idiomById, type IdiomDefinition } from "../../core/idioms";
+import { learningInfoForNotation } from "../../core/learning";
 import { idiomReadingForNotation } from "../../core/notation";
+import type { IdiomSeal } from "../../core/types";
 import { ctx, idiomResult, idiomTab, must, toast } from "../app-context";
 import { escapeHtml } from "../format";
 import { showToast } from "../hud";
@@ -178,12 +180,14 @@ function shortIdiomBonusLabel(label: string): string {
 }
 
 /*
- * 트랙 K 과업 3 (gripe #11-3) — 칩 효과 문구에서 수치는 절대 자르지 않는다.
+ * ── 트랙 K (gripe #11-2·3) ────────────────────────────────────────────
  *
- * "景行維賢 적 이동 속도 -…" 처럼 끝의 수치가 통째로 사라졌다(실측 8px 잘림).
- * 요약은 허용하되 잘리는 쪽은 언제나 설명부여야 한다 — 설명부와 수치를 따로
- * 조판해 수치 토막만 flex-shrink: 0 으로 못 박고, 폭이 모자라면 자르는 대신
- * 다음 줄로 내린다(칩 2줄 허용).
+ * 좌상단 발동 칩은 한자 4자만 보여 줬다. 한자 학습자가 읽을 수 없는 표찰이라
+ * 독음을 병기하고, 효과 문구는 "景行維賢 적 이동 속도 -…" 처럼 수치가 잘렸다.
+ * 요약은 허용하되 수치는 절대 자르지 않는다 — 설명부와 수치를 따로 조판해
+ * 수치 토막에만 flex-shrink: 0 을 준다(줄이 모자라면 수치가 다음 줄로 내려간다).
+ * 전문(뜻풀이·참여 자령 4자)은 호버 팝오버가 맡는다 — 전장 자령 학습 카드와
+ * 같은 시각 언어다.
  */
 
 /** `적 이동 속도 -10%` → { text: "적 이동 속도", value: "-10%" }. 수치가 없으면 value 는 빈 문자열. */
@@ -193,10 +197,44 @@ function splitIdiomBonus(label: string): { text: string; value: string } {
   return { text: (match[1] ?? "").trim(), value: (match[2] ?? "").replace(/\s+/gu, "") };
 }
 
+/** 봉인된 네 칸에 실제로 선 자령 — 없으면 성어 글자로 대신 채운다(해제 직전 한 프레임). */
+function sealParticipants(idiom: IdiomDefinition, seal: IdiomSeal): Array<{ char: string; reading: string }> {
+  const chars = [...idiom.chars];
+  const notation = ctx.engine.state.notation;
+  const placed = seal.cells
+    .map((cell) => ctx.engine.state.towers.find((tower) => tower.cell === cell)?.char)
+    .filter((char): char is string => Boolean(char));
+  const source = placed.length === chars.length ? placed : chars;
+  return source.map((char) => ({ char, reading: learningInfoForNotation(notation, char).short }));
+}
+
+/** 터치·키보드용 축약본 — 팝오버와 같은 내용을 한 줄로 접는다. */
+function activeIdiomTitle(idiom: IdiomDefinition, seal: IdiomSeal, reading: string): string {
+  const parts = sealParticipants(idiom, seal).map((part) => `${part.char}(${part.reading})`).join(" · ");
+  return `${idiom.chars} ${reading} — ${idiom.meaning} · 발동 효과 ${idiom.bonus.label} · 참여 자령 ${parts} — 눌러서 발동 칸으로 이동`;
+}
+
+/** 호버 팝오버 — 한자 4자 · 독음 · 뜻풀이 · 발동 효과 · 참여 자령 4자. */
+function activeIdiomPopHtml(idiom: IdiomDefinition, seal: IdiomSeal, reading: string): string {
+  const participants = sealParticipants(idiom, seal)
+    .map((part) => `<span class="aip-jar"><b>${escapeHtml(part.char)}</b><em>${escapeHtml(part.reading)}</em></span>`)
+    .join("");
+  return `<span class="active-idiom-pop" aria-hidden="true">`
+    + `<span class="aip-head"><b class="aip-chars">${escapeHtml(idiom.chars)}</b><strong class="aip-reading">${escapeHtml(reading)}</strong></span>`
+    + `<em class="aip-meaning">${escapeHtml(idiom.meaning)}</em>`
+    + `<span class="aip-line"></span>`
+    + `<span class="aip-row"><i>발동 효과</i><b>${escapeHtml(idiom.bonus.label)}</b></span>`
+    + `<span class="aip-row aip-row--jars"><i>참여 자령</i><span class="aip-jars">${participants}</span></span>`
+    + `<span class="aip-line"></span>`
+    + `<span class="aip-foot">눌러서 발동 칸으로 이동 · 줄이 흩어지면 해제</span>`
+    + `</span>`;
+}
+
 export function renderActiveIdioms(): void {
   // R18: 스택은 "지금 발동 중"만 센다. 흩어진 봉인은 기록으로만 남아 성어 탭에 보인다.
   const seals = ctx.engine.activeIdiomSeals();
-  const key = seals.map((seal) => seal.idiomId).join(",");
+  // 팝오버가 참여 자령 4자를 읽으므로 칸·표기가 바뀌면 다시 그려야 한다.
+  const key = seals.map((seal) => `${seal.idiomId}@${seal.cells.join("-")}`).join(",") + "|" + ctx.engine.state.notation;
   if (key === ctx.activeIdiomsRenderKey) return;
   ctx.activeIdiomsRenderKey = key;
   const stack = must<HTMLElement>("#active-idioms");
@@ -209,9 +247,11 @@ export function renderActiveIdioms(): void {
       const bonus = splitIdiomBonus(shortIdiomBonusLabel(idiom.bonus.label));
       const reading = idiomReadingForNotation(idiom, ctx.engine.state.notation);
       const value = bonus.value ? `<strong class="active-idiom-value">${escapeHtml(bonus.value)}</strong>` : "";
-      return `<button type="button" class="active-idiom" data-active-idiom="${escapeHtml(seal.idiomId)}" style="--idiom:${idiom.color}" title="${escapeHtml(reading)} · ${escapeHtml(idiom.bonus.label)} — 눌러서 발동 칸으로 이동" aria-label="${escapeHtml(reading)} 발동 · ${escapeHtml(idiom.bonus.label)} · 눌러서 해당 네 칸으로 이동">`
+      return `<button type="button" class="active-idiom" data-active-idiom="${escapeHtml(seal.idiomId)}" style="--idiom:${idiom.color}" title="${escapeHtml(activeIdiomTitle(idiom, seal, reading))}" aria-label="${escapeHtml(reading)} 발동 · ${escapeHtml(idiom.meaning)} · ${escapeHtml(idiom.bonus.label)} · 눌러서 해당 네 칸으로 이동">`
         + `<b class="active-idiom-chars">${escapeHtml(idiom.chars)}</b>`
+        + `<i class="active-idiom-reading">${escapeHtml(reading)}</i>`
         + `<span class="active-idiom-effect"><em>${escapeHtml(bonus.text)}</em>${value}</span>`
+        + activeIdiomPopHtml(idiom, seal, reading)
         + `</button>`;
     })
     .join("");

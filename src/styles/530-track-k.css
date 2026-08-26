@@ -51,28 +51,53 @@
 
 #idiom-panel .idiom-seal-row :is(b, span, em, mark) { line-height: 1.2; }
 
-/* ── K-3. 발동 칩 효과 문구 — 수치는 절대 자르지 않는다 ─────────────
-   실측: 168px 칩에서 "적 이동 속도 -10%" 가 8px 넘쳐 수치째 말줄임됐다.
-   폭을 186px 로 18px 만 넓히고, 설명부(em)만 말줄임 대상으로 두고 수치
-   (strong)에는 flex-shrink: 0 을 박는다 — 자리가 모자라면 잘리는 대신
-   다음 줄로 내려간다(칩 2줄 허용). 전장을 덮지 않는 선의 최대 폭이다. */
+/* ── K-2·K-3. 발동 칩 ─────────────────────────────────────────────
+   폭은 168 → 186px(전장을 덮지 않는 선의 최대), 한자는 14 → 13px 로 반
+   단계 낮춰 독음 줄과 효과 칸을 함께 만든다. 한자 4자 아래에 음을 작게
+   깔고, 효과는 [설명 · 수치] 두 토막으로 갈라 조판한다. */
 
 .active-idioms { width: 186px; }
 
 .active-idiom {
+  position: relative;
+  grid-template-areas:
+    "chars effect"
+    "reading effect";
   grid-template-columns: minmax(0, auto) minmax(0, 1fr);
+  grid-template-rows: auto auto;
   align-items: center;
+  row-gap: 0;
   padding: 3px 8px 4px 6px;
 }
 
 .active-idiom > .active-idiom-chars {
+  grid-area: chars;
   font-size: 13px;
   line-height: 1.15;
 }
 
+.active-idiom > .active-idiom-reading {
+  grid-area: reading;
+  overflow: hidden;
+  color: color-mix(in srgb, var(--idiom) 58%, #e6eefc);
+  font-size: 9.5px;
+  font-style: normal;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+  white-space: nowrap;
+  text-align: center;
+  text-overflow: ellipsis;
+}
+
+/* 효과 문구 — 수치는 절대 자르지 않는다(실측: 168px 칩에서 "적 이동 속도
+   -10%" 가 8px 넘쳐 수치째 말줄임됐다). 설명부(em)만 말줄임 대상이고,
+   수치(strong)는 flex-shrink 0 이라 폭이 모자라면 잘리는 대신 다음 줄로
+   내려간다(칩 2줄 허용). */
 .active-idiom > .active-idiom-effect {
   display: flex;
   flex-wrap: wrap;
+  grid-area: effect;
   align-items: baseline;
   column-gap: 4px;
   row-gap: 0;
@@ -102,4 +127,163 @@
   letter-spacing: -0.01em;
   line-height: 1.2;
   white-space: nowrap;
+}
+
+/* ── K-4. 호버 팝오버 ─────────────────────────────────────────────
+   전장 자령 학습 카드(src/ui/battle/draw-tower.ts drawHoveredTowerCard)의
+   시각 언어를 그대로 옮긴다 — rgba(4,10,18,.98) 바탕, 2px 성어색 테,
+   12px 라운드, 구분선 rgba(218,229,241,.16), 바닥 힌트 11px #a8bcd2.
+   터치·키보드에는 같은 내용의 축약본이 title 로 남는다. */
+
+.active-idiom > .active-idiom-pop {
+  position: absolute;
+  top: -6px;
+  left: calc(100% + 10px);
+  z-index: 3;
+  display: none;
+  flex-direction: column;
+  gap: 6px;
+  width: 262px;
+  padding: 9px 11px 8px;
+  border: 2px solid var(--idiom);
+  border-radius: 12px;
+  background: rgba(4, 10, 18, 0.98);
+  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.58);
+  color: #d8e2ed;
+  overflow: visible;
+  text-align: left;
+  white-space: normal;
+  text-overflow: clip;
+  pointer-events: none;
+}
+
+.active-idiom:hover > .active-idiom-pop,
+.active-idiom:focus-visible > .active-idiom-pop { display: flex; }
+
+/* 칩 요약이 쓰는 한 줄 말줄임(`.active-idiom span`, 절 R6-1)은 상속으로
+   팝오버 안까지 따라 들어와 뜻풀이 끝을 잘랐다 — 카드 안에서만 되돌린다. */
+.active-idiom .active-idiom-pop * {
+  overflow: visible;
+  white-space: normal;
+  text-overflow: clip;
+}
+
+.active-idiom .aip-head {
+  display: flex;
+  align-items: baseline;
+  gap: 9px;
+}
+
+.active-idiom .aip-chars {
+  flex: 0 0 auto;
+  color: #fff7de;
+  font-family: "Batang", "Malgun Gothic", serif;
+  font-size: 19px;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.active-idiom .aip-reading {
+  flex: 1 1 auto;
+  min-width: 0;
+  color: #f7edcf;
+  font-size: 14px;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+
+/* 뜻풀이는 카드 폭을 다 쓴다 — 오른쪽 좁은 칸에 가두면 두 자마다 꺾인다. */
+.active-idiom .aip-meaning {
+  color: #b9c8d9;
+  font-size: 11.5px;
+  font-style: normal;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.3;
+}
+
+.active-idiom .aip-line {
+  height: 1px;
+  background: rgba(218, 229, 241, 0.16);
+}
+
+.active-idiom .aip-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.active-idiom .aip-row > i {
+  flex: 0 0 46px;
+  color: var(--idiom);
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 900;
+  letter-spacing: -0.01em;
+  line-height: 1.3;
+}
+
+.active-idiom .aip-row > b {
+  flex: 1 1 auto;
+  min-width: 0;
+  color: #eaf1fb;
+  font-size: 11.5px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.3;
+  white-space: normal;
+}
+
+.active-idiom .aip-row--jars { align-items: center; }
+
+.active-idiom .aip-jars {
+  display: grid;
+  flex: 1 1 auto;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 4px;
+  min-width: 0;
+}
+
+.active-idiom .aip-jar {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  padding: 3px 2px;
+  border: 1px solid color-mix(in srgb, var(--idiom) 38%, rgba(169, 191, 225, 0.18));
+  border-radius: 6px;
+  background: rgba(12, 20, 32, 0.72);
+}
+
+.active-idiom .aip-jar > b {
+  color: #fff6da;
+  font-family: "Batang", "Malgun Gothic", serif;
+  font-size: 15px;
+  font-weight: 900;
+  line-height: 1.1;
+}
+
+.active-idiom .aip-jar > em {
+  overflow: hidden;
+  width: 100%;
+  color: #a8bcd2;
+  font-size: 9px;
+  font-style: normal;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  line-height: 1.2;
+  white-space: nowrap;
+  text-align: center;
+  text-overflow: ellipsis;
+}
+
+.active-idiom .aip-foot {
+  color: #a8bcd2;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.3;
 }
