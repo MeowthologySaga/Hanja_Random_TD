@@ -122,14 +122,46 @@ describe("four-character idiom formation", () => {
     expect(partialIdiomChain(engine.state.towers, idiom)).toMatchObject({ length: 1, nextChar: "心", nextOrder: 2 });
   });
 
-  it("tracks a partial chain that grows backwards from the last character", () => {
-    const engine = new GameEngine("idiom-partial-reverse", "KR");
+  it("guides the head of a chain that already holds the last three characters", () => {
+    const engine = new GameEngine("idiom-partial-head", "KR");
     engine.begin();
     const idiom = idiomsForRegion("KR").find((candidate) => candidate.id === "sure-hit") as IdiomDefinition;
-    // 百發百中 을 中百發 순으로 놓아 역방향 3글자가 이어진 상태.
+    // 百發百中 의 2~4번 글자(發百中)만 0·1·2 칸에 이어져 있다.
     engine.state.towers = [..."中百發"].map((char, index) => towerFor(engine, char, index, index + 1));
     const partial = partialIdiomChain(engine.state.towers, idiom);
-    expect(partial).toMatchObject({ length: 3, reversed: true, nextChar: "百", nextOrder: 1, anchorCell: 2, complete: false });
+    // 사슬은 發(2번)에서 시작해 中(4번)으로 끝나므로 남은 것은 앞머리 1번 글자다.
+    expect(partial).toMatchObject({ length: 3, startOrder: 2, nextChar: "百", nextOrder: 1, anchorCell: 2, complete: false });
+    expect(partial.cells).toEqual([2, 1, 0]);
+  });
+
+  it("guides the middle character even when neither end of the idiom is placed", () => {
+    const engine = new GameEngine("idiom-partial-middle", "KR");
+    engine.begin();
+    const idiom = idiomsForRegion("KR").find((candidate) => candidate.id === "heart") as IdiomDefinition;
+    // 以心傳心 에서 3번 글자 傳 하나만 놓인 상태에서도 이어 붙일 자리를 알려 준다.
+    engine.state.towers = [towerFor(engine, "傳", 5, 1)];
+    const partial = partialIdiomChain(engine.state.towers, idiom);
+    expect(partial).toMatchObject({ length: 1, startOrder: 3, anchorCell: 5, complete: false });
+    expect(partial.nextOrder).toBe(4);
+    expect(partial.nextChar).toBe("心");
+  });
+
+  it("prefers a chain whose end still has an empty neighbour to grow into", () => {
+    const engine = new GameEngine("idiom-partial-boxed", "KR");
+    engine.begin();
+    const idiom = idiomsForRegion("KR").find((candidate) => candidate.id === "heart") as IdiomDefinition;
+    // 0번 칸 心 은 이웃 1·4·5 가 모두 막혀 다음 글자를 붙일 자리가 없다.
+    // 같은 길이라면 10번 칸 心 을 잡아야 안내할 칸이 생긴다.
+    engine.state.towers = [
+      towerFor(engine, "心", 0, 1),
+      towerFor(engine, "百", 1, 2),
+      towerFor(engine, "發", 4, 3),
+      towerFor(engine, "中", 5, 4),
+      towerFor(engine, "心", 10, 5)
+    ];
+    const partial = partialIdiomChain(engine.state.towers, idiom);
+    expect(partial.length).toBe(1);
+    expect(partial.anchorCell).toBe(10);
   });
 
   it("marks a complete chain as complete in either direction", () => {

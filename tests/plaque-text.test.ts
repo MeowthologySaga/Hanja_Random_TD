@@ -17,8 +17,8 @@ const measure: MeasureText = (value, fontSize) => {
   return width;
 };
 
-/** 84x40 compact 명패의 훈음 칸: 51px 에서 좌우 여백 5px 을 뺀 값. */
-const COMPACT_READING_WIDTH = 46;
+/** 84x40 compact 명패(v5 납품 래스터)의 훈음 안전 영역: x=35..80 → 46px. */
+const COMPACT_READING_WIDTH = 45;
 
 describe("전장 명패 훈음 2줄 배치", () => {
   it("한 줄에 들어가는 훈음은 나누지 않는다", () => {
@@ -42,16 +42,17 @@ describe("전장 명패 훈음 2줄 배치", () => {
     expect(fitted.lines).toEqual(["가나다", "라마바"]);
   });
 
-  it("최장 훈음은 9px 두 줄에 담기고 압축이 필요 없다", () => {
+  it("최장 훈음은 권장 10px 두 줄에 담기고 압축이 필요 없다", () => {
     const reading = compactReading("수레 가기 힘들 가", COMPACT_READING_WIDTH, measure);
-    expect(reading.font).toBe(9);
+    expect(reading.font).toBe(10);
     expect(reading.shortened).toBe(false);
     expect(reading.lines).toHaveLength(2);
     expect(reading.width).toBeLessThanOrEqual(COMPACT_READING_WIDTH);
   });
 
-  it("9px 로 넘치면 8px 로 한 번만 줄인다", () => {
-    const reading = compactReading("아름다울 미르", COMPACT_READING_WIDTH, measure);
+  it("10px 로 넘치면 9px·8px 순으로만 줄인다", () => {
+    const reading = compactReading("아름다울까 미르나무야", COMPACT_READING_WIDTH, measure);
+    expect(reading.font).toBeLessThan(10);
     expect(reading.font).toBeGreaterThanOrEqual(8);
     expect(reading.width).toBeLessThanOrEqual(COMPACT_READING_WIDTH);
   });

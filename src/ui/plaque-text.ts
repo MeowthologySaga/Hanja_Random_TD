@@ -26,8 +26,11 @@ export interface CompactReading extends BalancedLines {
   readonly shortened: boolean;
 }
 
-/** compact 명패가 쓰는 글꼴 크기 후보. 8px 아래로는 내려가지 않는다. */
-export const COMPACT_READING_FONTS: readonly number[] = [9, 8];
+/**
+ * compact 명패가 쓰는 글꼴 크기 후보. 납품 명세 권장값 10px 부터 시작해
+ * 8px 아래로는 내려가지 않는다.
+ */
+export const COMPACT_READING_FONTS: readonly number[] = [10, 9, 8];
 
 export function balancedTextLines(value: string, maxWidth: number, measure: MeasureText, fontSize: number): BalancedLines {
   const single = measure(value, fontSize);
