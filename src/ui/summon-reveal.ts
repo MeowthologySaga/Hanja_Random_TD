@@ -44,10 +44,10 @@ export function showCasualFusionReveal(events: Array<Extract<GameEvent, { type: 
   const newCount = events.filter((event) => event.newDiscovery).length;
   const boardCount = events.filter((event) => event.tower.cell >= 0).length;
   const placementLabel = boardCount === 0
-    ? "런 인벤토리 보관"
+    ? "가방 보관"
     : boardCount === events.length
       ? "소모 자리 자동 배치"
-      : `전장 ${boardCount} · 인벤 ${events.length - boardCount}`;
+      : `전장 ${boardCount} · 가방 ${events.length - boardCount}`;
   must<HTMLElement>("#summon-reveal-kicker").textContent = "3합 승급 결과";
   must<HTMLElement>("#summon-reveal-title").textContent = events.length > 1
     ? `${events.length}회 승급 결과`
@@ -102,8 +102,8 @@ export function showSummonReveal(events: Array<Extract<GameEvent, { type: "summo
   const placementLabel = storedCount === 0
     ? "전장 자동 배치"
     : storedCount === events.length
-      ? "런 인벤토리 보관"
-      : `전장 ${events.length - storedCount} · 인벤 ${storedCount}`;
+      ? "가방 보관"
+      : `전장 ${events.length - storedCount} · 가방 ${storedCount}`;
   must<HTMLElement>("#summon-reveal-title").textContent = events.length > 1 ? `${events.length}연 소환 결과` : `${events[0]?.tower.char ?? "?"} 자령 출현`;
   const firstSummon = ctx.engine.state.summonCount === events.length && ctx.engine.state.startingFormationIndex !== null;
   const startingFormation = firstSummon ? BOARD_FORMATIONS[ctx.engine.state.startingFormationIndex ?? -1] : undefined;

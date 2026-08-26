@@ -121,8 +121,8 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
       </section>
       <section id="inventory-frame" class="focus-frame focus-frame--vault" role="dialog" aria-modal="false" aria-labelledby="inventory-frame-title" hidden>
         <header class="focus-frame-head">
-          <div><strong id="inventory-frame-title">자령 보관고</strong><span>고르고 · 배치 · 분해까지 여기서</span></div>
-          <button id="inventory-frame-close" class="focus-frame-close" type="button" data-focus-close="inventory" aria-label="자령 보관고 닫기">닫기 ✕</button>
+          <div><strong id="inventory-frame-title">자령 가방</strong><span>고르고 · 배치 · 분해까지 여기서</span></div>
+          <button id="inventory-frame-close" class="focus-frame-close" type="button" data-focus-close="inventory" aria-label="자령 가방 닫기">닫기 ✕</button>
         </header>
         <div id="inventory-frame-body" class="focus-frame-body run-inventory-vault"></div>
       </section>
@@ -278,9 +278,9 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
           <div id="idiom-seal-status" class="idiom-seal-status" aria-label="발동 상태" hidden></div>
         </section>
 
-        <section id="run-inventory-panel" class="run-inventory-panel panel-view" data-panel-view="inventory" aria-label="이번 판 자령 인벤토리">
+        <section id="run-inventory-panel" class="run-inventory-panel panel-view" data-panel-view="inventory" aria-label="이번 판 자령 가방">
           <div class="run-inventory-heading">
-            <div><span>이번 판에 뽑은 자령</span><strong>자령 보관고</strong></div>
+            <div><span>이번 판에 뽑은 자령</span><strong>자령 가방</strong></div>
             <div class="run-inventory-tools">
               <small id="essence-summary">문기 木0 火0 土0 金0 水0</small>
               <button id="cleanup-recommended-button" type="button">정리 후보 분해</button>
@@ -290,7 +290,7 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
             <div class="run-inventory-toolbar">
               <div id="run-inventory-element-filters" class="run-inventory-chips" role="group" aria-label="오행 필터"></div>
               <div id="run-inventory-grade-filters" class="run-inventory-chips run-inventory-chips--grade" role="group" aria-label="별 등급 필터"></div>
-              <button id="run-inventory-sort" type="button" aria-label="보관고 정렬 전환">획득순</button>
+              <button id="run-inventory-sort" type="button" aria-label="가방 정렬 전환">획득순</button>
             </div>
             <div class="run-inventory-main">
               <div id="run-inventory-list" class="run-inventory-list">
@@ -306,6 +306,7 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
                 <button id="run-inventory-dismantle" class="run-inventory-action run-inventory-action--dismantle" type="button" data-testid="inventory-dismantle" disabled>분해</button>
                 <button id="run-inventory-lock" class="run-inventory-action" type="button" data-testid="inventory-lock" disabled>잠금</button>
                 <button id="run-inventory-concentrate" class="run-inventory-action" type="button" data-testid="inventory-concentrate" disabled>농축으로</button>
+                <p id="run-inventory-dismantle-note" class="dismantle-block-note" data-testid="inventory-dismantle-note" hidden></p>
               </div>
               <div id="run-inventory-action-bulk" class="run-inventory-action-set" hidden>
                 <span id="run-inventory-bulk-hint" class="run-inventory-action-hint">카드를 눌러 담으세요</span>
@@ -316,7 +317,7 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
           </div>
           <div class="focus-panel-summary">
             <p id="run-inventory-panel-summary">보관 <b id="run-inventory-heading-count">0기 · 0종</b></p>
-            <button id="run-inventory-frame-open" class="focus-open-button" type="button">보관고 열기</button>
+            <button id="run-inventory-frame-open" class="focus-open-button" type="button">가방 열기</button>
           </div>
         </section>
 
@@ -342,7 +343,7 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
           </header>
           <div class="growth-layout">
             <section class="dismantle-workbench">
-              <div class="subheading"><b>① 분해</b><small>안 쓰는 인벤 자령을 문기(재료)로 바꿉니다</small></div>
+              <div class="subheading"><b>① 분해</b><small>안 쓰는 가방 자령을 문기(재료)로 바꿉니다</small></div>
               <div class="growth-filters">
                 <select id="dismantle-element-filter" aria-label="분해 오행 필터"><option value="all">모든 오행</option><option>木</option><option>火</option><option>土</option><option>金</option><option>水</option></select>
                 <select id="dismantle-stage-filter" aria-label="분해 단계 필터"><option value="all">모든 단계</option><option value="1">1성</option><option value="2">2성</option><option value="3">3성</option><option value="4">4성</option><option value="5">5성</option><option value="6">6성</option><option value="7">7성</option><option value="8">8성</option></select>
@@ -374,13 +375,13 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
         </header>
         <div id="composition-source" class="composition-source"></div>
         <div id="composition-branches" class="composition-branches"></div>
-        <footer><b>컬러</b>: 합성 가능 · <i>회색</i>: 재료 부족 · 전장/인벤 모두 계산</footer>
+        <footer><b>컬러</b>: 합성 가능 · <i>회색</i>: 재료 부족 · 전장/가방 모두 계산</footer>
       </section>
 
       <nav class="panel-tabs" role="tablist" aria-label="상세 정보">
         <button id="shop-tab" type="button" class="is-active" data-panel-tab="shop" role="tab" aria-selected="true">상점 <small id="shop-pool-count">0</small></button>
         <button type="button" data-panel-tab="unit" role="tab" aria-selected="false">자령</button>
-        <button id="run-inventory-tab" type="button" data-panel-tab="inventory" role="tab" aria-selected="false">인벤 <small id="run-inventory-count">0</small></button>
+        <button id="run-inventory-tab" type="button" data-panel-tab="inventory" role="tab" aria-selected="false">가방 <small id="run-inventory-count">0</small></button>
         <i class="tab-divider" aria-hidden="true"></i>
         <button type="button" data-panel-tab="evolution" role="tab" aria-selected="false"><span id="evolution-tab-label">합성</span></button>
         <button id="concentration-tab" type="button" data-panel-tab="concentration" role="tab" aria-selected="false">농축</button>
@@ -668,7 +669,7 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
               <article class="help-card"><b>10연 소환<em><kbd>Q</kbd></em></b><span>10웨이브를 지키면 열립니다. 현재 소환 비용 10회를 한 번에 지불하며, 별승급 진법에서는 열 장 안에 기본 밴드 상단인 3★ 이상 1기가 보장됩니다.</span></article>
               <article class="help-card"><b>인연 연구<em><kbd>3</kbd></em></b><span>엽전을 들여 목표 재료가 나올 가중치를 올립니다. 최고 5단계이며 각 단계는 정해진 웨이브를 지나야 열립니다.</span></article>
               <article class="help-card"><b>첫 오행진과 해금</b><span>열린 진 없이 상점에서 시작합니다. 첫 소환 자령과 같은 오행진이 무료로 열리고, 나머지는 원하는 순서로 18·32·52·78엽전에 개방합니다.</span></article>
-              <article class="help-card"><b>자동배치</b><span>런 인벤토리 자령을 현재 개방된 오행진에 투입하고, 완성 가능한 사자성어와 오행 공명을 함께 정리합니다.</span></article>
+              <article class="help-card"><b>자동배치</b><span>가방 자령을 현재 개방된 오행진에 투입하고, 완성 가능한 사자성어와 오행 공명을 함께 정리합니다.</span></article>
             </div>
           </section>
 
@@ -695,7 +696,7 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
               <article class="help-card"><b>적 특성</b><span>정예 철갑 강시(방어 높음) · 질풍 아귀(빠름) · 백귀야행(다수) · 회생 요괴(체력 회복)를 미리 확인하세요.</span></article>
               <article class="help-card"><b>은행 이자</b><span>웨이브 종료 시 보유 엽전 20개당 1엽전을 지급하며, 한 번에 최대 20엽전까지만 받을 수 있습니다.</span></article>
               <article class="help-card"><b>일시정지<em><kbd>P</kbd></em></b><span>직접 멈출 수 있고, 도감·도움말·설정 창이 열려 있는 동안에도 전투가 저절로 멈춥니다. 창을 닫으면 이어집니다.</span></article>
-              <article class="help-card"><b>런 인벤토리</b><span>같은 한자는 한 스택으로 묶입니다. 인벤토리 자령을 고른 뒤 빈 칸을 누르면 배치하고, 찬 칸을 누르면 기존 자령을 인벤토리로 보내며 즉시 교체합니다.</span></article>
+              <article class="help-card"><b>자령 가방</b><span>같은 한자는 한 스택으로 묶입니다. 가방 자령을 고른 뒤 빈 칸을 누르면 배치하고, 찬 칸을 누르면 기존 자령을 가방으로 보내며 즉시 교체합니다.</span></article>
               <article class="help-card"><b>훈·독 표시<em><kbd>Space</kbd></em></b><span>기본 자령 모드는 머리 위에 한자·훈음을 얹습니다. 한자 강조를 끄면 표찰을 숨기고 별만 남기며, 설정의 공부 모드는 전장에 큰 한자와 짧은 읽기를 표시합니다.</span></article>
             </div>
           </section>
@@ -732,7 +733,7 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
             <h3 class="help-subhead">강화 제련소</h3>
             <p class="help-note"><b>문기는 자령 분해와 3체 승급이 남깁니다.</b> 판매도 농축에 투자한 문기를 돌려줍니다.</p>
             <div class="help-cards">
-              <article class="help-card"><b>① 분해</b><span>안 쓰는 인벤토리 자령을 보호 규칙 아래 일괄 분해해 오행 문기로 바꿉니다.</span></article>
+              <article class="help-card"><b>① 분해</b><span>안 쓰는 가방 자령을 보호 규칙 아래 일괄 분해해 오행 문기로 바꿉니다.</span></article>
               <article class="help-card"><b>② 오행 강화</b><span>공용·오행 5능력치를 각 99단계까지, 오행별 고유 특성 3종을 각 10단계까지 한 화면에서 투자합니다.</span></article>
               <article class="help-card"><b>유일 자령 보호</b><span>스위치를 끄면 이 한자를 1기만 가진 자령도 후보에 들어오며 목록에 <em>유일</em> 배지가 남습니다. 잠금·농축·목표·성어 보호는 그대로입니다.</span></article>
               <article class="help-card"><b>잠금</b><span>잠근 자령은 공격·이동은 유지되지만 합성 재료와 판매 대상에서는 제외됩니다.</span></article>
@@ -801,7 +802,7 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
         </button>
       </div>
       <button id="auto-place-toggle" class="settings-toggle" type="button" role="switch" aria-checked="true" data-testid="auto-place-toggle">
-        <span><b>뽑기 후 자동 배치</b><small>켜면 현재처럼 빈 오행진 칸에 즉시 배치합니다. 끄면 런 인벤토리에서 원하는 칸을 고릅니다.</small></span>
+        <span><b>뽑기 후 자동 배치</b><small>켜면 현재처럼 빈 오행진 칸에 즉시 배치합니다. 끄면 가방에서 원하는 칸을 고릅니다.</small></span>
         <i aria-hidden="true"><em>ON</em></i>
       </button>
       <button id="hover-glyph-toggle" class="settings-toggle" type="button" role="switch" aria-checked="true" data-testid="hover-glyph-toggle">

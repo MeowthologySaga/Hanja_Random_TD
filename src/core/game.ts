@@ -1448,7 +1448,7 @@ export class GameEngine {
     const drawnStar = casualNaturalStar(definition.char) ?? 1;
     const jackpot = band !== null && drawnStar > band.max;
     const jackpotLabel = jackpot ? ` · 상한 돌파 ${drawnStar}★!` : "";
-    const placementMessage = definition.char + " · " + definition.combat.roleLabel + (stored ? " 인벤토리 보관" : " 소환") + helpfulLabel + jackpotLabel;
+    const placementMessage = definition.char + " · " + definition.combat.roleLabel + (stored ? " 가방 보관" : " 소환") + helpfulLabel + jackpotLabel;
     this.state.lastMessage = isFirstSummon && startingFormation
       ? `${definition.wuxing} 자령 출현 → ${startingFormation.label} 무료 개방 · ${placementMessage} · 추가 소환 2기를 권장합니다.`
       : placementMessage;
@@ -1490,15 +1490,15 @@ export class GameEngine {
     const placement = storedCount === 0
       ? "전장 자동 배치"
       : storedCount === amount
-        ? "인벤토리 보관"
-        : `전장 ${amount - storedCount}체 · 인벤토리 ${storedCount}체`;
+        ? "가방 보관"
+        : `전장 ${amount - storedCount}체 · 가방 ${storedCount}체`;
     this.state.lastMessage = `${amount}연 소환 완료 · 새 한자 ${discovered}종 · 목표·성어 재료 ${helpful}체 · ${placement}`;
     return { ok: true, message: this.state.lastMessage };
   }
 
   setAutoPlaceSummons(enabled: boolean): ActionResult {
     this.state.autoPlaceSummons = enabled;
-    this.state.lastMessage = enabled ? "뽑기 후 자동 배치 켜짐" : "뽑기 후 런 인벤토리 보관";
+    this.state.lastMessage = enabled ? "뽑기 후 자동 배치 켜짐" : "뽑기 후 가방 보관";
     return { ok: true, message: this.state.lastMessage };
   }
 
@@ -1550,7 +1550,7 @@ export class GameEngine {
     const at = (this.state.startingFormationIndex !== null
       ? BOARD_FORMATIONS[this.state.startingFormationIndex]?.center
       : undefined) ?? { x: 400, y: 300 };
-    this.state.lastMessage = `수련 지원 · ${char} 자령 지급 (인벤토리 보관)`;
+    this.state.lastMessage = `수련 지원 · ${char} 자령 지급 (가방 보관)`;
     this.events.push({
       type: "summon",
       at,
@@ -2607,8 +2607,8 @@ export class GameEngine {
       selected.cell = cell;
       this.state.towers.push(selected);
       this.state.lastMessage = occupant
-        ? `${selected.char} 배치 · ${occupant.char} 인벤토리로 원자 교체`
-        : selected.char + " 인벤토리 → " + String(cell + 1) + "번 칸 배치";
+        ? `${selected.char} 배치 · ${occupant.char} 가방으로 원자 교체`
+        : selected.char + " 가방 → " + String(cell + 1) + "번 칸 배치";
       this.resolveIdiomFormations();
       return { ok: true, message: this.state.lastMessage };
     }
@@ -2686,7 +2686,7 @@ export class GameEngine {
       return { ok: true, message: this.state.lastMessage };
     }
     const idiomLabel = sealed > 0 ? `성어 ${sealed}개 발동 · ` : "";
-    const inventoryLabel = deployed.length > 0 ? `인벤토리 ${deployed.length}기 투입 · ` : "";
+    const inventoryLabel = deployed.length > 0 ? `가방 ${deployed.length}기 투입 · ` : "";
     this.state.lastMessage = `자동배치 · ${inventoryLabel}${idiomLabel}오행 공명 ${resonanceBefore}→${resonanceAfter}단계 · ${moved}기 이동`;
     return { ok: true, message: this.state.lastMessage };
   }
@@ -2832,7 +2832,7 @@ export class GameEngine {
       }
 
       if (count > 1) reasons.push(`동일 한자 ${count}기`);
-      if (stored) reasons.push("인벤토리 대기");
+      if (stored) reasons.push("가방 대기");
       if (tower.stage === 1) reasons.push("직접 소환 초형");
       if (!targetPath.has(tower.char) && !unfinishedIdiomChars.has(tower.char)) reasons.push("현재 목표·성어 비연결");
       if (!stored) {
@@ -2870,7 +2870,7 @@ export class GameEngine {
     for (const towerId of uniqueIds) {
       const tower = this.state.inventoryTowers.find((candidate) => candidate.id === towerId);
       if (!tower) {
-        blocked.push({ towerId, reason: "인벤토리 자령만 일괄 분해할 수 있습니다." });
+        blocked.push({ towerId, reason: "가방 자령만 일괄 분해할 수 있습니다." });
         continue;
       }
       const assessment = assessments.get(towerId);
@@ -2902,7 +2902,7 @@ export class GameEngine {
     // protected material can never be consumed from a stale UI selection.
     const quote = this.quoteDismantle(ids, options);
     if (quote.blocked.length > 0) return { ok: false, message: `분해 중단 · ${quote.blocked[0]?.reason ?? "보호 자령이 포함되었습니다."}` };
-    if (quote.ids.length === 0) return { ok: false, message: "분해할 인벤토리 자령을 선택하세요." };
+    if (quote.ids.length === 0) return { ok: false, message: "분해할 가방 자령을 선택하세요." };
     const selectedIds = new Set(quote.ids);
     const removed = this.state.inventoryTowers.filter((tower) => selectedIds.has(tower.id));
     if (removed.length !== quote.ids.length) return { ok: false, message: "분해 대상 위치가 바뀌었습니다. 다시 선택하세요." };
@@ -2934,7 +2934,7 @@ export class GameEngine {
 
   dismantleRecommended(limit = 8, options: CleanupOptions = {}): ActionResult {
     const ids = this.cleanupCandidates(limit, true, options).map((candidate) => candidate.towerId);
-    if (ids.length === 0) return { ok: false, message: "보호 규칙을 통과한 인벤토리 정리 후보가 없습니다." };
+    if (ids.length === 0) return { ok: false, message: "보호 규칙을 통과한 가방 정리 후보가 없습니다." };
     return this.dismantleTowers(ids, options);
   }
 
@@ -3059,11 +3059,11 @@ export class GameEngine {
   storeSelectedTower(): ActionResult {
     const selected = this.selectedTower();
     if (!selected) return { ok: false, message: "보관할 자령을 선택하세요." };
-    if (this.selectedTowerIsStored()) return { ok: false, message: "이미 런 인벤토리에 있는 자령입니다." };
+    if (this.selectedTowerIsStored()) return { ok: false, message: "이미 가방에 있는 자령입니다." };
     this.state.towers = this.state.towers.filter((tower) => tower.id !== selected.id);
     selected.cell = -1;
     this.state.inventoryTowers.push(selected);
-    this.state.lastMessage = selected.char + " 런 인벤토리에 보관";
+    this.state.lastMessage = selected.char + " 가방에 보관";
     this.resolveIdiomFormations();
     return { ok: true, message: this.state.lastMessage };
   }

@@ -7,6 +7,7 @@ import { GWICHEON_ABILITY } from "../../core/abilities";
 import {
   autoConcentrationPath,
   concentrationEssenceCost,
+  concentrationEssenceRefund,
   concentrationPathLabel,
   MAX_CONCENTRATION_LEVEL
 } from "../../core/game";
@@ -23,8 +24,21 @@ import { learningInfoForNotation } from "../../core/learning";
 import { radicalGlyph } from "../../core/radicals";
 import { type AbilitySpec, type CompositionBranchPreview, type HanziDefinition, type Tower } from "../../core/types";
 import { abilityGuideDialog, canvas, ctx, must } from "../app-context";
-import { casualStarOf, escapeHtml, spriteStyle, visualBackgroundStyle } from "../format";
+import {
+  casualStarOf,
+  dismantleBlockChip,
+  dismantleBlockNote,
+  dismantleUnlockable,
+  escapeHtml,
+  essenceAmountChip,
+  essenceAmountLabel,
+  goldAmountLabel,
+  protectionShortLabel,
+  spriteStyle,
+  visualBackgroundStyle
+} from "../format";
 import { handleAction, setPanelTab, showToast } from "../hud";
+import { dismantleOptions } from "./growth";
 
 function setCompositionMaterialHighlight(ids: readonly number[] = []): void {
   ctx.hoveredCompositionMaterialIds = new Set(ids);
@@ -169,18 +183,23 @@ export function renderSelected(): void {
   const concentrationStatus = concentration >= MAX_CONCENTRATION_LEVEL
     ? `濃 3/3 완성 · ${concentrationPathLabel(concentrationPath ?? autoConcentrationPath(tower))}`
     : duplicateCount > 0 ? `중복 ${duplicateCount}기 사용 가능` : `${tower.wuxing} 문기 ${ctx.engine.state.elementEssence[tower.wuxing]}/${nextEssenceCost}`;
-  // 분해 경로와 같은 보호 셈법 — 제련소의 유일 보유 보호 토글을 따른다(growth.ts dismantleOptions).
-  const cleanup = ctx.engine.cleanupAssessments({ protectUnique: ctx.dismantleProtectsUnique }).find((assessment) => assessment.towerId === tower.id);
+  // [J-2] 보호 판정은 분해 경로와 같은 옵션(유일 자령 보호 토글)으로 읽어야
+  // 한 화면 안에서 "여기선 보호, 저기선 분해 가능" 같은 어긋남이 안 생긴다.
+  const cleanup = ctx.engine.cleanupAssessments(dismantleOptions()).find((assessment) => assessment.towerId === tower.id);
+  // [J-2] 보호 칩이 곧 사유 라벨이다. 버튼 아래 별도 줄로 두면 376px 카드의
+  // 스크롤 아래로 밀려 "화면에 드러낸다" 는 목적을 잃는다. 반대로 칩이 한 줄
+  // 늘어나도 [판매] 가 첫 화면 밖으로 밀리므로, 칩은 사유만 한 줄로 싣고
+  // 푸는 법은 [분해 불가] 버튼의 아랫줄이 맡는다.
   const cleanupLabel = cleanup?.protected
-    ? `보호 · ${cleanup.protectedReasons[0] ?? "전략 재료"}`
+    ? dismantleBlockChip(cleanup.protectedReasons)
     : `정리 후보 · ${cleanup?.reasons[0] ?? "직접 판단"}`;
+  // [J-1] 판매는 엽전과 (농축했다면) 환급 문기 두 값을 함께 준다 — 둘 다 단위를 단다.
+  const sellGold = ctx.engine.towerSellValue(tower);
+  const sellEssence = concentrationEssenceRefund(concentration);
   // 트랙 A #7: 전장 배치 상태 그대로 확인 1회 → 즉시 분해. 보호에 걸리면
   // 버튼을 잠그고 사유를 title 로 남긴다.
   const dismantleEssence = ctx.engine.towerDismantleEssenceValue(tower);
   const dismantleBlocked = cleanup?.protected !== false;
-  const dismantleTitle = dismantleBlocked
-    ? `보호 중 · ${(cleanup?.protectedReasons ?? ["보호 상태를 확인할 수 없습니다."]).join(" · ")}`
-    : `${tower.char}를 분해해 ${tower.wuxing} 문기 +${dismantleEssence} 회수 — 확인 한 번 뒤 즉시 분해, 되돌릴 수 없습니다`;
   const casualStar = casualStarOf(tower);
   const progressionLabel = ctx.engine.state.mode === "casual" ? `${casualStar}★ ${CASUAL_STAR_NAMES[casualStar]}` : STAGE_NAMES[tower.stage];
   const progressionColor = ctx.engine.state.mode === "casual" ? CASUAL_STAR_COLORS[casualStar] : STAGE_COLORS[tower.stage];
@@ -212,11 +231,13 @@ export function renderSelected(): void {
     </div>
     <div class="selected-actions">
       <button id="lock-button" class="${tower.locked ? "is-locked" : ""}" type="button" data-testid="lock-tower" title="판매·합성 재료로 쓰이지 않게 보호">${tower.locked ? "鎖 잠금됨" : "잠금"}</button>
-      <button id="store-button" type="button" data-testid="store-tower" title="인벤으로 이동 — 전장 자리를 비웁니다" ${stored ? "disabled" : ""}>${stored ? "보관 중" : "보관"}</button>
+      <button id="store-button" type="button" data-testid="store-tower" title="가방으로 이동 — 전장 자리를 비웁니다" ${stored ? "disabled" : ""}>${stored ? "보관 중" : "보관"}</button>
       <button id="derivative-button" class="${readyBranches > 0 ? "has-ready" : ""}" type="button" data-testid="derivative-composition" title="이 자령이 재료인 파생 조합 목록">${ctx.engine.state.mode === "casual" ? casualStar >= 8 ? "8★ 최고 단계" : "3체 조합 ›" : `합성 ${readyBranches}`}</button>
-      <button id="dismantle-button" type="button" data-testid="dismantle-tower" title="${escapeHtml(dismantleTitle)}" ${dismantleBlocked ? "disabled" : ""}>분해 +${dismantleEssence}문기</button>
+      <button id="dismantle-button" type="button" data-testid="dismantle-tower" class="${dismantleBlocked ? "is-blocked" : ""}" title="${escapeHtml(dismantleBlocked ? dismantleBlockNote(cleanup?.protectedReasons ?? []) : `${tower.char}를 분해해 ${essenceAmountLabel(tower.wuxing, dismantleEssence)} 회수 — 확인 한 번 뒤 즉시 분해, 되돌릴 수 없습니다`)}" ${dismantleBlocked ? "disabled" : ""}>${dismantleBlocked
+        ? `분해 불가<small class="action-price">${escapeHtml(dismantleUnlockable(cleanup?.protectedReasons ?? []) ? "제련소에서 보호 끄기 ›" : `${protectionShortLabel(cleanup?.protectedReasons ?? [])} 보호`)}</small>`
+        : `분해<small class="action-price">${essenceAmountChip(tower.wuxing, dismantleEssence)}</small>`}</button>
       <button id="open-concentration-button" type="button" title="농축 공방 탭으로 이동" ${concentration >= MAX_CONCENTRATION_LEVEL ? "disabled" : ""}>농축 ›</button>
-      <button id="sell-button" type="button" title="엽전을 받고 즉시 제거 — 되돌릴 수 없음" ${tower.locked ? "disabled" : ""}>판매 +${ctx.engine.towerSellValue(tower)}</button>
+      <button id="sell-button" type="button" title="${escapeHtml(`${goldAmountLabel(sellGold)}${sellEssence > 0 ? ` · ${essenceAmountLabel(tower.wuxing, sellEssence)}` : ""} 를 받고 즉시 제거 — 되돌릴 수 없음`)}" ${tower.locked ? "disabled" : ""}>판매<small class="action-price">${goldAmountLabel(sellGold, true)}${sellEssence > 0 ? ` · ${essenceAmountChip(tower.wuxing, sellEssence)}` : ""}</small></button>
     </div>
     <button type="button" class="selected-ability-summary" data-ability-guide><b>${activeSkills ? `技 기술 ${abilityLoadout.length}개 · 모두 자동 판정` : "技 기술 해금 전"}</b><span>${activeSkills ? `주기 ${periodicAbilities.length} · 공격 연동 1 · 조건 특성 1` : "현재 기본 공격 · 2단 합성 필요"}</span><em>설명 ›</em></button>
     ${activeSkills
@@ -238,7 +259,7 @@ function compositionMaterialChip(material: CompositionBranchPreview["materials"]
   const locationLabel = material.location === "board"
     ? "전장"
     : material.location === "inventory"
-      ? "인벤"
+      ? "가방"
       : material.location === "locked" ? "잠금" : "0/1";
   return `<span class="composition-material is-${material.location}"><b>${material.char}</b>${locationLabel}</span>`;
 }
@@ -280,7 +301,7 @@ export function renderCompositionDrawer(): void {
   must<HTMLElement>("#composition-ready-count").textContent = String(branches.filter((branch) => branch.ready).length);
   must<HTMLElement>("#composition-source").innerHTML = `
     <i class="composition-source-spirit" style="${spriteStyle(definition)}" aria-hidden="true"></i>
-    <span><b>${selected.char}</b><strong>${escapeHtml(learningInfoForNotation(ctx.engine.state.notation, selected.char).short)}</strong><small>${selected.cell < 0 ? "런 인벤토리" : "전장 배치"} · 직접 파생 ${branches.length}개</small></span>
+    <span><b>${selected.char}</b><strong>${escapeHtml(learningInfoForNotation(ctx.engine.state.notation, selected.char).short)}</strong><small>${selected.cell < 0 ? "가방" : "전장 배치"} · 직접 파생 ${branches.length}개</small></span>
   `;
   must<HTMLElement>("#composition-branches").innerHTML = branches.length > 0
     ? branches.map(compositionBranchCard).join("")
