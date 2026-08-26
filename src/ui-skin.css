@@ -9105,6 +9105,8 @@ span.codex-jaryeong-category { color: #4a3f30 !important; }
 
 /* 칩이 떠난 바닥 줄 — 상태 문구가 전폭을 쓴다. */
 .panel-footer { grid-template-columns: minmax(0, 1fr); }
+
+/* ══════════════════════════════════════════════════════════════════
    ===== R8 고정무대 =====
 
    1280x720 설계 해상도를 한 덩어리(#stage)로 묶어 균일 배율로만 키우고
