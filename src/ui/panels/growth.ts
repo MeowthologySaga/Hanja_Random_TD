@@ -143,15 +143,19 @@ export function renderGrowth(): void {
     const bonusLabel = formatStatBonus(stat, perLevel * UPGRADE_MILESTONE_LEVEL_BONUS);
     return `이정표 ${UPGRADE_MILESTONE_INTERVAL}단계마다 ${bonusLabel}${milestones > 0 ? ` · 달성 ${milestones}회` : ""}${level < 99 ? ` · 다음까지 ${toNext}단계` : ""}`;
   };
+  // [S/P-25] 설명 줄은 자리(242px)보다 두 배 가까이 길어 뒤가 통째로 잘렸다.
+  // 절 560 이 두 줄로 펴 주지만, 그래도 못 담는 극단을 위해 전문을 title 에 남긴다.
   const globalRows = UPGRADE_STAT_ORDER.map((stat) => {
     const meta = UPGRADE_STAT_META[stat];
     const level = ctx.engine.state.globalUpgrades[stat];
-    return `<article class="growth-stat-row"><i>${meta.glyph}</i><div><b>공용 ${meta.label} <em>Lv.${level}/99</em></b><small>${meta.description} · 현재 ${formatStatBonus(stat, ctx.engine.globalUpgradeBonus(stat))} · ${milestoneNote(stat, level, meta.globalPerLevel)}</small></div><span>${batchButtons("global", stat)}</span></article>`;
+    const note = `${meta.description} · 현재 ${formatStatBonus(stat, ctx.engine.globalUpgradeBonus(stat))} · ${milestoneNote(stat, level, meta.globalPerLevel)}`;
+    return `<article class="growth-stat-row"><i>${meta.glyph}</i><div><b>공용 ${meta.label} <em>Lv.${level}/99</em></b><small title="${escapeHtml(note)}">${note}</small></div><span>${batchButtons("global", stat)}</span></article>`;
   }).join("");
   const elementRows = UPGRADE_STAT_ORDER.map((stat) => {
     const meta = UPGRADE_STAT_META[stat];
     const level = ctx.engine.state.elementUpgrades[ctx.growthElement][stat];
-    return `<article class="growth-stat-row is-element" style="--element:${ELEMENT_STYLES[ctx.growthElement].color}"><i>${meta.glyph}</i><div><b>${ctx.growthElement}행 ${meta.label} <em>Lv.${level}/99</em></b><small>현재 ${formatStatBonus(stat, ctx.engine.elementUpgradeBonus(ctx.growthElement, stat))} · 단계당 ${formatStatBonus(stat, meta.elementPerLevel)} · ${milestoneNote(stat, level, meta.elementPerLevel)}</small></div><span>${batchButtons("element", stat)}</span></article>`;
+    const note = `현재 ${formatStatBonus(stat, ctx.engine.elementUpgradeBonus(ctx.growthElement, stat))} · 단계당 ${formatStatBonus(stat, meta.elementPerLevel)} · ${milestoneNote(stat, level, meta.elementPerLevel)}`;
+    return `<article class="growth-stat-row is-element" style="--element:${ELEMENT_STYLES[ctx.growthElement].color}"><i>${meta.glyph}</i><div><b>${ctx.growthElement}행 ${meta.label} <em>Lv.${level}/99</em></b><small title="${escapeHtml(note)}">${note}</small></div><span>${batchButtons("element", stat)}</span></article>`;
   }).join("");
   const traitRows = ELEMENT_TRAITS[ctx.growthElement].map((trait, traitIndex) => {
     const level = ctx.engine.elementTraitLevel(ctx.growthElement, traitIndex);

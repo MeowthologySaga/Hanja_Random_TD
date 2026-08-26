@@ -74,3 +74,61 @@
 }
 
 #confirm-dialog-accept:hover { filter: brightness(1.12); }
+
+/* ── S/P-25. 강화 설명 한 줄 잘림 ────────────────────────────────
+   실측(1280×720, 강화 프레임): `.growth-stat-row > div small` 은 자리
+   242px 인데 내용이 385~494px 였다 — 127~252px 가 말줄임으로 잘렸다.
+   잘린 자리가 하필 "이정표 10단계마다 +5.0% · 다음까지 10단계" 였고,
+   버튼에 붙는 里 배지가 가리키는 문장이 바로 그 대목이다. 배지는 있는데
+   설명이 없어서 里 가 무슨 뜻인지 화면 어디서도 읽을 수 없었다.
+   한 줄을 두 줄로 편다(행 높이 +16px, 목록은 원래 스크롤 상자다). */
+
+.growth-stat-row > div small {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  /* 가장 긴 줄(공격 속도, 494px)이 두 줄에 1px 모자랐다 — 셋까지 연다.
+     대부분의 행은 두 줄에서 끝나므로 실제로 세 줄이 되는 행은 하나뿐이다. */
+  -webkit-line-clamp: 3;
+  line-height: 1.3;
+  white-space: normal;
+  /* 세 줄로도 못 담는 극단은 여전히 말줄임이다 — 전문은 title 이 받는다. */
+  text-overflow: ellipsis;
+}
+
+/* ── S/P-21. 농축 「② 재료 지불」 우측 여백 0 ────────────────────
+   실측: `.concentration-payment .subheading` 의 오른쪽 부제가 상자
+   오른쪽 테두리와 정확히 같은 x(812px)에서 끝났다 — 글자가 테두리에
+   맞닿아 잘린 것처럼 읽힌다. 세로도 1px 넘쳤다. 좌우 여백을 세운다. */
+
+.concentration-payment > .subheading {
+  padding: 2px 8px;
+}
+
+.concentration-payment > .subheading small {
+  line-height: 1.35;
+}
+
+/* ── S/P-24. 개발자 모드 바닥 줄 — 시드가 통째로 밀려났다 ─────────
+   바닥 줄의 겉 <span> 하나가 상태 문구와 시드를 함께 담고, 그 span 이
+   통째로 말줄임이었다. 상태 문구가 자리(354px)보다 길면(실측 380px)
+   뒤에 붙은 시드가 통째로 잘려 나갔다 — 버그 신고에 붙일 시드를 개발자
+   모드에서 읽을 수 없었다는 뜻이다. 줄어들 쪽을 문구로 못 박는다. */
+
+.panel-footer > span:last-child {
+  display: flex;
+  align-items: baseline;
+  min-width: 0;
+}
+
+.panel-footer > span:last-child > #message-value {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.game-shell[data-dev-mode="1"] .footer-seed {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
