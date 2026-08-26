@@ -831,10 +831,14 @@ function refreshIdiomPlacementGuide(): void {
     .join(",");
 }
 
-/** 순번 인장(60x60 원본 → 표시 20px). 로드 실패 시 인주 원 + 백색 숫자로 대체한다. */
-export function drawIdiomOrderBadge(centerX: number, centerY: number, size: number, order: IdiomOrder): void {
-  const sprite = idiomOrderSealImage(order);
-  if (idiomSpriteReady(sprite)) {
+/**
+ * 순번 인장(60x60 원본 → 표시 20px). 로드 실패 시 인주 원 + 백색 숫자로 대체한다.
+ * [SKILL-V2] 연환 인장이 같은 문법을 빌린다 — 스프라이트는 1~4까지라 5 이상은
+ * 언제나 절차 인장(인주 원 + 숫자)으로 그린다.
+ */
+export function drawIdiomOrderBadge(centerX: number, centerY: number, size: number, order: IdiomOrder | number): void {
+  const sprite = order >= 1 && order <= 4 ? idiomOrderSealImage(order as IdiomOrder) : null;
+  if (sprite && idiomSpriteReady(sprite)) {
     context.drawImage(sprite, centerX - size / 2, centerY - size / 2, size, size);
     return;
   }
@@ -1254,6 +1258,15 @@ function drawEnemy(enemy: Enemy, point = positionOnPath(enemy.progress)): void {
     context.globalAlpha = 1;
   }
 
+  // [SKILL-V2] 연환 인장: 성어 순번 인장의 시각 문법 재사용 — 쌓인 만큼 1·2·3…
+  // 인장이 줄지어 붙는다. 5겹째(스프라이트는 4까지)는 절차 인장 폴백이 그린다.
+  const sealStacks = (enemy.sealUntil ?? 0) > ctx.engine.state.elapsed ? Math.min(5, enemy.sealStacks ?? 0) : 0;
+  if (sealStacks > 0) {
+    for (let index = 0; index < sealStacks; index += 1) {
+      const x = (index - (sealStacks - 1) / 2) * 13;
+      drawIdiomOrderBadge(x, -artTop - 29, 12, index + 1);
+    }
+  }
   const statuses: Array<{ glyph: string; color: string }> = [];
   if (enemy.poisonUntil > ctx.engine.state.elapsed) statuses.push({ glyph: "毒", color: ELEMENT_STYLES.木.color });
   if (enemy.slowFactor < 1 && enemy.slowUntil > ctx.engine.state.elapsed) statuses.push({ glyph: "凍", color: ELEMENT_STYLES.水.color });

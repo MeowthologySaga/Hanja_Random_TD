@@ -1,4 +1,8 @@
 import {
+  CHAINSEAL_SEAL_SECONDS,
+  CHAINSEAL_STACK_WINDOW,
+  CHAINSEAL_STORE_RATIO,
+  chainsealMaxStacks,
   FROST_ZONE_DURATION,
   FROST_ZONE_RADIUS,
   frostSlowRatio,
@@ -730,6 +734,8 @@ export class GameEngine {
     const semanticTrigger = activeSkills && tower.shotCount % semanticEvery === 0
       // [SKILL-V1] 파죽(momentum)은 별도 발동 주기가 없는 패시브라 주기 기술에서 뺀다.
       && abilities.semanticFamily !== "momentum"
+      // [SKILL-V2] 연환 인장(공격마다)도 주기 기술이 아니다.
+      && abilities.semanticFamily !== "chainseal"
       && (abilities.semanticFamily !== "weather" || this.state.enemies.length >= 5);
     // At most one active skill may resolve from a tower on the same attack.
     const signature = activeSkills && !semanticTrigger && tower.shotCount % tuning.signatureEvery === 0;
@@ -805,6 +811,29 @@ export class GameEngine {
 
     this.events.push({ type: "shot", from: origin, to: targetPoint, color: style.color, critical, wuxing: tower.wuxing });
     this.damageEnemy(target, damage, critical, weakness, armorPenetration);
+
+    // [SKILL-V2] 연환 인장: 공격마다 인장을 겹치고 상한에서 누적 피해 폭발 +
+    // 1.2초 제자리 봉인. 스택·적립은 적에게 남으므로 여러 연환 자령이 나눠 쌓는다.
+    if (activeSkills && abilities.semanticFamily === "chainseal" && this.state.enemies.includes(target)) {
+      if ((target.sealUntil ?? 0) <= this.state.elapsed) {
+        target.sealStacks = 0;
+        target.sealStored = 0;
+      }
+      const sealCap = chainsealMaxStacks(this.state.mode === "casual" ? tower.casualStar ?? tower.naturalStar ?? 1 : tower.stage);
+      target.sealStacks = (target.sealStacks ?? 0) + 1;
+      target.sealStored = (target.sealStored ?? 0) + damage * CHAINSEAL_STORE_RATIO;
+      target.sealUntil = this.state.elapsed + CHAINSEAL_STACK_WINDOW;
+      if (target.sealStacks >= sealCap) {
+        const burst = target.sealStored;
+        target.sealStacks = 0;
+        target.sealStored = 0;
+        target.sealUntil = 0;
+        // 절대 원칙: 봉인은 제자리 정지다 — 진행도를 되돌리지 않는다.
+        target.stunnedUntil = Math.max(target.stunnedUntil, this.state.elapsed + CHAINSEAL_SEAL_SECONDS);
+        this.emitAbility(tower, abilities.semantic, origin, targetPoint, 1, `연환 폭발 ${Math.round(burst)} 피해 · ${CHAINSEAL_SEAL_SECONDS}초 제자리 봉인`);
+        this.damageEnemy(target, burst, false, weakness, 0.2);
+      }
+    }
 
     if (activeSkills && tower.wuxing === "火") {
       // 수술 5: 캐주얼에서는 별이 곧 광역의 크기다(표준은 배율 1).
