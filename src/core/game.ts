@@ -1,4 +1,9 @@
 import {
+  CHAINSEAL_SEAL_SECONDS,
+  CHAINSEAL_STACK_WINDOW,
+  CHAINSEAL_STORE_RATIO,
+  chainsealMaxStacks,
+  commandRallySeconds,
   FROST_ZONE_DURATION,
   FROST_ZONE_RADIUS,
   frostSlowRatio,
@@ -6,10 +11,17 @@ import {
   GWICHEON_MIN_STAR,
   GWICHEON_RUSH_THRESHOLD,
   gwicheonChargeSeconds,
+  HARVEST_KILLS_PER_ESSENCE,
   hasActiveSkills,
   idiomBlessingBonus,
   MOMENTUM_STACK_BONUS,
   momentumMaxStacks,
+  REAPER_BOSS_CHIP_RATIO,
+  REAPER_EXECUTE_COOLDOWN_SECONDS,
+  reaperExecuteThreshold,
+  SCORCH_DPS_RATIO,
+  SCORCH_ZONE_RADIUS,
+  scorchZoneSeconds,
   WARFARE_BRAND_DURATION,
   warfareBrandPower
 } from "./abilities";
@@ -249,6 +261,8 @@ export class GameEngine {
   private readonly combatFormationBonuses = [0, 0, 0, 0, 0];
   // [SKILL-V1] 성어의 가호: 진별 가호 배율 캐시(발동 중 봉인 기준).
   private readonly combatIdiomBlessings = [0, 0, 0, 0, 0];
+  // [SKILL-V2] 호령: 진별 집중 명령(대상 공유). 4초 남짓의 일시 상태라 세이브 밖이다.
+  private readonly commandRallies: Array<{ targetId: number; until: number } | null> = [null, null, null, null, null];
   private combatDistinctElements = 0;
   /** FB7-8성: 이번 틱에 극성 개안 오라가 살아 있는 오행. 오행당 최대 1개. */
   private readonly combatPolarisElements = new Set<Wuxing>();
@@ -325,6 +339,8 @@ export class GameEngine {
     this.nextAbilityZoneId = 1;
     this.currentPlan = null;
     this.autoEvolutionCooldown = 0;
+    // [SKILL-V2] 호령 집중 명령은 런을 넘기지 않는다.
+    this.commandRallies.fill(null);
     const targetChar = this.goalOrder[0] ?? this.catalog.activePool[0]?.char ?? "";
     Object.assign(this.state, {
       phase: "prep",
@@ -631,6 +647,77 @@ export class GameEngine {
     return { label: "서리길", duration: FROST_ZONE_DURATION, damagePerSecond: 0 };
   }
 
+  /**
+   * [SKILL-V2] 소흔(scorch) 잔불 — 잔화 지대 문법을 빌린 처치 지점 지속 피해 지대.
+   * 트리거만 처치일 뿐 판정·연출은 기존 장판과 같다. 자령당 1개(최근 처치 자리).
+   */
+  private deployEmberZone(tower: Tower, victim: Enemy): void {
+    const definition = definitionForTower(this.catalog, tower.definitionId);
+    const star = this.state.mode === "casual" ? tower.casualStar ?? tower.naturalStar ?? 1 : null;
+    const duration = scorchZoneSeconds(star);
+    const abilityPower = 1 + this.combinedUpgradeBonus(tower.wuxing, "abilityPower");
+    const damagePerSecond = definition.combat.baseDamage * this.towerPowerMultiplier(tower)
+      * definition.combat.budgetMultiplier * SCORCH_DPS_RATIO * abilityPower;
+    const existing = this.state.abilityZones.find((zone) => zone.towerId === tower.id);
+    const zone: AbilityZone = {
+      id: existing?.id ?? this.nextAbilityZoneId++,
+      towerId: tower.id,
+      kind: "ember",
+      wuxing: tower.wuxing,
+      progress: victim.progress,
+      radius: SCORCH_ZONE_RADIUS * this.casualSplashRadiusScale(tower),
+      damagePerSecond,
+      expiresAt: this.state.elapsed + duration,
+      color: "#ff9a52"
+    };
+    if (existing) Object.assign(existing, zone);
+    else this.state.abilityZones.push(zone);
+    if (this.state.abilityZones.length > 20) this.state.abilityZones.shift();
+    const origin = BOARD_CELLS[tower.cell] as Point;
+    this.emitAbility(
+      tower,
+      definition.combat.abilities.semantic,
+      origin,
+      positionOnPath(victim.progress),
+      1,
+      `잔불 ${duration.toFixed(1)}초 · 초당 ${Math.round(damagePerSecond)} 피해`,
+      true
+    );
+  }
+
+  /**
+   * [SKILL-V2] 채기(harvest) — N번째 처치마다 자기 오행 문기 +1.
+   * 문기 인플레 방지를 위해 주기는 상수 하나로 관리하고 시뮬 게이트로 검증한다.
+   */
+  private harvestEssence(tower: Tower, at: Point): void {
+    tower.harvestKills = (tower.harvestKills ?? 0) + 1;
+    if (tower.harvestKills % HARVEST_KILLS_PER_ESSENCE !== 0) return;
+    this.state.elementEssence[tower.wuxing] += 1;
+    this.state.elementEssenceGenerated[tower.wuxing] += 1;
+    const definition = definitionForTower(this.catalog, tower.definitionId);
+    const origin = BOARD_CELLS[tower.cell] as Point;
+    this.emitAbility(tower, definition.combat.abilities.semantic, origin, at, 1, `${tower.wuxing} 문기 +1 · ${HARVEST_KILLS_PER_ESSENCE}처치 수확`);
+  }
+
+  /**
+   * [SKILL-V2] 소흔·채기의 처치 훅. 직접 타격 계열(기본 공격·확산·연쇄·기술
+   * 추가타)에만 출처 자령이 붙는다 — 독·장판 틱 처치는 출처 없이 그대로 둔다
+   * (보수적 선택: 간접 처치까지 세면 수확·잔불이 눈덩이처럼 커진다).
+   */
+  private handleTowerKill(tower: Tower, victim: Enemy, at: Point): void {
+    if (!this.towerHasActiveSkills(tower)) return;
+    const family = definitionForTower(this.catalog, tower.definitionId).combat.abilities.semanticFamily;
+    if (family === "scorch") this.deployEmberZone(tower, victim);
+    else if (family === "harvest") this.harvestEssence(tower, at);
+  }
+
+  /** [SKILL-V2] 호령 — 이 진에 살아 있는 집중 명령. 없거나 끝났으면 null. */
+  commandRallyAt(formationIndex: number): { targetId: number; until: number } | null {
+    const rally = this.commandRallies[formationIndex];
+    if (!rally || rally.until <= this.state.elapsed) return null;
+    return rally;
+  }
+
   private updateTowers(delta: number): void {
     for (const tower of this.state.towers) {
       tower.pulse = Math.max(0, tower.pulse - delta * 3);
@@ -684,7 +771,7 @@ export class GameEngine {
     const origin = BOARD_CELLS[tower.cell] as Point;
     const at = this.enemyPoint(target);
     // 장갑 완전 관통 + 잔여 체력 이상의 피해 = 확정 정화. 보상은 damageEnemy 가 지급한다.
-    this.damageEnemy(target, target.hp + 10, false, false, 1);
+    this.damageEnemy(target, target.hp + 10, false, false, 1, tower);
     this.emitAbility(tower, GWICHEON_ABILITY, origin, at, 1, "가장 오래 버틴 일반 망령 정화 · 보상 지급");
     return true;
   }
@@ -708,6 +795,13 @@ export class GameEngine {
     candidates.length = 0;
     for (const enemy of this.state.enemies) if (distance(origin, this.enemyPoint(enemy)) <= range) candidates.push(enemy);
     if (candidates.length === 0) return undefined;
+    // [SKILL-V2] 호령: 집중 명령이 살아 있으면 같은 진의 자령은 그 대상을 우선한다.
+    // 사거리 밖이면 따르지 않고(candidates 에 없음) 평소 우선순위로 돌아간다.
+    const rally = this.commandRallyAt(Math.floor(tower.cell / CELLS_PER_FORMATION));
+    if (rally) {
+      const focus = candidates.find((enemy) => enemy.id === rally.targetId);
+      if (focus) return focus;
+    }
     const priority = definition.combat.abilities.targetPriority;
     let best = candidates[0] as Enemy;
     let bestValue = -Infinity;
@@ -751,6 +845,11 @@ export class GameEngine {
     const semanticTrigger = activeSkills && tower.shotCount % semanticEvery === 0
       // [SKILL-V1] 파죽(momentum)은 별도 발동 주기가 없는 패시브라 주기 기술에서 뺀다.
       && abilities.semanticFamily !== "momentum"
+      // [SKILL-V2] 연환 인장(공격마다)·소흔(처치)·채기(처치)도 주기 기술이 아니다.
+      // 참명·호령은 주기 발동이 남는다(참명 주기는 우두머리 참격 전용).
+      && abilities.semanticFamily !== "chainseal"
+      && abilities.semanticFamily !== "scorch"
+      && abilities.semanticFamily !== "harvest"
       && (abilities.semanticFamily !== "weather" || this.state.enemies.length >= 5);
     // At most one active skill may resolve from a tower on the same attack.
     const signature = activeSkills && !semanticTrigger && tower.shotCount % tuning.signatureEvery === 0;
@@ -825,7 +924,45 @@ export class GameEngine {
     }
 
     this.events.push({ type: "shot", from: origin, to: targetPoint, color: style.color, critical, wuxing: tower.wuxing });
-    this.damageEnemy(target, damage, critical, weakness, armorPenetration);
+    this.damageEnemy(target, damage, critical, weakness, armorPenetration, tower);
+
+    // [SKILL-V2] 연환 인장: 공격마다 인장을 겹치고 상한에서 누적 피해 폭발 +
+    // 1.2초 제자리 봉인. 스택·적립은 적에게 남으므로 여러 연환 자령이 나눠 쌓는다.
+    if (activeSkills && abilities.semanticFamily === "chainseal" && this.state.enemies.includes(target)) {
+      if ((target.sealUntil ?? 0) <= this.state.elapsed) {
+        target.sealStacks = 0;
+        target.sealStored = 0;
+      }
+      const sealCap = chainsealMaxStacks(this.state.mode === "casual" ? tower.casualStar ?? tower.naturalStar ?? 1 : tower.stage);
+      target.sealStacks = (target.sealStacks ?? 0) + 1;
+      target.sealStored = (target.sealStored ?? 0) + damage * CHAINSEAL_STORE_RATIO;
+      target.sealUntil = this.state.elapsed + CHAINSEAL_STACK_WINDOW;
+      if (target.sealStacks >= sealCap) {
+        const burst = target.sealStored;
+        target.sealStacks = 0;
+        target.sealStored = 0;
+        target.sealUntil = 0;
+        // 절대 원칙: 봉인은 제자리 정지다 — 진행도를 되돌리지 않는다.
+        target.stunnedUntil = Math.max(target.stunnedUntil, this.state.elapsed + CHAINSEAL_SEAL_SECONDS);
+        this.emitAbility(tower, abilities.semantic, origin, targetPoint, 1, `연환 폭발 ${Math.round(burst)} 피해 · ${CHAINSEAL_SEAL_SECONDS}초 제자리 봉인`);
+        this.damageEnemy(target, burst, false, weakness, 0.2, tower);
+      }
+    }
+
+    // [SKILL-V2] 참명: 체력 문턱 이하의 일반 적은 즉시 소멸(보상 정상 지급).
+    // 우두머리·정예(철갑)는 면역 — 대신 주기 발동이 현재 체력 3%를 벤다.
+    // 참격 후에는 숨 고르기(자령당 최소 간격)가 붙는다 — 문턱은 기획 고정이라
+    // 빈도로만 세기를 조절한다.
+    if (activeSkills && abilities.semanticFamily === "reaper" && this.state.enemies.includes(target)
+      && !target.boss && target.archetype !== "armored"
+      && (tower.reaperReadyAt ?? 0) <= this.state.elapsed) {
+      const threshold = reaperExecuteThreshold(this.state.mode === "casual" ? tower.casualStar ?? tower.naturalStar ?? 1 : null);
+      if (target.hp / target.maxHp <= threshold) {
+        tower.reaperReadyAt = this.state.elapsed + REAPER_EXECUTE_COOLDOWN_SECONDS;
+        this.emitAbility(tower, abilities.semantic, origin, targetPoint, 1, `참명 · 체력 ${Math.round(threshold * 100)}% 이하 즉시 소멸`);
+        this.damageEnemy(target, target.hp + 10, false, false, 1, tower);
+      }
+    }
 
     if (activeSkills && tower.wuxing === "火") {
       // 수술 5: 캐주얼에서는 별이 곧 광역의 크기다(표준은 배율 1).
@@ -834,7 +971,7 @@ export class GameEngine {
       for (const enemy of this.state.enemies
         .filter((candidate) => candidate.id !== target.id && distance(this.enemyPoint(candidate), targetPoint) <= splashRadius)
         .slice(0, 5)) {
-        this.damageEnemy(enemy, damage * splashRatio * abilityPower, false, enemy.weakness === tower.wuxing);
+        this.damageEnemy(enemy, damage * splashRatio * abilityPower, false, enemy.weakness === tower.wuxing, 0, tower);
       }
     } else if (activeSkills && tower.wuxing === "水" && this.state.enemies.includes(target)) {
       target.slowFactor = Math.min(target.slowFactor, Math.max(0.38, tuning.slowFactor - signatureControlBonus));
@@ -846,7 +983,7 @@ export class GameEngine {
         .sort((a, b) => b.progress - a.progress)
         .slice(0, tuning.chainCount + elementTraitExtraChainTargets(conductionLevel));
       for (const enemy of chained) {
-        this.damageEnemy(enemy, damage * tuning.chainRatio * abilityPower * (1 + conductionLevel * 0.02), false, enemy.weakness === tower.wuxing);
+        this.damageEnemy(enemy, damage * tuning.chainRatio * abilityPower * (1 + conductionLevel * 0.02), false, enemy.weakness === tower.wuxing, 0, tower);
       }
     } else if (activeSkills && tower.wuxing === "木" && this.state.enemies.includes(target)) {
       target.poisonDps = Math.max(target.poisonDps, damage * (tuning.poisonRatio + signatureControlBonus * 0.35) * abilityPower);
@@ -865,7 +1002,7 @@ export class GameEngine {
       let roleTargets = 1;
       let roleEffect = "이번 공격 피해 ×" + tuning.signatureMultiplier.toFixed(2);
       if (profile.role === "rapid" && this.state.enemies.includes(target)) {
-        this.damageEnemy(target, damage * 0.58 * tuning.signatureMultiplier * abilityPower, false, weakness, armorPenetration * 0.5);
+        this.damageEnemy(target, damage * 0.58 * tuning.signatureMultiplier * abilityPower, false, weakness, armorPenetration * 0.5, tower);
         roleEffect = "같은 적에게 " + String(Math.round(58 * tuning.signatureMultiplier)) + "% 추가타";
       } else if (profile.role === "splash") {
         // 수술 5: 역할 확산도 캐주얼 별 스케일을 함께 탄다.
@@ -874,7 +1011,7 @@ export class GameEngine {
         const spreadTargets = this.state.enemies
           .filter((candidate) => candidate.id !== target.id && distance(this.enemyPoint(candidate), targetPoint) <= spreadRadius)
           .slice(0, 5);
-        for (const enemy of spreadTargets) this.damageEnemy(enemy, damage * spreadRatio * abilityPower, false, enemy.weakness === tower.wuxing);
+        for (const enemy of spreadTargets) this.damageEnemy(enemy, damage * spreadRatio * abilityPower, false, enemy.weakness === tower.wuxing, 0, tower);
         roleTargets += spreadTargets.length;
         roleEffect = "주변 " + String(spreadTargets.length) + "체에 " + String(Math.round(spreadRatio * 100)) + "% 확산";
       } else if (profile.role === "control") {
@@ -893,7 +1030,7 @@ export class GameEngine {
 
     if (lineageTrigger && abilities.lineage && abilities.lineageWuxing) {
       const lineageWeakness = target.weakness === abilities.lineageWuxing;
-      if (this.state.enemies.includes(target)) this.damageEnemy(target, damage * tuning.lineageRatio * abilityPower, false, lineageWeakness, 0.15);
+      if (this.state.enemies.includes(target)) this.damageEnemy(target, damage * tuning.lineageRatio * abilityPower, false, lineageWeakness, 0.15, tower);
       this.events.push({ type: "shot", from: origin, to: targetPoint, color: abilities.lineage.color, critical: false, wuxing: abilities.lineageWuxing });
       this.emitAbility(
         tower,
@@ -944,7 +1081,7 @@ export class GameEngine {
       if (relay) {
         const relayPoint = this.enemyPoint(relay);
         this.events.push({ type: "shot", from: targetPoint, to: relayPoint, color: abilities.semantic.color, critical: false, wuxing: tower.wuxing });
-        this.damageEnemy(relay, damage * tuning.semanticMultiplier * potency * abilityPower, false, relay.weakness === tower.wuxing, 0.12);
+        this.damageEnemy(relay, damage * tuning.semanticMultiplier * potency * abilityPower, false, relay.weakness === tower.wuxing, 0.12, tower);
         targets = 2;
         effect = "길 반대편 1체에 " + String(Math.round(tuning.semanticMultiplier * potency * 100)) + "% 전이";
       }
@@ -957,7 +1094,7 @@ export class GameEngine {
       const victims = this.state.enemies
         .filter((candidate) => candidate.id !== target.id && distance(this.enemyPoint(candidate), targetPoint) <= radius)
         .slice(0, 5);
-      for (const victim of victims) this.damageEnemy(victim, damage * tuning.semanticMultiplier * potency * abilityPower, false, victim.weakness === tower.wuxing);
+      for (const victim of victims) this.damageEnemy(victim, damage * tuning.semanticMultiplier * potency * abilityPower, false, victim.weakness === tower.wuxing, 0, tower);
       targets += victims.length;
       effect = "밀집 구간 " + String(targets) + "체에 " + String(Math.round(tuning.semanticMultiplier * potency * 100)) + "% 피해";
     } else if (family === "mountain" && this.state.enemies.includes(target)) {
@@ -997,6 +1134,24 @@ export class GameEngine {
       effect = "최고 체력 적 간파 · 이번 공격 ×" + tuning.semanticMultiplier.toFixed(2);
     } else if (family === "metalwork") {
       effect = "최고 장갑 적 우선 · 추가 관통 22%";
+    } else if (family === "command") {
+      // [SKILL-V2] 호령: 같은 진 전원이 시전자의 대상을 집중 공격(대상 공유만, AI 단순).
+      const rallySeconds = commandRallySeconds(this.state.mode === "casual" ? tower.casualStar ?? tower.naturalStar ?? 1 : null);
+      const formation = Math.floor(tower.cell / CELLS_PER_FORMATION);
+      this.commandRallies[formation] = { targetId: target.id, until: this.state.elapsed + rallySeconds };
+      const allies = this.state.towers.filter((candidate) => candidate.id !== tower.id && Math.floor(candidate.cell / CELLS_PER_FORMATION) === formation);
+      targets = Math.max(1, allies.length);
+      effect = `같은 진 ${allies.length}기 집중 호령 · ${rallySeconds.toFixed(1)}초 · 사거리 밖 제외`;
+    } else if (family === "reaper") {
+      // [SKILL-V2] 참명 주기: 우두머리·정예 한정 현재 체력 3% 참격(즉시 소멸 면역 보상).
+      const threshold = reaperExecuteThreshold(this.state.mode === "casual" ? tower.casualStar ?? tower.naturalStar ?? 1 : null);
+      if ((target.boss || target.archetype === "armored") && this.state.enemies.includes(target)) {
+        const chip = Math.max(1, target.hp * REAPER_BOSS_CHIP_RATIO);
+        this.damageEnemy(target, chip, false, false, 1, tower);
+        effect = `우두머리·정예 참격 · 현재 체력 ${Math.round(REAPER_BOSS_CHIP_RATIO * 100)}% 고정 피해`;
+      } else {
+        effect = `참명 대기 · 체력 ${Math.round(threshold * 100)}% 이하 즉시 소멸`;
+      }
     } else if (family === "warfare" && this.state.enemies.includes(target)) {
       // [SKILL-V1] 상극 각인: 대상에게 자기 오행의 상극 낙인(4초). 밀거나 되돌리지 않는다.
       const brandPower = warfareBrandPower(this.state.mode === "casual" ? tower.casualStar ?? tower.naturalStar ?? 1 : null);
@@ -1036,7 +1191,7 @@ export class GameEngine {
     });
   }
 
-  private damageEnemy(enemy: Enemy, rawAmount: number, critical: boolean, weakness: boolean, armorPenetration = 0): void {
+  private damageEnemy(enemy: Enemy, rawAmount: number, critical: boolean, weakness: boolean, armorPenetration = 0, source?: Tower): void {
     if (!this.state.enemies.includes(enemy)) return;
     const effectiveArmor = enemy.armor * (1 - armorPenetration);
     const amount = rawAmount * (1 - effectiveArmor);
@@ -1050,6 +1205,8 @@ export class GameEngine {
     this.state.gold += enemy.reward;
     this.state.killCount += 1;
     this.events.push({ type: "kill", at, reward: enemy.reward });
+    // [SKILL-V2] 소흔·채기 처치 훅 — 출처 자령이 있는 직접 처치만 센다.
+    if (source) this.handleTowerKill(source, enemy, at);
   }
 
   private finishWave(): void {

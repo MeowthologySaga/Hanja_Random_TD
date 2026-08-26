@@ -49,6 +49,12 @@ export type SemanticFamily =
   | "warfare"
   | "momentum"
   | "frost"
+  // [SKILL-V2] 스킬 2차 세트가 신설한 의미 계열.
+  | "chainseal"
+  | "reaper"
+  | "command"
+  | "scorch"
+  | "harvest"
   | "general";
 export type TargetPriority = "front" | "strongest" | "fastest" | "armored" | "cluster" | "valuable";
 export type EnemyArchetype = "normal" | "swarm" | "swift" | "armored" | "regenerator" | "boss";
@@ -196,6 +202,10 @@ export interface Tower {
   momentumStacks?: number;
   // [SKILL-V1] 귀천: 6★ 이상 자령의 충전 스킬 게이지(초).
   ascendCharge?: number;
+  // [SKILL-V2] 채기(harvest): 이 자령의 누적 처치 수 — N번째마다 문기 +1.
+  harvestKills?: number;
+  // [SKILL-V2] 참명(reaper): 다음 참격이 가능해지는 시각(숨 고르기).
+  reaperReadyAt?: number;
 }
 
 export interface Enemy {
@@ -222,13 +232,19 @@ export interface Enemy {
   brandWuxing?: Wuxing;
   brandUntil?: number;
   brandPower?: number;
+  // [SKILL-V2] 연환 인장(chainseal): 공격마다 쌓이는 인장 스택과 누적 피해.
+  // 상한 도달 시 폭발 + 1.2초 제자리 봉인 — 절대 뒤로 밀지 않는다.
+  sealStacks?: number;
+  sealStored?: number;
+  sealUntil?: number;
 }
 
 export interface AbilityZone {
   id: number;
   towerId: number;
   // [SKILL-V1] "frost" 는 서리길(피해 없는 감속 장판)이다.
-  kind: "roots" | "lava" | "quicksand" | "caltrops" | "rain" | "frost";
+  // [SKILL-V2] "ember" 는 소흔의 잔불(처치 지점 지속 피해 지대)이다.
+  kind: "roots" | "lava" | "quicksand" | "caltrops" | "rain" | "frost" | "ember";
   wuxing: Wuxing;
   progress: number;
   radius: number;

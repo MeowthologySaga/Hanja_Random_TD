@@ -9,7 +9,8 @@ describe("combinatorial Hanzi ability table", () => {
     expect(Object.keys(ROLE_ABILITY_TABLE)).toHaveLength(6);
     expect(Object.keys(GRAPH_ABILITY_TABLE)).toHaveLength(4);
     // [SKILL-V1] warfare·momentum·frost 3계열이 더해져 15가 됐다.
-    expect(Object.keys(SEMANTIC_ABILITY_TABLE)).toHaveLength(15);
+    // [SKILL-V2] chainseal·reaper·command·scorch·harvest 5계열이 더해져 20이 됐다.
+    expect(Object.keys(SEMANTIC_ABILITY_TABLE)).toHaveLength(20);
     expect(new Set(Object.values(ELEMENT_ABILITY_TABLE).map((ability) => ability.fx)).size).toBe(5);
     expect(new Set(Object.values(ROLE_ABILITY_TABLE).map((ability) => ability.fx)).size).toBe(6);
     expect(new Set(Object.values(GRAPH_ABILITY_TABLE).map((ability) => ability.fx)).size).toBe(4);
