@@ -484,6 +484,28 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
       </div>
     </dialog>
 
+    <!--
+      [S/P-08] 공용 확인 창.
+
+      되돌릴 수 없는 조작(분해·최대 강화)이 브라우저 기본 window.confirm 을 쓰고
+      있었다. 게임 어휘와 따로 놀 뿐 아니라, OS 창이라 자동화가 열지도 읽지도
+      못해 e2e 로 지킬 수 없었다. 수련장 그만두기 창(p00 서책)과 같은 틀을
+      빌려 한 벌로 세운다 — 부르는 쪽은 dialogs/confirm.ts 의 openConfirm 뿐이다.
+      승급 확인(#casual-fusion-confirm-dialog)은 재료 격자를 그리는 별개 창이라
+      그대로 둔다.
+    -->
+    <dialog id="confirm-dialog" class="p00-dialog confirm-dialog" aria-labelledby="confirm-dialog-title" data-testid="confirm-dialog">
+      <div class="p00-frame confirm-frame">
+        <p id="confirm-dialog-eyebrow" class="s00-mode-label">확인</p>
+        <h3 id="confirm-dialog-title">진행할까요?</h3>
+        <div id="confirm-dialog-body" class="confirm-dialog-body"></div>
+        <div class="p00-actions">
+          <button id="confirm-dialog-cancel" type="button" data-testid="confirm-dialog-cancel">취소</button>
+          <button id="confirm-dialog-accept" type="button" data-testid="confirm-dialog-accept">확인</button>
+        </div>
+      </div>
+    </dialog>
+
     <section id="title-overlay" class="modal-layer modal-layer--visible" aria-labelledby="title-heading">
       <div class="s00-stage" data-screen-id="S00">
         <img class="s00-env s00-env--legacy" data-src="${import.meta.env.BASE_URL}assets/ui/main-menu-b/background/S00-living-codex-empty-1280x720-v1.png" alt="" aria-hidden="true" />

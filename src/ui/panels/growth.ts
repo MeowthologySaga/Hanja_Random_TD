@@ -18,6 +18,7 @@ import {
 } from "../../core/hanzi";
 import { type Tower, type UpgradeStat, type Wuxing } from "../../core/types";
 import { ctx, DISMANTLE_UNIQUE_STORAGE_KEY, dismantleSelection, must, reducedMotion, sound } from "../app-context";
+import { openConfirm } from "../dialogs/confirm";
 import { formatStatBonus, upgradeStateSignature } from "../dialogs/element-upgrade";
 import {
   casualStarOf,
@@ -216,10 +217,20 @@ export function wireGrowth2(): void {
     const towers = quote.ids.map((id) => ctx.engine.state.inventoryTowers.find((tower) => tower.id === id)).filter((tower): tower is Tower => Boolean(tower));
     const towerLabel = towers.map((tower) => `${tower.char}(${tower.wuxing} ${towerProgressionLabel(tower)})`).join(" · ");
     const gainLabel = essenceGainsLabel(quote.gains);
-    if (!window.confirm(`${towers.length}기를 한 번에 분해합니다.\n${towerLabel}\n획득: ${gainLabel}`)) return;
-    const result = ctx.engine.dismantleTowers(quote.ids, dismantleOptions());
-    if (result.ok) dismantleSelection.clear();
-    handleAction(result);
+    // [S/P-08] 브라우저 기본 확인 창 → 게임 서책 확인 창.
+    openConfirm({
+      eyebrow: "강화 제련소",
+      title: `${towers.length}기를 한 번에 분해할까요?`,
+      lines: [
+        `<b>${escapeHtml(towerLabel)}</b>`,
+        `획득 ${escapeHtml(gainLabel || "없음")} · 되돌릴 수 없습니다.`
+      ],
+      confirmLabel: `${towers.length}기 분해`
+    }, () => {
+      const result = ctx.engine.dismantleTowers(quote.ids, dismantleOptions());
+      if (result.ok) dismantleSelection.clear();
+      handleAction(result);
+    });
   });
   must<HTMLElement>("#growth-element-tabs").addEventListener("click", (event) => {
     const wuxing = (event.target as HTMLElement).closest<HTMLButtonElement>("[data-growth-element]")?.dataset.growthElement as Wuxing | undefined;
@@ -245,12 +256,29 @@ export function wireGrowth2(): void {
       : scope === "element" && stat
         ? ctx.engine.quoteElementUpgrade(ctx.growthElement, stat, amount)
         : ctx.engine.quoteElementTraitUpgrade(ctx.growthElement, traitIndex, amount);
-    if (amount === "max" && !window.confirm(`실제 누적 비용 ${quote.cost}을 사용해 ${quote.levels}단계 강화할까요? (${quote.fromLevel} → ${quote.toLevel})`)) return;
-    const result = scope === "global" && stat
-      ? ctx.engine.upgradeGlobal(stat, amount)
-      : scope === "element" && stat
-        ? ctx.engine.upgradeElement(ctx.growthElement, stat, amount)
-        : ctx.engine.upgradeElementTrait(ctx.growthElement, traitIndex, amount);
-    handleAction(result);
+    const apply = (): void => {
+      const result = scope === "global" && stat
+        ? ctx.engine.upgradeGlobal(stat, amount)
+        : scope === "element" && stat
+          ? ctx.engine.upgradeElement(ctx.growthElement, stat, amount)
+          : ctx.engine.upgradeElementTrait(ctx.growthElement, traitIndex, amount);
+      handleAction(result);
+    };
+    // [S/P-08] [최대]는 가진 자원을 통째로 쓴다 — 확인 1회를 서책 창으로 세운다.
+    if (amount !== "max") {
+      apply();
+      return;
+    }
+    const currency = scope === "global" ? "엽전" : `${ctx.growthElement} 문기`;
+    openConfirm({
+      eyebrow: "강화 제련소",
+      title: `${quote.levels}단계를 한 번에 올릴까요?`,
+      lines: [
+        `Lv.${quote.fromLevel} → <b>Lv.${quote.toLevel}</b>`,
+        `누적 비용 <b>${quote.cost} ${escapeHtml(currency)}</b>`
+      ],
+      confirmLabel: `+${quote.levels}단계 강화`,
+      tone: "neutral"
+    }, apply);
   });
 }

@@ -17,6 +17,7 @@ import {
   bossBanner,
   casualFusionConfirmDialog,
   codexDialog,
+  confirmDialog,
   ctx,
   elementUpgradeDialog,
   type FocusFrameId,
@@ -473,7 +474,10 @@ export function wireHud2(): void {
   must<HTMLButtonElement>("#concentration-frame-open").addEventListener("click", () => setFocusFrame("concentration"));
   window.addEventListener("keydown", (event) => {
     if (event.key !== "Escape" || ctx.openFocusFrame === null) return;
-    if (helpDialog.open || settingsDialog.open || elementUpgradeDialog.open || abilityGuideDialog.open || casualFusionConfirmDialog.open || codexDialog.open) return;
+    // 열린 창은 프레임보다 안쪽 층위다 — 그 창의 Esc(닫기)를 가로채지 않는다.
+    // [S/P-08] 공용 확인 창도 같은 줄에 선다. 빠뜨리면 Esc 가 확인 창 대신
+    // 프레임을 걷어, 되돌릴 수 없는 확인이 화면에 남는다.
+    if (helpDialog.open || settingsDialog.open || elementUpgradeDialog.open || abilityGuideDialog.open || casualFusionConfirmDialog.open || confirmDialog.open || codexDialog.open) return;
     event.preventDefault();
     // R19: 보관고 일괄 모드는 프레임보다 안쪽 층위다 — Esc 는 안쪽부터 걷는다.
     if (ctx.openFocusFrame === "inventory" && ctx.runInventoryBulkMode) {

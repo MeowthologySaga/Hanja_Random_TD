@@ -38,6 +38,7 @@ import {
   spriteStyle,
   visualBackgroundStyle
 } from "../format";
+import { openConfirm } from "../dialogs/confirm";
 import { handleAction, setPanelTab, showToast } from "../hud";
 import { dismantleOptions } from "./growth";
 
@@ -317,23 +318,33 @@ export function renderCompositionDrawer(): void {
  * 엔진의 dismantleTowers 는 인벤토리 전용이라("인벤토리 자령만"), 전장 자령은
  * 기존 공개 API 둘을 이어 붙인다 — storeSelectedTower(전장 → 인벤) 뒤
  * dismantleTowers 1기. 엔진은 손대지 않는다. 확인은 제련소 [선택 분해]와
- * 같은 window.confirm 1회다. 보호 셈법은 렌더가 이미 잠갔지만, 상태가 그 사이
- * 바뀌었을 수 있으므로 실패 문장은 그대로 토스트로 올린다(그 경우 자령은
- * 인벤토리에 남는다 — 사라지지는 않는다).
+ * 같은 공용 서책 창 1회다([S/P-08] 이전에는 window.confirm 이었다). 보호
+ * 셈법은 렌더가 이미 잠갔지만, 상태가 그 사이 바뀌었을 수 있으므로 실패
+ * 문장은 그대로 토스트로 올린다(그 경우 자령은 인벤토리에 남는다 —
+ * 사라지지는 않는다).
  */
 function dismantleSelectedInPlace(): void {
   const tower = ctx.engine.selectedTower();
   if (!tower) return;
   const essence = ctx.engine.towerDismantleEssenceValue(tower);
-  if (!window.confirm(`${tower.char}를 분해해 ${tower.wuxing} 문기 +${essence} — 되돌릴 수 없습니다. 분해하시겠습니까?`)) return;
-  if (tower.cell >= 0) {
-    const storeResult = ctx.engine.storeSelectedTower();
-    if (!storeResult.ok) {
-      handleAction(storeResult);
-      return;
+  openConfirm({
+    eyebrow: "선택 자령",
+    title: `${tower.char} 1기를 분해할까요?`,
+    lines: [
+      `획득 <b>${escapeHtml(tower.wuxing)} 문기 +${essence}</b>`,
+      "되돌릴 수 없습니다."
+    ],
+    confirmLabel: `${tower.char} 분해`
+  }, () => {
+    if (tower.cell >= 0) {
+      const storeResult = ctx.engine.storeSelectedTower();
+      if (!storeResult.ok) {
+        handleAction(storeResult);
+        return;
+      }
     }
-  }
-  handleAction(ctx.engine.dismantleTowers([tower.id], { protectUnique: ctx.dismantleProtectsUnique }));
+    handleAction(ctx.engine.dismantleTowers([tower.id], { protectUnique: ctx.dismantleProtectsUnique }));
+  });
 }
 
 function openCompositionDrawer(): void {

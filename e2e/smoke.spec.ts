@@ -392,11 +392,20 @@ test("dismantles a deployed jaryeong straight from the selected card", async ({ 
   await expect(dismantle).toContainText("분해");
   await expect(dismantle).toContainText(/[木火土金水]\s*문기\s*\+\d+/u);
   await expect(page.locator("#tower-count-value")).toHaveText("1 / 16");
-  page.once("dialog", (dialog) => {
-    expect(dialog.message()).toContain("되돌릴 수 없습니다");
-    void dialog.accept();
-  });
+  // [S/P-08] 확인은 이제 게임 서책 창이다 — OS 창이 아니라 DOM 이라 자동화가 읽는다.
   await dismantle.click();
+  const confirmDialog = page.getByTestId("confirm-dialog");
+  await expect(confirmDialog).toBeVisible();
+  await expect(confirmDialog).toContainText("되돌릴 수 없습니다");
+  await expect(confirmDialog).toContainText(/[木火土金水] 문기 \+\d+/u);
+  // 취소하면 아무 일도 없다.
+  await page.getByTestId("confirm-dialog-cancel").click();
+  await expect(confirmDialog).toBeHidden();
+  await expect(page.locator("#tower-count-value")).toHaveText("1 / 16");
+  await dismantle.click();
+  await expect(confirmDialog).toBeVisible();
+  await page.getByTestId("confirm-dialog-accept").click();
+  await expect(confirmDialog).toBeHidden();
   await expect(page.locator("#message-value")).toContainText("분해 완료");
   await expect(page.locator("#tower-count-value")).toHaveText("0 / 16");
   // A-2: 획득 순간 오행색 "+N 문기" 플로팅이 자원칸 근처에 선다.

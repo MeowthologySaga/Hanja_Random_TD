@@ -29,6 +29,7 @@ import {
   protectionShortLabel,
   visualBackgroundStyle
 } from "../format";
+import { openConfirm } from "../dialogs/confirm";
 import { handleAction, setFocusFrame, setPanelTab, showToast, syncPanel } from "../hud";
 import { dismantleOptions } from "./growth";
 
@@ -485,10 +486,20 @@ export function wireInventory1(): void {
       if (quote.ids.length === 0) return;
       const gainLabel = essenceGainLabel(quote.gains);
       // 되돌릴 수 없는 일괄 처리다 — 제련소 [선택 분해] 와 같은 확인을 세운다.
-      if (!window.confirm(`${quote.ids.length}기를 한 번에 분해합니다.\n획득: ${gainLabel}`)) return;
-      const result = ctx.engine.dismantleTowers(quote.ids, dismantleOptions());
-      if (result.ok) runInventoryBulkSelection.clear();
-      handleAction(result);
+      // [S/P-08] 그 확인이 이제 공용 서책 창이다.
+      openConfirm({
+        eyebrow: "가방",
+        title: `${quote.ids.length}기를 한 번에 분해할까요?`,
+        lines: [
+          `획득 <b>${escapeHtml(gainLabel || "없음")}</b>`,
+          "되돌릴 수 없습니다."
+        ],
+        confirmLabel: `${quote.ids.length}기 분해`
+      }, () => {
+        const result = ctx.engine.dismantleTowers(quote.ids, dismantleOptions());
+        if (result.ok) runInventoryBulkSelection.clear();
+        handleAction(result);
+      });
     }
   });
   must<HTMLButtonElement>("#run-inventory-frame-open").addEventListener("click", () => setFocusFrame("inventory"));
