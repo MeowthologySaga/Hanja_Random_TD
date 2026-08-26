@@ -39,6 +39,17 @@
 
 /* 초반 안내 3칸: 62 → 46px대. 문구·3단계 구조는 그대로 둔다. */
 #shop-panel .opening-guide { max-height: 52px; padding: 4px 5px; }
+
+/* [트랙 R · P-17] 위 한 줄이 id 특이성으로 `.opening-guide.is-collapsed`(styles.css
+   6614)를 이겨, 웨이브 1 이후 접힌 안내가 50px 빈 띠로 영구히 남았다. 실측:
+   첫 소환 카드 top 307px · `#shop-scroll` 은닉 51px. 같은 특이성으로 되받는다
+   (패치 뒤 실측: 안내 0px · 첫 카드 256px · 은닉 0px). */
+#shop-panel .opening-guide.is-collapsed {
+  max-height: 0;
+  padding-block: 0;
+  padding-inline: 0;
+  border-width: 0;
+}
 #shop-panel .opening-guide > div { min-height: 28px; gap: 1px; padding: 3px 5px; }
 #shop-panel .opening-guide > div b { font-size: 10.5px !important; line-height: 1.2; }
 #shop-panel .opening-guide > div span { font-size: 9.5px !important; line-height: 1.2; }
