@@ -13814,3 +13814,14 @@ html[data-stage-scale-band="small"] .s00-title-plaque h2 {
 html[data-stage-scale-band="small"] .resource-grid div:first-child strong {
   text-shadow: 0 1px 0 rgba(0, 0, 0, 0.8);
 }
+
+/* [SSB-2] 타이틀 글꼴을 배율과 무관하게 실볼드로 통일한다.
+   바탕체는 내장 비트맵을 가진 구형 글꼴이라 정수 픽셀 크기(줌 100%)에
+   정확히 걸리면 합성 900 볼드가 비트맵 획을 이중 타로 뭉갠다 — 줌이
+   조금이라도 걸리면 외곽선 렌더로 바뀌어 멀쩡해지는 역설의 정체.
+   축소 대역 예외 규칙보다 이 통일이 근본이다. */
+.brand-row h1 {
+  font-family: "Malgun Gothic", "Noto Sans KR", sans-serif;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+}
