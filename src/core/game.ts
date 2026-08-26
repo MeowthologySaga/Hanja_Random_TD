@@ -4,6 +4,9 @@ import {
   CHAINSEAL_STORE_RATIO,
   chainsealMaxStacks,
   commandRallySeconds,
+  DEMISE_MAX_TARGETS,
+  DEMISE_STORE_RATIO,
+  demiseSpreadRadius,
   FROST_ZONE_DURATION,
   FROST_ZONE_RADIUS,
   frostSlowRatio,
@@ -274,6 +277,8 @@ export class GameEngine {
   private readonly combatIdiomBlessings = [0, 0, 0, 0, 0];
   // [SKILL-V2] 호령: 진별 집중 명령(대상 공유). 4초 남짓의 일시 상태라 세이브 밖이다.
   private readonly commandRallies: Array<{ targetId: number; until: number } | null> = [null, null, null, null, null];
+  // [SKILL-V3] 유폭 낙인 재진입 잠금 — 전파 피해가 다시 적립·유폭되지 않게 한다.
+  private demiseSpreading = false;
   private combatDistinctElements = 0;
   /** FB7-8성: 이번 틱에 극성 개안 오라가 살아 있는 오행. 오행당 최대 1개. */
   private readonly combatPolarisElements = new Set<Wuxing>();
@@ -1172,7 +1177,23 @@ export class GameEngine {
       target.brandWuxing = tower.wuxing;
       target.brandPower = brandPower;
       target.brandUntil = this.state.elapsed + WARFARE_BRAND_DURATION;
+      // [SKILL-V3] 상극 각인은 유폭이 없는 순수 증폭 낙인이다 — 한 적에게 낙인
+      // 자리는 하나뿐이므로 덧쓸 때 유폭 반경과 적립분을 함께 지운다.
+      target.brandBlastRadius = 0;
+      target.brandStored = 0;
       effect = `${tower.wuxing}행 상극 낙인 ${WARFARE_BRAND_DURATION}초 · 같은 오행 피해 +${Math.round(brandPower * 100)}%`;
+    } else if (family === "demise" && this.state.enemies.includes(target)) {
+      // [SKILL-V3] 유폭 낙인: 상극 각인과 같은 낙인 자료를 그대로 쓰되 유폭
+      // 표식을 세운다. 낙인이 사는 동안 받은 피해의 일부가 적립되고, 낙인을
+      // 진 채 쓰러지면 그 적립분이 반경 안으로 번진다(밀치기 없음).
+      const star = this.state.mode === "casual" ? tower.casualStar ?? tower.naturalStar ?? 1 : null;
+      const brandPower = warfareBrandPower(star);
+      target.brandWuxing = tower.wuxing;
+      target.brandPower = brandPower;
+      target.brandUntil = this.state.elapsed + WARFARE_BRAND_DURATION;
+      target.brandBlastRadius = demiseSpreadRadius(star);
+      target.brandStored = 0;
+      effect = `${tower.wuxing}행 유폭 낙인 ${WARFARE_BRAND_DURATION}초 · 처치 시 반경 ${Math.round(demiseSpreadRadius(star))} 안 ${DEMISE_MAX_TARGETS}체 유폭`;
     } else if (family === "frost") {
       // [SKILL-V1] 서리길: 적중 지점 서리 지대 — 감속만 있고 피해·밀치기는 없다.
       const slowRatio = frostSlowRatio(this.state.mode === "casual" ? tower.casualStar ?? tower.naturalStar ?? 1 : null);
@@ -1211,6 +1232,11 @@ export class GameEngine {
     const amount = rawAmount * (1 - effectiveArmor);
     enemy.hp -= amount;
     enemy.flash = 0.09;
+    // [SKILL-V3] 유폭 낙인: 낙인이 살아 있는 동안 받은 피해의 일부를 적립한다.
+    // 전파 피해 자체는 적립되지 않는다(재진입 잠금) — 연쇄 유폭을 막는다.
+    if (!this.demiseSpreading && (enemy.brandBlastRadius ?? 0) > 0 && (enemy.brandUntil ?? 0) > this.state.elapsed) {
+      enemy.brandStored = (enemy.brandStored ?? 0) + amount * DEMISE_STORE_RATIO;
+    }
     if (amount >= 1.5) this.events.push({ type: "damage", at: this.enemyPoint(enemy), amount, critical, weakness });
     if (enemy.hp > 0) return;
     const at = this.enemyPoint(enemy);
@@ -1221,6 +1247,46 @@ export class GameEngine {
     this.events.push({ type: "kill", at, reward: enemy.reward });
     // [SKILL-V2] 소흔·채기 처치 훅 — 출처 자령이 있는 직접 처치만 센다.
     if (source) this.handleTowerKill(source, enemy, at);
+    // [SKILL-V3] 유폭 낙인 전파는 처치 훅 뒤에 온다 — 소흔의 잔불이 먼저 깔린 뒤
+    // 유폭이 터져야 "쓰러진 자리에 남은 것"의 순서가 화면과 맞는다.
+    this.detonateDemiseBrand(enemy, at, source);
+  }
+
+  /**
+   * [SKILL-V3] 유폭 낙인 전파 — 낙인을 진 채 쓰러진 자리에서 적립분이 번진다.
+   *
+   * 절대 원칙: 번지는 것은 피해뿐이다. 감속·정지·밀치기를 일절 걸지 않으므로
+   * 주변 적의 경로와 진행도는 조금도 흔들리지 않는다.
+   * 재진입 잠금(`demiseSpreading`)이 전파 피해의 재적립과 연쇄 유폭을 막는다.
+   */
+  private detonateDemiseBrand(victim: Enemy, at: Point, source?: Tower): void {
+    const stored = victim.brandStored ?? 0;
+    const radius = victim.brandBlastRadius ?? 0;
+    if (this.demiseSpreading || stored <= 0 || radius <= 0 || (victim.brandUntil ?? 0) <= this.state.elapsed) return;
+    victim.brandStored = 0;
+    victim.brandBlastRadius = 0;
+    const neighbours = this.state.enemies
+      .filter((candidate) => candidate.id !== victim.id && distance(this.enemyPoint(candidate), at) <= radius)
+      .slice(0, DEMISE_MAX_TARGETS);
+    if (neighbours.length === 0) return;
+    this.demiseSpreading = true;
+    try {
+      for (const neighbour of neighbours) {
+        this.damageEnemy(neighbour, stored, false, neighbour.weakness === victim.brandWuxing, 0.15, source);
+      }
+    } finally {
+      this.demiseSpreading = false;
+    }
+    if (!source) return;
+    const definition = definitionForTower(this.catalog, source.definitionId);
+    this.emitAbility(
+      source,
+      definition.combat.abilities.semantic,
+      BOARD_CELLS[source.cell] as Point,
+      at,
+      neighbours.length,
+      `유폭 ${Math.round(stored)} 피해 · 반경 ${Math.round(radius)} 안 ${neighbours.length}체`
+    );
   }
 
   private finishWave(): void {

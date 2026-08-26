@@ -127,6 +127,9 @@ export const SEMANTIC_ABILITY_TABLE: Record<SemanticFamily, SemanticPattern> = {
   scorch: semanticPattern("scorch", "cluster", 5, 0.32, "소흔", "燼", "blast", "적 처치마다", "처치 지점 잔불", "망령을 처치한 자리에 잔불을 남깁니다. 잔불을 밟는 적은 일정 시간 초당 피해를 입습니다.", "#ff9a52"),
   harvest: semanticPattern("harvest", "front", 6, 0, "채기", "采", "coin", "12번째 처치마다", "자기 오행 문기 +1", "처치를 거둘 때마다 기운을 모아, 일정 처치마다 자기 오행의 문기를 1 얻습니다.", "#c8e69a"),
   // [SKILL-V2] 끝.
+  // [SKILL-V3] 스킬 3차 세트가 신설한 의미 계열.
+  demise: semanticPattern("demise", "strongest", 6, 0.3, "유폭 낙인", "同", "blast", "6번째 공격", "낙인 유폭 전파", "적에게 동귀의 낙인을 새깁니다. 낙인이 남은 동안 그 적이 받은 피해의 일부가 낙인에 적립되고, 낙인을 진 채 쓰러지면 적립분이 주변 망령에게 한꺼번에 번집니다. 뒤로 밀지는 않습니다.", "#ff7f6e"),
+  // [SKILL-V3] 끝.
   general: semanticPattern("general", "front", 6, 1.18, "자의 구현", "字", "solo", "6번째 공격", "뜻의 힘 증폭", "한자의 뜻을 기운으로 구현해 다음 일격을 강화합니다.", "#c7d0e0")
 };
 
@@ -156,7 +159,11 @@ const SEMANTIC_CHAR_GROUPS: Readonly<Record<Exclude<SemanticFamily, "general">, 
   reaper: new Set([..."斬誅殺滅死命刑罰"]),
   command: new Set([..."王帝皇君主號令帥"]),
   scorch: new Set([..."燭煒煌燃焚灼灰炭烟烛"]),
-  harvest: new Set([..."農稼穡耕收穫采種穀畝"])
+  harvest: new Set([..."農稼穡耕收穫采種穀畝"]),
+  // [SKILL-V3] 신설 글자군. 전부 지역 로스터(KR_1000·JP_2136·CN_3500) 실존
+  // 글자이며 기존 글자군과 겹치지 않는다. 滅은 reaper 가 선점해 뺐고,
+  // 散·破는 역할 기술 글자(산화진·축력파쇄)와 눈으로 헷갈려 뺐다.
+  demise: new Set([..."同歸亡消盡終傾覆毀崩裂爆碎"])
 };
 
 export function semanticPatternFor(char: string, wuxing: Wuxing): SemanticPattern {
@@ -564,3 +571,34 @@ const PASSIVE_TRIGGER_FAMILIES: ReadonlySet<SemanticFamily> = new Set<SemanticFa
   "scorch",
   "harvest"
 ]);
+
+/* ============================================================================
+ * [SKILL-V3] 스킬 3차 세트 상수·순수 계산.
+ *
+ * 병합 안내: 이 블록 전체가 스킬 트랙의 신규 코드다. 밸런스 트랙과 충돌하면
+ * 이 블록은 통째로 유지하고 위쪽 기존 표의 충돌만 수동으로 푼다.
+ * 절대 원칙(1·2차와 동일): 어떤 스킬도 적을 뒤로 밀지 않는다 — 이동 간섭은
+ * 감속·제자리 정지·경로 장판뿐이고, 진행도는 절대 되돌리지 않는다.
+ * ========================================================================== */
+
+/**
+ * 유폭 낙인(demise): 낙인이 사는 동안 대상이 받은 피해 중 낙인에 적립되는 비율.
+ *
+ * 낙인 지속은 상극 각인과 같은 4초(WARFARE_BRAND_DURATION)를 공유한다 —
+ * 같은 낙인 자료를 쓰기 때문이다. 적립분은 전파 때 대상마다 온전히 들어가므로
+ * 상한 인원(DEMISE_MAX_TARGETS)과 곱해 실효 배수가 정해진다. 보수적으로 잡고
+ * 시뮬 게이트로 수렴시킨다.
+ */
+export const DEMISE_STORE_RATIO = 0.12;
+/** 유폭 낙인: 전파가 닿는 최대 인원. 연쇄 유폭은 재진입 잠금으로 막는다. */
+export const DEMISE_MAX_TARGETS = 4;
+/** 유폭 낙인: 전파 반경 — 기본 100, 캐주얼 별당 +6, 상한 150. */
+export const DEMISE_RADIUS_BASE = 100;
+export const DEMISE_RADIUS_PER_STAR = 6;
+export const DEMISE_RADIUS_CAP = 150;
+
+/** 유폭 전파 반경. 캐주얼이 아니면 별 스케일 없이 기본치, 상한을 넘지 않는다. */
+export function demiseSpreadRadius(casualStar: number | null): number {
+  const scaled = DEMISE_RADIUS_BASE + (casualStar === null ? 0 : Math.max(0, casualStar - 1) * DEMISE_RADIUS_PER_STAR);
+  return Math.min(DEMISE_RADIUS_CAP, scaled);
+}

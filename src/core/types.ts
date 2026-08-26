@@ -55,6 +55,8 @@ export type SemanticFamily =
   | "command"
   | "scorch"
   | "harvest"
+  // [SKILL-V3] 스킬 3차 세트가 신설한 의미 계열.
+  | "demise"
   | "general";
 export type TargetPriority = "front" | "strongest" | "fastest" | "armored" | "cluster" | "valuable";
 export type EnemyArchetype = "normal" | "swarm" | "swift" | "armored" | "regenerator" | "boss";
@@ -232,6 +234,12 @@ export interface Enemy {
   brandWuxing?: Wuxing;
   brandUntil?: number;
   brandPower?: number;
+  // [SKILL-V3] 유폭 낙인(同歸): 상극 각인과 **같은 낙인 자료**를 쓰되, 낙인을
+  // 새긴 쪽이 同歸 계열이면 유폭 반경이 함께 새겨진다(`brandBlastRadius` > 0).
+  // 그 동안 받은 피해의 일부가 `brandStored` 에 적립되고, 낙인을 진 채 쓰러지면
+  // 적립분이 그 반경 안으로 번진다. 번지는 것은 피해뿐 — 경로·진행도는 그대로다.
+  brandBlastRadius?: number;
+  brandStored?: number;
   // [SKILL-V2] 연환 인장(chainseal): 공격마다 쌓이는 인장 스택과 누적 피해.
   // 상한 도달 시 폭발 + 1.2초 제자리 봉인 — 절대 뒤로 밀지 않는다.
   sealStacks?: number;
