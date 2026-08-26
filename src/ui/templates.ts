@@ -4,10 +4,24 @@
  * main.ts 의 `app.innerHTML` 템플릿을 통째로 옮겨 왔다. 문구·구조·들여쓰기
  * 어느 것도 손대지 않았다 — 붙이는 쪽만 함수 호출로 바뀐다.
  */
+import { CASUAL_STAR_BINS, CASUAL_STAR_COLORS } from "../core/casual";
 import { MAX_ENEMIES, WORLD_HEIGHT, WORLD_WIDTH } from "../core/content";
 import { CHEONJAMUN_JARYEONG_DEX_META } from "../core/cheonjamun-jaryeong-dex";
 import { GAME_CONFIG } from "../core/hanzi";
 import type { DisplayMode } from "./display-mode";
+
+/**
+ * 도움말 소환 갈피의 획수→별 구간표 — FB2.
+ *
+ * "별은 실제 획수로 정해진다"는 규칙은 지금까지 3합 패널의 접힌 표에만
+ * 있었다. 데이터(cheonjamun-strokes.json 의 bins)를 그대로 읽어 그리므로
+ * 구간이 바뀌어도 도움말이 낡지 않는다.
+ */
+function helpStrokeBinsHtml(): string {
+  return CASUAL_STAR_BINS
+    .map((bin) => `<i style="--star:${CASUAL_STAR_COLORS[bin.star]}"><b>★${bin.star}</b><span>${bin.minStrokes}~${bin.maxStrokes}획</span><small>${bin.count}자</small></i>`)
+    .join("");
+}
 
 /** `#app` 에 넣을 게임 셸 전체 마크업. */
 export function appShellHtml(initialDisplayMode: DisplayMode): string {
@@ -355,6 +369,18 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
       </div>
     </div>
 
+    <div id="hint-layer" class="coach-layer hint-layer" aria-live="polite" hidden>
+      <div id="hint-ring" class="coach-ring hint-ring" aria-hidden="true"></div>
+      <div id="hint-bubble" class="coach-bubble hint-bubble" role="status" aria-labelledby="hint-title">
+        <p class="coach-step">처음 한 번 안내</p>
+        <b id="hint-title"></b>
+        <p id="hint-body"></p>
+        <div class="coach-actions">
+          <button id="hint-dismiss" type="button" class="coach-next">확인</button>
+        </div>
+      </div>
+    </div>
+
     <section id="title-overlay" class="modal-layer modal-layer--visible" aria-labelledby="title-heading">
       <div class="s00-stage" data-screen-id="S00">
         <img class="s00-env s00-env--legacy" data-src="${import.meta.env.BASE_URL}assets/ui/main-menu-b/background/S00-living-codex-empty-1280x720-v1.png" alt="" aria-hidden="true" />
@@ -532,6 +558,9 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
               <div class="help-band-row"><b>고급 소환</b><span class="help-band-track" aria-hidden="true"><i>1</i><i>2</i><i class="is-on" style="--star:#61c8ff">3</i><i class="is-on" style="--star:#a98cff">4</i><i class="is-on" style="--star:#f5c65b">5</i><i class="is-on" style="--star:#ff8a56">6</i><i class="is-on" style="--star:#ff5f91">7</i><i class="is-on" style="--star:#fff1ad">8</i></span><em>3~8★</em></div>
             </div>
             <p class="help-note">구간 안에서도 <b>낮은 별이 더 흔합니다</b>. 상위 별은 뽑기가 아니라 3기 조합으로 올립니다.</p>
+            <h3 class="help-subhead">획수 → 기본 별 구간<em class="help-mode-badge is-casual">별승급 진법</em></h3>
+            <div class="help-stroke-bins" aria-label="획수에 따른 기본 별 구간표">${helpStrokeBinsHtml()}</div>
+            <p class="help-note"><b>획이 많은 한자일수록 별이 높습니다</b> — 기본 별은 뽑기 운이 아니라 실제 획수(Unicode kTotalStrokes)로 정해집니다.</p>
             <h3 class="help-subhead">목적 소환 네 갈래</h3>
             <div class="help-cards help-cards--tight">
               <article class="help-card"><b>기본<em>균형</em></b><span>목표와 성어 재료를 고루 섞은 전체 풀입니다.</span></article>

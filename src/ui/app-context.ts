@@ -346,3 +346,7 @@ class AppContext {
 export const ctx = new AppContext();
 
 ctx.engine.state.autoPlaceSummons = initialAutoPlaceSummons;
+
+// 오디오 QA(__HANJA_AUDIO_QA__)와 같은 개발 전용 손잡이 — 1회성 안내처럼
+// "웨이브 10 도달·문기 획득" 같은 중반 상태를 e2e·스크린샷이 재현할 때 쓴다.
+if (import.meta.env.DEV) Object.assign(window, { __HANJA_CTX_QA__: ctx });
