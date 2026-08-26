@@ -85,6 +85,91 @@ test("routes destructive actions through the shared in-game confirm dialog", asy
   await expect(page.locator("#message-value")).toContainText("분해");
 });
 
+// ── S/P-20 · 첫 방문 코치의 마지막 걸음 ────────────────────────────
+// [다음]으로 3/3 까지 가면 마지막 걸음이 1걸음을 그대로 되풀이했다.
+test("does not repeat the first coach step at the last one", async ({ page }) => {
+  // beforeEach 가 심어 둔 "코치 본 사람" 표시를 이 스펙에서만 걷는다.
+  await page.addInitScript((key) => window.localStorage.removeItem(key), "hanja-td:coach-seen-v1");
+  await page.goto("/?seed=TRACK-S-COACH&mode=standard");
+  await page.getByTestId("start-run").click();
+  await expect(page.locator("#coach-layer")).toBeVisible();
+  await expect(page.locator("#coach-index")).toHaveText("1");
+  const firstTitle = await page.locator("#coach-title").textContent();
+  const firstBody = await page.locator("#coach-body").textContent();
+
+  // 소환하지 않은 채 [다음]만 눌러 마지막 걸음까지 간다 — 그 길이 되풀이를 만들었다.
+  await page.locator("#coach-next").click();
+  await page.locator("#coach-next").click();
+  await expect(page.locator("#coach-index")).toHaveText("3");
+  await expect(page.locator("#coach-total")).toHaveText("3");
+  await expect(page.locator("#coach-title")).not.toHaveText(firstTitle ?? "");
+  await expect(page.locator("#coach-body")).not.toHaveText(firstBody ?? "");
+  await expect(page.locator("#coach-title")).toContainText("웨이브");
+  await expect(page.locator("#coach-body")).toContainText("시작 보너스");
+  // 소환 카드를 짚어 손을 첫 걸음으로 돌려보내지 않는다.
+  const ring = await page.evaluate(() => {
+    const element = document.querySelector<HTMLElement>("#coach-ring")!;
+    const summon = document.querySelector<HTMLElement>('[data-summon-product="balanced"]')!;
+    const ringRect = element.getBoundingClientRect();
+    const summonRect = summon.getBoundingClientRect();
+    return {
+      hidden: element.hidden,
+      overlapsSummon: ringRect.left < summonRect.right && ringRect.right > summonRect.left
+        && ringRect.top < summonRect.bottom && ringRect.bottom > summonRect.top
+    };
+  });
+  expect(ring.hidden).toBe(false);
+  expect(ring.overlapsSummon).toBe(false);
+});
+
+// ── S/P-13 · 자령 기술 카드의 요약 줄 ──────────────────────────────
+// 트랙 N 이 능력 알약을 2열(글자 자리 65 → 126px)로 고쳤다. 그 처방이 지금
+// 카탈로그의 모든 기술 문안을 실제로 담는지 전수로 확인한다 — 새 기술이
+// 늘어나면 여기서 먼저 안다.
+test("fits every ability summary inside the skill card", async ({ page }) => {
+  await page.goto("/?seed=TRACK-S-ABILITY&mode=standard");
+  await page.getByTestId("start-run").click();
+  await page.locator("#shop-tab").click();
+  // 잠금 여부와 무관하게 알약 격자는 같은 2열이다 — 몇 기만 뽑아 한 장을 띄운다.
+  for (let index = 0; index < 5; index += 1) await page.getByTestId("summon-button").click();
+  await page.locator("#summon-reveal-close").click();
+  await page.getByRole("tab", { name: "자령", exact: true }).click();
+  await expect(page.locator(".ability-card").first()).toBeVisible();
+
+  const report = await page.evaluate(async () => {
+    const specifier = "/src/core/abilities.ts";
+    const module = await import(specifier) as typeof import("../src/core/abilities");
+    const specs = [
+      ...Object.values(module.ELEMENT_ABILITY_TABLE),
+      ...Object.values(module.ROLE_ABILITY_TABLE),
+      ...Object.values(module.GRAPH_ABILITY_TABLE),
+      ...Object.values(module.SEMANTIC_ABILITY_TABLE).map((pattern) => pattern.ability)
+    ];
+    const card = document.querySelector<HTMLElement>(".ability-card small");
+    const label = document.querySelector<HTMLElement>(".ability-card em");
+    if (!card || !label) throw new Error("ability card not rendered");
+    const original = { card: card.textContent, label: label.textContent };
+    const clipped: Array<{ name: string; text: string; overflow: number }> = [];
+    // selected.ts 의 readableAbilityTrigger 와 같은 다듬기 — 화면에 나가는 글자로 잰다.
+    const readable = (trigger: string): string => trigger === "공격 적중"
+      ? "공격 적중마다"
+      : trigger.replace(/(\d+번째 공격)$/u, "$1마다");
+    for (const spec of specs) {
+      card.textContent = `${readable(spec.trigger)} · ${spec.summary}`;
+      const overflow = card.scrollHeight - card.clientHeight;
+      if (overflow > 1) clipped.push({ name: spec.name, text: card.textContent, overflow });
+    }
+    // 분류 라벨(「고유 기술 · 주기 자동」)도 함께 — 트랙 N 이 잘림 0 으로 만든 자리다.
+    const labelOverflow = label.scrollWidth - label.clientWidth;
+    card.textContent = original.card;
+    label.textContent = original.label;
+    return { clipped, labelOverflow, checked: specs.length };
+  });
+  expect(report.checked).toBeGreaterThan(10);
+  expect(report.labelOverflow).toBeLessThanOrEqual(1);
+  expect(report.clipped).toEqual([]);
+});
+
 // ── S/P-14 · 빈 합성 탭이 다음 한 걸음을 말한다 ────────────────────
 // 26웨이브까지 "가능한 합성 0 · 재료를 모으는 중"만 있던 자리다.
 test("tells the next step in the empty synthesis tab", async ({ page }) => {
