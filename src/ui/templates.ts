@@ -218,6 +218,8 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
               </figure>
             </div>
             <p>한 줄로 — 가로·세로·대각선 · 순서대로(역순 인정) · 같은 진 안에서</p>
+            <!-- [SKILL-V1] 성어의 가호 한 줄 규칙 안내 -->
+            <p>성어의 가호 — 발동 중 성어와 같은 진의 자령 전원 공격 +10%, 같은 진의 추가 발동 성어당 +5%p. 줄이 흩어지면 즉시 사라집니다.</p>
           </section>
           <div id="idiom-hud" class="idiom-hud">
             <div class="idiom-heading"><span>四字成語 진법</span><b id="idiom-count">0 / 4</b></div>
@@ -383,6 +385,29 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
       </div>
     </div>
 
+    <div id="tutorial-layer" class="tutorial-layer" aria-live="polite" hidden>
+      <div id="tutorial-ring" class="tutorial-ring" aria-hidden="true"></div>
+      <div id="tutorial-bubble" class="tutorial-bubble" role="dialog" aria-labelledby="tutorial-title">
+        <p class="tutorial-step-count">수련 <span id="tutorial-step-index">1</span> / <span id="tutorial-step-total">8</span></p>
+        <b id="tutorial-title"></b>
+        <p id="tutorial-body"></p>
+      </div>
+      <button id="tutorial-exit" class="tutorial-exit" type="button" data-testid="tutorial-exit">수련 건너뛰기</button>
+      <section id="tutorial-complete" class="tutorial-complete" aria-labelledby="tutorial-complete-title" hidden>
+        <div class="tutorial-complete-card">
+          <p class="eyebrow">수련 완수</p>
+          <h2 id="tutorial-complete-title">여덟 걸음을 모두 배웠습니다</h2>
+          <ul id="tutorial-summary" class="tutorial-summary">
+            <li><b>소환</b><span>획이 많은 한자일수록 별이 높아요 · 기본 1~3★ / 중급 2~5★ / 고급 3~8★</span></li>
+            <li><b>승급</b><span>같은 오행·같은 별 3기 → 다음 별 자령 1기, 무엇이 나올지는 무작위</span></li>
+            <li><b>강화</b><span>안 쓰는 자령을 분해해 문기를 얻고, 그 오행 전원을 키워요</span></li>
+            <li><b>사자성어</b><span>한 줄에 4자 순서대로 — 줄을 지키는 동안만 보너스가 살아 있어요</span></li>
+          </ul>
+          <button id="tutorial-finish" class="tutorial-finish" type="button" data-testid="tutorial-finish">본편 출정</button>
+        </div>
+      </section>
+    </div>
+
     <section id="title-overlay" class="modal-layer modal-layer--visible" aria-labelledby="title-heading">
       <div class="s00-stage" data-screen-id="S00">
         <img class="s00-env s00-env--legacy" data-src="${import.meta.env.BASE_URL}assets/ui/main-menu-b/background/S00-living-codex-empty-1280x720-v1.png" alt="" aria-hidden="true" />
@@ -415,6 +440,11 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
             <i class="s00-skin" aria-hidden="true"></i><b>자형연성 진법</b><small aria-hidden="true"><span class="s00-mode-sub s00-mode-sub--full">부수를 부품 삼아 조립 · 학습 특화</span><span class="s00-mode-sub s00-mode-sub--compact">부수 조립 · 한자 학습</span></small><em>선택됨</em>
           </button>
         </div>
+
+        <button id="tutorial-button" class="s00-training" type="button" data-testid="tutorial-button"
+          aria-label="수련장. 소환부터 사자성어 봉인까지 여덟 걸음으로 배우는 연습 판. 처음이라면 여기부터">
+          <b>수련장</b><small>처음이라면 여기부터</small><em>八</em>
+        </button>
 
         <div class="s00-showcase" aria-hidden="true">
           <figure style="left:455px;top:116px"><img class="s00-ring" data-src="${import.meta.env.BASE_URL}assets/ui/main-menu-b/rings/summon-ring-wood-v1.png" alt="" /><img class="s00-spirit" data-src="${import.meta.env.BASE_URL}assets/ui/main-menu-b/jaryeongs/menu-wood-orchid-frame-v1.png" alt="" /></figure>
@@ -678,6 +708,8 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
               <div><span class="help-cell is-next" aria-hidden="true">④</span><div><b>다음 칸 점선</b><span>다음 글자를 놓을 수 있는 빈 칸을 금색 점선 테와 순번으로 표시합니다.</span></div></div>
             </div>
             <p class="help-note">직접 선을 그을 필요는 없습니다. 순서가 맞는 순간 자동으로 발동하고, <b>보너스는 네 자령이 그 줄을 지키는 동안만</b> 발동합니다. 한 기라도 자리를 뜨면 봉인이 풀리고, 줄을 다시 세우면 재발동합니다. 역순으로 읽어도 인정합니다.</p>
+            <!-- [SKILL-V1] 성어의 가호 안내 -->
+            <p class="help-note"><b>성어의 가호</b> — 발동 중인 성어와 같은 진에 배치된 자령 전원의 공격이 +10% 강해지고, 같은 진에 성어가 하나 더 발동할 때마다 +5%p 씩 더해집니다. 성어가 흩어지면 가호도 즉시 사라집니다.</p>
             <p class="help-note">발동 중인 네 자령은 명패에 <b>금색 鎖</b> 표식이 붙고 자동배치가 건드리지 않습니다. 손으로 옮기는 것은 언제든 가능합니다.</p>
             <h3 class="help-subhead">글자 익히기</h3>
             <div class="help-cards help-cards--tight">

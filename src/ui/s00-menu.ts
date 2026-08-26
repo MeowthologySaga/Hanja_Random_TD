@@ -129,11 +129,24 @@ export function setSelectedGameMode(mode: GameMode): void {
   sound.playUiConfirm();
 }
 
-function startRun(useNewSeed = false): void {
+/**
+ * 특수 런(수련장)이 같은 시작 절차를 타기 위한 옵션.
+ * 엔진만 밖에서 갈아 끼우고, 화면·이펙트·패널 리셋은 본편과 동일하게 지킨다.
+ */
+export interface StartRunOptions {
+  /** 엔진을 밖에서 만들어 넣는다(수련장 고정 시드·완화 옵션). */
+  readonly createEngine?: () => GameEngine;
+  /** 첫 실행 3단계 코치를 띄우지 않는다(수련장은 자체 각본 안내가 있다). */
+  readonly skipCoach?: boolean;
+}
+
+export function startRun(useNewSeed = false, options: StartRunOptions = {}): void {
   const seed = useNewSeed ? createRunSeed() : seedInput.value.trim() || createRunSeed();
-  seedInput.value = seed;
-  ctx.engine = new GameEngine(seed, ctx.selectedRegion, ctx.selectedGameMode);
-  shell.dataset.gameMode = ctx.selectedGameMode;
+  ctx.engine = options.createEngine
+    ? options.createEngine()
+    : new GameEngine(seed, ctx.selectedRegion, ctx.selectedGameMode);
+  seedInput.value = ctx.engine.state.seed;
+  shell.dataset.gameMode = ctx.engine.state.mode;
   ctx.mapSynthesisDepths = buildSynthesisDepths(ctx.engine.catalog.definitions.values());
   ctx.mapUncombinableStageOne = buildUncombinableStageOneChars(ctx.engine.catalog.definitions.values());
   ctx.engine.state.autoPlaceSummons = loadAutoPlaceSummons();
@@ -181,7 +194,7 @@ function startRun(useNewSeed = false): void {
   if (casualFusionConfirmDialog.open) casualFusionConfirmDialog.close();
   setPanelTab("shop");
   ctx.formationUnlockHintShown = false;
-  startCoach();
+  if (!options.skipCoach) startCoach();
   window.clearTimeout(ctx.comboTimer);
   ctx.evolutionRenderKey = "";
   ctx.goalRenderKey = "";

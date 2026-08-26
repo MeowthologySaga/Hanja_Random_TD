@@ -365,6 +365,9 @@ class AppContext {
 /** 화면 모듈 전체가 참조를 공유하는 상태 그릇. */
 export const ctx = new AppContext();
 
+// [SKILL-V1] 개발 전용 QA 핸들 — 스킬 연출 검증·스크린샷용. 프로덕션 번들에는 없다.
+if (import.meta.env.DEV) Object.assign(window, { __HANJA_QA_CTX__: ctx });
+
 ctx.engine.state.autoPlaceSummons = initialAutoPlaceSummons;
 
 /**

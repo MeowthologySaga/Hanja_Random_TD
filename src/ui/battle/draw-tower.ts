@@ -1,7 +1,7 @@
 /*
  * 전장 캔버스 그리기 — 자령 본체·명패·팝오버.
  */
-import { CASUAL_STAR_COLORS } from "../../core/casual";
+import { CASUAL_POLARIS_AURA, CASUAL_STAR_COLORS } from "../../core/casual";
 import {
   BOARD_CELLS,
   CELLS_PER_FORMATION,
@@ -48,6 +48,43 @@ function drawChargeRing(
   }
 }
 
+/**
+ * FB7-8성 「극성 개안」 전용 발광. 8★ 자령 발밑에 맥동하는 금빛 겹고리를
+ * 그려 "이 자령이 오라의 근원"임을 본체 그림과 무관하게 보이게 한다.
+ * reduced-motion 이면 맥동 없이 고정 고리만 남긴다.
+ */
+function drawPolarisAura(tower: Tower, cell: Point): void {
+  if (ctx.engine.state.mode !== "casual" || casualStarOf(tower) < CASUAL_POLARIS_AURA.star) return;
+  const color = CASUAL_STAR_COLORS[8];
+  const phase = reducedMotion ? 0 : Math.sin((ctx.engine.state.elapsed * 2.1 + tower.id * 0.7) % (Math.PI * 2));
+  const radius = 24 + phase * 2.5;
+  context.save();
+  context.translate(cell.x, cell.y + 15);
+  context.scale(1, 0.32);
+  const halo = context.createRadialGradient(0, 0, radius * 0.45, 0, 0, radius * 1.45);
+  halo.addColorStop(0, color + "00");
+  halo.addColorStop(0.62, color + "2e");
+  halo.addColorStop(1, color + "00");
+  context.fillStyle = halo;
+  context.beginPath();
+  context.arc(0, 0, radius * 1.45, 0, Math.PI * 2);
+  context.fill();
+  context.strokeStyle = color;
+  context.globalAlpha = 0.75 + phase * 0.2;
+  context.lineWidth = 1.6;
+  context.shadowColor = color;
+  context.shadowBlur = 14;
+  context.beginPath();
+  context.arc(0, 0, radius, 0, Math.PI * 2);
+  context.stroke();
+  context.globalAlpha = 0.4;
+  context.lineWidth = 1;
+  context.beginPath();
+  context.arc(0, 0, radius * 1.28, 0, Math.PI * 2);
+  context.stroke();
+  context.restore();
+}
+
 function drawStudyTower(tower: Tower, cell: Point, definition: HanziDefinition, selected: boolean, material: boolean): void {
   const abilities = definition.combat.abilities;
   const style = ELEMENT_STYLES[tower.wuxing];
@@ -55,6 +92,7 @@ function drawStudyTower(tower: Tower, cell: Point, definition: HanziDefinition, 
   const progressionColor = ctx.engine.state.mode === "casual" ? CASUAL_STAR_COLORS[casualStarOf(tower)] : STAGE_COLORS[tower.stage];
   const pulse = 1 + tower.pulse * 0.09;
   const radius = (16 + (progressionRank - 1) * 0.55) * pulse;
+  drawPolarisAura(tower, cell);
   context.shadowColor = material ? "#ffe7a3" : style.glow;
   context.shadowBlur = material ? 28 : selected ? 22 : 10 + progressionRank * 1.5;
   const gradient = context.createRadialGradient(cell.x - 3, cell.y - 4, 2, cell.x, cell.y, radius);
@@ -428,6 +466,7 @@ function drawSpiritTower(tower: Tower, cell: Point, definition: HanziDefinition,
   const pulse = 1 + tower.pulse * 0.055;
   const auraRadius = 17 + (progressionRank - 1) * 0.45;
 
+  drawPolarisAura(tower, cell);
   context.save();
   context.translate(cell.x, cell.y + 15);
   context.scale(1, 0.32);

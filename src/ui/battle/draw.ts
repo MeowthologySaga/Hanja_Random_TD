@@ -213,10 +213,11 @@ function drawAbilityZones(): void {
 
     context.save();
     context.globalAlpha = 0.88 * life;
-    context.fillStyle = zone.kind === "rain" ? "#d9f2ff" : zone.color;
+    // [SKILL-V1] 서리길은 오행 대신 霜 표기 — 감속 지대임을 이름으로 말한다.
+    context.fillStyle = zone.kind === "rain" || zone.kind === "frost" ? "#d9f2ff" : zone.color;
     context.font = '900 10px "Malgun Gothic", sans-serif';
     context.textAlign = "center";
-    context.fillText(`${zone.wuxing} ${remaining.toFixed(1)}초`, point.x, point.y + zone.radius + 13);
+    context.fillText(`${zone.kind === "frost" ? "霜 서리길" : zone.wuxing} ${remaining.toFixed(1)}초`, point.x, point.y + zone.radius + 13);
     context.restore();
   }
   for (const id of zoneSpawnTimes.keys()) {
@@ -1257,6 +1258,8 @@ function drawEnemy(enemy: Enemy, point = positionOnPath(enemy.progress)): void {
   if (enemy.poisonUntil > ctx.engine.state.elapsed) statuses.push({ glyph: "毒", color: ELEMENT_STYLES.木.color });
   if (enemy.slowFactor < 1 && enemy.slowUntil > ctx.engine.state.elapsed) statuses.push({ glyph: "凍", color: ELEMENT_STYLES.水.color });
   if (enemy.stunnedUntil > ctx.engine.state.elapsed) statuses.push({ glyph: "封", color: ELEMENT_STYLES.土.color });
+  // [SKILL-V1] 상극 각인: 낙인 오행 색의 克 표식. 남은 시간 동안만 보인다.
+  if ((enemy.brandUntil ?? 0) > ctx.engine.state.elapsed && enemy.brandWuxing) statuses.push({ glyph: "克", color: ELEMENT_STYLES[enemy.brandWuxing].color });
   if (enemy.armor >= 0.15) statuses.push({ glyph: "甲", color: ELEMENT_STYLES.金.color });
   for (let index = 0; index < statuses.length; index += 1) {
     const status = statuses[index] as { glyph: string; color: string };

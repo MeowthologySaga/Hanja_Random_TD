@@ -9,6 +9,7 @@ import {
   SUMMON_CELL_ORDER,
   WAVE_REINFORCEMENT_DELAY,
   bossHpFactorForWave,
+  bossSpawnProgress,
   bossTimeLimitForWave,
   isBoardCellUnlocked,
   isFormationUnlocked,
@@ -20,8 +21,27 @@ import {
   wavePlan
 } from "./content";
 import { hasActiveSkills } from "./abilities";
+// [SKILL-V1] 스킬 1차 세트 상수·순수 계산.
 import {
+  FROST_ZONE_DURATION,
+  FROST_ZONE_RADIUS,
+  GWICHEON_ABILITY,
+  GWICHEON_MIN_STAR,
+  GWICHEON_RUSH_THRESHOLD,
+  MOMENTUM_STACK_BONUS,
+  WARFARE_BRAND_DURATION,
+  frostSlowRatio,
+  gwicheonChargeSeconds,
+  idiomBlessingBonus,
+  momentumMaxStacks,
+  warfareBrandPower
+} from "./abilities";
+import {
+  CASUAL_POLARIS_AURA,
+  CASUAL_SPLASH_STAR_SCALE,
+  CASUAL_STAR_HASTE_PER_STAR,
   CASUAL_STAR_POWER,
+  CASUAL_STAR_RANGE,
   casualNaturalStar,
   casualStrokeCount
 } from "./casual";
@@ -70,6 +90,7 @@ import {
   SUMMON_STAR_BANDS,
   SUMMON_SURCHARGE,
   summonCost,
+  upgradeEffectiveLevels,
   WUXING_ORDER
 } from "./hanzi";
 import { SeededRng } from "./rng";
@@ -164,6 +185,17 @@ function sumElementValues(values: Record<Wuxing, number>): number {
 
 export const MAX_CONCENTRATION_LEVEL: ConcentrationLevel = 3;
 export const FIRST_PREP_SECONDS = 15;
+
+/**
+ * 수술 8 ⓑ 「개문 보정」: 1~3웨이브 한정, 시작 진의 자령 사거리 +45.
+ *
+ * 경로 기하 실측: 사거리 235 이하에서는 외곽 진(수·금·목·화)이 반대편 포탈
+ * 출신 적을 최장 16.2초 기다리지만, 250 을 넘기면 3.6초로 무너진다. +45 는
+ * 별 사거리 곡선 도입 후 가장 좁은 1★ 진(실효 208)도 그 문턱(253) 위에
+ * 올린다. 1장 수호(피해 ×1.15, ~10웨이브)와 같은 정신의 초반 완충 장치로,
+ * 무작위 첫 진의 재미는 그대로 두고 "다 돌 때까지 기다림"만 걷어 낸다.
+ */
+export const GATE_OPENING_WARD = Object.freeze({ untilWave: 3, rangeBonus: 45 });
 const SUMMON_STAGE_WEIGHTS: Record<Stage, number> = { 1: 1, 2: 0.22, 3: 0.075, 4: 0.025, 5: 0.008 };
 /*
  * 문기 농축은 "비싼 대체 지불"이다. 원래 설계는 중복 자령을 재료로 쓰는
@@ -447,11 +479,44 @@ const REGION_ENEMY_HP_CURVE: Record<RegionCode, { base: number; chapterGrowth: n
   // board. JP/CN recipe graphs complete substantially more evolutions, so their
   // durability rises by chapter instead of front-loading a punishing wave-10
   // multiplier. This preserves the opening tutorial curve and checks late snowball.
-  KR: { base: 21.6, chapterGrowth: 0 },
-  JP: { base: 23.8, chapterGrowth: 1.04 },
-  CN: { base: 24.2, chapterGrowth: 0.97 }
+  //
+  // 수술 1 재보정(2026-08, 스킬 1차 세트·수술 9 병합 후 재고정): 유지형
+  // 성어를 지키는 봇 + 강화 이정표·8성 오라·광역 별스케일 + 보스 관문 보정
+  // 기준으로 세 지역을 45런/지역(--runs=135) 시뮬 승률 0.533~0.600 에 맞춘 값.
+  // 승률은 이 계수에 극도로 민감하다(±1% 체력 ≈ ±5~20%p, 런 단위 카오스) —
+  // 손보려면 반드시 --runs=135 로 재고정하라.
+  KR: { base: 25.25, chapterGrowth: 0 },
+  JP: { base: 23.4, chapterGrowth: 0.97 },
+  CN: { base: 23.4, chapterGrowth: 0.85 }
 };
-const CASUAL_ENEMY_HP_SCALE = 2.2;
+
+/**
+ * 수술 1(FB5): 모드별 적 체력 계수.
+ *
+ * "별승급(8성)이랑 다른 모드 난이도가 너무 다르다"는 피드백. 기준점은 메인
+ * 모드인 별승급(캐주얼)이며, 두 모드 모두 자동 시뮬 승률 45~60% 밴드로
+ * 수렴하도록 이 계수만 조정한다 — 웨이브 구성·규칙은 그대로다.
+ * (3.8 은 스킬 1차 세트·농축 중복 기본화가 얹힌 뒤의 재고정값. 수량 0.85 와
+ * 짝이므로 웨이브 총 내구 기준으로는 ×3.23 상당이다.)
+ */
+const MODE_ENEMY_HP_SCALE: Record<GameMode, number> = { standard: 1, casual: 3.8 };
+
+/**
+ * 모드별 적 수량 계수. 캐주얼은 웨이브당 몸수를 15% 줄이는 대신 체력 계수를
+ * 그만큼 높게 잡는다 — 총 웨이브 내구는 유지하면서 스폰 구간이 짧아져
+ * 런 시간(중앙값 43~50분 게이트)이 내려온다. 규칙이 아니라 수량 계수다.
+ */
+const MODE_ENEMY_COUNT_SCALE: Record<GameMode, number> = { standard: 1, casual: 0.85 };
+
+/**
+ * 캐주얼 보스 체력 트림.
+ *
+ * 스킬 1차 세트 이후 캐주얼은 체력 계수 하나로는 "승률 0.45~0.60"과
+ * "중앙값 43~50분"을 동시에 만족하는 창이 비어 있었다(3.2 이하 = 승률 초과,
+ * 3.35 이상 = 런 시간 초과). 보스만 트림해 보스전 길이(런 시간)와 일반
+ * 웨이브 난이도(승률)를 분리한다. 규칙 변경이 아니라 체력 계수다.
+ */
+const CASUAL_BOSS_HP_TRIM = 0.78;
 
 // The center formation overlaps more of the loop than the east formation.
 // These small route-coverage coefficients make "which element appeared first"
@@ -463,7 +528,56 @@ function regionEnemyHpMultiplier(region: RegionCode, wave: number, mode: GameMod
   const curve = REGION_ENEMY_HP_CURVE[region];
   const completedChapters = Math.max(0, Math.floor((wave - 1) / 10));
   const regional = curve.base + completedChapters * curve.chapterGrowth;
-  return regional * (mode === "casual" ? CASUAL_ENEMY_HP_SCALE : 1);
+  return regional * MODE_ENEMY_HP_SCALE[mode];
+}
+
+/**
+ * F2: 별승급(캐주얼) 목표는 "뽑을 수 있는 글자"여야 한다.
+ *
+ * 지역 목표(GOAL_ORDER)는 자형연성 합성 계보 기준이라 JP/CN 미리보기 소환
+ * 풀(30·32자) 밖의 글자가 섞여 있고, 캐주얼에는 합성이 없어 그 목표는 원리적으로
+ * 달성 불가였다. 데이터는 손대지 않고 선정 로직만 좁힌다 — 풀 안 목표를
+ * 순서대로 남기고, 모자라면 활성 풀에서 2★ 이상 글자를 별 오름차순(같은 별은
+ * 획수순)으로 채워 "뽑고 승급해서 도달하는" 목표 사다리를 만든다.
+ */
+function casualGoalOrder(catalog: HanziCatalog): readonly string[] {
+  const poolChars = new Set(catalog.activePool.map((definition) => definition.char));
+  const order = catalog.goalOrder.filter((char) => poolChars.has(char));
+  const goalCount = Math.max(1, catalog.goalOrder.length);
+  if (order.length >= goalCount) return order;
+  const fallback = catalog.activePool
+    .filter((definition) => !order.includes(definition.char))
+    .map((definition) => ({
+      char: definition.char,
+      star: casualNaturalStar(definition.char) ?? 1,
+      strokes: casualStrokeCount(definition.char) ?? 0
+    }))
+    .sort((left, right) => left.star - right.star || left.strokes - right.strokes || left.char.localeCompare(right.char));
+  for (const entry of fallback) {
+    if (order.length >= goalCount) break;
+    if (entry.star >= 2) order.push(entry.char);
+  }
+  // 2★ 이상이 부족한 극소형 풀이면 1★ 라도 채워 목표 자체는 남긴다.
+  for (const entry of fallback) {
+    if (order.length >= goalCount) break;
+    if (!order.includes(entry.char)) order.push(entry.char);
+  }
+  return order;
+}
+
+/*
+ * 수련장(튜토리얼) 완화 계수.
+ *
+ * 수련장은 각본이 정한 여덟 걸음을 "반드시 이기며" 밟는 판이다. 규칙은
+ * 본편 그대로 두고 적의 체력·수량만 눌러, 자령 한둘로도 첫 웨이브를
+ * 확실히 넘기게 한다. 계수는 엔진 생성 옵션(tutorial)이 켜졌을 때만 쓴다.
+ */
+export const TUTORIAL_ENEMY_HP_SCALE = 0.4;
+export const TUTORIAL_ENEMY_COUNT_SCALE = 0.5;
+
+/** 엔진 생성 옵션. 지금은 수련장 완화·각본 지급 허용 스위치 하나뿐이다. */
+export interface GameEngineOptions {
+  readonly tutorial?: boolean;
 }
 
 function weightedPick(rng: SeededRng, entries: readonly HanziDefinition[], weights: readonly number[]): HanziDefinition {
@@ -480,6 +594,10 @@ export class GameEngine {
   readonly state: GameState;
   readonly catalog: HanziCatalog;
   readonly evolution: EvolutionService;
+  /** 이 런의 목표 사다리. 표준은 지역 목표 그대로, 캐주얼은 풀 안 글자로 좁힌다(F2). */
+  readonly goalOrder: readonly string[];
+  /** 수련장 여부. 켜져 있을 때만 완화 계수와 tutorialGrant* 지급 훅이 산다. */
+  readonly tutorial: boolean;
   private rng: SeededRng;
   private events: GameEvent[] = [];
   private nextTowerId = 1;
@@ -493,13 +611,19 @@ export class GameEngine {
   private readonly combatCharCounts = new Map<string, number>();
   private readonly combatSynergies = new Set<Wuxing>();
   private readonly combatFormationBonuses = [0, 0, 0, 0, 0];
+  // [SKILL-V1] 성어의 가호: 진별 가호 배율 캐시(발동 중 봉인 기준).
+  private readonly combatIdiomBlessings = [0, 0, 0, 0, 0];
   private combatDistinctElements = 0;
+  /** FB7-8성: 이번 틱에 극성 개안 오라가 살아 있는 오행. 오행당 최대 1개. */
+  private readonly combatPolarisElements = new Set<Wuxing>();
 
-  constructor(seed: string, region: RegionCode = "KR", mode: GameMode = "standard") {
+  constructor(seed: string, region: RegionCode = "KR", mode: GameMode = "standard", options: GameEngineOptions = {}) {
+    this.tutorial = options.tutorial === true;
     this.catalog = getCatalog(region);
     this.evolution = new EvolutionService(this.catalog);
     this.rng = new SeededRng(seed);
-    const targetChar = this.catalog.goalOrder[0] ?? this.catalog.activePool[0]?.char ?? "";
+    this.goalOrder = mode === "casual" ? casualGoalOrder(this.catalog) : this.catalog.goalOrder;
+    const targetChar = this.goalOrder[0] ?? this.catalog.activePool[0]?.char ?? "";
     this.state = {
       seed,
       region,
@@ -560,7 +684,7 @@ export class GameEngine {
     this.nextAbilityZoneId = 1;
     this.currentPlan = null;
     this.autoEvolutionCooldown = 0;
-    const targetChar = this.catalog.goalOrder[0] ?? this.catalog.activePool[0]?.char ?? "";
+    const targetChar = this.goalOrder[0] ?? this.catalog.activePool[0]?.char ?? "";
     Object.assign(this.state, {
       phase: "prep",
       defeatCause: null,
@@ -668,6 +792,9 @@ export class GameEngine {
       return;
     }
     if (allSpawned && deadlineUnlocked) {
+      // 수련장: 잔존 합류(20초 시계)를 끈다. 각본은 "다 잡으면 준비로 돌아와
+      // 다음 걸음"이 전제라, 웨이브가 저절로 겹치면 지도록 설계된 판이 된다.
+      if (this.tutorial) return;
       if (this.state.nextWaveRemaining === null) this.state.nextWaveRemaining = WAVE_REINFORCEMENT_DELAY;
       this.state.nextWaveRemaining = Math.max(0, this.state.nextWaveRemaining - delta);
       if (this.state.nextWaveRemaining <= 0) this.advanceWaveWithSurvivors();
@@ -678,7 +805,10 @@ export class GameEngine {
     const isBoss = plan.boss && this.state.spawned === plan.count - 1;
     const bossFactor = bossHpFactorForWave(plan.wave);
     const hpJitter = 0.94 + this.rng.next() * 0.12;
-    const hp = plan.hp * (isBoss || !plan.boss ? 1 : 1 / bossFactor) * hpJitter * regionEnemyHpMultiplier(this.state.region, this.state.wave, this.state.mode);
+    const casualBossTrim = isBoss && this.state.mode === "casual" ? CASUAL_BOSS_HP_TRIM : 1;
+    const hp = plan.hp * (isBoss || !plan.boss ? 1 : 1 / bossFactor) * hpJitter * casualBossTrim
+      * regionEnemyHpMultiplier(this.state.region, this.state.wave, this.state.mode)
+      * (this.tutorial ? TUTORIAL_ENEMY_HP_SCALE : 1);
     const archetype = isBoss ? "boss" : plan.boss ? "normal" : plan.archetype;
     this.state.enemies.push({
       id: this.nextEnemyId++,
@@ -687,7 +817,11 @@ export class GameEngine {
       maxHp: hp,
       // Bosses keep circulating; the explicit boss clock is their deadline.
       speed: plan.speed * (isBoss ? 0.34 : 0.92 + this.rng.next() * 0.16),
-      progress: spawnProgressForEnemy(this.state.spawned),
+      // 수술 9: 보스만 시작 진의 최적 관문에서 등장한다 — 느린 보스가 제한시간을
+      // 이동에 다 태우는 시작 진 복불복을 걷는다. 일반 적은 4관문 순환 그대로.
+      progress: isBoss
+        ? bossSpawnProgress(this.state.startingFormationIndex, this.state.spawned)
+        : spawnProgressForEnemy(this.state.spawned),
       reward: isBoss ? plan.reward : plan.boss ? 1 + Math.floor((plan.wave - 1) / 25) : plan.reward,
       boss: isBoss,
       archetype,
@@ -725,9 +859,13 @@ export class GameEngine {
     const elements = new Set<Wuxing>();
     const formationMatches = [0, 0, 0, 0, 0];
     this.combatCharCounts.clear();
+    this.combatPolarisElements.clear();
     for (const tower of this.state.towers) {
       elements.add(tower.wuxing);
       this.combatCharCounts.set(tower.char, (this.combatCharCounts.get(tower.char) ?? 0) + 1);
+      if (this.state.mode === "casual" && (tower.casualStar ?? tower.naturalStar) === CASUAL_POLARIS_AURA.star) {
+        this.combatPolarisElements.add(tower.wuxing);
+      }
       const formationIndex = Math.floor(tower.cell / CELLS_PER_FORMATION);
       if (BOARD_FORMATIONS[formationIndex]?.preferredWuxing === tower.wuxing) formationMatches[formationIndex] = (formationMatches[formationIndex] ?? 0) + 1;
     }
@@ -739,6 +877,24 @@ export class GameEngine {
       const tier = matching >= 16 ? 4 : matching >= 12 ? 3 : matching >= 8 ? 2 : matching >= 4 ? 1 : 0;
       this.combatFormationBonuses[index] = [0, 0.06, 0.12, 0.18, 0.25][tier] ?? 0;
     }
+    // [SKILL-V1] 성어의 가호: 발동 중 봉인이 선 진의 자령 전원이 공격 증폭을 받는다.
+    for (let index = 0; index < this.combatIdiomBlessings.length; index += 1) {
+      this.combatIdiomBlessings[index] = this.idiomBlessingBonusAt(index);
+    }
+  }
+
+  /**
+   * [SKILL-V1] 성어의 가호 — 이 진에 선 "발동 중" 성어 수로 계산한 공격 배율.
+   * 첫 구 +10%, 같은 진의 추가 구당 +5%p. 봉인이 흩어지면(active=false) 즉시 0.
+   */
+  idiomBlessingBonusAt(formationIndex: number): number {
+    let seals = 0;
+    for (const seal of this.activeIdiomSeals()) {
+      const anchorCell = seal.cells[0];
+      if (anchorCell === undefined) continue;
+      if (Math.floor(anchorCell / CELLS_PER_FORMATION) === formationIndex) seals += 1;
+    }
+    return idiomBlessingBonus(seals);
   }
 
   private enemyPoint(enemy: Enemy): Point {
@@ -755,9 +911,12 @@ export class GameEngine {
       const center = positionOnPath(zone.progress);
       for (const enemy of this.state.enemies) {
         if (distance(this.enemyPoint(enemy), center) > zone.radius) continue;
-        const armorPenetration = zone.kind === "caltrops" ? 0.42 : 0;
-        this.damageEnemy(enemy, zone.damagePerSecond * delta, false, enemy.weakness === zone.wuxing, armorPenetration);
-        if (!this.state.enemies.includes(enemy)) continue;
+        // [SKILL-V1] 서리길처럼 피해 없는 지대는 타격·피격 연출 없이 상태만 건다.
+        if (zone.damagePerSecond > 0) {
+          const armorPenetration = zone.kind === "caltrops" ? 0.42 : 0;
+          this.damageEnemy(enemy, zone.damagePerSecond * delta, false, enemy.weakness === zone.wuxing, armorPenetration);
+          if (!this.state.enemies.includes(enemy)) continue;
+        }
         if (zone.kind === "roots") {
           enemy.poisonDps = Math.max(enemy.poisonDps, zone.damagePerSecond * 0.24);
           enemy.poisonUntil = Math.max(enemy.poisonUntil, this.state.elapsed + 0.65 * (1 + this.elementTraitLevel("木", 2) * 0.025));
@@ -767,6 +926,10 @@ export class GameEngine {
         } else if (zone.kind === "rain") {
           enemy.slowFactor = Math.min(enemy.slowFactor, 0.64);
           enemy.slowUntil = Math.max(enemy.slowUntil, this.state.elapsed + 0.25 * (1 + this.elementTraitLevel("水", 1) * 0.025));
+        } else if (zone.kind === "frost") {
+          // [SKILL-V1] 서리길: 총 감속 캡 60%(이동 배율 0.4 미만 금지)를 지킨다.
+          enemy.slowFactor = Math.min(enemy.slowFactor, Math.max(0.4, zone.slowFactor ?? 1));
+          enemy.slowUntil = Math.max(enemy.slowUntil, this.state.elapsed + 0.2);
         }
       }
     }
@@ -800,10 +963,37 @@ export class GameEngine {
     return { label: spec.label, duration, damagePerSecond };
   }
 
+  /**
+   * [SKILL-V1] 서리길(frost) 지대 — 비구름 장판 문법을 그대로 빌린 순수 감속 지대.
+   * 피해 0, 밀치기 0. 밟는 동안만 걸음이 늦어지고 벗어나면 곧 풀린다.
+   */
+  private deployFrostZone(tower: Tower, target: Enemy): { label: string; duration: number; damagePerSecond: number } {
+    const star = this.state.mode === "casual" ? tower.casualStar ?? tower.naturalStar ?? 1 : null;
+    const slowRatio = frostSlowRatio(star);
+    const existing = this.state.abilityZones.find((zone) => zone.towerId === tower.id);
+    const zone: AbilityZone = {
+      id: existing?.id ?? this.nextAbilityZoneId++,
+      towerId: tower.id,
+      kind: "frost",
+      wuxing: tower.wuxing,
+      progress: target.progress,
+      radius: FROST_ZONE_RADIUS,
+      damagePerSecond: 0,
+      expiresAt: this.state.elapsed + FROST_ZONE_DURATION,
+      color: "#bfe8ff",
+      slowFactor: 1 - slowRatio
+    };
+    if (existing) Object.assign(existing, zone);
+    else this.state.abilityZones.push(zone);
+    if (this.state.abilityZones.length > 20) this.state.abilityZones.shift();
+    return { label: "서리길", duration: FROST_ZONE_DURATION, damagePerSecond: 0 };
+  }
+
   private updateTowers(delta: number): void {
     for (const tower of this.state.towers) {
       tower.pulse = Math.max(0, tower.pulse - delta * 3);
       tower.abilityFlash = Math.max(0, tower.abilityFlash - delta * 2.4);
+      this.chargeGwicheon(tower, delta);
       tower.cooldownLeft -= delta;
       if (tower.cooldownLeft > 0) continue;
       const target = this.findTarget(tower);
@@ -811,10 +1001,67 @@ export class GameEngine {
     }
   }
 
+  /** 수술 8 ⓑ: 1~3웨이브 동안 시작 진의 자령에게만 주는 개문 사거리. */
+  gateOpeningRangeBonus(tower: Tower): number {
+    if (this.state.wave > GATE_OPENING_WARD.untilWave || tower.cell < 0 || this.state.startingFormationIndex === null) return 0;
+    return Math.floor(tower.cell / CELLS_PER_FORMATION) === this.state.startingFormationIndex ? GATE_OPENING_WARD.rangeBonus : 0;
+  }
+
+  /**
+   * [SKILL-V1] 귀천(歸天) — 6★ 이상 자령의 충전 스킬.
+   * 30초(별당 −2초) 충전 후 자동 발동해 가장 오래 버틴 일반 적 1기를 정화한다.
+   * 적 한계 75% 이상이면 충전 2배속. 대상이 없으면 가득 찬 채 다음 적을 기다린다.
+   */
+  private chargeGwicheon(tower: Tower, delta: number): void {
+    if (this.state.mode !== "casual") return;
+    const star = tower.casualStar ?? tower.naturalStar ?? 1;
+    if (star < GWICHEON_MIN_STAR) return;
+    const required = gwicheonChargeSeconds(star);
+    const rush = this.state.enemies.length >= MAX_ENEMIES * GWICHEON_RUSH_THRESHOLD ? 2 : 1;
+    tower.ascendCharge = Math.min(required, (tower.ascendCharge ?? 0) + delta * rush);
+    if (tower.ascendCharge >= required && this.castGwicheon(tower)) tower.ascendCharge = 0;
+  }
+
+  /**
+   * [SKILL-V1] 귀천 대상 — 화면에서 가장 오래 산(가장 먼저 나타난) 일반 적.
+   * 우두머리(boss)와 정예(armored, "정예 철갑 강시")는 면역이다.
+   */
+  findGwicheonTarget(): Enemy | undefined {
+    let oldest: Enemy | undefined;
+    for (const enemy of this.state.enemies) {
+      if (enemy.boss || enemy.archetype === "boss" || enemy.archetype === "armored") continue;
+      if (!oldest || enemy.id < oldest.id) oldest = enemy;
+    }
+    return oldest;
+  }
+
+  /** [SKILL-V1] 귀천 발동 — 즉시 소멸이되 보상·처치 집계는 정상 경로로 지급한다. */
+  private castGwicheon(tower: Tower): boolean {
+    const target = this.findGwicheonTarget();
+    if (!target) return false;
+    const origin = BOARD_CELLS[tower.cell] as Point;
+    const at = this.enemyPoint(target);
+    // 장갑 완전 관통 + 잔여 체력 이상의 피해 = 확정 정화. 보상은 damageEnemy 가 지급한다.
+    this.damageEnemy(target, target.hp + 10, false, false, 1);
+    this.emitAbility(tower, GWICHEON_ABILITY, origin, at, 1, "가장 오래 버틴 일반 망령 정화 · 보상 지급");
+    return true;
+  }
+
+  /**
+   * [SKILL-V1] 귀천 UI 상태. 자격이 없으면 null — 카드·게이지를 아예 그리지 않는다.
+   */
+  gwicheonStatus(tower: Tower): { charge: number; required: number } | null {
+    if (this.state.mode !== "casual") return null;
+    const star = tower.casualStar ?? tower.naturalStar ?? 1;
+    if (star < GWICHEON_MIN_STAR) return null;
+    const required = gwicheonChargeSeconds(star);
+    return { charge: Math.min(required, tower.ascendCharge ?? 0), required };
+  }
+
   private findTarget(tower: Tower): Enemy | undefined {
     const origin = BOARD_CELLS[tower.cell] as Point;
     const definition = definitionForTower(this.catalog, tower.definitionId);
-    const range = definition.combat.range + this.towerRangeBonus(tower) + this.idiomBonus("range") + (tower.concentration ?? 0) * 4 + this.combinedUpgradeBonus(tower.wuxing, "range");
+    const range = definition.combat.range + this.towerRangeBonus(tower) + this.idiomBonus("range") + (tower.concentration ?? 0) * 4 + this.combinedUpgradeBonus(tower.wuxing, "range") + this.gateOpeningRangeBonus(tower);
     const candidates = this.targetCandidates;
     candidates.length = 0;
     for (const enemy of this.state.enemies) if (distance(origin, this.enemyPoint(enemy)) <= range) candidates.push(enemy);
@@ -860,6 +1107,8 @@ export class GameEngine {
     const statusPower = 1 + this.combinedUpgradeBonus(tower.wuxing, "statusPower");
     const semanticEvery = Math.max(7, tuning.semanticEvery - (concentration >= 3 ? 1 : 0));
     const semanticTrigger = activeSkills && tower.shotCount % semanticEvery === 0
+      // [SKILL-V1] 파죽(momentum)은 별도 발동 주기가 없는 패시브라 주기 기술에서 뺀다.
+      && abilities.semanticFamily !== "momentum"
       && (abilities.semanticFamily !== "weather" || this.state.enemies.length >= 5);
     // At most one active skill may resolve from a tower on the same attack.
     const signature = activeSkills && !semanticTrigger && tower.shotCount % tuning.signatureEvery === 0;
@@ -873,12 +1122,37 @@ export class GameEngine {
     const towerFormationIndex = Math.floor(tower.cell / CELLS_PER_FORMATION);
     damage *= 1 + (this.combatFormationBonuses[towerFormationIndex] ?? 0);
     damage *= FORMATION_ROUTE_COVERAGE_MULTIPLIER[towerFormationIndex] ?? 1;
+    // [SKILL-V1] 성어의 가호: 발동 중 성어와 같은 진에 선 자령 전원 공격 증폭.
+    damage *= 1 + (this.combatIdiomBlessings[towerFormationIndex] ?? 0);
     // Every elemental start receives the same first-chapter ward. It prevents
     // the free starting formation's map position from deciding a run before
     // the player can buy a second formation, then disappears after wave 10.
     if (this.state.wave <= 10 && towerFormationIndex === this.state.startingFormationIndex) damage *= 1.15;
+    // FB7-8성 「극성 개안」: 8★ 자령이 서 있는 오행의 아군 전체 공격 +15%.
+    // Set 기반이라 같은 오행 오라는 몇 기가 있어도 최대 1개만 산다.
+    if (this.combatPolarisElements.has(tower.wuxing)) damage *= 1 + CASUAL_POLARIS_AURA.damageBonus;
     if (synergy) damage *= 1 + GAME_CONFIG.synergyBonus + (profile.role === "support" ? 0.08 : 0);
     if (weakness) damage *= GAME_CONFIG.weaknessMultiplier;
+    // [SKILL-V1] 상극 각인: 낙인이 남은 동안 같은 오행 공격이 주는 피해가 커진다.
+    // 약점 배율과 같은 층에서 곱해, 이 공격에서 파생되는 확산·연쇄·독도 함께 강해진다.
+    if ((target.brandUntil ?? 0) > this.state.elapsed && target.brandWuxing === tower.wuxing) {
+      damage *= 1 + (target.brandPower ?? 0);
+    }
+    // [SKILL-V1] 파죽: 같은 적 연속 타격마다 +8%씩 중첩, 대상을 바꾸면 초기화.
+    if (activeSkills && abilities.semanticFamily === "momentum") {
+      const momentumCap = momentumMaxStacks(this.state.mode === "casual" ? tower.casualStar ?? tower.naturalStar ?? 1 : tower.stage);
+      if (tower.momentumTargetId === target.id) {
+        const previousStacks = tower.momentumStacks ?? 0;
+        tower.momentumStacks = Math.min(momentumCap, previousStacks + 1);
+        if (tower.momentumStacks === momentumCap && previousStacks < momentumCap) {
+          this.emitAbility(tower, abilities.semantic, origin, targetPoint, 1, `파죽 최대 중첩 · 피해 +${Math.round(momentumCap * MOMENTUM_STACK_BONUS * 100)}%`);
+        }
+      } else {
+        tower.momentumTargetId = target.id;
+        tower.momentumStacks = 0;
+      }
+      damage *= 1 + (tower.momentumStacks ?? 0) * MOMENTUM_STACK_BONUS;
+    }
     if (tower.wuxing === "火" && (target.boss || target.hp / target.maxHp <= 0.3)) {
       damage *= 1 + this.elementTraitLevel("火", 2) * 0.015;
     }
@@ -912,8 +1186,9 @@ export class GameEngine {
     this.damageEnemy(target, damage, critical, weakness, armorPenetration);
 
     if (activeSkills && tower.wuxing === "火") {
-      const splashRadius = (tuning.splashRadius + signatureControlBonus * 80) * (1 + this.elementTraitLevel("火", 1) * 0.02);
-      const splashRatio = (tuning.splashRatio + signatureControlBonus * 0.35) * (1 + this.elementTraitLevel("火", 0) * 0.025);
+      // 수술 5: 캐주얼에서는 별이 곧 광역의 크기다(표준은 배율 1).
+      const splashRadius = (tuning.splashRadius + signatureControlBonus * 80) * (1 + this.elementTraitLevel("火", 1) * 0.02) * this.casualSplashRadiusScale(tower);
+      const splashRatio = (tuning.splashRatio + signatureControlBonus * 0.35) * (1 + this.elementTraitLevel("火", 0) * 0.025) * this.casualSplashRatioScale(tower);
       for (const enemy of this.state.enemies
         .filter((candidate) => candidate.id !== target.id && distance(this.enemyPoint(candidate), targetPoint) <= splashRadius)
         .slice(0, 5)) {
@@ -951,12 +1226,15 @@ export class GameEngine {
         this.damageEnemy(target, damage * 0.58 * tuning.signatureMultiplier * abilityPower, false, weakness, armorPenetration * 0.5);
         roleEffect = "같은 적에게 " + String(Math.round(58 * tuning.signatureMultiplier)) + "% 추가타";
       } else if (profile.role === "splash") {
+        // 수술 5: 역할 확산도 캐주얼 별 스케일을 함께 탄다.
+        const spreadRadius = (tuning.splashRadius + 22) * this.casualSplashRadiusScale(tower);
+        const spreadRatio = tuning.roleSplashRatio * this.casualSplashRatioScale(tower);
         const spreadTargets = this.state.enemies
-          .filter((candidate) => candidate.id !== target.id && distance(this.enemyPoint(candidate), targetPoint) <= tuning.splashRadius + 22)
+          .filter((candidate) => candidate.id !== target.id && distance(this.enemyPoint(candidate), targetPoint) <= spreadRadius)
           .slice(0, 5);
-        for (const enemy of spreadTargets) this.damageEnemy(enemy, damage * tuning.roleSplashRatio * abilityPower, false, enemy.weakness === tower.wuxing);
+        for (const enemy of spreadTargets) this.damageEnemy(enemy, damage * spreadRatio * abilityPower, false, enemy.weakness === tower.wuxing);
         roleTargets += spreadTargets.length;
-        roleEffect = "주변 " + String(spreadTargets.length) + "체에 " + String(Math.round(tuning.roleSplashRatio * 100)) + "% 확산";
+        roleEffect = "주변 " + String(spreadTargets.length) + "체에 " + String(Math.round(spreadRatio * 100)) + "% 확산";
       } else if (profile.role === "control") {
         roleEffect = "오행 효과 강화 · 이번 공격 ×" + tuning.signatureMultiplier.toFixed(2);
       } else if (profile.role === "support") {
@@ -998,7 +1276,10 @@ export class GameEngine {
     const potency = 1 + (tower.concentrationPath === "potent" ? (tower.concentration ?? 0) * 0.035 : 0);
     const abilityPower = 1 + this.combinedUpgradeBonus(tower.wuxing, "abilityPower");
     const statusPower = 1 + this.combinedUpgradeBonus(tower.wuxing, "statusPower");
-    const zone = this.deployElementZone(tower, target, damage, potency, abilityPower);
+    // [SKILL-V1] 서리길은 오행 장판 대신 전용 감속 지대를 깐다(비구름 문법 재사용).
+    const zone = family === "frost"
+      ? this.deployFrostZone(tower, target)
+      : this.deployElementZone(tower, target, damage, potency, abilityPower);
     const activeZone = this.state.abilityZones.find((candidate) => candidate.towerId === tower.id);
     const zoneTargets = activeZone
       ? this.state.enemies.filter((enemy) => distance(this.enemyPoint(enemy), targetPoint) <= activeZone.radius).length
@@ -1029,7 +1310,8 @@ export class GameEngine {
       targets = Math.max(1, zoneTargets);
       effect = `${zone.label} ${zone.duration.toFixed(1)}초 · 초당 ${Math.round(zone.damagePerSecond)} 피해`;
     } else if (family === "flame") {
-      const radius = 115;
+      // 수술 5: 잔화 지대도 캐주얼에서는 별을 따라 넓어진다.
+      const radius = 115 * this.casualSplashRadiusScale(tower);
       const victims = this.state.enemies
         .filter((candidate) => candidate.id !== target.id && distance(this.enemyPoint(candidate), targetPoint) <= radius)
         .slice(0, 5);
@@ -1073,11 +1355,24 @@ export class GameEngine {
       effect = "최고 체력 적 간파 · 이번 공격 ×" + tuning.semanticMultiplier.toFixed(2);
     } else if (family === "metalwork") {
       effect = "최고 장갑 적 우선 · 추가 관통 22%";
+    } else if (family === "warfare" && this.state.enemies.includes(target)) {
+      // [SKILL-V1] 상극 각인: 대상에게 자기 오행의 상극 낙인(4초). 밀거나 되돌리지 않는다.
+      const brandPower = warfareBrandPower(this.state.mode === "casual" ? tower.casualStar ?? tower.naturalStar ?? 1 : null);
+      target.brandWuxing = tower.wuxing;
+      target.brandPower = brandPower;
+      target.brandUntil = this.state.elapsed + WARFARE_BRAND_DURATION;
+      effect = `${tower.wuxing}행 상극 낙인 ${WARFARE_BRAND_DURATION}초 · 같은 오행 피해 +${Math.round(brandPower * 100)}%`;
+    } else if (family === "frost") {
+      // [SKILL-V1] 서리길: 적중 지점 서리 지대 — 감속만 있고 피해·밀치기는 없다.
+      const slowRatio = frostSlowRatio(this.state.mode === "casual" ? tower.casualStar ?? tower.naturalStar ?? 1 : null);
+      targets = Math.max(1, zoneTargets);
+      effect = `서리길 ${zone.duration.toFixed(1)}초 · 밟는 적 ${Math.round(slowRatio * 100)}% 감속`;
     } else {
       effect = "뜻 구현 · 이번 공격 ×" + tuning.semanticMultiplier.toFixed(2);
     }
 
-    if (family !== "weather") effect += ` · ${zone.label} ${zone.duration.toFixed(1)}초`;
+    // [SKILL-V1] frost 는 장판 자체가 본 효과라 꼬리 문구를 겹쳐 붙이지 않는다.
+    if (family !== "weather" && family !== "frost") effect += ` · ${zone.label} ${zone.duration.toFixed(1)}초`;
 
     this.emitAbility(tower, abilities.semantic, origin, targetPoint, targets, effect, persistent);
   }
@@ -1164,7 +1459,13 @@ export class GameEngine {
   private startNextWave(): void {
     const nextWave = this.state.wave + 1;
     this.state.wave = nextWave;
-    this.currentPlan = wavePlan(nextWave);
+    const plan = wavePlan(nextWave);
+    // 모드 수량 계수: 캐주얼은 몸수를 줄이고 체력 계수로 총 내구를 보존한다.
+    const modeCount = Math.max(1, Math.round(plan.count * MODE_ENEMY_COUNT_SCALE[this.state.mode]));
+    // 수련장은 그 위에서 수량을 한 번 더 눌러 "반드시 이기는 첫 교전"을 보장한다.
+    this.currentPlan = this.tutorial
+      ? { ...plan, count: Math.max(3, Math.round(modeCount * TUTORIAL_ENEMY_COUNT_SCALE)) }
+      : { ...plan, count: modeCount };
     this.state.phase = "combat";
     this.state.waveElapsed = 0;
     this.state.spawned = 0;
@@ -1399,6 +1700,62 @@ export class GameEngine {
   setSummonIntent(intent: SummonIntent): ActionResult {
     this.state.summonIntent = intent;
     this.state.lastMessage = `${SUMMON_INTENT_LABELS[intent]} 소환 선택 · 10연 마지막 결과에 목적 보정`;
+    return { ok: true, message: this.state.lastMessage };
+  }
+
+  /*
+   * ── 수련장 각본 지급 훅 ─────────────────────────────────────────
+   * 아래 세 tutorialGrant* 는 tutorial 옵션이 켜진 엔진에서만 동작한다.
+   * 일반 런에서는 어떤 경로로 불려도 상태를 바꾸지 않는다(치트 차단).
+   */
+
+  /** 수련장 각본이 엽전을 지급한다. */
+  tutorialGrantGold(amount: number): ActionResult {
+    if (!this.tutorial) return { ok: false, message: "수련장에서만 쓸 수 있습니다." };
+    if (!Number.isFinite(amount) || amount <= 0) return { ok: false, message: "지급량이 올바르지 않습니다." };
+    this.state.gold += Math.floor(amount);
+    this.state.lastMessage = `수련 지원 · 엽전 +${Math.floor(amount)}`;
+    return { ok: true, message: this.state.lastMessage };
+  }
+
+  /** 수련장 각본이 오행 문기를 지급한다. */
+  tutorialGrantEssence(wuxing: Wuxing, amount: number): ActionResult {
+    if (!this.tutorial) return { ok: false, message: "수련장에서만 쓸 수 있습니다." };
+    if (!Number.isFinite(amount) || amount <= 0) return { ok: false, message: "지급량이 올바르지 않습니다." };
+    this.state.elementEssence[wuxing] += Math.floor(amount);
+    this.state.elementEssenceGenerated[wuxing] += Math.floor(amount);
+    this.state.lastMessage = `수련 지원 · ${wuxing} 문기 +${Math.floor(amount)}`;
+    return { ok: true, message: this.state.lastMessage };
+  }
+
+  /**
+   * 수련장 각본이 지정 한자 자령 1기를 무료로 지급한다(런 인벤토리 보관).
+   * 소환 횟수·가격 곡선은 건드리지 않고, 지급 연출은 일반 소환 이벤트를 탄다.
+   */
+  tutorialGrantTower(char: string): ActionResult {
+    if (!this.tutorial) return { ok: false, message: "수련장에서만 쓸 수 있습니다." };
+    if (!this.isRunActive()) return { ok: false, message: "진행 중인 수비전이 없습니다." };
+    const definition = this.catalog.definitions.get(char);
+    if (!definition) return { ok: false, message: "이 지역에서 사용할 수 없는 한자입니다." };
+    const newDiscovery = !this.state.discoveredChars.includes(char);
+    const tower = this.createTower(definition, -1);
+    this.state.inventoryTowers.push(tower);
+    this.state.selectedTowerId = tower.id;
+    this.discover(char);
+    const at = (this.state.startingFormationIndex !== null
+      ? BOARD_FORMATIONS[this.state.startingFormationIndex]?.center
+      : undefined) ?? { x: 400, y: 300 };
+    this.state.lastMessage = `수련 지원 · ${char} 자령 지급 (인벤토리 보관)`;
+    this.events.push({
+      type: "summon",
+      at,
+      tower: { ...tower },
+      stored: true,
+      helpful: false,
+      helpfulReason: null,
+      newDiscovery,
+      utility: newDiscovery ? "new" : "concentration"
+    });
     return { ok: true, message: this.state.lastMessage };
   }
 
@@ -1928,6 +2285,9 @@ export class GameEngine {
       starFallback: pool.starFallback,
       rosterFallback: pool.rosterFallback
     });
+    // F2: 별승급의 목표 사다리는 소환만이 아니라 승급으로도 오른다. 목표 글자가
+    // 승급 결과로 나왔는데 달성 처리가 안 되면 상위 별 목표는 원리적으로 못 깬다.
+    if (definition.char === this.state.targetChar) this.completeGoal(definition.char);
     // 유지형 규칙에서는 소모된 재료가 판을 떠난 것만으로도 봉인이 흩어질 수 있다.
     // 승급 결과가 보관고로 갔더라도(inheritedCell < 0) 판정은 다시 해야 한다.
     if (this.isRunActive()) this.resolveIdiomFormations();
@@ -2016,7 +2376,7 @@ export class GameEngine {
     this.state.lineageClueProgress = 0;
     this.state.lineageTargetProgress = 0;
     this.events.push({ type: "goal", char, reward });
-    const next = this.catalog.goalOrder.find((candidate) => !this.state.goalsCompleted.includes(candidate));
+    const next = this.goalOrder.find((candidate) => !this.state.goalsCompleted.includes(candidate));
     if (next) {
       this.state.targetChar = next;
       this.state.lastMessage = char + " 목표 달성 · " + String(reward) + "엽전 · 다음 목표 " + next;
@@ -2223,11 +2583,12 @@ export class GameEngine {
   }
 
   globalUpgradeBonus(stat: UpgradeStat): number {
-    return this.state.globalUpgrades[stat] * UPGRADE_STAT_META[stat].globalPerLevel;
+    // FB7-강화: 10단계 이정표마다 4단계치(공용 공격력 기준 +5%p)를 더 얹는다.
+    return upgradeEffectiveLevels(this.state.globalUpgrades[stat]) * UPGRADE_STAT_META[stat].globalPerLevel;
   }
 
   elementUpgradeBonus(wuxing: Wuxing, stat: UpgradeStat): number {
-    return this.state.elementUpgrades[wuxing][stat] * UPGRADE_STAT_META[stat].elementPerLevel;
+    return upgradeEffectiveLevels(this.state.elementUpgrades[wuxing][stat]) * UPGRADE_STAT_META[stat].elementPerLevel;
   }
 
   combinedUpgradeBonus(wuxing: Wuxing, stat: UpgradeStat): number {
@@ -2239,8 +2600,9 @@ export class GameEngine {
     const concentration = tower.concentration ?? 0;
     const concentrationHaste = tower.concentrationPath === "swift" ? concentration * 0.075 : concentration * 0.02;
     const upgradeHaste = this.combinedUpgradeBonus(tower.wuxing, "attackSpeed");
+    // 수술 7: 캐주얼 공속 성장 별당 2% → 3%. 별이 오르면 실제로 빨라진다.
     const progressionHaste = this.state.mode === "casual"
-      ? ((tower.casualStar ?? tower.naturalStar ?? 1) - 1) * 0.02
+      ? ((tower.casualStar ?? tower.naturalStar ?? 1) - 1) * CASUAL_STAR_HASTE_PER_STAR
       : (tower.stage - 1) * 0.035;
     return Math.max(0.28, profile.cooldown * (1 - progressionHaste) * (1 - concentrationHaste) / (1 + upgradeHaste));
   }
@@ -2251,9 +2613,40 @@ export class GameEngine {
       : STAGE_MULTIPLIERS[tower.stage];
   }
 
-  towerRangeBonus(tower: Tower): number {
+  /**
+   * FB7-8성 「극성 개안」: 이 오행에 8★ 오라가 살아 있는가. 전장(towers)에
+   * 8★ 자령이 서 있으면 참이다 — 인벤토리 자령은 오라를 내지 않는다.
+   */
+  casualPolarisAuraActive(wuxing: Wuxing): boolean {
     return this.state.mode === "casual"
-      ? ((tower.casualStar ?? tower.naturalStar ?? 1) - 1) * 3
+      && this.state.towers.some((tower) => (tower.casualStar ?? tower.naturalStar) === CASUAL_POLARIS_AURA.star && tower.wuxing === wuxing);
+  }
+
+  /** 극성 개안이 이 오행의 공격에 곱하는 배율. 오라가 없으면 1이다. */
+  casualPolarisDamageMultiplier(wuxing: Wuxing): number {
+    return this.casualPolarisAuraActive(wuxing) ? 1 + CASUAL_POLARIS_AURA.damageBonus : 1;
+  }
+
+  /**
+   * 광역 계열(화행 폭발·역할 확산·잔화 지대)의 반경에 곱하는 캐주얼 별 스케일.
+   * 표준 모드는 tuning 이 이미 stage 로 스케일하므로 1이다.
+   */
+  casualSplashRadiusScale(tower: Tower): number {
+    if (this.state.mode !== "casual") return 1;
+    return 1 + ((tower.casualStar ?? tower.naturalStar ?? 1) - 1) * CASUAL_SPLASH_STAR_SCALE.radiusPerStar;
+  }
+
+  /** 광역 계열 확산비(splashRatio·roleSplashRatio)에 곱하는 캐주얼 별 스케일. */
+  casualSplashRatioScale(tower: Tower): number {
+    if (this.state.mode !== "casual") return 1;
+    return 1 + ((tower.casualStar ?? tower.naturalStar ?? 1) - 1) * CASUAL_SPLASH_STAR_SCALE.ratioPerStar;
+  }
+
+  towerRangeBonus(tower: Tower): number {
+    // 수술 7: 저별은 좁게, 별당 성장은 크게(기본 −18 · 별당 +8, 스프레드 56).
+    // 예전 +(별-1)×3 은 1★→8★ 차이가 +21 뿐이라 성장감이 없었다.
+    return this.state.mode === "casual"
+      ? CASUAL_STAR_RANGE.base + ((tower.casualStar ?? tower.naturalStar ?? 1) - 1) * CASUAL_STAR_RANGE.perStar
       : (tower.stage - 1) * 7;
   }
 
@@ -2667,7 +3060,7 @@ export class GameEngine {
       * (1 + this.combinedUpgradeBonus(tower.wuxing, "damage"));
     const concentrationHaste = level * (path === "swift" ? 0.075 : 0.02);
     const progressionHaste = this.state.mode === "casual"
-      ? ((tower.casualStar ?? tower.naturalStar ?? 1) - 1) * 0.02
+      ? ((tower.casualStar ?? tower.naturalStar ?? 1) - 1) * CASUAL_STAR_HASTE_PER_STAR
       : (tower.stage - 1) * 0.035;
     const cooldown = Math.max(0.28, profile.cooldown * (1 - progressionHaste) * (1 - concentrationHaste)
       / (1 + this.combinedUpgradeBonus(tower.wuxing, "attackSpeed")));
@@ -3176,8 +3569,11 @@ export function runAutoplay(seed: string, region: RegionCode = "KR", maxSeconds 
       && engine.availableEvolutions().length === 0
       && lastReplacementWave !== engine.state.wave) {
       const protectedChars = autoplayProtectedChars(engine);
+      // 유지형 규칙: 발동 중 봉인의 네 자령을 팔면 봉인이 그 자리에서 꺼진다.
+      // 사람 규칙은 그대로 두고(팔 수는 있다) 봇의 후보에서만 뺀다.
+      const sealedIds = engine.sealedIdiomTowerIds();
       const disposable = [...engine.state.towers]
-        .filter((tower) => !tower.locked && (tower.concentration ?? 0) === 0 && !protectedChars.has(tower.char))
+        .filter((tower) => !tower.locked && (tower.concentration ?? 0) === 0 && !protectedChars.has(tower.char) && !sealedIds.has(tower.id))
         .sort((left, right) => {
           const leftRank = engine.state.mode === "casual" ? left.casualStar ?? 1 : left.stage;
           const rightRank = engine.state.mode === "casual" ? right.casualStar ?? 1 : right.stage;
@@ -3278,14 +3674,24 @@ function autoplayProtectedChars(engine: GameEngine): Set<string> {
 }
 
 function autoplayEvolutionOption(engine: GameEngine): EvolutionOption | undefined {
-  const options = engine.availableEvolutions();
+  // 유지형 규칙(R18) 이후 봉인은 네 자령이 줄에 서 있는 동안만 산다. 봇이 그
+  // 자령을 합성 재료로 태우면 제 손으로 보너스를 끄는 셈이라, 발동 중 봉인의
+  // 자령이 낀 합성식은 후보에서 통째로 뺀다. 전부 걸리면 이번 틱은 합성을
+  // 쉰다 — 성어 유지가 합성 한 번보다 우선이다. 사람 규칙은 그대로다.
+  const sealedIds = engine.sealedIdiomTowerIds();
+  const options = engine.availableEvolutions()
+    .filter((option) => !option.materialTowerIds.some((id) => sealedIds.has(id)));
+  // 아직 줄이 없는(혹은 흩어진) 성어의 글자도 지킨다 — 재봉인 재료다.
+  const pendingIdioms = engine.idioms().filter((candidate) => !engine.isIdiomSealActive(candidate.id));
   const idiom = engine.currentIdiomTarget();
-  if (!idiom) return options.find((candidate) => candidate.onTargetPath) ?? options[0];
-  const exactChars = new Set(idiom.chars);
+  if (pendingIdioms.length === 0) return options.find((candidate) => candidate.onTargetPath) ?? options[0];
+  const exactChars = new Set(pendingIdioms.flatMap((candidate) => [...candidate.chars]));
   const idiomPath = new Set<string>();
-  for (const char of exactChars) for (const pathChar of engine.evolution.getTargetPath(char)) idiomPath.add(pathChar);
+  for (const char of idiom?.chars ?? "") for (const pathChar of engine.evolution.getTargetPath(char)) idiomPath.add(pathChar);
   const required = new Map<string, number>();
-  for (const char of idiom.chars) required.set(char, (required.get(char) ?? 0) + 1);
+  for (const candidate of pendingIdioms) {
+    for (const char of candidate.chars) required.set(char, (required.get(char) ?? 0) + 1);
+  }
   const owned = new Map<string, number>();
   for (const tower of engine.state.towers) owned.set(tower.char, (owned.get(tower.char) ?? 0) + 1);
   const preservesPlacedIdiomChars = (option: EvolutionOption): boolean => option.materialTowerIds.every((id) => {
@@ -3321,28 +3727,36 @@ function autoplayIdiomLine(engine: GameEngine, pinnedCells: ReadonlySet<number>)
 
 function arrangeAvailableAutoplayIdioms(engine: GameEngine): void {
   for (let guard = 0; guard < engine.idioms().length; guard += 1) {
-    const idiom = engine.currentIdiomTarget();
-    if (!idiom) return;
     // 유지형 규칙: 이미 발동 중인 봉인의 네 자령은 봇도 건드리지 않는다.
+    // 흩어진 기록(비활성 봉인)도 다시 세울 대상이다 — 재봉인하면 보너스가 돌아온다.
+    // 첫 성어의 글자가 모자라도 뒤 성어는 세울 수 있으므로 하나씩 전부 시도한다.
     const pinned = engine.sealedIdiomTowerIds();
     const pinnedCells = new Set(engine.state.towers.filter((tower) => pinned.has(tower.id)).map((tower) => tower.cell));
-    const chosen: Tower[] = [];
-    const usedIds = new Set<number>();
-    for (const char of idiom.chars) {
-      const tower = engine.state.towers.find((candidate) => candidate.char === char && !usedIds.has(candidate.id) && !pinned.has(candidate.id));
-      if (!tower) return;
-      chosen.push(tower);
-      usedIds.add(tower.id);
+    let arranged = false;
+    for (const idiom of engine.idioms()) {
+      if (engine.isIdiomSealActive(idiom.id)) continue;
+      const chosen: Tower[] = [];
+      const usedIds = new Set<number>();
+      for (const char of idiom.chars) {
+        const tower = engine.state.towers.find((candidate) => candidate.char === char && !usedIds.has(candidate.id) && !pinned.has(candidate.id));
+        if (!tower) break;
+        chosen.push(tower);
+        usedIds.add(tower.id);
+      }
+      if (chosen.length !== [...idiom.chars].length) continue;
+      const line = autoplayIdiomLine(engine, pinnedCells);
+      if (!line) return;
+      for (let index = 0; index < chosen.length; index += 1) {
+        const tower = chosen[index] as Tower;
+        const targetCell = line[index] as number;
+        const occupant = engine.state.towers.find((candidate) => candidate.cell === targetCell);
+        if (occupant && occupant.id !== tower.id) occupant.cell = tower.cell;
+        tower.cell = targetCell;
+      }
+      if (engine.resolveIdiomFormations() === 0) return;
+      arranged = true;
+      break;
     }
-    const line = autoplayIdiomLine(engine, pinnedCells);
-    if (!line) return;
-    for (let index = 0; index < chosen.length; index += 1) {
-      const tower = chosen[index] as Tower;
-      const targetCell = line[index] as number;
-      const occupant = engine.state.towers.find((candidate) => candidate.cell === targetCell);
-      if (occupant && occupant.id !== tower.id) occupant.cell = tower.cell;
-      tower.cell = targetCell;
-    }
-    if (engine.resolveIdiomFormations() === 0) return;
+    if (!arranged) return;
   }
 }

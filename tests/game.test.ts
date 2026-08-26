@@ -175,7 +175,8 @@ describe("regional recipe defense run", () => {
   });
 
   it("splits repeatable gold and elemental essence upgrades by stat", () => {
-    expect([0, 1, 2, 3, 4].map((level) => globalUpgradeCost("damage", level))).toEqual([16, 19, 22, 25, 29]);
+    // FB7-강화: 전역 비용 2차항 완화(/12 → /20). 4단계부터 1엽전씩 싸진다.
+    expect([0, 1, 2, 3, 4].map((level) => globalUpgradeCost("damage", level))).toEqual([16, 19, 22, 25, 28]);
     expect([0, 1, 5, 6, 12].map(elementUpgradeCost)).toEqual([1, 1, 1, 2, 3]);
     const engine = new GameEngine("element-upgrades", "KR");
     engine.begin();
@@ -197,6 +198,22 @@ describe("regional recipe defense run", () => {
 
   it("uses the expanded eighty-enemy loss limit", () => {
     expect(MAX_ENEMIES).toBe(80);
+  });
+
+  it("grants the gate-opening range ward to the starting formation for waves 1-3 only", () => {
+    // 수술 8 ⓑ: 무작위 첫 진이 경로에서 멀어도 "다 돌 때까지 기다림"이 없게 한다.
+    const engine = new GameEngine("gate-opening", "KR");
+    engine.begin();
+    expect(engine.summon()).toMatchObject({ ok: true });
+    const tower = engine.state.towers[0] as Tower;
+    expect(engine.gateOpeningRangeBonus(tower)).toBe(45);
+    // 다른 진의 자령과 인벤토리 자령은 받지 못한다.
+    const foreignCell = ((engine.state.startingFormationIndex ?? 0) + 1) % 5 * 16;
+    expect(engine.gateOpeningRangeBonus({ ...tower, cell: foreignCell })).toBe(0);
+    expect(engine.gateOpeningRangeBonus({ ...tower, cell: -1 })).toBe(0);
+    // 4웨이브부터는 사라진다.
+    engine.state.wave = 4;
+    expect(engine.gateOpeningRangeBonus(tower)).toBe(0);
   });
 
   it("replays the same weighted summon sequence from the same seed", () => {

@@ -34,6 +34,10 @@ export type SemanticFamily =
   | "metalwork"
   | "heart"
   | "wealth"
+  // [SKILL-V1] 스킬 1차 세트가 신설한 의미 계열.
+  | "warfare"
+  | "momentum"
+  | "frost"
   | "general";
 export type TargetPriority = "front" | "strongest" | "fastest" | "armored" | "cluster" | "valuable";
 export type EnemyArchetype = "normal" | "swarm" | "swift" | "armored" | "regenerator" | "boss";
@@ -176,6 +180,11 @@ export interface Tower {
   concentrationPath?: ConcentrationPath | null;
   naturalStar?: CasualStar;
   casualStar?: CasualStar;
+  // [SKILL-V1] 파죽(momentum) 패시브: 같은 적 연속 타격 중첩 상태.
+  momentumTargetId?: number;
+  momentumStacks?: number;
+  // [SKILL-V1] 귀천: 6★ 이상 자령의 충전 스킬 게이지(초).
+  ascendCharge?: number;
 }
 
 export interface Enemy {
@@ -197,18 +206,26 @@ export interface Enemy {
   poisonDps: number;
   poisonUntil: number;
   flash: number;
+  // [SKILL-V1] 상극 각인(warfare): 낙인이 남은 동안 같은 오행 공격이 커진다.
+  // 넉백·후퇴류가 아니라 순수 피해 증폭 표식이다.
+  brandWuxing?: Wuxing;
+  brandUntil?: number;
+  brandPower?: number;
 }
 
 export interface AbilityZone {
   id: number;
   towerId: number;
-  kind: "roots" | "lava" | "quicksand" | "caltrops" | "rain";
+  // [SKILL-V1] "frost" 는 서리길(피해 없는 감속 장판)이다.
+  kind: "roots" | "lava" | "quicksand" | "caltrops" | "rain" | "frost";
   wuxing: Wuxing;
   progress: number;
   radius: number;
   damagePerSecond: number;
   expiresAt: number;
   color: string;
+  // [SKILL-V1] 서리길 전용: 밟는 적에게 적용할 이동 배율(0.75 = 25% 감속).
+  slowFactor?: number;
 }
 
 export interface WavePlan {

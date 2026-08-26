@@ -1,7 +1,9 @@
 /*
  * 선택 자령 카드와 구성식 서랍.
  */
-import { CASUAL_STAR_COLORS, CASUAL_STAR_NAMES, casualStrokeCount } from "../../core/casual";
+import { CASUAL_POLARIS_AURA, CASUAL_STAR_COLORS, CASUAL_STAR_NAMES, casualStrokeCount } from "../../core/casual";
+// [SKILL-V1] 귀천 카드·게이지 스펙.
+import { GWICHEON_ABILITY } from "../../core/abilities";
 import {
   autoConcentrationPath,
   concentrationEssenceCost,
@@ -73,8 +75,10 @@ function openAbilityGuide(focusedAbilityId?: string): void {
   const periodicAbilities = activeSkills
     ? [abilities.semantic, abilities.role, abilities.lineage].filter((ability): ability is AbilitySpec => Boolean(ability))
     : [];
+  // [SKILL-V1] 6★ 이상 캐주얼 자령은 충전 스킬 귀천이 함께 노출된다.
+  const gwicheonAbilities = ctx.engine.gwicheonStatus(tower) ? [GWICHEON_ABILITY] : [];
   const supportingAbilities = activeSkills ? [abilities.element, abilities.graph] : [abilities.graph];
-  const loadout = [...periodicAbilities, ...supportingAbilities];
+  const loadout = [...periodicAbilities, ...gwicheonAbilities, ...supportingAbilities];
   must<HTMLElement>("#ability-guide-title").textContent = `${tower.char} ${learning.short} · 기술 구성`;
   must<HTMLElement>("#ability-guide-content").innerHTML = `
     <section class="ability-guide-rule ${activeSkills ? "" : "is-locked"}">
@@ -93,17 +97,31 @@ function openAbilityGuide(focusedAbilityId?: string): void {
 }
 
 function syncSelectedCharge(card: HTMLElement, tower: Tower, definition: HanziDefinition, chargeStep: number): void {
-  const holder = card.querySelector<HTMLElement>(".ability-charge");
+  syncGwicheonCharge(card, tower);
+  const holder = card.querySelector<HTMLElement>(".ability-charge:not([data-gwicheon-charge])");
   if (!ctx.engine.towerHasActiveSkills(tower) || holder?.classList.contains("ability-charge--locked")) return;
   const ability = definition.combat.abilities.role;
   const signatureEvery = definition.combat.abilities.tuning.signatureEvery;
   const charge = chargeStep / signatureEvery;
   const remaining = signatureEvery - chargeStep;
-  const meter = card.querySelector<HTMLElement>(".ability-charge i");
-  const label = card.querySelector<HTMLElement>(".ability-charge small");
+  const meter = holder?.querySelector<HTMLElement>("i") ?? null;
+  const label = holder?.querySelector<HTMLElement>("small") ?? null;
   if (meter) meter.style.width = `${Math.round(charge * 100)}%`;
   if (label) label.textContent = `역할 기술 충전 · ${ability.glyph} ${ability.name} ${chargeStep}/${signatureEvery}`;
   if (holder) holder.title = `다음 역할 기술 ${ability.name}까지 ${remaining}회`;
+}
+
+/** [SKILL-V1] 귀천 게이지 — 초 단위 충전이라 매 프레임 동기화한다. */
+function syncGwicheonCharge(card: HTMLElement, tower: Tower): void {
+  const holder = card.querySelector<HTMLElement>("[data-gwicheon-charge]");
+  if (!holder) return;
+  const status = ctx.engine.gwicheonStatus(tower);
+  if (!status) return;
+  const meter = holder.querySelector<HTMLElement>("i");
+  const label = holder.querySelector<HTMLElement>("small");
+  if (meter) meter.style.width = `${Math.round((status.charge / status.required) * 100)}%`;
+  if (label) label.textContent = `귀천 충전 · ${GWICHEON_ABILITY.glyph} ${Math.floor(status.charge)}/${status.required}초`;
+  holder.title = `귀천 자동 발동까지 ${Math.max(0, Math.ceil(status.required - status.charge))}초`;
 }
 
 export function renderSelected(): void {
@@ -117,7 +135,8 @@ export function renderSelected(): void {
   const concentrationPath = tower?.concentrationPath ?? null;
   const duplicateCount = tower ? ctx.engine.state.inventoryTowers.filter((candidate) => candidate.id !== tower.id && candidate.char === tower.char && !candidate.locked).length : 0;
   const branchKey = branches.map((branch) => `${branch.recipeId}:${branch.ready ? "R" : branch.materials.map((material) => material.location).join(",")}`).join("|");
-  const key = tower ? tower.definitionId + "|" + String(tower.id) + "|" + String(tower.locked) + "|" + String(stored) + "|" + String(ctx.engine.isSynergyActive(tower.wuxing)) + "|" + branchKey + `|M${ctx.engine.state.mode}:S${tower.casualStar ?? 0}|C${concentration}:${concentrationPath ?? "none"}:D${duplicateCount}:E${ctx.engine.state.elementEssence[tower.wuxing]}` : "none";
+  const polarisActive = tower ? ctx.engine.casualPolarisAuraActive(tower.wuxing) : false;
+  const key = tower ? tower.definitionId + "|" + String(tower.id) + "|" + String(tower.locked) + "|" + String(stored) + "|" + String(ctx.engine.isSynergyActive(tower.wuxing)) + "|" + branchKey + `|M${ctx.engine.state.mode}:S${tower.casualStar ?? 0}|C${concentration}:${concentrationPath ?? "none"}:D${duplicateCount}:E${ctx.engine.state.elementEssence[tower.wuxing]}|P${polarisActive ? 1 : 0}` : "none";
   if (key === ctx.selectedRenderKey) {
     if (tower && definition) syncSelectedCharge(card, tower, definition, chargeStep);
     return;
@@ -130,7 +149,7 @@ export function renderSelected(): void {
   if (!definition) return;
   const style = ELEMENT_STYLES[tower.wuxing];
   const concentrationDamage = 1 + concentration * (concentrationPath === "potent" ? 0.12 : 0.055);
-  const damage = Math.round(definition.combat.baseDamage * ctx.engine.towerPowerMultiplier(tower) * definition.combat.budgetMultiplier * (1 + ctx.engine.idiomBonus("damage")) * (1 + ctx.engine.combinedUpgradeBonus(tower.wuxing, "damage")) * concentrationDamage);
+  const damage = Math.round(definition.combat.baseDamage * ctx.engine.towerPowerMultiplier(tower) * definition.combat.budgetMultiplier * (1 + ctx.engine.idiomBonus("damage")) * (1 + ctx.engine.combinedUpgradeBonus(tower.wuxing, "damage")) * concentrationDamage * ctx.engine.casualPolarisDamageMultiplier(tower.wuxing));
   const range = definition.combat.range + ctx.engine.towerRangeBonus(tower) + ctx.engine.idiomBonus("range") + concentration * 4 + ctx.engine.combinedUpgradeBonus(tower.wuxing, "range");
   const attacksPerSecond = 1 / ctx.engine.towerAttackCooldown(tower);
   const learning = learningInfo(ctx.engine.state.region, tower.char);
@@ -139,8 +158,10 @@ export function renderSelected(): void {
   const periodicAbilities = activeSkills
     ? [abilities.semantic, abilities.role, abilities.lineage].filter((ability): ability is AbilitySpec => Boolean(ability))
     : [];
+  // [SKILL-V1] 6★ 이상 캐주얼 자령의 충전 스킬 귀천.
+  const gwicheon = ctx.engine.gwicheonStatus(tower);
   const supportingAbilities = activeSkills ? [abilities.element, abilities.graph] : [abilities.graph];
-  const abilityLoadout = [...periodicAbilities, ...supportingAbilities];
+  const abilityLoadout = [...periodicAbilities, ...(gwicheon ? [GWICHEON_ABILITY] : []), ...supportingAbilities];
   const readyBranches = branches.filter((branch) => branch.ready).length;
   const charge = chargeStep / abilities.tuning.signatureEvery;
   const remaining = abilities.tuning.signatureEvery - chargeStep;
@@ -173,6 +194,11 @@ export function renderSelected(): void {
     </div>
     <div class="selected-chips">
       ${stored ? '<span class="selected-chip is-stored">배치 대기 · 찬 칸을 누르면 즉시 교체</span>' : ""}
+      ${ctx.engine.state.mode === "casual" && casualStar >= CASUAL_POLARIS_AURA.star
+        ? `<span class="selected-chip selected-chip--polaris" title="${escapeHtml(CASUAL_POLARIS_AURA.description)}">${CASUAL_POLARIS_AURA.name} · ${CASUAL_POLARIS_AURA.summary} · 오라 중첩 불가</span>`
+        : polarisActive && !stored
+          ? `<span class="selected-chip selected-chip--polaris" title="${escapeHtml(CASUAL_POLARIS_AURA.description)}">${CASUAL_POLARIS_AURA.name} 오라 적용 중 · 공격 +${Math.round(CASUAL_POLARIS_AURA.damageBonus * 100)}%</span>`
+          : ""}
       <span class="selected-chip cleanup-reason ${cleanup?.protected ? "is-protected" : "is-candidate"}">${escapeHtml(cleanupLabel)}</span>
       <span class="selected-chip selected-chip--essence">${escapeHtml(concentrationStatus)}</span>
     </div>
@@ -190,7 +216,8 @@ export function renderSelected(): void {
           <div class="ability-overview"><span><b>주기 겹침: 고유 → 역할 → 계승 중 1개 발동</b></span><button type="button" data-ability-guide>전체 설명</button></div>
           <div class="ability-pills">${abilityLoadout.map(selectedAbilityCard).join("")}</div>
         </div>
-        <div class="ability-charge" title="다음 역할 기술 ${abilities.role.name}까지 ${remaining}회"><i style="width:${Math.round(charge * 100)}%;--charge:${abilities.role.color}"></i><small>역할 기술 충전 · ${abilities.role.glyph} ${abilities.role.name} ${chargeStep}/${abilities.tuning.signatureEvery}</small></div>`
+        <div class="ability-charge" title="다음 역할 기술 ${abilities.role.name}까지 ${remaining}회"><i style="width:${Math.round(charge * 100)}%;--charge:${abilities.role.color}"></i><small>역할 기술 충전 · ${abilities.role.glyph} ${abilities.role.name} ${chargeStep}/${abilities.tuning.signatureEvery}</small></div>
+        ${gwicheon ? `<div class="ability-charge" data-gwicheon-charge title="귀천 자동 발동까지 ${Math.max(0, Math.ceil(gwicheon.required - gwicheon.charge))}초"><i style="width:${Math.round((gwicheon.charge / gwicheon.required) * 100)}%;--charge:${GWICHEON_ABILITY.color}"></i><small>귀천 충전 · ${GWICHEON_ABILITY.glyph} ${Math.floor(gwicheon.charge)}/${gwicheon.required}초</small></div>` : ""}`
       : `<div class="ability-loadout is-locked">
           <div class="ability-overview"><span><b>${skillUnlockLabel}부터 고유·역할 기술과 오행 효과 해금</b></span><button type="button" data-ability-guide>규칙 설명</button></div>
           <div class="ability-pills ability-pills--locked"><button type="button" class="ability-card is-basic" data-ability-id="basic-attack" style="--ability:#aeb9cc"><i>合</i><span><em>기본 행동 · 자동</em><b>기본 공격</b><small>단일 대상 · 합성 재료</small></span></button>${supportingAbilities.map(selectedAbilityCard).join("")}</div>

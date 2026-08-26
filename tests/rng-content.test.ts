@@ -5,6 +5,8 @@ import {
   CELLS_PER_FORMATION,
   ENEMY_PATH_POINTS,
   ENEMY_SPAWN_PROGRESS,
+  BOSS_PORTAL_INDEX_BY_FORMATION,
+  bossSpawnProgress,
   bossTimeLimitForWave,
   isFormationUnlocked,
   nextFormationUnlockCost,
@@ -37,6 +39,23 @@ describe("regional catalog and wave content", () => {
     expect(getCatalog("JP").definitions.size).toBe(2_136);
     expect(getCatalog("CN").definitions.size).toBe(3_500);
     expect(getCatalog("KR").activePool.length).toBeGreaterThanOrEqual(12);
+  });
+
+  it("spawns bosses at the starting formation's nearest portal and keeps rotation otherwise", () => {
+    // 수술 9 「관문 보정」: 실측 최적 관문(수#0·금#3·토#0·목#1·화#2)이 고정돼야 한다.
+    expect([...BOSS_PORTAL_INDEX_BY_FORMATION]).toEqual([0, 3, 0, 1, 2]);
+    // 시작 진이 있으면 그 진의 관문, 없으면 기존 회전 규칙 그대로.
+    expect(bossSpawnProgress(3, 2)).toBe(ENEMY_SPAWN_PROGRESS[1]);
+    expect(bossSpawnProgress(null, 2)).toBe(spawnProgressForEnemy(2));
+    expect(bossSpawnProgress(99, 2)).toBe(spawnProgressForEnemy(2));
+  });
+
+  it("accelerates circulation only on waves 1-3 to shorten the opening lap", () => {
+    // 수술 8 ⓐ: 초반 랩 39.8s → 34.6s. 닫힌 고리라 순환 가속은 난이도를 올리지 않는다.
+    expect(wavePlan(1).speed).toBeCloseTo((0.025 + 0.00015) * 1.15, 6);
+    expect(wavePlan(2).speed).toBeCloseTo((0.025 + 0.0003) * 1.15, 6);
+    // 22웨이브는 일반형 — 가속이 붙지 않는다.
+    expect(wavePlan(22).speed).toBeCloseTo(0.025 + 0.0033, 6);
   });
 
   it("marks every tenth wave through 100 as a boss and rotates enemy types", () => {
