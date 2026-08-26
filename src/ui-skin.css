@@ -10268,6 +10268,48 @@ span.codex-jaryeong-category { color: #4a3f30 !important; }
     url("/assets/ui/main-menu-b/ui/p00-scroll-frame-v1.png") center / 100% 100% no-repeat,
     linear-gradient(#efe2c1, #efe2c1) center / 86% 76% no-repeat;
 }
+
+/* ═══════════════════════════════════════════════════════════════════
+   ===== R12 농축단일·초상 =====
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* ── R12-1. 농축 분기 선택이 사라진 자리 ──────────────────────────
+   두 장짜리 선택 카드를 걷어냈다. 대신 "왜 이 농축인가"를 비교표 바로 위에
+   한 줄로 못박는다 — 역할 · 방향 · 단계당 증가폭이 늘 같은 자리에 있다. */
+
+.concentration-identity {
+  display: grid;
+  gap: 2px;
+  padding: 7px 9px;
+  border: 1px solid color-mix(in srgb, var(--element, #b8934a) 34%, rgba(122, 90, 42, 0.3));
+  border-left: 3px solid color-mix(in srgb, var(--element, #b8934a) 62%, #8a6a2c);
+  border-radius: 8px;
+  background: linear-gradient(180deg, #f2e8cd 0%, #e4d7b6 100%);
+  box-shadow: var(--bevel-up), 0 0 0 1px rgba(122, 90, 42, 0.18);
+}
+
+.concentration-identity b {
+  color: #2e2212;
+  font-size: 13px;
+  letter-spacing: -0.01em;
+}
+
+.concentration-identity b i {
+  color: #7a2f1c;
+  font-style: normal;
+  font-weight: 900;
+}
+
+.concentration-identity small {
+  color: #6d5a3c;
+  font-size: 11px;
+  line-height: 1.3;
+}
+
+.focus-frame-body .concentration-identity { padding: 9px 11px; }
+.focus-frame-body .concentration-identity b { font-size: 15px !important; }
+.focus-frame-body .concentration-identity small { font-size: 12px !important; }
+
 /* ══════════════════════════════════════════════════════════════════
    ===== R8 고정무대 =====
 

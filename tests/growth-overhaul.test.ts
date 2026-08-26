@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { BOARD_FORMATIONS, CELLS_PER_FORMATION } from "../src/core/content";
-import { FIRST_PREP_SECONDS, GameEngine, concentrationEssenceCost, dismantleEssenceValue } from "../src/core/game";
+import {
+  FIRST_PREP_SECONDS,
+  GameEngine,
+  autoConcentrationPath,
+  concentrationEssenceCost,
+  concentrationPathLabel,
+  dismantleEssenceValue
+} from "../src/core/game";
 import { ELEMENT_TRAIT_COSTS } from "../src/core/growth";
 import { STAGE_MULTIPLIERS, definitionForTower, elementUpgradeCost, summonCost } from "../src/core/hanzi";
 import type { Enemy, HanziDefinition, Tower } from "../src/core/types";
@@ -141,6 +148,48 @@ describe("safe dismantle, concentration, and element growth", () => {
     expect(engine.concentrateTower(target.id, "potent", { kind: "essence" })).toMatchObject({ ok: false });
     expect(engine.concentrateTower(target.id, "swift", { kind: "essence" })).toMatchObject({ ok: true });
     expect(target.concentration).toBe(2);
+  });
+
+  it("derives the concentration direction from the combat role instead of asking", () => {
+    const engine = new GameEngine("auto-concentration-path", "KR");
+    engine.begin();
+    const definition = safeDuplicateDefinition(engine);
+
+    // 초당 타수로 먹고사는 역할은 공속(swift).
+    for (const role of ["rapid", "support"] as const) {
+      const tower = { ...towerFor(definition, 300, 0), combatRole: role };
+      expect(autoConcentrationPath(tower)).toBe("swift");
+    }
+    // 한 방으로 먹고사는 나머지는 피해(potent).
+    for (const role of ["burst", "splash", "control", "economy"] as const) {
+      const tower = { ...towerFor(definition, 301, 0), combatRole: role };
+      expect(autoConcentrationPath(tower)).toBe("potent");
+    }
+    // 이미 박힌 방향은 역할과 어긋나도 유지된다(기존 세이브 일관성).
+    expect(autoConcentrationPath({ combatRole: "rapid", concentrationPath: "potent" })).toBe("potent");
+    expect(concentrationPathLabel("swift")).toBe("공속 농축");
+    expect(concentrationPathLabel("potent")).toBe("피해 농축");
+  });
+
+  it("concentrates a selected tower on its role direction with no branch prompt", () => {
+    const engine = new GameEngine("role-concentration", "KR");
+    engine.begin();
+    const definition = safeDuplicateDefinition(engine);
+    const rapid = { ...towerFor(definition, 310, 0), combatRole: "rapid" as const };
+    const burst = { ...towerFor(definition, 311, 1), combatRole: "burst" as const };
+    engine.state.towers = [rapid, burst];
+    engine.state.inventoryTowers = [];
+    engine.state.elementEssence[definition.wuxing] = concentrationEssenceCost(0) * 2;
+
+    engine.selectTower(rapid.id);
+    expect(engine.concentrateSelected()).toMatchObject({ ok: true });
+    expect(rapid.concentrationPath).toBe("swift");
+    expect(engine.state.lastMessage).toContain("공속 농축");
+
+    engine.selectTower(burst.id);
+    expect(engine.concentrateSelected()).toMatchObject({ ok: true });
+    expect(burst.concentrationPath).toBe("potent");
+    expect(engine.state.lastMessage).toContain("피해 농축");
   });
 
   it("quotes the true cumulative cost up to level 99 and spends it in one transaction", () => {

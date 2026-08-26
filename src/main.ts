@@ -31,7 +31,9 @@ import {
   GameEngine,
   FIRST_PREP_SECONDS,
   MAX_CONCENTRATION_LEVEL,
+  autoConcentrationPath,
   concentrationEssenceCost,
+  concentrationPathLabel,
   interestForGold
 } from "./core/game";
 import {
@@ -111,7 +113,6 @@ import type {
   AutomationMode,
   CasualStar,
   CompositionBranchPreview,
-  ConcentrationPath,
   Enemy,
   EvolutionOption,
   GameEvent,
@@ -415,7 +416,7 @@ app.innerHTML = `
         <section id="concentration-panel" class="concentration-workbench panel-view" data-panel-view="concentration" aria-label="자령 농축 공방">
           <header class="workbench-heading">
             <div><span>같은 자령을 더 강하게</span><strong>농축 공방</strong></div>
-            <p class="concentration-guide"><i>①</i> 왼쪽에서 자령 선택 <i>②</i> 연속·심화 중 택1 <i>③</i> 재료 지불 → 능력치 영구 상승</p>
+            <p class="concentration-guide"><i>①</i> 왼쪽에서 자령 선택 <i>②</i> 재료 지불 → 능력치 영구 상승 · 농축 방향은 역할이 정합니다</p>
           </header>
           <div id="concentration-layout" class="concentration-layout">
             <aside><div class="subheading"><b>① 대상 선택</b><small id="concentration-target-summary">0기</small></div><div id="concentration-target-list" class="concentration-target-list"></div></aside>
@@ -662,7 +663,7 @@ app.innerHTML = `
           <li><b>잠금</b><span>선택한 자령을 잠그면 공격·이동은 유지되지만 합성 재료와 판매 대상에서는 제외됩니다.</span></li>
           <li><b>자령 도감</b><span>전체 한자와 천자문 자령을 한 화면에서 봅니다. 별·독립 여부·조합표·쉬운 훈 풀이와 자령 초상화를 함께 확인합니다.</span></li>
           <li><b>런 인벤토리</b><span>동일한 한자는 한 스택으로 묶입니다. 인벤토리 자령을 고른 뒤 빈 칸을 누르면 배치하고, 찬 칸을 누르면 기존 자령을 인벤토리로 보내며 즉시 교체합니다.</span></li>
-          <li><b>농축 공방</b><span>같은 한자 중복 1기 또는 같은 오행 문기 4·6·8을 직접 고릅니다. 최초 연속·심화 분기는 영구 고정되며 실행 전 전후 전투 수치를 비교합니다.</span></li>
+          <li><b>농축 공방</b><span>같은 한자 중복 1기 또는 같은 오행 문기 4·6·8을 직접 고릅니다. 농축 방향은 자령의 역할이 정합니다 — 연사·지원은 공속(濃당 +7.5%), 나머지는 피해(濃당 +12%). 실행 전 전후 전투 수치를 비교합니다.</span></li>
           <li><b>지도 배율</b><span>기존 260% 크기를 새 100% 기준으로 사용합니다. 휠로 약 28%~200% 확대·축소하고, 빈 칸·길에서 좌클릭 드래그하거나 휠 버튼을 누른 채 드래그하면 지도를 이동합니다. 왼쪽 아래 배율 버튼은 중앙 정렬된 100%로 돌아갑니다.</span></li>
           <li><b>게임 배속</b><span>오른쪽 위 배속 버튼이나 F키로 1×·2×·3×를 순환합니다.</span></li>
           <li><b>게임오버</b><span>적은 경로 끝에서 사라지지 않고 계속 순환합니다. 전장에 ${MAX_ENEMIES}체가 쌓이거나 우두머리를 제한시간 안에 처치하지 못하면 즉시 실패합니다. 제어 능력은 적을 뒤로 밀지 않고 현재 공격권 안에서 감속·봉쇄합니다.</span></li>
@@ -918,7 +919,6 @@ let goalPanelMode: GoalPanelMode = "hanzi";
 let goalSearchQuery = "";
 let activePanelTab: PanelTab = "shop";
 let concentrationTargetId: number | null = null;
-let concentrationPath: ConcentrationPath = "swift";
 let concentrationPayment: "essence" | number = "essence";
 let growthElement: Wuxing = "木";
 const dismantleSelection = new Set<number>();
@@ -1449,7 +1449,6 @@ function startRun(useNewSeed = false): void {
   hideSummonReveal();
   closeCompositionDrawer();
   concentrationTargetId = null;
-  concentrationPath = "swift";
   concentrationPayment = "essence";
   growthElement = "木";
   dismantleSelection.clear();
@@ -1754,7 +1753,28 @@ function concentrationStateSignature(): string {
   const towers = [...engine.state.towers, ...engine.state.inventoryTowers]
     .map((tower) => `${tower.id}:${tower.char}:${tower.cell}:${tower.locked ? 1 : 0}:${tower.concentration ?? 0}:${tower.concentrationPath ?? "-"}`)
     .join("|");
-  return `${engine.state.phase}:${towers}:${WUXING_ORDER.map((wuxing) => engine.state.elementEssence[wuxing]).join(",")}:${concentrationTargetId ?? "-"}:${concentrationPath}:${concentrationPayment}`;
+  return `${engine.state.phase}:${towers}:${WUXING_ORDER.map((wuxing) => engine.state.elementEssence[wuxing]).join(",")}:${concentrationTargetId ?? "-"}:${concentrationPayment}`;
+}
+
+/**
+ * "왜 이 농축인가"를 한 줄로 적는다.
+ *
+ * 분기 선택 카드를 걷어낸 자리에는 설명이 남아야 한다 — 역할이 방향을 정했고,
+ * 그 방향이 무엇을 얼마나 올리는지가 비교표 바로 위에서 늘 보인다.
+ */
+function concentrationIdentityMarkup(tower: Tower): string {
+  const path = autoConcentrationPath(tower);
+  const gain = path === "swift" ? "+7.5%/濃" : "+12%/濃";
+  const detail = path === "swift"
+    ? "공격 대기 감소 · 濃당 피해 +5.5% · 사거리 +4"
+    : "피해 상승 · 濃당 대기 -2% · 의미 기술 +3.5% · 사거리 +4";
+  const roleDefault = tower.combatRole === "rapid" || tower.combatRole === "support" ? "swift" : "potent";
+  const legacy = tower.concentrationPath !== null && tower.concentrationPath !== undefined && tower.concentrationPath !== roleDefault;
+  return `<p class="concentration-identity">
+    <b>${ROLE_LABELS[tower.combatRole]}형 자령 — ${concentrationPathLabel(path)} <i>(${gain})</i></b>
+    <small>${detail}</small>
+    <small>${legacy ? "이전 런에서 고정된 방향이라 그대로 이어집니다." : "연사·지원은 공속, 나머지는 피해 — 역할이 방향을 정합니다."}</small>
+  </p>`;
 }
 
 function renderConcentration(): void {
@@ -1789,15 +1809,13 @@ function renderConcentration(): void {
     detail.innerHTML = `<div class="workbench-empty"><b>대상을 선택하세요</b><span>전장과 인벤토리 자령을 모두 확인할 수 있습니다.</span></div>`;
     return;
   }
-  const fixedPath = target.concentrationPath ?? null;
-  if (fixedPath) concentrationPath = fixedPath;
-  const quote = engine.concentrationQuote(target.id, concentrationPath);
+  // 방향은 사람이 고르지 않는다 — 역할이 정하고, 이미 박힌 자령은 그대로 간다.
+  const path = autoConcentrationPath(target);
+  const quote = engine.concentrationQuote(target.id, path);
   if (quote && typeof concentrationPayment === "number" && !quote.duplicateIds.includes(concentrationPayment)) concentrationPayment = "essence";
-  const pathLocked = fixedPath !== null;
-  const swiftSelected = concentrationPath === "swift";
   const currentLevel = target.concentration ?? 0;
   if (!quote) {
-    detail.innerHTML = `<article class="concentration-max-card" style="--element:${ELEMENT_STYLES[target.wuxing].color}"><b>${escapeHtml(target.char)}</b><div><span>${target.wuxing}행 · ${towerProgressionLabel(target)}</span><strong>濃 ${currentLevel}/3 · ${fixedPath === "potent" ? "심화" : "연속"} 농축 완성</strong><small>더 이상 재료를 소모하지 않습니다.</small></div></article>`;
+    detail.innerHTML = `<article class="concentration-max-card" style="--element:${ELEMENT_STYLES[target.wuxing].color}"><b>${escapeHtml(target.char)}</b><div><span>${target.wuxing}행 · ${towerProgressionLabel(target)}</span><strong>濃 ${currentLevel}/3 · ${concentrationPathLabel(path)} 완성</strong><small>더 이상 재료를 소모하지 않습니다.</small></div></article>`;
     return;
   }
   const essenceAvailable = engine.state.elementEssence[target.wuxing] >= quote.essenceCost;
@@ -1810,23 +1828,19 @@ function renderConcentration(): void {
   }).join("");
   detail.innerHTML = `
     <article class="concentration-focus" style="--element:${ELEMENT_STYLES[target.wuxing].color}">
-      <header><b>${escapeHtml(target.char)}</b><div><span>${target.wuxing}행 · ${towerProgressionLabel(target)} · ${target.cell < 0 ? "인벤토리" : "전장"}</span><strong>濃 ${quote.currentLevel} → ${quote.nextLevel}</strong><small>${pathLocked ? "선택한 분기는 영구 고정" : "첫 분기 선택 후 변경 불가"}</small></div></header>
-      <div class="subheading"><b>② 분기 선택</b><small>${pathLocked ? "이 자령의 분기는 이미 고정됨" : "처음 한 번만 고를 수 있습니다"}</small></div>
-      <div class="concentration-paths" role="radiogroup" aria-label="농축 분기">
-        <button type="button" data-concentration-path="swift" class="${swiftSelected ? "is-selected" : ""}" ${pathLocked && !swiftSelected ? "disabled" : ""}><b>迅 연속 농축</b><span>단계당 피해 +5.5%</span><span>공격 대기 -7.5% · 사거리 +4</span></button>
-        <button type="button" data-concentration-path="potent" class="${!swiftSelected ? "is-selected" : ""}" ${pathLocked && swiftSelected ? "disabled" : ""}><b>深 심화 농축</b><span>단계당 피해 +12%</span><span>대기 -2% · 의미 기술 +3.5% · 사거리 +4</span></button>
-      </div>
+      <header><b>${escapeHtml(target.char)}</b><div><span>${target.wuxing}행 · ${towerProgressionLabel(target)} · ${target.cell < 0 ? "인벤토리" : "전장"}</span><strong>濃 ${quote.currentLevel} → ${quote.nextLevel}</strong><small>${ROLE_LABELS[target.combatRole]} · ${concentrationPathLabel(path)}</small></div></header>
+      ${concentrationIdentityMarkup(target)}
       <div class="concentration-compare">
         <div><span>공격력</span><b>${Math.round(quote.current.damage)}</b><i>→</i><strong>${Math.round(quote.next.damage)}</strong></div>
         <div><span>초당 공격</span><b>${quote.current.attacksPerSecond.toFixed(1)}</b><i>→</i><strong>${quote.next.attacksPerSecond.toFixed(1)}</strong></div>
         <div><span>사거리</span><b>${Math.round(quote.current.range)}</b><i>→</i><strong>${Math.round(quote.next.range)}</strong></div>
         <div><span>기술 효과</span><b>${Math.round((quote.current.abilityEffect - 1) * 100)}%</b><i>→</i><strong>${Math.round((quote.next.abilityEffect - 1) * 100)}%</strong></div>
       </div>
-      <section class="concentration-payment"><div class="subheading"><b>③ 재료 지불</b><small>전장 자령과 잠긴 자령은 후보에서 제외</small></div><div class="payment-grid">
+      <section class="concentration-payment"><div class="subheading"><b>② 재료 지불</b><small>전장 자령과 잠긴 자령은 후보에서 제외</small></div><div class="payment-grid">
         ${paymentRows}
         <label class="payment-option is-essence ${concentrationPayment === "essence" ? "is-selected" : ""} ${essenceAvailable ? "" : "is-unavailable"}"><input type="radio" name="concentration-payment" value="essence" ${concentrationPayment === "essence" ? "checked" : ""} ${essenceAvailable ? "" : "disabled"}><b>${target.wuxing}</b><span>${target.wuxing} 문기 ${quote.essenceCost}</span><small>보유 ${engine.state.elementEssence[target.wuxing]}</small></label>
       </div></section>
-      <button id="concentration-confirm-button" class="workbench-primary" type="button" ${paymentReady ? "" : "disabled"}>${pathLocked ? "다음 단계 농축" : "분기 고정 후 농축"}</button>
+      <button id="concentration-confirm-button" class="workbench-primary" type="button" ${paymentReady ? "" : "disabled"}>濃 ${quote.currentLevel} → ${quote.nextLevel} 농축 실행</button>
     </article>`;
 }
 
@@ -1975,7 +1989,7 @@ function processEvent(event: GameEvent): void {
         pushPooled(rings, ringPool, takeRing(at, ELEMENT_STYLES[event.tower.wuxing].color, 0.9), 32);
         pushPooled(floaters, floaterPool, takeFloater(at, `濃 ${event.level}/3`, ELEMENT_STYLES[event.tower.wuxing].color, 1.05, true), 48);
       }
-      addCombatFeed("濃", `${event.tower.char} ${event.path === "swift" ? "연속" : "심화"} 농축`, event.usedDuplicate ? "동일 한자 중복 소비" : `${event.tower.wuxing} 문기 ${event.essenceCost} 소비`, ELEMENT_STYLES[event.tower.wuxing].color);
+      addCombatFeed("濃", `${event.tower.char} ${concentrationPathLabel(event.path)}`, event.usedDuplicate ? "동일 한자 중복 소비" : `${event.tower.wuxing} 문기 ${event.essenceCost} 소비`, ELEMENT_STYLES[event.tower.wuxing].color);
       break;
     case "statUpgrade": {
       const meta = UPGRADE_STAT_META[event.stat];
@@ -3030,7 +3044,7 @@ function renderSelected(): void {
   const remaining = abilities.tuning.signatureEvery - chargeStep;
   const nextEssenceCost = concentrationEssenceCost(concentration);
   const concentrationStatus = concentration >= MAX_CONCENTRATION_LEVEL
-    ? `濃 3/3 완성 · ${concentrationPath === "potent" ? "심화" : "연속"}`
+    ? `濃 3/3 완성 · ${concentrationPathLabel(concentrationPath ?? autoConcentrationPath(tower))}`
     : duplicateCount > 0 ? `중복 ${duplicateCount}기 사용 가능` : `${tower.wuxing} 문기 ${engine.state.elementEssence[tower.wuxing]}/${nextEssenceCost}`;
   const cleanup = engine.cleanupAssessments().find((assessment) => assessment.towerId === tower.id);
   const cleanupLabel = cleanup?.protected
@@ -6763,21 +6777,11 @@ must<HTMLElement>("#concentration-layout").addEventListener("click", (event) => 
     renderConcentration();
     return;
   }
-  const path = target.closest<HTMLButtonElement>("[data-concentration-path]")?.dataset.concentrationPath as ConcentrationPath | undefined;
-  if (path) {
-    concentrationPath = path;
-    concentrationPayment = "essence";
-    concentrationRenderKey = "";
-    renderConcentration();
-    return;
-  }
   if (!target.closest("#concentration-confirm-button") || concentrationTargetId === null) return;
   const selected = engine.selectedTower();
   if (!selected || selected.id !== concentrationTargetId) return;
-  if (!selected.concentrationPath) {
-    const label = concentrationPath === "swift" ? "연속 농축" : "심화 농축";
-    if (!window.confirm(`${selected.char}의 분기를 ${label}으로 고정할까요? 이후 분기 변경과 재설정은 불가능합니다.`)) return;
-  }
+  // 되돌릴 수 없는 선택지가 사라졌으므로 확인 대화상자도 함께 걷는다.
+  const concentrationPath = autoConcentrationPath(selected);
   const payment = concentrationPayment === "essence"
     ? { kind: "essence" as const }
     : { kind: "duplicate" as const, towerId: concentrationPayment };

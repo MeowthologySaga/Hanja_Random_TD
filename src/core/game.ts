@@ -72,6 +72,7 @@ import { SeededRng } from "./rng";
 import type {
   ActionResult,
   AutomationMode,
+  CombatRole,
   CompositionBranchPreview,
   ConcentrationLevel,
   ConcentrationPayment,
@@ -157,6 +158,28 @@ const CONCENTRATION_ESSENCE_COSTS = [4, 6, 8] as const;
 
 export function concentrationEssenceCost(currentLevel: number): number {
   return CONCENTRATION_ESSENCE_COSTS[Math.max(0, Math.min(2, currentLevel))] ?? 8;
+}
+
+/**
+ * 농축 방향은 더 이상 사람이 고르지 않는다 — 역할이 곧 방향이다.
+ *
+ * 두 갈래(swift=공속 / potent=피해)는 밸런스 상수로 남지만, 무엇을 고를지는
+ * 이미 정답이 있었다: 초당 타수로 먹고사는 연사·지원은 공속, 한 방으로 먹고사는
+ * 나머지는 피해. 자동 배치 경로가 쓰던 규칙을 그대로 승격시켜 수동 경로와
+ * 하나로 합친다. 이미 방향이 박힌 자령은 기존 세이브와의 일관성을 위해
+ * 그 방향을 그대로 유지한다.
+ */
+export function autoConcentrationPath(tower: {
+  combatRole: CombatRole;
+  concentrationPath?: ConcentrationPath | null;
+}): ConcentrationPath {
+  if (tower.concentrationPath) return tower.concentrationPath;
+  return tower.combatRole === "rapid" || tower.combatRole === "support" ? "swift" : "potent";
+}
+
+/** 화면 어디서나 같은 어휘를 쓰도록 방향 이름을 한곳에서 정한다. */
+export function concentrationPathLabel(path: ConcentrationPath): string {
+  return path === "swift" ? "공속 농축" : "피해 농축";
 }
 
 export function concentrationEssenceRefund(level: number): number {
@@ -2472,7 +2495,7 @@ export class GameEngine {
     const quote = this.concentrationQuote(targetId, path);
     if (!quote) {
       if ((target.concentration ?? 0) >= MAX_CONCENTRATION_LEVEL) return { ok: false, message: `${target.char} 농축이 최고 단계입니다.` };
-      return { ok: false, message: "이미 선택한 농축 분기는 변경할 수 없습니다." };
+      return { ok: false, message: `${target.char} 농축 방향은 ${concentrationPathLabel(target.concentrationPath ?? "swift")}으로 이미 고정되어 있습니다.` };
     }
     let usedDuplicate = false;
     if (payment.kind === "duplicate") {
@@ -2492,7 +2515,7 @@ export class GameEngine {
     target.concentration = quote.nextLevel;
     target.concentrationPath = quote.path;
     this.state.selectedTowerId = target.id;
-    this.state.lastMessage = `${target.char} 濃 ${target.concentration}/3 · ${quote.path === "swift" ? "연속" : "심화"} 농축`;
+    this.state.lastMessage = `${target.char} 濃 ${target.concentration}/3 · ${concentrationPathLabel(quote.path)}`;
     this.events.push({
       type: "concentrate",
       tower: { ...target },
@@ -2507,8 +2530,8 @@ export class GameEngine {
   concentrateSelected(path?: ConcentrationPath): ActionResult {
     const selected = this.selectedTower();
     if (!selected) return { ok: false, message: "농축할 자령을 선택하세요." };
-    const chosenPath = selected.concentrationPath ?? path;
-    if (!chosenPath) return { ok: false, message: "연속 농축 또는 심화 농축을 선택하세요." };
+    // 방향은 역할이 정한다. 인자는 세이브·테스트 호환용 잔재로만 남긴다.
+    const chosenPath = selected.concentrationPath ?? path ?? autoConcentrationPath(selected);
     const quote = this.concentrationQuote(selected.id, chosenPath);
     if (!quote) return this.concentrateTower(selected.id, chosenPath, { kind: "essence" });
     const duplicateId = quote.duplicateIds[0];
@@ -2864,8 +2887,7 @@ export function runAutoplay(seed: string, region: RegionCode = "KR", maxSeconds 
       if (concentrationTarget) {
         const duplicate = engine.state.inventoryTowers.find((tower) => tower.char === concentrationTarget.char && !tower.locked);
         if (duplicate) {
-          const path: ConcentrationPath = concentrationTarget.concentrationPath
-            ?? (concentrationTarget.combatRole === "rapid" || concentrationTarget.combatRole === "support" ? "swift" : "potent");
+          const path = autoConcentrationPath(concentrationTarget);
           engine.concentrateTower(concentrationTarget.id, path, { kind: "duplicate", towerId: duplicate.id });
         }
       }
