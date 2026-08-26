@@ -93,14 +93,14 @@ function setCodexMode(mode: CodexMode): void {
   });
   const search = must<HTMLInputElement>("#codex-search");
   // 영문 키커는 한국어 화면에서 혼자 읽히지 않는 장식이었다.
-  must<HTMLElement>("#codex-kicker").textContent = mode === "hanzi" ? "자령 기록" : mode === "recipes" ? "조합 경로 서고" : "사자성어 봉인 서고";
+  must<HTMLElement>("#codex-kicker").textContent = mode === "hanzi" ? "자령 기록" : mode === "recipes" ? "조합 경로 서고" : "사자성어 서고";
   must<HTMLElement>("#codex-title-label").textContent = mode === "hanzi" ? " 통합 자령 도감" : mode === "recipes" ? " 조합 도감" : " 사자성어 도감";
   search.placeholder = mode === "recipes" ? "결과·재료·훈음·능력 검색" : mode === "idioms" ? "사자성어·효과 검색" : "한자·훈음·쉬운 뜻·오행 검색";
   must<HTMLElement>("#codex-note").textContent = mode === "hanzi"
     ? `별은 합성 깊이를 뜻합니다 — 별이 많을수록 여러 번 합성해야 닿는 자령입니다. 한국 1,001자는 국립국어원 한국어기초사전과 글자별 교정표를 바탕으로 모두 쉬운 오늘말 풀이를 제공합니다. 훈음·독음 데이터 ${LEARNING_DATA_META.version}.`
     : mode === "recipes"
       ? "별은 합성 깊이를, 독립 표식은 상위 조합 재료로 쓰이지 않는 자령을 뜻합니다. 별과 독립 여부는 별개의 정보입니다."
-      : "같은 진의 한 줄 — 가로·세로·대각선 — 에 네 글자를 순서대로 놓으면 해당 사자성어의 봉인 효과가 발동합니다. 역순도 인정합니다.";
+      : "같은 진의 한 줄 — 가로·세로·대각선 — 에 네 글자를 순서대로 놓으면 해당 사자성어의 효과가 발동합니다. 역순도 인정합니다.";
   renderCodex(search.value);
 }
 
@@ -462,7 +462,7 @@ function renderIdiomCodexDetail(idiom: ReturnType<GameEngine["idioms"]>[number] 
   const live = ctx.engine.isIdiomSealActive(idiom.id);
   const featured = ctx.engine.idioms().some((candidate) => candidate.id === idiom.id);
   const sourceLabel = idiom.source === "cheonjamun" ? `천자문 제${idiom.sourceOrder}구` : "상용 사자성어";
-  const stateLabel = live ? "이번 런 발동 중" : sealed ? "봉인 이력 · 지금은 흩어짐" : featured ? "이번 런 목표" : "도감 수록";
+  const stateLabel = live ? "이번 런 발동 중" : sealed ? "발동 이력 · 지금은 흩어짐" : featured ? "이번 런 목표" : "도감 수록";
   detail.innerHTML = `
     <div class="idiom-codex-glyphs" style="--codex:${idiom.color}">${[...idiom.chars].map((char, index) => `<span><b>${char}</b><small>${index + 1}</small></span>`).join("")}</div>
     <p class="eyebrow">${sourceLabel} · ${stateLabel}</p>

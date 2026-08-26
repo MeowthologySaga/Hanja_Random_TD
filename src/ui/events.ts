@@ -133,8 +133,8 @@ export function processEvent(event: GameEvent): void {
         // 재발동은 첫 봉인보다 가볍게 — 파문·인장·대형 플래시 없이 발광과 스택 복귀만.
         ctx.idiomRenderKey = "";
         showIdiomResult(event.reading, event.meaning, event.bonus, event.color, true);
-        addCombatFeed("四", event.reading + " 재봉인", event.bonus, event.color);
-        showToast(`『${event.reading}』 봉인 재발동 — 줄이 다시 섰습니다`);
+        addCombatFeed("四", event.reading + " 재발동", event.bonus, event.color);
+        showToast(`『${event.reading}』 재발동 — 줄이 다시 섰습니다`);
         break;
       }
       for (const point of points) pushPooled(rings, ringPool, takeRing(point, event.color, 1.05), 32);
@@ -165,7 +165,7 @@ export function processEvent(event: GameEvent): void {
     case "idiomBroken": {
       // 유지형 규칙의 반대편. 발광·스택은 활성 목록을 보고 알아서 꺼지므로
       // 여기서는 "왜 꺼졌는지"만 말한다.
-      showToast(`『${event.reading}』 봉인 해제 — 줄이 흩어졌습니다`);
+      showToast(`『${event.reading}』 발동 해제 — 줄이 흩어졌습니다`);
       showIdiomBrokenResult(event.reading, event.bonus);
       addCombatFeed("四", event.reading + " 해제", "줄이 흩어졌습니다", "#9d8f78");
       ctx.idiomRenderKey = "";

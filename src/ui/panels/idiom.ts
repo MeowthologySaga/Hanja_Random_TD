@@ -19,7 +19,7 @@ export function resetIdiomResult(): void {
 export function showIdiomResult(reading: string, meaning: string, bonus: string, color: string, rejoined = false): void {
   idiomResult.style.setProperty("--idiom-result-color", color);
   must<HTMLElement>("#idiom-result-glyph").textContent = "四";
-  must<HTMLElement>("#idiom-result-name").textContent = reading + (rejoined ? " 재봉인" : " 자동 봉인");
+  must<HTMLElement>("#idiom-result-name").textContent = reading + (rejoined ? " 재발동" : " 자동 발동");
   must<HTMLElement>("#idiom-result-meaning").textContent = meaning;
   must<HTMLElement>("#idiom-result-bonus").textContent = bonus;
   idiomResult.classList.remove("is-active");
@@ -34,7 +34,7 @@ export function showIdiomResult(reading: string, meaning: string, bonus: string,
 export function showIdiomBrokenResult(reading: string, bonus: string): void {
   idiomResult.style.setProperty("--idiom-result-color", "#9d8f78");
   must<HTMLElement>("#idiom-result-glyph").textContent = "四";
-  must<HTMLElement>("#idiom-result-name").textContent = reading + " 봉인 해제";
+  must<HTMLElement>("#idiom-result-name").textContent = reading + " 발동 해제";
   must<HTMLElement>("#idiom-result-meaning").textContent = "네 자령이 줄을 벗어났습니다. 다시 세우면 재발동합니다.";
   must<HTMLElement>("#idiom-result-bonus").textContent = bonus + " 중단";
   idiomResult.classList.remove("is-active");
@@ -92,7 +92,7 @@ function maybeShowIdiomHint(target: IdiomDefinition | undefined): void {
   idiomHintHandled = true;
   if (idiomHintAlreadySeen()) return;
   markIdiomHintSeen();
-  showToast(`${target.chars} 재료가 모이고 있어요 — 같은 진의 한 줄(가로·세로·대각선)에 ①→④ 순서로 놓으면 봉인 발동! (역순도 가능)`);
+  showToast(`${target.chars} 재료가 모이고 있어요 — 같은 진의 한 줄(가로·세로·대각선)에 ①→④ 순서로 놓으면 발동! (역순도 가능)`);
   // 두 줄짜리 안내라 평소 자리(bottom 45px)에서는 지도·강조 버튼과 겹친다.
   toast.classList.add("toast--idiom-hint");
   window.setTimeout(() => toast.classList.remove("toast--idiom-hint"), 2000);
@@ -120,7 +120,7 @@ export function renderIdiomHud(): void {
     must<HTMLElement>("#idiom-name").textContent = "사자성어 전서 완성";
     must<HTMLElement>("#idiom-meaning").textContent = "각 성구의 보너스는 네 자령이 그 줄을 지키는 동안만 발동합니다.";
     must<HTMLElement>("#idiom-bonus").textContent = `발동 중 ${activeCount} / ${ctx.engine.idioms().length}구`;
-    must<HTMLElement>("#idiom-hint").textContent = activeCount === ctx.engine.idioms().length ? "四句成陣 · 모든 봉인 발동 중" : "흩어진 줄을 다시 세우면 재발동합니다";
+    must<HTMLElement>("#idiom-hint").textContent = activeCount === ctx.engine.idioms().length ? "四句成陣 · 모든 성어 발동 중" : "흩어진 줄을 다시 세우면 재발동합니다";
     return;
   }
   hud.classList.remove("idiom-hud--complete");
@@ -166,7 +166,7 @@ function renderIdiomSealStatus(): void {
     .map((seal) => {
       const idiom = idiomById(ctx.engine.state.region, seal.idiomId);
       if (!idiom) return "";
-      const label = seal.active ? "발동 중" : "봉인 이력 · 지금은 흩어짐";
+      const label = seal.active ? "발동 중" : "발동 이력 · 지금은 흩어짐";
       return `<div class="idiom-seal-row ${seal.active ? "is-live" : "is-scattered"}" style="--idiom:${idiom.color}"><b>${escapeHtml(idiom.chars)}</b><span>${escapeHtml(idiomReadingForNotation(idiom, ctx.engine.state.notation))}</span><em>${escapeHtml(shortIdiomBonusLabel(idiom.bonus.label))}</em><mark>${label}</mark></div>`;
     })
     .join("");
@@ -192,7 +192,7 @@ export function renderActiveIdioms(): void {
       if (!idiom) return "";
       const bonus = shortIdiomBonusLabel(idiom.bonus.label);
       const reading = idiomReadingForNotation(idiom, ctx.engine.state.notation);
-      return `<button type="button" class="active-idiom" data-active-idiom="${escapeHtml(seal.idiomId)}" style="--idiom:${idiom.color}" title="${escapeHtml(reading)} · ${escapeHtml(idiom.bonus.label)} — 눌러서 봉인 칸으로 이동" aria-label="${escapeHtml(reading)} 봉인 · ${escapeHtml(idiom.bonus.label)} · 눌러서 해당 네 칸으로 이동"><b>${escapeHtml(idiom.chars)}</b><span>${escapeHtml(bonus)}</span></button>`;
+      return `<button type="button" class="active-idiom" data-active-idiom="${escapeHtml(seal.idiomId)}" style="--idiom:${idiom.color}" title="${escapeHtml(reading)} · ${escapeHtml(idiom.bonus.label)} — 눌러서 발동 칸으로 이동" aria-label="${escapeHtml(reading)} 발동 · ${escapeHtml(idiom.bonus.label)} · 눌러서 해당 네 칸으로 이동"><b>${escapeHtml(idiom.chars)}</b><span>${escapeHtml(bonus)}</span></button>`;
     })
     .join("");
   stack.classList.toggle("is-empty", visible.length === 0);

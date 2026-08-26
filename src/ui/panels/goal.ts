@@ -87,7 +87,7 @@ export function renderGoal(): void {
       <div class="idiom-target-status"><b>${Math.round(idiomProgress.readiness * 100)}%</b><span>${idiomProgress.missingChars.length > 0 ? `부족 ${idiomProgress.missingChars.map(escapeHtml).join("·")}` : "배치 준비"}</span></div>`;
   } else {
     idiomCard.removeAttribute("style");
-    idiomCard.innerHTML = `<div class="goal-selector-empty"><b>이번 판 성어 목표를 모두 봉인했습니다</b><span>성어 목록에서 다음 목표를 선택할 수 있습니다.</span></div>`;
+    idiomCard.innerHTML = `<div class="goal-selector-empty"><b>이번 판 성어 목표를 모두 발동했습니다</b><span>성어 목록에서 다음 목표를 선택할 수 있습니다.</span></div>`;
   }
 
   const modePercent = ctx.goalPanelMode === "idiom" && idiomProgress ? Math.round(idiomProgress.readiness * 100) : goalPercent;
@@ -194,7 +194,7 @@ function renderIdiomGoalChoices(idioms: readonly IdiomDefinition[], ownedCounts:
   return rows.map(({ idiom, progress, selected, sealed }) => {
     const classes = [selected ? "is-current" : "", sealed ? "is-complete" : "", progress.owned === progress.total ? "is-ready" : ""].filter(Boolean).join(" ");
     const glyphs = ownedIdiomGlyphMarkup(idiom.chars, ownedCounts);
-    const status = selected ? "추적 중" : sealed ? "봉인 완료" : progress.owned === progress.total ? "배치 준비" : `${progress.owned}/${progress.total}자`;
+    const status = selected ? "추적 중" : sealed ? "발동 완료" : progress.owned === progress.total ? "배치 준비" : `${progress.owned}/${progress.total}자`;
     return `<button type="button" class="goal-choice-card goal-choice-card--idiom ${classes}" data-goal-idiom="${escapeHtml(idiom.id)}" style="--goal-accent:${idiom.color}" aria-pressed="${String(selected)}" ${sealed ? "disabled" : ""}>
       <span class="goal-choice-idiom-glyphs">${glyphs}</span>
       <span class="goal-choice-copy"><strong>${escapeHtml(idiomReadingForNotation(idiom, ctx.engine.state.notation))}</strong><small>${escapeHtml(idiom.meaning)}</small><em>${escapeHtml(idiom.bonus.label)} · ${progress.missingChars.length > 0 ? `부족 ${progress.missingChars.map(escapeHtml).join("·")}` : "네 글자 보유"}</em></span>

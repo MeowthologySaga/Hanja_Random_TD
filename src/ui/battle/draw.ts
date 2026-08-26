@@ -1078,9 +1078,9 @@ function drawIdiomFlash(): void {
   context.shadowBlur = 0;
   context.font = '800 19px "Malgun Gothic", sans-serif';
   context.lineWidth = 6;
-  context.strokeText(`${flash.reading} · 봉인`, 0, 50);
+  context.strokeText(`${flash.reading} · 발동`, 0, 50);
   context.fillStyle = flash.color;
-  context.fillText(`${flash.reading} · 봉인`, 0, 50);
+  context.fillText(`${flash.reading} · 발동`, 0, 50);
   context.restore();
 }
 

@@ -2,7 +2,7 @@
  * 수련장(튜토리얼 모드) 완주 스펙.
  *
  * 첫 방문 상태에서 수련장에 들어가 8걸음 각본(소환→배치→첫 웨이브→3합→
- * 티어 소환→강화→사자성어 봉인→수료)을 실제 조작으로 끝까지 밟고, 수료
+ * 티어 소환→강화→사자성어 발동→수료)을 실제 조작으로 끝까지 밟고, 수료
  * 기록(localStorage)과 첫 방문 강조 해제까지 확인한다. 진행 감지는 각 걸음이
  * 셸에 남기는 data-tutorial-step 을 쓴다(각본 완료 감지 = 속성 전이).
  */
@@ -46,8 +46,8 @@ async function clickCell(page: Page, cell: number): Promise<void> {
 }
 
 test("walks the training grounds through all eight scripted steps", async ({ page }) => {
-  // 3걸음은 이제 전멸 대기 없이 관전 2.6초 뒤 곧장 넘어간다. 여유는 자산
-  // 로딩·저사양 CI 를 위한 것이다.
+  // 3걸음은 전멸 대기 없이 관전(4초 자동 또는 아무 곳 클릭) 뒤 곧장 넘어간다.
+  // 여유는 자산 로딩·저사양 CI 를 위한 것이다.
   test.setTimeout(120_000);
   mkdirSync(SHOT_DIR, { recursive: true });
   mkdirSync(TRACK_H_DIR, { recursive: true });
@@ -86,13 +86,17 @@ test("walks the training grounds through all eight scripted steps", async ({ pag
 
   await expect(shell).toHaveAttribute("data-phase", "combat");
   // 관전 말풍선(적 한계·자동 공격 설명)이 뜨고, 전멸을 기다리지 않는다.
+  // 진행 방법이 문구에 박혀 있다 — "(아무 곳이나 눌러 계속)".
   await expect(page.locator("#tutorial-title")).toContainText("자령에게 맡겨요");
+  await expect(page.locator("#tutorial-body")).toContainText("아무 곳이나 눌러 계속");
   await page.screenshot({ path: `${TRACK_H_DIR}/tutorial-step3-combat-watch-1280x720.png` });
-  // 관전 2.6초 뒤 전투가 배경에서 계속되는 채로 4걸음이 열린다(≤10초 게이트).
-  await expect(shell).toHaveAttribute("data-tutorial-step", "4", { timeout: 15_000 });
+  // 관전 클릭 진행 — 4초 자동을 기다리지 않고 아무 곳 클릭이 곧 [다음]이다.
+  await page.locator("#tutorial-bubble").click();
+  await expect(shell).toHaveAttribute("data-tutorial-step", "4", { timeout: 3_000 });
   const step3Seconds = (Date.now() - waveStartedAt) / 1000;
   console.log(`[track-h] step-3 wave duration: ${step3Seconds.toFixed(1)}s`);
-  expect(step3Seconds).toBeLessThan(10);
+  // 4초 자동 진행보다 먼저 도달했어야 클릭 진행이 증명된다.
+  expect(step3Seconds).toBeLessThan(4);
 
   // 4걸음 — 3합 승급. 같은 별 3기가 지급돼 있다.
   await page.locator('[data-panel-tab="evolution"]').click();
@@ -101,7 +105,13 @@ test("walks the training grounds through all eight scripted steps", async ({ pag
   await expect(fuseAll).toBeEnabled();
   await page.screenshot({ path: `${SHOT_DIR}/tutorial-step4-fusion-1280x720.png` });
   await fuseAll.click();
-  await expect(shell).toHaveAttribute("data-tutorial-step", "5");
+  // 완료 연출 — 승급이 남긴 문기를 자원칸 스포트라이트로 짚는다(걸음 수 유지).
+  await expect(page.locator("#tutorial-title")).toContainText("승급이 문기를 남겼어요");
+  await expect(page.locator("#tutorial-body")).toContainText("아무 곳이나 눌러 계속");
+  await page.screenshot({ path: `${TRACK_H_DIR}/tutorial-step4-essence-spotlight-1280x720.png` });
+  // 아무 곳 클릭 진행 — soft-lock 이 삼키는 상단 띠 클릭도 [다음]으로 친다.
+  await page.mouse.click(500, 28);
+  await expect(shell).toHaveAttribute("data-tutorial-step", "5", { timeout: 3_000 });
 
   // 5걸음 — 티어 소환. 중급 소환 값이 지급돼 있다.
   await page.locator('[data-panel-tab="shop"]').click();
@@ -110,29 +120,43 @@ test("walks the training grounds through all eight scripted steps", async ({ pag
   await midstar.click();
   await expect(shell).toHaveAttribute("data-tutorial-step", "6");
 
-  // 6걸음 — 강화. 문기가 지급돼 있고 오행 강화 [1회]가 눌린다.
+  // 6걸음 — 문기 교육. 출처(승급·분해) 도입 → 강화 [1회] 조작 → 맺음 메시지.
+  await expect(page.locator("#tutorial-body")).toContainText("3체 승급과 자령 분해");
   await page.locator('[data-panel-tab="growth"]').click();
   const upgrade = page
     .locator('#growth-upgrade-list [data-growth-upgrade-scope="element"][data-growth-amount="1"]:not([disabled])')
     .first();
   await expect(upgrade).toBeVisible();
+  // 본문 — 강화 조작 + 농축 소개(조작은 강화 1회뿐).
+  await expect(page.locator("#tutorial-body")).toContainText("농축");
+  await page.screenshot({ path: `${TRACK_H_DIR}/tutorial-step6-growth-body-1280x720.png` });
   await upgrade.click();
-  await expect(shell).toHaveAttribute("data-tutorial-step", "7");
+  // 맺음 — "낮은 별이어도 괜찮아요"가 성어 걸음(7) 직전에 선다. 클릭 진행.
+  await expect(page.locator("#tutorial-title")).toContainText("낮은 별이어도 괜찮아요");
+  await expect(page.locator("#tutorial-body")).toContainText("아무 곳이나 눌러 계속");
+  await page.screenshot({ path: `${TRACK_H_DIR}/tutorial-step6-growth-close-1280x720.png` });
+  await page.locator("#tutorial-bubble").click();
+  await expect(shell).toHaveAttribute("data-tutorial-step", "7", { timeout: 3_000 });
 
-  // 7걸음 — 사자성어 봉인. 네 글자가 지급되고 1번째는 미리 놓여 있다.
+  // 7걸음 — 사자성어 발동. 네 글자가 지급되고 1번째는 미리 놓여 있다.
   const cellsAttribute = await shell.getAttribute("data-tutorial-idiom-cells");
   const cells = (cellsAttribute ?? "").split(",").map(Number);
   expect(cells).toHaveLength(4);
   await expect(page.locator("#tutorial-body")).toContainText("줄을 지키는 동안만");
+  await expect(page.locator("#tutorial-body")).toContainText("순서는 자유");
   await page.screenshot({ path: `${SHOT_DIR}/tutorial-step7-idiom-1280x720.png` });
-  for (const cell of cells.slice(1)) {
+  // 순서 비강제 — 순번과 어긋난 칸부터(③번 칸에 ②, ④번 칸에 ③) 놓아도
+  // 각본이 제 순번 칸으로 맞춰 발동까지 이어진다.
+  const scrambled = [cells[2] as number, cells[3] as number, cells[3] as number];
+  for (const cell of scrambled) {
     await clickCell(page, cell);
-    // 다음 글자 자령이 각본에 의해 자동 선택될 시간을 준다.
+    // 배치 정렬·다음 글자 자동 선택이 한 프레임 돌 시간을 준다.
     await page.waitForTimeout(250);
   }
   await expect(shell).toHaveAttribute("data-tutorial-step", "8", { timeout: 10_000 });
 
-  // 8걸음 — 수료. 발동 연출 뒤 수료막(배운 것 4줄)이 뜨고 기록이 남는다.
+  // 8걸음 — 수료. 발동 연출 4초(또는 아무 곳 클릭) 뒤 수료막(배운 것 4줄)이
+  // 뜨고 기록이 남는다. 여기서는 4초 자동 경로를 그대로 태운다.
   await expect(page.locator("#tutorial-complete")).toBeVisible({ timeout: 10_000 });
   await expect(page.locator("#tutorial-summary li")).toHaveCount(4);
   await expect(page.getByTestId("tutorial-exit")).toBeHidden();

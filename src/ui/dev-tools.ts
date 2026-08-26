@@ -140,7 +140,7 @@ function stageIdiom(idiomId: string, placeAll: boolean): void {
     return;
   }
   if (state.idiomSeals.some((seal) => seal.idiomId === idiom.id)) {
-    fail(`${idiom.reading}은 이미 이 런에서 봉인했습니다`);
+    fail(`${idiom.reading}은 이미 이 런에서 발동했습니다`);
     return;
   }
   const formationIndex = state.unlockedFormations[0];
@@ -170,7 +170,7 @@ function stageIdiom(idiomId: string, placeAll: boolean): void {
     if (placeAll) {
       const activated = engine.resolveIdiomFormations();
       if (activated === 0 && !engine.isIdiomSealActive(idiom.id)) {
-        fail(`${idiom.chars} 줄은 섰지만 봉인이 발동하지 않았습니다 — 줄 배치를 확인하세요`);
+        fail(`${idiom.chars} 줄은 섰지만 성어가 발동하지 않았습니다 — 줄 배치를 확인하세요`);
         return;
       }
       // 발동 알림(자동 봉인 · lastMessage)은 엔진이 이미 남겼다 — 덮지 않는다.
@@ -478,7 +478,7 @@ function refreshIdiomSelect(select: HTMLSelectElement): void {
     .map((idiom) => {
       const sealed = engine.state.idiomSeals.some((seal) => seal.idiomId === idiom.id);
       const selected = idiom.id === target?.id ? " selected" : "";
-      return `<option value="${idiom.id}"${selected}${sealed ? " disabled" : ""}>${idiom.chars} · ${idiom.reading}${sealed ? " (봉인됨)" : ""}</option>`;
+      return `<option value="${idiom.id}"${selected}${sealed ? " disabled" : ""}>${idiom.chars} · ${idiom.reading}${sealed ? " (발동됨)" : ""}</option>`;
     })
     .join("");
 }
