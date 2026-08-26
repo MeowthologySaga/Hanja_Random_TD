@@ -44,6 +44,9 @@ function apply(): void {
   scale = next;
   applied = true;
   document.documentElement.style.setProperty("--stage-scale", String(scale));
+  // 축소 배율에서는 합성 볼드 세리프·넓은 발광이 다운스케일에 뭉개진다.
+  // CSS 가 media query 로는 배율을 읽을 수 없으므로 대역을 데이터로 공개한다.
+  document.documentElement.dataset.stageScaleBand = scale < 0.85 ? "small" : "full";
 }
 
 /**
