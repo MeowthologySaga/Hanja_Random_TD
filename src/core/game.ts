@@ -198,6 +198,40 @@ export function dismantleEssenceValue(stage: Stage, concentration = 0): number {
   return Math.max(1, stage * stage + concentrationEssenceRefund(concentration));
 }
 
+/**
+ * 별승급 진법의 분해 표. 별 하나가 문기 몇 개인가.
+ *
+ * 자형연성의 `단계²`(1/4/9/16/25)와 달리 별승급은 8칸이라 곡선을 따로 둔다.
+ * 3체 승급이 잉여 자령을 전부 먹어 분해할 것이 남지 않으므로, 이 표는
+ * 분해뿐 아니라 승급 환급(`casualFusionEssenceRefund`)의 기준이기도 하다.
+ */
+const CASUAL_DISMANTLE_ESSENCE: readonly number[] = Object.freeze([0, 1, 1, 2, 3, 5, 7, 10, 14]);
+const CASUAL_DISMANTLE_SCORE: readonly number[] = Object.freeze([0, 1, 1, 3, 3, 6, 6, 10, 15]);
+
+export function casualDismantleEssence(star: number): number {
+  return CASUAL_DISMANTLE_ESSENCE[Math.max(0, Math.min(8, Math.floor(star)))] ?? 1;
+}
+
+export function casualDismantleScore(star: number): number {
+  return CASUAL_DISMANTLE_SCORE[Math.max(0, Math.min(8, Math.floor(star)))] ?? 1;
+}
+
+/**
+ * 삼체일득 — 사라진 셋 가운데 한 몫은 문기로 남는다.
+ *
+ * 별승급 진법에서 문기의 유일한 입구는 분해였는데, 3체 승급이 잉여 자령을 전부
+ * 먹어 분해 대기열이 비어 버렸다(실측 분해 0~4기·문기 0~6/런). 승급 자체를
+ * 문기 입구로 삼아 두 루프의 재료 경쟁을 없앤다. 돌려주는 양은 소모한 별
+ * 1기의 분해값이므로 "셋 중 하나만큼은 되찾는다"가 규칙 문장 그대로다.
+ */
+export function casualFusionEssenceRefund(fromStar: number): number {
+  return casualDismantleEssence(fromStar);
+}
+
+export function casualFusionDismantleScore(fromStar: number): number {
+  return casualDismantleScore(fromStar);
+}
+
 export interface CleanupAssessment {
   towerId: number;
   protected: boolean;
@@ -1825,6 +1859,16 @@ export class GameEngine {
     this.state.inventoryTowers = this.state.inventoryTowers.filter((tower) => !consumedIds.has(tower.id));
     for (const wuxing of Object.keys(refunds) as Wuxing[]) this.state.elementEssence[wuxing] += refunds[wuxing];
 
+    // 삼체일득 문기. 승급이 분해 대기열을 통째로 먹는 구조라 승급 자체를 문기
+    // 입구로 삼는다. 농축 환급과 달리 이것은 새로 생기는 문기이므로 생성량에도
+    // 함께 적는다(분해 점수도 같이 올라야 오행 특성이 열린다).
+    const fusionEssence = casualFusionEssenceRefund(quote.fromStar);
+    if (fusionEssence > 0) {
+      this.state.elementEssence[quote.wuxing] += fusionEssence;
+      this.state.elementEssenceGenerated[quote.wuxing] += fusionEssence;
+      this.state.elementDismantleScore[quote.wuxing] += casualFusionDismantleScore(quote.fromStar);
+    }
+
     const newDiscovery = !this.state.discoveredChars.includes(definition.char);
     const tower = this.createTower(definition, inheritedCell);
     tower.pulse = 1;
@@ -2198,13 +2242,13 @@ export class GameEngine {
 
   towerDismantleEssenceValue(tower: Tower): number {
     if (this.state.mode === "standard") return dismantleEssenceValue(tower.stage, tower.concentration ?? 0);
-    const base = [0, 1, 1, 2, 3, 5, 7, 10, 14][tower.casualStar ?? tower.naturalStar ?? 1] ?? 1;
+    const base = casualDismantleEssence(tower.casualStar ?? tower.naturalStar ?? 1);
     return base + concentrationEssenceRefund(tower.concentration ?? 0);
   }
 
   towerDismantleScore(tower: Tower): number {
     if (this.state.mode === "standard") return dismantleScoreForStage(tower.stage);
-    return [0, 1, 1, 3, 3, 6, 6, 10, 15][tower.casualStar ?? tower.naturalStar ?? 1] ?? 1;
+    return casualDismantleScore(tower.casualStar ?? tower.naturalStar ?? 1);
   }
 
   towerSellValue(tower: Tower): number {
