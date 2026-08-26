@@ -50,3 +50,56 @@
 }
 
 #idiom-panel .idiom-seal-row :is(b, span, em, mark) { line-height: 1.2; }
+
+/* ── K-3. 발동 칩 효과 문구 — 수치는 절대 자르지 않는다 ─────────────
+   실측: 168px 칩에서 "적 이동 속도 -10%" 가 8px 넘쳐 수치째 말줄임됐다.
+   폭을 186px 로 18px 만 넓히고, 설명부(em)만 말줄임 대상으로 두고 수치
+   (strong)에는 flex-shrink: 0 을 박는다 — 자리가 모자라면 잘리는 대신
+   다음 줄로 내려간다(칩 2줄 허용). 전장을 덮지 않는 선의 최대 폭이다. */
+
+.active-idioms { width: 186px; }
+
+.active-idiom {
+  grid-template-columns: minmax(0, auto) minmax(0, 1fr);
+  align-items: center;
+  padding: 3px 8px 4px 6px;
+}
+
+.active-idiom > .active-idiom-chars {
+  font-size: 13px;
+  line-height: 1.15;
+}
+
+.active-idiom > .active-idiom-effect {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: 4px;
+  row-gap: 0;
+  min-width: 0;
+  overflow: visible;
+  white-space: normal;
+}
+
+.active-idiom > .active-idiom-effect > em {
+  min-width: 0;
+  overflow: hidden;
+  color: color-mix(in srgb, var(--idiom) 70%, #f2f6ff);
+  font-size: 11.5px;
+  font-style: normal;
+  font-weight: 800;
+  letter-spacing: -0.035em;
+  line-height: 1.2;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.active-idiom > .active-idiom-effect > .active-idiom-value {
+  flex: 0 0 auto;
+  color: #fff2cf;
+  font-size: 11.5px;
+  font-weight: 900;
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+  white-space: nowrap;
+}

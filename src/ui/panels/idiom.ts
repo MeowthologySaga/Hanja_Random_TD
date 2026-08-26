@@ -177,6 +177,22 @@ function shortIdiomBonusLabel(label: string): string {
   return label.replace(/^모든 자령 /, "").replace(/^모든 적 /, "적 ").replace(/^합성할 때마다 /, "합성 ");
 }
 
+/*
+ * 트랙 K 과업 3 (gripe #11-3) — 칩 효과 문구에서 수치는 절대 자르지 않는다.
+ *
+ * "景行維賢 적 이동 속도 -…" 처럼 끝의 수치가 통째로 사라졌다(실측 8px 잘림).
+ * 요약은 허용하되 잘리는 쪽은 언제나 설명부여야 한다 — 설명부와 수치를 따로
+ * 조판해 수치 토막만 flex-shrink: 0 으로 못 박고, 폭이 모자라면 자르는 대신
+ * 다음 줄로 내린다(칩 2줄 허용).
+ */
+
+/** `적 이동 속도 -10%` → { text: "적 이동 속도", value: "-10%" }. 수치가 없으면 value 는 빈 문자열. */
+function splitIdiomBonus(label: string): { text: string; value: string } {
+  const match = /^(.*?)\s*([+-]?\d+(?:\.\d+)?\s*%?)$/u.exec(label);
+  if (!match) return { text: label, value: "" };
+  return { text: (match[1] ?? "").trim(), value: (match[2] ?? "").replace(/\s+/gu, "") };
+}
+
 export function renderActiveIdioms(): void {
   // R18: 스택은 "지금 발동 중"만 센다. 흩어진 봉인은 기록으로만 남아 성어 탭에 보인다.
   const seals = ctx.engine.activeIdiomSeals();
@@ -190,9 +206,13 @@ export function renderActiveIdioms(): void {
     .map((seal) => {
       const idiom = idiomById(ctx.engine.state.region, seal.idiomId);
       if (!idiom) return "";
-      const bonus = shortIdiomBonusLabel(idiom.bonus.label);
+      const bonus = splitIdiomBonus(shortIdiomBonusLabel(idiom.bonus.label));
       const reading = idiomReadingForNotation(idiom, ctx.engine.state.notation);
-      return `<button type="button" class="active-idiom" data-active-idiom="${escapeHtml(seal.idiomId)}" style="--idiom:${idiom.color}" title="${escapeHtml(reading)} · ${escapeHtml(idiom.bonus.label)} — 눌러서 발동 칸으로 이동" aria-label="${escapeHtml(reading)} 발동 · ${escapeHtml(idiom.bonus.label)} · 눌러서 해당 네 칸으로 이동"><b>${escapeHtml(idiom.chars)}</b><span>${escapeHtml(bonus)}</span></button>`;
+      const value = bonus.value ? `<strong class="active-idiom-value">${escapeHtml(bonus.value)}</strong>` : "";
+      return `<button type="button" class="active-idiom" data-active-idiom="${escapeHtml(seal.idiomId)}" style="--idiom:${idiom.color}" title="${escapeHtml(reading)} · ${escapeHtml(idiom.bonus.label)} — 눌러서 발동 칸으로 이동" aria-label="${escapeHtml(reading)} 발동 · ${escapeHtml(idiom.bonus.label)} · 눌러서 해당 네 칸으로 이동">`
+        + `<b class="active-idiom-chars">${escapeHtml(idiom.chars)}</b>`
+        + `<span class="active-idiom-effect"><em>${escapeHtml(bonus.text)}</em>${value}</span>`
+        + `</button>`;
     })
     .join("");
   stack.classList.toggle("is-empty", visible.length === 0);
