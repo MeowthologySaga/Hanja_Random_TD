@@ -1,4 +1,14 @@
 export type RegionCode = "KR" | "JP" | "CN";
+/**
+ * 표기(읽기) 축 — gripe #6 범위×표기 2축 분리.
+ *
+ * RegionCode 는 이제 로스터 범위·자형만 맡고, 화면에 어떤 읽기를 쓸지는
+ * 이 축이 정한다. 기본값은 로스터의 자국 표기(KR→kr-hunum, JP→jp-onkun,
+ * CN→cn-pinyin)라 현행 동작과 같고, 교차 조합은 통합 표기 테이블
+ * (`handoff/to-codex/asset-request-v8-reading-table.md` → `src/data/unified-readings.json`)
+ * 도착 뒤 NOTATION_AXIS_READY 플래그로 연다.
+ */
+export type NotationCode = "kr-hunum" | "jp-onkun" | "cn-pinyin";
 export type Wuxing = "木" | "火" | "土" | "金" | "水";
 export type ElementKind = "wood" | "fire" | "earth" | "metal" | "water";
 export type Stage = 1 | 2 | 3 | 4 | 5;
@@ -295,6 +305,8 @@ export interface IdiomSeal {
 export interface GameState {
   seed: string;
   region: RegionCode;
+  /** 읽기 표기 축. 기본은 로스터의 자국 표기 — defaultNotationForRegion(region). */
+  notation: NotationCode;
   mode: GameMode;
   phase: RunPhase;
   /** phase 가 "defeat" 일 때만 채워진다. 그 외에는 null. */
