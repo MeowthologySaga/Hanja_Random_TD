@@ -1,5 +1,18 @@
 import { expect, test, type Page } from "@playwright/test";
 
+// 첫 방문 코치 오버레이(#coach-layer)가 패널 탭 클릭을 가로채 대부분의 검사가
+// 시작하자마자 타임아웃했다. 실제 사용자는 한 번 보고 끝나는 안내이므로
+// 브라우저 저장소에 "이미 봤다"를 심어 두고 검사는 본론부터 시작한다.
+test.beforeEach(async ({ page }) => {
+  await page.addInitScript(() => {
+    try {
+      window.localStorage.setItem("hanja-td:coach-seen-v1", "1");
+    } catch {
+      // 저장이 막힌 환경에서는 각 검사가 코치를 직접 닫는다.
+    }
+  });
+});
+
 async function canvasPositionForWorld(page: Page, worldX: number, worldY: number): Promise<{ x: number; y: number }> {
   const canvas = page.locator("#battle-canvas");
   const box = await canvas.boundingBox();
@@ -69,7 +82,8 @@ test("shows a readable single summon reveal and explains the ten-pull milestone"
   await page.reload();
   await page.getByTestId("start-run").click();
   await openShop(page);
-  await expect(page.locator("#multi-summon-cost")).toHaveText("10W 개방");
+  // 10연은 이제 상품 카드다. 가격 자리에 개방 조건을 그대로 적는다.
+  await expect(page.locator('[data-summon-product="multi"] em')).toHaveText("10W 개방");
   await expect(page.getByTestId("multi-summon-button")).toBeDisabled();
   await page.screenshot({ path: "artifacts/summon-ten-locked-1280x720.png", fullPage: true });
 });
@@ -110,7 +124,13 @@ test("freezes the opening until the first summon opens its matching formation", 
   await expect(page.getByTestId("early-wave")).toBeEnabled();
   await expect(page.locator('[data-opening-step="2"]')).toHaveClass(/is-current/u);
 
+  // 해금은 즉시 구매가 아니라 확인 팝업을 거친다. 전장 자물쇠와 같은 경로다.
   await page.locator("#formation-unlock-list > button:not(.is-unlocked)").first().click();
+  await expect(page.locator("#formation-unlock-dialog")).toBeVisible();
+  await expect(page.locator("#formation-unlock-body")).toContainText("18엽전");
+  await expect(page.getByTestId("formation-unlock-confirm")).toBeEnabled();
+  await page.getByTestId("formation-unlock-confirm").click();
+  await expect(page.locator("#formation-unlock-dialog")).toBeHidden();
   await expect(page.locator("#message-value")).toContainText("해금");
   await expect(page.locator("#gold-value")).toHaveText("17");
   await expect(page.locator("#tower-count-value")).toHaveText("1 / 32");
