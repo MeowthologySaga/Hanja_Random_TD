@@ -65,9 +65,29 @@
   box-shadow: inset 3px 0 0 var(--seal, #9f2f23) !important;
 }
 
-/* 자령 카드 — 2열 버튼 격자 아래 전폭 한 줄. */
-.selected-actions .dismantle-block-note {
-  grid-column: 1 / -1;
+/*
+ * 자령 카드는 376px 안에서 이미 스크롤이 난다(내용 580 / 칸 368). 버튼 줄
+ * 아래에 사유 한 줄을 더하면 그 줄이 곧장 스크롤 밑으로 밀려 "화면에
+ * 드러낸다" 는 목적을 잃는다. 그래서 여기서는 이미 접혀 있던 보호 칩을
+ * 사유 라벨로 승격시켜 버튼 줄 위에 세운다 — 새 높이를 거의 안 먹는다.
+ */
+.selected-chip.cleanup-reason.is-protected {
+  flex-basis: 100%;
+  color: #7a2c1c !important;
+  line-height: 1.35;
+  white-space: normal;
+  background: rgba(159, 47, 35, 0.11) !important;
+  box-shadow: inset 3px 0 0 var(--seal, #9f2f23) !important;
+}
+
+/* 분해 버튼도 값 대신 사유를 말한다 — 못 하는 일에 회수량을 적을 수 없다. */
+.selected-actions button#open-growth-button.is-blocked {
+  color: #7a2c1c !important;
+  background: linear-gradient(180deg, #efe2cd 0%, #ddcdb0 100%) !important;
+}
+
+.selected-actions button#open-growth-button.is-blocked .action-price {
+  opacity: 0.85;
 }
 
 /* 가방 행동 바 — 버튼 줄을 접어 그 아래 한 줄로 앉힌다. 프레임 본문은

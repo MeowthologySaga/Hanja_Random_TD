@@ -31,6 +31,7 @@ import {
   essenceAmountChip,
   essenceAmountLabel,
   goldAmountLabel,
+  protectionShortLabel,
   spriteStyle,
   visualBackgroundStyle
 } from "../format";
@@ -183,8 +184,10 @@ export function renderSelected(): void {
   // [J-2] 보호 판정은 분해 경로와 같은 옵션(유일 자령 보호 토글)으로 읽어야
   // 한 화면 안에서 "여기선 보호, 저기선 분해 가능" 같은 어긋남이 안 생긴다.
   const cleanup = ctx.engine.cleanupAssessments(dismantleOptions()).find((assessment) => assessment.towerId === tower.id);
+  // [J-2] 보호 칩이 곧 사유 라벨이다. 버튼 아래 별도 줄로 두면 376px 카드의
+  // 스크롤 아래로 밀려 "화면에 드러낸다" 는 목적을 잃는다.
   const cleanupLabel = cleanup?.protected
-    ? `보호 · ${cleanup.protectedReasons.join(" · ")}`
+    ? dismantleBlockNote(cleanup.protectedReasons)
     : `정리 후보 · ${cleanup?.reasons[0] ?? "직접 판단"}`;
   // [J-1] 판매는 엽전과 (농축했다면) 환급 문기 두 값을 함께 준다 — 둘 다 단위를 단다.
   const sellGold = ctx.engine.towerSellValue(tower);
@@ -223,10 +226,11 @@ export function renderSelected(): void {
       <button id="lock-button" class="${tower.locked ? "is-locked" : ""}" type="button" data-testid="lock-tower" title="판매·합성 재료로 쓰이지 않게 보호">${tower.locked ? "鎖 잠금됨" : "잠금"}</button>
       <button id="store-button" type="button" data-testid="store-tower" title="인벤으로 이동 — 전장 자리를 비웁니다" ${stored ? "disabled" : ""}>${stored ? "보관 중" : "보관"}</button>
       <button id="derivative-button" class="${readyBranches > 0 ? "has-ready" : ""}" type="button" data-testid="derivative-composition" title="이 자령이 재료인 파생 조합 목록">${ctx.engine.state.mode === "casual" ? casualStar >= 8 ? "8★ 최고 단계" : "3체 조합 ›" : `합성 ${readyBranches}`}</button>
-      <button id="open-growth-button" type="button" title="${escapeHtml(`강화 제련소 탭으로 이동 · 분해하면 ${essenceAmountLabel(tower.wuxing, dismantleEssence)} 회수`)}">분해 ›<small class="action-price">${essenceAmountChip(tower.wuxing, dismantleEssence)}</small></button>
+      <button id="open-growth-button" class="${cleanup?.protected ? "is-blocked" : ""}" type="button" title="${escapeHtml(cleanup?.protected ? dismantleBlockNote(cleanup.protectedReasons) : `강화 제련소 탭으로 이동 · 분해하면 ${essenceAmountLabel(tower.wuxing, dismantleEssence)} 회수`)}">${cleanup?.protected
+        ? `분해 불가<small class="action-price">${escapeHtml(protectionShortLabel(cleanup.protectedReasons))} 보호</small>`
+        : `분해 ›<small class="action-price">${essenceAmountChip(tower.wuxing, dismantleEssence)}</small>`}</button>
       <button id="open-concentration-button" type="button" title="농축 공방 탭으로 이동" ${concentration >= MAX_CONCENTRATION_LEVEL ? "disabled" : ""}>농축 ›</button>
       <button id="sell-button" type="button" title="${escapeHtml(`${goldAmountLabel(sellGold)}${sellEssence > 0 ? ` · ${essenceAmountLabel(tower.wuxing, sellEssence)}` : ""} 를 받고 즉시 제거 — 되돌릴 수 없음`)}" ${tower.locked ? "disabled" : ""}>판매<small class="action-price">${goldAmountLabel(sellGold, true)}${sellEssence > 0 ? ` · ${essenceAmountChip(tower.wuxing, sellEssence)}` : ""}</small></button>
-      ${cleanup?.protected ? `<p class="dismantle-block-note">${escapeHtml(dismantleBlockNote(cleanup.protectedReasons))}</p>` : ""}
     </div>
     <button type="button" class="selected-ability-summary" data-ability-guide><b>${activeSkills ? `技 기술 ${abilityLoadout.length}개 · 모두 자동 판정` : "技 기술 해금 전"}</b><span>${activeSkills ? `주기 ${periodicAbilities.length} · 공격 연동 1 · 조건 특성 1` : "현재 기본 공격 · 2단 합성 필요"}</span><em>설명 ›</em></button>
     ${activeSkills
