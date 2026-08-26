@@ -33,6 +33,11 @@ test("loads Suno MP3s, persists the independent mix, and crossfades boss states"
 
   await page.goto("/?seed=AUDIO-E2E-01");
   await page.getByRole("button", { name: "화면 모드 설정" }).click();
+  await expect(page.locator(".game-shell")).toHaveAttribute("data-audio-bgm", "menu");
+  await expect.poll(() => page.evaluate(() => {
+    const manager = (window as typeof window & { __HANJA_AUDIO_QA__?: DebugAudioManager }).__HANJA_AUDIO_QA__;
+    return manager?.getDebugState().activeSrc ?? "";
+  }), { timeout: 8_000 }).toContain("moonlit-codex-menu-loop.mp3");
   await page.locator("#bgm-volume").fill("44");
   await page.locator("#sfx-volume").fill("37");
   await page.locator("#sfx-mute-button").click();

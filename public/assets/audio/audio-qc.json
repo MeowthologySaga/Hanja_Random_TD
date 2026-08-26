@@ -1,11 +1,22 @@
 {
-  "generatedAt": "2026-08-25T11:03:58+09:00",
-  "rawSources": ".codex_tmp/suno-audio-v033/raw (local, Git-ignored)",
+  "generatedAt": "2026-08-26T08:58:36+09:00",
+  "rawSources": ".codex_tmp/suno-audio-v033/raw and .codex_tmp/suno-audio-v034/raw (local, Git-ignored)",
   "targets": {
     "bgm": "ffmpeg two-pass loudnorm I=-20:TP=-1.5:LRA=11",
     "sfx": "ffmpeg peak normalization approximately -1 dBFS"
   },
   "assets": [
+    {
+      "id": "menu",
+      "kind": "bgm",
+      "file": "assets/audio/bgm/moonlit-codex-menu-loop.mp3",
+      "durationSeconds": 64.374,
+      "integratedLufs": -20.27,
+      "truePeakDbtp": -6.84,
+      "loudnessRangeLu": 7.4,
+      "bytes": 1546702,
+      "sha256": "6e54b5f74d3e23f6c3f698c1803290256b8c8bcf28ce5aff5a845e7d7929d24c"
+    },
     {
       "id": "early",
       "kind": "bgm",

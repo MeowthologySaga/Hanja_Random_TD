@@ -1,5 +1,7 @@
 # v0.33 Suno 게임 오디오 설계·통합 기록
 
+> v0.34에서 메인 메뉴용 `Moonlit Codex`가 추가되었다. 연결·QC 세부값은 `v034-main-menu-audio.md`를 따른다.
+
 ## 목표표
 
 | key | type | use | Suno mode | target file | normalize | notes |

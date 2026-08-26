@@ -7,7 +7,7 @@ export const BOSS_BGM_EXIT_GRACE_MS = 5_000;
 export const BGM_CROSSFADE_MS = 3_000;
 const BGM_FADE_STEP_MS = 80;
 
-export type BgmId = "early" | "mid" | "late" | "boss" | "final";
+export type BgmId = "menu" | "early" | "mid" | "late" | "boss" | "final";
 export type SfxId =
   | "ui-confirm"
   | "summon"
@@ -63,6 +63,7 @@ const DEFAULT_SETTINGS: AudioSettings = {
 };
 
 const BGM_MIX_LEVEL: Record<BgmId, number> = {
+  menu: 0.52,
   early: 0.56,
   mid: 0.55,
   late: 0.54,
@@ -236,6 +237,14 @@ export class SoundManager {
   }
 
   syncBgm(state: BgmSyncState, now = performance.now()): void {
+    if (state.phase === "title") {
+      this.lastBossActive = false;
+      this.bossEnteredAt = null;
+      this.bossExitedAt = null;
+      this.requestBgm("menu");
+      return;
+    }
+
     const activeRun = state.phase === "prep" || state.phase === "combat";
     if (!activeRun) {
       this.lastBossActive = false;

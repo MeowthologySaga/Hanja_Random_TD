@@ -1,14 +1,27 @@
 {
-  "version": "0.33.0",
-  "cacheVersion": "suno-audio-20260825-v1",
+  "version": "0.34.0",
+  "cacheVersion": "suno-audio-20260826-v2",
   "provider": "Suno",
-  "generatedAt": "2026-08-25",
+  "generatedAt": "2026-08-26",
   "workspace": "김길우-한자td",
   "normalization": {
     "bgm": "ffmpeg loudnorm I=-20:TP=-1.5:LRA=11",
     "sfx": "ffmpeg peak normalization to -1 dBFS"
   },
   "assets": [
+    {
+      "id": "menu",
+      "kind": "bgm",
+      "title": "Moonlit Codex",
+      "file": "assets/audio/bgm/moonlit-codex-menu-loop.mp3",
+      "prompt": "Project-owner generated instrumental main-menu BGM; the exact Suno creation prompt is not embedded in the downloaded MP3.",
+      "exclude": "vocals, lyrics, singing, rap vocals, spoken words",
+      "sunoMode": "Suno Instrumental (user-generated)",
+      "format": "MP3",
+      "durationSeconds": 64.374,
+      "use": "main menu after the first user interaction",
+      "sourceId": "1efbbbd9-fd2d-4fc9-9408-5a287baf5852"
+    },
     {
       "id": "early",
       "kind": "bgm",

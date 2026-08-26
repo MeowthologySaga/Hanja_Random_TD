@@ -56,3 +56,9 @@ The public-domain Thousand Character Classic source order and the conventional K
 ## Project-generated map artwork
 
 `public/assets/map/hanji-ink-field/hanji-paper-base.png` was generated specifically for this project without a third-party source image. Its production prompt is preserved beside the PNG, and `map-manifest.json` records the runtime layer contract. The route, arrows, portals, formations, actors, hit regions, and effects remain original Canvas/CSS runtime graphics rather than baked content in the generated texture.
+
+## Project-generated Suno audio
+
+The BGM and one-shot SFX listed in `src/data/audio-manifest.json` were generated for this project with Suno and then normalized locally for game playback. `Moonlit Codex` was supplied by the project owner; the downloaded file identifies Suno source ID `1efbbbd9-fd2d-4fc9-9408-5a287baf5852`. The shipped derivative removes embedded cover art and creation metadata while the manifest and `public/assets/audio/audio-qc.json` preserve provenance, duration, loudness, file size, and checksum records.
+
+Suno usage and distribution rights depend on the account plan and terms that applied when each asset was created. Before public release or competition submission, the project owner must retain the applicable account/subscription evidence and confirm that the chosen terms cover the intended distribution. This notice records provenance and does not replace that rights verification.

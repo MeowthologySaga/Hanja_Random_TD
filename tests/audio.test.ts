@@ -7,6 +7,7 @@ import audioQc from "../public/assets/audio/audio-qc.json";
 import type { GameEvent } from "../src/core/types";
 import {
   AUDIO_SETTINGS_STORAGE_KEY,
+  SoundManager,
   battleBgmForWave,
   loadAudioSettings,
   saveAudioSettings,
@@ -24,6 +25,12 @@ describe("Suno audio catalog and runtime mapping", () => {
     expect(zoneBgmForWave(100)).toBe("late");
     expect(battleBgmForWave(90, true)).toBe("boss");
     expect(battleBgmForWave(100, true)).toBe("final");
+  });
+
+  it("selects the dedicated menu track for the title phase", () => {
+    const sound = new SoundManager();
+    sound.syncBgm({ phase: "title", wave: 1, boss: false }, 0);
+    expect(sound.getDebugState().targetBgmId).toBe("menu");
   });
 
   it("routes meaningful game events to file SFX", () => {
@@ -59,9 +66,9 @@ describe("Suno audio catalog and runtime mapping", () => {
   });
 
   it("keeps one selected MP3 for every manifest target", () => {
-    expect(audioManifest.assets.filter((asset) => asset.kind === "bgm")).toHaveLength(5);
+    expect(audioManifest.assets.filter((asset) => asset.kind === "bgm")).toHaveLength(6);
     expect(audioManifest.assets.filter((asset) => asset.kind === "sfx")).toHaveLength(12);
-    expect(new Set(audioManifest.assets.map((asset) => asset.id)).size).toBe(17);
+    expect(new Set(audioManifest.assets.map((asset) => asset.id)).size).toBe(18);
     for (const asset of audioManifest.assets) {
       expect(asset.format).toBe("MP3");
       expect(asset.sourceId).not.toBe("pending");

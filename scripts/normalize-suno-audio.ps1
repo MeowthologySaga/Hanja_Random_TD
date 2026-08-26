@@ -1,6 +1,7 @@
 param(
   [string]$RawDir = "",
-  [string]$OutputDir = ""
+  [string]$OutputDir = "",
+  [string]$MenuRawPath = ""
 )
 
 $ErrorActionPreference = "Stop"
@@ -11,6 +12,9 @@ if ([string]::IsNullOrWhiteSpace($RawDir)) {
 if ([string]::IsNullOrWhiteSpace($OutputDir)) {
   $OutputDir = Join-Path $repoRoot "public\assets\audio"
 }
+if ([string]::IsNullOrWhiteSpace($MenuRawPath)) {
+  $MenuRawPath = Join-Path $repoRoot ".codex_tmp\suno-audio-v034\raw\moonlit-codex-menu.raw.mp3"
+}
 
 $culture = [System.Globalization.CultureInfo]::InvariantCulture
 $bgmDir = Join-Path $OutputDir "bgm"
@@ -20,6 +24,7 @@ New-Item -ItemType Directory -Path $bgmDir -Force | Out-Null
 New-Item -ItemType Directory -Path $sfxDir -Force | Out-Null
 
 $bgm = @(
+  @{ id = "menu"; rawPath = $MenuRawPath; output = "moonlit-codex-menu-loop.mp3" },
   @{ id = "early"; raw = "dawn-formation-loop.raw.mp3"; output = "dawn-formation-loop.mp3" },
   @{ id = "mid"; raw = "five-elements-march-loop.raw.mp3"; output = "five-elements-march-loop.mp3" },
   @{ id = "late"; raw = "inkstorm-siege-loop.raw.mp3"; output = "inkstorm-siege-loop.mp3" },
@@ -94,7 +99,7 @@ function Get-Duration([string]$Path) {
 $qc = @()
 
 foreach ($asset in $bgm) {
-  $inputPath = Join-Path $RawDir $asset.raw
+  $inputPath = if ($asset.rawPath) { $asset.rawPath } else { Join-Path $RawDir $asset.raw }
   $outputPath = Join-Path $bgmDir $asset.output
   if (-not (Test-Path -LiteralPath $inputPath)) {
     throw "Missing raw BGM: $inputPath"
@@ -104,7 +109,7 @@ foreach ($asset in $bgm) {
   $filter = "loudnorm=I=-20:TP=-1.5:LRA=11:measured_I=$($first.input_i):measured_LRA=$($first.input_lra):measured_TP=$($first.input_tp):measured_thresh=$($first.input_thresh):offset=$($first.target_offset):linear=true:print_format=summary"
   Invoke-Captured "ffmpeg" @(
     "-y", "-hide_banner", "-nostats", "-i", $inputPath,
-    "-map_metadata", "-1", "-af", $filter,
+    "-map", "0:a:0", "-vn", "-map_metadata", "-1", "-af", $filter,
     "-ar", "44100", "-codec:a", "libmp3lame", "-b:a", "192k", $outputPath
   ) | Out-Null
 
