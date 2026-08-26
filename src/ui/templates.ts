@@ -392,7 +392,7 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
         <b id="tutorial-title"></b>
         <p id="tutorial-body"></p>
       </div>
-      <button id="tutorial-exit" class="tutorial-exit" type="button" data-testid="tutorial-exit">수련 건너뛰기</button>
+      <button id="tutorial-exit" class="tutorial-exit" type="button" data-testid="tutorial-exit">수련 그만두기</button>
       <section id="tutorial-complete" class="tutorial-complete" aria-labelledby="tutorial-complete-title" hidden>
         <div class="tutorial-complete-card">
           <p class="eyebrow">수련 완수</p>
@@ -407,6 +407,18 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
         </div>
       </section>
     </div>
+
+    <dialog id="tutorial-quit-dialog" class="p00-dialog tutorial-quit-dialog" aria-labelledby="tutorial-quit-title">
+      <div class="p00-frame tutorial-quit-frame">
+        <p class="s00-mode-label">수련장</p>
+        <h3 id="tutorial-quit-title">수련을 그만두고 나갈까요?</h3>
+        <p>배운 내용은 저장되지 않아요.<br>서재의 [수련장] 목패로 언제든 다시 시작할 수 있어요.</p>
+        <div class="p00-actions">
+          <button id="tutorial-quit-cancel" type="button" data-testid="tutorial-quit-cancel">계속 수련하기</button>
+          <button id="tutorial-quit-confirm" type="button" data-testid="tutorial-quit-confirm">그만두기</button>
+        </div>
+      </div>
+    </dialog>
 
     <section id="title-overlay" class="modal-layer modal-layer--visible" aria-labelledby="title-heading">
       <div class="s00-stage" data-screen-id="S00">

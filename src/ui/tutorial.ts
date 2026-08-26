@@ -7,6 +7,10 @@
  * 상호작용 잠금(soft-lock)]으로 이루어지고, 해당 조작을 실제로 해내면
  * 저절로 다음으로 넘어간다. 코치(coach.ts)의 시각 언어를 빌리되 구현은
  * 이 모듈 안에서 자기완결한다 — coach.ts 는 건드리지 않는다.
+ *
+ * 진행 원칙: 걸음 전환의 무행동 대기는 2초를 넘기지 않는다. 유일한 예외는
+ * 연출 감상 2.6초 두 곳(3걸음 교전 관전, 8걸음 수료막 지연)이다. 첫 웨이브
+ * 전멸은 어느 걸음의 조건도 아니다 — 전투는 배경에서 자연히 끝난다.
  */
 import { WORLD_HEIGHT, WORLD_WIDTH } from "../core/content";
 import { GameEngine } from "../core/game";
@@ -60,8 +64,18 @@ interface TutorialStep {
   readonly satisfied: () => boolean;
 }
 
-/** 어느 단계에서든 막지 않는 영역 — 자체 UI·결과 카드·진 해금 확인 창. */
-const GLOBAL_ALLOW: readonly string[] = ["#tutorial-layer", "#summon-reveal", "#formation-unlock-dialog"];
+/** 어느 단계에서든 막지 않는 영역 — 자체 UI·결과 카드·진 해금·그만두기 확인 창. */
+const GLOBAL_ALLOW: readonly string[] = ["#tutorial-layer", "#summon-reveal", "#formation-unlock-dialog", "#tutorial-quit-dialog"];
+
+/**
+ * 3걸음 교전 관전 시간(ms). 웨이브를 열고 [적 한계]·자동 공격 설명을 읽을
+ * 만큼만 보여 준 뒤, 전투는 배경에 남긴 채 곧장 다음 걸음으로 넘어간다.
+ * "걸음 전환 죽은 시간 ≤2초 원칙"의 허용 예외(연출 감상 2.6초)로,
+ * 수료막 지연(2600ms)과 같은 값이다. 전멸은 어느 걸음의 조건도 아니다 —
+ * 웨이브는 배경에서 자연히 끝나고 이후 걸음 진행과 독립이다.
+ * waveElapsed(시뮬 시간) 기준이라 확인 창이 전투를 세우면 관전 시계도 같이 선다.
+ */
+const WAVE_WATCH_SECONDS = 2.6;
 
 /** 각본 밖 단축키(소환·배속·일시정지·도감 등)는 수련 중에 전부 잠근다. */
 const BLOCKED_KEYS = new Set(["Digit1", "Digit2", "Digit3", "KeyQ", "KeyC", "KeyM", "KeyF", "KeyP", "Space", "Escape"]);
@@ -154,11 +168,13 @@ const STEPS: readonly TutorialStep[] = [
       showToast("수련 지원 — 자령 2기를 함께 세웠어요");
     },
     tick: () => hideSummonReveal(),
-    view: () => ctx.engine.state.phase === "combat"
+    // 웨이브 시작 뒤에는 페이즈가 아니라 "웨이브를 열었는가"로 갈래를 정한다 —
+    // 완화 스케일 웨이브가 관전 시간 안에 끝나도 말풍선이 되돌아가지 않는다.
+    view: () => ctx.engine.state.wave >= 1
       ? {
         target: "#enemy-limit-chip",
-        title: "봉인 중이에요",
-        body: "자령은 사거리 안의 적을 알아서 공격해요. 이 [적 한계] 숫자가 가득 차기 전에 모두 잡으면 돼요. 수련의 적은 아주 약해요."
+        title: "봉인은 자령에게 맡겨요",
+        body: "자령은 사거리 안의 적을 알아서 공격해요. 이 [적 한계] 숫자가 가득 차기 전에 잡히면 되고, 수련의 적은 아주 약해요. 전투는 자령에게 맡기고 다음 수련으로 넘어가요."
       }
       : {
         target: "#early-button",
@@ -166,8 +182,10 @@ const STEPS: readonly TutorialStep[] = [
         body: "[시작 보너스]를 누르면 적이 나와요. 적은 길을 돌며 계속 쌓이고, [적 한계]가 가득 차면 져요. 오른쪽 [약점] 표식의 오행은 피해가 더 들어가요.",
         control: "click"
       },
-    allow: () => ctx.engine.state.phase === "combat" ? ["#battle-canvas"] : ["#early-button", "#battle-canvas"],
-    satisfied: () => ctx.engine.state.wave >= 1 && ctx.engine.state.phase === "prep"
+    allow: () => ctx.engine.state.wave >= 1 ? ["#battle-canvas"] : ["#early-button", "#battle-canvas"],
+    // 관전 2.6초가 지났거나(전투 배경 지속) 그 전에 웨이브가 끝났으면 다음 걸음.
+    satisfied: () => ctx.engine.state.wave >= 1
+      && (ctx.engine.state.waveElapsed >= WAVE_WATCH_SECONDS || ctx.engine.state.phase === "prep")
   },
   {
     id: "fusion",
@@ -473,7 +491,8 @@ function tutorialFrame(): void {
   const step = STEPS[stepIndex];
   if (step) {
     // 각본 밖에서 웨이브가 저절로 시작되지 않게 준비 시간을 세워 둔다.
-    // 웨이브 걸음도 [시작 보너스] 버튼만이 유일한 출구가 된다.
+    // 웨이브 걸음의 개시는 [시작 보너스] 버튼만이 유일한 출구고, 배경의
+    // 첫 웨이브가 끝난 뒤에도 이 고정이 웨이브 2 자동 개시를 막아 준다.
     // 13초에 고정하는 이유: 한 프레임 사이 12.9~13.0 사이를 오가도
     // 버튼의 보너스 표기(floor(prep/2)=6)가 흔들리지 않는 값이라서다.
     if (state.phase === "prep" && state.summonCount > 0) {
@@ -522,6 +541,16 @@ function startTutorial(): void {
  */
 function leaveTutorial(): void {
   window.location.reload();
+}
+
+/**
+ * [수련 그만두기]는 확인 1회를 거친다 — "다음 버튼인 줄 알고 끝내기를
+ * 누른다"(사용자 실증)는 오인 사고를 막는 마지막 방어선이다. 창이 열리면
+ * 모달 규칙(game-loop)이 전투도 같이 세워 준다.
+ */
+function openQuitDialog(): void {
+  const dialog = must<HTMLDialogElement>("#tutorial-quit-dialog");
+  if (!dialog.open) dialog.showModal();
 }
 
 let enteringTraining = false;
@@ -575,7 +604,9 @@ export function wireTutorial1(): void {
   // 첫 방문(수료 기록 없음)에는 은은한 맥동으로 "여기부터"를 짚는다.
   if (!tutorialCompleted()) button.classList.add("is-fresh");
   button.addEventListener("click", () => void enterTraining(button));
-  must<HTMLButtonElement>("#tutorial-exit").addEventListener("click", leaveTutorial);
+  must<HTMLButtonElement>("#tutorial-exit").addEventListener("click", openQuitDialog);
+  must<HTMLButtonElement>("#tutorial-quit-cancel").addEventListener("click", () => must<HTMLDialogElement>("#tutorial-quit-dialog").close());
+  must<HTMLButtonElement>("#tutorial-quit-confirm").addEventListener("click", leaveTutorial);
   must<HTMLButtonElement>("#tutorial-finish").addEventListener("click", leaveTutorial);
   document.addEventListener("pointerdown", interceptPointer, true);
   document.addEventListener("click", interceptPointer, true);
