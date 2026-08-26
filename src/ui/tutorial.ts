@@ -76,7 +76,15 @@ interface TutorialStep {
 }
 
 /** 어느 단계에서든 막지 않는 영역 — 자체 UI·결과 카드·진 해금·그만두기 확인 창. */
-const GLOBAL_ALLOW: readonly string[] = ["#tutorial-layer", "#summon-reveal", "#formation-unlock-dialog", "#tutorial-quit-dialog"];
+/*
+ * [S/P-08] 공용 확인 창도 이 줄에 선다.
+ *
+ * 수련장 강화 걸음은 제련소를 열어 준다. 거기 [최대] 강화·[선택 분해]는
+ * soft-lock 이 허용한 #growth-panel 안이라 눌린다 — 그러면 확인 창이 뜨는데,
+ * 이 목록에 없으면 창 안의 [취소]도 삼켜지고 Esc 도 막혀(BLOCKED_KEYS)
+ * 닫을 길이 없는 창에 갇힌다.
+ */
+const GLOBAL_ALLOW: readonly string[] = ["#tutorial-layer", "#summon-reveal", "#formation-unlock-dialog", "#tutorial-quit-dialog", "#confirm-dialog"];
 
 /**
  * 패널 갈피 셀렉터 — 반드시 `.panel-tabs` 안으로 좁힌다.
