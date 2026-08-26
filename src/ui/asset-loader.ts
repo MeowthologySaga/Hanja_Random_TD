@@ -186,7 +186,26 @@ export function preloadedImage(url: string): HTMLImageElement | null {
   return entry.image.naturalWidth > 0 ? entry.image : null;
 }
 
-/** `<img src>` 한 장을 디코딩까지 마친다. 스트리밍이 불가능할 때의 경로. */
+/**
+ * 스트리밍으로 받을 경로.
+ *
+ * `fetch()` 로 받은 Blob 은 브라우저의 이미지 캐시와 **공유되지 않는다**. 같은
+ * 파일을 CSS 배경이나 스프라이트 로더가 따로 `<img>` 로 부르면 두 번 내려온다
+ * (실측 13.3MB 중복). 그래서 오직 3D 텍스처로만 쓰여 아무도 `<img>` 로 부르지
+ * 않는 것들만 스트리밍한다 — 마침 이 셋이 P1 15.1MB 중 13.3MB 라, 진행 막대의
+ * 촘촘함은 그대로 얻으면서 중복은 0 이 된다.
+ */
+const STREAM_PREFIXES: readonly string[] = [
+  "assets/ui/s00-3d/",
+  "assets/ui/main-menu-b/rings/",
+  "assets/ui/main-menu-b/jaryeongs/"
+];
+
+function shouldStream(relative: string): boolean {
+  return STREAM_PREFIXES.some((prefix) => relative.startsWith(prefix));
+}
+
+/** `<img src>` 한 장을 디코딩까지 마친다. 브라우저 이미지 캐시를 그대로 쓴다. */
 function loadViaImage(url: string, entry: CacheEntry): Promise<void> {
   const image = entry.image ?? new Image();
   entry.image = image;
@@ -214,11 +233,12 @@ function loadViaImage(url: string, entry: CacheEntry): Promise<void> {
  * 한 장을 받아 디코딩까지 끝낸다.
  *
  * `<img>` 는 진행 이벤트를 주지 않는다. s00-3d 텍스처는 한 장이 1.9MB 라
- * 파일 수만 세면 막대가 9초 동안 0% 에 멈춰 있다. 그래서 본문을 스트림으로
- * 읽어 `Content-Length` 대비 비율을 흘려보내고, 다 받은 Blob 을 이미지로
- * 넘긴다. 스트림이 없거나 실패하면 예전처럼 `<img src>` 한 방으로 되돌아간다.
+ * 파일 수만 세면 막대가 9초 동안 0% 에 멈춰 있다. 그래서 `STREAM_PREFIXES`
+ * 에 해당하는 것만 본문을 스트림으로 읽어 `Content-Length` 대비 비율을
+ * 흘려보내고, 다 받은 Blob 을 이미지로 넘긴다. 스트림이 없거나 실패하면
+ * 예전처럼 `<img src>` 한 방으로 되돌아간다.
  */
-async function fetchOne(url: string, onFraction: (fraction: number) => void): Promise<void> {
+async function fetchOne(url: string, stream: boolean, onFraction: (fraction: number) => void): Promise<void> {
   const existing = cache.get(url);
   if (existing?.ready || existing?.failed) {
     onFraction(1);
@@ -226,6 +246,12 @@ async function fetchOne(url: string, onFraction: (fraction: number) => void): Pr
   }
   const entry: CacheEntry = existing ?? { image: null, ready: false, failed: false };
   cache.set(url, entry);
+
+  if (!stream) {
+    await loadViaImage(url, entry);
+    onFraction(1);
+    return;
+  }
 
   let objectUrl: string | null = null;
   try {
@@ -299,7 +325,7 @@ async function run(paths: readonly string[], onProgress?: (progress: PreloadProg
       next += 1;
       const path = paths[index];
       if (path === undefined) return;
-      await fetchOne(assetUrl(path), (fraction) => {
+      await fetchOne(assetUrl(path), shouldStream(path), (fraction) => {
         fractions[index] = fraction;
         report();
       });
