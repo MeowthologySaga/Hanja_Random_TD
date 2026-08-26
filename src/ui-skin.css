@@ -13798,8 +13798,12 @@ dialog {
    있어야 같은 셀렉터를 이긴다. */
 
 html[data-stage-scale-band="small"] .brand-row h1 {
-  font-weight: 700;
-  letter-spacing: 0.09em;
+  /* 바탕체는 진짜 볼드가 없어 어느 굵기든 합성 확장으로 획이 붙는다.
+     축소 대역에서는 작은 크기 힌팅이 목적인 맑은 고딕 실볼드로 갈아탄다 —
+     원본 배율(full)의 세리프 디자인은 그대로다. */
+  font-family: "Malgun Gothic", "Noto Sans KR", sans-serif;
+  font-weight: 800;
+  letter-spacing: 0.12em;
   text-shadow: 0 1px 0 rgba(0, 0, 0, 0.9);
 }
 
