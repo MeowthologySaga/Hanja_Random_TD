@@ -220,6 +220,31 @@ describe("casual eight-star mode", () => {
     expect(engine.state.towers).toHaveLength(4);
   });
 
+  it("leaves every region enough unprotected bodies to form a group", () => {
+    // v3 는 3기 전부를 보호에서 빼므로 보호 범위가 곧 "이 지역에서 승급이 되느냐"다.
+    // 일반 모드 합성식·아직 순서가 오지 않은 성어까지 잠그면 JP/CN 미리보기
+    // 소환 풀(30·32자)은 여유 글자가 0자가 되어 한 묶음도 만들 수 없다.
+    for (const region of ["KR", "JP", "CN"] as const) {
+      const engine = new GameEngine(`casual-reach-${region.toLowerCase()}`, region, "casual");
+      engine.begin();
+      const pool = engine.summonDefinitions();
+      engine.state.towers = [];
+      engine.state.inventoryTowers = pool
+        .filter((definition) => (casualNaturalStar(definition.char) ?? 8) < 8)
+        .map((definition, index) => casualTower(definition, 20_000 + index, -1));
+      const protections = engine.casualMaterialProtections();
+      expect([...protections.values()]).not.toContain("일반 모드 합성식 재료");
+      const buckets = new Map<string, number>();
+      for (const tower of engine.state.inventoryTowers) {
+        if (protections.has(tower.id)) continue;
+        const key = `${tower.wuxing}:${tower.casualStar}`;
+        buckets.set(key, (buckets.get(key) ?? 0) + 1);
+      }
+      const reachable = [...buckets.values()].filter((count) => count >= 3);
+      expect(reachable.length, `${region} 소환 풀에 3기를 채울 (오행,별) 칸이 없다`).toBeGreaterThan(0);
+    }
+  });
+
   it("reproduces the same random results for the same seed", () => {
     const run = (): string[] => {
       const engine = casualEngine("casual-v3-seeded");

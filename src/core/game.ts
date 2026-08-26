@@ -1409,23 +1409,37 @@ export class GameEngine {
     return protections;
   }
 
+  /*
+   * v3 는 3기 전부를 보호 대상에서 빼므로 보호 범위가 곧 "승급이 되느냐"다.
+   * v2 범위를 그대로 쓰면 JP/CN 미리보기 소환 풀(30·32자)은 성어 글자와 일반
+   * 합성식 부모가 풀 전체를 덮어 한 묶음도 만들 수 없다(실측 0자 여유).
+   * 그래서 캐주얼에서는 두 가지를 좁힌다.
+   *  - 일반 모드 합성식: 캐주얼에는 합성 자체가 없다(availableEvolutions()=[]).
+   *    쓰지도 못할 조합을 이유로 소모를 막는 것은 규칙이 아니라 사고다.
+   *  - 미완성 사자성어: 지금 노리는 한 성어(currentIdiomTarget)만 지킨다.
+   *    아직 순서가 오지 않은 성어까지 글자 단위로 잠글 이유가 없다.
+   * 잠금·농축·목표 글자·봉인 완료 성어는 기획 문서가 못 박은 대로 그대로 둔다.
+   */
   private casualProtectionContext(): {
     targetPath: Set<string>;
     unfinishedIdiomChars: Set<string>;
     standardMaterialIds: Set<number>;
     sealedTowerIds: Set<number>;
   } {
+    const casual = this.state.mode === "casual";
     const all = [...this.state.towers, ...this.state.inventoryTowers];
     return {
-      targetPath: this.state.mode === "casual" ? new Set([this.state.targetChar]) : this.evolution.getTargetPath(this.state.targetChar),
+      targetPath: casual ? new Set([this.state.targetChar]) : this.evolution.getTargetPath(this.state.targetChar),
       unfinishedIdiomChars: new Set(
-        this.idioms()
-          .filter((idiom) => !this.state.idiomSeals.some((seal) => seal.idiomId === idiom.id))
-          .flatMap((idiom) => [...idiom.chars])
+        casual
+          ? [...(this.currentIdiomTarget()?.chars ?? "")]
+          : this.idioms()
+            .filter((idiom) => !this.state.idiomSeals.some((seal) => seal.idiomId === idiom.id))
+            .flatMap((idiom) => [...idiom.chars])
       ),
-      standardMaterialIds: new Set(
-        this.evolution.getAvailableRecipes(all, this.state.targetChar, null, "semi").flatMap((option) => option.materialTowerIds)
-      ),
+      standardMaterialIds: casual
+        ? new Set<number>()
+        : new Set(this.evolution.getAvailableRecipes(all, this.state.targetChar, null, "semi").flatMap((option) => option.materialTowerIds)),
       sealedTowerIds: this.sealedIdiomTowerIds()
     };
   }
