@@ -107,6 +107,7 @@ import {
   regionEnemyHpMultiplier,
   SUMMON_STAGE_WEIGHTS,
   type SummonStarBand,
+  TALISMAN_REBATE_WAVE_SHARE,
   TIERED_SUMMON_INTENTS,
   TUTORIAL_ENEMY_COUNT_SCALE,
   TUTORIAL_ENEMY_HP_SCALE,
@@ -248,6 +249,13 @@ export class GameEngine {
   readonly goalOrder: readonly string[];
   /** 수련장 여부. 켜져 있을 때만 완화 계수와 tutorialGrant* 지급 훅이 산다. */
   readonly tutorial: boolean;
+  /**
+   * 부적 보상으로 앞당겨 받은 엽전(트랙 C2 ③ — engine-tuning.ts 「부적 모드
+   * 경제」). 부적 패널이 보상을 지급할 때 그 환산액을 여기에 적고, 웨이브
+   * 정산이 조금씩 되갚는다. 부적을 쓰지 않으면 언제나 0 이라 정산 경로가
+   * 통째로 예전과 같다 — 시뮬 봇과 단위 테스트의 수치가 흔들리지 않는 근거다.
+   */
+  talismanDebt = 0;
   private rng: SeededRng;
   private events: GameEvent[] = [];
   private nextTowerId = 1;
@@ -1220,9 +1228,12 @@ export class GameEngine {
     const bonus = waveClearReward(this.state.wave);
     this.state.gold += bonus;
     const interest = this.payBankInterest();
+    const rebate = this.repayTalismanDebt(bonus + interest);
     this.state.phase = "prep";
     this.state.prepRemaining = this.state.wave % 10 === 0 ? GAME_CONFIG.bossPrepSeconds : GAME_CONFIG.prepSeconds;
-    this.state.lastMessage = String(this.state.wave) + "웨이브 방어 성공 · 보상 " + String(bonus) + "엽전" + (interest > 0 ? " · 은행 이자 +" + String(interest) + "엽전" : "");
+    this.state.lastMessage = String(this.state.wave) + "웨이브 방어 성공 · 보상 " + String(bonus) + "엽전"
+      + (interest > 0 ? " · 은행 이자 +" + String(interest) + "엽전" : "")
+      + (rebate > 0 ? " · 부적 상환 -" + String(rebate) + "엽전" : "");
     this.events.push({ type: "phase", phase: "prep" });
   }
 
@@ -1235,8 +1246,29 @@ export class GameEngine {
     const survivors = this.state.enemies.length;
     const previousWave = this.state.wave;
     const interest = this.payBankInterest();
+    const rebate = this.repayTalismanDebt(interest);
     this.startNextWave();
-    this.state.lastMessage = `${previousWave}웨이브 잔존 ${survivors}체 · ${this.currentPlan?.label ?? "다음 웨이브"} 합류${interest > 0 ? ` · 은행 이자 +${interest}엽전` : ""}`;
+    this.state.lastMessage = `${previousWave}웨이브 잔존 ${survivors}체 · ${this.currentPlan?.label ?? "다음 웨이브"} 합류`
+      + (interest > 0 ? ` · 은행 이자 +${interest}엽전` : "")
+      + (rebate > 0 ? ` · 부적 상환 -${rebate}엽전` : "");
+  }
+
+  /**
+   * 부적으로 앞당겨 받은 엽전을 이번 정산에서 되갚는다(트랙 C2 ③).
+   *
+   * 갚을 몫은 이번 정산(웨이브 보상 + 이자)의 일부로만 물린다 — 정산이 통째로
+   * 사라지면 갚는 일이 벌처럼 보인다. 남은 빚은 다음 웨이브로 넘어간다.
+   * 빚이 없으면(= 부적을 쓰지 않았으면) 아무 일도 하지 않으므로 시뮬·테스트의
+   * 엽전 흐름은 이 변경 전과 완전히 같다.
+   */
+  private repayTalismanDebt(settlement: number): number {
+    if (this.talismanDebt <= 0 || settlement <= 0) return 0;
+    const room = Math.floor(settlement * TALISMAN_REBATE_WAVE_SHARE);
+    const paid = Math.min(this.talismanDebt, room, this.state.gold);
+    if (paid <= 0) return 0;
+    this.talismanDebt -= paid;
+    this.state.gold -= paid;
+    return paid;
   }
 
   private payBankInterest(): number {

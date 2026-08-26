@@ -9,7 +9,7 @@ const COACH_STORAGE_KEY = "hanja-td:coach-seen-v1";
 /** 코치를 실제로 띄우는 스펙에 붙이는 태그. 이 태그가 붙은 스펙만 첫 방문 상태로 시작한다. */
 const ONBOARDING_TAG = "@onboarding";
 /** FB4 1회성 안내(src/ui/hint.ts)의 항목별 저장 키. 코치와 같은 사전 차단 대상이다. */
-const HINT_STORAGE_KEYS = ["stroke-star", "midstar-open", "research-open", "first-fuse", "essence"]
+const HINT_STORAGE_KEYS = ["stroke-star", "midstar-open", "research-open", "first-fuse", "essence", "talisman"]
   .map((id) => `hanja-td:hint:${id}:v1`);
 /** 1회성 안내를 실제로 띄우는 스펙에 붙이는 태그. 코치는 본 상태, 안내만 첫 노출 상태로 시작한다. */
 const HINT_TAG = "@one-shot-hints";
@@ -156,8 +156,9 @@ test("freezes the opening until the first summon opens its matching formation", 
   await page.getByTestId("start-run").click();
   await expect(page.locator("#shop-panel")).toBeVisible();
   await expect(page.locator("#shop-tab")).toHaveClass(/is-active/u);
-  // 기록 탭 제거(트랙 B) — 탭바는 8개다.
-  await expect(page.locator(".panel-tabs > button")).toHaveCount(8);
+  // 기록 탭 제거(트랙 B)로 8개, 부적 만들기 기본 켜짐(트랙 C2)으로 「부적」이
+  // 아홉째로 선다.
+  await expect(page.locator(".panel-tabs > button")).toHaveCount(9);
   await expect(page.getByTestId("early-wave")).toBeDisabled();
   await expect(page.getByTestId("early-wave")).toHaveText("첫 소환 필요");
   await expect(page.locator("#wave-kicker")).toContainText("시간 정지");
@@ -405,7 +406,7 @@ test("dismantles a deployed jaryeong straight from the selected card", async ({ 
 test("opens the idiom goal codex frame and summons from all one thousand Cheonjamun sprites", async ({ page }) => {
   await page.goto("/?seed=EVO-E2E-2&mode=standard");
   await page.getByTestId("start-run").click();
-  await expect(page.locator(".panel-tabs > button")).toHaveCount(8);
+  await expect(page.locator(".panel-tabs > button")).toHaveCount(9);
   await expect(page.locator("#selected-card")).toBeHidden();
   await expect(page.locator("#goal-panel")).toBeHidden();
   await expect(page.locator("#shop-panel")).toBeVisible();
