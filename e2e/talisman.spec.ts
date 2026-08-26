@@ -15,7 +15,7 @@ import { expect, test } from "@playwright/test";
 
 const COACH_STORAGE_KEY = "hanja-td:coach-seen-v1";
 
-const HINT_STORAGE_KEYS = ["stroke-star", "midstar-open", "research-open", "first-fuse", "essence"]
+const HINT_STORAGE_KEYS = ["stroke-star", "midstar-open", "research-open", "first-fuse", "essence", "talisman"]
   .map((id) => `hanja-td:hint:${id}:v1`);
 
 interface TalismanQaWindow {
@@ -31,23 +31,45 @@ test.beforeEach(async ({ page }) => {
   }, HINT_STORAGE_KEYS);
 });
 
-test("settings toggle opens the talisman tab and submitting a traced glyph earns rewards", async ({ page }) => {
+test("the default-on talisman tab turns a submitted trace into a jaryeong reward visit", async ({ page }) => {
   test.setTimeout(60_000);
   await page.goto("/?seed=TALISMAN-E2E&mode=casual");
   await page.getByTestId("start-run").click();
 
-  // 기본 꺼짐 — 탭바는 8개 그대로, 부적 탭은 DOM 에도 없다.
-  await expect(page.locator(".panel-tabs > button")).toHaveCount(8);
-  await expect(page.locator("#talisman-tab")).toHaveCount(0);
+  // 기본 켜짐(트랙 C2) — 기록 탭 제거 뒤의 8탭 + 「부적」으로 아홉째가 선다.
+  await expect(page.locator(".panel-tabs > button")).toHaveCount(9);
+  await expect(page.locator("#talisman-tab")).toBeVisible();
+  // 아홉 탭이 한 줄에 들어가고 탭바가 패널 밖으로 새지 않아야 한다.
+  // (활성 탭은 한 칸 솟아 있으므로 top 비교가 아니라 "앞 탭보다 왼쪽으로
+  //  되돌아간 탭이 있는가"로 줄바꿈을 잡는다.)
+  const tabBar = await page.locator(".panel-tabs").evaluate((bar) => {
+    let wrapped = false;
+    let previousRight = Number.NEGATIVE_INFINITY;
+    for (const tab of bar.children) {
+      const rect = tab.getBoundingClientRect();
+      if (rect.left < previousRight - 1) wrapped = true;
+      previousRight = rect.right;
+    }
+    return { wrapped, overflow: bar.scrollWidth - bar.clientWidth };
+  });
+  expect(tabBar.wrapped).toBe(false);
+  expect(tabBar.overflow).toBeLessThanOrEqual(0);
+  await page.screenshot({ path: "artifacts/talisman-tabbar-default-on-1280x720.png", fullPage: true });
 
-  // 설정의 「학습 모드 · 부적 만들기」 토글을 켠다.
+  // 설정 토글은 켜진 채로 서 있고, 끄면 탭이 접힌다 — 강제는 아니다.
   await page.locator("#settings-button").click();
-  await expect(page.getByTestId("talisman-mode-toggle")).toHaveAttribute("aria-checked", "false");
+  await expect(page.getByTestId("talisman-mode-toggle")).toHaveAttribute("aria-checked", "true");
+  // 상환 규칙은 설정 설명에 드러나 있어야 한다 — 숨기지 않는다.
+  await expect(page.getByTestId("talisman-mode-toggle")).toContainText("되갚으므로");
+  await page.screenshot({ path: "artifacts/talisman-settings-note-1280x720.png", fullPage: true });
+  await page.getByTestId("talisman-mode-toggle").click();
+  await expect(page.locator("#talisman-tab")).toHaveCount(0);
+  await expect(page.locator(".panel-tabs > button")).toHaveCount(8);
   await page.getByTestId("talisman-mode-toggle").click();
   await expect(page.getByTestId("talisman-mode-toggle")).toHaveAttribute("aria-checked", "true");
   await page.locator("#settings-close").click();
 
-  // 탭 등장 → 부적지 패널 진입. 훈음이 병기된다.
+  // 부적지 패널 진입. 훈음이 병기된다.
   await expect(page.locator("#talisman-tab")).toBeVisible();
   await expect(page.locator(".panel-tabs > button")).toHaveCount(9);
   await page.locator("#talisman-tab").click();
@@ -56,6 +78,10 @@ test("settings toggle opens the talisman tab and submitting a traced glyph earns
   await expect(page.locator("#talisman-reading")).not.toHaveText("글자를 준비하는 중");
   await expect(page.locator("#talisman-reward-note")).toContainText("3/3");
   await expect(page.locator("#talisman-recent-reward")).toContainText("아직 없음");
+  await expect(page.locator("#talisman-economy-note")).toContainText("안 쓰면 상환 없음");
+  // 패널 세로 예산 — 부적지·바닥줄이 작업 영역을 넘겨 스크롤을 만들면 안 된다.
+  const deckOverflow = await page.locator(".context-deck").evaluate((element) => element.scrollHeight - element.clientHeight);
+  expect(deckOverflow).toBeLessThanOrEqual(0);
   // 획이 하나도 없으면 제출할 것이 없다.
   await expect(page.getByTestId("talisman-submit")).toBeDisabled();
   await page.screenshot({ path: "artifacts/talisman-blank-1280x720.png", fullPage: true });
@@ -99,6 +125,8 @@ test("settings toggle opens the talisman tab and submitting a traced glyph earns
   await page.screenshot({ path: "artifacts/talisman-reward-visit-1280x720.png", fullPage: true });
   // 연출이 지나가도 "최근 보상" 줄에 누적이 남는다.
   await expect(page.locator("#talisman-recent-reward")).not.toContainText("아직 없음");
+  // 받은 만큼 장부에 남는다 — 웨이브 정산에서 되갚는다는 사실이 패널에 뜬다.
+  await expect(page.locator("#talisman-economy-note")).toContainText("상환 예정");
   await expect(page.getByTestId("talisman-submit")).toBeDisabled();
   await page.screenshot({ path: "artifacts/talisman-sealed-1280x720.png", fullPage: true });
 
@@ -132,7 +160,11 @@ test("settings toggle opens the talisman tab and submitting a traced glyph earns
   await expect(page.locator(".summon-card-badge")).toHaveText("부적 ×1");
   expect(await readGold()).toBe(goldBefore);
 
-  // 토글은 브라우저에 저장된다 — 새로고침해도 탭이 그대로 선다.
+  // 토글은 브라우저에 저장된다 — 꺼 두면 새로고침해도 접힌 채로 선다.
+  await page.locator("#settings-button").click();
+  await page.getByTestId("talisman-mode-toggle").click();
+  await page.locator("#settings-close").click();
   await page.reload();
-  await expect(page.locator("#talisman-tab")).toHaveCount(1);
+  await expect(page.locator("#talisman-tab")).toHaveCount(0);
+  await expect(page.locator(".panel-tabs > button")).toHaveCount(8);
 });

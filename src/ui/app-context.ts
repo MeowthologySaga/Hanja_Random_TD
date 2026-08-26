@@ -185,7 +185,8 @@ export const DISMANTLE_UNIQUE_STORAGE_KEY = "hanja-td:dismantle-protect-unique";
 /*
  * 학습 모드 · 부적 만들기 (트랙 C).
  *
- * 설정에서 켜야 「부적」 탭이 나타나는 선택 기능이다. 켬/끔은 브라우저에
+ * 기본 켜짐이고 설정에서 끌 수 있다(트랙 C2 — 사용자 결정). 저장된 값이
+ * "false" 일 때만 꺼진다. 켬/끔은 브라우저에
  * 저장하고, 무료 소환권은 코어 무수정 원칙에 따라 UI 층(ctx)에만 든다 —
  * 상점 기본 소환 카드가 배지로 읽고, 사용 시 소환가만큼 엽전을 먼저 얹은 뒤
  * 즉시 소환하는 래퍼(panels/talisman.ts)가 소비한다.
@@ -341,12 +342,19 @@ class AppContext {
   })();
   /** FB6: 실효값(설정 > OS). settings.ts 의 applyCalmScreen 이 갱신한다. */
   calmScreen = this.calmScreenChoice ?? reducedMotion;
-  /** 부적 만들기 토글(설정 저장). 켜면 「부적」 탭이 탭바에 나타난다. */
+  /**
+   * 부적 만들기 토글(설정 저장). 켜져 있으면 「부적」 탭이 탭바에 선다.
+   *
+   * 기본 켜짐이다 — "보상 재밌는 것 같아서 기본으로 켜져 있게 하자"(사용자
+   * 결정). 켜 두고 쓰지 않는 사람이 손해 보지 않는 것이 전제이며, 그 전제는
+   * 경제 상환이 계수가 아니라 장부(engine.talismanDebt)라서 성립한다 —
+   * 부적을 한 장도 쓰지 않으면 빚이 0 이라 수입이 통째로 예전 그대로다.
+   */
   talismanMode = ((): boolean => {
     try {
-      return window.localStorage.getItem(TALISMAN_MODE_STORAGE_KEY) === "true";
+      return window.localStorage.getItem(TALISMAN_MODE_STORAGE_KEY) !== "false";
     } catch {
-      return false;
+      return true;
     }
   })();
   /** 부적 보상으로 얻은 기본 소환 무료권. 코어 무수정 — UI 층에서만 산다. */

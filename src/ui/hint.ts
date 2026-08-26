@@ -109,6 +109,15 @@ const ONE_SHOT_HINTS: readonly OneShotHint[] = [
     title: () => "문기를 얻었습니다",
     body: () => "문기는 자령 분해와 3체 승급이 남깁니다. 강화 제련소에서 오행별로 씁니다 — [강화] 탭에서 분해·오행 강화·고유 특성에 투자하세요.",
     when: () => WUXING_ORDER.some((wuxing) => ctx.engine.state.elementEssence[wuxing] > 0)
+  },
+  {
+    id: "talisman",
+    target: "#talisman-tab",
+    title: () => "부적 만들기가 켜져 있습니다",
+    body: () => "한자를 따라 쓰고 [부적 봉인]을 누르면 그 글자의 자령이 보상을 두고 갑니다. 받은 보상은 웨이브 정산에서 되갚으니 총 수입은 그대로예요 — 원치 않으면 설정에서 끌 수 있습니다.",
+    // 기본 켜짐(트랙 C2)이라 대부분의 사람은 이 탭을 처음 본다. 탭이 실제로
+    // 서 있는 순간 딱 한 번만 짚는다. 수련장은 자체 각본이 화면을 이끌므로 비킨다.
+    when: () => ctx.talismanMode && shell.dataset.tutorial !== "1"
   }
 ];
 
