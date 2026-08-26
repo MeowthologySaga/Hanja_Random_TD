@@ -86,6 +86,15 @@ function noteEarlyStartUsed(): void {
 
 let earlyHintTimer = 0;
 
+/**
+ * 이 안내가 나설 수 있게 된 시각. 소환 클릭은 공개 연출보다 한 프레임 먼저
+ * syncPanel 을 부르므로(handleAction 경유), 자리가 비었다고 그 즉시 나서면
+ * 연출과 연출에 붙는 1회성 안내(FB4)를 밀어낸다 — 잠깐 비워 두고 나선다.
+ */
+let earlyHintEligibleSince = 0;
+
+const EARLY_HINT_DWELL_MS = 900;
+
 function hideEarlyHint(): void {
   window.clearTimeout(earlyHintTimer);
   const hint = document.querySelector<HTMLElement>("#early-hint");
@@ -96,8 +105,23 @@ function maybeShowEarlyHint(): void {
   const hint = document.querySelector<HTMLElement>("#early-hint");
   const button = document.querySelector<HTMLButtonElement>("#early-button");
   if (!hint || !button || !hint.hidden || button.disabled) return;
-  // 코치마크가 떠 있는 동안에는 안내를 겹치지 않는다.
-  if (!must<HTMLElement>("#coach-layer").hidden) return;
+  // 코치마크·1회성 안내가 떠 있는 동안에는 안내를 겹치지 않는다.
+  // 소환 공개 연출이 화면을 덮는 동안도 물러난다 — 연출에 붙는 획수→별
+  // 안내(FB4)가 먼저 서고, 이 안내는 연출이 걷힌 뒤에 나온다.
+  if (
+    !must<HTMLElement>("#coach-layer").hidden
+    || !must<HTMLElement>("#hint-layer").hidden
+    || must<HTMLElement>("#summon-reveal").classList.contains("is-active")
+  ) {
+    earlyHintEligibleSince = 0;
+    return;
+  }
+  // 자리가 잠깐 유지된 뒤에야 나선다 — 같은 클릭 프레임의 경쟁을 막는다.
+  if (earlyHintEligibleSince === 0) {
+    earlyHintEligibleSince = performance.now();
+    return;
+  }
+  if (performance.now() - earlyHintEligibleSince < EARLY_HINT_DWELL_MS) return;
   try {
     if (window.localStorage.getItem(EARLY_HINT_STORAGE_KEY) === "1") return;
     window.localStorage.setItem(EARLY_HINT_STORAGE_KEY, "1");
