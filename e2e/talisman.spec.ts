@@ -60,7 +60,7 @@ test("the default-on talisman tab turns a submitted trace into a jaryeong reward
   await page.locator("#settings-button").click();
   await expect(page.getByTestId("talisman-mode-toggle")).toHaveAttribute("aria-checked", "true");
   // 상환 규칙은 설정 설명에 드러나 있어야 한다 — 숨기지 않는다.
-  await expect(page.getByTestId("talisman-mode-toggle")).toContainText("되갚으므로");
+  await expect(page.getByTestId("talisman-mode-toggle")).toContainText("적이 5% 강해집니다");
   await page.screenshot({ path: "artifacts/talisman-settings-note-1280x720.png", fullPage: true });
   await page.getByTestId("talisman-mode-toggle").click();
   await expect(page.locator("#talisman-tab")).toHaveCount(0);
@@ -76,9 +76,9 @@ test("the default-on talisman tab turns a submitted trace into a jaryeong reward
   await expect(page.locator(".game-shell")).toHaveAttribute("data-panel-tab", "talisman");
   await expect(page.locator("#talisman-panel")).toBeVisible();
   await expect(page.locator("#talisman-reading")).not.toHaveText("글자를 준비하는 중");
-  await expect(page.locator("#talisman-reward-note")).toContainText("3/3");
+  await expect(page.locator("#talisman-progress-count")).toHaveText("0 / 3");
   await expect(page.locator("#talisman-recent-reward")).toContainText("아직 없음");
-  await expect(page.locator("#talisman-economy-note")).toContainText("안 쓰면 상환 없음");
+  await expect(page.locator("#talisman-economy-note")).toContainText("적이 5% 강해집니다");
   // 패널 세로 예산 — 부적지·바닥줄이 작업 영역을 넘겨 스크롤을 만들면 안 된다.
   const deckOverflow = await page.locator(".context-deck").evaluate((element) => element.scrollHeight - element.clientHeight);
   expect(deckOverflow).toBeLessThanOrEqual(0);
@@ -125,22 +125,24 @@ test("the default-on talisman tab turns a submitted trace into a jaryeong reward
   await page.screenshot({ path: "artifacts/talisman-reward-visit-1280x720.png", fullPage: true });
   // 연출이 지나가도 "최근 보상" 줄에 누적이 남는다.
   await expect(page.locator("#talisman-recent-reward")).not.toContainText("아직 없음");
-  // 받은 만큼 장부에 남는다 — 웨이브 정산에서 되갚는다는 사실이 패널에 뜬다.
-  await expect(page.locator("#talisman-economy-note")).toContainText("상환 예정");
+  await expect(page.locator("#talisman-progress-count")).toHaveText("1 / 3");
   await expect(page.getByTestId("talisman-submit")).toBeDisabled();
   await page.screenshot({ path: "artifacts/talisman-sealed-1280x720.png", fullPage: true });
 
-  // ⑤ 웨이브당 상한 — 상한을 넘긴 완성은 연출만 남고 보상 소진 안내가 뜬다.
-  for (let round = 0; round < 3; round += 1) {
-    await page.getByTestId("talisman-redraw").click();
+  // ⑤ 3장 한 세트 — 완성하면 종이가 저절로 넘어가 다음 글자가 차오르고,
+  //    3장을 채우면 세트가 잠긴 채 다음 웨이브를 기다린다.
+  for (let sheet = 2; sheet <= 3; sheet += 1) {
+    // 손대지 않아도 다음 장이 온다(인장이 걷히고 빈 종이가 선다).
     await expect(page.locator("#talisman-seal")).toBeHidden();
+    await expect(page.getByTestId("talisman-submit")).toBeDisabled();
     await page.evaluate(() => (window as unknown as TalismanQaWindow).__HANJA_TALISMAN_QA__.autoTrace());
     await page.getByTestId("talisman-submit").click();
-    await expect(page.locator("#talisman-seal")).toBeVisible();
+    await expect(page.locator("#talisman-progress-count")).toHaveText(`${sheet} / 3`);
   }
-  await expect(page.locator("#toast")).toContainText("이번 웨이브 보상은 소진");
-  await expect(page.locator("#talisman-reward-note")).toContainText("소진");
-  await page.screenshot({ path: "artifacts/talisman-recent-reward-1280x720.png", fullPage: true });
+  await expect(page.locator("#talisman-status")).toContainText("3장 완성");
+  await expect(page.getByTestId("talisman-submit")).toBeDisabled();
+  await expect(page.getByTestId("talisman-redraw")).toBeDisabled();
+  await page.screenshot({ path: "artifacts/talisman-set-complete-1280x720.png", fullPage: true });
 
   // ⑥ 기본 소환 무료권 — 배지가 서고, 쓰면 엽전이 줄지 않고 권만 준다.
   await page.evaluate(() => {

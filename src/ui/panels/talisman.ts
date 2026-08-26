@@ -14,22 +14,25 @@
  *   안내만 남기고 먹선을 그대로 둬 이어 그릴 수 있다.
  * 트랙 C2 ②: 통과하면 그 글자의 자령이 내려와 보상을 놓고 간다
  *   (talisman-reward.ts). 엔진 상태에는 남지 않는 방문객이다.
- * 트랙 C2 ③: 받은 보상의 엽전 환산액은 engine.talismanDebt 에 적히고 웨이브
- *   정산에서 되갚는다 — 부적을 쓰지 않으면 빚이 0 이라 상환도 없다.
+ * 트랙 C2 ③: 보상은 준 대로 남는다. 대가는 난이도로 받는다 — 부적 모드를 켠
+ *   런은 적 체력이 5% 오른다(engine-tuning.ts 「부적 모드 경제」).
+ * 트랙 C2 ④: 한 웨이브는 부적 3장 한 세트다. 완성하면 보상 연출이 끝나는
+ *   대로 종이가 넘어가 다음 글자가 차오르고, 3장을 채우면 세트가 잠긴다.
+ *   다음 웨이브가 오면 새 종이 3장이 다시 열린다.
  *
  * 설정의 「학습 모드 · 부적 만들기」 토글(기본 켜짐, localStorage)이 「부적」
- * 탭을 세운다. 강제 없음 — 언제든 끌 수 있고, 켜 둔 채 안 써도 손해가 없다.
+ * 탭을 세운다. 강제 없음 — 언제든 끌 수 있다.
  *
  * 코어 무수정 원칙: 보상은 engine.state 직접 변형(엽전·문기 — 디버그 QA 핸들
  * 선례)과 ctx 의 무료권 수로만 지급한다. 무료권 사용은 소환 비용만큼 엽전을
  * state 에 먼저 얹고 즉시 소환하는 래퍼다(실패 시 얹은 엽전을 물려 권 보존).
  */
-import { TALISMAN_ESSENCE_GOLD_VALUE } from "../../core/engine-tuning";
+import { TALISMAN_MODE_ENEMY_HP_SCALE } from "../../core/engine-tuning";
 import { type GameEngine } from "../../core/game";
 import { summonCost, WUXING_ORDER } from "../../core/hanzi";
 import { learningInfo } from "../../core/learning";
 import { type HanziDefinition, type Wuxing } from "../../core/types";
-import { ctx, must, TALISMAN_MODE_STORAGE_KEY, sound } from "../app-context";
+import { calmBattlefield, ctx, must, TALISMAN_MODE_STORAGE_KEY, sound } from "../app-context";
 import { summonAndFocus } from "../battle/camera";
 import { setPanelTab, showToast } from "../hud";
 import { playTalismanImpact, playTalismanRewardVisit, type TalismanRewardGrant } from "../talisman-reward";
@@ -62,11 +65,16 @@ const BRUSH_WIDTH = 11;
 const INK_STYLE = "rgba(26, 19, 11, 0.88)";
 
 /**
- * 웨이브당 성공 보상 상한 — 사람만 쓰는 수입원이라 소액 + 횟수 제한.
- * 인플레는 이 상한이 아니라 상환 장부가 막는다(engine-tuning.ts 「부적 모드
- * 경제」) — 그래서 상한은 "한 웨이브에 몇 번 쓸 만한가"의 체감값으로 남는다.
+ * 한 웨이브의 부적 세트 크기. 완성할 때마다 다음 장이 자동으로 차오르고,
+ * 이만큼 채우면 세트가 끝난다. 보상 횟수 상한도 같은 값이다.
  */
 const REWARDS_PER_WAVE = 3;
+
+/** 보상 연출(talisman-reward.ts VISIT_MS 1.4초)이 끝난 뒤 다음 장으로 넘어간다. */
+const NEXT_SHEET_DELAY_MS = 1_500;
+
+/** 종이 넘김 — 절반 지점에서 새 글자를 앉힌다. 540절의 애니메이션 길이와 맞춘다. */
+const PAGE_TURN_MS = 350;
 
 /** 보상 가중 — 엽전 60% / 해당 한자 오행 문기 30% / 기본 소환 무료권 10%. */
 const REWARD_GOLD_WEIGHT = 0.6;
@@ -117,6 +125,12 @@ function emptyTally(): RecentRewardTally {
 
 let recentRewards: RecentRewardTally = emptyTally();
 
+/** 이번 웨이브 세트를 다 채워 종이가 잠겼는가. 다음 웨이브에 스스로 풀린다. */
+let setLocked = false;
+
+/** 다음 장 자동 전환·세트 잠금 예약. [지우기]·[다시 뽑기] 가 취소한다. */
+let advanceTimer = 0;
+
 function rewardBudgetLeft(): number {
   const state = ctx.engine.state;
   if (rewardEngine !== ctx.engine || rewardWave !== state.wave) {
@@ -139,30 +153,42 @@ function recentRewardText(): string {
   return parts.join(" · ");
 }
 
+/** 인장 3칸과 "n / 3" — 이번 웨이브에 몇 장을 완성했는가. */
 function syncRewardNote(): void {
-  const left = rewardBudgetLeft();
-  must<HTMLElement>("#talisman-reward-note").textContent = left > 0
-    ? `이번 웨이브 보상 ${left}/${REWARDS_PER_WAVE}회`
-    : `이번 웨이브 보상 소진 · 다음 웨이브에 ${REWARDS_PER_WAVE}회`;
+  const done = REWARDS_PER_WAVE - rewardBudgetLeft();
+  document.querySelectorAll<HTMLElement>("#talisman-progress > i")
+    .forEach((slot, index) => slot.classList.toggle("is-done", index < done));
+  must<HTMLElement>("#talisman-progress-count").textContent = `${done} / ${REWARDS_PER_WAVE}`;
   const recent = must<HTMLElement>("#talisman-recent-reward");
   const text = recentRewardText();
   recent.textContent = text === "" ? "최근 보상 · 아직 없음" : `최근 보상 · ${text}`;
   recent.classList.toggle("is-empty", text === "");
-  // 상환 규칙은 숨기지 않는다 — 갚을 것이 남았으면 얼마인지까지 밝힌다.
-  const debt = Math.round(ctx.engine.talismanDebt);
-  must<HTMLElement>("#talisman-economy-note").textContent = debt > 0
-    ? `웨이브 정산에서 ${debt}엽전 상환 예정 — 부적으로 번 만큼만 되갚습니다`
-    : "받은 보상은 웨이브 정산에서 되갚습니다 · 안 쓰면 상환 없음";
 }
 
 /**
- * HUD 렌더 틱이 부른다 — 부적 탭이 열려 있는 동안에만 머리글 숫자를 맞춘다.
- * 웨이브가 넘어가며 보상 잔여 횟수와 상환 잔액이 바뀌는 것을 즉시 비춘다.
+ * 세트 상태를 지금 웨이브에 맞춘다.
+ * 웨이브가 넘어가면 rewardBudgetLeft 가 스스로 리셋되므로, 잠겨 있던 세트는
+ * 그 순간 풀리고 새 종이 첫 장이 차오른다.
+ */
+function refreshSet(): void {
+  const left = rewardBudgetLeft();
+  if (setLocked && left > 0) {
+    setLocked = false;
+    must<HTMLElement>("#talisman-paper").classList.remove("is-set-done");
+    const definition = pickDefinition();
+    if (definition) presentDefinition(definition);
+  }
+  syncRewardNote();
+}
+
+/**
+ * HUD 렌더 틱이 부른다 — 부적 탭이 열려 있는 동안에만 세트 상태를 맞춘다.
+ * 웨이브 전환을 이 자리에서 잡아 새 종이를 자동으로 연다.
  */
 export function syncTalismanPanel(): void {
   if (ctx.activePanelTab !== "talisman") return;
   if (!document.querySelector("#talisman-panel")) return;
-  syncRewardNote();
+  refreshSet();
 }
 
 /** 현재 지역 로스터에서 다음 글자를 뽑는다(직전 글자는 피한다). */
@@ -252,6 +278,7 @@ function presentDefinition(definition: HanziDefinition): void {
   setStatus("반투명 글자를 따라 쓰고 [부적 봉인]");
   must<HTMLButtonElement>("#talisman-redraw").textContent = "다시 뽑기";
   syncSubmitButton(false);
+  setControlsEnabled(true);
   syncRewardNote();
 }
 
@@ -293,20 +320,15 @@ function grantReward(): void {
     const amount = REWARD_GOLD_MIN + Math.floor(Math.random() * (REWARD_GOLD_MAX - REWARD_GOLD_MIN + 1));
     state.gold += amount;
     recentRewards.gold += amount;
-    // 받은 만큼 그대로 장부에 적는다 — 웨이브 정산에서 되갚는다.
-    ctx.engine.talismanDebt += amount;
     grants.push({ kind: "gold", amount, glyph: "錢", label: `+${amount} 엽전` });
   } else if (roll < REWARD_GOLD_WEIGHT + REWARD_ESSENCE_WEIGHT) {
     state.elementEssence[wuxing] += 1;
     state.elementEssenceGenerated[wuxing] += 1;
     recentRewards.essence[wuxing] = (recentRewards.essence[wuxing] ?? 0) + 1;
-    ctx.engine.talismanDebt += TALISMAN_ESSENCE_GOLD_VALUE;
     grants.push({ kind: "essence", amount: 1, wuxing, glyph: wuxing, label: "+1 문기" });
   } else {
     ctx.talismanFreeSummonTokens += 1;
     recentRewards.tokens += 1;
-    // 무료권이 아껴 줄 액수는 지금 소환가와 같다 — 그만큼만 적는다.
-    ctx.engine.talismanDebt += summonCost(state.summonCount);
     grants.push({ kind: "token", amount: 1, glyph: "券", label: "+1 소환 무료권" });
   }
   const summary = grants.map((grant) => grant.label).join(" · ");
@@ -335,8 +357,16 @@ function completeTalisman(score: TalismanScore): void {
   setStatus(`부적 완성! 정확 ${Math.round(score.insideRatio * 100)}% · 덮음 ${Math.round(score.coverageRatio * 100)}%`, "pass");
   must<HTMLButtonElement>("#talisman-redraw").textContent = "새 부적 쓰기";
   syncSubmitButton(false);
+  setControlsEnabled(false);
   grantReward();
   syncRewardNote();
+  // 보상 연출이 끝나는 대로 다음 장이 차오른다. 세트를 채웠으면 종이가 잠긴다.
+  cancelAdvance();
+  advanceTimer = window.setTimeout(() => {
+    advanceTimer = 0;
+    if (runActive() && rewardBudgetLeft() <= 0) lockSet();
+    else turnToNextSheet();
+  }, NEXT_SHEET_DELAY_MS);
 }
 
 /**
@@ -353,6 +383,47 @@ function refreshScore(): TalismanScore | null {
     else setStatus(`정확 ${Math.round(score.insideRatio * 100)}% · 덮음 ${Math.round(score.coverageRatio * 100)}%`);
   }
   return score;
+}
+
+/* ── 3장 세트 흐름 ───────────────────────────────────────────── */
+
+function cancelAdvance(): void {
+  if (advanceTimer === 0) return;
+  window.clearTimeout(advanceTimer);
+  advanceTimer = 0;
+}
+
+/** 완성 직후에는 조작을 잠가 둔다 — 곧 다음 장이 오거나 세트가 끝난다. */
+function setControlsEnabled(enabled: boolean): void {
+  must<HTMLButtonElement>("#talisman-clear").disabled = !enabled;
+  must<HTMLButtonElement>("#talisman-redraw").disabled = !enabled;
+}
+
+/** 종이가 넘어가고 다음 글자가 차오른다(차분한 화면이면 넘김 없이 교체). */
+function turnToNextSheet(): void {
+  const definition = pickDefinition();
+  if (!definition) return;
+  if (calmBattlefield()) {
+    presentDefinition(definition);
+    return;
+  }
+  const paper = must<HTMLElement>("#talisman-paper");
+  paper.classList.remove("is-turning");
+  // 리플로 후 다시 얹어야 연속 전환에도 넘김이 매번 돈다.
+  void paper.offsetWidth;
+  paper.classList.add("is-turning");
+  // 종이가 가장 얇게 서는 절반 지점에서 글자를 갈아 끼운다.
+  window.setTimeout(() => presentDefinition(definition), PAGE_TURN_MS / 2);
+  window.setTimeout(() => paper.classList.remove("is-turning"), PAGE_TURN_MS + 40);
+}
+
+/** 세트 완주 — 종이가 잠기고 다음 웨이브를 기다린다. */
+function lockSet(): void {
+  setLocked = true;
+  setControlsEnabled(false);
+  syncSubmitButton(false);
+  must<HTMLElement>("#talisman-paper").classList.add("is-set-done");
+  setStatus(`이번 웨이브 부적 ${REWARDS_PER_WAVE}장 완성 · 다음 웨이브에 새 종이가 옵니다`, "pass");
 }
 
 /** 미달 안내는 모자란 축만 짚는다. 벌은 없고 먹선도 지우지 않는다. */
@@ -465,8 +536,9 @@ function syncTabPresence(): void {
     setPanelTab("talisman");
     ensureDefinition();
     // 같은 글자로 돌아온 경우에도 제출 활성·상태 줄을 지금 먹선에 맞춘다.
-    refreshScore();
-    syncRewardNote();
+    if (!setLocked) refreshScore();
+    // 탭을 닫아 둔 사이 웨이브가 넘어갔으면 여기서 새 세트가 열린다.
+    refreshSet();
   });
   must<HTMLElement>(".panel-tabs").append(button);
 }
@@ -521,7 +593,10 @@ const PANEL_MARKUP = `
   <header class="workbench-heading">
     <div><span>따라 쓰는 봉인구</span><strong>부적 만들기</strong></div>
     <div class="talisman-reward-column">
-      <p id="talisman-reward-note" class="talisman-reward-note">이번 웨이브 보상 ${REWARDS_PER_WAVE}/${REWARDS_PER_WAVE}회</p>
+      <div id="talisman-progress" class="talisman-progress" aria-label="이번 웨이브 부적 진행">
+        ${Array.from({ length: REWARDS_PER_WAVE }, () => "<i></i>").join("")}
+        <b id="talisman-progress-count">0 / ${REWARDS_PER_WAVE}</b>
+      </div>
       <p id="talisman-recent-reward" class="talisman-recent-reward is-empty">최근 보상 · 아직 없음</p>
     </div>
   </header>
@@ -538,7 +613,7 @@ const PANEL_MARKUP = `
       <button id="talisman-redraw" class="small-button" type="button" data-testid="talisman-redraw">다시 뽑기</button>
       <button id="talisman-submit" class="small-button talisman-submit" type="button" data-testid="talisman-submit" disabled>부적 봉인</button>
     </div>
-    <p id="talisman-economy-note" class="talisman-economy-note">받은 보상은 웨이브 정산에서 되갚습니다 · 안 쓰면 상환 없음</p>
+    <p id="talisman-economy-note" class="talisman-economy-note">부적 모드에서는 적이 ${Math.round((TALISMAN_MODE_ENEMY_HP_SCALE - 1) * 100)}% 강해집니다 — 그 대신 부적 보상을 얻습니다</p>
   </div>`;
 
 function mountTalismanPanel(): void {
@@ -559,6 +634,7 @@ function mountTalismanPanel(): void {
   wireDrawing(ink);
   must<HTMLButtonElement>("#talisman-clear").addEventListener("click", () => {
     sound.unlock();
+    cancelAdvance();
     if (sealed && currentDefinition) {
       // 인장까지 찍힌 부적을 지우면 같은 글자를 처음부터 다시 쓴다.
       presentDefinition(currentDefinition);
@@ -570,6 +646,7 @@ function mountTalismanPanel(): void {
   });
   must<HTMLButtonElement>("#talisman-redraw").addEventListener("click", () => {
     sound.unlock();
+    cancelAdvance();
     const definition = pickDefinition();
     if (definition) presentDefinition(definition);
   });

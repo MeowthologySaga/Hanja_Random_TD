@@ -1,14 +1,16 @@
 /* ══════════════════════════════════════════════════════════════
-   540. 부적 만들기 — 제출 버튼과 자령 강림 (트랙 C2 ①·②)
+   540. 부적 만들기 — 제출 버튼 · 자령 강림 · 3장 세트 (트랙 C2)
 
-   470절(부적 패널) 뒤에 서서 두 가지를 얹는다.
-   ① 판정을 사람이 여는 [부적 봉인] — 바닥줄이 상태 줄 · 버튼 세 개 · 상환
+   470절(부적 패널) 뒤에 서서 세 가지를 얹는다.
+   ① 판정을 사람이 여는 [부적 봉인] — 바닥줄이 상태 줄 · 버튼 세 개 · 난이도
       안내의 3행으로 바뀐다(470절의 1행 flex 를 되짚는다). 세로 예산은
       여전히 .context-deck 368px 이라, 늘어난 만큼을 여백·버튼 높이에서
       되찾아 부적지를 밀어내지 않는다(아래 「세로 예산 되찾기」).
    ② 통과 순간의 자령 강림 — 부적에 응답한 자령이 내려와 보상을 놓고
       떠난다. 초상은 공방 공용 .workbench-spirit 을 그대로 쓰고 크기 변형만
       더한다(새 에셋 없음).
+   ③ 한 웨이브 = 부적 3장 한 세트 — 진행 인장 3칸, 다음 장으로 넘어가는
+      종이 넘김, 세트를 채우면 잠기는 종이.
 
    맥동·이동류는 차분한 화면(.game-shell[data-calm-screen="1"])과
    prefers-reduced-motion 두 게이트를 존중한다 — 그 경우 정보(인장·초상·
@@ -16,7 +18,7 @@
    ══════════════════════════════════════════════════════════════ */
 
 /* 세로 예산 되찾기 — 작업 영역(.context-deck)은 368px 뿐인데 바닥줄이 1행에서
-   3행(상태 · 버튼 · 상환 안내)으로 늘었다. 실측 397px 을 여백과 버튼 높이에서
+   3행(상태 · 버튼 · 난이도 안내)으로 늘었다. 실측 397px 을 여백과 버튼 높이에서
    33px 되찾아 364px 로 앉힌다. 부적지(264px)는 손대지 않는다 — 제시 글자
    180px 하한이 걸린 유일한 칸이라 여기서 줄이면 명세가 깨진다. */
 #talisman-panel {
@@ -115,7 +117,55 @@
   font-weight: 700;
 }
 
-/* 상환 규칙(트랙 C2 ③)은 숨기지 않는다 — 패널 바닥에 상시 한 줄. */
+/* ── ②b 진행 인장 3칸 — 이번 웨이브 세트를 얼마나 채웠는가 ────── */
+.talisman-progress {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 3px;
+}
+
+.talisman-progress > i {
+  width: 11px;
+  height: 11px;
+  border: 1px solid rgba(122, 25, 16, 0.42);
+  border-radius: 3px;
+  background: rgba(120, 100, 66, 0.16);
+}
+
+.talisman-progress > i.is-done {
+  border-color: rgba(122, 25, 16, 0.75);
+  background: radial-gradient(circle at 38% 32%, #b8453a, var(--seal) 70%);
+  box-shadow: 0 1px 3px rgba(90, 20, 12, 0.4);
+}
+
+.talisman-progress > b {
+  margin-left: 3px;
+  color: var(--text-400);
+  font-size: 10.5px;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── ②c 종이 넘김 — 다음 장이 자동으로 차오른다 ─────────────── */
+.talisman-paper.is-turning {
+  animation: talisman-page-turn 0.35s ease-in-out;
+  transform-origin: left center;
+}
+
+@keyframes talisman-page-turn {
+  0% { transform: perspective(620px) rotateY(0deg); filter: brightness(1); }
+  50% { transform: perspective(620px) rotateY(-74deg); filter: brightness(1.16); }
+  100% { transform: perspective(620px) rotateY(0deg); filter: brightness(1); }
+}
+
+/* 세트 완주 — 종이가 잠겨 다음 웨이브를 기다린다. */
+.talisman-paper.is-set-done {
+  opacity: 0.58;
+  filter: grayscale(0.3);
+}
+
+/* 난이도 대가(트랙 C2 ③)는 숨기지 않는다 — 패널 바닥에 상시 한 줄. */
 .talisman-economy-note {
   margin: 0;
   overflow: hidden;
@@ -319,6 +369,7 @@
 
 /* ── ⑦ 두 게이트: 차분한 화면 · OS 동작 줄이기 ──────────────── */
 /* 움직임(이동·바운스·흔들림·파문)만 걷고, 인장·초상·숫자는 남긴다. */
+.game-shell[data-calm-screen="1"] .talisman-paper.is-turning,
 .game-shell[data-calm-screen="1"] .talisman-status.is-hint,
 .game-shell[data-calm-screen="1"] .talisman-seal.is-stamped,
 .game-shell[data-calm-screen="1"] .talisman-paper.is-burst,
@@ -333,6 +384,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .talisman-paper.is-turning,
   .talisman-status.is-hint,
   .talisman-seal.is-stamped,
   .talisman-paper.is-burst,
