@@ -28,11 +28,11 @@ const CONCURRENCY = 6;
  * 걷혀, 없애려던 "덜 그려진 메뉴"가 그대로 나온다. 그래서 **막힘**만 본다.
  * 바이트가 계속 들어오는 한 기다리고, 그 흐름이 끊긴 지 오래면 포기한다.
  */
-export const BOOT_GATE_STALL_MS = 12_000;
+const BOOT_GATE_STALL_MS = 12_000;
 /** 그래도 영원히 붙잡지는 않는다. 최후의 벽. */
-export const BOOT_GATE_CEILING_MS = 120_000;
+const BOOT_GATE_CEILING_MS = 120_000;
 /** 출정 클릭이 P2 핵심분보다 빨랐을 때 기다려 주는 상한. */
-export const BATTLE_GATE_CAP_MS = 1_500;
+const BATTLE_GATE_CAP_MS = 1_500;
 
 export type S00Mode = "3d" | "2d";
 
@@ -180,7 +180,7 @@ interface CacheEntry {
 
 const cache = new Map<string, CacheEntry>();
 
-export function assetUrl(relative: string): string {
+function assetUrl(relative: string): string {
   return `${import.meta.env.BASE_URL}${relative}`;
 }
 
@@ -347,7 +347,7 @@ async function run(paths: readonly string[], onProgress?: (progress: PreloadProg
 
 // ── P1 부팅 게이트 ────────────────────────────────────────────────
 
-export function p1Manifest(mode: S00Mode): readonly string[] {
+function p1Manifest(mode: S00Mode): readonly string[] {
   const stage = mode === "3d" ? P1_S00_3D : P1_S00_2D;
   return [...stage, ...P1_CONTROL_SKINS, ...P1_COMMON];
 }
@@ -427,9 +427,6 @@ export function whenBattleAssetsReady(): Promise<void> {
   ]);
 }
 
-export function battleAssetCount(): number {
-  return P2_BATTLE.length;
-}
 
 // ── 부팅 로딩 막 ──────────────────────────────────────────────────
 // 마크업과 스타일은 `index.html` 인라인이다(번들보다 먼저 떠야 한다).
