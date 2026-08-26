@@ -202,12 +202,12 @@ describe("casual eight-star mode", () => {
     concentrated.concentration = 2;
     concentrated.concentrationPath = "swift";
     // 2·3번 칸을 쓰는 성어 봉인은 그 자리 자령을 그대로 묶어 둔다.
-    engine.state.idiomSeals.push({ idiomId: "sealed-fixture", cells: [2, 3], completedAt: 0 });
+    engine.state.idiomSeals.push({ idiomId: "sealed-fixture", cells: [2, 3], completedAt: 0, active: true });
 
     expect(engine.casualMaterialProtection(locked.id)).toBe("잠금 자령");
     expect(engine.casualMaterialProtection(concentrated.id)).toBe("농축 2단계 투자");
-    expect(engine.casualMaterialProtection(towers[2]?.id ?? -1)).toBe("봉인 완료 사자성어 참여");
-    expect(engine.casualMaterialProtection(towers[3]?.id ?? -1)).toBe("봉인 완료 사자성어 참여");
+    expect(engine.casualMaterialProtection(towers[2]?.id ?? -1)).toBe("발동 중 사자성어 참여");
+    expect(engine.casualMaterialProtection(towers[3]?.id ?? -1)).toBe("발동 중 사자성어 참여");
 
     // 보호 자령은 첫 자리에 넣어도 차단된다 — v2 처럼 본체로 도피할 자리가 없다.
     const quote = engine.casualFusionQuote([locked.id, concentrated.id, towers[2]?.id ?? -1]);

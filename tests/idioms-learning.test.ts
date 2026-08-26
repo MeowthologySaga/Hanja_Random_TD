@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { GameEngine } from "../src/core/game";
+import { GameEngine, runAutoplay } from "../src/core/game";
 import { getCatalog } from "../src/core/hanzi";
 import { type IdiomDefinition, idiomDirectPoolChars, idiomsForRegion, partialIdiomChain, validateIdiomCells } from "../src/core/idioms";
 import { LEARNING_DATA_META, learningInfo } from "../src/core/learning";
@@ -41,7 +41,7 @@ describe("four-character idiom formation", () => {
     expect(validateIdiomCells([0, 1, 2])).toContain("4자");
   });
 
-  it("automatically seals an exact ordered row once and activates its permanent bonus", () => {
+  it("automatically seals an exact ordered row once and activates its bonus while the line holds", () => {
     const engine = new GameEngine("idiom-unit", "KR");
     engine.begin();
     engine.state.towers = [..."以心傳心"].map((char, index) => towerFor(engine, char, index, index + 1));
@@ -49,6 +49,7 @@ describe("four-character idiom formation", () => {
     expect(engine.resolveIdiomFormations()).toBe(1);
     expect(engine.state.idiomSeals).toHaveLength(1);
     expect(engine.state.idiomSeals[0]?.cells).toEqual([0, 1, 2, 3]);
+    expect(engine.state.idiomSeals[0]?.active).toBe(true);
     expect(engine.idiomBonus("range")).toBe(28);
     expect(engine.resolveIdiomFormations()).toBe(0);
     expect(engine.state.idiomSeals).toHaveLength(1);
@@ -260,6 +261,142 @@ describe("four-character idiom formation", () => {
   });
 });
 
+/**
+ * R18 유지형 성어 — 효과는 네 자령이 그 줄을 지키는 동안만 산다.
+ * 기록(달성)과 활성(전투 보너스)이 어떻게 갈라지는지를 경로별로 못 박는다.
+ */
+describe("sustained idiom seals", () => {
+  /** 진 0 의 첫 가로줄에 以心傳心 을 세우고 봉인까지 마친 판. */
+  function sealedEngine(seed: string): GameEngine {
+    const engine = new GameEngine(seed, "KR");
+    engine.begin();
+    engine.state.unlockedFormations = [0, 1, 2, 3, 4];
+    engine.state.towers = [..."以心傳心"].map((char, index) => towerFor(engine, char, index, index + 1));
+    expect(engine.resolveIdiomFormations()).toBe(1);
+    expect(engine.idiomBonus("range")).toBe(28);
+    engine.consumeEvents();
+    return engine;
+  }
+
+  function brokenEvent(engine: GameEngine): Extract<ReturnType<GameEngine["consumeEvents"]>[number], { type: "idiomBroken" }> | undefined {
+    return engine.consumeEvents().find((event): event is Extract<typeof event, { type: "idiomBroken" }> => event.type === "idiomBroken");
+  }
+
+  it("drops the bonus the moment one sealed spirit leaves its cell, but keeps the record", () => {
+    const engine = sealedEngine("idiom-hold-move");
+    engine.selectTower(4);
+    expect(engine.relocateSelectedToCell(20)).toMatchObject({ ok: true });
+
+    // 기록은 그대로 하나. 활성만 꺼진다.
+    expect(engine.state.idiomSeals).toHaveLength(1);
+    expect(engine.state.idiomSeals[0]?.active).toBe(false);
+    expect(engine.state.idiomSeals[0]?.cells).toEqual([]);
+    expect(engine.activeIdiomSeals()).toHaveLength(0);
+    expect(engine.isIdiomSealActive("heart")).toBe(false);
+    expect(engine.idiomBonus("range")).toBe(0);
+    expect(engine.state.lastMessage).toContain("봉인 해제");
+
+    const broken = brokenEvent(engine);
+    expect(broken).toBeDefined();
+    expect(broken?.idiomId).toBe("heart");
+    expect(broken?.reading).toBe("이심전심");
+    expect(broken?.cells).toEqual([0, 1, 2, 3]);
+  });
+
+  it("re-arms the same idiom when the line is rebuilt, flagged as a rejoin", () => {
+    const engine = sealedEngine("idiom-hold-rejoin");
+    engine.selectTower(4);
+    engine.relocateSelectedToCell(20);
+    expect(engine.idiomBonus("range")).toBe(0);
+    engine.consumeEvents();
+
+    engine.selectTower(4);
+    expect(engine.relocateSelectedToCell(3)).toMatchObject({ ok: true });
+    expect(engine.state.idiomSeals).toHaveLength(1);
+    expect(engine.state.idiomSeals[0]?.active).toBe(true);
+    expect(engine.state.idiomSeals[0]?.cells).toEqual([0, 1, 2, 3]);
+    expect(engine.idiomBonus("range")).toBe(28);
+
+    const rejoin = engine.consumeEvents().find((event) => event.type === "idiom");
+    expect(rejoin).toBeDefined();
+    if (rejoin?.type === "idiom") {
+      expect(rejoin.rejoined).toBe(true);
+      expect(rejoin.cells).toEqual([0, 1, 2, 3]);
+    }
+    expect(engine.state.lastMessage).toContain("재봉인");
+  });
+
+  it("breaks the seal when a sealed spirit is stored, and keeps it broken after dismantling it", () => {
+    const engine = sealedEngine("idiom-hold-store");
+    engine.selectTower(2);
+    expect(engine.storeSelectedTower()).toMatchObject({ ok: true });
+    expect(engine.isIdiomSealActive("heart")).toBe(false);
+    expect(engine.idiomBonus("range")).toBe(0);
+    expect(brokenEvent(engine)).toBeDefined();
+
+    // 분해까지 마쳐도 달성 기록은 그대로 남고 활성은 꺼진 채다.
+    const stored = engine.state.inventoryTowers[0] as Tower;
+    expect(engine.dismantleTowers([stored.id], { protectUnique: false })).toMatchObject({ ok: true });
+    expect(engine.state.idiomSeals).toHaveLength(1);
+    expect(engine.isIdiomSealActive("heart")).toBe(false);
+    expect(engine.idiomBonus("range")).toBe(0);
+  });
+
+  it("breaks the seal when a sealed spirit is sold off the board", () => {
+    const engine = sealedEngine("idiom-hold-sell");
+    engine.selectTower(1);
+    expect(engine.sellSelected()).toMatchObject({ ok: true });
+    expect(engine.state.idiomSeals).toHaveLength(1);
+    expect(engine.isIdiomSealActive("heart")).toBe(false);
+    expect(engine.idiomBonus("range")).toBe(0);
+    expect(brokenEvent(engine)).toBeDefined();
+  });
+
+  it("keeps the achievement record so the run target moves on even while the line is scattered", () => {
+    const engine = sealedEngine("idiom-hold-record");
+    const nextTarget = engine.currentIdiomTarget();
+    expect(nextTarget?.id).not.toBe("heart");
+
+    engine.selectTower(4);
+    engine.relocateSelectedToCell(20);
+    // 흩어져도 "이미 봉인해 본 성어"라 목표는 되돌아오지 않고, 통계 수치도 1 그대로다.
+    expect(engine.currentIdiomTarget()?.id).toBe(nextTarget?.id);
+    expect(engine.state.idiomSeals).toHaveLength(1);
+    expect(engine.setIdiomTarget("heart")).toMatchObject({ ok: false });
+  });
+
+  it("keeps auto-arrange from scattering the four spirits of an active seal", () => {
+    const engine = sealedEngine("idiom-hold-autoarrange");
+    // 공명 최적화가 탐낼 만한 자령을 잔뜩 붙여 둔다.
+    const filler = engine.catalog.activePool
+      .filter((definition) => ![..."以心傳心"].includes(definition.char))
+      .slice(0, 24);
+    engine.state.towers.push(...filler.map((definition, index) => towerFor(engine, definition.char, 16 + index, 100 + index)));
+
+    const sealedIds = engine.sealedIdiomTowerIds();
+    expect([...sealedIds].sort((left, right) => left - right)).toEqual([1, 2, 3, 4]);
+    const before = new Map(engine.state.towers.map((tower) => [tower.id, tower.cell]));
+
+    for (let round = 0; round < 3; round += 1) expect(engine.autoArrangeTowers()).toMatchObject({ ok: true });
+
+    for (const id of sealedIds) {
+      expect(engine.state.towers.find((tower) => tower.id === id)?.cell).toBe(before.get(id));
+    }
+    expect(engine.isIdiomSealActive("heart")).toBe(true);
+    expect(engine.idiomBonus("range")).toBe(28);
+    expect(engine.consumeEvents().some((event) => event.type === "idiomBroken")).toBe(false);
+  });
+
+  it("still lets the autoplay bot finish a run with pinned seals in play", () => {
+    for (const region of ["KR", "JP"] as const) {
+      const result = runAutoplay(`idiom-hold-bot-${region}`, region, 5_400);
+      expect(result.result).not.toBe("timeout");
+      // 자리 고정이 봇의 자동배치를 잠가 버리면 초반 웨이브에서 멈춘다.
+      expect(result.wave).toBeGreaterThan(20);
+    }
+  }, 30_000);
+});
+
 describe("regional idiom reachability and learning labels", () => {
   for (const region of ["KR", "JP", "CN"] as const satisfies readonly RegionCode[]) {
     it(`${region} keeps every featured idiom reachable from its run summon pool`, () => {
@@ -301,7 +438,7 @@ describe("regional idiom reachability and learning labels", () => {
     const engine = new GameEngine("idiom-cap", "KR");
     const damage = engine.allIdioms().filter((idiom) => idiom.bonus.kind === "damage").slice(0, 2);
     const slow = engine.allIdioms().filter((idiom) => idiom.bonus.kind === "enemySlow").slice(0, 2);
-    engine.state.idiomSeals = [...damage, ...slow].map((idiom, index) => ({ idiomId: idiom.id, cells: [0, 1, 2, 3], completedAt: index }));
+    engine.state.idiomSeals = [...damage, ...slow].map((idiom, index) => ({ idiomId: idiom.id, cells: [0, 1, 2, 3], completedAt: index, active: true }));
     expect(engine.idiomBonus("damage")).toBe(0.15);
     expect(engine.idiomBonus("enemySlow")).toBe(0.1);
   });

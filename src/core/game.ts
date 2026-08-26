@@ -2,6 +2,8 @@ import {
   BOARD_CELLS,
   BOARD_FORMATIONS,
   CELLS_PER_FORMATION,
+  FORMATION_COLUMNS,
+  FORMATION_ROWS,
   INITIAL_UNLOCKED_FORMATIONS,
   MAX_ENEMIES,
   SUMMON_CELL_ORDER,
@@ -103,7 +105,7 @@ import type {
   Wuxing
 } from "./types";
 import type { IdiomDefinition } from "./idioms";
-import type { IdiomBonusKind } from "./types";
+import type { IdiomBonusKind, IdiomSeal } from "./types";
 
 function distance(a: Point, b: Point): number {
   return Math.hypot(a.x - b.x, a.y - b.y);
@@ -1577,12 +1579,16 @@ export class GameEngine {
   }
 
   /**
-   * 봉인이 끝난 사자성어에 참여 중인 전장 자령 id 집합.
-   * 봉인 성어의 글자를 재료로 태우면 이미 얻은 봉인이 깨지므로, 미완 성어와
-   * 똑같이 재료 후보에서 제외해야 한다(요구 4의 "생각 못한 사각").
+   * 지금 발동 중인 사자성어에 참여하고 있는 전장 자령 id 집합.
+   *
+   * 두 곳이 이 집합을 쓴다.
+   *  - 캐주얼 3합·정리 보호: 봉인 성어의 글자를 재료로 태우면 발동이 꺼진다.
+   *  - 자동배치 자리 고정: 유지형 규칙에서는 자동배치가 이 넷을 흩뜨리면
+   *    제 손으로 보너스를 끄는 셈이라 이동 후보에서 통째로 뺀다.
+   * 흩어진 기록(비활성)은 지킬 줄이 없으므로 포함하지 않는다.
    */
-  private sealedIdiomTowerIds(): Set<number> {
-    const sealedCells = new Set(this.state.idiomSeals.flatMap((seal) => seal.cells));
+  sealedIdiomTowerIds(): Set<number> {
+    const sealedCells = new Set(this.activeIdiomSeals().flatMap((seal) => seal.cells));
     if (sealedCells.size === 0) return new Set<number>();
     return new Set(
       this.state.towers.filter((tower) => tower.cell >= 0 && sealedCells.has(tower.cell)).map((tower) => tower.id)
@@ -1657,7 +1663,7 @@ export class GameEngine {
     if ((tower.concentration ?? 0) > 0) return `농축 ${tower.concentration}단계 투자`;
     if (context.targetPath.has(tower.char)) return "현재 목표 합성 계보";
     if (context.unfinishedIdiomChars.has(tower.char)) return "미완성 사자성어 재료";
-    if (context.sealedTowerIds.has(tower.id)) return "봉인 완료 사자성어 참여";
+    if (context.sealedTowerIds.has(tower.id)) return "발동 중 사자성어 참여";
     if (context.standardMaterialIds.has(tower.id)) return "일반 모드 합성식 재료";
     return null;
   }
@@ -1864,7 +1870,9 @@ export class GameEngine {
       starFallback: pool.starFallback,
       rosterFallback: pool.rosterFallback
     });
-    if (inheritedCell >= 0 && this.isRunActive()) this.resolveIdiomFormations();
+    // 유지형 규칙에서는 소모된 재료가 판을 떠난 것만으로도 봉인이 흩어질 수 있다.
+    // 승급 결과가 보관고로 갔더라도(inheritedCell < 0) 판정은 다시 해야 한다.
+    if (this.isRunActive()) this.resolveIdiomFormations();
     return {
       ok: true,
       message: this.state.lastMessage,
@@ -2281,7 +2289,7 @@ export class GameEngine {
     if (this.state.towers.length === 0 && this.state.inventoryTowers.length === 0) return { ok: false, message: "자동배치할 자령이 없습니다." };
 
     const originalCells = new Map([...this.state.towers, ...this.state.inventoryTowers].map((tower) => [tower.id, tower.cell]));
-    const sealedBefore = this.state.idiomSeals.length;
+    const sealedBefore = this.activeIdiomSeals().length;
     const resonanceBefore = BOARD_FORMATIONS.reduce((sum, _, index) => sum + this.formationResonance(index).tier, 0);
     const occupiedCells = new Set(this.state.towers.map((tower) => tower.cell));
     const emptyCells = BOARD_CELLS.map((_, index) => index).filter((cell) => this.isCellUnlocked(cell) && !occupiedCells.has(cell));
@@ -2292,22 +2300,26 @@ export class GameEngine {
       this.state.towers.push(tower);
     }
 
+    // 발동 중인 봉인의 네 자령은 자리 고정이다. 새 봉인을 하나 세울 때마다
+    // 고정 집합이 늘어나므로 매 바퀴 다시 읽는다.
+    let pinned = this.sealedIdiomTowerIds();
     for (let guard = 0; guard < this.idioms().length; guard += 1) {
       const idiom = this.idioms().find((candidate) =>
-        !this.state.idiomSeals.some((seal) => seal.idiomId === candidate.id)
-        && this.towersForIdiom(candidate) !== null
+        !this.isIdiomSealActive(candidate.id)
+        && this.towersForIdiom(candidate, pinned) !== null
       );
       if (!idiom) break;
-      const chosen = this.towersForIdiom(idiom);
+      const chosen = this.towersForIdiom(idiom, pinned);
       if (!chosen) break;
-      this.placeIdiomTowers(chosen);
+      this.placeIdiomTowers(chosen, pinned);
       if (this.resolveIdiomFormations() === 0) break;
+      pinned = this.sealedIdiomTowerIds();
     }
 
-    this.optimizeFormationCells();
+    this.optimizeFormationCells(pinned);
     this.resolveIdiomFormations();
 
-    const sealed = this.state.idiomSeals.length - sealedBefore;
+    const sealed = this.activeIdiomSeals().length - sealedBefore;
     const resonanceAfter = BOARD_FORMATIONS.reduce((sum, _, index) => sum + this.formationResonance(index).tier, 0);
     const moved = this.state.towers.filter((tower) => originalCells.get(tower.id) !== tower.cell).length;
     if (sealed === 0 && moved === 0) {
@@ -2320,12 +2332,12 @@ export class GameEngine {
     return { ok: true, message: this.state.lastMessage };
   }
 
-  private towersForIdiom(idiom: IdiomDefinition): Tower[] | null {
+  private towersForIdiom(idiom: IdiomDefinition, pinned: ReadonlySet<number> = new Set()): Tower[] | null {
     const used = new Set<number>();
     const chosen: Tower[] = [];
     for (const char of idiom.chars) {
       const tower = this.state.towers
-        .filter((candidate) => candidate.char === char && !used.has(candidate.id))
+        .filter((candidate) => candidate.char === char && !used.has(candidate.id) && !pinned.has(candidate.id))
         .sort((left, right) => left.cell - right.cell || left.id - right.id)[0];
       if (!tower) return null;
       chosen.push(tower);
@@ -2334,7 +2346,12 @@ export class GameEngine {
     return chosen;
   }
 
-  private placeIdiomTowers(chosen: readonly Tower[]): void {
+  private placeIdiomTowers(chosen: readonly Tower[], pinned: ReadonlySet<number> = new Set()): void {
+    const pinnedCells = new Set(this.state.towers.filter((tower) => pinned.has(tower.id)).map((tower) => tower.cell));
+    const rowsFor = (startCell: number): number[][] =>
+      Array.from({ length: FORMATION_ROWS }, (_, row) =>
+        Array.from({ length: FORMATION_COLUMNS }, (_, column) => startCell + row * FORMATION_COLUMNS + column)
+      );
     const formation = BOARD_FORMATIONS
       .map((candidate, index) => ({
         candidate,
@@ -2344,10 +2361,16 @@ export class GameEngine {
           return sum + (tower.wuxing === candidate.preferredWuxing ? 4 : 0) + (inFormation ? 1 : 0);
         }, 0)
       }))
-      .filter(({ index }) => this.isFormationUnlocked(index))
+      // 이미 발동 중인 봉인이 네 칸을 다 차지한 줄만 있는 진은 쓸 수 없다.
+      .filter(({ index, candidate }) =>
+        this.isFormationUnlocked(index)
+        && rowsFor(candidate.startCell).some((row) => row.every((cell) => !pinnedCells.has(cell)))
+      )
       .sort((left, right) => right.score - left.score || left.index - right.index)[0]?.candidate;
     if (!formation) return;
-    const cells = Array.from({ length: 4 }, (_, index) => formation.startCell + index);
+    // 고정된 자령을 밀어내지 않는 첫 줄에 네 글자를 세운다.
+    const cells = rowsFor(formation.startCell).find((row) => row.every((cell) => !pinnedCells.has(cell)));
+    if (!cells) return;
     for (let index = 0; index < chosen.length; index += 1) {
       const tower = chosen[index] as Tower;
       const targetCell = cells[index] as number;
@@ -2358,10 +2381,19 @@ export class GameEngine {
     }
   }
 
-  private optimizeFormationCells(): void {
+  private optimizeFormationCells(pinned: ReadonlySet<number> = new Set()): void {
     const assignment = new Map<number, number>();
     const availableCells = new Set(BOARD_CELLS.map((_, index) => index).filter((cell) => this.isCellUnlocked(cell)));
     const unassigned = new Set(this.state.towers.map((tower) => tower.id));
+
+    // 발동 중인 봉인의 네 자령은 지금 칸에 못을 박고 시작한다. 공명 최적화가
+    // 이 칸들을 비집고 들어오면 자기가 만든 성어를 자기가 흩뜨리게 된다.
+    for (const tower of this.state.towers) {
+      if (!pinned.has(tower.id) || !availableCells.has(tower.cell)) continue;
+      assignment.set(tower.id, tower.cell);
+      availableCells.delete(tower.cell);
+      unassigned.delete(tower.id);
+    }
 
     for (const [formationIndex, formation] of BOARD_FORMATIONS.entries()) {
       if (!this.isFormationUnlocked(formationIndex)) continue;
@@ -2530,6 +2562,8 @@ export class GameEngine {
       .map(([wuxing, amount]) => `${wuxing}+${amount}`)
       .join(" · ");
     this.state.lastMessage = `${removed.length}기 분해 완료 · ${gainLabel}`;
+    // 분해는 보관고만 건드리지만, 보호 규칙이 바뀌는 경로라 판정을 한 번 맞춰 둔다.
+    this.resolveIdiomFormations();
     return { ok: true, message: this.state.lastMessage };
   }
 
@@ -2649,6 +2683,8 @@ export class GameEngine {
     this.state.elementEssence[selected.wuxing] += essenceRefund;
     this.state.selectedTowerId = null;
     this.state.lastMessage = selected.char + " 판매 · " + String(value) + "엽전 회수" + (essenceRefund > 0 ? ` · ${selected.wuxing} 문기 ${essenceRefund} 환급` : "");
+    // 판 위에서 한 기가 사라지면 그 자리를 쓰던 봉인은 흩어진다.
+    this.resolveIdiomFormations();
     return { ok: true, message: this.state.lastMessage };
   }
 
@@ -2705,8 +2741,22 @@ export class GameEngine {
     return this.idioms().find((idiom) => !this.state.idiomSeals.some((seal) => seal.idiomId === idiom.id));
   }
 
+  /**
+   * 지금 이 순간 줄을 지키고 있는 봉인들. 전투 보너스·발광·자리 고정의 기준이다.
+   * 기록(한 번이라도 봉인했는가)은 state.idiomSeals 전체를 그대로 보면 된다.
+   */
+  activeIdiomSeals(): readonly IdiomSeal[] {
+    return this.state.idiomSeals.filter((seal) => seal.active);
+  }
+
+  isIdiomSealActive(idiomId: string): boolean {
+    return this.state.idiomSeals.some((seal) => seal.idiomId === idiomId && seal.active);
+  }
+
   idiomBonus(kind: IdiomBonusKind): number {
+    // 유지형 규칙: 흩어진 봉인은 기록에만 남고 보너스는 내지 않는다.
     const total = this.state.idiomSeals.reduce((sum, seal) => {
+      if (!seal.active) return sum;
       const idiom = idiomById(this.state.region, seal.idiomId);
       return sum + (idiom?.bonus.kind === kind ? idiom.bonus.value : 0);
     }, 0);
@@ -2728,22 +2778,70 @@ export class GameEngine {
     return definitions;
   }
 
+  /**
+   * 봉인 상태를 판 위 배치와 다시 맞춘다. 자령이 놓이고·옮겨지고·사라진 뒤마다 부른다.
+   *
+   * 유지형 규칙이라 이 함수는 "새로 성립한 성어를 켠다"만이 아니라 세 갈래를 본다.
+   *  - 아직 기록이 없는 성어가 줄을 이루면 첫 봉인(rejoined=false).
+   *  - 흩어졌던 기록이 다시 줄을 이루면 재봉인(rejoined=true) — 연출만 가볍다.
+   *  - 활성 봉인의 줄이 깨졌으면 비활성으로 내리고 idiomBroken 을 띄운다.
+   * 돌려주는 수는 이번 호출에서 새로 켜진 봉인 수(첫 봉인 + 재봉인)다.
+   */
   resolveIdiomFormations(): number {
     if (!this.isRunActive()) return 0;
     let activated = 0;
-    for (const idiom of this.idioms()) {
-      if (this.state.idiomSeals.some((seal) => seal.idiomId === idiom.id)) continue;
-      const cells = findIdiomPath(this.state.towers, idiom);
-      if (!cells) continue;
-      this.activateIdiom(idiom, cells);
-      activated += 1;
+    // 목표 다섯 구 + 이미 기록이 남은 구(목표에서 밀려났을 수 있다)를 모두 훑는다.
+    const checked = new Set<string>();
+    const candidates: IdiomDefinition[] = [...this.idioms()];
+    for (const seal of this.state.idiomSeals) {
+      if (candidates.some((idiom) => idiom.id === seal.idiomId)) continue;
+      const idiom = idiomById(this.state.region, seal.idiomId);
+      if (idiom) candidates.push(idiom);
+    }
+    for (const idiom of candidates) {
+      if (checked.has(idiom.id)) continue;
+      checked.add(idiom.id);
+      const seal = this.state.idiomSeals.find((candidate) => candidate.idiomId === idiom.id);
+      // 지키고 있던 네 칸이 그대로면 그 줄을 그대로 쓴다. 판 어딘가에 같은 성어가
+      // 또 서 있다고 해서 봉인 칸이 제멋대로 옮겨 다니면 발광이 튄다.
+      const holdsCells = seal !== undefined && seal.active && this.idiomHoldsCells(idiom, seal.cells);
+      const cells = holdsCells ? [...(seal as IdiomSeal).cells] : findIdiomPath(this.state.towers, idiom);
+      if (!seal) {
+        if (!cells) continue;
+        this.activateIdiom(idiom, cells);
+        activated += 1;
+      } else if (cells) {
+        const rejoined = !seal.active;
+        seal.cells = [...cells];
+        if (!rejoined) continue;
+        seal.active = true;
+        seal.completedAt = this.state.elapsed;
+        this.announceIdiom(idiom, cells, true);
+        activated += 1;
+      } else if (seal.active) {
+        this.breakIdiomSeal(idiom, seal);
+      }
     }
     return activated;
   }
 
+  /** 이 네 칸에 성어의 네 글자가 순서대로 아직 서 있는가. */
+  private idiomHoldsCells(idiom: IdiomDefinition, cells: readonly number[]): boolean {
+    const characters = [...idiom.chars];
+    if (cells.length !== characters.length) return false;
+    return characters.every((char, index) =>
+      this.state.towers.some((tower) => tower.cell === (cells[index] as number) && tower.char === char)
+    );
+  }
+
   private activateIdiom(idiom: IdiomDefinition, cells: readonly number[]): void {
-    this.state.idiomSeals.push({ idiomId: idiom.id, cells: [...cells], completedAt: this.state.elapsed });
-    this.state.lastMessage = idiom.name + " · " + idiom.reading + " 자동 봉인 · " + idiom.bonus.label;
+    this.state.idiomSeals.push({ idiomId: idiom.id, cells: [...cells], completedAt: this.state.elapsed, active: true });
+    this.announceIdiom(idiom, cells, false);
+    this.runSummonPool = this.buildRunSummonPool();
+  }
+
+  private announceIdiom(idiom: IdiomDefinition, cells: readonly number[], rejoined: boolean): void {
+    this.state.lastMessage = idiom.name + " · " + idiom.reading + (rejoined ? " 재봉인 · " : " 자동 봉인 · ") + idiom.bonus.label;
     this.events.push({
       type: "idiom",
       idiomId: idiom.id,
@@ -2752,9 +2850,26 @@ export class GameEngine {
       meaning: idiom.meaning,
       bonus: idiom.bonus.label,
       color: idiom.color,
-      cells: [...cells]
+      cells: [...cells],
+      rejoined
     });
-    this.runSummonPool = this.buildRunSummonPool();
+  }
+
+  /** 줄이 흩어졌다. 달성 기록은 그대로 두고 보너스·발광·자리 고정만 걷는다. */
+  private breakIdiomSeal(idiom: IdiomDefinition, seal: IdiomSeal): void {
+    const cells = [...seal.cells];
+    seal.active = false;
+    seal.cells = [];
+    this.state.lastMessage = idiom.name + " · " + idiom.reading + " 봉인 해제 · 줄이 흩어졌습니다";
+    this.events.push({
+      type: "idiomBroken",
+      idiomId: idiom.id,
+      chars: idiom.chars,
+      reading: idiom.reading,
+      bonus: idiom.bonus.label,
+      color: idiom.color,
+      cells
+    });
   }
 
   getCurrentPlan(): WavePlan | null {
@@ -3125,21 +3240,45 @@ function autoplayEvolutionOption(engine: GameEngine): EvolutionOption | undefine
     ?? options[0];
 }
 
+/**
+ * 봇이 성어 한 구를 세울 줄. 기본은 예전과 같은 0~3번 칸이고, 그 줄이 이미
+ * 발동 중인 봉인에 잡혀 있으면 고정 자령이 없는 다음 가로줄로 비켜난다.
+ */
+function autoplayIdiomLine(engine: GameEngine, pinnedCells: ReadonlySet<number>): number[] | null {
+  // 봇은 예전부터 0~3번 칸에 세웠다. 고정된 자령이 없으면 그 습성을 그대로 둬
+  // 이번 변경이 시뮬 지표를 흔드는 원인을 자리 고정 하나로 좁힌다.
+  const legacy = Array.from({ length: FORMATION_COLUMNS }, (_, column) => column);
+  if (legacy.every((cell) => !pinnedCells.has(cell))) return legacy;
+  for (const [formationIndex, formation] of BOARD_FORMATIONS.entries()) {
+    if (!engine.isFormationUnlocked(formationIndex)) continue;
+    for (let row = 0; row < FORMATION_ROWS; row += 1) {
+      const cells = Array.from({ length: FORMATION_COLUMNS }, (_, column) => formation.startCell + row * FORMATION_COLUMNS + column);
+      if (cells.every((cell) => !pinnedCells.has(cell))) return cells;
+    }
+  }
+  return null;
+}
+
 function arrangeAvailableAutoplayIdioms(engine: GameEngine): void {
   for (let guard = 0; guard < engine.idioms().length; guard += 1) {
     const idiom = engine.currentIdiomTarget();
     if (!idiom) return;
+    // 유지형 규칙: 이미 발동 중인 봉인의 네 자령은 봇도 건드리지 않는다.
+    const pinned = engine.sealedIdiomTowerIds();
+    const pinnedCells = new Set(engine.state.towers.filter((tower) => pinned.has(tower.id)).map((tower) => tower.cell));
     const chosen: Tower[] = [];
     const usedIds = new Set<number>();
     for (const char of idiom.chars) {
-      const tower = engine.state.towers.find((candidate) => candidate.char === char && !usedIds.has(candidate.id));
+      const tower = engine.state.towers.find((candidate) => candidate.char === char && !usedIds.has(candidate.id) && !pinned.has(candidate.id));
       if (!tower) return;
       chosen.push(tower);
       usedIds.add(tower.id);
     }
+    const line = autoplayIdiomLine(engine, pinnedCells);
+    if (!line) return;
     for (let index = 0; index < chosen.length; index += 1) {
       const tower = chosen[index] as Tower;
-      const targetCell = index;
+      const targetCell = line[index] as number;
       const occupant = engine.state.towers.find((candidate) => candidate.cell === targetCell);
       if (occupant && occupant.id !== tower.id) occupant.cell = tower.cell;
       tower.cell = targetCell;
