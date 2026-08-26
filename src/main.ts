@@ -2550,18 +2550,30 @@ function renderSelected(): void {
   card.innerHTML = `
     <div class="selected-glyph" style="--unit:${style.color};--stage:${progressionColor}">${tower.char}${engine.state.mode === "casual" ? `<small>${casualStar}★ · ${casualStrokeCount(tower.char) ?? "?"}획</small>` : concentration > 0 ? `<small>濃 ${concentration}</small>` : ""}</div>
     <div class="selected-copy">
-      <div><span>${progressionLabel} · ${style.name}행 · ${ROLE_LABELS[tower.combatRole]}</span><h3>${tower.char} <small>${GRAPH_ROLE_LABELS[tower.graphRole]}</small><i class="selected-radical">${displayMode === "spirit" ? `${learning.readingLabel} ${escapeHtml(learning.reading)}` : `부수 ${radicalGlyph(tower.char)}`}</i></h3></div>
-      <p class="selected-learning"><b>${learning.readingLabel}</b> ${escapeHtml(learning.reading)} · <em>${learning.meaningSource === "en" ? "뜻(영)" : "뜻"} ${escapeHtml(learning.meaning)}</em></p>
-      <p><b>${stored ? "배치 대기" : `공격 ${damage}`}</b> · ${stored ? "찬 칸을 누르면 즉시 교체" : `공속 ${attacksPerSecond.toFixed(2)}/초 · 사거리 ${Math.round(range)} · 파생 합성 ${branches.length}`}</p>
-      <small class="cleanup-reason ${cleanup?.protected ? "is-protected" : "is-candidate"}">${escapeHtml(cleanupLabel)} · ${escapeHtml(concentrationStatus)}</small>
+      <div><span>${progressionLabel} · ${style.name}행 · ${ROLE_LABELS[tower.combatRole]}</span><h3>${tower.char} <small>${GRAPH_ROLE_LABELS[tower.graphRole]}</small></h3></div>
+      <p class="selected-learning"><i class="selected-radical">${displayMode === "spirit"
+        ? `<span>${learning.readingLabel}</span><b>${escapeHtml(learning.reading)}</b>`
+        : `<span>부수</span><b>${radicalGlyph(tower.char)}</b>`}</i></p>
+      <p class="selected-meaning"><span>${learning.meaningSource === "en" ? "뜻(영)" : "뜻"}</span><b>${escapeHtml(learning.meaning)}</b></p>
+    </div>
+    <div class="selected-stats" aria-label="자령 능력치">
+      <div class="selected-stat" data-stat="attack"><span>공격</span><b>${damage}</b></div>
+      <div class="selected-stat" data-stat="speed"><span>공속</span><b>${attacksPerSecond.toFixed(2)}/초</b></div>
+      <div class="selected-stat" data-stat="range"><span>사거리</span><b>${Math.round(range)}</b></div>
+      <div class="selected-stat" data-stat="branch"><span>파생</span><b>${branches.length}</b></div>
+    </div>
+    <div class="selected-chips">
+      ${stored ? '<span class="selected-chip is-stored">배치 대기 · 찬 칸을 누르면 즉시 교체</span>' : ""}
+      <span class="selected-chip cleanup-reason ${cleanup?.protected ? "is-protected" : "is-candidate"}">${escapeHtml(cleanupLabel)}</span>
+      <span class="selected-chip selected-chip--essence">${escapeHtml(concentrationStatus)}</span>
     </div>
     <div class="selected-actions">
       <button id="lock-button" class="${tower.locked ? "is-locked" : ""}" type="button" data-testid="lock-tower" title="판매·합성 재료로 쓰이지 않게 보호">${tower.locked ? "鎖 잠금됨" : "잠금"}</button>
       <button id="store-button" type="button" data-testid="store-tower" title="인벤으로 이동 — 전장 자리를 비웁니다" ${stored ? "disabled" : ""}>${stored ? "보관 중" : "보관"}</button>
       <button id="derivative-button" class="${readyBranches > 0 ? "has-ready" : ""}" type="button" data-testid="derivative-composition" title="이 자령이 재료인 파생 조합 목록">${engine.state.mode === "casual" ? casualStar >= 8 ? "8★ 최고 단계" : "3체 조합 ›" : `합성 ${readyBranches}`}</button>
-      <button id="sell-button" type="button" title="엽전을 받고 즉시 제거 — 되돌릴 수 없음" ${tower.locked ? "disabled" : ""}>판매 +${engine.towerSellValue(tower)}</button>
       <button id="open-growth-button" type="button" title="강화 제련소 탭으로 이동">분해 ›</button>
       <button id="open-concentration-button" type="button" title="농축 공방 탭으로 이동" ${concentration >= MAX_CONCENTRATION_LEVEL ? "disabled" : ""}>농축 ›</button>
+      <button id="sell-button" type="button" title="엽전을 받고 즉시 제거 — 되돌릴 수 없음" ${tower.locked ? "disabled" : ""}>판매 +${engine.towerSellValue(tower)}</button>
     </div>
     <button type="button" class="selected-ability-summary" data-ability-guide><b>${activeSkills ? `技 기술 ${abilityLoadout.length}개 · 모두 자동 판정` : "技 기술 해금 전"}</b><span>${activeSkills ? `주기 ${periodicAbilities.length} · 공격 연동 1 · 조건 특성 1` : "현재 기본 공격 · 2단 합성 필요"}</span><em>설명 ›</em></button>
     ${activeSkills

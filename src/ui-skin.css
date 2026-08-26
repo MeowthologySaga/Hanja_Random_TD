@@ -8122,3 +8122,257 @@ span.codex-jaryeong-category { color: #4a3f30 !important; }
 /* '선택됨' 인장도 300px 폭 오른쪽 끝(x≈292)이 아니라 가죽 안쪽 끝에 붙인다 */
 .s00-stage.is-3d .s00-modes .s00-mode:nth-of-type(1) em { right: 100px; }
 .s00-stage.is-3d .s00-modes .s00-mode:nth-of-type(2) em { right: 142px; }
+
+/* ══════════════════════════════════════════════════════════════════
+   88. 자령 창 재배치 — 훈음이 주인공, 스탯은 4열 격자, 6버튼 확대
+   근거: .claude/uiux/spec-round4-focus-frames.md A절
+   한 줄 문장("공격 17 · 공속 1.25/초 · …")이 146px 안에서 세 줄로
+   뭉개지던 자리를 라벨/값 격자로 바꾸고, 오른쪽 124px 세로 버튼단을
+   카드 전폭 2열로 내린다. 조작 버튼이 60x30 -> 약 170x42 가 된다.
+   ══════════════════════════════════════════════════════════════════ */
+
+.selected-card {
+  grid-template-columns: 78px minmax(0, 1fr);
+  grid-template-rows: auto auto auto auto auto auto auto;
+  align-items: start;
+  align-content: start;
+  gap: 7px 9px;
+}
+
+.selected-card > .selected-glyph      { grid-column: 1; grid-row: 1; }
+.selected-card > .selected-copy       { grid-column: 2; grid-row: 1; }
+.selected-card > .selected-stats      { grid-column: 1 / -1; grid-row: 2; }
+.selected-card > .selected-chips      { grid-column: 1 / -1; grid-row: 3; }
+.selected-card > .selected-actions    { grid-column: 1 / -1; grid-row: 4; }
+.selected-card > .selected-ability-summary { grid-column: 1 / -1; grid-row: 5; }
+.selected-card > .ability-loadout     { grid-column: 1 / -1; grid-row: 6; }
+.selected-card > .ability-charge      { grid-column: 1 / -1; grid-row: 7; }
+.selected-card > .empty-selection     { grid-column: 1 / -1; grid-row: 1 / -1; }
+
+/* ── 88-A. 훈음 전용 줄 ──────────────────────────────────────── */
+
+.selected-copy > div > span { line-height: 1.2; }
+
+.selected-copy h3 {
+  margin: 1px 0 3px !important;
+  line-height: 1.15;
+}
+
+/* 훈음 줄: 라벨은 작은 금갈, 값이 주인공.
+   `.selected-radical` 클래스는 계약(e2e)이라 이름을 그대로 쓴다. */
+.selected-copy .selected-learning {
+  margin: 0 0 1px !important;
+  font-size: 12px !important;
+  white-space: normal !important;
+}
+
+.selected-copy .selected-learning .selected-radical {
+  display: flex;
+  min-width: 0;
+  align-items: baseline;
+  gap: 6px;
+  padding: 0 !important;
+  font-size: 12px !important;
+  font-style: normal;
+  border: 0 !important;
+  background: none !important;
+  box-shadow: none !important;
+}
+
+.selected-copy .selected-learning .selected-radical > span {
+  flex: 0 0 auto;
+  color: #8a6a3c !important;
+  font-size: 10.5px !important;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+/* 최장 훈음은 "엄쪽(어음을 쪼갠 한 쪽) 권" 16자 — 한 줄로 자르지 않고
+   두 줄까지 편다. 주인공 줄을 말줄임으로 끊으면 재배치의 의미가 없다. */
+.selected-copy .selected-learning .selected-radical > b {
+  min-width: 0;
+  display: -webkit-box;
+  overflow: hidden;
+  color: #201709 !important;
+  font-family: "Batang", "Malgun Gothic", serif;
+  font-size: 18px !important;
+  font-weight: 900;
+  line-height: 1.18;
+  white-space: normal;
+  word-break: keep-all;
+  overflow-wrap: break-word;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+/* 뜻 줄 */
+.selected-copy .selected-meaning {
+  display: flex;
+  min-width: 0;
+  align-items: baseline;
+  gap: 6px;
+  margin: 0 !important;
+  font-size: 12px !important;
+  white-space: normal !important;
+}
+
+.selected-copy .selected-meaning > span {
+  flex: 0 0 auto;
+  color: #8a6a3c;
+  font-size: 10.5px !important;
+  font-weight: 800;
+}
+
+.selected-copy .selected-meaning > b {
+  min-width: 0;
+  display: -webkit-box;
+  overflow: hidden;
+  color: #6d5433;
+  font-size: 12px !important;
+  font-weight: 700;
+  line-height: 1.28;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+/* ── 88-B. 스탯 4열 격자 (에셋: v4 stat-icons, 54px 원본 -> 18px) ── */
+
+.selected-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 4px 6px;
+  padding: 7px 8px;
+  border-radius: var(--r-sm);
+  background: linear-gradient(180deg, #f3ead2 0%, #e6dabb 100%);
+  box-shadow: inset 0 0 0 1px rgba(122, 90, 42, 0.24);
+}
+
+.selected-stat {
+  --stat-icon: none;
+  display: grid;
+  min-width: 0;
+  gap: 1px;
+}
+
+.selected-stat > span {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 3px;
+  color: #8a7a5e;
+  font-size: 10.5px !important;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+}
+
+.selected-stat > span::before {
+  content: "";
+  flex: 0 0 auto;
+  width: 18px;
+  height: 18px;
+  background-color: #2a211a;
+  -webkit-mask-image: var(--stat-icon);
+  mask-image: var(--stat-icon);
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  -webkit-mask-position: center;
+  mask-position: center;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  opacity: 0.82;
+}
+
+.selected-stat > b {
+  min-width: 0;
+  overflow: hidden;
+  color: #2e2212;
+  font-size: 14px !important;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.selected-stat[data-stat="attack"] { --stat-icon: url("/assets/ui/v4/stat-icons/stat-attack-sword-v1.png"); }
+.selected-stat[data-stat="speed"]  { --stat-icon: url("/assets/ui/v4/stat-icons/stat-attack-speed-v1.png"); }
+.selected-stat[data-stat="range"]  { --stat-icon: url("/assets/ui/v4/stat-icons/stat-range-target-v1.png"); }
+.selected-stat[data-stat="branch"] { --stat-icon: url("/assets/ui/v4/stat-icons/stat-derived-branch-v1.png"); }
+
+/* ── 88-C. 보호 사유 · 문기 게이지를 칩 2개로 분리 ──────────── */
+
+.selected-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 5px;
+}
+
+.selected-chip {
+  display: inline-flex;
+  max-width: 100%;
+  align-items: center;
+  padding: 3px 8px;
+  overflow: hidden;
+  font-size: 11.5px !important;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  border-radius: 999px;
+  background: rgba(201, 183, 143, 0.42);
+  box-shadow: inset 0 0 0 1px rgba(122, 90, 42, 0.28);
+}
+
+.selected-chip.cleanup-reason {
+  margin-top: 0 !important;
+  font-size: 11.5px !important;
+}
+
+.selected-chip.cleanup-reason.is-protected {
+  color: #2f5a45 !important;
+  background: rgba(120, 178, 148, 0.24);
+  box-shadow: inset 0 0 0 1px rgba(47, 90, 69, 0.34);
+}
+
+.selected-chip.cleanup-reason.is-candidate {
+  color: #7a4419 !important;
+  background: rgba(211, 148, 88, 0.22);
+  box-shadow: inset 0 0 0 1px rgba(122, 68, 25, 0.3);
+}
+
+.selected-chip--essence { color: #5c4a1f; }
+
+.selected-chip.is-stored {
+  color: #4a3f2a;
+  background: rgba(201, 183, 143, 0.55);
+}
+
+/* ── 88-D. 6버튼 확대 — 카드 전폭 2열, 42px 높이 ────────────── */
+
+.selected-actions {
+  width: 100% !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-self: stretch;
+  gap: 5px;
+}
+
+.selected-actions button {
+  display: grid;
+  min-height: 42px;
+  align-items: center;
+  padding: 5px 8px !important;
+  font-size: 12.5px !important;
+  letter-spacing: -0.01em;
+}
+
+@media (min-width: 1500px) and (min-height: 850px) {
+  .selected-card { grid-template-columns: 100px minmax(0, 1fr); }
+  .selected-copy .selected-learning .selected-radical > b { font-size: 21px !important; }
+  .selected-stat > b { font-size: 15px !important; }
+  .selected-actions button { min-height: 46px; font-size: 13px !important; }
+}
+
+/* 좁은 화면에서는 스탯을 2x2 로 접는다 */
+@media (max-width: 1099px), (max-height: 679px) {
+  .selected-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .selected-actions button { min-height: 38px; font-size: 12px !important; }
+}
