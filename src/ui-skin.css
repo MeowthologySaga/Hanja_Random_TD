@@ -10476,3 +10476,8 @@ dialog {
     inset 0 0 0 1px rgba(122, 90, 42, 0.45),
     0 -4px 10px -6px rgba(46, 32, 14, 0.4);
 }
+
+/* ── 94-2. 토스트 높이 고정 — 조작 칩과 절대 겹치지 않게
+   실측에서 토스트 바닥이 18px 로 내려앉아 칩(12~34px)과 겹쳤다.
+   출처 불명의 규칙을 이기도록 핀포인트 + !important 로 못박는다. */
+.battle-stage > #toast.toast { bottom: 46px !important; }

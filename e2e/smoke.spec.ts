@@ -127,8 +127,6 @@ test("freezes the opening until the first summon opens its matching formation", 
   await expect(page.locator("#shop-panel")).toBeVisible();
   await expect(page.locator("#shop-tab")).toHaveClass(/is-active/u);
   await expect(page.locator(".panel-tabs > button")).toHaveCount(9);
-  await expect(page.locator("#formation-unlock-list > button")).toHaveCount(5);
-  await expect(page.locator("#formation-unlock-list > button.is-unlocked")).toHaveCount(0);
   await expect(page.getByTestId("early-wave")).toBeDisabled();
   await expect(page.getByTestId("early-wave")).toHaveText("첫 소환 필요");
   await expect(page.locator("#wave-kicker")).toContainText("시간 정지");
@@ -152,14 +150,25 @@ test("freezes the opening until the first summon opens its matching formation", 
   await expect(page.locator("#summon-reveal-summary")).toContainText("무료 개방");
   await expect(page.locator("#summon-reveal-summary")).toContainText("→");
   await page.locator("#summon-reveal-close").click();
-  await expect(page.locator("#formation-unlock-list > button.is-unlocked")).toHaveCount(1);
-  await expect(page.locator("#formation-unlock-summary")).toContainText("다음 18엽전");
   await expect(page.getByTestId("early-wave")).toBeEnabled();
   await expect(page.locator('[data-opening-step="2"]')).toHaveClass(/is-current/u);
 
-  // 해금은 즉시 구매가 아니라 확인 팝업을 거친다. 전장 자물쇠와 같은 경로다.
-  await page.locator("#formation-unlock-list > button:not(.is-unlocked)").first().click();
-  await expect(page.locator("#formation-unlock-dialog")).toBeVisible();
+  // 해금 경로는 이제 전장 자물쇠뿐이다(상점 해금 바 제거).
+  // 기본 배율(200%)에서는 진 중앙이 화면 밖이라 먼저 최소 배율로 전판을 펼친다.
+  await page.locator("#battle-canvas").hover({ position: { x: 440, y: 360 } });
+  await page.mouse.wheel(0, 5000);
+  await page.waitForTimeout(300);
+  // 잠긴 진의 중앙을 눌러 확인 팝업을 띄운다 — 시작 진은 팝업이 뜨지 않으므로 건너뛴다.
+  const formationWorldCenters = [{ x: 440, y: 160 }, { x: 240, y: 360 }, { x: 440, y: 360 }, { x: 640, y: 360 }, { x: 440, y: 560 }];
+  let dialogOpened = false;
+  for (const center of formationWorldCenters) {
+    await page.locator("#battle-canvas").click({ position: await canvasPositionForWorld(page, center.x, center.y) });
+    if (await page.locator("#formation-unlock-dialog").evaluate((element: HTMLDialogElement) => element.open).catch(() => false)) {
+      dialogOpened = true;
+      break;
+    }
+  }
+  expect(dialogOpened).toBe(true);
   await expect(page.locator("#formation-unlock-body")).toContainText("18엽전");
   await expect(page.getByTestId("formation-unlock-confirm")).toBeEnabled();
   await page.getByTestId("formation-unlock-confirm").click();
@@ -167,7 +176,6 @@ test("freezes the opening until the first summon opens its matching formation", 
   await expect(page.locator("#message-value")).toContainText("해금");
   await expect(page.locator("#gold-value")).toHaveText("17");
   await expect(page.locator("#tower-count-value")).toHaveText("1 / 32");
-  await expect(page.locator("#formation-unlock-summary")).toContainText("다음 32엽전");
   await page.screenshot({ path: "artifacts/formation-coin-unlock-1280x720.png", fullPage: true });
 });
 
@@ -563,12 +571,20 @@ test("stores manual summons in the run inventory, deploys them, and returns boar
   await inventoryCard.click();
   await expect(inventoryCard).toHaveClass(/is-selected/u);
 
-  const formationIndex = Number(await page.locator("#formation-unlock-list > button.is-unlocked").getAttribute("data-formation-index"));
+  // 상점 해금 바가 사라져 개방 진 번호를 DOM 에서 읽을 수 없다.
+  // 다섯 진의 배치 칸을 차례로 눌러 배치가 성사되는 곳(=개방 진)을 찾는다.
   const formationCenters = [{ x: 440, y: 160 }, { x: 240, y: 360 }, { x: 440, y: 360 }, { x: 640, y: 360 }, { x: 440, y: 560 }];
-  const formationCenter = formationCenters[formationIndex];
-  if (!formationCenter) throw new Error("first summon did not open a formation");
-  const deploymentCell = await canvasPositionForWorld(page, formationCenter.x - 66, formationCenter.y - 66);
-  await page.locator("#battle-canvas").click({ position: deploymentCell });
+  let deploymentCell: { x: number; y: number } | null = null;
+  for (const center of formationCenters) {
+    const candidate = await canvasPositionForWorld(page, center.x - 66, center.y - 66);
+    await page.locator("#battle-canvas").click({ position: candidate });
+    await dismissFormationUnlock(page);
+    if ((await page.locator("#tower-count-value").textContent()) === "1 / 16") {
+      deploymentCell = candidate;
+      break;
+    }
+  }
+  if (!deploymentCell) throw new Error("first summon did not open a formation");
   await expect(page.locator("#tower-count-value")).toHaveText("1 / 16");
   await expect(page.locator("#run-inventory-count")).toHaveText("0");
 

@@ -318,10 +318,6 @@ app.innerHTML = `
             <i>→</i>
             <div data-opening-step="3"><b>③ 웨이브 시작</b><span>첫 소환 뒤 준비 15초가 흐릅니다.</span></div>
           </section>
-          <section class="formation-unlock-bar" aria-label="오행진 엽전 해금">
-            <div><b>오행진 해금</b><small id="formation-unlock-summary">첫 소환 오행진 무료 개방</small></div>
-            <div id="formation-unlock-list" class="formation-unlock-list"></div>
-          </section>
           <section class="action-row" aria-label="핵심 행동">
             <div id="summon-shop" class="summon-shop" role="group" aria-label="소환 상품"></div>
             <button id="evolve-button" class="action-button action-button--evolve" type="button" data-testid="evolve-button">
@@ -2265,27 +2261,12 @@ function renderFormationUnlocks(): void {
   const key = `${state.unlockedFormations.join(",")}|${state.startingFormationIndex ?? "none"}|${state.gold}|${active ? "active" : "inactive"}|${cost ?? "done"}`;
   if (key === formationRenderKey) return;
   formationRenderKey = key;
-  const remaining = BOARD_FORMATIONS.length - state.unlockedFormations.length;
-  must<HTMLElement>("#formation-unlock-summary").textContent = state.startingFormationIndex === null
-    ? "첫 소환 자령의 오행진을 무료로 개방합니다"
-    : remaining > 0
-      ? `${state.unlockedFormations.length}진 개방 · 다음 ${cost}엽전 · 원하는 오행 선택`
-      : "오행진 5개 전부 개방";
-  must<HTMLElement>("#formation-unlock-list").innerHTML = BOARD_FORMATIONS.map((formation, index) => {
-    const unlocked = engine.isFormationUnlocked(index);
-    const affordable = !unlocked && active && cost !== null && state.gold >= cost && state.startingFormationIndex !== null;
-    const disabled = unlocked || !active || cost === null || state.gold < cost;
-    const status = unlocked
-      ? index === state.startingFormationIndex ? "시작 진" : "개방"
-      // 5칸 격자는 한 줄이 6~7자를 넘기면 잘린다. 전체 안내는 바 머리글이 맡는다.
-      : state.startingFormationIndex === null ? "첫 소환" : `${cost}엽전`;
-    return `<button type="button" data-formation-index="${index}" class="${unlocked ? "is-unlocked" : affordable ? "is-affordable" : ""}" style="--formation:${formation.color}" ${disabled ? "disabled" : ""}><b>${formation.preferredWuxing}</b><span>${formation.label}</span><small>${status}</small></button>`;
-  }).join("");
-  // 처음 하는 사람은 진을 추가 구매할 수 있다는 사실 자체를 모른다.
-  // 해금 가능해지는 최초 1회만 짚어 준다.
+  // 상점의 해금 바는 걷어냈다(전장 자물쇠 + 확인 팝업이 정본).
+  // 처음 하는 사람은 진을 추가 구매할 수 있다는 사실 자체를 모르므로,
+  // 해금 가능해지는 최초 1회만 토스트로 전장 자물쇠를 짚어 준다.
   if (cost !== null && state.gold >= cost && state.startingFormationIndex !== null && state.unlockedFormations.length < BOARD_FORMATIONS.length && !formationUnlockHintShown) {
     formationUnlockHintShown = true;
-    showToast(`엽전 ${cost}으로 새 오행진을 해금할 수 있습니다 — 상점의 오행진 해금에서 원하는 진을 고르세요`);
+    showToast(`엽전 ${cost}으로 새 오행진을 해금할 수 있습니다 — 전장의 잠긴 진 자물쇠를 눌러 원하는 진을 고르세요`);
   }
 }
 
@@ -6508,13 +6489,6 @@ document.addEventListener("pointerdown", () => {
 });
 must<HTMLButtonElement>("#evolve-button").addEventListener("click", () => setPanelTab("evolution"));
 must<HTMLButtonElement>("#research-button").addEventListener("click", () => { sound.unlock(); handleAction(engine.upgradeResearch()); });
-must<HTMLElement>("#formation-unlock-list").addEventListener("click", (event) => {
-  const button = (event.target as HTMLElement).closest<HTMLButtonElement>("[data-formation-index]");
-  if (!button) return;
-  sound.unlock();
-  // 상점 5칸과 전장 자물쇠는 같은 확인 팝업을 거친다.
-  openFormationUnlockDialog(Number(button.dataset.formationIndex));
-});
 must<HTMLButtonElement>("#auto-arrange-button").addEventListener("click", () => { sound.unlock(); handleAction(engine.autoArrangeTowers()); });
 must<HTMLButtonElement>("#element-upgrade-button").addEventListener("click", () => setPanelTab("growth"));
 
