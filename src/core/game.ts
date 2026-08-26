@@ -672,6 +672,9 @@ export class GameEngine {
       return;
     }
     if (allSpawned && deadlineUnlocked) {
+      // 수련장: 잔존 합류(20초 시계)를 끈다. 각본은 "다 잡으면 준비로 돌아와
+      // 다음 걸음"이 전제라, 웨이브가 저절로 겹치면 지도록 설계된 판이 된다.
+      if (this.tutorial) return;
       if (this.state.nextWaveRemaining === null) this.state.nextWaveRemaining = WAVE_REINFORCEMENT_DELAY;
       this.state.nextWaveRemaining = Math.max(0, this.state.nextWaveRemaining - delta);
       if (this.state.nextWaveRemaining <= 0) this.advanceWaveWithSurvivors();

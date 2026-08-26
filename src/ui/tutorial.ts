@@ -15,7 +15,7 @@ import { type Wuxing } from "../core/types";
 import { isBattleAssetsReady, whenBattleAssetsReady } from "./asset-loader";
 import { canvas, ctx, must, shell, sound } from "./app-context";
 import { focusMapOnCells } from "./battle/camera";
-import { showToast } from "./hud";
+import { setPanelTab, showToast } from "./hud";
 import { startRun } from "./s00-menu";
 import { hideSummonReveal } from "./summon-reveal";
 import {
@@ -245,6 +245,9 @@ const STEPS: readonly TutorialStep[] = [
   {
     id: "idiom",
     enter: () => {
+      // 6걸음의 강화 제련소(집중 프레임)가 전장을 덮은 채로는 칸을 누를 수
+      // 없다. 상점 갈피로 돌려 프레임을 걷고 전장을 비운다.
+      setPanelTab("shop");
       ctx.engine.setIdiomTarget(TUTORIAL_IDIOM_ID);
       const idiom = ctx.engine.currentIdiomTarget();
       const line = prepareIdiomLine(ctx.engine);
@@ -402,6 +405,14 @@ function layoutView(view: TutorialView): void {
 function renderView(): void {
   const step = STEPS[stepIndex];
   if (!step) return;
+  // 수료막이 올라오면 링·말풍선은 걷는다 — 수료막이 마지막 말을 한다.
+  const completeShown = !must<HTMLElement>("#tutorial-complete").hidden;
+  const bubbleElement = must<HTMLElement>("#tutorial-bubble");
+  if (bubbleElement.hidden !== completeShown) bubbleElement.hidden = completeShown;
+  if (completeShown) {
+    must<HTMLElement>("#tutorial-ring").hidden = true;
+    return;
+  }
   const view = step.view();
   const key = `${stepIndex}|${view.target ?? "world"}|${view.title}`;
   if (key !== renderKey) {
@@ -450,8 +461,10 @@ function tutorialFrame(): void {
   if (step) {
     // 각본 밖에서 웨이브가 저절로 시작되지 않게 준비 시간을 세워 둔다.
     // 웨이브 걸음도 [시작 보너스] 버튼만이 유일한 출구가 된다.
+    // 13초에 고정하는 이유: 한 프레임 사이 12.9~13.0 사이를 오가도
+    // 버튼의 보너스 표기(floor(prep/2)=6)가 흔들리지 않는 값이라서다.
     if (state.phase === "prep" && state.summonCount > 0) {
-      state.prepRemaining = Math.max(state.prepRemaining, 12);
+      state.prepRemaining = Math.max(state.prepRemaining, 13);
     }
     step.tick?.();
     if (step.satisfied()) advance();

@@ -52,6 +52,16 @@ describe("수련장 엔진 훅", () => {
     expect(engine.state.inventoryTowers).toHaveLength(0);
   });
 
+  it("수련장 웨이브는 잔존 합류 없이 전멸해야만 끝난다", () => {
+    const engine = beginEngine(true);
+    expect(engine.summon().ok).toBe(true);
+    expect(engine.startWaveEarly().ok).toBe(true);
+    // 잔존 합류 시계(20초)를 훌쩍 넘겨도 다음 웨이브가 겹쳐 오지 않는다.
+    for (let frame = 0; frame < 450; frame += 1) engine.update(0.1);
+    expect(engine.state.wave).toBe(1);
+    expect(engine.state.nextWaveRemaining).toBeNull();
+  });
+
   it("수련장 웨이브는 수량·체력이 완화 계수만큼 줄어든다", () => {
     const run = (tutorial: boolean): GameEngine => {
       const engine = beginEngine(tutorial);
