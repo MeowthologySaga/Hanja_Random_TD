@@ -1,21 +1,5 @@
 import "./styles.css";
 import "./ui-skin.css";
-import {
-  BOARD_CELLS,
-  BOARD_FORMATIONS,
-  CELLS_PER_FORMATION,
-  ENEMY_PATH_POINTS,
-  FORMATION_COLUMNS,
-  FORMATION_ROWS,
-  ENEMY_SPAWN_PROGRESS,
-  MAX_ENEMIES,
-  WAVE_REINFORCEMENT_DELAY,
-  WORLD_HEIGHT,
-  WORLD_WIDTH,
-  bossTimeLimitForWave,
-  positionOnPath,
-  wavePlan
-} from "./core/content";
 import { hasActiveSkills } from "./core/abilities";
 import {
   CASUAL_STAR_COLORS,
@@ -25,104 +9,88 @@ import {
   casualStarRangeLabel,
   casualStrokeCount
 } from "./core/casual";
+import { CHEONJAMUN_JARYEONG_DEX_BY_HANJA, type CheonjamunJaryeongDexEntry } from "./core/cheonjamun-jaryeong-dex";
+import { CHEONJAMUN_SUPPLEMENTAL_CHARACTERS } from "./core/cheonjamun-roster";
 import {
-  type CasualAutoFusionGroup,
-  type CasualFusionQuote,
-  GameEngine,
-  FIRST_PREP_SECONDS,
-  MAX_CONCENTRATION_LEVEL,
+  BOARD_CELLS,
+  BOARD_FORMATIONS,
+  bossTimeLimitForWave,
+  CELLS_PER_FORMATION,
+  ENEMY_PATH_POINTS,
+  ENEMY_SPAWN_PROGRESS,
+  FORMATION_COLUMNS,
+  FORMATION_ROWS,
+  MAX_ENEMIES,
+  positionOnPath,
+  WAVE_REINFORCEMENT_DELAY,
+  wavePlan,
+  WORLD_HEIGHT,
+  WORLD_WIDTH
+} from "./core/content";
+import {
   autoConcentrationPath,
+  type CasualAutoFusionGroup,
   concentrationEssenceCost,
   concentrationPathLabel,
-  interestForGold
+  FIRST_PREP_SECONDS,
+  GameEngine,
+  interestForGold,
+  MAX_CONCENTRATION_LEVEL
 } from "./core/game";
 import {
-  ELEMENT_TRAITS,
   ELEMENT_TRAIT_MAX_LEVEL,
+  ELEMENT_TRAITS,
   elementTraitUnlockScore,
   elementTraitUpgradeCost
 } from "./core/growth";
 import {
-  type IdiomDefinition,
-  type PartialIdiomChain,
-  idiomById,
-  partialIdiomChain
-} from "./core/idioms";
-import {
-  enemyJaryeongVisualFor,
-  jaryeongAssetPath,
-  jaryeongFrameLayout,
-  jaryeongVisualFor,
-  type JaryeongVisual
-} from "./core/jaryeongs";
-import {
-  CHEONJAMUN_JARYEONG_DEX_BY_HANJA,
-  CHEONJAMUN_JARYEONG_DEX_ENTRIES,
-  type CheonjamunJaryeongDexEntry
-} from "./core/cheonjamun-jaryeong-dex";
-import { CHEONJAMUN_SUPPLEMENTAL_CHARACTERS } from "./core/cheonjamun-roster";
-import { koreanMeaningExplanation } from "./core/korean-meaning-explanations";
-import { type CompactReading, type MeasureText, compactReading } from "./ui/plaque-text";
-import {
-  NAMEPLATE_LAYOUT,
-  type NameplateKind,
-  nameplateImage,
-  nameplateReady,
-  preloadNameplateSprites
-} from "./ui/nameplate-sprites";
-import {
-  type IdiomOrder,
-  idiomOrderSealImage,
-  idiomSpriteReady,
-  preloadIdiomSprites,
-  tintedIdiomRipple
-} from "./ui/idiom-sprites";
-import { LEARNING_DATA_META, learningInfo } from "./core/learning";
-import { radicalGlyph, radicalLearningLabel } from "./core/radicals";
-import {
+  definitionForTower,
   ELEMENT_STYLES,
+  elementUpgradeCost,
   GAME_CONFIG,
+  globalUpgradeCost,
   GRAPH_ROLE_LABELS,
   MAX_UPGRADE_LEVEL,
+  maxSummonStageForWave,
+  multiSummonCost,
   REGION_META,
+  researchCost,
+  researchUnlockWave,
   ROLE_LABELS,
   STAGE_COLORS,
   STAGE_MULTIPLIERS,
   STAGE_NAMES,
+  SUMMON_SURCHARGE,
+  summonCost,
+  summonStageUnlockWave,
   UPGRADE_STAT_META,
   UPGRADE_STAT_ORDER,
-  WUXING_ORDER,
-  definitionForTower,
-  elementUpgradeCost,
-  globalUpgradeCost,
-  multiSummonCost,
-  maxSummonStageForWave,
-  researchCost,
-  researchUnlockWave,
-  summonStageUnlockWave,
-  SUMMON_SURCHARGE,
-  summonCost
+  WUXING_ORDER
 } from "./core/hanzi";
+import { idiomById, type IdiomDefinition, partialIdiomChain } from "./core/idioms";
+import { enemyJaryeongVisualFor, jaryeongFrameLayout, jaryeongVisualFor } from "./core/jaryeongs";
+import { koreanMeaningExplanation } from "./core/korean-meaning-explanations";
+import { LEARNING_DATA_META, learningInfo } from "./core/learning";
+import { radicalGlyph, radicalLearningLabel } from "./core/radicals";
 import { createRunSeed } from "./core/rng";
-import type {
-  ActionResult,
-  AbilityFxKind,
-  AbilitySpec,
-  AutomationMode,
-  CasualStar,
-  CompositionBranchPreview,
-  Enemy,
-  EvolutionOption,
-  GameEvent,
-  GameMode,
-  HanziDefinition,
-  Point,
-  RegionCode,
-  RunPhase,
-  SummonIntent,
-  Tower,
-  UpgradeStat,
-  Wuxing
+import {
+  type AbilityFxKind,
+  type AbilitySpec,
+  type ActionResult,
+  type AutomationMode,
+  type CasualStar,
+  type CompositionBranchPreview,
+  type Enemy,
+  type EvolutionOption,
+  type GameEvent,
+  type GameMode,
+  type HanziDefinition,
+  type Point,
+  type RegionCode,
+  type SummonIntent,
+  type Tower,
+  type UpgradeStat,
+  type Wuxing
 } from "./core/types";
 import {
   battleAssetProgress,
@@ -133,18 +101,27 @@ import {
   startP2,
   takeOverBootScreen,
   updateBootProgress,
-  whenBattleAssetsReady,
-  type S00Mode
+  whenBattleAssetsReady
 } from "./ui/asset-loader";
-import { SoundManager } from "./ui/audio";
+import {
+  buildSynthesisDepths,
+  buildUncombinableStageOneChars,
+  synthesisTierAccessibleLabel,
+  type SynthesisTierFilter,
+  synthesisTierFilterLabel,
+  synthesisTierKey,
+  UNCOMBINABLE_STAGE_ONE,
+  UNCOMBINABLE_STAGE_ONE_COLOR
+} from "./ui/codex-synthesis";
 import { abilityZoneSpriteLayout, deterministicZoneRotation } from "./ui/combat-fx-layout";
 import { elementProjectileImage, elementZoneImage, preloadCombatFxSprites } from "./ui/combat-fx-sprites";
+import { type DisplayMode, saveDisplayMode } from "./ui/display-mode";
 import {
   ENEMY_FRAME_SIZE,
-  FALLBACK_ART_TOP_FACTOR,
   enemyArtTopFactor,
   enemySheetImage,
   enemySheetStateSummary,
+  FALLBACK_ART_TOP_FACTOR,
   isEnemySheetReady,
   preloadEnemySprites
 } from "./ui/enemy-sprites";
@@ -157,83 +134,112 @@ import {
   preloadFormationPlates
 } from "./ui/formation-plate-sprites";
 import {
-  LOCK_SPRITE_SIZE,
-  isLockSpriteReady,
-  lockSpriteImage,
-  preloadLockSprites
-} from "./ui/lock-sprites";
+  type IdiomOrder,
+  idiomOrderSealImage,
+  idiomSpriteReady,
+  preloadIdiomSprites,
+  tintedIdiomRipple
+} from "./ui/idiom-sprites";
 import {
   inkArrowImage,
+  type InkCorner,
   inkCornerImage,
   inkCrossImage,
+  type InkDirection,
   inkStraightImage,
-  preloadInkPathSprites,
-  type InkCorner,
-  type InkDirection
+  preloadInkPathSprites
 } from "./ui/ink-path-sprites";
+import { jaryeongSpriteImage } from "./ui/jaryeong-sprites";
+import { isLockSpriteReady, LOCK_SPRITE_SIZE, lockSpriteImage, preloadLockSprites } from "./ui/lock-sprites";
+import {
+  NAMEPLATE_LAYOUT,
+  nameplateImage,
+  type NameplateKind,
+  nameplateReady,
+  preloadNameplateSprites
+} from "./ui/nameplate-sprites";
 import {
   CELL_SOCKET_SIZE,
   cellSocketImage,
   isCellSocketReady,
   preloadP0ComponentSprites
 } from "./ui/p0-component-sprites";
+import { compactReading, type CompactReading, type MeasureText } from "./ui/plaque-text";
 import {
-  EXIT_SEAL_SIZE,
-  IDIOM_SEAL_SIZE,
-  STAR_RING_SIZE,
   clampStarLevel,
+  EXIT_SEAL_SIZE,
   exitSealImage,
+  IDIOM_SEAL_SIZE,
   idiomCompletionSealImage,
   isReady as isPolishSpriteReady,
   preloadPolishSprites,
+  STAR_RING_SIZE,
   starAscentRingImage
 } from "./ui/polish-sprites";
-import { loadDisplayMode, saveDisplayMode, type DisplayMode } from "./ui/display-mode";
-import { jaryeongSpriteImage } from "./ui/jaryeong-sprites";
 import { loadAutoPlaceSummons, saveAutoPlaceSummons } from "./ui/summon-placement";
-import { initStage } from "./ui/stage";
 import {
-  UNCOMBINABLE_STAGE_ONE,
-  UNCOMBINABLE_STAGE_ONE_COLOR,
-  buildSynthesisDepths,
-  buildUncombinableStageOneChars,
-  synthesisTierAccessibleLabel,
-  synthesisTierFilterLabel,
-  synthesisTierKey,
-  type SynthesisTierFilter
-} from "./ui/codex-synthesis";
-import { appShellHtml } from "./ui/templates";
+  abilityGuideDialog,
+  BASE_MAP_ZOOM,
+  bossBanner,
+  canvas,
+  casualFusionConfirmDialog,
+  codexDialog,
+  type CodexMode,
+  combatFeed,
+  comboMeter,
+  context,
+  ctx,
+  DEFAULT_MAP_ZOOM,
+  defaultMapOffset,
+  DISMANTLE_UNIQUE_STORAGE_KEY,
+  dismantleSelection,
+  elementUpgradeDialog,
+  endOverlay,
+  feedCooldowns,
+  type FocusFrameId,
+  fusionVortex,
+  type GameSpeed,
+  type GoalPanelMode,
+  helpDialog,
+  HOVER_GLYPH_STORAGE_KEY,
+  idiomResult,
+  idiomTab,
+  initialDisplayMode,
+  type JaryeongDexFilter,
+  lastAbilityFxByTower,
+  MAX_MAP_ZOOM,
+  MIN_MAP_ZOOM,
+  must,
+  type PanelTab,
+  reducedMotion,
+  RUN_INVENTORY_GRADE_BANDS,
+  RUN_INVENTORY_SORTS,
+  runInventoryBulkSelection,
+  type RunInventoryGradeBandId,
+  type RunInventorySort,
+  s00Mode,
+  seedInput,
+  settingsDialog,
+  shell,
+  sound,
+  summonReveal,
+  titleOverlay,
+  toast
+} from "./ui/app-context";
+import {
+  casualStarOf,
+  escapeHtml,
+  formatTime,
+  gameModeLabel,
+  phaseLabel,
+  spiritPortraitMarkup,
+  spriteStyle,
+  towerProgressionLabel,
+  visualBackgroundStyle
+} from "./ui/format";
+import { wireCommon1 } from "./ui/dialogs/common";
+import { wireHelp1, wireHelp2 } from "./ui/dialogs/help";
 
-// 1280x720 고정 무대를 먼저 켠다. 리사이즈 시 --stage-scale 갱신이
-// fitShell() 의 실측보다 앞서야 캔버스 backing store 가 한 박자 늦지 않는다.
-initStage();
-
-const app = document.querySelector<HTMLDivElement>("#app");
-if (!app) throw new Error("#app element is missing.");
-/**
- * S00 은 3D 서재가 기본이고 `?menu3d=0` 이면 2D 그림 배경으로 되돌아간다.
- * 어느 쪽을 쓰는지에 따라 1차 프리로드 목록과 2D 레이어 `src` 부착 여부가
- * 갈리므로 부팅 맨 앞에서 한 번만 정한다.
- */
-const s00Mode: S00Mode = new URLSearchParams(window.location.search).get("menu3d") === "0" ? "2d" : "3d";
-const initialDisplayMode = loadDisplayMode();
-const initialAutoPlaceSummons = loadAutoPlaceSummons();
-
-app.innerHTML = appShellHtml(initialDisplayMode);
-
-function must<T extends Element>(selector: string): T {
-  const element = document.querySelector<T>(selector);
-  if (!element) throw new Error("Missing element: " + selector);
-  return element;
-}
-
-const shell = must<HTMLElement>(".game-shell");
-const canvas = must<HTMLCanvasElement>("#battle-canvas");
-const canvasContext = canvas.getContext("2d");
-if (!canvasContext) throw new Error("Canvas 2D context is unavailable.");
-const context: CanvasRenderingContext2D = canvasContext;
-const seedInput = must<HTMLInputElement>("#seed-input");
-const titleOverlay = must<HTMLElement>("#title-overlay");
 /**
  * S00 2D 폴백(`?menu3d=0` · WebGL 초기화 실패)의 3레이어 배경.
  *
@@ -277,136 +283,10 @@ function enableS00LayeredBackground(): void {
     if (image.dataset.src) image.src = image.dataset.src;
   }
 }
-
-const endOverlay = must<HTMLElement>("#end-overlay");
-const toast = must<HTMLElement>("#toast");
-const bossBanner = must<HTMLElement>("#boss-banner");
-const combatFeed = must<HTMLOListElement>("#combat-feed");
-const comboMeter = must<HTMLElement>("#combo-meter");
-const idiomResult = must<HTMLElement>("#idiom-result");
-const idiomTab = must<HTMLButtonElement>("#idiom-tab");
-const helpDialog = must<HTMLDialogElement>("#help-dialog");
-const settingsDialog = must<HTMLDialogElement>("#settings-dialog");
-const elementUpgradeDialog = must<HTMLDialogElement>("#element-upgrade-dialog");
-const abilityGuideDialog = must<HTMLDialogElement>("#ability-guide-dialog");
-const casualFusionConfirmDialog = must<HTMLDialogElement>("#casual-fusion-confirm-dialog");
-const codexDialog = must<HTMLDialogElement>("#codex-dialog");
-const summonReveal = must<HTMLElement>("#summon-reveal");
-const fusionVortex = must<HTMLElement>("#fusion-vortex");
-const sound = new SoundManager();
-sound.attachUiSfx(document);
-// 자동재생 정책은 "사용자 제스처"만 요구한다 — 버튼일 필요가 없다.
-// 첫 클릭·터치·키 입력이 화면 어디에 떨어지든 오디오(메뉴 BGM)를 깨운다.
-const wakeAudioOnFirstGesture = (): void => {
-  sound.unlock();
-  document.removeEventListener("pointerdown", wakeAudioOnFirstGesture, true);
-  document.removeEventListener("keydown", wakeAudioOnFirstGesture, true);
-};
-document.addEventListener("pointerdown", wakeAudioOnFirstGesture, true);
-document.addEventListener("keydown", wakeAudioOnFirstGesture, true);
-if (import.meta.env.DEV) Object.assign(window, { __HANJA_AUDIO_QA__: sound });
-const initialSeed = new URLSearchParams(window.location.search).get("seed")?.slice(0, 24) || createRunSeed();
-seedInput.value = initialSeed;
-let selectedRegion: RegionCode = "KR";
-let pendingRegion: RegionCode | null = null;
-let formationUnlockHintShown = false;
-// 본편은 별승급 — 게임적 재미 기준의 사용자 결정. 자형연성은 학습 특화로 위치.
-// `?mode=standard|casual` 딥링크는 e2e·공유용.
-const modeParam = new URLSearchParams(window.location.search).get("mode");
-let selectedGameMode: GameMode = modeParam === "standard" ? "standard" : modeParam === "casual" ? "casual" : "casual";
-
-/*
- * 진법 이름은 여기서만 만든다.
- *
- * 같은 모드가 화면마다 '전략 조합전'·'캐주얼 8성전'·'자형연성 진법'·
- * '별승급 진법' 네 이름으로 불려서, 메뉴에서 고른 것과 시작 토스트·
- * 종료 화면에 뜨는 것이 서로 다른 게임처럼 읽혔다. S00 메뉴가 쓰는
- * 이름으로 통일한다.
- */
-function gameModeLabel(mode: GameMode): string {
-  return mode === "casual" ? "별승급 진법" : "자형연성 진법";
-}
-
-let displayMode: DisplayMode = initialDisplayMode;
-let engine = new GameEngine(initialSeed, selectedRegion, selectedGameMode);
-let mapSynthesisDepths = buildSynthesisDepths(engine.catalog.definitions.values());
-let mapUncombinableStageOne = buildUncombinableStageOneChars(engine.catalog.definitions.values());
-engine.state.autoPlaceSummons = initialAutoPlaceSummons;
-let previousPhase: RunPhase = "title";
-let lastFrame = performance.now();
-let summonRevealTimer = 0;
-let fusionVortexTimer = 0;
-let toastAnimation: Animation | null = null;
-let waveBannerAnimation: Animation | null = null;
-let hoveredRecipeId: string | null = null;
-let hoveredCompositionMaterialIds = new Set<number>();
-let compositionDrawerOpen = false;
-let compositionRenderKey = "";
-
 function setCompositionMaterialHighlight(ids: readonly number[] = []): void {
-  hoveredCompositionMaterialIds = new Set(ids);
-  canvas.dataset.compositionMaterialCount = String(hoveredCompositionMaterialIds.size);
+  ctx.hoveredCompositionMaterialIds = new Set(ids);
+  canvas.dataset.compositionMaterialCount = String(ctx.hoveredCompositionMaterialIds.size);
 }
-let evolutionRenderKey = "";
-let goalRenderKey = "";
-let selectedRenderKey = "";
-let runInventoryRenderKey = "";
-/* R14 보관고 도구는 상단 한 줄로 최소화한다 — 오행 칩 5 + 정렬 토글 1.
-   한 판 안에서만 쓰는 임시 시야라 localStorage 로 남기지 않는다. */
-type RunInventorySort = "recent" | "element" | "star";
-const RUN_INVENTORY_SORTS: readonly RunInventorySort[] = ["recent", "element", "star"];
-let runInventoryElementFilter: Wuxing | null = null;
-let runInventorySort: RunInventorySort = "recent";
-/* R19 보관고 허브.
-   등급 필터는 캐주얼의 별과 표준의 단계를 같은 1~8 축으로 읽어 세 대역으로
-   접는다(초반·중반·후반). 오행 칩과 마찬가지로 한 판짜리 시야다. */
-type RunInventoryGradeBandId = "low" | "mid" | "high";
-const RUN_INVENTORY_GRADE_BANDS: ReadonlyArray<{ id: RunInventoryGradeBandId; label: string; min: number; max: number }> = [
-  { id: "low", label: "1~3", min: 1, max: 3 },
-  { id: "mid", label: "4~6", min: 4, max: 6 },
-  { id: "high", label: "7~8", min: 7, max: 8 }
-];
-let runInventoryGradeFilter: RunInventoryGradeBandId | null = null;
-/* 일괄 모드는 "고르기"의 의미 자체를 바꾼다 — 카드 클릭이 전장 선택이 아니라
-   분해 바구니에 담기가 된다. 그래서 엔진의 selectedTowerId 와 섞지 않고
-   화면 전용 집합으로 따로 든다(강화 제련소의 dismantleSelection 과도 별개). */
-let runInventoryBulkMode = false;
-const runInventoryBulkSelection = new Set<number>();
-let idiomRenderKey = "";
-let elementUpgradeRenderKey = "";
-let formationRenderKey = "";
-let concentrationRenderKey = "";
-let growthRenderKey = "";
-let comboTimer = 0;
-let comboCount = 0;
-let lastKillAt = 0;
-const feedCooldowns = new Map<string, number>();
-const lastAbilityFxByTower = new Map<number, number>();
-let lastGlobalAbilityFxAt = -10;
-type PanelTab = "shop" | "unit" | "inventory" | "evolution" | "concentration" | "growth" | "goal" | "idiom" | "record";
-type GoalPanelMode = "hanzi" | "idiom";
-type CodexMode = "hanzi" | "recipes" | "idioms";
-type JaryeongDexFilter = "all" | Wuxing;
-let codexMode: CodexMode = "hanzi";
-let codexSynthesisDepth: SynthesisTierFilter = "all";
-let jaryeongDexFilter: JaryeongDexFilter = "all";
-let selectedCodexChar = CHEONJAMUN_JARYEONG_DEX_ENTRIES[0]?.hanja ?? "";
-/** 성어 카드에도 한자 카드와 같은 선택 표시를 준다(항목 17). */
-let selectedCodexIdiomId = "";
-let goalPanelMode: GoalPanelMode = "hanzi";
-let goalSearchQuery = "";
-let activePanelTab: PanelTab = "shop";
-let concentrationTargetId: number | null = null;
-let concentrationPayment: "essence" | number = "essence";
-let growthElement: Wuxing = "木";
-const dismantleSelection = new Set<number>();
-let casualFusionSelection: number[] = [];
-let casualManualOpen = false;
-type PendingCasualFusion = { kind: "manual"; materialIds: [number, number, number]; quote: CasualFusionQuote };
-let pendingCasualFusion: PendingCasualFusion | null = null;
-let projectileSpriteDrawTotal = 0;
-let abilityZoneSpriteDrawTotal = 0;
-
 interface ProjectileFx {
   from: Point;
   to: Point;
@@ -416,7 +296,6 @@ interface ProjectileFx {
   critical: boolean;
   wuxing: Wuxing;
 }
-
 interface FloatFx {
   at: Point;
   text: string;
@@ -425,14 +304,12 @@ interface FloatFx {
   duration: number;
   large: boolean;
 }
-
 interface RingFx {
   at: Point;
   color: string;
   age: number;
   duration: number;
 }
-
 interface AbilityBurstFx {
   at: Point;
   source: Point;
@@ -442,14 +319,12 @@ interface AbilityBurstFx {
   age: number;
   duration: number;
 }
-
 interface TowerAbilityPopup {
   text: string;
   color: string;
   age: number;
   duration: number;
 }
-
 const projectiles: ProjectileFx[] = [];
 const floaters: FloatFx[] = [];
 const rings: RingFx[] = [];
@@ -459,7 +334,6 @@ const floaterPool: FloatFx[] = [];
 const ringPool: RingFx[] = [];
 const abilityBurstPool: AbilityBurstFx[] = [];
 const towerAbilityPopups = new Map<number, TowerAbilityPopup>();
-
 /**
  * p1-p2-polish-assets-pack-v1 의 일회성 래스터 연출(별승급 고리·사자성어 봉인).
  * 순수 피드백이라 승급·봉인 규칙이나 수치에는 관여하지 않는다. 에셋이 없으면
@@ -474,13 +348,11 @@ interface RasterBurstFx {
 const rasterBursts: RasterBurstFx[] = [];
 /** 0~120ms 0.72→1.05, 120~520ms 1.0 으로 안착, 900ms 에 소멸. */
 const RASTER_BURST_LIFE = 0.9;
-
 function pushRasterBurst(image: HTMLImageElement, at: Point, size: number): void {
   if (!isPolishSpriteReady(image)) return;
   if (rasterBursts.length >= 8) rasterBursts.shift();
   rasterBursts.push({ image, at: { x: at.x, y: at.y }, size, age: 0 });
 }
-
 /**
  * 봉인 발동 파문 — 코덱스 파문 마스크를 성어 색으로 물들여 네 칸에 한 번씩 띄운다.
  * `delay` 로 1번 칸부터 차례로 터뜨려 "이 넷이 이 순서"라는 사실을 한 번 더 말한다.
@@ -492,18 +364,7 @@ interface IdiomRippleFx {
   delay: number;
   duration: number;
 }
-/** 발동 순간 뜨는 성어 4자 대형 플래시. 카메라가 어디에 있든 보이도록 화면 좌표로 그린다. */
-interface IdiomFlashFx {
-  chars: string;
-  reading: string;
-  color: string;
-  at: Point;
-  age: number;
-  duration: number;
-}
 const idiomRipples: IdiomRippleFx[] = [];
-let idiomFlash: IdiomFlashFx | null = null;
-
 function pushPooled<T>(active: T[], pool: T[], item: T, limit: number): void {
   if (active.length >= limit) {
     const recycled = active.shift();
@@ -511,7 +372,6 @@ function pushPooled<T>(active: T[], pool: T[], item: T, limit: number): void {
   }
   active.push(item);
 }
-
 function takeProjectile(event: Extract<GameEvent, { type: "shot" }>): ProjectileFx {
   const item = projectilePool.pop() ?? { from: event.from, to: event.to, color: event.color, age: 0, duration: 0.1, critical: false, wuxing: event.wuxing };
   item.from = event.from;
@@ -527,74 +387,35 @@ function takeProjectile(event: Extract<GameEvent, { type: "shot" }>): Projectile
   item.wuxing = event.wuxing;
   return item;
 }
-
 function takeFloater(at: Point, text: string, color: string, duration: number, large: boolean): FloatFx {
   const item = floaterPool.pop() ?? { at, text, color, age: 0, duration, large };
   Object.assign(item, { at, text, color, age: 0, duration, large });
   return item;
 }
-
 function takeRing(at: Point, color: string, duration: number): RingFx {
   const item = ringPool.pop() ?? { at, color, age: 0, duration };
   Object.assign(item, { at, color, age: 0, duration });
   return item;
 }
-
 function takeAbilityBurst(event: Extract<GameEvent, { type: "ability" }>): AbilityBurstFx {
   const item = abilityBurstPool.pop() ?? { at: event.at, source: event.source, glyph: event.glyph, color: event.color, kind: event.kind, age: 0, duration: 0.42 };
   Object.assign(item, { at: event.at, source: event.source, glyph: event.glyph, color: event.color, kind: event.kind, age: 0, duration: 0.42 });
   return item;
 }
-
 function recycleAll<T>(active: T[], pool: T[], limit: number): void {
   while (active.length > 0) {
     const item = active.pop();
     if (item && pool.length < limit) pool.push(item);
   }
 }
-const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-let towerDragPointerId: number | null = null;
-let towerDragTowerId: number | null = null;
-let towerDragStart: Point | null = null;
-let towerDragMoved = false;
-let mapPanPointerId: number | null = null;
 let mapPanStartScreen: Point | null = null;
 let mapPanStartOffset: Point | null = null;
 let mapPanButton: 0 | 1 | null = null;
 let mapPanMoved = false;
 let mapPanClickCell = -1;
-let hoveredTowerId: number | null = null;
-/** 포인터가 올라간 잠긴 오행진. 자물쇠 확대와 캔버스 커서 전환에 쓴다. */
-let hoveredLockFormation: number | null = null;
-let hanjaEmphasis = true;
-// 호버 팝오버 우상단 큰 한자. 기본 ON, 선택은 브라우저에 저장한다.
-const HOVER_GLYPH_STORAGE_KEY = "hanja-td:hover-glyph-large";
-let hoverGlyphLarge = ((): boolean => {
-  try {
-    return window.localStorage.getItem(HOVER_GLYPH_STORAGE_KEY) !== "false";
-  } catch {
-    return true;
-  }
-})();
-/*
- * 분해의 "유일 보유 한자" 보호.
- *
- * 초보자를 지키는 규칙이지만 문기를 모으려는 사람에게는 인벤토리 절반을
- * 잠그는 벽이었다. 기본은 ON(현행 유지)이고, 끄면 유일 자령도 후보에 들어온다.
- * 파괴적 행동이므로 목록의 `유일` 배지는 꺼도 남는다 — 토글 자체가 의사 표시라
- * 따로 확인 창을 세우지는 않는다.
- */
-const DISMANTLE_UNIQUE_STORAGE_KEY = "hanja-td:dismantle-protect-unique";
-let dismantleProtectsUnique = ((): boolean => {
-  try {
-    return window.localStorage.getItem(DISMANTLE_UNIQUE_STORAGE_KEY) !== "false";
-  } catch {
-    return true;
-  }
-})();
 /** 분해 경로 전용 옵션. 다른 보호(잠금·농축·공명)와 캐주얼 3합은 건드리지 않는다. */
 function dismantleOptions(): { protectUnique: boolean } {
-  return { protectUnique: dismantleProtectsUnique };
+  return { protectUnique: ctx.dismantleProtectsUnique };
 }
 /*
  * 시작 보너스 버튼 주목성.
@@ -606,7 +427,6 @@ function dismantleOptions(): { protectUnique: boolean } {
 const EARLY_USED_STORAGE_KEY = "hanja-td:early-used";
 const EARLY_HINT_STORAGE_KEY = "hanja-td:early-hint-v1";
 const EARLY_CALM_THRESHOLD = 2;
-
 function readEarlyUsedCount(): number {
   try {
     return Number.parseInt(window.localStorage.getItem(EARLY_USED_STORAGE_KEY) ?? "0", 10) || 0;
@@ -614,11 +434,9 @@ function readEarlyUsedCount(): number {
     return 0;
   }
 }
-
 function syncEarlyCalmState(): void {
   shell.dataset.earlyCalm = readEarlyUsedCount() >= EARLY_CALM_THRESHOLD ? "1" : "0";
 }
-
 function noteEarlyStartUsed(): void {
   const next = readEarlyUsedCount() + 1;
   try {
@@ -628,15 +446,12 @@ function noteEarlyStartUsed(): void {
   }
   syncEarlyCalmState();
 }
-
 let earlyHintTimer = 0;
-
 function hideEarlyHint(): void {
   window.clearTimeout(earlyHintTimer);
   const hint = document.querySelector<HTMLElement>("#early-hint");
   if (hint) hint.hidden = true;
 }
-
 function maybeShowEarlyHint(): void {
   const hint = document.querySelector<HTMLElement>("#early-hint");
   const button = document.querySelector<HTMLButtonElement>("#early-button");
@@ -657,24 +472,6 @@ function maybeShowEarlyHint(): void {
   hint.hidden = false;
   earlyHintTimer = window.setTimeout(hideEarlyHint, 5000);
 }
-
-const MIN_MAP_ZOOM = 0.72;
-const BASE_MAP_ZOOM = 2.6;
-const DEFAULT_MAP_ZOOM = 2;
-const MAX_MAP_ZOOM = BASE_MAP_ZOOM * 2;
-const DEFAULT_MAP_FOCUS: Point = { x: WORLD_WIDTH / 2, y: WORLD_HEIGHT / 2 };
-function defaultMapOffset(): Point {
-  return {
-    x: WORLD_WIDTH / 2 - DEFAULT_MAP_FOCUS.x * DEFAULT_MAP_ZOOM,
-    y: WORLD_HEIGHT / 2 - DEFAULT_MAP_FOCUS.y * DEFAULT_MAP_ZOOM
-  };
-}
-let mapZoom = DEFAULT_MAP_ZOOM;
-let mapOffset: Point = defaultMapOffset();
-/** 휠 확대·축소 1회 또는 팬 1회마다 오른다. 코치 2단계 자동 진행의 근거. */
-let mapCameraGestures = 0;
-type GameSpeed = 1 | 2 | 3;
-let gameSpeed: GameSpeed = 1;
 const hanjiPaperUrl = `${import.meta.env.BASE_URL}assets/map/hanji-ink-field/hanji-paper-base.png`;
 /**
  * 한지 바탕(2.0MB)은 전장에서만 보인다. 모듈 평가 시점에 붙이면 S00 텍스처와
@@ -707,18 +504,6 @@ function warmCombatSpriteCaches(): void {
   preloadIdiomSprites();
   preloadNameplateSprites();
 }
-
-/*
- * 집중 프레임(S06 강화 · S07 농축).
- *
- * 376px 패널 안에 "대상 고르기 + 재료 + 실행"을 전부 밀어 넣은 탓에 글자가
- * 작아지고 과부하가 걸렸다. 작업대 DOM 을 통째로 전장 위 대형 프레임으로
- * **옮긴다**(복제가 아니다 — 기존 id·리스너·렌더러가 그대로 동작한다).
- * 패널에는 요약 몇 줄과 [열기] 버튼만 남는다.
- * 엔진은 계속 돌기 때문에 aria-modal 은 false 다.
- */
-type FocusFrameId = "growth" | "concentration" | "inventory";
-
 const FOCUS_FRAME_MOUNTS: ReadonlyArray<{ id: FocusFrameId; source: string; target: string }> = [
   { id: "growth", source: ".growth-layout", target: "#growth-frame-body" },
   { id: "concentration", source: "#concentration-layout", target: "#concentration-frame-body" },
@@ -726,9 +511,6 @@ const FOCUS_FRAME_MOUNTS: ReadonlyArray<{ id: FocusFrameId; source: string; targ
   // 길어졌다. 목록 DOM 을 통째로 전장 위 격자 프레임으로 옮긴다.
   { id: "inventory", source: "#run-inventory-layout", target: "#inventory-frame-body" }
 ];
-
-let openFocusFrame: FocusFrameId | null = null;
-
 function mountFocusFrames(): void {
   for (const mount of FOCUS_FRAME_MOUNTS) {
     const source = document.querySelector<HTMLElement>(mount.source);
@@ -736,9 +518,8 @@ function mountFocusFrames(): void {
     if (source && target && source.parentElement !== target) target.append(source);
   }
 }
-
 function setFocusFrame(id: FocusFrameId | null): void {
-  openFocusFrame = id;
+  ctx.openFocusFrame = id;
   // 1회성 안내 말풍선(z 22)이 프레임(z 20) 위로 뜨지 않게 먼저 걷는다.
   if (id !== null) hideEarlyHint();
   for (const mount of FOCUS_FRAME_MOUNTS) {
@@ -750,21 +531,20 @@ function setFocusFrame(id: FocusFrameId | null): void {
   must<HTMLElement>("#focus-dim").hidden = id === null;
   shell.dataset.focusFrame = id ?? "none";
   if (id === "growth") {
-    growthRenderKey = "";
+    ctx.growthRenderKey = "";
     renderGrowth();
   } else if (id === "concentration") {
-    concentrationRenderKey = "";
+    ctx.concentrationRenderKey = "";
     renderConcentration();
   } else if (id === "inventory") {
-    runInventoryRenderKey = "";
+    ctx.runInventoryRenderKey = "";
     renderRunInventory();
   }
 }
-
 function setPanelTab(tab: PanelTab): void {
-  if (tab !== activePanelTab) sound.playTabSwitch();
+  if (tab !== ctx.activePanelTab) sound.playTabSwitch();
   if (tab !== "unit") closeCompositionDrawer();
-  activePanelTab = tab;
+  ctx.activePanelTab = tab;
   shell.dataset.panelTab = tab;
   document.querySelectorAll<HTMLElement>("[data-panel-view]").forEach((view) => {
     view.classList.toggle("is-active", view.dataset.panelView === tab);
@@ -778,38 +558,34 @@ function setPanelTab(tab: PanelTab): void {
     button.setAttribute("aria-selected", String(selected));
   });
   if (tab === "concentration") {
-    const selected = engine.selectedTower();
-    if (selected) concentrationTargetId = selected.id;
-    concentrationRenderKey = "";
+    const selected = ctx.engine.selectedTower();
+    if (selected) ctx.concentrationTargetId = selected.id;
+    ctx.concentrationRenderKey = "";
     renderConcentration();
   } else if (tab === "growth") {
-    growthRenderKey = "";
+    ctx.growthRenderKey = "";
     renderGrowth();
   }
   // 탭 진입은 곧 집중 프레임 진입이다. 다른 탭으로 나가면 프레임도 닫힌다.
   setFocusFrame(FOCUS_FRAME_MOUNTS.some((mount) => mount.id === tab) ? (tab as FocusFrameId) : null);
 }
-
 mountFocusFrames();
 syncEarlyCalmState();
-
 function syncDisplayModeControls(): void {
   document.querySelectorAll<HTMLButtonElement>("[data-display-mode-option]").forEach((button) => {
-    const selected = button.dataset.displayModeOption === displayMode;
+    const selected = button.dataset.displayModeOption === ctx.displayMode;
     button.classList.toggle("is-selected", selected);
     button.setAttribute("aria-checked", String(selected));
   });
 }
-
 function syncHoverGlyphControl(): void {
   const button = must<HTMLButtonElement>("#hover-glyph-toggle");
-  button.classList.toggle("is-on", hoverGlyphLarge);
-  button.setAttribute("aria-checked", String(hoverGlyphLarge));
-  must<HTMLElement>("#hover-glyph-toggle i em").textContent = hoverGlyphLarge ? "ON" : "OFF";
+  button.classList.toggle("is-on", ctx.hoverGlyphLarge);
+  button.setAttribute("aria-checked", String(ctx.hoverGlyphLarge));
+  must<HTMLElement>("#hover-glyph-toggle i em").textContent = ctx.hoverGlyphLarge ? "ON" : "OFF";
 }
-
 function setHoverGlyphLarge(enabled: boolean): void {
-  hoverGlyphLarge = enabled;
+  ctx.hoverGlyphLarge = enabled;
   try {
     window.localStorage.setItem(HOVER_GLYPH_STORAGE_KEY, String(enabled));
   } catch {
@@ -820,15 +596,13 @@ function setHoverGlyphLarge(enabled: boolean): void {
     ? "팝오버 큰 한자 ON · 자령에 마우스를 올리면 한자를 크게 보여줍니다"
     : "팝오버 큰 한자 OFF · 팝오버는 기존 글줄만 표시합니다");
 }
-
 function syncAutoPlaceControl(): void {
   const button = must<HTMLButtonElement>("#auto-place-toggle");
-  const enabled = engine.state.autoPlaceSummons;
+  const enabled = ctx.engine.state.autoPlaceSummons;
   button.classList.toggle("is-on", enabled);
   button.setAttribute("aria-checked", String(enabled));
   must<HTMLElement>("#auto-place-toggle i em").textContent = enabled ? "ON" : "OFF";
 }
-
 function syncAudioControls(): void {
   const settings = sound.audioSettings;
   const bgmVolume = must<HTMLInputElement>("#bgm-volume");
@@ -855,10 +629,9 @@ function syncAudioControls(): void {
   shell.dataset.bgmMuted = String(settings.bgmMuted);
   shell.dataset.sfxMuted = String(settings.sfxMuted);
 }
-
 function syncTitleModeSelection(): void {
   document.querySelectorAll<HTMLButtonElement>("[data-game-mode-option]").forEach((button) => {
-    const selected = button.dataset.gameModeOption === selectedGameMode;
+    const selected = button.dataset.gameModeOption === ctx.selectedGameMode;
     button.classList.toggle("is-selected", selected);
     button.setAttribute("aria-checked", String(selected));
   });
@@ -869,34 +642,32 @@ function syncTitleModeSelection(): void {
     const info = REGION_MENU_INFO[region];
     button.title = info.pool;
     button.setAttribute("aria-label", `${info.name} · ${info.pool}`);
-    const selected = region === selectedRegion;
+    const selected = region === ctx.selectedRegion;
     button.classList.toggle("is-selected", selected);
     button.setAttribute("aria-checked", String(selected));
   });
-  must<HTMLElement>("#s00-summary-main").textContent = `${REGION_MENU_INFO[selectedRegion].name} · ${gameModeLabel(selectedGameMode)}`;
+  must<HTMLElement>("#s00-summary-main").textContent = `${REGION_MENU_INFO[ctx.selectedRegion].name} · ${gameModeLabel(ctx.selectedGameMode)}`;
   const s13 = document.querySelector<HTMLDialogElement>("#s13-dialog");
   if (s13?.open) syncS13();
-  must<HTMLElement>("#s00-start-sub").textContent = REGION_MENU_INFO[selectedRegion].pool;
-  must<HTMLElement>("#title-lead").innerHTML = selectedGameMode === "casual"
+  must<HTMLElement>("#s00-start-sub").textContent = REGION_MENU_INFO[ctx.selectedRegion].pool;
+  must<HTMLElement>("#title-lead").innerHTML = ctx.selectedGameMode === "casual"
     ? "획수가 희귀도를 정하고, 같은 오행 세 자령을 모두 바쳐 다음 별을 부릅니다.<br />무엇이 나올지는 열어 봐야 압니다 — 8성 대봉인까지 성장시키세요."
     : "운으로 글자를 부르고, 실제 구성 원리로 합성하라.<br />열 개의 장과 백 번의 망령 행렬을 넘어 대봉인을 완성하세요.";
   // 개발용 표현(심사·제출)은 dev 모드에서만 남긴다. 플레이어에게는
   // "무엇이 가장 잘 갖춰져 있는가"만 말한다.
   const devLabels = shell.dataset.devMode === "1";
-  must<HTMLElement>("#title-note").textContent = selectedRegion === "KR"
+  must<HTMLElement>("#title-note").textContent = ctx.selectedRegion === "KR"
     ? devLabels ? "심사 권장 · 현재 제출 기준 콘텐츠" : "가장 완성된 콘텐츠"
     : "미리 해보기 · 도감·현지화·밸런스 보강 중";
 }
-
 function setSelectedGameMode(mode: GameMode): void {
   sound.unlock();
-  selectedGameMode = mode;
+  ctx.selectedGameMode = mode;
   syncTitleModeSelection();
   sound.playUiConfirm();
 }
-
 function setDisplayMode(mode: DisplayMode, announce = true): void {
-  displayMode = mode;
+  ctx.displayMode = mode;
   shell.dataset.displayMode = mode;
   saveDisplayMode(mode);
   syncDisplayModeControls();
@@ -905,7 +676,6 @@ function setDisplayMode(mode: DisplayMode, announce = true): void {
     showToast(mode === "spirit" ? "자령 모드 · 한자와 훈음을 머리 위에 표시" : "공부 모드 · 큰 한자와 읽기를 전장에 표시");
   }
 }
-
 function resetIdiomResult(): void {
   idiomResult.classList.remove("is-active");
   idiomResult.style.removeProperty("--idiom-result-color");
@@ -914,7 +684,6 @@ function resetIdiomResult(): void {
   must<HTMLElement>("#idiom-result-meaning").textContent = "배치된 자령을 자동으로 판정합니다.";
   must<HTMLElement>("#idiom-result-bonus").textContent = "자동 판정";
 }
-
 function showIdiomResult(reading: string, meaning: string, bonus: string, color: string, rejoined = false): void {
   idiomResult.style.setProperty("--idiom-result-color", color);
   must<HTMLElement>("#idiom-result-glyph").textContent = "四";
@@ -928,7 +697,6 @@ function showIdiomResult(reading: string, meaning: string, bonus: string, color:
   void idiomTab.offsetWidth;
   idiomTab.classList.add("has-update");
 }
-
 /** 줄이 흩어졌을 때의 성어 카드 — 금박을 걷고 회갈로 내린다. */
 function showIdiomBrokenResult(reading: string, bonus: string): void {
   idiomResult.style.setProperty("--idiom-result-color", "#9d8f78");
@@ -940,19 +708,18 @@ function showIdiomBrokenResult(reading: string, bonus: string): void {
   void idiomResult.offsetWidth;
   idiomResult.classList.add("is-active");
 }
-
 function startRun(useNewSeed = false): void {
   const seed = useNewSeed ? createRunSeed() : seedInput.value.trim() || createRunSeed();
   seedInput.value = seed;
-  engine = new GameEngine(seed, selectedRegion, selectedGameMode);
-  shell.dataset.gameMode = selectedGameMode;
-  mapSynthesisDepths = buildSynthesisDepths(engine.catalog.definitions.values());
-  mapUncombinableStageOne = buildUncombinableStageOneChars(engine.catalog.definitions.values());
-  engine.state.autoPlaceSummons = loadAutoPlaceSummons();
-  engine.begin();
-  previousPhase = "prep";
-  manualPause = false;
-  mapCameraGestures = 0;
+  ctx.engine = new GameEngine(seed, ctx.selectedRegion, ctx.selectedGameMode);
+  shell.dataset.gameMode = ctx.selectedGameMode;
+  ctx.mapSynthesisDepths = buildSynthesisDepths(ctx.engine.catalog.definitions.values());
+  ctx.mapUncombinableStageOne = buildUncombinableStageOneChars(ctx.engine.catalog.definitions.values());
+  ctx.engine.state.autoPlaceSummons = loadAutoPlaceSummons();
+  ctx.engine.begin();
+  ctx.previousPhase = "prep";
+  ctx.manualPause = false;
+  ctx.mapCameraGestures = 0;
   titleOverlay.classList.remove("modal-layer--visible");
   endOverlay.classList.remove("modal-layer--visible");
   sound.unlock();
@@ -962,75 +729,73 @@ function startRun(useNewSeed = false): void {
   recycleAll(rings, ringPool, 32);
   recycleAll(abilityBursts, abilityBurstPool, 12);
   idiomRipples.length = 0;
-  idiomFlash = null;
+  ctx.idiomFlash = null;
   // 새 런은 봉인이 0개라 키도 빈 문자열이 된다. 초기값과 겹치지 않게 표식으로 밀어 둔다.
-  activeIdiomsRenderKey = "run-reset";
-  projectileSpriteDrawTotal = 0;
-  abilityZoneSpriteDrawTotal = 0;
+  ctx.activeIdiomsRenderKey = "run-reset";
+  ctx.projectileSpriteDrawTotal = 0;
+  ctx.abilityZoneSpriteDrawTotal = 0;
   canvas.dataset.projectileSpriteDrawTotal = "0";
   canvas.dataset.abilityZoneSpriteDrawTotal = "0";
   towerAbilityPopups.clear();
   lastAbilityFxByTower.clear();
-  lastGlobalAbilityFxAt = -10;
+  ctx.lastGlobalAbilityFxAt = -10;
   combatFeed.replaceChildren();
   feedCooldowns.clear();
-  comboCount = 0;
+  ctx.comboCount = 0;
   comboMeter.classList.remove("combo-meter--visible");
   resetIdiomResult();
   hideSummonReveal();
   closeCompositionDrawer();
-  concentrationTargetId = null;
-  concentrationPayment = "essence";
-  growthElement = "木";
+  ctx.concentrationTargetId = null;
+  ctx.concentrationPayment = "essence";
+  ctx.growthElement = "木";
   dismantleSelection.clear();
   // R19: 보관고 시야·바구니는 한 판짜리다. 새 런은 전체 보기에서 시작한다.
-  runInventoryElementFilter = null;
-  runInventoryGradeFilter = null;
-  runInventoryBulkMode = false;
+  ctx.runInventoryElementFilter = null;
+  ctx.runInventoryGradeFilter = null;
+  ctx.runInventoryBulkMode = false;
   runInventoryBulkSelection.clear();
-  casualFusionSelection = [];
-  pendingCasualFusion = null;
+  ctx.casualFusionSelection = [];
+  ctx.pendingCasualFusion = null;
   if (casualFusionConfirmDialog.open) casualFusionConfirmDialog.close();
   setPanelTab("shop");
-  formationUnlockHintShown = false;
+  ctx.formationUnlockHintShown = false;
   startCoach();
-  window.clearTimeout(comboTimer);
-  evolutionRenderKey = "";
-  goalRenderKey = "";
-  selectedRenderKey = "";
-  runInventoryRenderKey = "";
-  idiomRenderKey = "";
-  elementUpgradeRenderKey = "";
-  concentrationRenderKey = "";
-  growthRenderKey = "";
-  towerDragPointerId = null;
-  towerDragTowerId = null;
-  towerDragStart = null;
-  towerDragMoved = false;
-  showToast(`${engine.catalog.title} · ${gameModeLabel(engine.state.mode)}을 시작합니다.`);
+  window.clearTimeout(ctx.comboTimer);
+  ctx.evolutionRenderKey = "";
+  ctx.goalRenderKey = "";
+  ctx.selectedRenderKey = "";
+  ctx.runInventoryRenderKey = "";
+  ctx.idiomRenderKey = "";
+  ctx.elementUpgradeRenderKey = "";
+  ctx.concentrationRenderKey = "";
+  ctx.growthRenderKey = "";
+  ctx.towerDragPointerId = null;
+  ctx.towerDragTowerId = null;
+  ctx.towerDragStart = null;
+  ctx.towerDragMoved = false;
+  showToast(`${ctx.engine.catalog.title} · ${gameModeLabel(ctx.engine.state.mode)}을 시작합니다.`);
   syncPanel();
 }
-
 function handleAction(result: ActionResult, options: { invalidatePanels?: boolean } = {}): void {
   sound.playActionOutcome(result.ok);
   if (!result.ok || !result.message.includes("자동 봉인")) showToast(result.message, !result.ok);
   if (options.invalidatePanels !== false) {
-    evolutionRenderKey = "";
-    goalRenderKey = "";
-    selectedRenderKey = "";
-    runInventoryRenderKey = "";
-    concentrationRenderKey = "";
-    growthRenderKey = "";
+    ctx.evolutionRenderKey = "";
+    ctx.goalRenderKey = "";
+    ctx.selectedRenderKey = "";
+    ctx.runInventoryRenderKey = "";
+    ctx.concentrationRenderKey = "";
+    ctx.growthRenderKey = "";
   }
   syncPanel();
 }
-
 function showToast(message: string, warning = false): void {
   toast.textContent = message;
   toast.classList.toggle("toast--warning", warning);
   toast.classList.remove("toast--visible");
-  toastAnimation?.cancel();
-  toastAnimation = toast.animate(reducedMotion
+  ctx.toastAnimation?.cancel();
+  ctx.toastAnimation = toast.animate(reducedMotion
     ? [
         { opacity: 0 },
         { opacity: 1, offset: 0.12 },
@@ -1044,11 +809,10 @@ function showToast(message: string, warning = false): void {
         { opacity: 0, transform: "translate(-50%, -5px)" }
       ], { duration: 1900, easing: "ease" });
 }
-
 function showWaveBanner(): void {
   bossBanner.classList.remove("boss-banner--visible");
-  waveBannerAnimation?.cancel();
-  waveBannerAnimation = bossBanner.animate(reducedMotion
+  ctx.waveBannerAnimation?.cancel();
+  ctx.waveBannerAnimation = bossBanner.animate(reducedMotion
     ? [
         { opacity: 0 },
         { opacity: 1, offset: 0.18 },
@@ -1062,7 +826,6 @@ function showWaveBanner(): void {
         { opacity: 0, transform: "translate(-50%, 6px) scale(1.02)" }
       ], { duration: 1200, easing: "ease" });
 }
-
 /**
  * 첫 봉인 축하 — 스펙 6라운드 E3.
  *
@@ -1075,7 +838,6 @@ function firstSealCelebration(reading: string): void {
   bossBanner.classList.add("boss-banner--idiom");
   showWaveBanner();
 }
-
 function addCombatFeed(glyph: string, name: string, detail: string, color: string): void {
   const now = performance.now();
   const key = glyph + name;
@@ -1095,43 +857,39 @@ function addCombatFeed(glyph: string, name: string, detail: string, color: strin
   combatFeed.prepend(item);
   while (combatFeed.children.length > 4) combatFeed.lastElementChild?.remove();
 }
-
 function showTowerAbilityPopup(towerId: number, glyph: string, name: string, color: string): void {
   const current = towerAbilityPopups.get(towerId);
   // Frequent procs still happen mechanically, but the same tower cannot flood the screen.
   if (current && current.age < 0.8) return;
   towerAbilityPopups.set(towerId, { text: glyph + " " + name, color, age: 0, duration: 0.82 });
 }
-
 function hideSummonReveal(): void {
-  window.clearTimeout(summonRevealTimer);
-  window.clearTimeout(fusionVortexTimer);
+  window.clearTimeout(ctx.summonRevealTimer);
+  window.clearTimeout(ctx.fusionVortexTimer);
   summonReveal.classList.remove("is-active", "is-batch", "is-fusion");
   fusionVortex.classList.remove("is-active");
   summonReveal.setAttribute("aria-hidden", "true");
 }
-
 /**
  * v5 팩의 `fusion-vortex-v1.png` 를 공개 순간에 겹친다. 명세의 100–420ms 구간을
  * CSS 애니메이션으로 맡기고(prefers-reduced-motion 이면 회전 없이 페이드),
  * 파일이 없으면 클래스만 붙었다 떨어지므로 기존 소환 광채로 자연히 폴백된다.
  */
 function playFusionVortex(wuxing: Wuxing): void {
-  window.clearTimeout(fusionVortexTimer);
+  window.clearTimeout(ctx.fusionVortexTimer);
   fusionVortex.style.setProperty("--vortex-tint", ELEMENT_STYLES[wuxing].color);
   fusionVortex.classList.remove("is-active");
   void fusionVortex.offsetWidth;
   fusionVortex.classList.add("is-active");
-  fusionVortexTimer = window.setTimeout(() => fusionVortex.classList.remove("is-active"), 520);
+  ctx.fusionVortexTimer = window.setTimeout(() => fusionVortex.classList.remove("is-active"), 520);
 }
-
 /**
  * 3합 획득도 뽑기와 같은 공개 카드로 보여 준다. 무작위 결과라 "무엇이 나왔는지"가
  * 토스트 한 줄로 흘러가면 안 된다.
  */
 function showCasualFusionReveal(events: Array<Extract<GameEvent, { type: "casualFuse" }>>): void {
   if (events.length === 0) return;
-  window.clearTimeout(summonRevealTimer);
+  window.clearTimeout(ctx.summonRevealTimer);
   const first = events[0] as Extract<GameEvent, { type: "casualFuse" }>;
   const newCount = events.filter((event) => event.newDiscovery).length;
   const boardCount = events.filter((event) => event.tower.cell >= 0).length;
@@ -1153,8 +911,8 @@ function showCasualFusionReveal(events: Array<Extract<GameEvent, { type: "casual
   must<HTMLElement>("#summon-reveal-list").innerHTML = events.map((event, index) => {
     const tower = event.tower;
     const style = ELEMENT_STYLES[tower.wuxing];
-    const visual = jaryeongVisualFor(tower.char, tower.wuxing, engine.state.region);
-    const learning = learningInfo(engine.state.region, tower.char);
+    const visual = jaryeongVisualFor(tower.char, tower.wuxing, ctx.engine.state.region);
+    const learning = learningInfo(ctx.engine.state.region, tower.char);
     const star = casualStarOf(tower);
     return `<article class="summon-result-card is-fusion ${event.newDiscovery ? "is-new" : "is-helpful"}" style="--summon:${style.color};--summon-star:${CASUAL_STAR_COLORS[star]};--summon-delay:${index * 45}ms">
       <span class="summon-result-spirit" style="${visualBackgroundStyle(visual)}" aria-hidden="true"></span>
@@ -1171,9 +929,8 @@ function showCasualFusionReveal(events: Array<Extract<GameEvent, { type: "casual
   summonReveal.classList.add("is-active");
   summonReveal.setAttribute("aria-hidden", "false");
   playFusionVortex(first.tower.wuxing);
-  if (events.length === 1) summonRevealTimer = window.setTimeout(hideSummonReveal, 3800);
+  if (events.length === 1) ctx.summonRevealTimer = window.setTimeout(hideSummonReveal, 3800);
 }
-
 function showSummonReveal(events: Array<Extract<GameEvent, { type: "summon" }>>): void {
   if (events.length === 0) return;
   // 코치가 전장 조작을 안내하는 동안에는 카드가 스포트라이트를 덮고
@@ -1182,8 +939,8 @@ function showSummonReveal(events: Array<Extract<GameEvent, { type: "summon" }>>)
     hideSummonReveal();
     return;
   }
-  window.clearTimeout(summonRevealTimer);
-  window.clearTimeout(fusionVortexTimer);
+  window.clearTimeout(ctx.summonRevealTimer);
+  window.clearTimeout(ctx.fusionVortexTimer);
   fusionVortex.classList.remove("is-active");
   summonReveal.classList.remove("is-fusion");
   must<HTMLElement>("#summon-reveal-kicker").textContent = "소환 결과";
@@ -1197,26 +954,26 @@ function showSummonReveal(events: Array<Extract<GameEvent, { type: "summon" }>>)
       ? "런 인벤토리 보관"
       : `전장 ${events.length - storedCount} · 인벤 ${storedCount}`;
   must<HTMLElement>("#summon-reveal-title").textContent = events.length > 1 ? `${events.length}연 소환 결과` : `${events[0]?.tower.char ?? "?"} 자령 출현`;
-  const firstSummon = engine.state.summonCount === events.length && engine.state.startingFormationIndex !== null;
-  const startingFormation = firstSummon ? BOARD_FORMATIONS[engine.state.startingFormationIndex ?? -1] : undefined;
+  const firstSummon = ctx.engine.state.summonCount === events.length && ctx.engine.state.startingFormationIndex !== null;
+  const startingFormation = firstSummon ? BOARD_FORMATIONS[ctx.engine.state.startingFormationIndex ?? -1] : undefined;
   const openingResult = firstSummon && startingFormation
     ? `<strong>${events[0]?.tower.wuxing ?? "?"} 자령 출현 → ${startingFormation.label} 무료 개방</strong>`
     : "";
-  must<HTMLElement>("#summon-reveal-summary").innerHTML = `${openingResult}<b>새 발견 ${newCount}</b><span>${engine.state.mode === "casual" ? "목표·성어" : "합성 재료"} ${helpfulCount}</span><span>중복 ${concentrationCount}</span><em>${placementLabel}</em>`;
+  must<HTMLElement>("#summon-reveal-summary").innerHTML = `${openingResult}<b>새 발견 ${newCount}</b><span>${ctx.engine.state.mode === "casual" ? "목표·성어" : "합성 재료"} ${helpfulCount}</span><span>중복 ${concentrationCount}</span><em>${placementLabel}</em>`;
   must<HTMLElement>("#summon-reveal-list").innerHTML = events.map((event, index) => {
     const tower = event.tower;
-    const definition = definitionForTower(engine.catalog, tower.definitionId);
+    const definition = definitionForTower(ctx.engine.catalog, tower.definitionId);
     const style = ELEMENT_STYLES[tower.wuxing];
-    const visual = jaryeongVisualFor(tower.char, tower.wuxing, engine.state.region);
-    const learning = learningInfo(engine.state.region, tower.char);
+    const visual = jaryeongVisualFor(tower.char, tower.wuxing, ctx.engine.state.region);
+    const learning = learningInfo(ctx.engine.state.region, tower.char);
     const helpfulLabel = event.helpfulReason === "both" ? "목표·성어" : event.helpfulReason === "goal" ? "목표 재료" : event.helpfulReason === "idiom" ? "성어 재료" : "";
-    const utilityLabel = event.utility === "new" ? "NEW" : event.utility === "synthesis" ? engine.state.mode === "casual" ? "목표" : "합성" : event.utility === "concentration" ? "중복" : "교체 후보";
+    const utilityLabel = event.utility === "new" ? "NEW" : event.utility === "synthesis" ? ctx.engine.state.mode === "casual" ? "목표" : "합성" : event.utility === "concentration" ? "중복" : "교체 후보";
     const star = casualStarOf(tower);
     return `<article class="summon-result-card ${event.newDiscovery ? "is-new" : ""} ${event.helpful ? "is-helpful" : ""}" style="--summon:${style.color};--summon-star:${CASUAL_STAR_COLORS[star]};--summon-delay:${index * 45}ms">
       <span class="summon-result-spirit" style="${visualBackgroundStyle(visual)}" aria-hidden="true"></span>
       <strong>${tower.char}</strong>
       <b>${escapeHtml(learning.short)}</b>
-      <small>${style.name}행 · ${engine.state.mode === "casual" ? `${star}★ ${CASUAL_STAR_NAMES[star]} · ${casualStrokeCount(tower.char) ?? "?"}획` : escapeHtml(definition.combat.roleLabel)}</small>
+      <small>${style.name}행 · ${ctx.engine.state.mode === "casual" ? `${star}★ ${CASUAL_STAR_NAMES[star]} · ${casualStrokeCount(tower.char) ?? "?"}획` : escapeHtml(definition.combat.roleLabel)}</small>
       <div><em>${utilityLabel}</em>${helpfulLabel ? `<mark>${helpfulLabel}</mark>` : ""}</div>
     </article>`;
   }).join("");
@@ -1225,73 +982,66 @@ function showSummonReveal(events: Array<Extract<GameEvent, { type: "summon" }>>)
   void summonReveal.offsetWidth;
   summonReveal.classList.add("is-active");
   summonReveal.setAttribute("aria-hidden", "false");
-  if (events.length === 1) summonRevealTimer = window.setTimeout(hideSummonReveal, 3800);
+  if (events.length === 1) ctx.summonRevealTimer = window.setTimeout(hideSummonReveal, 3800);
 }
-
 function formatStatBonus(stat: UpgradeStat, bonus: number): string {
   return stat === "range" ? `+${bonus.toFixed(1)}` : `+${(bonus * 100).toFixed(1)}%`;
 }
-
 function totalGlobalUpgradeLevels(): number {
-  return UPGRADE_STAT_ORDER.reduce((sum, stat) => sum + engine.state.globalUpgrades[stat], 0);
+  return UPGRADE_STAT_ORDER.reduce((sum, stat) => sum + ctx.engine.state.globalUpgrades[stat], 0);
 }
-
 function totalElementUpgradeLevels(): number {
-  return WUXING_ORDER.reduce((sum, wuxing) => sum + UPGRADE_STAT_ORDER.reduce((elementSum, stat) => elementSum + engine.state.elementUpgrades[wuxing][stat], 0), 0);
+  return WUXING_ORDER.reduce((sum, wuxing) => sum + UPGRADE_STAT_ORDER.reduce((elementSum, stat) => elementSum + ctx.engine.state.elementUpgrades[wuxing][stat], 0), 0);
 }
-
 function upgradeStateSignature(): string {
-  const global = UPGRADE_STAT_ORDER.map((stat) => engine.state.globalUpgrades[stat]).join(",");
-  const elements = WUXING_ORDER.map((wuxing) => UPGRADE_STAT_ORDER.map((stat) => engine.state.elementUpgrades[wuxing][stat]).join(",")).join("|");
-  const essence = WUXING_ORDER.map((wuxing) => engine.state.elementEssence[wuxing]).join(",");
-  return `${engine.state.phase}:${engine.state.gold}:${global}:${elements}:${essence}`;
+  const global = UPGRADE_STAT_ORDER.map((stat) => ctx.engine.state.globalUpgrades[stat]).join(",");
+  const elements = WUXING_ORDER.map((wuxing) => UPGRADE_STAT_ORDER.map((stat) => ctx.engine.state.elementUpgrades[wuxing][stat]).join(",")).join("|");
+  const essence = WUXING_ORDER.map((wuxing) => ctx.engine.state.elementEssence[wuxing]).join(",");
+  return `${ctx.engine.state.phase}:${ctx.engine.state.gold}:${global}:${elements}:${essence}`;
 }
-
 function renderElementUpgrades(): void {
-  const active = engine.state.phase === "prep" || engine.state.phase === "combat";
+  const active = ctx.engine.state.phase === "prep" || ctx.engine.state.phase === "combat";
   const globalTotal = totalGlobalUpgradeLevels();
   must<HTMLElement>("#global-upgrade-total").textContent = `${globalTotal}단계`;
-  must<HTMLElement>("#element-essence-dialog-summary").textContent = WUXING_ORDER.map((wuxing) => `${wuxing}${engine.state.elementEssence[wuxing]}`).join(" ");
+  must<HTMLElement>("#element-essence-dialog-summary").textContent = WUXING_ORDER.map((wuxing) => `${wuxing}${ctx.engine.state.elementEssence[wuxing]}`).join(" ");
   must<HTMLElement>("#global-upgrade-list").innerHTML = UPGRADE_STAT_ORDER.map((stat) => {
     const meta = UPGRADE_STAT_META[stat];
-    const level = engine.state.globalUpgrades[stat];
+    const level = ctx.engine.state.globalUpgrades[stat];
     const cost = globalUpgradeCost(stat, level);
     const maxed = level >= MAX_UPGRADE_LEVEL;
-    const bonus = engine.globalUpgradeBonus(stat);
+    const bonus = ctx.engine.globalUpgradeBonus(stat);
     return `<article class="stat-upgrade-card is-global">
       <div class="stat-upgrade-glyph">${meta.glyph}</div>
       <div><strong>${meta.label} <em>Lv.${level}</em></strong><span>${meta.description}</span><small>현재 ${formatStatBonus(stat, bonus)} · 단계당 ${formatStatBonus(stat, meta.globalPerLevel)}</small></div>
-      <button type="button" data-upgrade-scope="global" data-upgrade-stat="${stat}" ${!active || maxed || engine.state.gold < cost ? "disabled" : ""}><b>${maxed ? "최고" : `${cost}엽전`}</b><small>${maxed ? `Lv.${MAX_UPGRADE_LEVEL}` : `Lv.${level + 1}`}</small></button>
+      <button type="button" data-upgrade-scope="global" data-upgrade-stat="${stat}" ${!active || maxed || ctx.engine.state.gold < cost ? "disabled" : ""}><b>${maxed ? "최고" : `${cost}엽전`}</b><small>${maxed ? `Lv.${MAX_UPGRADE_LEVEL}` : `Lv.${level + 1}`}</small></button>
     </article>`;
   }).join("");
   must<HTMLElement>("#element-upgrade-list").innerHTML = WUXING_ORDER.map((wuxing) => {
     const style = ELEMENT_STYLES[wuxing];
-    const elementTotal = UPGRADE_STAT_ORDER.reduce((sum, stat) => sum + engine.state.elementUpgrades[wuxing][stat], 0);
+    const elementTotal = UPGRADE_STAT_ORDER.reduce((sum, stat) => sum + ctx.engine.state.elementUpgrades[wuxing][stat], 0);
     const controls = UPGRADE_STAT_ORDER.map((stat) => {
       const meta = UPGRADE_STAT_META[stat];
-      const level = engine.state.elementUpgrades[wuxing][stat];
+      const level = ctx.engine.state.elementUpgrades[wuxing][stat];
       const cost = elementUpgradeCost(level);
       const maxed = level >= MAX_UPGRADE_LEVEL;
-      const bonus = engine.elementUpgradeBonus(wuxing, stat);
-      return `<button type="button" class="element-stat-button" data-upgrade-scope="element" data-upgrade-element="${wuxing}" data-upgrade-stat="${stat}" ${!active || maxed || engine.state.elementEssence[wuxing] < cost ? "disabled" : ""} title="${meta.description}">
+      const bonus = ctx.engine.elementUpgradeBonus(wuxing, stat);
+      return `<button type="button" class="element-stat-button" data-upgrade-scope="element" data-upgrade-element="${wuxing}" data-upgrade-stat="${stat}" ${!active || maxed || ctx.engine.state.elementEssence[wuxing] < cost ? "disabled" : ""} title="${meta.description}">
         <i>${meta.glyph}</i><span><b>${meta.label} <em>Lv.${level}</em></b><small>${formatStatBonus(stat, bonus)}</small></span><strong>${maxed ? "최고" : `${wuxing}${cost}`}</strong>
       </button>`;
     }).join("");
     return `<article class="element-upgrade-card is-expanded" style="--upgrade:${style.color}">
-      <header><div class="element-upgrade-seal"><b>${wuxing}</b><span>${style.name}행</span></div><p><strong>${elementTotal}단계</strong><small>보유 문기 ${engine.state.elementEssence[wuxing]}</small></p></header>
+      <header><div class="element-upgrade-seal"><b>${wuxing}</b><span>${style.name}행</span></div><p><strong>${elementTotal}단계</strong><small>보유 문기 ${ctx.engine.state.elementEssence[wuxing]}</small></p></header>
       <div class="element-stat-grid">${controls}</div>
     </article>`;
   }).join("");
-  elementUpgradeRenderKey = upgradeStateSignature();
+  ctx.elementUpgradeRenderKey = upgradeStateSignature();
 }
-
 function concentrationStateSignature(): string {
-  const towers = [...engine.state.towers, ...engine.state.inventoryTowers]
+  const towers = [...ctx.engine.state.towers, ...ctx.engine.state.inventoryTowers]
     .map((tower) => `${tower.id}:${tower.char}:${tower.cell}:${tower.locked ? 1 : 0}:${tower.concentration ?? 0}:${tower.concentrationPath ?? "-"}`)
     .join("|");
-  return `${engine.state.phase}:${towers}:${WUXING_ORDER.map((wuxing) => engine.state.elementEssence[wuxing]).join(",")}:${concentrationTargetId ?? "-"}:${concentrationPayment}`;
+  return `${ctx.engine.state.phase}:${towers}:${WUXING_ORDER.map((wuxing) => ctx.engine.state.elementEssence[wuxing]).join(",")}:${ctx.concentrationTargetId ?? "-"}:${ctx.concentrationPayment}`;
 }
-
 /**
  * "왜 이 농축인가"를 한 줄로 적는다.
  *
@@ -1312,21 +1062,20 @@ function concentrationIdentityMarkup(tower: Tower): string {
     <small>${legacy ? "이전 런에서 고정된 방향이라 그대로 이어집니다." : "연사·지원은 공속, 나머지는 피해 — 역할이 방향을 정합니다."}</small>
   </p>`;
 }
-
 function renderConcentration(): void {
-  const allTowers = [...engine.state.towers, ...engine.state.inventoryTowers];
-  if (concentrationTargetId === null || !allTowers.some((tower) => tower.id === concentrationTargetId)) {
-    concentrationTargetId = engine.selectedTower()?.id ?? allTowers[0]?.id ?? null;
+  const allTowers = [...ctx.engine.state.towers, ...ctx.engine.state.inventoryTowers];
+  if (ctx.concentrationTargetId === null || !allTowers.some((tower) => tower.id === ctx.concentrationTargetId)) {
+    ctx.concentrationTargetId = ctx.engine.selectedTower()?.id ?? allTowers[0]?.id ?? null;
   }
   const key = concentrationStateSignature();
-  if (key === concentrationRenderKey) return;
-  concentrationRenderKey = key;
+  if (key === ctx.concentrationRenderKey) return;
+  ctx.concentrationRenderKey = key;
   const rows = allTowers.map((tower) => {
     const level = tower.concentration ?? 0;
-    const duplicateCount = engine.state.inventoryTowers.filter((candidate) => candidate.id !== tower.id && candidate.char === tower.char && !candidate.locked).length;
+    const duplicateCount = ctx.engine.state.inventoryTowers.filter((candidate) => candidate.id !== tower.id && candidate.char === tower.char && !candidate.locked).length;
     const cost = concentrationEssenceCost(level);
     const maxed = level >= MAX_CONCENTRATION_LEVEL;
-    const actionable = !maxed && (duplicateCount > 0 || engine.state.elementEssence[tower.wuxing] >= cost);
+    const actionable = !maxed && (duplicateCount > 0 || ctx.engine.state.elementEssence[tower.wuxing] >= cost);
     return { tower, level, duplicateCount, cost, maxed, actionable, rank: maxed ? 2 : actionable ? 0 : 1 };
   }).sort((left, right) => left.rank - right.rank || right.level - left.level || casualStarOf(right.tower) - casualStarOf(left.tower) || right.tower.stage - left.tower.stage || left.tower.id - right.tower.id);
 
@@ -1334,33 +1083,33 @@ function renderConcentration(): void {
   must<HTMLElement>("#concentration-panel-summary").textContent = `농축 가능 ${rows.filter((row) => row.actionable).length}기 · 총 ${rows.length}기`;
   must<HTMLElement>("#concentration-target-list").innerHTML = rows.length > 0 ? rows.map(({ tower, level, duplicateCount, cost, maxed, actionable }) => {
     const stateLabel = maxed ? "최대 단계" : actionable ? "농축 가능" : "재료 부족";
-    return `<button type="button" data-concentration-target="${tower.id}" class="${tower.id === concentrationTargetId ? "is-selected" : ""} ${actionable ? "is-ready" : ""}" style="--element:${ELEMENT_STYLES[tower.wuxing].color}">
+    return `<button type="button" data-concentration-target="${tower.id}" class="${tower.id === ctx.concentrationTargetId ? "is-selected" : ""} ${actionable ? "is-ready" : ""}" style="--element:${ELEMENT_STYLES[tower.wuxing].color}">
       ${spiritPortraitMarkup(tower.char, tower.wuxing, "workbench-spirit--target")}<b>${escapeHtml(tower.char)}</b><span><strong>${tower.wuxing}행 · ${towerProgressionLabel(tower)} · 濃 ${level}/3</strong><small>${tower.cell < 0 ? "인벤토리" : `${BOARD_FORMATIONS[Math.floor(tower.cell / CELLS_PER_FORMATION)]?.label ?? "전장"} 배치`} · ${duplicateCount > 0 ? `중복 ${duplicateCount}기` : `문기 ${cost}`}</small></span><em>${stateLabel}</em>
     </button>`;
   }).join("") : `<div class="workbench-empty"><b>농축할 자령이 없습니다</b><span>상점에서 자령을 먼저 소환하세요.</span></div>`;
 
   const detail = must<HTMLElement>("#concentration-detail");
-  const target = allTowers.find((tower) => tower.id === concentrationTargetId);
+  const target = allTowers.find((tower) => tower.id === ctx.concentrationTargetId);
   if (!target) {
     detail.innerHTML = `<div class="workbench-empty"><b>대상을 선택하세요</b><span>전장과 인벤토리 자령을 모두 확인할 수 있습니다.</span></div>`;
     return;
   }
   // 방향은 사람이 고르지 않는다 — 역할이 정하고, 이미 박힌 자령은 그대로 간다.
   const path = autoConcentrationPath(target);
-  const quote = engine.concentrationQuote(target.id, path);
-  if (quote && typeof concentrationPayment === "number" && !quote.duplicateIds.includes(concentrationPayment)) concentrationPayment = "essence";
+  const quote = ctx.engine.concentrationQuote(target.id, path);
+  if (quote && typeof ctx.concentrationPayment === "number" && !quote.duplicateIds.includes(ctx.concentrationPayment)) ctx.concentrationPayment = "essence";
   const currentLevel = target.concentration ?? 0;
   if (!quote) {
     detail.innerHTML = `<article class="concentration-max-card" style="--element:${ELEMENT_STYLES[target.wuxing].color}"><b>${escapeHtml(target.char)}</b><div><span>${target.wuxing}행 · ${towerProgressionLabel(target)}</span><strong>濃 ${currentLevel}/3 · ${concentrationPathLabel(path)} 완성</strong><small>더 이상 재료를 소모하지 않습니다.</small></div></article>`;
     return;
   }
-  const essenceAvailable = engine.state.elementEssence[target.wuxing] >= quote.essenceCost;
-  const duplicatePaymentAvailable = typeof concentrationPayment === "number" && quote.duplicateIds.includes(concentrationPayment);
-  const paymentReady = concentrationPayment === "essence" ? essenceAvailable : duplicatePaymentAvailable;
+  const essenceAvailable = ctx.engine.state.elementEssence[target.wuxing] >= quote.essenceCost;
+  const duplicatePaymentAvailable = typeof ctx.concentrationPayment === "number" && quote.duplicateIds.includes(ctx.concentrationPayment);
+  const paymentReady = ctx.concentrationPayment === "essence" ? essenceAvailable : duplicatePaymentAvailable;
   const paymentRows = quote.duplicateIds.map((id) => {
-    const duplicate = engine.state.inventoryTowers.find((tower) => tower.id === id);
+    const duplicate = ctx.engine.state.inventoryTowers.find((tower) => tower.id === id);
     if (!duplicate) return "";
-    return `<label class="payment-option ${concentrationPayment === id ? "is-selected" : ""}"><input type="radio" name="concentration-payment" value="${id}" ${concentrationPayment === id ? "checked" : ""}><b>${escapeHtml(duplicate.char)}</b><span>인벤 중복 #${id}</span><small>잠금 없음 · 명시적 소모</small></label>`;
+    return `<label class="payment-option ${ctx.concentrationPayment === id ? "is-selected" : ""}"><input type="radio" name="concentration-payment" value="${id}" ${ctx.concentrationPayment === id ? "checked" : ""}><b>${escapeHtml(duplicate.char)}</b><span>인벤 중복 #${id}</span><small>잠금 없음 · 명시적 소모</small></label>`;
   }).join("");
   detail.innerHTML = `
     <article class="concentration-focus" style="--element:${ELEMENT_STYLES[target.wuxing].color}">
@@ -1374,29 +1123,26 @@ function renderConcentration(): void {
       </div>
       <section class="concentration-payment"><div class="subheading"><b>② 재료 지불</b><small>전장 자령과 잠긴 자령은 후보에서 제외</small></div><div class="payment-grid">
         ${paymentRows}
-        <label class="payment-option is-essence ${concentrationPayment === "essence" ? "is-selected" : ""} ${essenceAvailable ? "" : "is-unavailable"}"><input type="radio" name="concentration-payment" value="essence" ${concentrationPayment === "essence" ? "checked" : ""} ${essenceAvailable ? "" : "disabled"}><b>${target.wuxing}</b><span>${target.wuxing} 문기 ${quote.essenceCost}</span><small>보유 ${engine.state.elementEssence[target.wuxing]}</small></label>
+        <label class="payment-option is-essence ${ctx.concentrationPayment === "essence" ? "is-selected" : ""} ${essenceAvailable ? "" : "is-unavailable"}"><input type="radio" name="concentration-payment" value="essence" ${ctx.concentrationPayment === "essence" ? "checked" : ""} ${essenceAvailable ? "" : "disabled"}><b>${target.wuxing}</b><span>${target.wuxing} 문기 ${quote.essenceCost}</span><small>보유 ${ctx.engine.state.elementEssence[target.wuxing]}</small></label>
       </div></section>
       <button id="concentration-confirm-button" class="workbench-primary" type="button" ${paymentReady ? "" : "disabled"}>濃 ${quote.currentLevel} → ${quote.nextLevel} 농축 실행</button>
     </article>`;
 }
-
 function growthStateSignature(): string {
-  const inventory = engine.state.inventoryTowers.map((tower) => `${tower.id}:${tower.char}:${tower.wuxing}:${tower.stage}:${tower.casualStar ?? 0}:${tower.locked ? 1 : 0}:${tower.concentration ?? 0}`).join("|");
-  const traits = WUXING_ORDER.map((wuxing) => engine.state.elementTraits[wuxing].join(",")).join("|");
-  const scores = WUXING_ORDER.map((wuxing) => engine.state.elementDismantleScore[wuxing]).join(",");
+  const inventory = ctx.engine.state.inventoryTowers.map((tower) => `${tower.id}:${tower.char}:${tower.wuxing}:${tower.stage}:${tower.casualStar ?? 0}:${tower.locked ? 1 : 0}:${tower.concentration ?? 0}`).join("|");
+  const traits = WUXING_ORDER.map((wuxing) => ctx.engine.state.elementTraits[wuxing].join(",")).join("|");
+  const scores = WUXING_ORDER.map((wuxing) => ctx.engine.state.elementDismantleScore[wuxing]).join(",");
   const filters = `${must<HTMLSelectElement>("#dismantle-element-filter").value}:${must<HTMLSelectElement>("#dismantle-stage-filter").value}:${must<HTMLSelectElement>("#dismantle-status-filter").value}`;
-  return `${engine.state.mode}:${upgradeStateSignature()}:${inventory}:${traits}:${scores}:${filters}:U${dismantleProtectsUnique ? 1 : 0}:${[...dismantleSelection].sort((a, b) => a - b).join(",")}:${growthElement}`;
+  return `${ctx.engine.state.mode}:${upgradeStateSignature()}:${inventory}:${traits}:${scores}:${filters}:U${ctx.dismantleProtectsUnique ? 1 : 0}:${[...dismantleSelection].sort((a, b) => a - b).join(",")}:${ctx.growthElement}`;
 }
-
 function syncDismantleUniqueControl(): void {
   const button = must<HTMLButtonElement>("#dismantle-unique-toggle");
-  button.classList.toggle("is-on", dismantleProtectsUnique);
-  button.setAttribute("aria-checked", String(dismantleProtectsUnique));
-  must<HTMLElement>("#dismantle-unique-toggle i em").textContent = dismantleProtectsUnique ? "ON" : "OFF";
+  button.classList.toggle("is-on", ctx.dismantleProtectsUnique);
+  button.setAttribute("aria-checked", String(ctx.dismantleProtectsUnique));
+  must<HTMLElement>("#dismantle-unique-toggle i em").textContent = ctx.dismantleProtectsUnique ? "ON" : "OFF";
 }
-
 function setDismantleProtectsUnique(enabled: boolean): void {
-  dismantleProtectsUnique = enabled;
+  ctx.dismantleProtectsUnique = enabled;
   try {
     window.localStorage.setItem(DISMANTLE_UNIQUE_STORAGE_KEY, String(enabled));
   } catch {
@@ -1405,50 +1151,47 @@ function setDismantleProtectsUnique(enabled: boolean): void {
   syncDismantleUniqueControl();
   // 선택은 보호 규칙이 바뀐 순간 낡는다 — 비우고 다시 고르게 한다.
   dismantleSelection.clear();
-  growthRenderKey = "";
+  ctx.growthRenderKey = "";
   renderGrowth();
   renderRunInventory();
   showToast(enabled
     ? "유일 자령 보호 ON · 이 한자를 1기만 가진 자령은 분해 후보에서 빠집니다."
     : "유일 자령 보호 OFF · 유일 자령도 분해할 수 있습니다. 목록의 유일 배지를 확인하세요.");
 }
-
 const UPGRADE_UNAVAILABLE_LABEL = "투자 불가";
-
 function upgradeAmountLabel(scope: "global" | "element" | "trait", stat: UpgradeStat | null, traitIndex: number | null, amount: number | "max"): string {
   const quote = scope === "global" && stat
-    ? engine.quoteGlobalUpgrade(stat, amount)
+    ? ctx.engine.quoteGlobalUpgrade(stat, amount)
     : scope === "element" && stat
-      ? engine.quoteElementUpgrade(growthElement, stat, amount)
-      : engine.quoteElementTraitUpgrade(growthElement, traitIndex ?? 0, amount);
+      ? ctx.engine.quoteElementUpgrade(ctx.growthElement, stat, amount)
+      : ctx.engine.quoteElementTraitUpgrade(ctx.growthElement, traitIndex ?? 0, amount);
   if (amount !== "max") return `${amount}회 · ${quote.cost}`;
   return quote.levels > 0 ? `최대 +${quote.levels} · ${quote.cost}` : UPGRADE_UNAVAILABLE_LABEL;
 }
-
 function renderGrowth(): void {
   const key = growthStateSignature();
-  if (key === growthRenderKey) return;
-  growthRenderKey = key;
-  const active = engine.state.phase === "prep" || engine.state.phase === "combat";
-  const assessmentMap = new Map(engine.cleanupAssessments(dismantleOptions()).map((assessment) => [assessment.towerId, assessment]));
+  if (key === ctx.growthRenderKey) return;
+  ctx.growthRenderKey = key;
+  const active = ctx.engine.state.phase === "prep" || ctx.engine.state.phase === "combat";
+  const assessmentMap = new Map(ctx.engine.cleanupAssessments(dismantleOptions()).map((assessment) => [assessment.towerId, assessment]));
   const elementFilter = must<HTMLSelectElement>("#dismantle-element-filter").value;
   const stageFilter = must<HTMLSelectElement>("#dismantle-stage-filter").value;
   const statusFilter = must<HTMLSelectElement>("#dismantle-status-filter").value;
-  for (const id of [...dismantleSelection]) if (!engine.state.inventoryTowers.some((tower) => tower.id === id)) dismantleSelection.delete(id);
-  const rows = engine.state.inventoryTowers
+  for (const id of [...dismantleSelection]) if (!ctx.engine.state.inventoryTowers.some((tower) => tower.id === id)) dismantleSelection.delete(id);
+  const rows = ctx.engine.state.inventoryTowers
     .map((tower) => ({ tower, assessment: assessmentMap.get(tower.id) }))
     .filter(({ tower }) => elementFilter === "all" || tower.wuxing === elementFilter)
-    .filter(({ tower }) => stageFilter === "all" || String(engine.state.mode === "casual" ? casualStarOf(tower) : tower.stage) === stageFilter)
+    .filter(({ tower }) => stageFilter === "all" || String(ctx.engine.state.mode === "casual" ? casualStarOf(tower) : tower.stage) === stageFilter)
     .filter(({ assessment }) => statusFilter === "all" || (statusFilter === "eligible" ? !assessment?.protected : assessment?.protected))
-    .sort((left, right) => Number(Boolean(left.assessment?.protected)) - Number(Boolean(right.assessment?.protected)) || (engine.state.mode === "casual" ? casualStarOf(left.tower) - casualStarOf(right.tower) : left.tower.stage - right.tower.stage) || left.tower.id - right.tower.id);
+    .sort((left, right) => Number(Boolean(left.assessment?.protected)) - Number(Boolean(right.assessment?.protected)) || (ctx.engine.state.mode === "casual" ? casualStarOf(left.tower) - casualStarOf(right.tower) : left.tower.stage - right.tower.stage) || left.tower.id - right.tower.id);
 
-  must<HTMLElement>("#growth-resource-summary").textContent = "문기 " + WUXING_ORDER.map((wuxing) => `${wuxing}${engine.state.elementEssence[wuxing]}`).join(" ");
-  const dismantleReady = engine.state.inventoryTowers.filter((tower) => !assessmentMap.get(tower.id)?.protected).length;
+  must<HTMLElement>("#growth-resource-summary").textContent = "문기 " + WUXING_ORDER.map((wuxing) => `${wuxing}${ctx.engine.state.elementEssence[wuxing]}`).join(" ");
+  const dismantleReady = ctx.engine.state.inventoryTowers.filter((tower) => !assessmentMap.get(tower.id)?.protected).length;
   must<HTMLElement>("#growth-panel-dismantle").textContent = `분해 가능 ${dismantleReady}기 · 선택 ${dismantleSelection.size}기`;
   must<HTMLElement>("#growth-dismantle-list").innerHTML = rows.length > 0 ? rows.map(({ tower, assessment }) => {
     const protectedReasons = assessment?.protectedReasons ?? ["보호 상태 확인 필요"];
     const protectedState = assessment?.protected ?? true;
-    const essence = engine.towerDismantleEssenceValue(tower);
+    const essence = ctx.engine.towerDismantleEssenceValue(tower);
     // 보호를 껐어도 "이 한자는 이 1기뿐"이라는 사실은 남겨 실수를 막는다.
     const soleBadge = assessment?.soleCopy && !protectedState ? `<i class="dismantle-sole-badge">유일</i>` : "";
     return `<label class="dismantle-row ${protectedState ? "is-protected" : ""} ${soleBadge ? "is-sole" : ""}" style="--element:${ELEMENT_STYLES[tower.wuxing].color}">
@@ -1457,63 +1200,61 @@ function renderGrowth(): void {
     </label>`;
   }).join("") : `<div class="workbench-empty"><b>조건에 맞는 인벤토리 자령이 없습니다</b><span>필터를 바꾸거나 소환 자령을 인벤토리에 보관하세요.</span><button type="button" data-goto-inventory>인벤 탭 열기</button></div>`;
 
-  const quote = engine.quoteDismantle([...dismantleSelection], dismantleOptions());
+  const quote = ctx.engine.quoteDismantle([...dismantleSelection], dismantleOptions());
   const gainLabel = (Object.entries(quote.gains) as Array<[Wuxing, number]>).filter(([, amount]) => amount > 0).map(([wuxing, amount]) => `${wuxing}+${amount}`).join(" · ");
   const scoreLabel = (Object.entries(quote.scoreGains) as Array<[Wuxing, number]>).filter(([, amount]) => amount > 0).map(([wuxing, amount]) => `${wuxing}점수+${amount}`).join(" · ");
   must<HTMLElement>("#dismantle-selection-summary").textContent = `${dismantleSelection.size}기 선택${quote.blocked.length > 0 ? ` · 보호 충돌 ${quote.blocked.length}` : ""}`;
   must<HTMLElement>("#dismantle-gain-summary").textContent = gainLabel ? `${gainLabel}${scoreLabel ? ` · ${scoreLabel}` : ""}` : "예상 문기 없음";
   must<HTMLButtonElement>("#dismantle-confirm-button").disabled = !active || quote.ids.length === 0 || quote.blocked.length > 0;
 
-  must<HTMLElement>("#growth-element-tabs").innerHTML = WUXING_ORDER.map((wuxing) => `<button type="button" data-growth-element="${wuxing}" class="${growthElement === wuxing ? "is-selected" : ""}" style="--element:${ELEMENT_STYLES[wuxing].color}"><b>${wuxing}</b><span>문기 ${engine.state.elementEssence[wuxing]}</span><small>분해 점수 ${engine.state.elementDismantleScore[wuxing]}</small></button>`).join("");
+  must<HTMLElement>("#growth-element-tabs").innerHTML = WUXING_ORDER.map((wuxing) => `<button type="button" data-growth-element="${wuxing}" class="${ctx.growthElement === wuxing ? "is-selected" : ""}" style="--element:${ELEMENT_STYLES[wuxing].color}"><b>${wuxing}</b><span>문기 ${ctx.engine.state.elementEssence[wuxing]}</span><small>분해 점수 ${ctx.engine.state.elementDismantleScore[wuxing]}</small></button>`).join("");
 
   const batchButtons = (scope: "global" | "element", stat: UpgradeStat): string => ([1, 5, "max"] as const).map((amount) => {
-    const quoteForAmount = scope === "global" ? engine.quoteGlobalUpgrade(stat, amount) : engine.quoteElementUpgrade(growthElement, stat, amount);
+    const quoteForAmount = scope === "global" ? ctx.engine.quoteGlobalUpgrade(stat, amount) : ctx.engine.quoteElementUpgrade(ctx.growthElement, stat, amount);
     // "투자 불가" 는 비용이 아니라 사유다 — 뒤에 화폐를 붙이면 "투자 불가 엽전" 같은 비문이 된다.
     const label = upgradeAmountLabel(scope, stat, null, amount);
-    const currency = label === UPGRADE_UNAVAILABLE_LABEL ? "" : scope === "global" ? " 엽전" : ` ${growthElement}`;
+    const currency = label === UPGRADE_UNAVAILABLE_LABEL ? "" : scope === "global" ? " 엽전" : ` ${ctx.growthElement}`;
     return `<button type="button" data-growth-upgrade-scope="${scope}" data-growth-stat="${stat}" data-growth-amount="${amount}" ${!active || quoteForAmount.levels <= 0 || !quoteForAmount.affordable ? "disabled" : ""}>${label}${currency}</button>`;
   }).join("");
   const globalRows = UPGRADE_STAT_ORDER.map((stat) => {
     const meta = UPGRADE_STAT_META[stat];
-    const level = engine.state.globalUpgrades[stat];
-    return `<article class="growth-stat-row"><i>${meta.glyph}</i><div><b>공용 ${meta.label} <em>Lv.${level}/99</em></b><small>${meta.description} · 현재 ${formatStatBonus(stat, engine.globalUpgradeBonus(stat))}</small></div><span>${batchButtons("global", stat)}</span></article>`;
+    const level = ctx.engine.state.globalUpgrades[stat];
+    return `<article class="growth-stat-row"><i>${meta.glyph}</i><div><b>공용 ${meta.label} <em>Lv.${level}/99</em></b><small>${meta.description} · 현재 ${formatStatBonus(stat, ctx.engine.globalUpgradeBonus(stat))}</small></div><span>${batchButtons("global", stat)}</span></article>`;
   }).join("");
   const elementRows = UPGRADE_STAT_ORDER.map((stat) => {
     const meta = UPGRADE_STAT_META[stat];
-    const level = engine.state.elementUpgrades[growthElement][stat];
-    return `<article class="growth-stat-row is-element" style="--element:${ELEMENT_STYLES[growthElement].color}"><i>${meta.glyph}</i><div><b>${growthElement}행 ${meta.label} <em>Lv.${level}/99</em></b><small>현재 ${formatStatBonus(stat, engine.elementUpgradeBonus(growthElement, stat))} · 단계당 ${formatStatBonus(stat, meta.elementPerLevel)}</small></div><span>${batchButtons("element", stat)}</span></article>`;
+    const level = ctx.engine.state.elementUpgrades[ctx.growthElement][stat];
+    return `<article class="growth-stat-row is-element" style="--element:${ELEMENT_STYLES[ctx.growthElement].color}"><i>${meta.glyph}</i><div><b>${ctx.growthElement}행 ${meta.label} <em>Lv.${level}/99</em></b><small>현재 ${formatStatBonus(stat, ctx.engine.elementUpgradeBonus(ctx.growthElement, stat))} · 단계당 ${formatStatBonus(stat, meta.elementPerLevel)}</small></div><span>${batchButtons("element", stat)}</span></article>`;
   }).join("");
-  const traitRows = ELEMENT_TRAITS[growthElement].map((trait, traitIndex) => {
-    const level = engine.elementTraitLevel(growthElement, traitIndex);
+  const traitRows = ELEMENT_TRAITS[ctx.growthElement].map((trait, traitIndex) => {
+    const level = ctx.engine.elementTraitLevel(ctx.growthElement, traitIndex);
     const unlockScore = elementTraitUnlockScore(traitIndex) ?? 0;
-    const unlocked = engine.state.elementDismantleScore[growthElement] >= unlockScore;
+    const unlocked = ctx.engine.state.elementDismantleScore[ctx.growthElement] >= unlockScore;
     const buttons = ([1, 5, "max"] as const).map((amount) => {
-      const traitQuote = engine.quoteElementTraitUpgrade(growthElement, traitIndex, amount);
+      const traitQuote = ctx.engine.quoteElementTraitUpgrade(ctx.growthElement, traitIndex, amount);
       const label = upgradeAmountLabel("trait", null, traitIndex, amount);
-      return `<button type="button" data-growth-upgrade-scope="trait" data-growth-trait="${traitIndex}" data-growth-amount="${amount}" ${!active || !unlocked || traitQuote.levels <= 0 || !traitQuote.affordable ? "disabled" : ""}>${label}${label === UPGRADE_UNAVAILABLE_LABEL ? "" : ` ${growthElement}`}</button>`;
+      return `<button type="button" data-growth-upgrade-scope="trait" data-growth-trait="${traitIndex}" data-growth-amount="${amount}" ${!active || !unlocked || traitQuote.levels <= 0 || !traitQuote.affordable ? "disabled" : ""}>${label}${label === UPGRADE_UNAVAILABLE_LABEL ? "" : ` ${ctx.growthElement}`}</button>`;
     }).join("");
-    return `<article class="growth-trait-row ${unlocked ? "is-unlocked" : "is-locked"}" style="--element:${ELEMENT_STYLES[growthElement].color}"><div class="trait-seal"><b>${traitIndex + 1}</b><small>${unlocked ? "개방" : `${unlockScore}점`}</small></div><div><strong>${trait.name} <em>Lv.${level}/${ELEMENT_TRAIT_MAX_LEVEL}</em></strong><span>${trait.summary} +${trait.perLevel}${trait.unit}/단계${trait.milestone ? ` · ${trait.milestone}` : ""}</span><small>${unlocked ? `다음 비용 ${elementTraitUpgradeCost(level) ?? "최고"} 문기` : `분해 점수 ${engine.state.elementDismantleScore[growthElement]}/${unlockScore}`}</small></div><nav>${buttons}</nav></article>`;
+    return `<article class="growth-trait-row ${unlocked ? "is-unlocked" : "is-locked"}" style="--element:${ELEMENT_STYLES[ctx.growthElement].color}"><div class="trait-seal"><b>${traitIndex + 1}</b><small>${unlocked ? "개방" : `${unlockScore}점`}</small></div><div><strong>${trait.name} <em>Lv.${level}/${ELEMENT_TRAIT_MAX_LEVEL}</em></strong><span>${trait.summary} +${trait.perLevel}${trait.unit}/단계${trait.milestone ? ` · ${trait.milestone}` : ""}</span><small>${unlocked ? `다음 비용 ${elementTraitUpgradeCost(level) ?? "최고"} 문기` : `분해 점수 ${ctx.engine.state.elementDismantleScore[ctx.growthElement]}/${unlockScore}`}</small></div><nav>${buttons}</nav></article>`;
   }).join("");
-  must<HTMLElement>("#growth-upgrade-list").innerHTML = `<section class="growth-upgrade-section"><header><b>공용 능력 강화</b><small>엽전 투자 · 5능력치×99단계</small></header>${globalRows}</section><section class="growth-upgrade-section"><header data-growth-section="${growthElement}"><b>${growthElement}행 능력 강화</b><small>문기 투자 · 1회·5회·최대</small></header>${elementRows}</section><section class="growth-upgrade-section"><header><b>${growthElement}행 고유 특성</b><small>분해 점수 5·15·30 순차 개방</small></header>${traitRows}</section>`;
+  must<HTMLElement>("#growth-upgrade-list").innerHTML = `<section class="growth-upgrade-section"><header><b>공용 능력 강화</b><small>엽전 투자 · 5능력치×99단계</small></header>${globalRows}</section><section class="growth-upgrade-section"><header data-growth-section="${ctx.growthElement}"><b>${ctx.growthElement}행 능력 강화</b><small>문기 투자 · 1회·5회·최대</small></header>${elementRows}</section><section class="growth-upgrade-section"><header><b>${ctx.growthElement}행 고유 특성</b><small>분해 점수 5·15·30 순차 개방</small></header>${traitRows}</section>`;
 }
-
 function registerKillCombo(): void {
   const now = performance.now();
-  comboCount = now - lastKillAt <= 1450 ? comboCount + 1 : 1;
-  lastKillAt = now;
-  window.clearTimeout(comboTimer);
-  if (comboCount >= 3) {
-    must<HTMLElement>("#combo-count").textContent = "× " + String(comboCount);
+  ctx.comboCount = now - ctx.lastKillAt <= 1450 ? ctx.comboCount + 1 : 1;
+  ctx.lastKillAt = now;
+  window.clearTimeout(ctx.comboTimer);
+  if (ctx.comboCount >= 3) {
+    must<HTMLElement>("#combo-count").textContent = "× " + String(ctx.comboCount);
     comboMeter.classList.remove("combo-meter--visible");
     void comboMeter.offsetWidth;
     comboMeter.classList.add("combo-meter--visible");
   }
-  comboTimer = window.setTimeout(() => {
-    comboCount = 0;
+  ctx.comboTimer = window.setTimeout(() => {
+    ctx.comboCount = 0;
     comboMeter.classList.remove("combo-meter--visible");
   }, 1750);
 }
-
 function processEvent(event: GameEvent): void {
   sound.handle(event);
   switch (event.type) {
@@ -1567,7 +1308,7 @@ function processEvent(event: GameEvent): void {
       pushPooled(rings, ringPool, takeRing(event.at, STAGE_COLORS[event.tower.stage], 0.9), 32);
       pushPooled(floaters, floaterPool, takeFloater(event.at, event.parents.join("+") + "→" + event.tower.char, STAGE_COLORS[event.tower.stage], 1.05, true), 48);
       {
-        const evolved = definitionForTower(engine.catalog, event.tower.definitionId);
+        const evolved = definitionForTower(ctx.engine.catalog, event.tower.definitionId);
         const lineage = evolved.combat.abilities.lineage;
         const detail = evolved.combat.abilities.role.name + (lineage ? " · " + lineage.name : "");
         addCombatFeed(event.tower.char, "새 능력 획득", detail, STAGE_COLORS[event.tower.stage]);
@@ -1583,12 +1324,12 @@ function processEvent(event: GameEvent): void {
       break;
     }
     case "ability": {
-      const towerGap = engine.state.elapsed - (lastAbilityFxByTower.get(event.towerId) ?? -10);
-      const globalGap = engine.state.elapsed - lastGlobalAbilityFxAt;
+      const towerGap = ctx.engine.state.elapsed - (lastAbilityFxByTower.get(event.towerId) ?? -10);
+      const globalGap = ctx.engine.state.elapsed - ctx.lastGlobalAbilityFxAt;
       if (!event.persistent && towerGap >= 0.75 && globalGap >= 0.12) {
         pushPooled(abilityBursts, abilityBurstPool, takeAbilityBurst(event), 12);
-        lastAbilityFxByTower.set(event.towerId, engine.state.elapsed);
-        lastGlobalAbilityFxAt = engine.state.elapsed;
+        lastAbilityFxByTower.set(event.towerId, ctx.engine.state.elapsed);
+        ctx.lastGlobalAbilityFxAt = ctx.engine.state.elapsed;
       }
       const detail = event.effect;
       showTowerAbilityPopup(event.towerId, event.glyph, event.name, event.color);
@@ -1603,7 +1344,7 @@ function processEvent(event: GameEvent): void {
       const center = points.reduce((total, point) => ({ x: total.x + point.x / points.length, y: total.y + point.y / points.length }), { x: 0, y: 0 });
       if (event.rejoined) {
         // 재발동은 첫 봉인보다 가볍게 — 파문·인장·대형 플래시 없이 발광과 스택 복귀만.
-        idiomRenderKey = "";
+        ctx.idiomRenderKey = "";
         showIdiomResult(event.reading, event.meaning, event.bonus, event.color, true);
         addCombatFeed("四", event.reading + " 재봉인", event.bonus, event.color);
         showToast(`『${event.reading}』 봉인 재발동 — 줄이 다시 섰습니다`);
@@ -1627,11 +1368,11 @@ function processEvent(event: GameEvent): void {
       // 대형 플래시가 `이심전심 · 봉인` 을 이미 크게 말한다. 같은 자리에 뜨던
       // `이심전심 자동 봉인!` 플로터까지 겹치면 배너·플래시·플로터가 한 문장을
       // 세 번 반복해 정작 어느 칸이 봉인됐는지가 안 보인다.
-      idiomFlash = { chars: event.chars, reading: event.reading, color: event.color, at: center, age: 0, duration: reducedMotion ? 0.6 : 1.2 };
+      ctx.idiomFlash = { chars: event.chars, reading: event.reading, color: event.color, at: center, age: 0, duration: reducedMotion ? 0.6 : 1.2 };
       showIdiomResult(event.reading, event.meaning, event.bonus, event.color);
       addCombatFeed("四", event.reading, event.bonus, event.color);
-      idiomRenderKey = "";
-      if (engine.state.idiomSeals.length === 1) firstSealCelebration(event.reading);
+      ctx.idiomRenderKey = "";
+      if (ctx.engine.state.idiomSeals.length === 1) firstSealCelebration(event.reading);
       break;
     }
     case "idiomBroken": {
@@ -1640,7 +1381,7 @@ function processEvent(event: GameEvent): void {
       showToast(`『${event.reading}』 봉인 해제 — 줄이 흩어졌습니다`);
       showIdiomBrokenResult(event.reading, event.bonus);
       addCombatFeed("四", event.reading + " 해제", "줄이 흩어졌습니다", "#9d8f78");
-      idiomRenderKey = "";
+      ctx.idiomRenderKey = "";
       break;
     }
     case "wave":
@@ -1655,12 +1396,11 @@ function processEvent(event: GameEvent): void {
       break;
   }
 }
-
 function showEndScreen(phase: "victory" | "defeat"): void {
   // 강화·농축 프레임을 연 채 패배하면 종료 화면 뒤에 프레임이 남아,
   // 재도전 직후 전장이 어두운 유리 아래 갇힌다.
   setFocusFrame(null);
-  const state = engine.state;
+  const state = ctx.engine.state;
   const victory = phase === "victory";
   // 최고 기록은 이번 판을 저장하기 "전"에 읽어야 갱신 여부를 알 수 있다.
   const previousBest = loadBestWave();
@@ -1676,7 +1416,7 @@ function showEndScreen(phase: "victory" | "defeat"): void {
     <div><span>처치한 적</span><b>${state.killCount}</b></div>
     <div><span>${state.mode === "casual" ? "3체 조합" : "한자 합성"}</span><b>${state.mode === "casual" ? state.casualFusionCount : state.evolutionCount}</b></div>
     <div><span>목표 완성</span><b>${state.goalsCompleted.length}</b></div>
-    <div><span>사자성어 봉인</span><b>${state.idiomSeals.length} / ${engine.idioms().length}</b></div>
+    <div><span>사자성어 봉인</span><b>${state.idiomSeals.length} / ${ctx.engine.idioms().length}</b></div>
     <div><span>은행 이자</span><b>${state.interestEarned}엽전</b></div>
     <div><span>능력 강화</span><b>${totalGlobalUpgradeLevels() + totalElementUpgradeLevels()}단계</b></div>
     <div><span>발견 한자</span><b>${state.discoveredChars.length}</b></div>
@@ -1685,11 +1425,9 @@ function showEndScreen(phase: "victory" | "defeat"): void {
   endOverlay.classList.add("modal-layer--visible");
   saveBestWave(state.wave);
 }
-
 function bestWaveKey(): string {
-  return `hanzi-random-defense-best-${engine.state.mode}-${engine.state.region}`;
+  return `hanzi-random-defense-best-${ctx.engine.state.mode}-${ctx.engine.state.region}`;
 }
-
 /** 저장만 하고 아무도 읽지 않던 값을 종료 화면이 드디어 읽는다. */
 function loadBestWave(): number {
   try {
@@ -1698,7 +1436,6 @@ function loadBestWave(): number {
     return 0;
   }
 }
-
 function saveBestWave(wave: number): void {
   try {
     const key = bestWaveKey();
@@ -1708,50 +1445,6 @@ function saveBestWave(wave: number): void {
     // 로컬 저장이 막혀도 현재 런은 정상 진행됩니다.
   }
 }
-
-function formatTime(seconds: number): string {
-  const minutes = Math.floor(seconds / 60);
-  return String(minutes).padStart(2, "0") + ":" + String(Math.floor(seconds % 60)).padStart(2, "0");
-}
-
-function escapeHtml(value: string): string {
-  return value.replace(/[&<>"']/gu, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[character] ?? character);
-}
-
-function visualBackgroundStyle(visual: JaryeongVisual): string {
-  const framing = jaryeongFrameLayout(visual) === "single"
-    ? "background-size:contain;background-position:center"
-    : "background-size:200% 200%;background-position:left top";
-  return `background-image:url('${import.meta.env.BASE_URL}${jaryeongAssetPath(visual)}');${framing}`;
-}
-
-/**
- * 목록 한 줄에 들어가는 자령 초상(공방 공용).
- *
- * 소환 공개 카드가 쓰는 `jaryeongVisualFor` + 시트 crop(`visualBackgroundStyle`)
- * 을 그대로 쓰되, 시트가 아직(혹은 끝내) 오지 않는 경우를 두 겹으로 대비한다 —
- * 오행색 원판과 한자를 아래층에 깔고 그림을 그 위에 얹는다. 그림이 도착하면
- * 원판을 덮고, 도착하지 않으면 원판이 그대로 남아 빈 사각형이 생기지 않는다.
- *
- * URL 은 자령 하나당 하나이므로 같은 글자가 여러 줄에 나와도 브라우저가
- * 한 번만 내려받는다 — 목록을 길게 굴려도 요청이 늘지 않는다.
- */
-function spiritPortraitMarkup(char: string, wuxing: Wuxing, variant: string): string {
-  const visual = jaryeongVisualFor(char, wuxing, engine.state.region);
-  return `<span class="workbench-spirit ${variant}" style="--element:${ELEMENT_STYLES[wuxing].color}" aria-hidden="true">`
-    + `<i class="workbench-spirit-fallback">${escapeHtml(char)}</i>`
-    + `<i class="workbench-spirit-art" style="${visualBackgroundStyle(visual)}"></i>`
-    + `</span>`;
-}
-
-function phaseLabel(phase: RunPhase): string {
-  if (phase === "title") return "준비 전";
-  if (phase === "prep") return "소환 준비";
-  if (phase === "combat") return "교전 중";
-  if (phase === "victory") return "봉인 성공";
-  return "수비 실패";
-}
-
 /**
  * 상점 소환 상품표.
  *
@@ -1766,7 +1459,6 @@ interface SummonProductMeta {
   readonly tint: string;
   readonly icon: string;
 }
-
 // 캐주얼 순서는 기본 → 중급 → 고급 → 탐색 → 중복, 자형연성은 기본 → 탐색 → 계보 → 중복.
 // 하나의 배열을 모드별로 걸러 두 순서를 동시에 만족시킨다.
 // 중급·고급은 별 개수(2개/3개)가 그림 안에 들어 있는 v5 전용 아이콘을 쓴다.
@@ -1779,15 +1471,12 @@ const SUMMON_PRODUCTS: readonly SummonProductMeta[] = Object.freeze([
   { intent: "lineage", label: "계보 소환", effect: "목표·성어 재료 ×3.2", tint: "#3a5794", icon: "v4/shop/shop-lineage-scroll-v1" },
   { intent: "concentration", label: "중복 소환", effect: "보유 중복 ↑ · 농축 재료", tint: "#9a6d16", icon: "v4/shop/shop-duplicate-cards-v1" }
 ] as const);
-
 /** 세 티어 공통으로 걸리는 캐주얼 짝 맞추기 보정 안내. */
 const PAIR_BOOST_NOTE = "짝이 맞는 자령이 더 자주 나옵니다";
-
 // 인라인 style 의 var() 에 담긴 상대 url() 을 크롬은 "사용하는 CSS 파일" 기준으로
 // 풀어 버린다(/assets/index.css → /assets/assets/… 404). 문서 기준 절대 URL 로 고정.
 const SUMMON_ICON_BASE = new URL(`${import.meta.env.BASE_URL}assets/ui/`, document.baseURI).toString();
 let summonShopRenderKey = "";
-
 function summonCardMarkup(options: {
   key: string;
   label: string;
@@ -1815,18 +1504,17 @@ function summonCardMarkup(options: {
     + `<b>${escapeHtml(options.label)}</b><small>${escapeHtml(options.effect)}</small>`
     + `<em>${escapeHtml(options.price)}</em>${hotkey}</button>`;
 }
-
 function renderSummonShop(): void {
-  const state = engine.state;
+  const state = ctx.engine.state;
   const active = state.phase === "prep" || state.phase === "combat";
   const base = summonCost(state.summonCount);
   const tenCost = multiSummonCost(state.summonCount, 10);
   const multiUnlocked = state.wave >= 10;
   const products = SUMMON_PRODUCTS
-    .filter((product) => engine.isSummonProductAvailable(product.intent))
+    .filter((product) => ctx.engine.isSummonProductAvailable(product.intent))
     .map((product) => {
       // 좁은 지역 풀에서는 밴드 하한이 한 단계 내려간다. 카드 문구도 실효 밴드를 따른다.
-      const band = engine.summonStarBand(product.intent);
+      const band = ctx.engine.summonStarBand(product.intent);
       if (band === null) return { ...product, band: null, bandLabel: "" };
       const bandLabel = `${band.min}~${band.max}★${band.min > 1 ? " 확정" : ""}`;
       // 탐색·중복은 밴드가 아니라 가중이 정체성이므로 효과 문구를 그대로 두고
@@ -1835,7 +1523,7 @@ function renderSummonShop(): void {
       return { ...product, band, bandLabel, effect: showsBand ? bandLabel : product.effect };
     });
   // 10연은 균형 밴드를 그대로 쓰므로 보장선도 그 상한(기본 3★)이다.
-  const multiBand = engine.summonStarBand("balanced");
+  const multiBand = ctx.engine.summonStarBand("balanced");
   const key = `${state.mode}|${base}|${tenCost}|${multiUnlocked ? "10" : "-"}|${state.gold}|${active ? "on" : "off"}`
     + `|${multiBand === null ? "-" : multiBand.max}`
     + `|${products.map((product) => `${product.intent}:${product.effect}`).join(",")}`;
@@ -1881,26 +1569,24 @@ function renderSummonShop(): void {
   }));
   must<HTMLElement>("#summon-shop").innerHTML = cards.join("");
 }
-
 function renderFormationUnlocks(): void {
-  const state = engine.state;
-  const cost = engine.nextFormationUnlockCost();
+  const state = ctx.engine.state;
+  const cost = ctx.engine.nextFormationUnlockCost();
   const active = state.phase === "prep" || state.phase === "combat";
   const key = `${state.unlockedFormations.join(",")}|${state.startingFormationIndex ?? "none"}|${state.gold}|${active ? "active" : "inactive"}|${cost ?? "done"}`;
-  if (key === formationRenderKey) return;
-  formationRenderKey = key;
+  if (key === ctx.formationRenderKey) return;
+  ctx.formationRenderKey = key;
   // 상점의 해금 바는 걷어냈다(전장 자물쇠 + 확인 팝업이 정본).
   // 처음 하는 사람은 진을 추가 구매할 수 있다는 사실 자체를 모르므로,
   // 해금 가능해지는 최초 1회만 토스트로 전장 자물쇠를 짚어 준다.
-  if (cost !== null && state.gold >= cost && state.startingFormationIndex !== null && state.unlockedFormations.length < BOARD_FORMATIONS.length && !formationUnlockHintShown) {
-    formationUnlockHintShown = true;
+  if (cost !== null && state.gold >= cost && state.startingFormationIndex !== null && state.unlockedFormations.length < BOARD_FORMATIONS.length && !ctx.formationUnlockHintShown) {
+    ctx.formationUnlockHintShown = true;
     showToast(`엽전 ${cost}으로 새 오행진을 해금할 수 있습니다 — 전장의 잠긴 진 자물쇠를 눌러 원하는 진을 고르세요`);
   }
 }
-
 function syncPanel(): void {
-  const state = engine.state;
-  const plan = engine.getCurrentPlan();
+  const state = ctx.engine.state;
+  const plan = ctx.engine.getCurrentPlan();
   const preview = state.phase === "prep" ? wavePlan(Math.min(state.maxWaves, state.wave + 1)) : plan;
   shell.dataset.phase = state.phase;
   shell.dataset.gameMode = state.mode;
@@ -1915,8 +1601,8 @@ function syncPanel(): void {
   must<HTMLElement>("#gold-value").textContent = String(state.gold);
   must<HTMLElement>("#interest-preview").textContent = "이자 +" + String(interestForGold(state.gold));
   must<HTMLElement>("#enemy-cap-value").textContent = String(MAX_ENEMIES) + "체";
-  must<HTMLElement>("#tower-count-value").textContent = String(state.towers.length) + " / " + String(engine.deployedTowerCapacity());
-  must<HTMLElement>("#goal-count-value").textContent = String(state.goalsCompleted.length) + " / " + String(engine.catalog.goalOrder.length);
+  must<HTMLElement>("#tower-count-value").textContent = String(state.towers.length) + " / " + String(ctx.engine.deployedTowerCapacity());
+  must<HTMLElement>("#goal-count-value").textContent = String(state.goalsCompleted.length) + " / " + String(ctx.engine.catalog.goalOrder.length);
   must<HTMLElement>("#seed-value").textContent = state.seed;
   must<HTMLElement>("#message-value").textContent = state.lastMessage;
   renderFormationUnlocks();
@@ -1937,7 +1623,7 @@ function syncPanel(): void {
   must<HTMLButtonElement>("#element-upgrade-button").disabled = !active;
   must<HTMLElement>("#element-upgrade-total").textContent = `총 ${totalGlobalUpgradeLevels() + totalElementUpgradeLevels()}단계`;
   const nextElementUpgradeRenderKey = upgradeStateSignature();
-  if (elementUpgradeDialog.open && elementUpgradeRenderKey !== nextElementUpgradeRenderKey) renderElementUpgrades();
+  if (elementUpgradeDialog.open && ctx.elementUpgradeRenderKey !== nextElementUpgradeRenderKey) renderElementUpgrades();
   const earlyButton = must<HTMLButtonElement>("#early-button");
   earlyButton.disabled = state.phase !== "prep" || state.summonCount === 0;
   earlyButton.textContent = state.phase === "prep"
@@ -1953,7 +1639,7 @@ function syncPanel(): void {
     step.classList.toggle("is-current", state.wave === 0 && index === openingStep);
     step.classList.toggle("is-complete", state.wave > 0 || index < openingStep);
   });
-  const bossRemaining = engine.bossTimeRemaining();
+  const bossRemaining = ctx.engine.bossTimeRemaining();
   const nextWaveRemaining = state.phase === "combat" ? state.nextWaveRemaining : null;
   const previewBossLimit = preview?.boss ? bossTimeLimitForWave(preview.wave) : null;
   must<HTMLElement>(".wave-card").classList.toggle("is-boss", bossRemaining !== null || previewBossLimit !== null);
@@ -1992,46 +1678,45 @@ function syncPanel(): void {
   renderSelected();
   renderCompositionDrawer();
   renderRunInventory();
-  if (activePanelTab === "concentration") renderConcentration();
-  if (activePanelTab === "growth") renderGrowth();
+  if (ctx.activePanelTab === "concentration") renderConcentration();
+  if (ctx.activePanelTab === "growth") renderGrowth();
   renderIdiomHud();
   renderActiveIdioms();
 }
-
 function renderGoal(): void {
-  const progress = engine.goalProgress();
-  const maxSummonStage = maxSummonStageForWave(engine.state.wave);
-  const ownedTowers = [...engine.state.towers, ...engine.state.inventoryTowers];
+  const progress = ctx.engine.goalProgress();
+  const maxSummonStage = maxSummonStageForWave(ctx.engine.state.wave);
+  const ownedTowers = [...ctx.engine.state.towers, ...ctx.engine.state.inventoryTowers];
   const ownedCounts = new Map<string, number>();
   for (const tower of ownedTowers) ownedCounts.set(tower.char, (ownedCounts.get(tower.char) ?? 0) + 1);
   const ownedSignature = [...ownedCounts.entries()].sort(([left], [right]) => left.localeCompare(right, "ko")).map(([char, count]) => `${char}:${count}`).join(",");
   const key = [
-    goalPanelMode,
-    goalSearchQuery,
-    engine.state.targetChar,
+    ctx.goalPanelMode,
+    ctx.goalSearchQuery,
+    ctx.engine.state.targetChar,
     progress.directMaterials.map((item) => item.char + ":" + String(item.owned) + "/" + String(item.needed)).join(","),
-    engine.state.goalsCompleted.join(""),
-    engine.state.featuredIdiomIds.join(","),
-    engine.state.idiomSeals.map((seal) => seal.idiomId).join(","),
+    ctx.engine.state.goalsCompleted.join(""),
+    ctx.engine.state.featuredIdiomIds.join(","),
+    ctx.engine.state.idiomSeals.map((seal) => seal.idiomId).join(","),
     maxSummonStage,
-    engine.state.lineageClueProgress,
-    engine.state.lineageTargetProgress,
+    ctx.engine.state.lineageClueProgress,
+    ctx.engine.state.lineageTargetProgress,
     ownedSignature
   ].join("|");
-  if (key === goalRenderKey) return;
-  goalRenderKey = key;
+  if (key === ctx.goalRenderKey) return;
+  ctx.goalRenderKey = key;
 
-  const pool = engine.summonDefinitions();
+  const pool = ctx.engine.summonDefinitions();
   must<HTMLElement>("#shop-pool-count").textContent = pool.length.toLocaleString("ko-KR");
   const nextStage = maxSummonStage < 5 ? (maxSummonStage + 1) as 2 | 3 | 4 | 5 : null;
-  must<HTMLElement>("#summon-pool-summary").innerHTML = engine.state.mode === "casual"
+  must<HTMLElement>("#summon-pool-summary").innerHTML = ctx.engine.state.mode === "casual"
     ? `<b>천자문 ${pool.length.toLocaleString("ko-KR")}종</b><span>전 자령 직접 등장 · 획수별 1★–8★</span>`
     : `<b>천자문 ${pool.length.toLocaleString("ko-KR")}종</b><span>${STAGE_NAMES[maxSummonStage]}까지 등장${nextStage ? ` · ${summonStageUnlockWave(nextStage)}W 다음 단계` : " · 전 단계 개방"}</span>`;
 
   const goalPanel = must<HTMLElement>("#goal-panel");
-  goalPanel.dataset.currentGoalMode = goalPanelMode;
+  goalPanel.dataset.currentGoalMode = ctx.goalPanelMode;
   document.querySelectorAll<HTMLButtonElement>("[data-goal-mode]").forEach((button) => {
-    const selected = button.dataset.goalMode === goalPanelMode;
+    const selected = button.dataset.goalMode === ctx.goalPanelMode;
     button.classList.toggle("is-active", selected);
     button.setAttribute("aria-selected", String(selected));
   });
@@ -2039,31 +1724,31 @@ function renderGoal(): void {
   must<HTMLElement>("#goal-glyph").textContent = progress.target.char;
   must<HTMLElement>("#goal-glyph").style.setProperty("--goal-color", ELEMENT_STYLES[progress.target.wuxing].color);
   const targetUnlockWave = summonStageUnlockWave(progress.target.stage);
-  const targetDirectLocked = engine.state.mode === "standard" && progress.target.acquisition === "direct" && engine.state.wave < targetUnlockWave;
+  const targetDirectLocked = ctx.engine.state.mode === "standard" && progress.target.acquisition === "direct" && ctx.engine.state.wave < targetUnlockWave;
   const targetNaturalStar = casualNaturalStar(progress.target.char);
-  must<HTMLElement>("#goal-stage").textContent = engine.state.mode === "casual"
+  must<HTMLElement>("#goal-stage").textContent = ctx.engine.state.mode === "casual"
     ? `${targetNaturalStar ?? 1}★ · ${casualStrokeCount(progress.target.char) ?? "?"}획 · 직접 소환 가능`
     // STAGE_NAMES[2]='결합' 과 역할 이름이 맨몸으로 붙어 '결합 · 재화연성'
     // 처럼 무엇과 무엇인지 알 수 없는 줄이 됐다. 각 조각에 이름표를 준다.
     : `${progress.target.stage}단 ${STAGE_NAMES[progress.target.stage]} · ` + (targetDirectLocked ? `${targetUnlockWave}W 직접 소환 개방` : progress.target.acquisition === "direct" ? "직접 소환 가능" : `역할 ${progress.target.combat.abilities.role.name}`);
-  must<HTMLElement>("#goal-recipe").textContent = engine.state.mode === "casual"
+  must<HTMLElement>("#goal-recipe").textContent = ctx.engine.state.mode === "casual"
     ? `${progress.target.char} 자령을 한 번 소환하면 달성`
     : progress.target.acquisition === "direct"
     ? `${progress.target.char} 자령을 소환하면 달성`
     : progress.target.parents.join(" + ") + " → " + progress.target.char;
-  const learning = learningInfo(engine.state.region, progress.target.char);
+  const learning = learningInfo(ctx.engine.state.region, progress.target.char);
   must<HTMLElement>("#goal-reading").textContent = learning.readingLabel + " · " + learning.short;
   must<HTMLElement>("#goal-materials").innerHTML = progress.directMaterials.map((material) => {
     const complete = material.owned >= material.needed;
     return `<span class="${complete ? "is-complete" : ""}"><b>${escapeHtml(material.char)}</b> ${material.owned}/${material.needed}</span>`;
   }).join("")
-    + `<span class="goal-clue" title="계보 소환 12회마다 재료 1기 보장"><b>단서</b> ${engine.state.lineageClueProgress}/12</span>`
-    + `<span class="goal-clue" title="계보 소환 30회 누적 시 목표 한자 확정 지급"><b>확정</b> ${engine.state.lineageTargetProgress}/30</span>`;
+    + `<span class="goal-clue" title="계보 소환 12회마다 재료 1기 보장"><b>단서</b> ${ctx.engine.state.lineageClueProgress}/12</span>`
+    + `<span class="goal-clue" title="계보 소환 30회 누적 시 목표 한자 확정 지급"><b>확정</b> ${ctx.engine.state.lineageTargetProgress}/30</span>`;
   const goalPercent = Math.round(progress.progress * 100);
   must<HTMLElement>("#goal-progress-fill").style.width = String(goalPercent) + "%";
 
-  const idiom = engine.currentIdiomTarget();
-  const idiomProgress = idiom ? engine.idiomProgress(idiom.id) : null;
+  const idiom = ctx.engine.currentIdiomTarget();
+  const idiomProgress = idiom ? ctx.engine.idiomProgress(idiom.id) : null;
   const idiomCard = must<HTMLElement>("#idiom-target-card");
   if (idiom && idiomProgress) {
     const glyphs = ownedIdiomGlyphMarkup(idiom.chars, ownedCounts);
@@ -2077,20 +1762,19 @@ function renderGoal(): void {
     idiomCard.innerHTML = `<div class="goal-selector-empty"><b>이번 판 성어 목표를 모두 봉인했습니다</b><span>성어 목록에서 다음 목표를 선택할 수 있습니다.</span></div>`;
   }
 
-  const modePercent = goalPanelMode === "idiom" && idiomProgress ? Math.round(idiomProgress.readiness * 100) : goalPercent;
+  const modePercent = ctx.goalPanelMode === "idiom" && idiomProgress ? Math.round(idiomProgress.readiness * 100) : goalPercent;
   must<HTMLElement>("#goal-tab-progress").textContent = `${modePercent}%`;
-  const boardUnique = new Set(engine.state.towers.map((tower) => tower.char)).size;
-  const storedUnique = new Set(engine.state.inventoryTowers.map((tower) => tower.char)).size;
+  const boardUnique = new Set(ctx.engine.state.towers.map((tower) => tower.char)).size;
+  const storedUnique = new Set(ctx.engine.state.inventoryTowers.map((tower) => tower.char)).size;
   must<HTMLElement>("#goal-owned-summary").innerHTML = `<b>${ownedCounts.size}자 · ${ownedTowers.length}기 보유</b><span>전장 ${boardUnique}자 · 인벤 ${storedUnique}자</span>`;
 
   const search = must<HTMLInputElement>("#goal-search");
-  search.placeholder = goalPanelMode === "hanzi" ? "원하는 한자·훈음·뜻 검색" : "원하는 성어·읽기·뜻 검색";
+  search.placeholder = ctx.goalPanelMode === "hanzi" ? "원하는 한자·훈음·뜻 검색" : "원하는 성어·읽기·뜻 검색";
   const selector = must<HTMLElement>("#goal-selector-list");
-  selector.innerHTML = goalPanelMode === "hanzi"
+  selector.innerHTML = ctx.goalPanelMode === "hanzi"
     ? renderHanziGoalChoices(pool, ownedCounts)
-    : renderIdiomGoalChoices(engine.allIdioms(), ownedCounts);
+    : renderIdiomGoalChoices(ctx.engine.allIdioms(), ownedCounts);
 }
-
 function ownedIdiomGlyphMarkup(chars: string, ownedCounts: ReadonlyMap<string, number>): string {
   const available = new Map(ownedCounts);
   return [...chars].map((char) => {
@@ -2099,16 +1783,15 @@ function ownedIdiomGlyphMarkup(chars: string, ownedCounts: ReadonlyMap<string, n
     return `<i class="${count > 0 ? "is-owned" : ""}">${escapeHtml(char)}</i>`;
   }).join("");
 }
-
 function renderHanziGoalChoices(definitions: readonly HanziDefinition[], ownedCounts: ReadonlyMap<string, number>): string {
-  const query = goalSearchQuery.trim().toLowerCase();
+  const query = ctx.goalSearchQuery.trim().toLowerCase();
   const rows = definitions
     .map((definition, order) => {
-      const learning = learningInfo(engine.state.region, definition.char);
-      const progress = engine.goalProgressFor(definition.char);
+      const learning = learningInfo(ctx.engine.state.region, definition.char);
+      const progress = ctx.engine.goalProgressFor(definition.char);
       const owned = ownedCounts.get(definition.char) ?? 0;
-      const selected = definition.char === engine.state.targetChar;
-      const completed = engine.state.goalsCompleted.includes(definition.char);
+      const selected = definition.char === ctx.engine.state.targetChar;
+      const completed = ctx.engine.state.goalsCompleted.includes(definition.char);
       const searchText = `${definition.char} ${learning.readingLabel} ${learning.short} ${definition.parents.join(" ")}`.toLowerCase();
       const score = (selected ? 100_000 : 0)
         + (completed ? -10_000 : 0)
@@ -2137,13 +1820,13 @@ function renderHanziGoalChoices(definitions: readonly HanziDefinition[], ownedCo
             ? "재료 완성"
             : percent > 0
               ? `재료 ${percent}%`
-              : engine.state.mode === "casual"
+              : ctx.engine.state.mode === "casual"
                 ? `${casualNaturalStar(definition.char) ?? 1}★ 직접 소환`
                 : definition.acquisition === "direct" ? "직접 소환" : `${definition.stage}단 ${STAGE_NAMES[definition.stage]}`;
     const unlockWave = summonStageUnlockWave(definition.stage);
-    const directLocked = engine.state.mode === "standard" && definition.acquisition === "direct" && engine.state.wave < unlockWave;
+    const directLocked = ctx.engine.state.mode === "standard" && definition.acquisition === "direct" && ctx.engine.state.wave < unlockWave;
     const naturalStar = casualNaturalStar(definition.char);
-    const materialLabel = engine.state.mode === "casual"
+    const materialLabel = ctx.engine.state.mode === "casual"
       ? `직접 등장 · ${naturalStar ?? 1}★ · ${casualStrokeCount(definition.char) ?? "?"}획`
       : definition.acquisition === "direct"
       ? directLocked ? `${unlockWave}웨이브부터 직접 등장` : "현재 소환 풀에서 직접 등장"
@@ -2159,14 +1842,13 @@ function renderHanziGoalChoices(definitions: readonly HanziDefinition[], ownedCo
     </button>`;
   }).join("");
 }
-
 function renderIdiomGoalChoices(idioms: readonly IdiomDefinition[], ownedCounts: ReadonlyMap<string, number>): string {
-  const query = goalSearchQuery.trim().toLowerCase();
-  const currentId = engine.currentIdiomTarget()?.id;
-  const sealedIds = new Set(engine.state.idiomSeals.map((seal) => seal.idiomId));
+  const query = ctx.goalSearchQuery.trim().toLowerCase();
+  const currentId = ctx.engine.currentIdiomTarget()?.id;
+  const sealedIds = new Set(ctx.engine.state.idiomSeals.map((seal) => seal.idiomId));
   const rows = idioms
     .map((idiom, order) => {
-      const progress = engine.idiomProgress(idiom.id);
+      const progress = ctx.engine.idiomProgress(idiom.id);
       const selected = idiom.id === currentId;
       const sealed = sealedIds.has(idiom.id);
       const searchText = `${idiom.chars} ${idiom.name} ${idiom.reading} ${idiom.meaning}`.toLowerCase();
@@ -2189,14 +1871,13 @@ function renderIdiomGoalChoices(idioms: readonly IdiomDefinition[], ownedCounts:
     </button>`;
   }).join("");
 }
-
 function renderEvolutions(): void {
-  if (engine.state.mode === "casual") {
+  if (ctx.engine.state.mode === "casual") {
     renderCasualFusion();
     return;
   }
-  const options = engine.availableEvolutions();
-  const key = engine.state.automationMode + "|" + String(engine.state.selectedTowerId) + "|" + options.map((option) => option.recipeId + ":" + option.materialTowerIds.join(",")).join("|");
+  const options = ctx.engine.availableEvolutions();
+  const key = ctx.engine.state.automationMode + "|" + String(ctx.engine.state.selectedTowerId) + "|" + options.map((option) => option.recipeId + ":" + option.materialTowerIds.join(",")).join("|");
   must<HTMLElement>("#evolution-count").textContent = String(options.length);
   must<HTMLElement>("#evolution-count").hidden = false;
   must<HTMLElement>("#evolve-ready-count").textContent = String(options.length);
@@ -2209,37 +1890,27 @@ function renderEvolutions(): void {
   must<HTMLElement>("#standard-evolution-modes").hidden = false;
   must<HTMLElement>("#casual-fusion-toolbar").hidden = true;
   must<HTMLElement>("#evolution-options").classList.remove("is-casual");
-  const active = engine.state.phase === "prep" || engine.state.phase === "combat";
+  const active = ctx.engine.state.phase === "prep" || ctx.engine.state.phase === "combat";
   evolveButton.disabled = !active || options.length === 0;
   evolveButton.classList.toggle("has-ready", options.length > 0);
-  if (key === evolutionRenderKey) return;
-  evolutionRenderKey = key;
+  if (key === ctx.evolutionRenderKey) return;
+  ctx.evolutionRenderKey = key;
   const container = must<HTMLElement>("#evolution-options");
   if (options.length === 0) {
-    const manual = engine.state.automationMode === "manual";
+    const manual = ctx.engine.state.automationMode === "manual";
     container.innerHTML = `<div class="empty-evolution"><b>${manual ? "전장의 한자를 선택하세요" : "재료를 모으는 중"}</b><span>${manual ? "선택한 한자가 들어가는 조합만 표시됩니다." : "목표 재료는 소환 확률이 서서히 보정됩니다."}</span></div>`;
     return;
   }
   container.innerHTML = `<p class="evolution-warning">행을 누르면 재료 자령을 소모해 바로 합성됩니다</p>` + options.slice(0, 3).map((option, index) => evolutionCard(option, index)).join("");
 }
-
-function casualStarOf(tower: Tower): CasualStar {
-  return tower.casualStar ?? tower.naturalStar ?? 1;
-}
-
-function towerProgressionLabel(tower: Tower): string {
-  const star = casualStarOf(tower);
-  return engine.state.mode === "casual" ? `${star}★ ${CASUAL_STAR_NAMES[star]}` : STAGE_NAMES[tower.stage];
-}
-
 function casualFusionTowerMarkup(tower: Tower, selected: boolean, disabled: boolean, badge: string | null = null): string {
   const star = casualStarOf(tower);
   const natural = tower.naturalStar ?? casualNaturalStar(tower.char) ?? star;
   const strokes = casualStrokeCount(tower.char);
-  const selectedIndex = casualFusionSelection.indexOf(tower.id);
+  const selectedIndex = ctx.casualFusionSelection.indexOf(tower.id);
   const selectedRole = selectedIndex >= 0 ? `소모 ${selectedIndex + 1}` : "";
   const location = tower.cell < 0 ? "인벤" : BOARD_FORMATIONS[Math.floor(tower.cell / CELLS_PER_FORMATION)]?.label ?? "전장";
-  const visual = jaryeongVisualFor(tower.char, tower.wuxing, engine.state.region);
+  const visual = jaryeongVisualFor(tower.char, tower.wuxing, ctx.engine.state.region);
   return `<button type="button" class="casual-fusion-tower ${selected ? "is-selected is-material" : ""} ${badge ? "is-short" : ""}" data-casual-fusion-tower="${tower.id}" style="--element:${ELEMENT_STYLES[tower.wuxing].color};--star:${CASUAL_STAR_COLORS[star]}" aria-pressed="${String(selected)}" ${disabled ? "disabled" : ""}>
     <i class="casual-fusion-sprite" style="${visualBackgroundStyle(visual)}" aria-hidden="true"></i>
     <b>${escapeHtml(tower.char)}</b>
@@ -2247,7 +1918,6 @@ function casualFusionTowerMarkup(tower: Tower, selected: boolean, disabled: bool
     <em>${badge ? escapeHtml(badge) : selectedRole || (star >= 8 ? "최고" : "선택")}</em>
   </button>`;
 }
-
 function casualFusionSlotMarkup(tower: Tower | undefined, index: number): string {
   const roleLabel = `${["①", "②", "③"][index] ?? "＋"} 소모`;
   if (!tower) {
@@ -2259,7 +1929,7 @@ function casualFusionSlotMarkup(tower: Tower | undefined, index: number): string
   const natural = tower.naturalStar ?? casualNaturalStar(tower.char) ?? star;
   const strokes = casualStrokeCount(tower.char);
   const location = tower.cell < 0 ? "인벤" : BOARD_FORMATIONS[Math.floor(tower.cell / CELLS_PER_FORMATION)]?.label ?? "전장";
-  const visual = jaryeongVisualFor(tower.char, tower.wuxing, engine.state.region);
+  const visual = jaryeongVisualFor(tower.char, tower.wuxing, ctx.engine.state.region);
   return `<button type="button" class="casual-fusion-slot is-filled is-material" data-casual-fusion-slot="${index}" style="--element:${ELEMENT_STYLES[tower.wuxing].color};--star:${CASUAL_STAR_COLORS[star]}" aria-label="${roleLabel} ${tower.char} 선택 해제">
     <span>${roleLabel} <em>소모</em></span>
     <i class="casual-fusion-slot-sprite" style="${visualBackgroundStyle(visual)}" aria-hidden="true"></i>
@@ -2267,7 +1937,6 @@ function casualFusionSlotMarkup(tower: Tower | undefined, index: number): string
     <div><strong>${casualStarTagMarkup(star)} ${tower.wuxing}행</strong><small>자연 ${natural}★ · ${strokes ?? "?"}획</small><small>${location}${tower.locked ? " · 鎖 잠금" : ""}</small></div>
   </button>`;
 }
-
 interface CasualFusionBucket {
   wuxing: Wuxing;
   star: CasualStar;
@@ -2281,7 +1950,6 @@ interface CasualFusionBucket {
   /** 막힌 카드의 툴팁 — 화면에서 덜어낸 수치를 여기 보존한다. */
   blockedTip: string;
 }
-
 /**
  * 같은 오행·같은 별로 3체 이상 모인 묶음만 카드로 만든다. 승급이 안 되는
  * 묶음(보호 자령이 많아 소모 후보 3기 미달, 또는 상위 별 글자 자체가 없음)도
@@ -2312,7 +1980,7 @@ function casualFusionBuckets(
       let usableSamples: Tower[] = [];
       let blockedTip = "";
       if (groups.length === 0) {
-        if (engine.casualResultPool(wuxing, star) === null) {
+        if (ctx.engine.casualResultPool(wuxing, star) === null) {
           // 재료는 멀쩡한데 위 별 글자가 없다 — 빈 칸이 아니라 결과 칸이 없는 경우다.
           blockedKind = "no-pool";
           usableSamples = list.slice(0, 3);
@@ -2335,19 +2003,16 @@ function casualFusionBuckets(
   }
   return buckets;
 }
-
 /** `★n` 은 본문과 다른 서체 등록부(금박·굵기·tabular-nums)로 분리한 배지다. */
 function casualStarTagMarkup(star: number, variant = ""): string {
   return `<i class="casual-star-tag${variant}">★${star}</i>`;
 }
-
 function casualGroupMaterialMarkup(tower: Tower, star: CasualStar): string {
   return `<span class="casual-group-material">`
     + spiritPortraitMarkup(tower.char, tower.wuxing, "workbench-spirit--group")
     + casualStarTagMarkup(star)
     + `</span>`;
 }
-
 /**
  * 그룹 카드는 "읽는 표"가 아니라 "보는 문장"이다.
  *
@@ -2426,21 +2091,20 @@ function casualGroupCardMarkup(bucket: CasualFusionBucket, allTowers: readonly T
     <button type="button" class="casual-group-run" data-casual-group="${bucket.wuxing}:${bucket.star}" aria-label="${escapeHtml(runLabel)}" ${active ? "" : "disabled"}>승급</button>
   </article>`;
 }
-
 function renderCasualFusion(): void {
-  const allTowers = [...engine.state.towers, ...engine.state.inventoryTowers];
+  const allTowers = [...ctx.engine.state.towers, ...ctx.engine.state.inventoryTowers];
   const ids = new Set(allTowers.map((tower) => tower.id));
-  casualFusionSelection = casualFusionSelection.filter((id, index) => ids.has(id) && casualFusionSelection.indexOf(id) === index).slice(0, 3);
-  const anchor = allTowers.find((tower) => tower.id === casualFusionSelection[0]);
-  if (anchor && casualStarOf(anchor) >= 8) casualFusionSelection = [];
-  const selectedTowers = casualFusionSelection.map((id) => allTowers.find((tower) => tower.id === id)).filter((tower): tower is Tower => Boolean(tower));
-  const quote = selectedTowers.length === 3 ? engine.casualFusionQuote(casualFusionSelection) : null;
-  const active = engine.state.phase === "prep" || engine.state.phase === "combat";
-  const plans = new Map(WUXING_ORDER.map((wuxing) => [wuxing, engine.casualAutoFusionPlan(wuxing)] as const));
-  const protections = engine.casualMaterialProtections();
+  ctx.casualFusionSelection = ctx.casualFusionSelection.filter((id, index) => ids.has(id) && ctx.casualFusionSelection.indexOf(id) === index).slice(0, 3);
+  const anchor = allTowers.find((tower) => tower.id === ctx.casualFusionSelection[0]);
+  if (anchor && casualStarOf(anchor) >= 8) ctx.casualFusionSelection = [];
+  const selectedTowers = ctx.casualFusionSelection.map((id) => allTowers.find((tower) => tower.id === id)).filter((tower): tower is Tower => Boolean(tower));
+  const quote = selectedTowers.length === 3 ? ctx.engine.casualFusionQuote(ctx.casualFusionSelection) : null;
+  const active = ctx.engine.state.phase === "prep" || ctx.engine.state.phase === "combat";
+  const plans = new Map(WUXING_ORDER.map((wuxing) => [wuxing, ctx.engine.casualAutoFusionPlan(wuxing)] as const));
+  const protections = ctx.engine.casualMaterialProtections();
   const readyCount = [...plans.values()].reduce((sum, groups) => sum + groups.length, 0);
   const inventorySignature = allTowers.map((tower) => `${tower.id}:${tower.wuxing}:${casualStarOf(tower)}:${tower.cell}:${tower.locked ? 1 : 0}:${tower.concentration ?? 0}`).join("|");
-  const key = `${inventorySignature}|S${casualFusionSelection.join(",")}|R${readyCount}`;
+  const key = `${inventorySignature}|S${ctx.casualFusionSelection.join(",")}|R${readyCount}`;
 
   must<HTMLElement>("#evolution-count").textContent = String(readyCount);
   // 같은 수를 헤더 배지·버튼 칩·버튼 라벨이 셋이 나눠 세던 것을 [한 번에 승급 (N회)]
@@ -2476,11 +2140,11 @@ function renderCasualFusion(): void {
       : buckets.some((bucket) => bucket.shortReason !== null)
         ? "3체는 모였지만 소모할 수 없는 자령이 섞여 있습니다. 아래 카드에서 사유를 확인하세요."
         : "같은 오행·같은 별 자령이 3체 모이면 여기서 한 번에 승급합니다.";
-  if (key === evolutionRenderKey) return;
-  evolutionRenderKey = key;
+  if (key === ctx.evolutionRenderKey) return;
+  ctx.evolutionRenderKey = key;
 
   const slotMarkup = [0, 1, 2].map((index) => casualFusionSlotMarkup(selectedTowers[index], index)).join("");
-  const selectedIds = new Set(casualFusionSelection);
+  const selectedIds = new Set(ctx.casualFusionSelection);
   const candidates = allTowers
     .filter((tower) => {
       if (!anchor || selectedIds.has(tower.id)) return true;
@@ -2494,16 +2158,16 @@ function renderCasualFusion(): void {
     bucketSize.set(key, (bucketSize.get(key) ?? 0) + 1);
   }
   const candidateMarkup = candidates.length > 0 ? candidates.map((tower) => {
-    const selectionIndex = casualFusionSelection.indexOf(tower.id);
+    const selectionIndex = ctx.casualFusionSelection.indexOf(tower.id);
     const incompatible = Boolean(anchor) && selectionIndex < 0 && (tower.wuxing !== anchor?.wuxing || casualStarOf(tower) !== casualStarOf(anchor));
     const star = casualStarOf(tower);
     const tooFew = selectionIndex < 0 && star < 8 && (bucketSize.get(`${tower.wuxing}:${star}`) ?? 0) < 3;
     // v3 규칙 2: 보호 자령은 3기 어디에도 못 들어가므로 첫 슬롯부터 사유를 붙여 잠근다.
     const protection = selectionIndex < 0 ? protections.get(tower.id) ?? null : null;
-    const noPool = selectionIndex < 0 && star < 8 && engine.casualResultPool(tower.wuxing, star) === null;
+    const noPool = selectionIndex < 0 && star < 8 && ctx.engine.casualResultPool(tower.wuxing, star) === null;
     const badge = selectionIndex >= 0 ? null : protection ?? (noPool ? "상위 별 없음" : tooFew ? "3체 미달" : null);
     const disabled = !active
-      || casualFusionSelection.length >= 3 && selectionIndex < 0
+      || ctx.casualFusionSelection.length >= 3 && selectionIndex < 0
       || protection !== null
       || noPool
       || selectionIndex < 0 && incompatible
@@ -2515,7 +2179,7 @@ function renderCasualFusion(): void {
     : quote
       ? `<p class="casual-fusion-status ${quote.warnings.length > 0 ? "has-warning" : "is-ready"}"><b>${casualStarTagMarkup(quote.fromStar ?? 1)} 3기 → 다음 별 자령 1기 · 무작위</b><span>${quote.warnings.length > 0 ? `${quote.warnings.length}개 확인 사항 · 3기가 모두 사라집니다.` : `3기가 모두 사라지고 ${quote.wuxing}행 ${quote.toStar}★ 후보 ${quote.poolSize}자 중 하나를 얻습니다.`}</span></p>`
       : `<p class="casual-fusion-status"><b>${selectedTowers.length}/3 선택</b><span>${selectedTowers.length === 0 ? "소모할 자령부터 선택하세요 — 3기 모두 사라집니다." : "같은 오행·같은 현재 별 자령을 마저 고르세요."}</span></p>`;
-  const previewPool = anchor && casualStarOf(anchor) < 8 ? engine.casualResultPool(anchor.wuxing, casualStarOf(anchor)) : null;
+  const previewPool = anchor && casualStarOf(anchor) < 8 ? ctx.engine.casualResultPool(anchor.wuxing, casualStarOf(anchor)) : null;
   const resultStar = quote?.toStar ?? previewPool?.star ?? null;
   const groupCards = buckets.map((bucket) => casualGroupCardMarkup(bucket, allTowers, active)).join("");
   const emptyState = `<div class="casual-group-empty">
@@ -2525,7 +2189,7 @@ function renderCasualFusion(): void {
   </div>`;
   container.innerHTML = `
     <div class="casual-group-list">${groupCards || emptyState}</div>
-    <details class="casual-manual" id="casual-manual-details"${casualManualOpen ? " open" : ""}>
+    <details class="casual-manual" id="casual-manual-details"${ctx.casualManualOpen ? " open" : ""}>
       <summary><b>직접 고르기</b><small>소모할 같은 오행·같은 별 자령 3기를 손으로 지정합니다</small></summary>
       <div class="casual-rarity-rule"><span><b>획수 기본 별</b><small>실제 Unicode kTotalStrokes</small></span>${([1, 2, 3, 4, 5, 6, 7, 8] as CasualStar[]).map((star) => `<i style="--star:${CASUAL_STAR_COLORS[star]}"><b>★${star}</b><small>${casualStarRangeLabel(star)}</small></i>`).join("")}</div>
       <div class="casual-fusion-slots">${slotMarkup}<i aria-hidden="true">→</i><div class="casual-fusion-result is-random" style="--star:${resultStar ? CASUAL_STAR_COLORS[resultStar] : "#526274"}"><span>무작위 획득</span><b>?</b><strong${resultStar ? "" : ` class="is-placeholder"`}>${resultStar ? `${casualStarTagMarkup(resultStar, " is-result")} 무작위 1기` : "별 미정 — 자령을 먼저 선택"}</strong><small>${resultStar ? `피해 ×${CASUAL_STAR_POWER[resultStar].toFixed(2)} · 후보 ${quote?.poolSize ?? previewPool?.candidates.length ?? 0}자` : "소모할 자령 선택 필요"}</small></div></div>
@@ -2535,28 +2199,26 @@ function renderCasualFusion(): void {
       <div class="casual-fusion-candidates">${candidateMarkup}</div>
     </details>`;
 }
-
 function casualConfirmTowerRow(tower: Tower): string {
   const star = casualStarOf(tower);
   const strokes = casualStrokeCount(tower.char);
-  const visual = jaryeongVisualFor(tower.char, tower.wuxing, engine.state.region);
+  const visual = jaryeongVisualFor(tower.char, tower.wuxing, ctx.engine.state.region);
   return `<article class="casual-confirm-tower is-material" style="--element:${ELEMENT_STYLES[tower.wuxing].color};--star:${CASUAL_STAR_COLORS[star]}"><i class="casual-confirm-sprite" style="${visualBackgroundStyle(visual)}" aria-hidden="true"></i><b>${escapeHtml(tower.char)}</b><span><strong>소모 · 복구 불가</strong><small>${tower.wuxing}행 · ${star}★ · ${strokes ?? "?"}획 · ${tower.cell < 0 ? "인벤" : "전장"}</small></span><em>소모</em></article>`;
 }
-
 function openCasualManualReview(): void {
-  if (casualFusionSelection.length !== 3) return;
-  const [firstId, secondId, thirdId] = casualFusionSelection;
+  if (ctx.casualFusionSelection.length !== 3) return;
+  const [firstId, secondId, thirdId] = ctx.casualFusionSelection;
   if (firstId === undefined || secondId === undefined || thirdId === undefined) return;
   const materialIds: [number, number, number] = [firstId, secondId, thirdId];
-  const quote = engine.casualFusionQuote(materialIds);
+  const quote = ctx.engine.casualFusionQuote(materialIds);
   if (quote.blocked.length > 0 || quote.fromStar === null || quote.toStar === null || quote.wuxing === null) {
     showToast(quote.blocked[0]?.text ?? "조합 조건을 다시 확인하세요.", true);
     return;
   }
-  const all = [...engine.state.towers, ...engine.state.inventoryTowers];
+  const all = [...ctx.engine.state.towers, ...ctx.engine.state.inventoryTowers];
   const materials = materialIds.map((id) => all.find((tower) => tower.id === id)).filter((tower): tower is Tower => Boolean(tower));
   if (materials.length !== 3) return;
-  pendingCasualFusion = { kind: "manual", materialIds, quote };
+  ctx.pendingCasualFusion = { kind: "manual", materialIds, quote };
   const boardCount = materials.filter((tower) => tower.cell >= 0).length;
   must<HTMLElement>("#casual-fusion-confirm-title").textContent = `${quote.wuxing}행 ${quote.fromStar}★×3 → ${quote.toStar}★ 무작위`;
   const fallbackNote = quote.starFallback
@@ -2573,7 +2235,6 @@ function openCasualManualReview(): void {
   must<HTMLButtonElement>("#casual-fusion-execute").textContent = `3기 소모 · ${quote.toStar}★ 무작위 획득`;
   casualFusionConfirmDialog.showModal();
 }
-
 /**
  * 그룹 카드·[한 번에 승급]의 원클릭 실행. 확인 모달을 거치지 않는 대신
  * 결과(승급 횟수·소모 자령·건너뛴 묶음)를 토스트로 반드시 가시화한다.
@@ -2582,21 +2243,19 @@ function runCasualAutoFusion(scope: Wuxing | "all", star: CasualStar | null): vo
   sound.unlock();
   // 카드 한 장은 사용자가 배지까지 보고 누른 것이므로 전장 재료도 실행한다.
   // [한 번에 승급] 은 전 오행 일괄이라 전장 재료 묶음을 건너뛴다.
-  const report = engine.autoFuseCasual(scope, star !== null, star);
-  casualFusionSelection = [];
-  evolutionRenderKey = "";
+  const report = ctx.engine.autoFuseCasual(scope, star !== null, star);
+  ctx.casualFusionSelection = [];
+  ctx.evolutionRenderKey = "";
   handleAction(report);
   if (report.ok) setPanelTab("evolution");
 }
-
 function closeCasualFusionReview(): void {
-  pendingCasualFusion = null;
+  ctx.pendingCasualFusion = null;
   if (casualFusionConfirmDialog.open) casualFusionConfirmDialog.close();
 }
-
 function evolutionCard(option: EvolutionOption, index: number): string {
   const style = ELEMENT_STYLES[option.result.wuxing];
-  const visual = jaryeongVisualFor(option.result.char, option.result.wuxing, engine.state.region);
+  const visual = jaryeongVisualFor(option.result.char, option.result.wuxing, ctx.engine.state.region);
   const abilities = option.result.combat.abilities;
   const abilitySummary = abilities.role.glyph + " " + abilities.role.name + (abilities.lineage ? " · " + abilities.lineage.glyph + " 계승" : "");
   return `
@@ -2611,7 +2270,6 @@ function evolutionCard(option: EvolutionOption, index: number): string {
     </button>
   `;
 }
-
 const ABILITY_CATEGORY_LABELS: Record<AbilitySpec["category"], { label: string; mode: string }> = {
   semantic: { label: "고유 기술", mode: "주기 자동" },
   role: { label: "역할 기술", mode: "주기 자동" },
@@ -2619,12 +2277,10 @@ const ABILITY_CATEGORY_LABELS: Record<AbilitySpec["category"], { label: string; 
   element: { label: "오행 효과", mode: "공격 연동" },
   graph: { label: "진법 특성", mode: "조건 적용" }
 };
-
 function readableAbilityTrigger(trigger: string): string {
   if (trigger === "공격 적중") return "공격 적중마다";
   return trigger.replace(/(\d+번째 공격)$/u, "$1마다");
 }
-
 function selectedAbilityCard(ability: AbilitySpec): string {
   const meta = ABILITY_CATEGORY_LABELS[ability.category];
   const behaviorClass = ability.category === "element" ? "is-attack-linked" : ability.category === "graph" ? "is-conditional" : "is-periodic";
@@ -2633,7 +2289,6 @@ function selectedAbilityCard(ability: AbilitySpec): string {
     <i aria-hidden="true">${ability.glyph}</i><span><em>${meta.label} · ${meta.mode}</em><b>${ability.name}</b><small>${escapeHtml(trigger)} · ${escapeHtml(ability.summary)}</small></span>
   </button>`;
 }
-
 function abilityGuideArticle(ability: AbilitySpec, focusedAbilityId: string | undefined): string {
   const meta = ABILITY_CATEGORY_LABELS[ability.category];
   const focused = ability.id === focusedAbilityId;
@@ -2644,15 +2299,14 @@ function abilityGuideArticle(ability: AbilitySpec, focusedAbilityId: string | un
     <p>${escapeHtml(ability.description)}</p>
   </article>`;
 }
-
 function openAbilityGuide(focusedAbilityId?: string): void {
-  const tower = engine.selectedTower();
+  const tower = ctx.engine.selectedTower();
   if (!tower) return;
-  const definition = definitionForTower(engine.catalog, tower.definitionId);
-  const learning = learningInfo(engine.state.region, tower.char);
+  const definition = definitionForTower(ctx.engine.catalog, tower.definitionId);
+  const learning = learningInfo(ctx.engine.state.region, tower.char);
   const abilities = definition.combat.abilities;
-  const activeSkills = engine.towerHasActiveSkills(tower);
-  const skillUnlockLabel = engine.state.mode === "casual" ? "2★ 승급" : "2단 합성";
+  const activeSkills = ctx.engine.towerHasActiveSkills(tower);
+  const skillUnlockLabel = ctx.engine.state.mode === "casual" ? "2★ 승급" : "2단 합성";
   const periodicAbilities = activeSkills
     ? [abilities.semantic, abilities.role, abilities.lineage].filter((ability): ability is AbilitySpec => Boolean(ability))
     : [];
@@ -2674,10 +2328,9 @@ function openAbilityGuide(focusedAbilityId?: string): void {
     </div>`;
   abilityGuideDialog.showModal();
 }
-
 function syncSelectedCharge(card: HTMLElement, tower: Tower, definition: HanziDefinition, chargeStep: number): void {
   const holder = card.querySelector<HTMLElement>(".ability-charge");
-  if (!engine.towerHasActiveSkills(tower) || holder?.classList.contains("ability-charge--locked")) return;
+  if (!ctx.engine.towerHasActiveSkills(tower) || holder?.classList.contains("ability-charge--locked")) return;
   const ability = definition.combat.abilities.role;
   const signatureEvery = definition.combat.abilities.tuning.signatureEvery;
   const charge = chargeStep / signatureEvery;
@@ -2688,24 +2341,23 @@ function syncSelectedCharge(card: HTMLElement, tower: Tower, definition: HanziDe
   if (label) label.textContent = `역할 기술 충전 · ${ability.glyph} ${ability.name} ${chargeStep}/${signatureEvery}`;
   if (holder) holder.title = `다음 역할 기술 ${ability.name}까지 ${remaining}회`;
 }
-
 function renderSelected(): void {
   const card = must<HTMLElement>("#selected-card");
-  const tower = engine.selectedTower();
-  const definition = tower ? definitionForTower(engine.catalog, tower.definitionId) : undefined;
+  const tower = ctx.engine.selectedTower();
+  const definition = tower ? definitionForTower(ctx.engine.catalog, tower.definitionId) : undefined;
   const chargeStep = tower && definition ? tower.shotCount % definition.combat.abilities.tuning.signatureEvery : 0;
-  const stored = engine.selectedTowerIsStored();
-  const branches = tower ? engine.compositionBranchesForSelected() : [];
+  const stored = ctx.engine.selectedTowerIsStored();
+  const branches = tower ? ctx.engine.compositionBranchesForSelected() : [];
   const concentration = tower?.concentration ?? 0;
   const concentrationPath = tower?.concentrationPath ?? null;
-  const duplicateCount = tower ? engine.state.inventoryTowers.filter((candidate) => candidate.id !== tower.id && candidate.char === tower.char && !candidate.locked).length : 0;
+  const duplicateCount = tower ? ctx.engine.state.inventoryTowers.filter((candidate) => candidate.id !== tower.id && candidate.char === tower.char && !candidate.locked).length : 0;
   const branchKey = branches.map((branch) => `${branch.recipeId}:${branch.ready ? "R" : branch.materials.map((material) => material.location).join(",")}`).join("|");
-  const key = tower ? tower.definitionId + "|" + String(tower.id) + "|" + String(tower.locked) + "|" + String(stored) + "|" + String(engine.isSynergyActive(tower.wuxing)) + "|" + branchKey + `|M${engine.state.mode}:S${tower.casualStar ?? 0}|C${concentration}:${concentrationPath ?? "none"}:D${duplicateCount}:E${engine.state.elementEssence[tower.wuxing]}` : "none";
-  if (key === selectedRenderKey) {
+  const key = tower ? tower.definitionId + "|" + String(tower.id) + "|" + String(tower.locked) + "|" + String(stored) + "|" + String(ctx.engine.isSynergyActive(tower.wuxing)) + "|" + branchKey + `|M${ctx.engine.state.mode}:S${tower.casualStar ?? 0}|C${concentration}:${concentrationPath ?? "none"}:D${duplicateCount}:E${ctx.engine.state.elementEssence[tower.wuxing]}` : "none";
+  if (key === ctx.selectedRenderKey) {
     if (tower && definition) syncSelectedCharge(card, tower, definition, chargeStep);
     return;
   }
-  selectedRenderKey = key;
+  ctx.selectedRenderKey = key;
   if (!tower) {
     card.innerHTML = '<div class="empty-selection"><b>자령을 선택하세요</b><span>한자·부수·공격·오행·조합망 역할을 확인할 수 있습니다.</span></div>';
     return;
@@ -2713,12 +2365,12 @@ function renderSelected(): void {
   if (!definition) return;
   const style = ELEMENT_STYLES[tower.wuxing];
   const concentrationDamage = 1 + concentration * (concentrationPath === "potent" ? 0.12 : 0.055);
-  const damage = Math.round(definition.combat.baseDamage * engine.towerPowerMultiplier(tower) * definition.combat.budgetMultiplier * (1 + engine.idiomBonus("damage")) * (1 + engine.combinedUpgradeBonus(tower.wuxing, "damage")) * concentrationDamage);
-  const range = definition.combat.range + engine.towerRangeBonus(tower) + engine.idiomBonus("range") + concentration * 4 + engine.combinedUpgradeBonus(tower.wuxing, "range");
-  const attacksPerSecond = 1 / engine.towerAttackCooldown(tower);
-  const learning = learningInfo(engine.state.region, tower.char);
+  const damage = Math.round(definition.combat.baseDamage * ctx.engine.towerPowerMultiplier(tower) * definition.combat.budgetMultiplier * (1 + ctx.engine.idiomBonus("damage")) * (1 + ctx.engine.combinedUpgradeBonus(tower.wuxing, "damage")) * concentrationDamage);
+  const range = definition.combat.range + ctx.engine.towerRangeBonus(tower) + ctx.engine.idiomBonus("range") + concentration * 4 + ctx.engine.combinedUpgradeBonus(tower.wuxing, "range");
+  const attacksPerSecond = 1 / ctx.engine.towerAttackCooldown(tower);
+  const learning = learningInfo(ctx.engine.state.region, tower.char);
   const abilities = definition.combat.abilities;
-  const activeSkills = engine.towerHasActiveSkills(tower);
+  const activeSkills = ctx.engine.towerHasActiveSkills(tower);
   const periodicAbilities = activeSkills
     ? [abilities.semantic, abilities.role, abilities.lineage].filter((ability): ability is AbilitySpec => Boolean(ability))
     : [];
@@ -2730,20 +2382,20 @@ function renderSelected(): void {
   const nextEssenceCost = concentrationEssenceCost(concentration);
   const concentrationStatus = concentration >= MAX_CONCENTRATION_LEVEL
     ? `濃 3/3 완성 · ${concentrationPathLabel(concentrationPath ?? autoConcentrationPath(tower))}`
-    : duplicateCount > 0 ? `중복 ${duplicateCount}기 사용 가능` : `${tower.wuxing} 문기 ${engine.state.elementEssence[tower.wuxing]}/${nextEssenceCost}`;
-  const cleanup = engine.cleanupAssessments().find((assessment) => assessment.towerId === tower.id);
+    : duplicateCount > 0 ? `중복 ${duplicateCount}기 사용 가능` : `${tower.wuxing} 문기 ${ctx.engine.state.elementEssence[tower.wuxing]}/${nextEssenceCost}`;
+  const cleanup = ctx.engine.cleanupAssessments().find((assessment) => assessment.towerId === tower.id);
   const cleanupLabel = cleanup?.protected
     ? `보호 · ${cleanup.protectedReasons[0] ?? "전략 재료"}`
     : `정리 후보 · ${cleanup?.reasons[0] ?? "직접 판단"}`;
   const casualStar = casualStarOf(tower);
-  const progressionLabel = engine.state.mode === "casual" ? `${casualStar}★ ${CASUAL_STAR_NAMES[casualStar]}` : STAGE_NAMES[tower.stage];
-  const progressionColor = engine.state.mode === "casual" ? CASUAL_STAR_COLORS[casualStar] : STAGE_COLORS[tower.stage];
-  const skillUnlockLabel = engine.state.mode === "casual" ? "2★ 승급" : "2단 합성";
+  const progressionLabel = ctx.engine.state.mode === "casual" ? `${casualStar}★ ${CASUAL_STAR_NAMES[casualStar]}` : STAGE_NAMES[tower.stage];
+  const progressionColor = ctx.engine.state.mode === "casual" ? CASUAL_STAR_COLORS[casualStar] : STAGE_COLORS[tower.stage];
+  const skillUnlockLabel = ctx.engine.state.mode === "casual" ? "2★ 승급" : "2단 합성";
   card.innerHTML = `
-    <div class="selected-glyph" style="--unit:${style.color};--stage:${progressionColor}">${tower.char}${engine.state.mode === "casual" ? `<small>${casualStar}★ · ${casualStrokeCount(tower.char) ?? "?"}획</small>` : concentration > 0 ? `<small>濃 ${concentration}</small>` : ""}</div>
+    <div class="selected-glyph" style="--unit:${style.color};--stage:${progressionColor}">${tower.char}${ctx.engine.state.mode === "casual" ? `<small>${casualStar}★ · ${casualStrokeCount(tower.char) ?? "?"}획</small>` : concentration > 0 ? `<small>濃 ${concentration}</small>` : ""}</div>
     <div class="selected-copy">
       <div><span>${progressionLabel} · ${style.name}행 · ${ROLE_LABELS[tower.combatRole]}</span><h3>${tower.char} <small>${GRAPH_ROLE_LABELS[tower.graphRole]}</small></h3></div>
-      <p class="selected-learning"><i class="selected-radical">${displayMode === "spirit"
+      <p class="selected-learning"><i class="selected-radical">${ctx.displayMode === "spirit"
         ? `<span>${learning.readingLabel}</span><b>${escapeHtml(learning.reading)}</b>`
         : `<span>부수</span><b>${radicalGlyph(tower.char)}</b>`}</i></p>
       <p class="selected-meaning"><span>${learning.meaningSource === "en" ? "뜻(영)" : "뜻"}</span><b>${escapeHtml(learning.meaning)}</b></p>
@@ -2762,10 +2414,10 @@ function renderSelected(): void {
     <div class="selected-actions">
       <button id="lock-button" class="${tower.locked ? "is-locked" : ""}" type="button" data-testid="lock-tower" title="판매·합성 재료로 쓰이지 않게 보호">${tower.locked ? "鎖 잠금됨" : "잠금"}</button>
       <button id="store-button" type="button" data-testid="store-tower" title="인벤으로 이동 — 전장 자리를 비웁니다" ${stored ? "disabled" : ""}>${stored ? "보관 중" : "보관"}</button>
-      <button id="derivative-button" class="${readyBranches > 0 ? "has-ready" : ""}" type="button" data-testid="derivative-composition" title="이 자령이 재료인 파생 조합 목록">${engine.state.mode === "casual" ? casualStar >= 8 ? "8★ 최고 단계" : "3체 조합 ›" : `합성 ${readyBranches}`}</button>
+      <button id="derivative-button" class="${readyBranches > 0 ? "has-ready" : ""}" type="button" data-testid="derivative-composition" title="이 자령이 재료인 파생 조합 목록">${ctx.engine.state.mode === "casual" ? casualStar >= 8 ? "8★ 최고 단계" : "3체 조합 ›" : `합성 ${readyBranches}`}</button>
       <button id="open-growth-button" type="button" title="강화 제련소 탭으로 이동">분해 ›</button>
       <button id="open-concentration-button" type="button" title="농축 공방 탭으로 이동" ${concentration >= MAX_CONCENTRATION_LEVEL ? "disabled" : ""}>농축 ›</button>
-      <button id="sell-button" type="button" title="엽전을 받고 즉시 제거 — 되돌릴 수 없음" ${tower.locked ? "disabled" : ""}>판매 +${engine.towerSellValue(tower)}</button>
+      <button id="sell-button" type="button" title="엽전을 받고 즉시 제거 — 되돌릴 수 없음" ${tower.locked ? "disabled" : ""}>판매 +${ctx.engine.towerSellValue(tower)}</button>
     </div>
     <button type="button" class="selected-ability-summary" data-ability-guide><b>${activeSkills ? `技 기술 ${abilityLoadout.length}개 · 모두 자동 판정` : "技 기술 해금 전"}</b><span>${activeSkills ? `주기 ${periodicAbilities.length} · 공격 연동 1 · 조건 특성 1` : "현재 기본 공격 · 2단 합성 필요"}</span><em>설명 ›</em></button>
     ${activeSkills
@@ -2781,7 +2433,6 @@ function renderSelected(): void {
         <div class="ability-charge ability-charge--locked"><i style="width:0%;--charge:#aeb9cc"></i><small>${skillUnlockLabel} 시 고유 기술 해금</small></div>`}
   `;
 }
-
 function compositionMaterialChip(material: CompositionBranchPreview["materials"][number]): string {
   const locationLabel = material.location === "board"
     ? "전장"
@@ -2790,68 +2441,62 @@ function compositionMaterialChip(material: CompositionBranchPreview["materials"]
       : material.location === "locked" ? "잠금" : "0/1";
   return `<span class="composition-material is-${material.location}"><b>${material.char}</b>${locationLabel}</span>`;
 }
-
 function compositionBranchCard(branch: CompositionBranchPreview): string {
   const style = ELEMENT_STYLES[branch.result.wuxing];
-  const visual = jaryeongVisualFor(branch.result.char, branch.result.wuxing, engine.state.region);
+  const visual = jaryeongVisualFor(branch.result.char, branch.result.wuxing, ctx.engine.state.region);
   const missing = branch.materials.filter((material) => material.towerId === null).map((material) => material.char);
   return `
     <button class="composition-branch ${branch.ready ? "is-ready" : "is-missing"} ${branch.onTargetPath ? "is-target" : ""}" type="button" data-composition-recipe="${branch.recipeId}" aria-disabled="${String(!branch.ready)}" style="--branch:${style.color}">
       <i class="composition-result-spirit" style="${visualBackgroundStyle(visual)}" aria-hidden="true"></i>
       <span class="composition-branch-copy">
         <strong>${branch.parents.join(" + ")} <em>→</em> <b>${branch.result.char}</b></strong>
-        <small>${STAGE_NAMES[branch.result.stage]} · ${escapeHtml(learningInfo(engine.state.region, branch.result.char).short)}</small>
+        <small>${STAGE_NAMES[branch.result.stage]} · ${escapeHtml(learningInfo(ctx.engine.state.region, branch.result.char).short)}</small>
         <span class="composition-materials">${branch.materials.map(compositionMaterialChip).join("")}</span>
       </span>
       <mark>${branch.ready ? "합성 가능" : `${missing.join("·") || "재료"} 부족`}</mark>
     </button>
   `;
 }
-
 function renderCompositionDrawer(): void {
   const drawer = must<HTMLElement>("#composition-drawer");
-  const selected = engine.selectedTower();
-  if (!compositionDrawerOpen || !selected) {
+  const selected = ctx.engine.selectedTower();
+  if (!ctx.compositionDrawerOpen || !selected) {
     drawer.classList.remove("is-open");
     drawer.setAttribute("aria-hidden", "true");
     setCompositionMaterialHighlight();
     return;
   }
-  const definition = definitionForTower(engine.catalog, selected.definitionId);
-  const branches = engine.compositionBranchesForSelected();
+  const definition = definitionForTower(ctx.engine.catalog, selected.definitionId);
+  const branches = ctx.engine.compositionBranchesForSelected();
   const key = `${selected.id}|${selected.locked}|${branches.map((branch) => `${branch.recipeId}:${branch.ready}:${branch.materials.map((material) => `${material.towerId ?? "-"}:${material.location}`).join(",")}`).join("|")}`;
   drawer.classList.add("is-open");
   drawer.setAttribute("aria-hidden", "false");
-  if (key === compositionRenderKey) return;
-  compositionRenderKey = key;
+  if (key === ctx.compositionRenderKey) return;
+  ctx.compositionRenderKey = key;
   must<HTMLElement>("#composition-source-glyph").textContent = selected.char;
   must<HTMLElement>("#composition-ready-count").textContent = String(branches.filter((branch) => branch.ready).length);
   must<HTMLElement>("#composition-source").innerHTML = `
     <i class="composition-source-spirit" style="${spriteStyle(definition)}" aria-hidden="true"></i>
-    <span><b>${selected.char}</b><strong>${escapeHtml(learningInfo(engine.state.region, selected.char).short)}</strong><small>${selected.cell < 0 ? "런 인벤토리" : "전장 배치"} · 직접 파생 ${branches.length}개</small></span>
+    <span><b>${selected.char}</b><strong>${escapeHtml(learningInfo(ctx.engine.state.region, selected.char).short)}</strong><small>${selected.cell < 0 ? "런 인벤토리" : "전장 배치"} · 직접 파생 ${branches.length}개</small></span>
   `;
   must<HTMLElement>("#composition-branches").innerHTML = branches.length > 0
     ? branches.map(compositionBranchCard).join("")
     : `<div class="empty-composition"><b>직접 파생 합성이 없습니다</b><span>이 자령은 현재 조합표의 끝 단계입니다.</span></div>`;
 }
-
 function openCompositionDrawer(): void {
-  if (!engine.selectedTower()) return;
-  compositionDrawerOpen = true;
-  compositionRenderKey = "";
+  if (!ctx.engine.selectedTower()) return;
+  ctx.compositionDrawerOpen = true;
+  ctx.compositionRenderKey = "";
   renderCompositionDrawer();
 }
-
 function closeCompositionDrawer(): void {
-  compositionDrawerOpen = false;
-  compositionRenderKey = "";
+  ctx.compositionDrawerOpen = false;
+  ctx.compositionRenderKey = "";
   setCompositionMaterialHighlight();
   const drawer = document.querySelector<HTMLElement>("#composition-drawer");
   drawer?.classList.remove("is-open");
   drawer?.setAttribute("aria-hidden", "true");
 }
-
-
 /*
  * 1회성 성어 코치 — 스펙 6라운드 E1.
  *
@@ -2861,7 +2506,6 @@ function closeCompositionDrawer(): void {
  */
 const IDIOM_HINT_STORAGE_KEY = "hanja-td:idiom-hint-v1";
 let idiomHintHandled = false;
-
 function idiomHintAlreadySeen(): boolean {
   try {
     return window.localStorage.getItem(IDIOM_HINT_STORAGE_KEY) === "1";
@@ -2869,7 +2513,6 @@ function idiomHintAlreadySeen(): boolean {
     return false;
   }
 }
-
 function markIdiomHintSeen(): void {
   try {
     window.localStorage.setItem(IDIOM_HINT_STORAGE_KEY, "1");
@@ -2877,7 +2520,6 @@ function markIdiomHintSeen(): void {
     // 저장이 막혀 있어도 이번 판 안내는 정상 동작한다.
   }
 }
-
 /**
  * 성어 탭을 세 번 맥동시켜 "더 볼 곳"을 짚는다.
  *
@@ -2894,10 +2536,9 @@ function pulseIdiomGoalTab(): void {
     window.setTimeout(() => tab.classList.remove("is-hint-pulsing"), 2600);
   }
 }
-
 function maybeShowIdiomHint(target: IdiomDefinition | undefined): void {
   if (idiomHintHandled || !target) return;
-  if (engine.idiomProgress(target.id).owned < 2) return;
+  if (ctx.engine.idiomProgress(target.id).owned < 2) return;
   idiomHintHandled = true;
   if (idiomHintAlreadySeen()) return;
   markIdiomHintSeen();
@@ -2907,34 +2548,33 @@ function maybeShowIdiomHint(target: IdiomDefinition | undefined): void {
   window.setTimeout(() => toast.classList.remove("toast--idiom-hint"), 2000);
   pulseIdiomGoalTab();
 }
-
 function renderIdiomHud(): void {
-  const target = engine.currentIdiomTarget();
-  const ownedSignature = engine.state.towers.map((tower) => tower.char).sort().join("");
+  const target = ctx.engine.currentIdiomTarget();
+  const ownedSignature = ctx.engine.state.towers.map((tower) => tower.char).sort().join("");
   // R18: 기록(id)과 활성 여부가 함께 열쇠에 들어가야 해제·재발동이 즉시 반영된다.
-  const sealSignature = engine.state.idiomSeals.map((seal) => `${seal.idiomId}:${seal.active ? "on" : "off"}`).join(",");
+  const sealSignature = ctx.engine.state.idiomSeals.map((seal) => `${seal.idiomId}:${seal.active ? "on" : "off"}`).join(",");
   const key = sealSignature + "|" + (target?.id ?? "done") + "|" + ownedSignature;
-  if (key === idiomRenderKey) return;
-  idiomRenderKey = key;
+  if (key === ctx.idiomRenderKey) return;
+  ctx.idiomRenderKey = key;
   maybeShowIdiomHint(target);
   // 카운트는 "이 런에서 봉인해 본" 달성 기록이다. 지금 몇 구가 살아 있는지는 상태 줄이 말한다.
-  must<HTMLElement>("#idiom-count").textContent = String(engine.state.idiomSeals.length) + " / " + String(engine.idioms().length);
-  must<HTMLElement>("#idiom-tab-count").textContent = String(engine.state.idiomSeals.length) + "/" + String(engine.idioms().length);
+  must<HTMLElement>("#idiom-count").textContent = String(ctx.engine.state.idiomSeals.length) + " / " + String(ctx.engine.idioms().length);
+  must<HTMLElement>("#idiom-tab-count").textContent = String(ctx.engine.state.idiomSeals.length) + "/" + String(ctx.engine.idioms().length);
   renderIdiomSealStatus();
   const hud = must<HTMLElement>("#idiom-hud");
   if (!target) {
-    const activeCount = engine.activeIdiomSeals().length;
+    const activeCount = ctx.engine.activeIdiomSeals().length;
     hud.classList.add("idiom-hud--complete");
-    must<HTMLElement>("#idiom-glyphs").innerHTML = engine.idioms().map((idiom) => `<i class="${engine.isIdiomSealActive(idiom.id) ? "is-owned" : ""}" style="--idiom:${idiom.color}">四</i>`).join("");
+    must<HTMLElement>("#idiom-glyphs").innerHTML = ctx.engine.idioms().map((idiom) => `<i class="${ctx.engine.isIdiomSealActive(idiom.id) ? "is-owned" : ""}" style="--idiom:${idiom.color}">四</i>`).join("");
     must<HTMLElement>("#idiom-name").textContent = "사자성어 전서 완성";
     must<HTMLElement>("#idiom-meaning").textContent = "각 성구의 보너스는 네 자령이 그 줄을 지키는 동안만 발동합니다.";
-    must<HTMLElement>("#idiom-bonus").textContent = `발동 중 ${activeCount} / ${engine.idioms().length}구`;
-    must<HTMLElement>("#idiom-hint").textContent = activeCount === engine.idioms().length ? "四句成陣 · 모든 봉인 발동 중" : "흩어진 줄을 다시 세우면 재발동합니다";
+    must<HTMLElement>("#idiom-bonus").textContent = `발동 중 ${activeCount} / ${ctx.engine.idioms().length}구`;
+    must<HTMLElement>("#idiom-hint").textContent = activeCount === ctx.engine.idioms().length ? "四句成陣 · 모든 봉인 발동 중" : "흩어진 줄을 다시 세우면 재발동합니다";
     return;
   }
   hud.classList.remove("idiom-hud--complete");
   const counts = new Map<string, number>();
-  for (const tower of engine.state.towers) counts.set(tower.char, (counts.get(tower.char) ?? 0) + 1);
+  for (const tower of ctx.engine.state.towers) counts.set(tower.char, (counts.get(tower.char) ?? 0) + 1);
   const used = new Map<string, number>();
   const glyphs = [...target.chars].map((char, index) => {
     const occurrence = (used.get(char) ?? 0) + 1;
@@ -2948,14 +2588,13 @@ function renderIdiomHud(): void {
   must<HTMLElement>("#idiom-bonus").textContent = target.bonus.label;
   must<HTMLElement>("#idiom-bonus").style.setProperty("--idiom", target.color);
   const missingCraft = [...new Set(target.chars)]
-    .map((char) => engine.catalog.definitions.get(char))
+    .map((char) => ctx.engine.catalog.definitions.get(char))
     .find((definition) => definition?.acquisition === "craft" && (counts.get(definition.char) ?? 0) === 0);
   must<HTMLElement>("#idiom-hint").textContent = missingCraft
     ? "먼저 " + missingCraft.char + " = " + missingCraft.parents.join("+") + " 조합"
     // 한 줄에 담기는 길이라야 말줄임 없이 보인다. "배치"는 화살표가 대신한다.
     : "한 줄에 1→2→3→4 → 자동 발동";
 }
-
 /**
  * 성어 탭 봉인 상태 줄 — R18.
  *
@@ -2965,7 +2604,7 @@ function renderIdiomHud(): void {
  */
 function renderIdiomSealStatus(): void {
   const status = must<HTMLElement>("#idiom-seal-status");
-  const seals = engine.state.idiomSeals;
+  const seals = ctx.engine.state.idiomSeals;
   status.hidden = seals.length === 0;
   if (seals.length === 0) {
     status.innerHTML = "";
@@ -2973,40 +2612,29 @@ function renderIdiomSealStatus(): void {
   }
   status.innerHTML = seals
     .map((seal) => {
-      const idiom = idiomById(engine.state.region, seal.idiomId);
+      const idiom = idiomById(ctx.engine.state.region, seal.idiomId);
       if (!idiom) return "";
       const label = seal.active ? "발동 중" : "봉인 이력 · 지금은 흩어짐";
       return `<div class="idiom-seal-row ${seal.active ? "is-live" : "is-scattered"}" style="--idiom:${idiom.color}"><b>${escapeHtml(idiom.chars)}</b><span>${escapeHtml(idiom.reading)}</span><em>${escapeHtml(shortIdiomBonusLabel(idiom.bonus.label))}</em><mark>${label}</mark></div>`;
     })
     .join("");
 }
-
-/**
- * 발동 중 성어 스택 — 스펙 6라운드 D.
- *
- * 봉인한 성어의 효과는 런 내내 남는데, 지금까지 그 사실은 성어 탭을 열어야만
- * 보였다. 전장 좌측에 상시 배지로 세워 두고, 배지를 누르면 그 네 칸으로
- * 카메라를 옮겨 "어디에 있는 무엇인지"까지 이어 준다.
- */
-let activeIdiomsRenderKey = "init";
-
 /** `모든 자령 사거리 +12` → `사거리 +12`. 12px 배지 한 줄에 담기게 주어를 턴다. */
 function shortIdiomBonusLabel(label: string): string {
   return label.replace(/^모든 자령 /, "").replace(/^모든 적 /, "적 ").replace(/^합성할 때마다 /, "합성 ");
 }
-
 function renderActiveIdioms(): void {
   // R18: 스택은 "지금 발동 중"만 센다. 흩어진 봉인은 기록으로만 남아 성어 탭에 보인다.
-  const seals = engine.activeIdiomSeals();
+  const seals = ctx.engine.activeIdiomSeals();
   const key = seals.map((seal) => seal.idiomId).join(",");
-  if (key === activeIdiomsRenderKey) return;
-  activeIdiomsRenderKey = key;
+  if (key === ctx.activeIdiomsRenderKey) return;
+  ctx.activeIdiomsRenderKey = key;
   const stack = must<HTMLElement>("#active-idioms");
   // 성어 목표는 다섯이라 그 이상은 생길 수 없지만, 전장을 덮지 않도록 못을 박는다.
   const visible = seals.slice(0, 5);
   stack.innerHTML = visible
     .map((seal) => {
-      const idiom = idiomById(engine.state.region, seal.idiomId);
+      const idiom = idiomById(ctx.engine.state.region, seal.idiomId);
       if (!idiom) return "";
       const bonus = shortIdiomBonusLabel(idiom.bonus.label);
       return `<button type="button" class="active-idiom" data-active-idiom="${escapeHtml(seal.idiomId)}" style="--idiom:${idiom.color}" title="${escapeHtml(idiom.reading)} · ${escapeHtml(idiom.bonus.label)} — 눌러서 봉인 칸으로 이동" aria-label="${escapeHtml(idiom.reading)} 봉인 · ${escapeHtml(idiom.bonus.label)} · 눌러서 해당 네 칸으로 이동"><b>${escapeHtml(idiom.chars)}</b><span>${escapeHtml(bonus)}</span></button>`;
@@ -3014,7 +2642,6 @@ function renderActiveIdioms(): void {
     .join("");
   stack.classList.toggle("is-empty", visible.length === 0);
 }
-
 /** 여러 칸의 무게중심으로 카메라를 옮긴다. 발동 성어 배지가 이걸 쓴다. */
 function focusMapOnCells(cells: readonly number[]): void {
   const points = cells.map((cell) => BOARD_CELLS[cell]).filter((point): point is Point => Boolean(point));
@@ -3023,11 +2650,10 @@ function focusMapOnCells(cells: readonly number[]): void {
     (total, point) => ({ x: total.x + point.x / points.length, y: total.y + point.y / points.length }),
     { x: 0, y: 0 }
   );
-  mapOffset = { x: WORLD_WIDTH / 2 - center.x * mapZoom, y: WORLD_HEIGHT / 2 - center.y * mapZoom };
+  ctx.mapOffset = { x: WORLD_WIDTH / 2 - center.x * ctx.mapZoom, y: WORLD_HEIGHT / 2 - center.y * ctx.mapZoom };
   constrainMapCamera();
   syncMapZoomControl();
 }
-
 const ROLE_STRATEGY: Record<HanziDefinition["combat"]["role"], string> = {
   rapid: "공격 간격이 짧아 빠른 적과 단일 잔여 적을 정리하기 좋습니다.",
   burst: "충전 뒤 큰 피해를 주므로 우두머리전과 고체력 적에게 집중 배치하세요.",
@@ -3036,10 +2662,9 @@ const ROLE_STRATEGY: Record<HanziDefinition["combat"]["role"], string> = {
   support: "주변 자령의 공격 흐름을 보조합니다. 여러 자령이 닿는 중앙이 유리합니다.",
   economy: "전투 중 엽전을 보충해 소환·연구를 앞당깁니다. 초중반 가치가 높습니다."
 };
-
 function definitionMatches(definition: HanziDefinition, normalized: string): boolean {
   if (!normalized) return true;
-  const learning = learningInfo(engine.state.region, definition.char);
+  const learning = learningInfo(ctx.engine.state.region, definition.char);
   const entry = dexEntryForDefinition(definition);
   const explanation = koreanMeaningExplanation(definition.char, learning.short, learning.meaning);
   const abilities = definition.combat.abilities;
@@ -3066,24 +2691,16 @@ function definitionMatches(definition: HanziDefinition, normalized: string): boo
   ].join(" ").toLowerCase();
   return searchable.includes(normalized.toLowerCase());
 }
-
-function spriteStyle(definition: HanziDefinition): string {
-  const visual = jaryeongVisualFor(definition.char, definition.wuxing, engine.state.region);
-  return visualBackgroundStyle(visual);
-}
-
 function synthesisTierBadge(tier: Exclude<SynthesisTierFilter, "all">): string {
   const starTier = tier === UNCOMBINABLE_STAGE_ONE ? 1 : tier;
   const accessible = synthesisTierAccessibleLabel(starTier);
   return `<span class="codex-tier-stars" aria-label="${accessible}" title="${accessible}">${synthesisTierFilterLabel(starTier)}</span>`;
 }
-
 function independentBadge(independent: boolean): string {
   return independent ? '<span class="codex-independent-badge" aria-label="상위 조합에 쓰이지 않는 독립 자령" title="상위 조합에 쓰이지 않는 독립 자령">독립</span>' : "";
 }
-
 function setCodexMode(mode: CodexMode): void {
-  codexMode = mode;
+  ctx.codexMode = mode;
   codexDialog.classList.add("is-jaryeong-dex");
   document.querySelectorAll<HTMLButtonElement>("[data-codex-mode]").forEach((button) => {
     const selected = button.dataset.codexMode === mode;
@@ -3102,17 +2719,13 @@ function setCodexMode(mode: CodexMode): void {
       : "같은 진의 한 줄 — 가로·세로·대각선 — 에 네 글자를 순서대로 놓으면 해당 사자성어의 봉인 효과가 발동합니다. 역순도 인정합니다.";
   renderCodex(search.value);
 }
-
 function jaryeongDexImageUrl(entry: CheonjamunJaryeongDexEntry): string {
   return `${import.meta.env.BASE_URL}${entry.imagePath}`;
 }
-
 const CHEONJAMUN_SUPPLEMENTAL_CHARS = new Set(CHEONJAMUN_SUPPLEMENTAL_CHARACTERS.map((entry) => entry.c));
-
 function dexEntryForDefinition(definition: HanziDefinition): CheonjamunJaryeongDexEntry | undefined {
-  return engine.state.region === "KR" ? CHEONJAMUN_JARYEONG_DEX_BY_HANJA.get(definition.char) : undefined;
+  return ctx.engine.state.region === "KR" ? CHEONJAMUN_JARYEONG_DEX_BY_HANJA.get(definition.char) : undefined;
 }
-
 /**
  * 도감 카드·상세의 번호 라벨.
  *
@@ -3127,61 +2740,57 @@ function codexNumberLabel(definition: HanziDefinition, entry: CheonjamunJaryeong
   if (CHEONJAMUN_SUPPLEMENTAL_CHARS.has(definition.char)) return "천자문 보유 자령";
   return definition.acquisition === "craft" ? "합성 전용 자령" : "추가 수록 자령";
 }
-
 function codexCardPortrait(definition: HanziDefinition, entry: CheonjamunJaryeongDexEntry | undefined): string {
-  const accessible = escapeHtml(`${definition.char} ${learningInfo(engine.state.region, definition.char).short} 자령 초상화`);
+  const accessible = escapeHtml(`${definition.char} ${learningInfo(ctx.engine.state.region, definition.char).short} 자령 초상화`);
   // 스프라이트는 안쪽 칸에 그린다 — 바깥 칸의 "우물" 배경이 !important 라
   // 같은 요소에 배경으로 얹으면 통째로 지워졌다(烈 빈 초상의 원인).
   return entry
     ? `<img src="${jaryeongDexImageUrl(entry)}" alt="${accessible}" width="104" height="104" loading="lazy">`
     : `<i class="codex-jaryeong-card-portrait" role="img" aria-label="${accessible}"><b class="codex-sprite-fill" style="${spriteStyle(definition)}"></b></i>`;
 }
-
 function codexDetailPortrait(definition: HanziDefinition, entry: CheonjamunJaryeongDexEntry | undefined): string {
-  const accessible = escapeHtml(`${definition.char} ${learningInfo(engine.state.region, definition.char).short} 자령 초상화`);
+  const accessible = escapeHtml(`${definition.char} ${learningInfo(ctx.engine.state.region, definition.char).short} 자령 초상화`);
   return entry
     ? `<img src="${jaryeongDexImageUrl(entry)}" alt="${accessible}" width="214" height="214">`
     : `<i class="codex-jaryeong-detail-sprite" role="img" aria-label="${accessible}"><b class="codex-sprite-fill" style="${spriteStyle(definition)}"></b></i>`;
 }
-
 function directAcquisitionLabel(definition: HanziDefinition, independent: boolean): string {
   if (definition.acquisition === "craft") return `${definition.parents.join(" + ")} → ${definition.char}`;
   return independent ? "직접 소환 · 독립" : "직접 소환 · 상위 조합 재료";
 }
-
 function renderCodexSynthesisFilters(
   definitions: HanziDefinition[],
   depths: Map<string, number>,
   uncombinableStageOne: ReadonlySet<string>
 ): void {
   const filters = must<HTMLElement>("#codex-synthesis-filters");
-  if (codexMode === "idioms") {
+  if (ctx.codexMode === "idioms") {
     filters.hidden = true;
     return;
   }
   filters.hidden = false;
-  filters.setAttribute("aria-label", codexMode === "hanzi" ? "오행과 별·독립 분류" : "합성 별 분류");
+  filters.setAttribute("aria-label", ctx.codexMode === "hanzi" ? "오행과 별·독립 분류" : "합성 별 분류");
 
   const elementCounts = new Map<Wuxing, number>(WUXING_ORDER.map((wuxing) => [wuxing, 0]));
   for (const definition of definitions) elementCounts.set(definition.wuxing, (elementCounts.get(definition.wuxing) ?? 0) + 1);
-  const elementControls = codexMode === "hanzi" ? [
+  const elementControls = ctx.codexMode === "hanzi" ? [
     '<span class="codex-filter-label">오행</span>',
-    `<button type="button" data-jaryeong-filter="all" class="${jaryeongDexFilter === "all" ? "is-active" : ""}" aria-pressed="${String(jaryeongDexFilter === "all")}">전체 <small>${definitions.length}</small></button>`,
-    ...WUXING_ORDER.map((wuxing) => `<button type="button" data-jaryeong-filter="${wuxing}" class="${jaryeongDexFilter === wuxing ? "is-active" : ""}" aria-pressed="${String(jaryeongDexFilter === wuxing)}" style="--filter-element:${ELEMENT_STYLES[wuxing].color}">${wuxing}<small>${elementCounts.get(wuxing) ?? 0}</small></button>`),
+    `<button type="button" data-jaryeong-filter="all" class="${ctx.jaryeongDexFilter === "all" ? "is-active" : ""}" aria-pressed="${String(ctx.jaryeongDexFilter === "all")}">전체 <small>${definitions.length}</small></button>`,
+    ...WUXING_ORDER.map((wuxing) => `<button type="button" data-jaryeong-filter="${wuxing}" class="${ctx.jaryeongDexFilter === wuxing ? "is-active" : ""}" aria-pressed="${String(ctx.jaryeongDexFilter === wuxing)}" style="--filter-element:${ELEMENT_STYLES[wuxing].color}">${wuxing}<small>${elementCounts.get(wuxing) ?? 0}</small></button>`),
     '<i class="codex-filter-divider" aria-hidden="true"></i>',
     '<span class="codex-filter-label">등급</span>'
   ] : [];
 
-  if (engine.state.mode === "casual" && codexMode !== "recipes") {
+  if (ctx.engine.state.mode === "casual" && ctx.codexMode !== "recipes") {
     const counts = new Map<CasualStar, number>();
     for (const definition of definitions) {
       const star = casualNaturalStar(definition.char) ?? 1;
       counts.set(star, (counts.get(star) ?? 0) + 1);
     }
-    if (codexSynthesisDepth !== "all" && (typeof codexSynthesisDepth !== "number" || !counts.has(codexSynthesisDepth as CasualStar))) codexSynthesisDepth = "all";
+    if (ctx.codexSynthesisDepth !== "all" && (typeof ctx.codexSynthesisDepth !== "number" || !counts.has(ctx.codexSynthesisDepth as CasualStar))) ctx.codexSynthesisDepth = "all";
     filters.innerHTML = [...elementControls,
-      `<button type="button" data-synthesis-depth="all" class="${codexSynthesisDepth === "all" ? "is-active" : ""}" aria-pressed="${String(codexSynthesisDepth === "all")}">모든 별 <small>${definitions.length}</small></button>`,
-      ...([...counts.entries()].sort(([left], [right]) => left - right).map(([star, count]) => `<button type="button" data-synthesis-depth="${star}" class="${codexSynthesisDepth === star ? "is-active" : ""}" aria-pressed="${String(codexSynthesisDepth === star)}" style="--codex-star:${CASUAL_STAR_COLORS[star]}">${star}★ <small>${count}</small></button>`))
+      `<button type="button" data-synthesis-depth="all" class="${ctx.codexSynthesisDepth === "all" ? "is-active" : ""}" aria-pressed="${String(ctx.codexSynthesisDepth === "all")}">모든 별 <small>${definitions.length}</small></button>`,
+      ...([...counts.entries()].sort(([left], [right]) => left - right).map(([star, count]) => `<button type="button" data-synthesis-depth="${star}" class="${ctx.codexSynthesisDepth === star ? "is-active" : ""}" aria-pressed="${String(ctx.codexSynthesisDepth === star)}" style="--codex-star:${CASUAL_STAR_COLORS[star]}">${star}★ <small>${count}</small></button>`))
     ].join("");
     return;
   }
@@ -3192,39 +2801,38 @@ function renderCodexSynthesisFilters(
     counts.set(depth, (counts.get(depth) ?? 0) + 1);
   }
   const independentCount = definitions.filter((definition) => uncombinableStageOne.has(definition.char)).length;
-  const validSelection = codexSynthesisDepth === "all"
-    || codexSynthesisDepth === UNCOMBINABLE_STAGE_ONE && independentCount > 0
-    || typeof codexSynthesisDepth === "number" && counts.has(codexSynthesisDepth);
-  if (!validSelection) codexSynthesisDepth = "all";
+  const validSelection = ctx.codexSynthesisDepth === "all"
+    || ctx.codexSynthesisDepth === UNCOMBINABLE_STAGE_ONE && independentCount > 0
+    || typeof ctx.codexSynthesisDepth === "number" && counts.has(ctx.codexSynthesisDepth);
+  if (!validSelection) ctx.codexSynthesisDepth = "all";
   const options = [...counts.entries()].sort(([left], [right]) => left - right);
   filters.innerHTML = [...elementControls,
-    `<button type="button" data-synthesis-depth="all" class="${codexSynthesisDepth === "all" ? "is-active" : ""}" aria-pressed="${String(codexSynthesisDepth === "all")}">모든 별 <small>${definitions.length}</small></button>`,
-    ...options.map(([depth, count]) => `<button type="button" data-synthesis-depth="${depth}" class="${codexSynthesisDepth === depth ? "is-active" : ""}" aria-pressed="${String(codexSynthesisDepth === depth)}">${synthesisTierBadge(depth)} <small>${count}</small></button>`),
-    ...(independentCount > 0 ? [`<button type="button" data-synthesis-depth="${UNCOMBINABLE_STAGE_ONE}" class="${codexSynthesisDepth === UNCOMBINABLE_STAGE_ONE ? "is-active" : ""}" aria-pressed="${String(codexSynthesisDepth === UNCOMBINABLE_STAGE_ONE)}">${independentBadge(true)} <small>${independentCount}</small></button>`] : [])
+    `<button type="button" data-synthesis-depth="all" class="${ctx.codexSynthesisDepth === "all" ? "is-active" : ""}" aria-pressed="${String(ctx.codexSynthesisDepth === "all")}">모든 별 <small>${definitions.length}</small></button>`,
+    ...options.map(([depth, count]) => `<button type="button" data-synthesis-depth="${depth}" class="${ctx.codexSynthesisDepth === depth ? "is-active" : ""}" aria-pressed="${String(ctx.codexSynthesisDepth === depth)}">${synthesisTierBadge(depth)} <small>${count}</small></button>`),
+    ...(independentCount > 0 ? [`<button type="button" data-synthesis-depth="${UNCOMBINABLE_STAGE_ONE}" class="${ctx.codexSynthesisDepth === UNCOMBINABLE_STAGE_ONE ? "is-active" : ""}" aria-pressed="${String(ctx.codexSynthesisDepth === UNCOMBINABLE_STAGE_ONE)}">${independentBadge(true)} <small>${independentCount}</small></button>`] : [])
   ].join("");
 }
-
 function renderCodex(query = ""): void {
   const normalized = query.trim();
   const list = must<HTMLElement>("#codex-list");
-  must<HTMLElement>("#codex-region").textContent = engine.state.region === "KR" ? "한국" : REGION_META[engine.state.region].title;
+  must<HTMLElement>("#codex-region").textContent = ctx.engine.state.region === "KR" ? "한국" : REGION_META[ctx.engine.state.region].title;
 
-  if (codexMode === "idioms") {
+  if (ctx.codexMode === "idioms") {
     renderCodexSynthesisFilters([], new Map(), new Set());
-    const activeIds = new Set(engine.idioms().map((idiom) => idiom.id));
-    const idioms = engine.allIdioms().filter((idiom) => !normalized || [idiom.chars, idiom.reading, idiom.meaning, idiom.bonus.label].join(" ").includes(normalized));
-    must<HTMLElement>("#codex-summary").textContent = `성어 ${idioms.length}/${engine.allIdioms().length} · 이번 런 목표 ${engine.idioms().length}개`;
+    const activeIds = new Set(ctx.engine.idioms().map((idiom) => idiom.id));
+    const idioms = ctx.engine.allIdioms().filter((idiom) => !normalized || [idiom.chars, idiom.reading, idiom.meaning, idiom.bonus.label].join(" ").includes(normalized));
+    must<HTMLElement>("#codex-summary").textContent = `성어 ${idioms.length}/${ctx.engine.allIdioms().length} · 이번 런 목표 ${ctx.engine.idioms().length}개`;
     list.className = "codex-list codex-list--idioms";
     list.innerHTML = idioms.map((idiom) => {
-      const sealed = engine.state.idiomSeals.some((seal) => seal.idiomId === idiom.id);
+      const sealed = ctx.engine.state.idiomSeals.some((seal) => seal.idiomId === idiom.id);
       const active = activeIds.has(idiom.id);
-      const selected = idiom.id === selectedCodexIdiomId;
+      const selected = idiom.id === ctx.selectedCodexIdiomId;
       return `<button type="button" data-codex-idiom="${idiom.id}" class="codex-idiom-card ${sealed ? "is-discovered" : ""} ${active ? "is-featured" : ""} ${selected ? "is-selected" : ""}" style="--codex:${idiom.color}" aria-current="${String(selected)}"><b>${idiom.chars}</b><span>${idiom.reading}</span><small>${active ? "이번 런 · " : ""}${idiom.bonus.label}</small></button>`;
     }).join("") || '<p class="codex-empty">검색 결과가 없습니다.</p>';
     // 상세에 뜬 성어와 목록의 선택 표시를 항상 같은 것으로 맞춘다.
-    const shown = idioms.find((idiom) => idiom.id === selectedCodexIdiomId) ?? idioms[0];
-    if (shown && shown.id !== selectedCodexIdiomId) {
-      selectedCodexIdiomId = shown.id;
+    const shown = idioms.find((idiom) => idiom.id === ctx.selectedCodexIdiomId) ?? idioms[0];
+    if (shown && shown.id !== ctx.selectedCodexIdiomId) {
+      ctx.selectedCodexIdiomId = shown.id;
       const card = list.querySelector<HTMLButtonElement>(`[data-codex-idiom="${shown.id}"]`);
       card?.classList.add("is-selected");
       card?.setAttribute("aria-current", "true");
@@ -3233,69 +2841,69 @@ function renderCodex(query = ""): void {
     return;
   }
 
-  const synthesisDepths = buildSynthesisDepths(engine.catalog.definitions.values());
-  const uncombinableStageOne = buildUncombinableStageOneChars(engine.catalog.definitions.values());
-  let definitions = codexMode === "recipes" ? [...engine.catalog.recipes] : [...engine.catalog.definitions.values()];
+  const synthesisDepths = buildSynthesisDepths(ctx.engine.catalog.definitions.values());
+  const uncombinableStageOne = buildUncombinableStageOneChars(ctx.engine.catalog.definitions.values());
+  let definitions = ctx.codexMode === "recipes" ? [...ctx.engine.catalog.recipes] : [...ctx.engine.catalog.definitions.values()];
   renderCodexSynthesisFilters(definitions, synthesisDepths, uncombinableStageOne);
-  if (codexMode === "hanzi" && jaryeongDexFilter !== "all") definitions = definitions.filter((definition) => definition.wuxing === jaryeongDexFilter);
-  if (codexSynthesisDepth !== "all") definitions = definitions.filter((definition) => engine.state.mode === "casual" && codexMode !== "recipes"
-    ? casualNaturalStar(definition.char) === codexSynthesisDepth
-    : codexSynthesisDepth === UNCOMBINABLE_STAGE_ONE
+  if (ctx.codexMode === "hanzi" && ctx.jaryeongDexFilter !== "all") definitions = definitions.filter((definition) => definition.wuxing === ctx.jaryeongDexFilter);
+  if (ctx.codexSynthesisDepth !== "all") definitions = definitions.filter((definition) => ctx.engine.state.mode === "casual" && ctx.codexMode !== "recipes"
+    ? casualNaturalStar(definition.char) === ctx.codexSynthesisDepth
+    : ctx.codexSynthesisDepth === UNCOMBINABLE_STAGE_ONE
       ? uncombinableStageOne.has(definition.char)
-      : (synthesisDepths.get(definition.char) ?? 1) === codexSynthesisDepth
+      : (synthesisDepths.get(definition.char) ?? 1) === ctx.codexSynthesisDepth
   );
   definitions = definitions.filter((definition) => definitionMatches(definition, normalized));
   definitions.sort((left, right) => {
-    if (codexMode === "hanzi" && engine.state.region === "KR") {
+    if (ctx.codexMode === "hanzi" && ctx.engine.state.region === "KR") {
       const leftNumber = CHEONJAMUN_JARYEONG_DEX_BY_HANJA.get(left.char)?.number ?? Number.MAX_SAFE_INTEGER;
       const rightNumber = CHEONJAMUN_JARYEONG_DEX_BY_HANJA.get(right.char)?.number ?? Number.MAX_SAFE_INTEGER;
       if (leftNumber !== rightNumber) return leftNumber - rightNumber;
     }
-    return engine.state.mode === "casual" && codexMode !== "recipes"
+    return ctx.engine.state.mode === "casual" && ctx.codexMode !== "recipes"
       ? (casualNaturalStar(left.char) ?? 1) - (casualNaturalStar(right.char) ?? 1) || (casualStrokeCount(left.char) ?? 0) - (casualStrokeCount(right.char) ?? 0) || left.char.localeCompare(right.char, "ko")
       : (synthesisDepths.get(left.char) ?? 0) - (synthesisDepths.get(right.char) ?? 0) || left.stage - right.stage || left.char.localeCompare(right.char, "ko");
   });
   const selectedDefinition = definitions.find((definition) => definition.char === normalized)
-    ?? definitions.find((definition) => definition.char === selectedCodexChar)
+    ?? definitions.find((definition) => definition.char === ctx.selectedCodexChar)
     ?? definitions[0]
-    ?? engine.catalog.definitions.get(engine.state.targetChar);
-  selectedCodexChar = selectedDefinition?.char ?? "";
-  list.className = codexMode === "recipes" ? "codex-list codex-list--recipes" : "codex-list codex-list--jaryeong";
+    ?? ctx.engine.catalog.definitions.get(ctx.engine.state.targetChar);
+  ctx.selectedCodexChar = selectedDefinition?.char ?? "";
+  list.className = ctx.codexMode === "recipes" ? "codex-list codex-list--recipes" : "codex-list codex-list--jaryeong";
 
-  if (codexMode === "recipes") {
-    const depthSummary = codexSynthesisDepth === "all"
+  if (ctx.codexMode === "recipes") {
+    const depthSummary = ctx.codexSynthesisDepth === "all"
       ? "전체 단계"
-      : codexSynthesisDepth === UNCOMBINABLE_STAGE_ONE
+      : ctx.codexSynthesisDepth === UNCOMBINABLE_STAGE_ONE
         ? "독립 자령"
-        : synthesisTierFilterLabel(codexSynthesisDepth);
-    must<HTMLElement>("#codex-summary").textContent = `조합 ${definitions.length.toLocaleString("ko-KR")}/${engine.catalog.recipes.length.toLocaleString("ko-KR")}식 · 재료 → 결과 순서 · ${depthSummary}`;
+        : synthesisTierFilterLabel(ctx.codexSynthesisDepth);
+    must<HTMLElement>("#codex-summary").textContent = `조합 ${definitions.length.toLocaleString("ko-KR")}/${ctx.engine.catalog.recipes.length.toLocaleString("ko-KR")}식 · 재료 → 결과 순서 · ${depthSummary}`;
     list.innerHTML = definitions.map((definition) => {
       const depth = synthesisDepths.get(definition.char) ?? 1;
-      const selected = definition.char === selectedCodexChar;
-      return `<button type="button" data-codex-recipe="${definition.char}" class="codex-recipe-card ${selected ? "is-selected" : ""}" style="--codex:${ELEMENT_STYLES[definition.wuxing].color}" aria-current="${String(selected)}"><span class="codex-recipe-formula">${definition.parents.map((parent) => `<i>${parent}</i>`).join("<em>+</em>")}<em>→</em><b>${definition.char}</b></span><span>${escapeHtml(learningInfo(engine.state.region, definition.char).short)}</span><small>${synthesisTierBadge(depth)} · ${STAGE_NAMES[definition.stage]} · ${hasActiveSkills(definition) ? definition.combat.abilities.role.name : "기본 공격"}</small></button>`;
+      const selected = definition.char === ctx.selectedCodexChar;
+      return `<button type="button" data-codex-recipe="${definition.char}" class="codex-recipe-card ${selected ? "is-selected" : ""}" style="--codex:${ELEMENT_STYLES[definition.wuxing].color}" aria-current="${String(selected)}"><span class="codex-recipe-formula">${definition.parents.map((parent) => `<i>${parent}</i>`).join("<em>+</em>")}<em>→</em><b>${definition.char}</b></span><span>${escapeHtml(learningInfo(ctx.engine.state.region, definition.char).short)}</span><small>${synthesisTierBadge(depth)} · ${STAGE_NAMES[definition.stage]} · ${hasActiveSkills(definition) ? definition.combat.abilities.role.name : "기본 공격"}</small></button>`;
     }).join("");
   } else {
     const independentShown = definitions.filter((definition) => uncombinableStageOne.has(definition.char)).length;
-    const discoveredThisRun = new Set(engine.state.discoveredChars);
-    must<HTMLElement>("#codex-summary").textContent = `자령 ${definitions.length.toLocaleString("ko-KR")}/${engine.catalog.definitions.size.toLocaleString("ko-KR")} · 독립 ${independentShown.toLocaleString("ko-KR")} · 이번 런 발견 ${discoveredThisRun.size.toLocaleString("ko-KR")}`;
+    const discoveredThisRun = new Set(ctx.engine.state.discoveredChars);
+    must<HTMLElement>("#codex-summary").textContent = `자령 ${definitions.length.toLocaleString("ko-KR")}/${ctx.engine.catalog.definitions.size.toLocaleString("ko-KR")} · 독립 ${independentShown.toLocaleString("ko-KR")} · 이번 런 발견 ${discoveredThisRun.size.toLocaleString("ko-KR")}`;
     list.innerHTML = definitions.map((definition) => {
-      const learning = learningInfo(engine.state.region, definition.char);
+      const learning = learningInfo(ctx.engine.state.region, definition.char);
       const entry = dexEntryForDefinition(definition);
       const depth = synthesisDepths.get(definition.char) ?? 1;
       const independent = uncombinableStageOne.has(definition.char);
       const naturalStar = casualNaturalStar(definition.char) ?? 1;
-      const selected = definition.char === selectedCodexChar;
+      const selected = definition.char === ctx.selectedCodexChar;
       const explanation = koreanMeaningExplanation(definition.char, learning.short, learning.meaning);
       const numberLabel = codexNumberLabel(definition, entry);
       const found = discoveredThisRun.has(definition.char);
-      const progression = engine.state.mode === "casual" ? `<span class="codex-tier-stars">${"★".repeat(naturalStar)}</span>` : synthesisTierBadge(depth);
+      const progression = ctx.engine.state.mode === "casual" ? `<span class="codex-tier-stars">${"★".repeat(naturalStar)}</span>` : synthesisTierBadge(depth);
       return `<button type="button" data-codex-char="${definition.char}" class="codex-jaryeong-card ${selected ? "is-selected" : ""} ${found ? "is-found" : ""}" style="--codex:${ELEMENT_STYLES[definition.wuxing].color}" aria-current="${String(selected)}" aria-label="${escapeHtml(`${numberLabel} ${definition.char} ${learning.short} ${definition.wuxing}행${found ? " · 이번 런 발견" : ""}`)}">
         <span class="codex-jaryeong-number">${numberLabel}</span>
         ${found ? '<mark class="codex-found-mark">이번 런 발견</mark>' : ""}
         ${codexCardPortrait(definition, entry)}
         <span class="codex-jaryeong-copy">
           <span class="codex-jaryeong-identity"><b>${definition.char}</b><strong>${escapeHtml(learning.short)}</strong><i>${definition.wuxing}</i></span>
-          <span class="codex-jaryeong-badges">${progression}${engine.state.mode === "standard" ? independentBadge(independent) : ""}<em>${escapeHtml(definition.combat.roleLabel)}</em></span>
+          <span class="codex-jaryeong-badges">${progression}${ctx.engine.state.mode === "standard" ? independentBadge(independent) : ""}<em>${escapeHtml(definition.combat.roleLabel)}</em></span>
           <span class="codex-jaryeong-category">${escapeHtml(entry?.category ?? `${ELEMENT_STYLES[definition.wuxing].name}행 자령`)} · ${escapeHtml(explanation.plainMeaning)}</span>
           <small class="codex-jaryeong-recipe">조합 · ${escapeHtml(directAcquisitionLabel(definition, independent))}</small>
         </span>
@@ -3305,14 +2913,13 @@ function renderCodex(query = ""): void {
   if (definitions.length === 0) list.innerHTML = '<p class="codex-empty">검색 결과가 없습니다.</p>';
   renderCodexDetail(selectedDefinition);
 }
-
 function recipeStepsFor(char: string): HanziDefinition[] {
   const steps: HanziDefinition[] = [];
   const visited = new Set<string>();
   const visit = (current: string): void => {
     if (visited.has(current)) return;
     visited.add(current);
-    const definition = engine.catalog.definitions.get(current);
+    const definition = ctx.engine.catalog.definitions.get(current);
     if (!definition) return;
     for (const parent of definition.parents) visit(parent);
     if (definition.acquisition === "craft") steps.push(definition);
@@ -3320,7 +2927,6 @@ function recipeStepsFor(char: string): HanziDefinition[] {
   visit(char);
   return steps;
 }
-
 function renderCodexDetail(definition: HanziDefinition | undefined): void {
   const detail = must<HTMLElement>("#codex-detail");
   if (!definition) {
@@ -3328,47 +2934,47 @@ function renderCodexDetail(definition: HanziDefinition | undefined): void {
     return;
   }
 
-  const learning = learningInfo(engine.state.region, definition.char);
+  const learning = learningInfo(ctx.engine.state.region, definition.char);
   const explanation = koreanMeaningExplanation(definition.char, learning.short, learning.meaning);
   const entry = dexEntryForDefinition(definition);
   const abilities = definition.combat.abilities;
   const naturalStar = casualNaturalStar(definition.char) ?? 1;
-  const activeSkills = engine.state.mode === "casual" ? naturalStar >= 2 : hasActiveSkills(definition);
+  const activeSkills = ctx.engine.state.mode === "casual" ? naturalStar >= 2 : hasActiveSkills(definition);
   const abilityList = activeSkills
     ? [abilities.semantic, abilities.role, abilities.lineage].filter((ability): ability is AbilitySpec => Boolean(ability))
     : [];
   const passiveList = activeSkills ? [abilities.element, abilities.graph] : [abilities.graph];
-  const children = engine.catalog.recipes
+  const children = ctx.engine.catalog.recipes
     .filter((candidate) => candidate.parents.includes(definition.char))
     .sort((left, right) => left.stage - right.stage)
     .slice(0, 12);
   const recipeSteps = recipeStepsFor(definition.char);
-  const synthesisDepths = buildSynthesisDepths(engine.catalog.definitions.values());
-  const uncombinableStageOne = buildUncombinableStageOneChars(engine.catalog.definitions.values());
+  const synthesisDepths = buildSynthesisDepths(ctx.engine.catalog.definitions.values());
+  const uncombinableStageOne = buildUncombinableStageOneChars(ctx.engine.catalog.definitions.values());
   const synthesisDepth = synthesisDepths.get(definition.char) ?? 1;
   const independent = uncombinableStageOne.has(definition.char);
   const synthesisTier = synthesisTierKey(definition, synthesisDepth, uncombinableStageOne);
-  const codexPower = engine.state.mode === "casual" ? CASUAL_STAR_POWER[naturalStar] : STAGE_MULTIPLIERS[definition.stage];
-  const progression = engine.state.mode === "casual"
+  const codexPower = ctx.engine.state.mode === "casual" ? CASUAL_STAR_POWER[naturalStar] : STAGE_MULTIPLIERS[definition.stage];
+  const progression = ctx.engine.state.mode === "casual"
     ? `<span class="codex-tier-stars" aria-label="${naturalStar}별">${"★".repeat(naturalStar)}</span>`
     : synthesisTierBadge(synthesisTier);
   const numberLabel = codexNumberLabel(definition, entry);
-  const acquisitionLabel = engine.state.mode === "casual"
+  const acquisitionLabel = ctx.engine.state.mode === "casual"
     ? "전 자령 직접 소환 · 같은 오행/별 3체 조합"
     : directAcquisitionLabel(definition, independent);
   const categoryLabel = entry?.category ?? `${ELEMENT_STYLES[definition.wuxing].name}행 자령`;
   const dexText = entry?.dexText
     ?? `${definition.char}의 뜻과 ${definition.wuxing}행 기운을 전투 역할로 풀어낸 자령입니다. 쉬운 훈 풀이와 조합 경로를 함께 확인하세요.`;
-  const progressionDetail = engine.state.mode === "casual"
+  const progressionDetail = ctx.engine.state.mode === "casual"
     ? `${naturalStar}★ · ${casualStrokeCount(definition.char) ?? "?"}획 · ${casualStarRangeLabel(naturalStar)}`
     : `${synthesisDepth}단 · ${STAGE_NAMES[definition.stage]}`;
-  const recipeMain = engine.state.mode === "casual"
+  const recipeMain = ctx.engine.state.mode === "casual"
     ? `<div class="recipe-guide-main"><span><b>${definition.wuxing}</b><small>${naturalStar}★ 소모</small></span><em>+</em><span><b>${definition.wuxing}</b><small>${naturalStar}★ 소모</small></span><em>+</em><span><b>${definition.wuxing}</b><small>${naturalStar}★ 소모</small></span><em>→</em><span class="is-result"><b>${Math.min(8, naturalStar + 1)}★</b><small>무작위 1기</small></span></div><p><b>안전 규칙</b> 3기가 모두 사라지고 같은 오행의 다음 별 글자 하나를 무작위로 얻습니다. 잠금·농축·목표·사자성어 자령은 소모 대상에서 빠지고, 소모할 3기를 카드에 미리 보여 준 뒤 실행합니다.</p>`
     : `<div class="recipe-guide-main">${definition.acquisition === "direct"
       ? `<span class="${independent ? "is-independent" : ""}"><b>${definition.char}</b><small>${independent ? "직접 소환 · 독립" : "직접 소환 · 상위 재료"}</small></span>`
-      : `${definition.parents.map((parent) => `<span><b>${parent}</b><small>${escapeHtml(learningInfo(engine.state.region, parent).short)}</small></span>`).join("<em>+</em>")}<em>→</em><span class="is-result"><b>${definition.char}</b><small>${escapeHtml(learning.short)}</small></span>`}</div>
+      : `${definition.parents.map((parent) => `<span><b>${parent}</b><small>${escapeHtml(learningInfo(ctx.engine.state.region, parent).short)}</small></span>`).join("<em>+</em>")}<em>→</em><span class="is-result"><b>${definition.char}</b><small>${escapeHtml(learning.short)}</small></span>`}</div>
       ${recipeSteps.length ? `<ol>${recipeSteps.map((step, index) => `<li><b>${index + 1}</b><span>${step.parents.join(" + ")} → <strong>${step.char}</strong></span></li>`).join("")}</ol>` : ""}
-      <p><b>이 글자로 이어지는 조합</b> ${children.length ? children.map((child) => `<button type="button" data-codex-char="${child.char}">${definition.char} → ${child.char} · ${escapeHtml(learningInfo(engine.state.region, child.char).short)}</button>`).join("") : independent ? "독립 자령이라 상위 조합에 쓰이지 않습니다." : "현재 직접 하위 조합이 없습니다."}</p>`;
+      <p><b>이 글자로 이어지는 조합</b> ${children.length ? children.map((child) => `<button type="button" data-codex-char="${child.char}">${definition.char} → ${child.char} · ${escapeHtml(learningInfo(ctx.engine.state.region, child.char).short)}</button>`).join("") : independent ? "독립 자령이라 상위 조합에 쓰이지 않습니다." : "현재 직접 하위 조합이 없습니다."}</p>`;
 
   detail.innerHTML = `
     <div class="codex-jaryeong-detail" style="--codex:${ELEMENT_STYLES[definition.wuxing].color}">
@@ -3388,7 +2994,7 @@ function renderCodexDetail(definition: HanziDefinition | undefined): void {
           </div>
           <div class="codex-progression-badges">
             ${progression}
-            ${engine.state.mode === "standard" ? independentBadge(independent) : ""}
+            ${ctx.engine.state.mode === "standard" ? independentBadge(independent) : ""}
             <span>${escapeHtml(progressionDetail)}</span>
           </div>
           <div class="codex-jaryeong-tags">
@@ -3436,58 +3042,51 @@ function renderCodexDetail(definition: HanziDefinition | undefined): void {
       </div>` : ""}
 
       <div class="codex-abilities">
-        ${activeSkills ? "" : `<article class="is-locked" style="--ability:#aeb9cc"><b>合</b><span><strong>${engine.state.mode === "casual" ? "1★ 기본 공격" : independent ? "독립 자령 기본 공격" : "1단 기본 공격"}</strong><small>${independent ? "상위 조합 없음" : "조합으로 기술 해금"}</small><em>${independent ? "별 등급과 독립 여부는 별개의 정보입니다. 이 자령은 1별이면서 상위 조합 재료로 쓰이지 않습니다." : engine.state.mode === "casual" ? "같은 오행·같은 별 자령 두 기를 재료로 써 2★가 되면 의미 기술과 역할 기술이 해금됩니다." : "상위 단계로 합성하면 의미 기술과 역할 기술이 해금됩니다."}</em></span></article>`}
+        ${activeSkills ? "" : `<article class="is-locked" style="--ability:#aeb9cc"><b>合</b><span><strong>${ctx.engine.state.mode === "casual" ? "1★ 기본 공격" : independent ? "독립 자령 기본 공격" : "1단 기본 공격"}</strong><small>${independent ? "상위 조합 없음" : "조합으로 기술 해금"}</small><em>${independent ? "별 등급과 독립 여부는 별개의 정보입니다. 이 자령은 1별이면서 상위 조합 재료로 쓰이지 않습니다." : ctx.engine.state.mode === "casual" ? "같은 오행·같은 별 자령 두 기를 재료로 써 2★가 되면 의미 기술과 역할 기술이 해금됩니다." : "상위 단계로 합성하면 의미 기술과 역할 기술이 해금됩니다."}</em></span></article>`}
         ${abilityList.map((ability) => `<article style="--ability:${ability.color}"><b>${ability.glyph}</b><span><strong>${escapeHtml(ability.name)}</strong><small>${escapeHtml(`${ability.trigger} · ${ability.summary}`)}</small><em>${escapeHtml(ability.description)}</em></span></article>`).join("")}
         ${passiveList.map((ability) => `<article class="is-passive" style="--ability:${ability.color}"><b>${ability.glyph}</b><span><strong>${escapeHtml(ability.name)}</strong><small>상시 특성 · ${escapeHtml(ability.summary)}</small><em>${escapeHtml(ability.description)}</em></span></article>`).join("")}
       </div>
 
       <section class="recipe-guide">
-        <h4>${engine.state.mode === "casual" ? "캐주얼 3체 조합" : "조합표 · 별과 독립은 별개"}</h4>
+        <h4>${ctx.engine.state.mode === "casual" ? "캐주얼 3체 조합" : "조합표 · 별과 독립은 별개"}</h4>
         ${recipeMain}
       </section>
       ${shell.dataset.devMode === "1" ? `<p class="combo-key">능력 조합 코드 · ${escapeHtml(abilities.comboKey)}</p>` : ""}
-      ${engine.state.mode === "casual" || definition.acquisition === "craft" ? `<button id="set-target-button" type="button" data-target-char="${definition.char}">이 한자를 목표로 지정</button>` : ""}
+      ${ctx.engine.state.mode === "casual" || definition.acquisition === "craft" ? `<button id="set-target-button" type="button" data-target-char="${definition.char}">이 한자를 목표로 지정</button>` : ""}
     </div>
   `;
 }
 function runInventorySortLabel(sort: RunInventorySort): string {
-  return sort === "recent" ? "획득순" : sort === "element" ? "오행순" : engine.state.mode === "casual" ? "별순" : "단계순";
+  return sort === "recent" ? "획득순" : sort === "element" ? "오행순" : ctx.engine.state.mode === "casual" ? "별순" : "단계순";
 }
-
 function runInventoryGrade(tower: Tower): number {
-  return engine.state.mode === "casual" ? casualStarOf(tower) : tower.stage;
+  return ctx.engine.state.mode === "casual" ? casualStarOf(tower) : tower.stage;
 }
-
 function runInventoryGradeLabel(): string {
-  return engine.state.mode === "casual" ? "별" : "단계";
+  return ctx.engine.state.mode === "casual" ? "별" : "단계";
 }
-
 function runInventoryGradeBandOf(tower: Tower): RunInventoryGradeBandId | null {
   const grade = runInventoryGrade(tower);
   return RUN_INVENTORY_GRADE_BANDS.find((band) => grade >= band.min && grade <= band.max)?.id ?? null;
 }
-
 /** 자령 한 기를 한 줄로 요약한다 — 카드 title · 행동 바 안내가 같은 문장을 쓴다. */
 function runInventoryTowerSummary(tower: Tower): string {
-  const learning = learningInfo(engine.state.region, tower.char);
+  const learning = learningInfo(ctx.engine.state.region, tower.char);
   const star = casualStarOf(tower);
-  const progression = engine.state.mode === "casual" ? `${star}★ ${CASUAL_STAR_NAMES[star]}` : STAGE_NAMES[tower.stage];
+  const progression = ctx.engine.state.mode === "casual" ? `${star}★ ${CASUAL_STAR_NAMES[star]}` : STAGE_NAMES[tower.stage];
   return `${tower.char} ${learning.short} · ${tower.wuxing}행 · ${progression}`;
 }
-
 function runInventoryAbilityLine(tower: Tower): string {
-  if (!engine.towerHasActiveSkills(tower)) return engine.state.mode === "casual" ? "기본 공격 · 2★부터 기술 해금" : "기본 공격 · 합성 재료";
-  const ability = definitionForTower(engine.catalog, tower.definitionId).combat.abilities.semantic;
+  if (!ctx.engine.towerHasActiveSkills(tower)) return ctx.engine.state.mode === "casual" ? "기본 공격 · 2★부터 기술 해금" : "기본 공격 · 합성 재료";
+  const ability = definitionForTower(ctx.engine.catalog, tower.definitionId).combat.abilities.semantic;
   return `${ability.name} · ${ability.summary}`;
 }
-
 function essenceGainLabel(gains: Record<Wuxing, number>): string {
   return (Object.entries(gains) as Array<[Wuxing, number]>)
     .filter(([, amount]) => amount > 0)
     .map(([wuxing, amount]) => `${wuxing}+${amount}`)
     .join(" · ");
 }
-
 /*
  * R19 보관고 우측 미니 상세.
  *
@@ -3498,8 +3097,8 @@ function essenceGainLabel(gains: Record<Wuxing, number>): string {
  */
 function renderRunInventoryDetail(selected: Tower | undefined, stackSize: number): void {
   const detail = must<HTMLElement>("#run-inventory-detail");
-  if (runInventoryBulkMode) {
-    const quote = engine.quoteDismantle([...runInventoryBulkSelection], dismantleOptions());
+  if (ctx.runInventoryBulkMode) {
+    const quote = ctx.engine.quoteDismantle([...runInventoryBulkSelection], dismantleOptions());
     const gainLabel = essenceGainLabel(quote.gains);
     detail.innerHTML = `<div class="run-inventory-detail-bulk">
       <span class="run-inventory-detail-eyebrow">일괄 분해 바구니</span>
@@ -3514,12 +3113,12 @@ function renderRunInventoryDetail(selected: Tower | undefined, stackSize: number
     detail.innerHTML = `<p class="run-inventory-detail-empty"><b>카드를 고르세요</b><span>초상 · 훈음 · 오행 · 능력을 여기서 확인하고<br>아래 줄에서 배치·분해·잠금을 고릅니다</span></p>`;
     return;
   }
-  const visual = jaryeongVisualFor(selected.char, selected.wuxing, engine.state.region);
-  const learning = learningInfo(engine.state.region, selected.char);
+  const visual = jaryeongVisualFor(selected.char, selected.wuxing, ctx.engine.state.region);
+  const learning = learningInfo(ctx.engine.state.region, selected.char);
   const star = casualStarOf(selected);
-  const progression = engine.state.mode === "casual" ? `${star}★ ${CASUAL_STAR_NAMES[star]}` : `${selected.stage}단계 ${STAGE_NAMES[selected.stage]}`;
+  const progression = ctx.engine.state.mode === "casual" ? `${star}★ ${CASUAL_STAR_NAMES[star]}` : `${selected.stage}단계 ${STAGE_NAMES[selected.stage]}`;
   const concentration = selected.concentration ?? 0;
-  detail.innerHTML = `<div class="run-inventory-detail-card" style="--inventory-element:${ELEMENT_STYLES[selected.wuxing].color};--inventory-star:${engine.state.mode === "casual" ? CASUAL_STAR_COLORS[star] : STAGE_COLORS[selected.stage]}">
+  detail.innerHTML = `<div class="run-inventory-detail-card" style="--inventory-element:${ELEMENT_STYLES[selected.wuxing].color};--inventory-star:${ctx.engine.state.mode === "casual" ? CASUAL_STAR_COLORS[star] : STAGE_COLORS[selected.stage]}">
     <span class="run-inventory-detail-spirit" style="${visualBackgroundStyle(visual)}" aria-hidden="true"></span>
     <b>${escapeHtml(selected.char)}</b>
     <strong>${escapeHtml(learning.short)}</strong>
@@ -3528,7 +3127,6 @@ function renderRunInventoryDetail(selected: Tower | undefined, stackSize: number
     <em>보관 ${stackSize}기${concentration > 0 ? ` · 농축 ${concentration}단계` : ""}${selected.locked ? " · 鎖 잠금" : ""}</em>
   </div>`;
 }
-
 /*
  * R19 행동 바.
  *
@@ -3545,14 +3143,14 @@ function renderRunInventoryActions(
 ): void {
   const bar = must<HTMLElement>("#run-inventory-actions");
   const bulkToggle = must<HTMLButtonElement>("#run-inventory-bulk-toggle");
-  bulkToggle.classList.toggle("is-on", runInventoryBulkMode);
-  bulkToggle.setAttribute("aria-pressed", String(runInventoryBulkMode));
-  bulkToggle.textContent = runInventoryBulkMode ? "일괄 모드 끄기" : "여러 개 선택";
-  must<HTMLElement>("#run-inventory-action-single").hidden = runInventoryBulkMode;
-  must<HTMLElement>("#run-inventory-action-bulk").hidden = !runInventoryBulkMode;
+  bulkToggle.classList.toggle("is-on", ctx.runInventoryBulkMode);
+  bulkToggle.setAttribute("aria-pressed", String(ctx.runInventoryBulkMode));
+  bulkToggle.textContent = ctx.runInventoryBulkMode ? "일괄 모드 끄기" : "여러 개 선택";
+  must<HTMLElement>("#run-inventory-action-single").hidden = ctx.runInventoryBulkMode;
+  must<HTMLElement>("#run-inventory-action-bulk").hidden = !ctx.runInventoryBulkMode;
 
-  if (runInventoryBulkMode) {
-    const quote = engine.quoteDismantle([...runInventoryBulkSelection], dismantleOptions());
+  if (ctx.runInventoryBulkMode) {
+    const quote = ctx.engine.quoteDismantle([...runInventoryBulkSelection], dismantleOptions());
     const gainLabel = essenceGainLabel(quote.gains);
     const confirm = must<HTMLButtonElement>("#run-inventory-bulk-dismantle");
     bar.classList.toggle("is-idle", quote.ids.length === 0);
@@ -3576,7 +3174,7 @@ function renderRunInventoryActions(
   deploy.title = selected ? "보관고를 걷고 전장 칸을 고르는 배치 모드로 넘어갑니다 (카드 더블클릭도 같은 길)" : "먼저 카드를 고르세요";
 
   const dismantle = must<HTMLButtonElement>("#run-inventory-dismantle");
-  const essence = selected ? engine.towerDismantleEssenceValue(selected) : 0;
+  const essence = selected ? ctx.engine.towerDismantleEssenceValue(selected) : 0;
   dismantle.disabled = !active || !dismantleReady;
   dismantle.textContent = !selected ? "분해" : dismantleReady ? `분해 +${essence}문기` : "분해 불가";
   dismantle.title = !selected
@@ -3595,7 +3193,6 @@ function renderRunInventoryActions(
   concentrate.disabled = !active || !selected;
   concentrate.title = selected ? "농축 공방을 열고 이 자령을 대상으로 지정합니다" : "먼저 카드를 고르세요";
 }
-
 /*
  * R14 보관고 → R19 관리 허브.
  *
@@ -3606,122 +3203,121 @@ function renderRunInventoryActions(
  * R19: 카드 클릭은 고르기까지고, 실제 행동은 아래 고정 줄이 맡는다.
  */
 function renderRunInventory(): void {
-  const active = engine.state.phase === "prep" || engine.state.phase === "combat";
+  const active = ctx.engine.state.phase === "prep" || ctx.engine.state.phase === "combat";
   // 담아 둔 자령이 분해·배치·합성으로 사라지면 바구니도 같이 비운다.
   for (const id of [...runInventoryBulkSelection]) {
-    if (!engine.state.inventoryTowers.some((tower) => tower.id === id)) runInventoryBulkSelection.delete(id);
+    if (!ctx.engine.state.inventoryTowers.some((tower) => tower.id === id)) runInventoryBulkSelection.delete(id);
   }
-  const selectedId = engine.state.selectedTowerId;
-  const key = engine.state.inventoryTowers.map((tower) => `${tower.id}:${tower.locked}:S${tower.casualStar ?? 0}:C${tower.concentration ?? 0}:${tower.concentrationPath ?? "-"}`).join("|")
-    + `|${selectedId ?? "none"}|${active ? "active" : "inactive"}|${engine.state.mode}|${runInventoryElementFilter ?? "all"}|${runInventoryGradeFilter ?? "all"}|${runInventorySort}`
-    + `|U${dismantleProtectsUnique ? 1 : 0}|B${runInventoryBulkMode ? 1 : 0}:${[...runInventoryBulkSelection].sort((left, right) => left - right).join(",")}`;
-  must<HTMLElement>("#run-inventory-count").textContent = String(engine.state.inventoryTowers.length);
-  if (key === runInventoryRenderKey) return;
-  runInventoryRenderKey = key;
+  const selectedId = ctx.engine.state.selectedTowerId;
+  const key = ctx.engine.state.inventoryTowers.map((tower) => `${tower.id}:${tower.locked}:S${tower.casualStar ?? 0}:C${tower.concentration ?? 0}:${tower.concentrationPath ?? "-"}`).join("|")
+    + `|${selectedId ?? "none"}|${active ? "active" : "inactive"}|${ctx.engine.state.mode}|${ctx.runInventoryElementFilter ?? "all"}|${ctx.runInventoryGradeFilter ?? "all"}|${ctx.runInventorySort}`
+    + `|U${ctx.dismantleProtectsUnique ? 1 : 0}|B${ctx.runInventoryBulkMode ? 1 : 0}:${[...runInventoryBulkSelection].sort((left, right) => left - right).join(",")}`;
+  must<HTMLElement>("#run-inventory-count").textContent = String(ctx.engine.state.inventoryTowers.length);
+  if (key === ctx.runInventoryRenderKey) return;
+  ctx.runInventoryRenderKey = key;
   const list = must<HTMLElement>("#run-inventory-list");
   const grouped = new Map<string, Tower[]>();
-  for (const tower of engine.state.inventoryTowers) {
-    const groupKey = engine.state.mode === "casual" ? `${tower.char}:${casualStarOf(tower)}` : tower.char;
+  for (const tower of ctx.engine.state.inventoryTowers) {
+    const groupKey = ctx.engine.state.mode === "casual" ? `${tower.char}:${casualStarOf(tower)}` : tower.char;
     grouped.set(groupKey, [...(grouped.get(groupKey) ?? []), tower]);
   }
-  must<HTMLElement>("#run-inventory-heading-count").textContent = `${engine.state.inventoryTowers.length}기 · ${grouped.size}종`;
+  must<HTMLElement>("#run-inventory-heading-count").textContent = `${ctx.engine.state.inventoryTowers.length}기 · ${grouped.size}종`;
   // 강화 제련소의 [유일 자령 보호] 토글과 같은 규칙으로 읽어야 한 화면 안에서
   // "여기선 보호, 저기선 분해 가능" 같은 어긋남이 생기지 않는다.
-  const cleanupAssessments = new Map(engine.cleanupAssessments(dismantleOptions()).map((assessment) => [assessment.towerId, assessment]));
-  const cleanupCandidates = engine.cleanupCandidates(8, true);
+  const cleanupAssessments = new Map(ctx.engine.cleanupAssessments(dismantleOptions()).map((assessment) => [assessment.towerId, assessment]));
+  const cleanupCandidates = ctx.engine.cleanupCandidates(8, true);
   must<HTMLButtonElement>("#cleanup-recommended-button").disabled = !active || cleanupCandidates.length === 0;
   must<HTMLButtonElement>("#cleanup-recommended-button").textContent = cleanupCandidates.length > 0 ? `정리 후보 ${cleanupCandidates.length}기 분해` : "보호 완료";
   const elementCounts = new Map<Wuxing, number>(WUXING_ORDER.map((wuxing) => [wuxing, 0]));
-  for (const tower of engine.state.inventoryTowers) elementCounts.set(tower.wuxing, (elementCounts.get(tower.wuxing) ?? 0) + 1);
+  for (const tower of ctx.engine.state.inventoryTowers) elementCounts.set(tower.wuxing, (elementCounts.get(tower.wuxing) ?? 0) + 1);
   must<HTMLElement>("#run-inventory-element-filters").innerHTML = WUXING_ORDER.map((wuxing) => {
-    const on = runInventoryElementFilter === wuxing;
+    const on = ctx.runInventoryElementFilter === wuxing;
     return `<button type="button" data-inventory-element="${wuxing}" class="${on ? "is-active" : ""}" aria-pressed="${String(on)}" title="${wuxing}행만 보기 (다시 누르면 전체)" style="--filter-element:${ELEMENT_STYLES[wuxing].color}">${wuxing}<small>${elementCounts.get(wuxing) ?? 0}</small></button>`;
   }).join("");
   const gradeCounts = new Map<RunInventoryGradeBandId, number>(RUN_INVENTORY_GRADE_BANDS.map((band) => [band.id, 0]));
-  for (const tower of engine.state.inventoryTowers) {
+  for (const tower of ctx.engine.state.inventoryTowers) {
     const band = runInventoryGradeBandOf(tower);
     if (band) gradeCounts.set(band, (gradeCounts.get(band) ?? 0) + 1);
   }
   const gradeLabel = runInventoryGradeLabel();
   must<HTMLElement>("#run-inventory-grade-filters").innerHTML = [
-    `<button type="button" data-inventory-grade="all" class="${runInventoryGradeFilter === null ? "is-active" : ""}" aria-pressed="${String(runInventoryGradeFilter === null)}" title="모든 ${gradeLabel} 보기">전체<small>${engine.state.inventoryTowers.length}</small></button>`,
+    `<button type="button" data-inventory-grade="all" class="${ctx.runInventoryGradeFilter === null ? "is-active" : ""}" aria-pressed="${String(ctx.runInventoryGradeFilter === null)}" title="모든 ${gradeLabel} 보기">전체<small>${ctx.engine.state.inventoryTowers.length}</small></button>`,
     ...RUN_INVENTORY_GRADE_BANDS.map((band) => {
-      const on = runInventoryGradeFilter === band.id;
+      const on = ctx.runInventoryGradeFilter === band.id;
       return `<button type="button" data-inventory-grade="${band.id}" class="${on ? "is-active" : ""}" aria-pressed="${String(on)}" title="${gradeLabel} ${band.label} 만 보기 (다시 누르면 전체)">${band.label}<small>${gradeCounts.get(band.id) ?? 0}</small></button>`;
     })
   ].join("");
   const sortButton = must<HTMLButtonElement>("#run-inventory-sort");
-  sortButton.textContent = runInventorySortLabel(runInventorySort);
-  sortButton.title = `정렬 · ${runInventorySortLabel(runInventorySort)} (눌러 전환)`;
-  const selectedTower = engine.state.inventoryTowers.find((tower) => tower.id === selectedId);
+  sortButton.textContent = runInventorySortLabel(ctx.runInventorySort);
+  sortButton.title = `정렬 · ${runInventorySortLabel(ctx.runInventorySort)} (눌러 전환)`;
+  const selectedTower = ctx.engine.state.inventoryTowers.find((tower) => tower.id === selectedId);
   const selectedStackSize = selectedTower
-    ? engine.state.inventoryTowers.filter((tower) => tower.char === selectedTower.char && (engine.state.mode !== "casual" || casualStarOf(tower) === casualStarOf(selectedTower))).length
+    ? ctx.engine.state.inventoryTowers.filter((tower) => tower.char === selectedTower.char && (ctx.engine.state.mode !== "casual" || casualStarOf(tower) === casualStarOf(selectedTower))).length
     : 0;
   renderRunInventoryDetail(selectedTower, selectedStackSize);
   renderRunInventoryActions(selectedTower, cleanupAssessments, active);
-  if (engine.state.inventoryTowers.length === 0) {
+  if (ctx.engine.state.inventoryTowers.length === 0) {
     list.innerHTML = '<div class="empty-run-inventory"><b>보관 중인 자령이 없습니다</b><span>상점에서 소환하세요</span><button type="button" data-inventory-goto-shop>상점으로</button></div>';
     return;
   }
   const visible = [...grouped.values()]
-    .filter((stack) => runInventoryElementFilter === null || stack[0]!.wuxing === runInventoryElementFilter)
-    .filter((stack) => runInventoryGradeFilter === null || runInventoryGradeBandOf(stack[0]!) === runInventoryGradeFilter);
+    .filter((stack) => ctx.runInventoryElementFilter === null || stack[0]!.wuxing === ctx.runInventoryElementFilter)
+    .filter((stack) => ctx.runInventoryGradeFilter === null || runInventoryGradeBandOf(stack[0]!) === ctx.runInventoryGradeFilter);
   if (visible.length === 0) {
-    const gradeBand = RUN_INVENTORY_GRADE_BANDS.find((band) => band.id === runInventoryGradeFilter);
-    const missing = [runInventoryElementFilter ? `${runInventoryElementFilter}행` : "", gradeBand ? `${gradeLabel} ${gradeBand.label}` : ""].filter(Boolean).join(" · ");
+    const gradeBand = RUN_INVENTORY_GRADE_BANDS.find((band) => band.id === ctx.runInventoryGradeFilter);
+    const missing = [ctx.runInventoryElementFilter ? `${ctx.runInventoryElementFilter}행` : "", gradeBand ? `${gradeLabel} ${gradeBand.label}` : ""].filter(Boolean).join(" · ");
     list.innerHTML = `<div class="empty-run-inventory"><b>${escapeHtml(missing)} 자령이 없습니다</b><span>칩을 다시 눌러 전체를 보세요</span></div>`;
     return;
   }
   const rank = (stack: Tower[]): number => Math.max(...stack.map((tower) => tower.id));
   list.innerHTML = visible.sort((left, right) => {
-    if (runInventorySort === "element") {
+    if (ctx.runInventorySort === "element") {
       const gap = WUXING_ORDER.indexOf(left[0]!.wuxing) - WUXING_ORDER.indexOf(right[0]!.wuxing);
       if (gap !== 0) return gap;
-    } else if (runInventorySort === "star") {
+    } else if (ctx.runInventorySort === "star") {
       const gap = runInventoryGrade(right[0]!) - runInventoryGrade(left[0]!);
       if (gap !== 0) return gap;
     }
     return rank(right) - rank(left);
   }).map((stack) => {
     const tower = selectedTower && stack.some((candidate) => candidate.id === selectedTower.id) ? selectedTower : stack.find((candidate) => !candidate.locked) ?? stack[0]!;
-    const visual = jaryeongVisualFor(tower.char, tower.wuxing, engine.state.region);
-    const learning = learningInfo(engine.state.region, tower.char);
-    const selected = tower.id === selectedId && !runInventoryBulkMode;
+    const visual = jaryeongVisualFor(tower.char, tower.wuxing, ctx.engine.state.region);
+    const learning = learningInfo(ctx.engine.state.region, tower.char);
+    const selected = tower.id === selectedId && !ctx.runInventoryBulkMode;
     const eligible = stack.filter((candidate) => cleanupAssessments.get(candidate.id)?.protected === false);
     const checked = eligible.filter((candidate) => runInventoryBulkSelection.has(candidate.id)).length;
     const concentration = Math.max(...stack.map((candidate) => candidate.concentration ?? 0));
     const star = casualStarOf(tower);
-    const progression = engine.state.mode === "casual" ? `${star}★ ${CASUAL_STAR_NAMES[star]}` : STAGE_NAMES[tower.stage];
-    const skill = engine.towerHasActiveSkills(tower) ? definitionForTower(engine.catalog, tower.definitionId).combat.abilities.semantic.name : engine.state.mode === "casual" ? "기본 공격·2★ 해금" : "기본 공격·합성 재료";
+    const progression = ctx.engine.state.mode === "casual" ? `${star}★ ${CASUAL_STAR_NAMES[star]}` : STAGE_NAMES[tower.stage];
+    const skill = ctx.engine.towerHasActiveSkills(tower) ? definitionForTower(ctx.engine.catalog, tower.definitionId).combat.abilities.semantic.name : ctx.engine.state.mode === "casual" ? "기본 공격·2★ 해금" : "기본 공격·합성 재료";
     const detail = `${tower.char} ${learning.short} · ${tower.wuxing}행 · ${progression} · ${skill}${concentration > 0 ? ` · 농축 ${concentration}` : ""} · 보관 ${stack.length}기`;
-    const hint = runInventoryBulkMode
+    const hint = ctx.runInventoryBulkMode
       ? eligible.length === 0 ? "보호 중 — 담을 수 없습니다" : checked > 0 ? `담김 ${checked}기 · 눌러 빼기` : `눌러 ${eligible.length}기 담기`
       : "클릭 = 고르기 · 더블클릭 = 바로 배치";
-    const stateClass = runInventoryBulkMode
+    const stateClass = ctx.runInventoryBulkMode
       ? `is-bulk ${eligible.length === 0 ? "is-bulk-blocked" : ""} ${checked > 0 ? "is-checked" : ""}`
       : `${selected ? "is-selected" : ""} ${eligible.length > 0 ? "is-cleanup-candidate" : "is-protected-stack"}`;
-    return `<button class="run-inventory-card ${stateClass}" type="button" data-run-inventory-id="${tower.id}" data-run-inventory-eligible="${eligible.map((candidate) => candidate.id).join(",")}" ${runInventoryBulkMode ? `aria-pressed="${String(checked > 0)}"` : ""} title="${escapeHtml(`${detail} · ${hint}`)}" aria-label="${escapeHtml(`${detail} · ${hint}`)}" style="--inventory-element:${ELEMENT_STYLES[tower.wuxing].color};--inventory-star:${engine.state.mode === "casual" ? CASUAL_STAR_COLORS[star] : STAGE_COLORS[tower.stage]}">
+    return `<button class="run-inventory-card ${stateClass}" type="button" data-run-inventory-id="${tower.id}" data-run-inventory-eligible="${eligible.map((candidate) => candidate.id).join(",")}" ${ctx.runInventoryBulkMode ? `aria-pressed="${String(checked > 0)}"` : ""} title="${escapeHtml(`${detail} · ${hint}`)}" aria-label="${escapeHtml(`${detail} · ${hint}`)}" style="--inventory-element:${ELEMENT_STYLES[tower.wuxing].color};--inventory-star:${ctx.engine.state.mode === "casual" ? CASUAL_STAR_COLORS[star] : STAGE_COLORS[tower.stage]}">
       <span class="run-inventory-spirit" style="${visualBackgroundStyle(visual)}" aria-hidden="true"></span>
       <b>${tower.char}</b>
-      <span><strong>${escapeHtml(learning.short)}</strong><small>${engine.state.mode === "casual" ? CASUAL_STAR_NAMES[star] : progression}</small></span>
+      <span><strong>${escapeHtml(learning.short)}</strong><small>${ctx.engine.state.mode === "casual" ? CASUAL_STAR_NAMES[star] : progression}</small></span>
       <i class="run-inventory-dot" aria-hidden="true">${tower.wuxing}</i>
       ${stack.length > 1 ? `<mark class="run-inventory-stack">×${stack.length}</mark>` : ""}
-      ${engine.state.mode === "casual" ? `<u class="run-inventory-star">${star}★</u>` : ""}
-      ${runInventoryBulkMode ? `<span class="run-inventory-check" aria-hidden="true">${eligible.length === 0 ? "보호" : checked > 0 ? `✓${checked}` : ""}</span>` : ""}
+      ${ctx.engine.state.mode === "casual" ? `<u class="run-inventory-star">${star}★</u>` : ""}
+      ${ctx.runInventoryBulkMode ? `<span class="run-inventory-check" aria-hidden="true">${eligible.length === 0 ? "보호" : checked > 0 ? `✓${checked}` : ""}</span>` : ""}
       <em>${selected ? "선택됨" : eligible.length > 0 ? "정리" : "보호"}</em>
     </button>`;
   }).join("");
 }
-
 function renderIdiomCodexDetail(idiom: ReturnType<GameEngine["idioms"]>[number] | undefined): void {
   const detail = must<HTMLElement>("#codex-detail");
   if (!idiom) {
     detail.innerHTML = "<p>사자성어를 선택하세요.</p>";
     return;
   }
-  const sealed = engine.state.idiomSeals.some((seal) => seal.idiomId === idiom.id);
-  const live = engine.isIdiomSealActive(idiom.id);
-  const featured = engine.idioms().some((candidate) => candidate.id === idiom.id);
+  const sealed = ctx.engine.state.idiomSeals.some((seal) => seal.idiomId === idiom.id);
+  const live = ctx.engine.isIdiomSealActive(idiom.id);
+  const featured = ctx.engine.idioms().some((candidate) => candidate.id === idiom.id);
   const sourceLabel = idiom.source === "cheonjamun" ? `천자문 제${idiom.sourceOrder}구` : "상용 사자성어";
   const stateLabel = live ? "이번 런 발동 중" : sealed ? "봉인 이력 · 지금은 흩어짐" : featured ? "이번 런 목표" : "도감 수록";
   detail.innerHTML = `
@@ -3730,17 +3326,16 @@ function renderIdiomCodexDetail(idiom: ReturnType<GameEngine["idioms"]>[number] 
     <h3>${idiom.reading}</h3>
     <article class="idiom-strategy" style="--codex:${idiom.color}"><b>${idiom.bonus.label}</b><span>${idiom.meaning}</span><small>${featured ? "같은 진의 한 줄(가로·세로·대각선)에 네 글자를 1→2→3→4 순서로 놓으면 자동 발동하며, 효과는 네 자령이 그 줄을 유지하는 동안만 발동합니다. 줄이 흩어지면 달성 기록만 남고, 다시 세우면 재발동합니다. 역순으로 놓아도 인정합니다." : "이번 런 목표에는 포함되지 않았습니다. 다음 시드에서 목표 성구로 등장할 수 있습니다."}</small></article>
     <section class="idiom-material-guide"><h4>필요 한자와 획득법</h4>${[...idiom.chars].map((char) => {
-      const definition = engine.catalog.definitions.get(char);
-      const learning = learningInfo(engine.state.region, char);
+      const definition = ctx.engine.catalog.definitions.get(char);
+      const learning = learningInfo(ctx.engine.state.region, char);
       if (!definition) return "";
       return `<button type="button" data-codex-char="${char}" style="--codex:${ELEMENT_STYLES[definition.wuxing].color}"><b>${char}</b><span>${escapeHtml(learning.short)}</span><small>${definition.acquisition === "direct" ? "직접 소환" : definition.parents.join(" + ") + " → " + char}</small></button>`;
     }).join("")}</section>
   `;
 }
-
 function drawWorld(delta: number): void {
-  const state = engine.state;
-  const selectedTower = engine.selectedTower();
+  const state = ctx.engine.state;
+  const selectedTower = ctx.engine.selectedTower();
   canvas.dataset.selectedTowerId = selectedTower ? String(selectedTower.id) : "";
   // compact 명패가 훈음을 줄여 적어도 전체값은 접근성 이름과 상세 팝오버에 남는다.
   const selectedReading = selectedTower ? learningInfo(state.region, selectedTower.char).short : "";
@@ -3751,7 +3346,7 @@ function drawWorld(delta: number): void {
       selectedTower ? `전장 · 선택 자령 ${selectedTower.char} ${selectedReading}` : "전장 · 선택한 자령 없음"
     );
   }
-  canvas.dataset.selectedSynthesisTier = selectedTower ? String(engine.state.mode === "casual" ? casualStarOf(selectedTower) : mapSynthesisDepths.get(selectedTower.char) ?? 1) : "";
+  canvas.dataset.selectedSynthesisTier = selectedTower ? String(ctx.engine.state.mode === "casual" ? casualStarOf(selectedTower) : ctx.mapSynthesisDepths.get(selectedTower.char) ?? 1) : "";
   const materialIds = hoveredMaterialIds();
   // 개발 진단: 적·제단 래스터 로드 상태. 프로덕션 화면에는 노출하지 않는다.
   const enemySheets = enemySheetStateSummary();
@@ -3760,8 +3355,8 @@ function drawWorld(delta: number): void {
   if (canvas.dataset.formationPlates !== formationPlates) canvas.dataset.formationPlates = formationPlates;
   drawPaperBackdrop();
   context.save();
-  context.translate(mapOffset.x, mapOffset.y);
-  context.scale(mapZoom, mapZoom);
+  context.translate(ctx.mapOffset.x, ctx.mapOffset.y);
+  context.scale(ctx.mapZoom, ctx.mapZoom);
   drawTrack();
   drawBoard();
   refreshSealedIdiomTowerMarks();
@@ -3788,42 +3383,39 @@ function drawWorld(delta: number): void {
   drawIdiomFlash();
   drawHoveredTowerCard();
 }
-
 function isWorldPointVisible(point: Point, margin = 0): boolean {
-  const x = mapOffset.x + point.x * mapZoom;
-  const y = mapOffset.y + point.y * mapZoom;
-  const screenMargin = margin * mapZoom;
+  const x = ctx.mapOffset.x + point.x * ctx.mapZoom;
+  const y = ctx.mapOffset.y + point.y * ctx.mapZoom;
+  const screenMargin = margin * ctx.mapZoom;
   return x >= -screenMargin && x <= WORLD_WIDTH + screenMargin && y >= -screenMargin && y <= WORLD_HEIGHT + screenMargin;
 }
-
 /** 장판 생성 시각 기록 — 스케일-인 연출과 생성 고리에 쓴다. */
 const zoneSpawnTimes = new Map<number, number>();
-
 function drawAbilityZones(): void {
   let spriteDrawnThisFrame = false;
   let verticalZoneCount = 0;
   let cornerZoneCount = 0;
   const liveZoneIds = new Set<number>();
-  for (const zone of engine.state.abilityZones) {
+  for (const zone of ctx.engine.state.abilityZones) {
     liveZoneIds.add(zone.id);
     const point = positionOnPath(zone.progress);
     if (!isWorldPointVisible(point, zone.radius)) continue;
-    const remaining = Math.max(0, zone.expiresAt - engine.state.elapsed);
+    const remaining = Math.max(0, zone.expiresAt - ctx.engine.state.elapsed);
     const life = Math.min(1, remaining / 1.2);
     const image = elementZoneImage(zone.wuxing);
-    const pulse = reducedMotion ? 1 : 1 + Math.sin(engine.state.elapsed * 1.45 + zone.id) * 0.018;
+    const pulse = reducedMotion ? 1 : 1 + Math.sin(ctx.engine.state.elapsed * 1.45 + zone.id) * 0.018;
     const layout = abilityZoneSpriteLayout(zone.progress, zone.radius, pulse);
 
     // 생성 순간: 먹 고리 + 0.35초 스케일-인. "기술이 나갔다"를 읽게 한다.
     let spawnScale = 1;
     let spawnedAt = zoneSpawnTimes.get(zone.id);
     if (spawnedAt === undefined) {
-      spawnedAt = engine.state.elapsed;
+      spawnedAt = ctx.engine.state.elapsed;
       zoneSpawnTimes.set(zone.id, spawnedAt);
       pushPooled(rings, ringPool, takeRing(point, zone.color, 0.5), 32);
     }
     if (!reducedMotion) {
-      const settle = Math.min(1, (engine.state.elapsed - spawnedAt) / 0.35);
+      const settle = Math.min(1, (ctx.engine.state.elapsed - spawnedAt) / 0.35);
       spawnScale = 0.55 + 0.45 * (1 - (1 - settle) * (1 - settle));
     }
     const verticalWeight = Math.abs(Math.sin(layout.angle));
@@ -3853,7 +3445,7 @@ function drawAbilityZones(): void {
       context.rotate(deterministicZoneRotation(zone.id + moduleCenter.moduleIndex));
       if (image.complete && image.naturalWidth > 0) {
         context.drawImage(image, -moduleCenter.diameter / 2, -moduleCenter.diameter / 2, moduleCenter.diameter, moduleCenter.diameter);
-        abilityZoneSpriteDrawTotal += 1;
+        ctx.abilityZoneSpriteDrawTotal += 1;
         spriteDrawnThisFrame = true;
       } else {
         context.fillStyle = zone.color;
@@ -3869,7 +3461,7 @@ function drawAbilityZones(): void {
     context.strokeStyle = zone.color;
     context.lineWidth = 1.6;
     context.setLineDash([7, 9]);
-    context.lineDashOffset = reducedMotion ? 0 : -engine.state.elapsed * 14;
+    context.lineDashOffset = reducedMotion ? 0 : -ctx.engine.state.elapsed * 14;
     context.beginPath();
     context.arc(point.x, point.y, zone.radius * spawnScale, 0, Math.PI * 2);
     context.stroke();
@@ -3878,13 +3470,13 @@ function drawAbilityZones(): void {
 
     // 판정 안에서 피해를 받는 적 위로 오행색 불티가 튄다.
     if (!reducedMotion) {
-      for (const enemy of engine.state.enemies) {
+      for (const enemy of ctx.engine.state.enemies) {
         const enemyPoint = positionOnPath(enemy.progress);
         const dx = enemyPoint.x - point.x;
         const dy = enemyPoint.y - point.y;
         if (dx * dx + dy * dy > zone.radius * zone.radius) continue;
         for (let sparkIndex = 0; sparkIndex < 3; sparkIndex += 1) {
-          const phase = ((engine.state.elapsed * 1.7 + enemy.id * 0.41 + sparkIndex * 0.33) % 1 + 1) % 1;
+          const phase = ((ctx.engine.state.elapsed * 1.7 + enemy.id * 0.41 + sparkIndex * 0.33) % 1 + 1) % 1;
           const sparkX = enemyPoint.x + Math.sin((enemy.id + sparkIndex) * 2.4) * 9;
           const sparkY = enemyPoint.y - 4 - phase * 22;
           context.globalAlpha = (1 - phase) * 0.85 * life;
@@ -3908,20 +3500,18 @@ function drawAbilityZones(): void {
   for (const id of zoneSpawnTimes.keys()) {
     if (!liveZoneIds.has(id)) zoneSpawnTimes.delete(id);
   }
-  canvas.dataset.abilityZoneCount = String(engine.state.abilityZones.length);
+  canvas.dataset.abilityZoneCount = String(ctx.engine.state.abilityZones.length);
   canvas.dataset.abilityZoneSpriteDraw = String(spriteDrawnThisFrame);
-  canvas.dataset.abilityZoneSpriteDrawTotal = String(abilityZoneSpriteDrawTotal);
+  canvas.dataset.abilityZoneSpriteDrawTotal = String(ctx.abilityZoneSpriteDrawTotal);
   canvas.dataset.abilityZoneVerticalCount = String(verticalZoneCount);
   canvas.dataset.abilityZoneCornerCount = String(cornerZoneCount);
 }
-
 function drawPaperBackdrop(): void {
   canvas.dataset.mapSurface = "hanji-ink";
   // Keep the paper on the CSS compositor instead of repainting and resampling it every frame.
   // The canvas is cleared to transparency, so only the moving game layers are redrawn.
   context.clearRect(0, 0, WORLD_WIDTH, WORLD_HEIGHT);
 }
-
 /**
  * 먹물 길.
  *
@@ -3934,10 +3524,8 @@ const TOTAL_ENEMY_PATH_LENGTH = ENEMY_PATH_POINTS.slice(0, -1).reduce((sum, poin
   const next = ENEMY_PATH_POINTS[index + 1] as Point;
   return sum + Math.hypot(next.x - point.x, next.y - point.y);
 }, 0);
-
 const INK_TILE = 96;
 const INK_STRAIGHT_LEN = 110;
-
 /** 꼭짓점에서 열린 두 방향. 네 공유 꼭짓점(내부 사각과 외곽이 만나는 곳)은 교차 타일. */
 const INK_VERTEX_KIND: ReadonlyArray<{ at: Point; corner: InkCorner | null }> = [
   { at: { x: 340, y: 60 }, corner: "rd" },
@@ -3953,12 +3541,10 @@ const INK_VERTEX_KIND: ReadonlyArray<{ at: Point; corner: InkCorner | null }> = 
   { at: { x: 540, y: 460 }, corner: null },
   { at: { x: 340, y: 460 }, corner: null }
 ];
-
 /** 같은 타일이 반복돼 인쇄물처럼 보이지 않도록 구간마다 미세한 알파 편차를 준다. */
 function inkTileAlpha(seed: number): number {
   return 0.92 + ((Math.sin(seed * 12.9898) * 43758.5453) % 1 + 1) % 1 * 0.08;
 }
-
 function drawTrack(): void {
   context.save();
 
@@ -4021,7 +3607,7 @@ function drawTrack(): void {
   context.globalAlpha = 1;
 
   // 5. 다음 이동 구간을 읽을 수 있도록 젖은 먹방울이 같은 방향으로 순환한다.
-  const currentOffset = reducedMotion ? 0.02 : (engine.state.elapsed * 0.018) % 1;
+  const currentOffset = reducedMotion ? 0.02 : (ctx.engine.state.elapsed * 0.018) % 1;
   canvas.dataset.inkCurrentOffset = currentOffset.toFixed(4);
   for (let index = 0; index < 10; index += 1) {
     const progress = currentOffset + index / 10;
@@ -4055,13 +3641,11 @@ function drawTrack(): void {
   drawSpawnPortals();
   context.restore();
 }
-
 function traceEnemyPath(): void {
   context.beginPath();
   context.moveTo(ENEMY_PATH_POINTS[0]?.x ?? 0, ENEMY_PATH_POINTS[0]?.y ?? 0);
   for (const point of ENEMY_PATH_POINTS.slice(1)) context.lineTo(point.x, point.y);
 }
-
 function drawSpawnPortals(): void {
   const labelOffsets: readonly Point[] = [
     { x: 0, y: -25 },
@@ -4075,7 +3659,7 @@ function drawSpawnPortals(): void {
     const labelOffset = labelOffsets[index] as Point;
     // 이 출구에서 방금 나온 적이 있으면 spawning. 색만으로 알리지 않도록
     // "出" 글자와 "출구 N" 라벨은 두 상태 모두 그대로 남는다.
-    const spawning = engine.state.enemies.some((enemy) => {
+    const spawning = ctx.engine.state.enemies.some((enemy) => {
       const delta = enemy.progress - spawnProgress;
       return delta >= 0 && delta < 0.02;
     });
@@ -4108,7 +3692,6 @@ function drawSpawnPortals(): void {
     context.fillText(`출구 ${index + 1}`, point.x + labelOffset.x, point.y + labelOffset.y);
   }
 }
-
 /**
  * 오행진을 평평한 색 사각형이 아니라 한지 위에 놓인 석제 제단으로 그린다.
  *
@@ -4120,14 +3703,14 @@ function drawSpawnPortals(): void {
 function drawBoard(): void {
   context.save();
   context.textAlign = "center";
-  const occupied = new Set(engine.state.towers.map((tower) => tower.cell));
+  const occupied = new Set(ctx.engine.state.towers.map((tower) => tower.cell));
   // 제단 래스터가 준비된 진에서는 코드 석판과 셀 채움을 낮춰 재질을 가리지 않는다.
   const plateRastered: boolean[] = [];
 
   for (let formationIndex = 0; formationIndex < BOARD_FORMATIONS.length; formationIndex += 1) {
     const formation = BOARD_FORMATIONS[formationIndex] as (typeof BOARD_FORMATIONS)[number];
-    const unlocked = engine.isFormationUnlocked(formationIndex);
-    const resonance = engine.formationResonance(formationIndex);
+    const unlocked = ctx.engine.isFormationUnlocked(formationIndex);
+    const resonance = ctx.engine.formationResonance(formationIndex);
     const cx = formation.center.x;
     const cy = formation.center.y;
     // 좌상·우하만 크게 깎은 비대칭 모서리가 웹 카드 대신 인장 실루엣으로 읽히게 한다.
@@ -4246,8 +3829,8 @@ function drawBoard(): void {
 
     // 7. 진 이름표: 돌에 박힌 작은 명패.
     const bonusLabel = resonance.damageBonus > 0 ? ` · 피해 +${Math.round(resonance.damageBonus * 100)}%` : "";
-    const unlockCost = engine.nextFormationUnlockCost();
-    const unlockAffordable = !unlocked && unlockCost !== null && engine.state.gold >= unlockCost && engine.state.startingFormationIndex !== null;
+    const unlockCost = ctx.engine.nextFormationUnlockCost();
+    const unlockAffordable = !unlocked && unlockCost !== null && ctx.engine.state.gold >= unlockCost && ctx.engine.state.startingFormationIndex !== null;
     const plateText = unlocked
       ? `${formation.label} ${resonance.matching}/16${bonusLabel}`
       : unlockAffordable
@@ -4273,7 +3856,7 @@ function drawBoard(): void {
   // 8. 셀은 돌판에 파인 소켓으로 그린다. 표 칸처럼 보이지 않게 안쪽 그림자를 준다.
   for (let index = 0; index < BOARD_CELLS.length; index += 1) {
     const cell = BOARD_CELLS[index] as Point;
-    const unlocked = engine.isCellUnlocked(index);
+    const unlocked = ctx.engine.isCellUnlocked(index);
     const filled = occupied.has(index);
     const formationIndex = Math.floor(index / CELLS_PER_FORMATION);
     const formation = BOARD_FORMATIONS[formationIndex] as (typeof BOARD_FORMATIONS)[number];
@@ -4350,7 +3933,6 @@ function drawBoard(): void {
   drawFormationLocks();
   context.restore();
 }
-
 /**
  * 잠긴 오행진 중앙 자물쇠.
  *
@@ -4359,17 +3941,17 @@ function drawBoard(): void {
  * 모션 감소 설정에서는 정지 이미지만 쓴다.
  */
 function drawFormationLocks(): void {
-  const unlockCost = engine.nextFormationUnlockCost();
-  const purchasable = unlockCost !== null && engine.state.startingFormationIndex !== null;
-  const affordable = purchasable && engine.state.gold >= unlockCost;
+  const unlockCost = ctx.engine.nextFormationUnlockCost();
+  const purchasable = unlockCost !== null && ctx.engine.state.startingFormationIndex !== null;
+  const affordable = purchasable && ctx.engine.state.gold >= unlockCost;
   const pulse = reducedMotion ? 0 : (performance.now() % 1_600) / 1_600;
 
   for (let formationIndex = 0; formationIndex < BOARD_FORMATIONS.length; formationIndex += 1) {
-    if (engine.isFormationUnlocked(formationIndex)) continue;
+    if (ctx.engine.isFormationUnlocked(formationIndex)) continue;
     const formation = BOARD_FORMATIONS[formationIndex] as (typeof BOARD_FORMATIONS)[number];
     const cx = formation.center.x;
     const cy = formation.center.y;
-    const hovered = hoveredLockFormation === formationIndex;
+    const hovered = ctx.hoveredLockFormation === formationIndex;
     const scale = hovered && !reducedMotion ? 1.14 : 1;
 
     // 살 수 있는 진은 금색 링이 1.6초 주기로 번지며 시선을 끈다.
@@ -4398,7 +3980,7 @@ function drawFormationLocks(): void {
       ? "첫 소환 대기"
       : affordable
         ? `${unlockCost}엽전 해금`
-        : `엽전 ${unlockCost - engine.state.gold} 부족`;
+        : `엽전 ${unlockCost - ctx.engine.state.gold} 부족`;
     context.save();
     context.font = '900 10px "Malgun Gothic", sans-serif';
     context.textAlign = "center";
@@ -4412,7 +3994,6 @@ function drawFormationLocks(): void {
     context.restore();
   }
 }
-
 /** 스프라이트가 없을 때 쓰는 절차 자물쇠(몸통 26×20 + 고리). */
 function drawProceduralLock(cx: number, cy: number, scale: number, affordable: boolean): void {
   context.save();
@@ -4436,57 +4017,33 @@ function drawProceduralLock(cx: number, cy: number, scale: number, affordable: b
   context.fill();
   context.restore();
 }
-
-/**
- * 추적 중 성어의 배치 안내 — 스펙 6라운드 B.
- * 어떤 자령이 몇 번째 글자인지(순번 배지), 다음 글자를 어디에 놓을 수 있는지
- * (유효 셀)를 한 번만 계산해 두고 명패·보드 오버레이가 함께 읽는다.
- */
-interface IdiomPlacementGuide {
-  readonly idiom: IdiomDefinition;
-  readonly chain: PartialIdiomChain;
-  /** 자령 id → 성어에서의 순번(1~4). */
-  readonly orders: ReadonlyMap<number, IdiomOrder>;
-  /** 다음 글자를 이을 수 있는 빈 칸. */
-  readonly nextCells: readonly number[];
-}
-
-let idiomPlacementGuide: IdiomPlacementGuide | null = null;
 let idiomPlacementGuideKey = "";
-
-/**
- * 발동 중인 봉인에 참여한 자령 id → 그 성어의 색 — R18 자리 고정 표식용.
- * 명패는 자령 수만큼 그려지므로 프레임마다 한 번만 계산해 두고 나눠 읽는다.
- */
-let sealedIdiomTowerMarks: ReadonlyMap<number, string> = new Map<number, string>();
-
 function refreshSealedIdiomTowerMarks(): void {
   const marks = new Map<number, string>();
   const signatures: string[] = [];
-  for (const seal of engine.activeIdiomSeals()) {
-    const idiom = idiomById(engine.state.region, seal.idiomId);
+  for (const seal of ctx.engine.activeIdiomSeals()) {
+    const idiom = idiomById(ctx.engine.state.region, seal.idiomId);
     if (!idiom) continue;
     signatures.push(seal.cells.join("-"));
     for (const cell of seal.cells) {
-      const tower = engine.state.towers.find((candidate) => candidate.cell === cell);
+      const tower = ctx.engine.state.towers.find((candidate) => candidate.cell === cell);
       if (tower) marks.set(tower.id, idiom.color);
     }
   }
-  sealedIdiomTowerMarks = marks;
+  ctx.sealedIdiomTowerMarks = marks;
   // 발동 중인 봉인이 지금 어느 칸을 잡고 있는지 — 진단·e2e 가 읽는 갈피.
   const signature = signatures.join(" ");
   if (canvas.dataset.idiomSealCells !== signature) canvas.dataset.idiomSealCells = signature;
 }
-
 function refreshIdiomPlacementGuide(): void {
-  const idiom = engine.currentIdiomTarget();
+  const idiom = ctx.engine.currentIdiomTarget();
   const key = idiom
-    ? `${idiom.id}|${engine.state.towers.map((tower) => `${tower.cell}:${tower.char}`).sort().join(",")}|${engine.state.unlockedFormations.join("")}`
+    ? `${idiom.id}|${ctx.engine.state.towers.map((tower) => `${tower.cell}:${tower.char}`).sort().join(",")}|${ctx.engine.state.unlockedFormations.join("")}`
     : "";
   if (key === idiomPlacementGuideKey) return;
   idiomPlacementGuideKey = key;
   if (!idiom) {
-    idiomPlacementGuide = null;
+    ctx.idiomPlacementGuide = null;
     canvas.dataset.idiomTarget = "";
     canvas.dataset.idiomChainCells = "";
     canvas.dataset.idiomNextCells = "";
@@ -4494,14 +4051,14 @@ function refreshIdiomPlacementGuide(): void {
     return;
   }
   const characters = [...idiom.chars];
-  const chain = partialIdiomChain(engine.state.towers, idiom);
+  const chain = partialIdiomChain(ctx.engine.state.towers, idiom);
   const orders = new Map<number, IdiomOrder>();
   const takenOrders = new Set<number>();
   const takenTowers = new Set<number>();
   // 사슬에 실제로 쓰인 자령이 순번을 먼저 가져간다(같은 글자 중복 대비).
   for (let index = 0; index < chain.cells.length; index += 1) {
     const order = (chain.reversed ? chain.startOrder - index : chain.startOrder + index) as IdiomOrder;
-    const tower = engine.state.towers.find((candidate) => candidate.cell === chain.cells[index]);
+    const tower = ctx.engine.state.towers.find((candidate) => candidate.cell === chain.cells[index]);
     if (!tower) continue;
     orders.set(tower.id, order);
     takenOrders.add(order);
@@ -4510,7 +4067,7 @@ function refreshIdiomPlacementGuide(): void {
   for (let index = 0; index < characters.length; index += 1) {
     const order = index + 1;
     if (takenOrders.has(order)) continue;
-    const tower = engine.state.towers.find(
+    const tower = ctx.engine.state.towers.find(
       (candidate) => candidate.char === characters[index] && !takenTowers.has(candidate.id)
     );
     if (!tower) continue;
@@ -4520,8 +4077,8 @@ function refreshIdiomPlacementGuide(): void {
   }
 
   // 직선 규칙에서는 다음 자리가 줄 위에 정해져 있다. 코어가 짚어 준 칸만 쓴다.
-  const nextCells = chain.complete ? [] : chain.nextCells.filter((cell) => engine.isCellUnlocked(cell));
-  idiomPlacementGuide = { idiom, chain, orders, nextCells };
+  const nextCells = chain.complete ? [] : chain.nextCells.filter((cell) => ctx.engine.isCellUnlocked(cell));
+  ctx.idiomPlacementGuide = { idiom, chain, orders, nextCells };
   // 배치 안내 상태를 캔버스 데이터셋으로 내보내 캡처·e2e 가 읽을 수 있게 한다.
   canvas.dataset.idiomTarget = idiom.chars;
   canvas.dataset.idiomChainCells = chain.cells.join(",");
@@ -4529,10 +4086,9 @@ function refreshIdiomPlacementGuide(): void {
   canvas.dataset.idiomNextOrder = chain.nextOrder === null ? "" : String(chain.nextOrder);
   canvas.dataset.idiomNextCells = nextCells.join(",");
   canvas.dataset.idiomOrderBadges = [...orders]
-    .map(([towerId, order]) => `${engine.state.towers.find((tower) => tower.id === towerId)?.cell ?? -1}:${order}`)
+    .map(([towerId, order]) => `${ctx.engine.state.towers.find((tower) => tower.id === towerId)?.cell ?? -1}:${order}`)
     .join(",");
 }
-
 /** 순번 인장(60x60 원본 → 표시 20px). 로드 실패 시 인주 원 + 백색 숫자로 대체한다. */
 function drawIdiomOrderBadge(centerX: number, centerY: number, size: number, order: IdiomOrder): void {
   const sprite = idiomOrderSealImage(order);
@@ -4555,16 +4111,15 @@ function drawIdiomOrderBadge(centerX: number, centerY: number, size: number, ord
   context.fillText(String(order), centerX, centerY + 0.5);
   context.restore();
 }
-
 /**
  * 다음 글자를 놓을 수 있는 빈 칸을 금색 점선 테두리와 순번으로 표시한다.
  * 자령을 끌고 있는 동안에도 같은 표시가 유지된다.
  */
 function drawIdiomPlacementCells(): void {
-  const guide = idiomPlacementGuide;
+  const guide = ctx.idiomPlacementGuide;
   if (!guide || guide.nextCells.length === 0 || guide.chain.nextOrder === null) return;
   const order = guide.chain.nextOrder as IdiomOrder;
-  const breath = reducedMotion ? 0.72 : 0.58 + Math.sin(engine.state.elapsed * 3.1) * 0.22;
+  const breath = reducedMotion ? 0.72 : 0.58 + Math.sin(ctx.engine.state.elapsed * 3.1) * 0.22;
   context.save();
   context.setLineDash([5, 4]);
   context.lineWidth = 1.8;
@@ -4587,7 +4142,6 @@ function drawIdiomPlacementCells(): void {
   }
   context.restore();
 }
-
 /** 폴리라인 위 비율 t(0~1) 지점. 사슬 빔의 광점이 1→4 방향으로 흐르게 한다. */
 function pointAlongPolyline(points: readonly Point[], t: number): Point | null {
   if (points.length < 2) return points[0] ?? null;
@@ -4614,7 +4168,6 @@ function pointAlongPolyline(points: readonly Point[], t: number): Point | null {
   }
   return points[points.length - 1] ?? null;
 }
-
 /**
  * 발동한 봉인 — 스펙 6라운드 C.
  * 네 칸이 성어 색으로 숨쉬고, 사슬 빔 위를 광점이 1→4 방향으로 흐르며,
@@ -4622,11 +4175,11 @@ function pointAlongPolyline(points: readonly Point[], t: number): Point | null {
  */
 function drawIdiomSeals(): void {
   // R18: 줄이 흩어진 봉인은 지킬 칸이 없다. 발광은 발동 중인 봉인만 낸다.
-  for (const seal of engine.activeIdiomSeals()) {
-    const idiom = idiomById(engine.state.region, seal.idiomId);
+  for (const seal of ctx.engine.activeIdiomSeals()) {
+    const idiom = idiomById(ctx.engine.state.region, seal.idiomId);
     if (!idiom) continue;
     const points = seal.cells.map((cell) => BOARD_CELLS[cell] as Point);
-    const breath = reducedMotion ? 0.6 : 0.5 + (Math.sin((engine.state.elapsed / 1.8) * Math.PI * 2) * 0.5 + 0.5) * 0.5;
+    const breath = reducedMotion ? 0.6 : 0.5 + (Math.sin((ctx.engine.state.elapsed / 1.8) * Math.PI * 2) * 0.5 + 0.5) * 0.5;
     context.save();
 
     // 1. 봉인된 칸 자체가 숨쉬듯 발광한다.
@@ -4667,7 +4220,7 @@ function drawIdiomSeals(): void {
 
     // 3. 광점 1개가 1번 칸에서 4번 칸으로 흐르며 순서 방향을 알린다.
     if (!reducedMotion) {
-      const spark = pointAlongPolyline(points, ((engine.state.elapsed + seal.completedAt) / 2.2) % 1);
+      const spark = pointAlongPolyline(points, ((ctx.engine.state.elapsed + seal.completedAt) / 2.2) % 1);
       if (spark) {
         context.globalAlpha = 0.95;
         context.fillStyle = "#fff9e6";
@@ -4693,7 +4246,6 @@ function drawIdiomSeals(): void {
     context.restore();
   }
 }
-
 /**
  * 발동 순간의 파문 링 — 스펙 6라운드 C3.
  *
@@ -4729,7 +4281,6 @@ function drawIdiomRipples(): void {
     if (ripple.age >= ripple.delay + ripple.duration) idiomRipples.splice(index, 1);
   }
 }
-
 /**
  * 성어 4자 대형 플래시 — 스펙 6라운드 C3.
  *
@@ -4738,9 +4289,9 @@ function drawIdiomRipples(): void {
  * 되돌린 뒤(drawWorld 의 restore 이후)에 호출한다.
  */
 function drawIdiomFlash(): void {
-  const flash = idiomFlash;
+  const flash = ctx.idiomFlash;
   if (!flash || flash.age >= flash.duration) {
-    if (flash) idiomFlash = null;
+    if (flash) ctx.idiomFlash = null;
     if (canvas.dataset.idiomFlash) canvas.dataset.idiomFlash = "";
     return;
   }
@@ -4750,8 +4301,8 @@ function drawIdiomFlash(): void {
   const rise = Math.min(1, ratio / 0.18);
   const fade = ratio < 0.62 ? 1 : 1 - (ratio - 0.62) / 0.38;
   const scale = reducedMotion ? 1 : 0.82 + rise * 0.24 - Math.max(0, ratio - 0.62) * 0.16;
-  const x = Math.min(WORLD_WIDTH - 150, Math.max(150, mapOffset.x + flash.at.x * mapZoom));
-  const y = Math.min(WORLD_HEIGHT - 120, Math.max(120, mapOffset.y + flash.at.y * mapZoom));
+  const x = Math.min(WORLD_WIDTH - 150, Math.max(150, ctx.mapOffset.x + flash.at.x * ctx.mapZoom));
+  const y = Math.min(WORLD_HEIGHT - 120, Math.max(120, ctx.mapOffset.y + flash.at.y * ctx.mapZoom));
   context.save();
   context.globalAlpha = Math.max(0, Math.min(1, rise * fade));
   context.translate(x, y);
@@ -4776,18 +4327,16 @@ function drawIdiomFlash(): void {
   context.fillText(`${flash.reading} · 봉인`, 0, 50);
   context.restore();
 }
-
 function hoveredMaterialIds(): Set<number> {
-  const ids = new Set(hoveredCompositionMaterialIds);
-  if (hoveredRecipeId) {
-    const option = engine.availableEvolutions().find((candidate) => candidate.recipeId === hoveredRecipeId);
+  const ids = new Set(ctx.hoveredCompositionMaterialIds);
+  if (ctx.hoveredRecipeId) {
+    const option = ctx.engine.availableEvolutions().find((candidate) => candidate.recipeId === ctx.hoveredRecipeId);
     for (const id of option?.materialTowerIds ?? []) ids.add(id);
   }
   return ids;
 }
-
 function drawCompositionMaterialLinks(): void {
-  const materials = engine.state.towers.filter((tower) => hoveredCompositionMaterialIds.has(tower.id));
+  const materials = ctx.engine.state.towers.filter((tower) => ctx.hoveredCompositionMaterialIds.has(tower.id));
   if (materials.length === 0) return;
   const points = materials.map((tower) => BOARD_CELLS[tower.cell] as Point);
   context.save();
@@ -4821,17 +4370,15 @@ function drawCompositionMaterialLinks(): void {
   context.fillText("합성 재료", anchor.x, anchor.y - 30);
   context.restore();
 }
-
 function drawSelection(): void {
-  const selected = engine.selectedTower();
-  if (selected && !engine.selectedTowerIsStored()) drawTowerRange(selected, false);
-  const hovered = hoveredTowerId === null ? undefined : engine.state.towers.find((tower) => tower.id === hoveredTowerId);
+  const selected = ctx.engine.selectedTower();
+  if (selected && !ctx.engine.selectedTowerIsStored()) drawTowerRange(selected, false);
+  const hovered = ctx.hoveredTowerId === null ? undefined : ctx.engine.state.towers.find((tower) => tower.id === ctx.hoveredTowerId);
   if (hovered && hovered.id !== selected?.id) drawTowerRange(hovered, true);
 }
-
 function drawTowerRange(tower: Tower, hovered: boolean): void {
   const cell = BOARD_CELLS[tower.cell] as Point;
-  const definition = definitionForTower(engine.catalog, tower.definitionId);
+  const definition = definitionForTower(ctx.engine.catalog, tower.definitionId);
   const style = ELEMENT_STYLES[tower.wuxing];
   context.save();
   context.strokeStyle = style.color + (hovered ? "8f" : "40");
@@ -4839,19 +4386,18 @@ function drawTowerRange(tower: Tower, hovered: boolean): void {
   context.lineWidth = hovered ? 2.2 : 1.5;
   context.setLineDash(hovered ? [10, 6] : [7, 7]);
   context.beginPath();
-  context.arc(cell.x, cell.y, definition.combat.range + engine.towerRangeBonus(tower) + engine.idiomBonus("range") + (tower.concentration ?? 0) * 4 + engine.combinedUpgradeBonus(tower.wuxing, "range"), 0, Math.PI * 2);
+  context.arc(cell.x, cell.y, definition.combat.range + ctx.engine.towerRangeBonus(tower) + ctx.engine.idiomBonus("range") + (tower.concentration ?? 0) * 4 + ctx.engine.combinedUpgradeBonus(tower.wuxing, "range"), 0, Math.PI * 2);
   context.fill();
   context.stroke();
   context.restore();
 }
-
 function drawChargeRing(
   cell: Point,
   radius: number,
   tower: Tower,
   abilities: HanziDefinition["combat"]["abilities"]
 ): void {
-  if (!engine.towerHasActiveSkills(tower)) return;
+  if (!ctx.engine.towerHasActiveSkills(tower)) return;
   const charge = (tower.shotCount % abilities.tuning.signatureEvery) / abilities.tuning.signatureEvery;
   context.strokeStyle = "rgba(255,255,255,0.1)";
   context.lineWidth = 1.5;
@@ -4868,12 +4414,11 @@ function drawChargeRing(
     context.shadowBlur = 0;
   }
 }
-
 function drawStudyTower(tower: Tower, cell: Point, definition: HanziDefinition, selected: boolean, material: boolean): void {
   const abilities = definition.combat.abilities;
   const style = ELEMENT_STYLES[tower.wuxing];
-  const progressionRank = engine.state.mode === "casual" ? casualStarOf(tower) : tower.stage;
-  const progressionColor = engine.state.mode === "casual" ? CASUAL_STAR_COLORS[casualStarOf(tower)] : STAGE_COLORS[tower.stage];
+  const progressionRank = ctx.engine.state.mode === "casual" ? casualStarOf(tower) : tower.stage;
+  const progressionColor = ctx.engine.state.mode === "casual" ? CASUAL_STAR_COLORS[casualStarOf(tower)] : STAGE_COLORS[tower.stage];
   const pulse = 1 + tower.pulse * 0.09;
   const radius = (16 + (progressionRank - 1) * 0.55) * pulse;
   context.shadowColor = material ? "#ffe7a3" : style.glow;
@@ -4899,9 +4444,8 @@ function drawStudyTower(tower: Tower, cell: Point, definition: HanziDefinition, 
   context.textBaseline = "alphabetic";
   context.font = '900 8px "Malgun Gothic", sans-serif';
   context.fillStyle = "#efe4c8";
-  context.fillText(learningInfo(engine.state.region, tower.char).short, cell.x, cell.y + 24, 40);
+  context.fillText(learningInfo(ctx.engine.state.region, tower.char).short, cell.x, cell.y + 24, 40);
 }
-
 /**
  * 전장 명패 치수 — layout-audit-response-v1 §2 + v5-compact-tier-assets-pack-v1.
  *
@@ -4918,19 +4462,15 @@ const PLAQUE_BOTTOM = -28;
 const CELL_SPACING = ((BOARD_CELLS[1]?.x ?? 44) - (BOARD_CELLS[0]?.x ?? 0)) || 44;
 /** 이웃 명패 사이에 남겨야 하는 최소 투명 간격(화면 px). */
 const PLAQUE_MIN_GAP = 4;
-
 const compactReadingCache = new Map<string, CompactReading>();
-
 function plaqueReadingFont(size: number): string {
   return `800 ${size}px "Malgun Gothic", sans-serif`;
 }
-
 /** 캔버스 실측을 plaque-text 모듈에 주입한다. 글꼴 상태는 호출 뒤 되돌린다. */
 const measurePlaqueText: MeasureText = (value, fontSize) => {
   context.font = plaqueReadingFont(fontSize);
   return context.measureText(value).width;
 };
-
 /**
  * compact 명패의 훈음 2줄 배치를 정한다. 매 프레임 자령 수만큼 실측하지 않도록
  * 문자열·폭 조합으로 캐시한다.
@@ -4945,21 +4485,19 @@ function compactReadingFor(full: string, maxWidth: number): CompactReading {
   compactReadingCache.set(key, resolved);
   return resolved;
 }
-
 /** 상시 명패는 glyph-only 34px 이하로는 내려가지 않는다. 폭이 부족하면 통째로 숨기지 않고 한자만 남긴다. */
 function plaqueIsGlyphOnly(): boolean {
-  return CELL_SPACING * mapZoom < NAMEPLATE_LAYOUT.compact.width + PLAQUE_MIN_GAP;
+  return CELL_SPACING * ctx.mapZoom < NAMEPLATE_LAYOUT.compact.width + PLAQUE_MIN_GAP;
 }
-
 function drawSpiritTowerLabel(tower: Tower, cell: Point, selected: boolean, material: boolean): void {
   const style = ELEMENT_STYLES[tower.wuxing];
-  const learning = learningInfo(engine.state.region, tower.char);
+  const learning = learningInfo(ctx.engine.state.region, tower.char);
   // 한자 강조 OFF 는 명패 래스터와 글자를 통째로 숨긴다. glyph-only 명패도 남기지 않는다.
-  if (!hanjaEmphasis) return;
+  if (!ctx.hanjaEmphasis) return;
 
   const glyphOnly = plaqueIsGlyphOnly();
   const layout = NAMEPLATE_LAYOUT.compact;
-  const width = glyphOnly ? Math.min(PLAQUE_GLYPH_ONLY_WIDTH, Math.max(20, CELL_SPACING * mapZoom - PLAQUE_MIN_GAP)) : layout.width;
+  const width = glyphOnly ? Math.min(PLAQUE_GLYPH_ONLY_WIDTH, Math.max(20, CELL_SPACING * ctx.mapZoom - PLAQUE_MIN_GAP)) : layout.width;
   const height = glyphOnly ? 34 : layout.height;
   const top = PLAQUE_BOTTOM - height + (glyphOnly ? 12 : 0);
   const left = -width / 2;
@@ -4967,7 +4505,7 @@ function drawSpiritTowerLabel(tower: Tower, cell: Point, selected: boolean, mate
   context.save();
   context.translate(cell.x, cell.y);
   // Counter-scale the label so Hanja stays readable while the map zooms and pans.
-  context.scale(1 / mapZoom, 1 / mapZoom);
+  context.scale(1 / ctx.mapZoom, 1 / ctx.mapZoom);
   drawPlaqueShell(glyphOnly ? null : "compact", width, height, top, glyphOnly ? width : layout.glyphColumn, style.color, selected || material);
 
   context.textAlign = "center";
@@ -5000,18 +4538,17 @@ function drawSpiritTowerLabel(tower: Tower, cell: Point, selected: boolean, mate
     }
   }
   // 추적 중 성어의 글자를 가진 자령에는 명패 좌측에 순번 인장을 얹는다.
-  const order = idiomPlacementGuide?.orders.get(tower.id);
+  const order = ctx.idiomPlacementGuide?.orders.get(tower.id);
   if (order) {
     const badgeSize = glyphOnly ? 14 : 18;
     drawIdiomOrderBadge(left + badgeSize / 2 - 1, top + 1, badgeSize, order);
   }
   // R18: 발동 중인 봉인의 네 자령은 자동배치가 건드리지 못한다. 명패 오른쪽 위에
   // 기존 잠금 어휘(鎖)를 성어색으로 얹어 "이 자리는 묶여 있다"를 한 글자로 말한다.
-  const sealColor = sealedIdiomTowerMarks.get(tower.id);
+  const sealColor = ctx.sealedIdiomTowerMarks.get(tower.id);
   if (sealColor) drawIdiomSealLockMark(width / 2 - (glyphOnly ? 5 : 6), top + (glyphOnly ? 5 : 6), glyphOnly ? 4.5 : 5.5, sealColor);
   context.restore();
 }
-
 /** 명패 위 금쇄 표식 — 잠금 배지와 같은 어휘, 색만 그 성어의 색이다. */
 function drawIdiomSealLockMark(centerX: number, centerY: number, radius: number, color: string): void {
   context.save();
@@ -5032,15 +4569,12 @@ function drawIdiomSealLockMark(centerX: number, centerY: number, radius: number,
   context.fillText("鎖", centerX, centerY + 0.5);
   context.restore();
 }
-
 /** 명패 바탕색 위의 먹글씨. 크림 한지 위에서 대비를 확보한다. */
 const PLAQUE_INK = "#231708";
 const PLAQUE_INK_SOFT = "#3a2a14";
-
 function plaqueGlyphFont(size: number): string {
   return `900 ${size}px "Malgun Gothic", "Noto Sans CJK KR", serif`;
 }
-
 /**
  * 명패 판 — v5 납품 래스터를 1/3 배율로 고정 렌더한다(9-slice·stretch 금지).
  * 로드 전이거나 glyph-only 축소본은 절차 드로잉으로 대체한다.
@@ -5121,21 +4655,18 @@ function drawPlaqueShell(
   context.fill();
   context.restore();
 }
-
 interface PendingPlaque {
   readonly tower: Tower;
   readonly cell: Point;
   readonly selected: boolean;
   readonly material: boolean;
 }
-
 /**
  * 명패는 자령 본체 루프 안에서 바로 그리지 않고 모았다가 마지막에 흘린다.
  * 렌더 순서: 일반 y순 → 합성 재료 → 선택 명패 → 선택 상세 팝오버.
  * 이웃 자령의 본체나 명패가 선택 명패의 훈음을 덮지 않게 한다.
  */
 const pendingPlaques: PendingPlaque[] = [];
-
 function flushTowerPlaques(): void {
   if (pendingPlaques.length === 0) return;
   const ordered = [...pendingPlaques].sort((left, right) => left.cell.y - right.cell.y);
@@ -5153,7 +4684,6 @@ function flushTowerPlaques(): void {
   if (focused) drawTowerDetailPopover(focused.tower, focused.cell);
   pendingPlaques.length = 0;
 }
-
 /** 같은 진 안에서 방향으로 이웃한 셀 번호. 진 밖이면 null(가릴 명패가 없음). */
 function neighborCellIndex(cell: number, columnStep: number, rowStep: number): number | null {
   if (cell < 0 || cell >= BOARD_CELLS.length) return null;
@@ -5164,15 +4694,14 @@ function neighborCellIndex(cell: number, columnStep: number, rowStep: number): n
   if (column < 0 || column >= FORMATION_COLUMNS || row < 0 || row >= FORMATION_ROWS) return null;
   return formation * CELLS_PER_FORMATION + row * FORMATION_COLUMNS + column;
 }
-
 /**
  * 선택 자령의 104px 상세 팝오버. compact 가 줄여 적은 훈음의 전체값을 보여준다.
  * 가장 가까운 빈 방향에 띄우고 전장 경계 안으로 clamp 한다.
  */
 function drawTowerDetailPopover(tower: Tower, cell: Point): void {
-  if (!hanjaEmphasis) return;
+  if (!ctx.hanjaEmphasis) return;
   const style = ELEMENT_STYLES[tower.wuxing];
-  const learning = learningInfo(engine.state.region, tower.char);
+  const learning = learningInfo(ctx.engine.state.region, tower.char);
   const layout = NAMEPLATE_LAYOUT.detail;
   const previousFont = context.font;
   context.font = plaqueReadingFont(11);
@@ -5186,7 +4715,7 @@ function drawTowerDetailPopover(tower: Tower, cell: Point): void {
   const lineHeight = 13;
   const height = layout.height;
 
-  const occupied = new Set(engine.state.towers.map((candidate) => candidate.cell));
+  const occupied = new Set(ctx.engine.state.towers.map((candidate) => candidate.cell));
   const free = (columnStep: number, rowStep: number): boolean => {
     const neighbor = neighborCellIndex(tower.cell, columnStep, rowStep);
     return neighbor === null || !occupied.has(neighbor);
@@ -5206,8 +4735,8 @@ function drawTowerDetailPopover(tower: Tower, cell: Point): void {
   let top = placement.top;
 
   // 전장(캔버스) 경계 안으로 밀어 넣는다. 명패는 역-스케일이라 화면 px 로 계산한다.
-  const screenX = mapOffset.x + cell.x * mapZoom;
-  const screenY = mapOffset.y + cell.y * mapZoom;
+  const screenX = ctx.mapOffset.x + cell.x * ctx.mapZoom;
+  const screenY = ctx.mapOffset.y + cell.y * ctx.mapZoom;
   // 최소 8px viewport inset 을 지킨다.
   const inset = 8;
   offsetX = Math.max(inset + layout.width / 2 - screenX, Math.min(WORLD_WIDTH - inset - layout.width / 2 - screenX, offsetX));
@@ -5216,7 +4745,7 @@ function drawTowerDetailPopover(tower: Tower, cell: Point): void {
   const left = -layout.width / 2;
   context.save();
   context.translate(cell.x, cell.y);
-  context.scale(1 / mapZoom, 1 / mapZoom);
+  context.scale(1 / ctx.mapZoom, 1 / ctx.mapZoom);
   context.translate(offsetX, 0);
   drawPlaqueShell("detail", layout.width, height, top, layout.glyphColumn, style.color, true);
   context.textAlign = "center";
@@ -5234,14 +4763,13 @@ function drawTowerDetailPopover(tower: Tower, cell: Point): void {
   }
   context.restore();
 }
-
 function drawSpiritTower(tower: Tower, cell: Point, definition: HanziDefinition, selected: boolean, material: boolean): void {
   const abilities = definition.combat.abilities;
   const style = ELEMENT_STYLES[tower.wuxing];
-  const visual = jaryeongVisualFor(tower.char, tower.wuxing, engine.state.region);
+  const visual = jaryeongVisualFor(tower.char, tower.wuxing, ctx.engine.state.region);
   const image = jaryeongSpriteImage(visual);
-  const progressionRank = engine.state.mode === "casual" ? casualStarOf(tower) : tower.stage;
-  const progressionColor = engine.state.mode === "casual" ? CASUAL_STAR_COLORS[casualStarOf(tower)] : STAGE_COLORS[tower.stage];
+  const progressionRank = ctx.engine.state.mode === "casual" ? casualStarOf(tower) : tower.stage;
+  const progressionColor = ctx.engine.state.mode === "casual" ? CASUAL_STAR_COLORS[casualStarOf(tower)] : STAGE_COLORS[tower.stage];
   const pulse = 1 + tower.pulse * 0.055;
   const auraRadius = 17 + (progressionRank - 1) * 0.45;
 
@@ -5277,7 +4805,7 @@ function drawSpiritTower(tower: Tower, cell: Point, definition: HanziDefinition,
     if (jaryeongFrameLayout(visual) === "single") {
       context.drawImage(image, cell.x - drawSize / 2, cell.y - drawSize / 2 + 3, drawSize, drawSize);
     } else {
-      const frame = tower.abilityFlash > 0.08 ? 2 : reducedMotion ? 0 : Math.floor((engine.state.elapsed + tower.id * 0.31) * 1.15) % 2;
+      const frame = tower.abilityFlash > 0.08 ? 2 : reducedMotion ? 0 : Math.floor((ctx.engine.state.elapsed + tower.id * 0.31) * 1.15) % 2;
       const frameWidth = image.naturalWidth / 2;
       const frameHeight = image.naturalHeight / 2;
       context.drawImage(
@@ -5297,7 +4825,6 @@ function drawSpiritTower(tower: Tower, cell: Point, definition: HanziDefinition,
 
   pendingPlaques.push({ tower, cell, selected, material });
 }
-
 function drawTowerAbilityPopup(tower: Tower, cell: Point): void {
   const popup = towerAbilityPopups.get(tower.id);
   if (!popup) return;
@@ -5324,13 +4851,12 @@ function drawTowerAbilityPopup(tower: Tower, cell: Point): void {
   context.fillText(popup.text, cell.x, y + 1, width - 10);
   context.restore();
 }
-
 function drawTowerTierMarker(tower: Tower, cell: Point): void {
-  const casual = engine.state.mode === "casual";
+  const casual = ctx.engine.state.mode === "casual";
   const tier = casual
     ? casualStarOf(tower)
-    : Math.max(1, Math.min(5, mapSynthesisDepths.get(tower.char) ?? 1)) as 1 | 2 | 3 | 4 | 5;
-  const uncombinable = !casual && tier === 1 && mapUncombinableStageOne.has(tower.char);
+    : Math.max(1, Math.min(5, ctx.mapSynthesisDepths.get(tower.char) ?? 1)) as 1 | 2 | 3 | 4 | 5;
+  const uncombinable = !casual && tier === 1 && ctx.mapUncombinableStageOne.has(tower.char);
   const color = casual ? CASUAL_STAR_COLORS[tier as CasualStar] : uncombinable ? UNCOMBINABLE_STAGE_ONE_COLOR : STAGE_COLORS[tier as 1 | 2 | 3 | 4 | 5];
   const stars = "★".repeat(tier);
   const y = cell.y + 19;
@@ -5353,7 +4879,6 @@ function drawTowerTierMarker(tower: Tower, cell: Point): void {
   context.fillText(stars, cell.x, y + 0.3, width - 2);
   context.restore();
 }
-
 function drawSelectedTowerMarker(cell: Point): void {
   const left = cell.x - 25;
   const right = cell.x + 25;
@@ -5383,14 +4908,13 @@ function drawSelectedTowerMarker(cell: Point): void {
   context.stroke();
   context.restore();
 }
-
 function drawTower(tower: Tower, materialIds: ReadonlySet<number>): void {
   const cell = BOARD_CELLS[tower.cell] as Point;
-  const definition = definitionForTower(engine.catalog, tower.definitionId);
-  const selected = tower.id === engine.state.selectedTowerId;
+  const definition = definitionForTower(ctx.engine.catalog, tower.definitionId);
+  const selected = tower.id === ctx.engine.state.selectedTowerId;
   const material = materialIds.has(tower.id);
   context.save();
-  if (displayMode === "study") drawStudyTower(tower, cell, definition, selected, material);
+  if (ctx.displayMode === "study") drawStudyTower(tower, cell, definition, selected, material);
   else drawSpiritTower(tower, cell, definition, selected, material);
   if (selected) drawSelectedTowerMarker(cell);
   drawTowerTierMarker(tower, cell);
@@ -5425,7 +4949,6 @@ function drawTower(tower: Tower, materialIds: ReadonlySet<number>): void {
   drawTowerAbilityPopup(tower, cell);
   context.restore();
 }
-
 function canvasWrappedLines(textValue: string, maxWidth: number, maxLines: number): string[] {
   const words = textValue.trim().split(/\s+/u).filter(Boolean);
   const lines: string[] = [];
@@ -5448,26 +4971,25 @@ function canvasWrappedLines(textValue: string, maxWidth: number, maxLines: numbe
   }
   return lines;
 }
-
 function drawHoveredTowerCard(): void {
   canvas.dataset.hoveredTowerMeaning = "";
   canvas.dataset.hoveredTowerPortrait = "";
-  const tower = hoveredTowerId === null ? undefined : engine.state.towers.find((candidate) => candidate.id === hoveredTowerId);
-  if (!tower || mapPanPointerId !== null || towerDragMoved) return;
+  const tower = ctx.hoveredTowerId === null ? undefined : ctx.engine.state.towers.find((candidate) => candidate.id === ctx.hoveredTowerId);
+  if (!tower || ctx.mapPanPointerId !== null || ctx.towerDragMoved) return;
   const cell = BOARD_CELLS[tower.cell] as Point;
-  const point = { x: mapOffset.x + cell.x * mapZoom, y: mapOffset.y + cell.y * mapZoom };
+  const point = { x: ctx.mapOffset.x + cell.x * ctx.mapZoom, y: ctx.mapOffset.y + cell.y * ctx.mapZoom };
   if (point.x < -24 || point.x > WORLD_WIDTH + 24 || point.y < -24 || point.y > WORLD_HEIGHT + 24) return;
 
-  const definition = definitionForTower(engine.catalog, tower.definitionId);
+  const definition = definitionForTower(ctx.engine.catalog, tower.definitionId);
   const style = ELEMENT_STYLES[tower.wuxing];
-  const learning = learningInfo(engine.state.region, tower.char);
+  const learning = learningInfo(ctx.engine.state.region, tower.char);
   const explanation = koreanMeaningExplanation(tower.char, learning.short, learning.meaning);
-  const visual = jaryeongVisualFor(tower.char, tower.wuxing, engine.state.region);
+  const visual = jaryeongVisualFor(tower.char, tower.wuxing, ctx.engine.state.region);
   const image = jaryeongSpriteImage(visual);
   // 큰 한자는 기존 글줄 상자를 좁히지 않고 오른쪽에 제 칸을 받는다.
   // 훈음은 "엄쪽(어음을 쪼갠 한 쪽) 권" 처럼 14자까지 오는데, 172px 상자를
   // 90px 로 줄이면 maxWidth 압축이 38% 까지 찌그러진다.
-  const glyphColumn = hoverGlyphLarge ? 80 : 0;
+  const glyphColumn = ctx.hoverGlyphLarge ? 80 : 0;
   const width = 284 + glyphColumn;
   const height = 176;
   const x = point.x + 36 + width > WORLD_WIDTH - 10 ? point.x - width - 36 : point.x + 36;
@@ -5498,7 +5020,7 @@ function drawHoveredTowerCard(): void {
   // 우상단 사분면의 빈자리에 한자를 크게. 카드가 어두운 계열이라
   // 스펙의 먹/밝은획을 뒤집어 밝은 글자 + 어두운 아래획(양각)으로 그린다.
   // 세로로는 쉬운 뜻 구분선(y+98) 위에서 끝난다.
-  if (hoverGlyphLarge) {
+  if (ctx.hoverGlyphLarge) {
     const glyphX = x + width - glyphColumn / 2 - 6;
     const glyphY = y + 58;
     context.save();
@@ -5597,7 +5119,7 @@ function drawEnemy(enemy: Enemy, point = positionOnPath(enemy.progress)): void {
   const top = point.y - artTop;
   context.save();
   context.translate(point.x, point.y);
-  if (enemy.boss) context.rotate(Math.sin(engine.state.elapsed * 2) * 0.025);
+  if (enemy.boss) context.rotate(Math.sin(ctx.engine.state.elapsed * 2) * 0.025);
 
   // 적과 아군 자령은 같은 스프라이트 세트를 공유하므로, 그림 자체로는 구분되지
   // 않는다. 발밑 표식과 테두리 광원으로 위협을 알린다.
@@ -5638,7 +5160,7 @@ function drawEnemy(enemy: Enemy, point = positionOnPath(enemy.progress)): void {
   context.restore();
 
   if (image.complete && image.naturalWidth > 0 && image.naturalHeight > 0) {
-    const frame = reducedMotion ? 0 : Math.floor((engine.state.elapsed * 2.2 + enemy.id * 0.37)) % 2;
+    const frame = reducedMotion ? 0 : Math.floor((ctx.engine.state.elapsed * 2.2 + enemy.id * 0.37)) % 2;
     // 적 전용 시트는 1행 2열이라 세로를 자르지 않는다. 아군 폴백 시트만 2×2다.
     const frameWidth = sheetReady ? ENEMY_FRAME_SIZE : image.naturalWidth / 2;
     const frameHeight = sheetReady ? ENEMY_FRAME_SIZE : image.naturalHeight / 2;
@@ -5681,9 +5203,9 @@ function drawEnemy(enemy: Enemy, point = positionOnPath(enemy.progress)): void {
   }
 
   const statuses: Array<{ glyph: string; color: string }> = [];
-  if (enemy.poisonUntil > engine.state.elapsed) statuses.push({ glyph: "毒", color: ELEMENT_STYLES.木.color });
-  if (enemy.slowFactor < 1 && enemy.slowUntil > engine.state.elapsed) statuses.push({ glyph: "凍", color: ELEMENT_STYLES.水.color });
-  if (enemy.stunnedUntil > engine.state.elapsed) statuses.push({ glyph: "封", color: ELEMENT_STYLES.土.color });
+  if (enemy.poisonUntil > ctx.engine.state.elapsed) statuses.push({ glyph: "毒", color: ELEMENT_STYLES.木.color });
+  if (enemy.slowFactor < 1 && enemy.slowUntil > ctx.engine.state.elapsed) statuses.push({ glyph: "凍", color: ELEMENT_STYLES.水.color });
+  if (enemy.stunnedUntil > ctx.engine.state.elapsed) statuses.push({ glyph: "封", color: ELEMENT_STYLES.土.color });
   if (enemy.armor >= 0.15) statuses.push({ glyph: "甲", color: ELEMENT_STYLES.金.color });
   for (let index = 0; index < statuses.length; index += 1) {
     const status = statuses[index] as { glyph: string; color: string };
@@ -5705,14 +5227,13 @@ function drawEnemy(enemy: Enemy, point = positionOnPath(enemy.progress)): void {
   context.fillRect(point.x - width / 2 - 1, top - 7, width + 2, 6);
   context.fillStyle = "rgba(10, 7, 5, 0.9)";
   context.fillRect(point.x - width / 2, top - 6, width, 4);
-  context.fillStyle = enemy.poisonUntil > engine.state.elapsed ? "#62db8a" : color;
+  context.fillStyle = enemy.poisonUntil > ctx.engine.state.elapsed ? "#62db8a" : color;
   context.fillRect(point.x - width / 2, top - 6, width * Math.max(0, enemy.hp / enemy.maxHp), 4);
   context.fillStyle = weaknessColor;
   context.font = '900 11px "Malgun Gothic", sans-serif';
   context.textAlign = "center";
   context.fillText(enemy.weakness, point.x, point.y + drawSize * 0.4 + 11);
 }
-
 function updateAndDrawFx(delta: number): void {
   for (const projectile of projectiles) projectile.age += delta;
   for (const floater of floaters) floater.age += delta;
@@ -5743,7 +5264,7 @@ function updateAndDrawFx(delta: number): void {
   }
   for (const burst of abilityBursts) burst.age += delta;
   for (const ripple of idiomRipples) ripple.age += delta;
-  if (idiomFlash) idiomFlash.age += delta;
+  if (ctx.idiomFlash) ctx.idiomFlash.age += delta;
   for (const popup of towerAbilityPopups.values()) popup.age += delta;
   let projectileSpriteDrawnThisFrame = false;
   for (const projectile of projectiles) {
@@ -5769,13 +5290,13 @@ function updateAndDrawFx(delta: number): void {
     context.rotate(angle);
     if (image.complete && image.naturalWidth > 0) {
       context.drawImage(image, -width / 2, -height / 2, width, height);
-      projectileSpriteDrawTotal += 1;
+      ctx.projectileSpriteDrawTotal += 1;
       projectileSpriteDrawnThisFrame = true;
     }
     context.restore();
   }
   canvas.dataset.projectileSpriteDraw = String(projectileSpriteDrawnThisFrame);
-  canvas.dataset.projectileSpriteDrawTotal = String(projectileSpriteDrawTotal);
+  canvas.dataset.projectileSpriteDrawTotal = String(ctx.projectileSpriteDrawTotal);
   for (const ring of rings) {
     if (!isWorldPointVisible(ring.at, 90)) continue;
     const ratio = Math.min(1, ring.age / ring.duration);
@@ -5837,10 +5358,9 @@ function updateAndDrawFx(delta: number): void {
   recycleExpired(rings, ringPool, 32);
   recycleExpired(abilityBursts, abilityBurstPool, 12);
   for (const [towerId, popup] of towerAbilityPopups) {
-    if (popup.age >= popup.duration || !engine.state.towers.some((tower) => tower.id === towerId)) towerAbilityPopups.delete(towerId);
+    if (popup.age >= popup.duration || !ctx.engine.state.towers.some((tower) => tower.id === towerId)) towerAbilityPopups.delete(towerId);
   }
 }
-
 function recycleExpired<T extends { age: number; duration: number }>(items: T[], pool: T[], poolLimit: number): void {
   for (let index = items.length - 1; index >= 0; index -= 1) {
     const item = items[index];
@@ -5851,132 +5371,117 @@ function recycleExpired<T extends { age: number; duration: number }>(items: T[],
     if (pool.length < poolLimit) pool.push(removed);
   }
 }
-
 function towerAtCell(cell: number): Tower | undefined {
-  return engine.state.towers.find((tower) => tower.cell === cell);
+  return ctx.engine.state.towers.find((tower) => tower.cell === cell);
 }
-
 function canvasScreenPoint(event: MouseEvent): Point {
   const rect = canvas.getBoundingClientRect();
   return { x: (event.clientX - rect.left) * WORLD_WIDTH / rect.width, y: (event.clientY - rect.top) * WORLD_HEIGHT / rect.height };
 }
-
 function canvasPoint(event: PointerEvent): Point {
   const point = canvasScreenPoint(event);
-  return { x: (point.x - mapOffset.x) / mapZoom, y: (point.y - mapOffset.y) / mapZoom };
+  return { x: (point.x - ctx.mapOffset.x) / ctx.mapZoom, y: (point.y - ctx.mapOffset.y) / ctx.mapZoom };
 }
-
 function constrainMapCamera(): void {
-  const scaledWidth = WORLD_WIDTH * mapZoom;
-  const scaledHeight = WORLD_HEIGHT * mapZoom;
-  mapOffset = {
+  const scaledWidth = WORLD_WIDTH * ctx.mapZoom;
+  const scaledHeight = WORLD_HEIGHT * ctx.mapZoom;
+  ctx.mapOffset = {
     x: scaledWidth <= WORLD_WIDTH
       ? (WORLD_WIDTH - scaledWidth) / 2
-      : Math.min(0, Math.max(WORLD_WIDTH - scaledWidth, mapOffset.x)),
+      : Math.min(0, Math.max(WORLD_WIDTH - scaledWidth, ctx.mapOffset.x)),
     y: scaledHeight <= WORLD_HEIGHT
       ? (WORLD_HEIGHT - scaledHeight) / 2
-      : Math.min(0, Math.max(WORLD_HEIGHT - scaledHeight, mapOffset.y))
+      : Math.min(0, Math.max(WORLD_HEIGHT - scaledHeight, ctx.mapOffset.y))
   };
-  canvas.dataset.mapOffsetX = mapOffset.x.toFixed(1);
-  canvas.dataset.mapOffsetY = mapOffset.y.toFixed(1);
+  canvas.dataset.mapOffsetX = ctx.mapOffset.x.toFixed(1);
+  canvas.dataset.mapOffsetY = ctx.mapOffset.y.toFixed(1);
 }
-
 function syncMapZoomControl(): void {
-  const displayZoom = Math.round(mapZoom / BASE_MAP_ZOOM * 100);
+  const displayZoom = Math.round(ctx.mapZoom / BASE_MAP_ZOOM * 100);
   must<HTMLElement>("#map-zoom-value").textContent = `${displayZoom}%`;
-  canvas.dataset.mapZoom = mapZoom.toFixed(2);
+  canvas.dataset.mapZoom = ctx.mapZoom.toFixed(2);
   canvas.dataset.mapZoomDisplay = String(displayZoom);
-  canvas.dataset.mapOffsetX = mapOffset.x.toFixed(1);
-  canvas.dataset.mapOffsetY = mapOffset.y.toFixed(1);
+  canvas.dataset.mapOffsetX = ctx.mapOffset.x.toFixed(1);
+  canvas.dataset.mapOffsetY = ctx.mapOffset.y.toFixed(1);
   // 84px compact 명패가 이웃과 4px 이상 떨어질 수 없는 배율에서만 한자만 남긴다.
   canvas.dataset.labelDensity = plaqueIsGlyphOnly() ? "glyph" : "reading";
-  canvas.dataset.hanjaEmphasis = String(hanjaEmphasis);
+  canvas.dataset.hanjaEmphasis = String(ctx.hanjaEmphasis);
 }
-
 function resetMapCamera(): void {
-  mapZoom = DEFAULT_MAP_ZOOM;
-  mapOffset = defaultMapOffset();
+  ctx.mapZoom = DEFAULT_MAP_ZOOM;
+  ctx.mapOffset = defaultMapOffset();
   constrainMapCamera();
   syncMapZoomControl();
 }
-
 function setMapZoom(nextZoom: number, anchor: Point = { x: WORLD_WIDTH / 2, y: WORLD_HEIGHT / 2 }): void {
   const worldAtAnchor = {
-    x: (anchor.x - mapOffset.x) / mapZoom,
-    y: (anchor.y - mapOffset.y) / mapZoom
+    x: (anchor.x - ctx.mapOffset.x) / ctx.mapZoom,
+    y: (anchor.y - ctx.mapOffset.y) / ctx.mapZoom
   };
-  mapZoom = Math.min(MAX_MAP_ZOOM, Math.max(MIN_MAP_ZOOM, nextZoom));
-  mapOffset = {
-    x: anchor.x - worldAtAnchor.x * mapZoom,
-    y: anchor.y - worldAtAnchor.y * mapZoom
+  ctx.mapZoom = Math.min(MAX_MAP_ZOOM, Math.max(MIN_MAP_ZOOM, nextZoom));
+  ctx.mapOffset = {
+    x: anchor.x - worldAtAnchor.x * ctx.mapZoom,
+    y: anchor.y - worldAtAnchor.y * ctx.mapZoom
   };
   constrainMapCamera();
   syncMapZoomControl();
 }
-
 function focusMapOnSelectedTower(): void {
-  const tower = engine.selectedTower();
-  const startingFormation = engine.state.startingFormationIndex === null
+  const tower = ctx.engine.selectedTower();
+  const startingFormation = ctx.engine.state.startingFormationIndex === null
     ? undefined
-    : BOARD_FORMATIONS[engine.state.startingFormationIndex];
+    : BOARD_FORMATIONS[ctx.engine.state.startingFormationIndex];
   const cell = tower && tower.cell >= 0
     ? BOARD_CELLS[tower.cell]
-    : engine.state.summonCount === 1 ? startingFormation?.center : undefined;
+    : ctx.engine.state.summonCount === 1 ? startingFormation?.center : undefined;
   if (!cell) return;
-  mapOffset = {
-    x: WORLD_WIDTH / 2 - cell.x * mapZoom,
-    y: WORLD_HEIGHT / 2 - cell.y * mapZoom
+  ctx.mapOffset = {
+    x: WORLD_WIDTH / 2 - cell.x * ctx.mapZoom,
+    y: WORLD_HEIGHT / 2 - cell.y * ctx.mapZoom
   };
   constrainMapCamera();
   syncMapZoomControl();
 }
-
 /** 새로 열린 진으로 화면을 옮겨 "무엇이 열렸는지"를 눈으로 잇는다. */
 function focusMapOnFormation(formationIndex: number): void {
   const center = BOARD_FORMATIONS[formationIndex]?.center;
   if (!center) return;
-  mapOffset = {
-    x: WORLD_WIDTH / 2 - center.x * mapZoom,
-    y: WORLD_HEIGHT / 2 - center.y * mapZoom
+  ctx.mapOffset = {
+    x: WORLD_WIDTH / 2 - center.x * ctx.mapZoom,
+    y: WORLD_HEIGHT / 2 - center.y * ctx.mapZoom
   };
   constrainMapCamera();
   syncMapZoomControl();
 }
-
 function summonAndFocus(amount = 1, intent: SummonIntent = "balanced"): void {
   sound.unlock();
-  const result = amount === 1 ? engine.summonProduct(intent) : engine.summonMany(amount);
+  const result = amount === 1 ? ctx.engine.summonProduct(intent) : ctx.engine.summonMany(amount);
   handleAction(result);
   if (result.ok) focusMapOnSelectedTower();
 }
-
 function setGameSpeed(speed: GameSpeed): void {
-  gameSpeed = speed;
+  ctx.gameSpeed = speed;
   const button = must<HTMLButtonElement>("#speed-button");
   button.textContent = `${speed}×`;
   button.setAttribute("aria-label", `게임 배속 ${speed}배`);
   button.classList.toggle("is-accelerated", speed > 1);
   shell.dataset.gameSpeed = String(speed);
 }
-
 function cycleGameSpeed(): void {
-  setGameSpeed(gameSpeed === 1 ? 2 : gameSpeed === 2 ? 3 : 1);
+  setGameSpeed(ctx.gameSpeed === 1 ? 2 : ctx.gameSpeed === 2 ? 3 : 1);
 }
-
 function toggleHanjaEmphasis(): void {
-  hanjaEmphasis = !hanjaEmphasis;
+  ctx.hanjaEmphasis = !ctx.hanjaEmphasis;
   const button = must<HTMLButtonElement>("#hanja-emphasis-toggle");
-  button.classList.toggle("is-on", hanjaEmphasis);
-  button.setAttribute("aria-pressed", String(hanjaEmphasis));
-  must<HTMLElement>("#hanja-emphasis-toggle strong").textContent = hanjaEmphasis ? "ON" : "OFF";
+  button.classList.toggle("is-on", ctx.hanjaEmphasis);
+  button.setAttribute("aria-pressed", String(ctx.hanjaEmphasis));
+  must<HTMLElement>("#hanja-emphasis-toggle strong").textContent = ctx.hanjaEmphasis ? "ON" : "OFF";
   syncMapZoomControl();
-  showToast(hanjaEmphasis ? "한자 강조 ON · 큰 한자와 훈독을 고정 크기로 표시" : "한자 강조 OFF · 머리 위 표찰 숨김 · 별 표시는 유지");
+  showToast(ctx.hanjaEmphasis ? "한자 강조 ON · 큰 한자와 훈독을 고정 크기로 표시" : "한자 강조 OFF · 머리 위 표찰 숨김 · 별 표시는 유지");
 }
-
 function cellAtPoint(point: Point): number {
   return BOARD_CELLS.findIndex((candidate) => Math.hypot(candidate.x - point.x, candidate.y - point.y) <= 21);
 }
-
 /**
  * 잠긴 진 중앙 자물쇠의 히트 영역.
  *
@@ -5986,18 +5491,16 @@ function cellAtPoint(point: Point): number {
  * 맞춘 반경만 받는다.
  */
 const LOCK_HIT_RADIUS = 34;
-
 function lockedFormationAtPoint(point: Point): number | null {
   const index = BOARD_FORMATIONS.findIndex((formation) =>
     Math.hypot(formation.center.x - point.x, formation.center.y - point.y) <= LOCK_HIT_RADIUS);
-  if (index < 0 || engine.isFormationUnlocked(index)) return null;
+  if (index < 0 || ctx.engine.isFormationUnlocked(index)) return null;
   return index;
 }
-
 function beginMapPan(event: PointerEvent, button: 0 | 1, clickCell = -1): void {
-  mapPanPointerId = event.pointerId;
+  ctx.mapPanPointerId = event.pointerId;
   mapPanStartScreen = canvasScreenPoint(event);
-  mapPanStartOffset = { ...mapOffset };
+  mapPanStartOffset = { ...ctx.mapOffset };
   mapPanButton = button;
   mapPanMoved = button === 1;
   mapPanClickCell = clickCell;
@@ -6008,10 +5511,9 @@ function beginMapPan(event: PointerEvent, button: 0 | 1, clickCell = -1): void {
     // Panning still works while the pointer remains over the canvas.
   }
 }
-
 canvas.addEventListener("pointerdown", (event) => {
   sound.unlock();
-  if (engine.state.phase === "title" || engine.state.phase === "victory" || engine.state.phase === "defeat") return;
+  if (ctx.engine.state.phase === "title" || ctx.engine.state.phase === "victory" || ctx.engine.state.phase === "defeat") return;
   if (event.button === 1) {
     event.preventDefault();
     beginMapPan(event, 1);
@@ -6024,18 +5526,18 @@ canvas.addEventListener("pointerdown", (event) => {
   event.preventDefault();
   if (occupant) {
     setPanelTab("unit");
-    engine.selectTower(occupant.id);
-    towerDragPointerId = event.pointerId;
-    towerDragTowerId = occupant.id;
-    towerDragStart = point;
-    towerDragMoved = false;
+    ctx.engine.selectTower(occupant.id);
+    ctx.towerDragPointerId = event.pointerId;
+    ctx.towerDragTowerId = occupant.id;
+    ctx.towerDragStart = point;
+    ctx.towerDragMoved = false;
     try {
       canvas.setPointerCapture(event.pointerId);
     } catch {
       // Pointer capture is optional; click selection still works without it.
     }
-    evolutionRenderKey = "";
-    selectedRenderKey = "";
+    ctx.evolutionRenderKey = "";
+    ctx.selectedRenderKey = "";
     syncPanel();
   } else {
     // Empty board space keeps its ordinary click action, but becomes camera
@@ -6043,18 +5545,17 @@ canvas.addEventListener("pointerdown", (event) => {
     beginMapPan(event, 0, cell);
   }
 });
-
 canvas.addEventListener("pointermove", (event) => {
-  if (event.pointerId === mapPanPointerId && mapPanStartScreen && mapPanStartOffset) {
+  if (event.pointerId === ctx.mapPanPointerId && mapPanStartScreen && mapPanStartOffset) {
     const point = canvasScreenPoint(event);
     const distance = Math.hypot(point.x - mapPanStartScreen.x, point.y - mapPanStartScreen.y);
     if (!mapPanMoved && distance >= 7) {
       mapPanMoved = true;
-      mapCameraGestures += 1;
+      ctx.mapCameraGestures += 1;
       canvas.classList.add("is-panning");
     }
     if (!mapPanMoved) return;
-    mapOffset = {
+    ctx.mapOffset = {
       x: mapPanStartOffset.x + point.x - mapPanStartScreen.x,
       y: mapPanStartOffset.y + point.y - mapPanStartScreen.y
     };
@@ -6063,42 +5564,40 @@ canvas.addEventListener("pointermove", (event) => {
   }
   const hoverPoint = canvasPoint(event);
   const hoverCell = cellAtPoint(hoverPoint);
-  hoveredTowerId = hoverCell >= 0 ? towerAtCell(hoverCell)?.id ?? null : null;
-  canvas.dataset.hoveredTowerId = hoveredTowerId === null ? "" : String(hoveredTowerId);
+  ctx.hoveredTowerId = hoverCell >= 0 ? towerAtCell(hoverCell)?.id ?? null : null;
+  canvas.dataset.hoveredTowerId = ctx.hoveredTowerId === null ? "" : String(ctx.hoveredTowerId);
   // 자물쇠 위에서는 확대하고 커서를 손가락으로 바꿔 "눌린다"를 알린다.
   // 잠긴 칸도 같은 팝업으로 이어지므로 커서는 같이 바꾼다.
-  const runActive = engine.state.phase === "prep" || engine.state.phase === "combat";
-  hoveredLockFormation = runActive ? lockedFormationAtPoint(hoverPoint) : null;
-  const overLockedCell = runActive && hoverCell >= 0 && !engine.isCellUnlocked(hoverCell);
-  canvas.dataset.lockHover = hoveredLockFormation !== null || overLockedCell ? "1" : "";
-  if (event.pointerId !== towerDragPointerId || !towerDragStart) return;
+  const runActive = ctx.engine.state.phase === "prep" || ctx.engine.state.phase === "combat";
+  ctx.hoveredLockFormation = runActive ? lockedFormationAtPoint(hoverPoint) : null;
+  const overLockedCell = runActive && hoverCell >= 0 && !ctx.engine.isCellUnlocked(hoverCell);
+  canvas.dataset.lockHover = ctx.hoveredLockFormation !== null || overLockedCell ? "1" : "";
+  if (event.pointerId !== ctx.towerDragPointerId || !ctx.towerDragStart) return;
   const point = canvasPoint(event);
-  if (Math.hypot(point.x - towerDragStart.x, point.y - towerDragStart.y) >= 10) towerDragMoved = true;
+  if (Math.hypot(point.x - ctx.towerDragStart.x, point.y - ctx.towerDragStart.y) >= 10) ctx.towerDragMoved = true;
 });
-
 function finishTowerDrag(event: PointerEvent, applyMove: boolean): void {
-  if (event.pointerId !== towerDragPointerId) return;
+  if (event.pointerId !== ctx.towerDragPointerId) return;
   try {
     if (canvas.hasPointerCapture(event.pointerId)) canvas.releasePointerCapture(event.pointerId);
   } catch {
     // The selected tower remains usable if capture was unavailable.
   }
-  const draggedTowerId = towerDragTowerId;
-  const moved = towerDragMoved;
-  towerDragPointerId = null;
-  towerDragTowerId = null;
-  towerDragStart = null;
-  towerDragMoved = false;
+  const draggedTowerId = ctx.towerDragTowerId;
+  const moved = ctx.towerDragMoved;
+  ctx.towerDragPointerId = null;
+  ctx.towerDragTowerId = null;
+  ctx.towerDragStart = null;
+  ctx.towerDragMoved = false;
   if (!applyMove || !moved || draggedTowerId === null) return;
   const targetCell = cellAtPoint(canvasPoint(event));
   if (targetCell < 0) return;
-  engine.selectTower(draggedTowerId);
+  ctx.engine.selectTower(draggedTowerId);
   sound.expectPlacement();
-  handleAction(engine.relocateSelectedToCell(targetCell));
+  handleAction(ctx.engine.relocateSelectedToCell(targetCell));
 }
-
 function finishMapPan(event: PointerEvent, applyClick: boolean): boolean {
-  if (event.pointerId !== mapPanPointerId) return false;
+  if (event.pointerId !== ctx.mapPanPointerId) return false;
   try {
     if (canvas.hasPointerCapture(event.pointerId)) canvas.releasePointerCapture(event.pointerId);
   } catch {
@@ -6107,7 +5606,7 @@ function finishMapPan(event: PointerEvent, applyClick: boolean): boolean {
   const button = mapPanButton;
   const moved = mapPanMoved;
   const clickCell = mapPanClickCell;
-  mapPanPointerId = null;
+  ctx.mapPanPointerId = null;
   mapPanStartScreen = null;
   mapPanStartOffset = null;
   mapPanButton = null;
@@ -6118,31 +5617,30 @@ function finishMapPan(event: PointerEvent, applyClick: boolean): boolean {
     // 잠긴 칸과 판 중앙 자물쇠는 같은 확인 팝업으로 모은다. 예전에는 클릭 즉시
     // 엽전이 빠져나가 무슨 일이 벌어졌는지 알 수 없었다.
     if (clickCell >= 0) {
-      if (!engine.isCellUnlocked(clickCell)) openFormationUnlockDialog(Math.floor(clickCell / CELLS_PER_FORMATION));
-      else { sound.expectPlacement(); handleAction(engine.moveSelectedToCell(clickCell)); }
+      if (!ctx.engine.isCellUnlocked(clickCell)) openFormationUnlockDialog(Math.floor(clickCell / CELLS_PER_FORMATION));
+      else { sound.expectPlacement(); handleAction(ctx.engine.moveSelectedToCell(clickCell)); }
     } else {
       const lockedFormation = lockedFormationAtPoint(canvasPoint(event));
       if (lockedFormation !== null) {
         openFormationUnlockDialog(lockedFormation);
       } else {
-        engine.selectTower(null);
-        evolutionRenderKey = "";
-        selectedRenderKey = "";
+        ctx.engine.selectTower(null);
+        ctx.evolutionRenderKey = "";
+        ctx.selectedRenderKey = "";
         syncPanel();
       }
     }
   }
   return true;
 }
-
 canvas.addEventListener("pointerup", (event) => {
   if (!finishMapPan(event, true)) finishTowerDrag(event, true);
 });
 canvas.addEventListener("pointerleave", () => {
-  if (mapPanPointerId !== null || towerDragPointerId !== null) return;
-  hoveredTowerId = null;
+  if (ctx.mapPanPointerId !== null || ctx.towerDragPointerId !== null) return;
+  ctx.hoveredTowerId = null;
   canvas.dataset.hoveredTowerId = "";
-  hoveredLockFormation = null;
+  ctx.hoveredLockFormation = null;
   canvas.dataset.lockHover = "";
 });
 canvas.addEventListener("pointercancel", (event) => {
@@ -6161,16 +5659,15 @@ document.addEventListener("selectstart", (event) => {
   if (target?.closest("input, textarea")) return;
   event.preventDefault();
 });
-
 canvas.addEventListener("auxclick", (event) => {
   if (event.button === 1) event.preventDefault();
 });
 canvas.addEventListener("wheel", (event) => {
   event.preventDefault();
   const anchor = canvasScreenPoint(event);
-  const before = mapZoom;
-  setMapZoom(mapZoom * Math.exp(-event.deltaY * 0.0012), anchor);
-  if (mapZoom !== before) mapCameraGestures += 1;
+  const before = ctx.mapZoom;
+  setMapZoom(ctx.mapZoom * Math.exp(-event.deltaY * 0.0012), anchor);
+  if (ctx.mapZoom !== before) ctx.mapCameraGestures += 1;
 }, { passive: false });
 must<HTMLButtonElement>("#map-zoom-reset").addEventListener("click", resetMapCamera);
 must<HTMLButtonElement>("#hanja-emphasis-toggle").addEventListener("click", toggleHanjaEmphasis);
@@ -6178,48 +5675,43 @@ must<HTMLButtonElement>("#hanja-emphasis-toggle").addEventListener("click", togg
 must<HTMLElement>("#active-idioms").addEventListener("click", (event) => {
   const idiomId = (event.target as HTMLElement | null)?.closest<HTMLButtonElement>("[data-active-idiom]")?.dataset.activeIdiom;
   if (!idiomId) return;
-  const seal = engine.state.idiomSeals.find((candidate) => candidate.idiomId === idiomId);
+  const seal = ctx.engine.state.idiomSeals.find((candidate) => candidate.idiomId === idiomId);
   if (seal) focusMapOnCells(seal.cells);
 });
 must<HTMLButtonElement>("#speed-button").addEventListener("click", cycleGameSpeed);
-
 const REGION_MENU_INFO: Record<RegionCode, { name: string; pool: string }> = {
   KR: { name: "한국", pool: "한국 천자문 1,000" },
   JP: { name: "일본", pool: "일본 상용한자 2,136" },
   CN: { name: "중국", pool: "중국 규범한자 3,500" }
 };
 const p00Dialog = must<HTMLDialogElement>("#p00-dialog");
-
 function openP00(region: RegionCode): void {
-  pendingRegion = region;
+  ctx.pendingRegion = region;
   const info = REGION_MENU_INFO[region];
   must<HTMLElement>("#p00-title").textContent = `${info.name} 한자 체계`;
   must<HTMLButtonElement>("#p00-continue").textContent = `${info.name}으로 계속`;
   p00Dialog.showModal();
   must<HTMLButtonElement>("#p00-return").focus();
 }
-
 function closeP00(confirm: boolean): void {
-  if (confirm && pendingRegion) selectedRegion = pendingRegion;
-  pendingRegion = null;
+  if (confirm && ctx.pendingRegion) ctx.selectedRegion = ctx.pendingRegion;
+  ctx.pendingRegion = null;
   if (p00Dialog.open) p00Dialog.close();
   syncTitleModeSelection();
 }
-
 document.querySelectorAll<HTMLButtonElement>(".region-option").forEach((button) => {
   button.addEventListener("click", () => {
     if (button.disabled) return;
     const region = button.dataset.region as RegionCode;
     // JP/CN 은 pending 만 두고 P00 확인을 거친다. 취소하면 기존 선택이 유지된다.
     if (region === "KR") {
-      selectedRegion = "KR";
+      ctx.selectedRegion = "KR";
       syncTitleModeSelection();
       return;
     }
     openP00(region);
   });
 });
-
 must<HTMLButtonElement>("#p00-return").addEventListener("click", () => closeP00(false));
 must<HTMLButtonElement>("#p00-continue").addEventListener("click", () => closeP00(true));
 p00Dialog.addEventListener("cancel", (event) => {
@@ -6229,7 +5721,6 @@ p00Dialog.addEventListener("cancel", (event) => {
 p00Dialog.addEventListener("click", (event) => {
   if (event.target === p00Dialog) closeP00(false);
 });
-
 // ── S13 맞춤 진법: 한자 범위 x 읽기·표기 x 진법 규칙을 한 화면에서 ──
 // 세 번째 엔진 모드가 아니라 기존 설정들의 진입점이다(코덱스 스펙).
 // JP/CN 범위 선택도 P00 확인을 우회하지 않는다.
@@ -6240,14 +5731,13 @@ p00Dialog.addEventListener("click", (event) => {
    ──────────────────────────────────────────────────────────── */
 const formationUnlockDialog = must<HTMLDialogElement>("#formation-unlock-dialog");
 let pendingFormationUnlock: number | null = null;
-
 function openFormationUnlockDialog(formationIndex: number): void {
   const formation = BOARD_FORMATIONS[formationIndex];
-  if (!formation || engine.isFormationUnlocked(formationIndex)) return;
+  if (!formation || ctx.engine.isFormationUnlocked(formationIndex)) return;
   pendingFormationUnlock = formationIndex;
-  const cost = engine.nextFormationUnlockCost();
-  const notStarted = engine.state.startingFormationIndex === null;
-  const shortfall = cost === null ? 0 : Math.max(0, cost - engine.state.gold);
+  const cost = ctx.engine.nextFormationUnlockCost();
+  const notStarted = ctx.engine.state.startingFormationIndex === null;
+  const shortfall = cost === null ? 0 : Math.max(0, cost - ctx.engine.state.gold);
   must<HTMLElement>("#formation-unlock-glyph").textContent = formation.preferredWuxing;
   must<HTMLElement>("#formation-unlock-glyph").style.setProperty("--formation", formation.color);
   must<HTMLElement>("#formation-unlock-label").textContent = `${formation.label} 해금`;
@@ -6266,17 +5756,15 @@ function openFormationUnlockDialog(formationIndex: number): void {
   must<HTMLButtonElement>("#formation-unlock-confirm").disabled = blocked;
   if (!formationUnlockDialog.open) formationUnlockDialog.showModal();
 }
-
 function closeFormationUnlockDialog(): void {
   pendingFormationUnlock = null;
   if (formationUnlockDialog.open) formationUnlockDialog.close();
 }
-
 must<HTMLButtonElement>("#formation-unlock-confirm").addEventListener("click", () => {
   if (pendingFormationUnlock === null) return;
   const formationIndex = pendingFormationUnlock;
   sound.unlock();
-  const result = engine.unlockFormation(formationIndex);
+  const result = ctx.engine.unlockFormation(formationIndex);
   closeFormationUnlockDialog();
   handleAction(result);
   // 성공하면 기존 개방 링 연출을 그대로 재사용해 어디가 열렸는지 눈으로 잇는다.
@@ -6287,47 +5775,43 @@ formationUnlockDialog.addEventListener("click", (event) => {
   if (event.target === formationUnlockDialog) closeFormationUnlockDialog();
 });
 formationUnlockDialog.addEventListener("close", () => { pendingFormationUnlock = null; });
-
 const s13Dialog = must<HTMLDialogElement>("#s13-dialog");
-
 function syncS13(): void {
   s13Dialog.querySelectorAll<HTMLButtonElement>("[data-s13-region]").forEach((button) => {
     const region = button.dataset.s13Region as RegionCode;
     button.disabled = false;
-    button.classList.toggle("is-selected", region === selectedRegion);
-    button.setAttribute("aria-checked", String(region === selectedRegion));
+    button.classList.toggle("is-selected", region === ctx.selectedRegion);
+    button.setAttribute("aria-checked", String(region === ctx.selectedRegion));
     button.title = REGION_MENU_INFO[region].pool;
   });
   s13Dialog.querySelectorAll<HTMLButtonElement>("[data-s13-display]").forEach((button) => {
-    const selected = button.dataset.s13Display === displayMode;
+    const selected = button.dataset.s13Display === ctx.displayMode;
     button.classList.toggle("is-selected", selected);
     button.setAttribute("aria-checked", String(selected));
   });
   s13Dialog.querySelectorAll<HTMLButtonElement>("[data-s13-mode]").forEach((button) => {
-    const selected = button.dataset.s13Mode === selectedGameMode;
+    const selected = button.dataset.s13Mode === ctx.selectedGameMode;
     button.classList.toggle("is-selected", selected);
     button.setAttribute("aria-checked", String(selected));
   });
   const emphasisButton = must<HTMLButtonElement>("#s13-emphasis");
-  emphasisButton.setAttribute("aria-pressed", String(hanjaEmphasis));
-  must<HTMLElement>("#s13-emphasis .s13-state").textContent = hanjaEmphasis ? "ON" : "OFF";
-  emphasisButton.classList.toggle("is-on", hanjaEmphasis);
+  emphasisButton.setAttribute("aria-pressed", String(ctx.hanjaEmphasis));
+  must<HTMLElement>("#s13-emphasis .s13-state").textContent = ctx.hanjaEmphasis ? "ON" : "OFF";
+  emphasisButton.classList.toggle("is-on", ctx.hanjaEmphasis);
   const hoverGlyphButton = must<HTMLButtonElement>("#s13-hover-glyph");
-  hoverGlyphButton.setAttribute("aria-pressed", String(hoverGlyphLarge));
-  must<HTMLElement>("#s13-hover-glyph .s13-state").textContent = hoverGlyphLarge ? "ON" : "OFF";
-  hoverGlyphButton.classList.toggle("is-on", hoverGlyphLarge);
+  hoverGlyphButton.setAttribute("aria-pressed", String(ctx.hoverGlyphLarge));
+  must<HTMLElement>("#s13-hover-glyph .s13-state").textContent = ctx.hoverGlyphLarge ? "ON" : "OFF";
+  hoverGlyphButton.classList.toggle("is-on", ctx.hoverGlyphLarge);
   const autoButton = must<HTMLButtonElement>("#s13-autoplace");
-  autoButton.setAttribute("aria-pressed", String(engine.state.autoPlaceSummons));
-  must<HTMLElement>("#s13-autoplace .s13-state").textContent = engine.state.autoPlaceSummons ? "ON" : "OFF";
-  autoButton.classList.toggle("is-on", engine.state.autoPlaceSummons);
+  autoButton.setAttribute("aria-pressed", String(ctx.engine.state.autoPlaceSummons));
+  must<HTMLElement>("#s13-autoplace .s13-state").textContent = ctx.engine.state.autoPlaceSummons ? "ON" : "OFF";
+  autoButton.classList.toggle("is-on", ctx.engine.state.autoPlaceSummons);
 }
-
 must<HTMLButtonElement>("#custom-formation-button").addEventListener("click", () => {
   sound.playUiConfirm();
   syncS13();
   s13Dialog.showModal();
 });
-
 must<HTMLButtonElement>("#s13-close").addEventListener("click", () => s13Dialog.close());
 s13Dialog.addEventListener("click", (event) => {
   if (event.target === s13Dialog) {
@@ -6339,7 +5823,7 @@ s13Dialog.addEventListener("click", (event) => {
   if (regionButton && !regionButton.disabled) {
     const region = regionButton.dataset.s13Region as RegionCode;
     if (region === "KR") {
-      selectedRegion = "KR";
+      ctx.selectedRegion = "KR";
       syncTitleModeSelection();
     } else {
       // 미리 해보기 확인(P00)을 우회하지 않는다.
@@ -6366,51 +5850,47 @@ s13Dialog.addEventListener("click", (event) => {
   }
   if (target.closest("#s13-hover-glyph")) {
     sound.unlock();
-    setHoverGlyphLarge(!hoverGlyphLarge);
+    setHoverGlyphLarge(!ctx.hoverGlyphLarge);
     sound.playUiConfirm();
     syncS13();
     return;
   }
   if (target.closest("#s13-autoplace")) {
     sound.unlock();
-    const enabled = !engine.state.autoPlaceSummons;
+    const enabled = !ctx.engine.state.autoPlaceSummons;
     saveAutoPlaceSummons(enabled);
-    handleAction(engine.setAutoPlaceSummons(enabled));
+    handleAction(ctx.engine.setAutoPlaceSummons(enabled));
     syncAutoPlaceControl();
     sound.playUiConfirm();
     syncS13();
   }
 });
-
 must<HTMLButtonElement>("#seed-reroll-button").addEventListener("click", () => {
   seedInput.value = createRunSeed();
   sound.playUiConfirm();
 });
-
 must<HTMLButtonElement>("#s00-codex-button").addEventListener("click", () => {
   must<HTMLButtonElement>("#codex-button").click();
 });
-
 document.querySelectorAll<HTMLButtonElement>("[data-mode]").forEach((button) => {
-  button.addEventListener("click", () => handleAction(engine.setAutomationMode(button.dataset.mode as AutomationMode)));
+  button.addEventListener("click", () => handleAction(ctx.engine.setAutomationMode(button.dataset.mode as AutomationMode)));
 });
-
 must<HTMLElement>("#evolution-options").addEventListener("click", (event) => {
   const target = event.target as HTMLElement;
   const casualTowerButton = target.closest<HTMLButtonElement>("[data-casual-fusion-tower]");
   if (casualTowerButton) {
     const id = Number(casualTowerButton.dataset.casualFusionTower);
     if (!Number.isInteger(id)) return;
-    const index = casualFusionSelection.indexOf(id);
+    const index = ctx.casualFusionSelection.indexOf(id);
     if (index >= 0) {
-      casualFusionSelection = casualFusionSelection.filter((towerId) => towerId !== id);
+      ctx.casualFusionSelection = ctx.casualFusionSelection.filter((towerId) => towerId !== id);
     } else {
-      const tower = [...engine.state.towers, ...engine.state.inventoryTowers].find((candidate) => candidate.id === id);
-      const anchor = [...engine.state.towers, ...engine.state.inventoryTowers].find((candidate) => candidate.id === casualFusionSelection[0]);
-      if (!tower || casualFusionSelection.length >= 3) return;
+      const tower = [...ctx.engine.state.towers, ...ctx.engine.state.inventoryTowers].find((candidate) => candidate.id === id);
+      const anchor = [...ctx.engine.state.towers, ...ctx.engine.state.inventoryTowers].find((candidate) => candidate.id === ctx.casualFusionSelection[0]);
+      if (!tower || ctx.casualFusionSelection.length >= 3) return;
       // v3: 보호 자령은 첫 슬롯부터 소모 대상이 될 수 없다. 모달까지 가서야
       // 알게 되는 일이 없도록 그 자리에서 사유를 말한다.
-      const protection = engine.casualMaterialProtection(tower.id);
+      const protection = ctx.engine.casualMaterialProtection(tower.id);
       if (protection) {
         showToast(`${tower.char}은 소모할 수 없습니다 · ${protection}`, true);
         return;
@@ -6419,17 +5899,17 @@ must<HTMLElement>("#evolution-options").addEventListener("click", (event) => {
         showToast(`같은 ${anchor.wuxing}행 ${casualStarOf(anchor)}★ 자령을 선택하세요.`, true);
         return;
       }
-      casualFusionSelection.push(id);
+      ctx.casualFusionSelection.push(id);
     }
-    evolutionRenderKey = "";
+    ctx.evolutionRenderKey = "";
     renderCasualFusion();
     return;
   }
   const slot = target.closest<HTMLButtonElement>("[data-casual-fusion-slot]");
   if (slot) {
     const index = Number(slot.dataset.casualFusionSlot);
-    casualFusionSelection = casualFusionSelection.filter((_, itemIndex) => itemIndex !== index);
-    evolutionRenderKey = "";
+    ctx.casualFusionSelection = ctx.casualFusionSelection.filter((_, itemIndex) => itemIndex !== index);
+    ctx.evolutionRenderKey = "";
     renderCasualFusion();
     return;
   }
@@ -6448,21 +5928,20 @@ must<HTMLElement>("#evolution-options").addEventListener("click", (event) => {
     return;
   }
   const button = target.closest<HTMLButtonElement>("[data-recipe]");
-  if (button?.dataset.recipe) handleAction(engine.evolve(button.dataset.recipe));
+  if (button?.dataset.recipe) handleAction(ctx.engine.evolve(button.dataset.recipe));
 });
 must<HTMLElement>("#evolution-options").addEventListener("toggle", (event) => {
   const details = event.target as HTMLElement;
-  if (details instanceof HTMLDetailsElement && details.id === "casual-manual-details") casualManualOpen = details.open;
+  if (details instanceof HTMLDetailsElement && details.id === "casual-manual-details") ctx.casualManualOpen = details.open;
 }, true);
 must<HTMLButtonElement>("#casual-fuse-all").addEventListener("click", () => runCasualAutoFusion("all", null));
 must<HTMLElement>("#evolution-options").addEventListener("pointerover", (event) => {
-  hoveredRecipeId = (event.target as HTMLElement).closest<HTMLButtonElement>("[data-recipe]")?.dataset.recipe ?? null;
+  ctx.hoveredRecipeId = (event.target as HTMLElement).closest<HTMLButtonElement>("[data-recipe]")?.dataset.recipe ?? null;
 });
 must<HTMLElement>("#evolution-options").addEventListener("pointerout", (event) => {
   const related = event.relatedTarget as Node | null;
-  if (!related || !must<HTMLElement>("#evolution-options").contains(related)) hoveredRecipeId = null;
+  if (!related || !must<HTMLElement>("#evolution-options").contains(related)) ctx.hoveredRecipeId = null;
 });
-
 /**
  * 출정 게이트 (R11).
  *
@@ -6493,7 +5972,6 @@ async function enterRun(button: HTMLButtonElement): Promise<void> {
   enteringRun = false;
   startRun(false);
 }
-
 const startButton = must<HTMLButtonElement>("#start-button");
 startButton.addEventListener("click", () => void enterRun(startButton));
 must<HTMLButtonElement>("#retry-button").addEventListener("click", () => startRun(false));
@@ -6510,7 +5988,6 @@ must<HTMLButtonElement>("#new-seed-button").addEventListener("click", () => star
 function returnToMenu(): void {
   window.location.reload();
 }
-
 must<HTMLButtonElement>("#return-menu-button").addEventListener("click", returnToMenu);
 window.addEventListener("keydown", (event) => {
   if (event.code !== "Escape") return;
@@ -6532,10 +6009,9 @@ document.addEventListener("pointerdown", () => {
   if (summonReveal.classList.contains("is-active")) hideSummonReveal();
 });
 must<HTMLButtonElement>("#evolve-button").addEventListener("click", () => setPanelTab("evolution"));
-must<HTMLButtonElement>("#research-button").addEventListener("click", () => { sound.unlock(); handleAction(engine.upgradeResearch()); });
-must<HTMLButtonElement>("#auto-arrange-button").addEventListener("click", () => { sound.unlock(); handleAction(engine.autoArrangeTowers()); });
+must<HTMLButtonElement>("#research-button").addEventListener("click", () => { sound.unlock(); handleAction(ctx.engine.upgradeResearch()); });
+must<HTMLButtonElement>("#auto-arrange-button").addEventListener("click", () => { sound.unlock(); handleAction(ctx.engine.autoArrangeTowers()); });
 must<HTMLButtonElement>("#element-upgrade-button").addEventListener("click", () => setPanelTab("growth"));
-
 // 집중 프레임 여닫기 — dim 클릭 · [닫기] · Esc. 게임은 멈추지 않는다.
 must<HTMLElement>("#focus-dim").addEventListener("click", () => setFocusFrame(null));
 document.querySelectorAll<HTMLButtonElement>("[data-focus-close]").forEach((button) => {
@@ -6544,11 +6020,11 @@ document.querySelectorAll<HTMLButtonElement>("[data-focus-close]").forEach((butt
 must<HTMLButtonElement>("#growth-frame-open").addEventListener("click", () => setFocusFrame("growth"));
 must<HTMLButtonElement>("#concentration-frame-open").addEventListener("click", () => setFocusFrame("concentration"));
 window.addEventListener("keydown", (event) => {
-  if (event.key !== "Escape" || openFocusFrame === null) return;
+  if (event.key !== "Escape" || ctx.openFocusFrame === null) return;
   if (helpDialog.open || settingsDialog.open || elementUpgradeDialog.open || abilityGuideDialog.open || casualFusionConfirmDialog.open || codexDialog.open) return;
   event.preventDefault();
   // R19: 보관고 일괄 모드는 프레임보다 안쪽 층위다 — Esc 는 안쪽부터 걷는다.
-  if (openFocusFrame === "inventory" && runInventoryBulkMode) {
+  if (ctx.openFocusFrame === "inventory" && ctx.runInventoryBulkMode) {
     setRunInventoryBulkMode(false);
     showToast("일괄 모드 해제 · 카드 클릭이 다시 고르기가 됩니다");
     return;
@@ -6560,13 +6036,13 @@ must<HTMLButtonElement>("#ability-guide-close").addEventListener("click", () => 
 must<HTMLButtonElement>("#casual-fusion-confirm-close").addEventListener("click", closeCasualFusionReview);
 must<HTMLButtonElement>("#casual-fusion-cancel").addEventListener("click", closeCasualFusionReview);
 must<HTMLButtonElement>("#casual-fusion-execute").addEventListener("click", () => {
-  const pending = pendingCasualFusion;
+  const pending = ctx.pendingCasualFusion;
   if (!pending) return;
   sound.unlock();
-  const result = engine.fuseCasual(pending.materialIds, true);
-  if (result.ok) casualFusionSelection = [];
+  const result = ctx.engine.fuseCasual(pending.materialIds, true);
+  if (result.ok) ctx.casualFusionSelection = [];
   closeCasualFusionReview();
-  evolutionRenderKey = "";
+  ctx.evolutionRenderKey = "";
   handleAction(result);
   if (result.ok) setPanelTab("evolution");
 });
@@ -6576,19 +6052,19 @@ elementUpgradeDialog.addEventListener("click", (event) => {
   const scope = button?.dataset.upgradeScope;
   if (!button || !stat || (scope !== "global" && scope !== "element")) return;
   sound.unlock();
-  if (scope === "global") handleAction(engine.upgradeGlobal(stat));
+  if (scope === "global") handleAction(ctx.engine.upgradeGlobal(stat));
   else {
     const wuxing = button.dataset.upgradeElement as Wuxing | undefined;
     if (!wuxing) return;
-    handleAction(engine.upgradeElement(wuxing, stat));
+    handleAction(ctx.engine.upgradeElement(wuxing, stat));
   }
   renderElementUpgrades();
 });
 must<HTMLButtonElement>("#early-button").addEventListener("click", () => {
   sound.unlock();
   hideEarlyHint();
-  const bonus = Math.floor(engine.state.prepRemaining / 2);
-  const result = engine.startWaveEarly();
+  const bonus = Math.floor(ctx.engine.state.prepRemaining / 2);
+  const result = ctx.engine.startWaveEarly();
   handleAction(result, { invalidatePanels: false });
   if (result.ok) {
     noteEarlyStartUsed();
@@ -6606,52 +6082,8 @@ must<HTMLButtonElement>("#early-button").addEventListener("click", () => {
     window.setTimeout(() => pop.remove(), 1400);
   }
 });
-/*
- * R17. 도움말 갈피.
- *
- * 21개 항목이 한 두루마리에 이어 붙어 있어 아래 절반은 사실상 읽히지 않았다.
- * 다섯 갈피로 갈라 한 번에 한 주제만 보이게 한다. 도감과 같은 `.codex-mode-tabs`
- * 어휘를 쓰고, 갈피를 바꾸면 두루마리를 맨 위로 되감는다 — 이전 갈피에서
- * 내려둔 자리에 새 글이 걸려 "빈 화면"으로 열리는 일을 막는다.
- *
- * 탭 버튼은 `<form method="dialog">` 안에 있으므로 type="button" 이 반드시
- * 필요하다. 기본 submit 이면 갈피를 누를 때마다 창이 닫힌다.
- */
-const helpTabButtons = [...helpDialog.querySelectorAll<HTMLButtonElement>("[data-help-tab]")];
-const helpPanels = [...helpDialog.querySelectorAll<HTMLElement>("[data-help-panel]")];
-const helpScroller = must<HTMLFormElement>("#help-dialog > form");
-
-function setHelpTab(tab: string, focusTab = false): void {
-  for (const button of helpTabButtons) {
-    const active = button.dataset.helpTab === tab;
-    button.classList.toggle("is-active", active);
-    button.setAttribute("aria-selected", String(active));
-    button.tabIndex = active ? 0 : -1;
-    if (active && focusTab) button.focus();
-  }
-  for (const panel of helpPanels) panel.classList.toggle("is-active", panel.dataset.helpPanel === tab);
-  helpScroller.scrollTop = 0;
-}
-
-for (const [index, button] of helpTabButtons.entries()) {
-  button.addEventListener("click", () => setHelpTab(button.dataset.helpTab ?? "start"));
-  button.addEventListener("keydown", (event) => {
-    const step = event.key === "ArrowRight" ? 1 : event.key === "ArrowLeft" ? -1 : 0;
-    if (step === 0) return;
-    event.preventDefault();
-    const next = helpTabButtons[(index + step + helpTabButtons.length) % helpTabButtons.length];
-    if (next) setHelpTab(next.dataset.helpTab ?? "start", true);
-  });
-}
-
-/** 언제 열어도 첫 갈피에서 시작한다 — 처음 온 사람이 보는 화면을 고정한다. */
-function openHelpDialog(): void {
-  setHelpTab("start");
-  helpDialog.showModal();
-}
-
-must<HTMLButtonElement>("#help-button").addEventListener("click", openHelpDialog);
-must<HTMLButtonElement>("#title-help-button").addEventListener("click", openHelpDialog);
+wireHelp1();
+wireHelp2();
 must<HTMLButtonElement>("#settings-button").addEventListener("click", () => {
   sound.unlock();
   syncDisplayModeControls();
@@ -6663,25 +6095,24 @@ must<HTMLButtonElement>("#settings-button").addEventListener("click", () => {
 // 저장된 선택이 OFF 면 첫 그림부터 반영되도록 초기 1회 맞춘다.
 syncHoverGlyphControl();
 syncDismantleUniqueControl();
-
 must<HTMLButtonElement>("#composition-drawer-close").addEventListener("click", closeCompositionDrawer);
 must<HTMLElement>("#composition-branches").addEventListener("click", (event) => {
   const button = (event.target as HTMLElement).closest<HTMLButtonElement>("[data-composition-recipe]");
   const recipeId = button?.dataset.compositionRecipe;
   if (!recipeId) return;
-  const branch = engine.compositionBranchesForSelected().find((candidate) => candidate.recipeId === recipeId);
+  const branch = ctx.engine.compositionBranchesForSelected().find((candidate) => candidate.recipeId === recipeId);
   if (!branch?.ready) {
     const missing = branch?.materials.filter((material) => material.towerId === null).map((material) => material.char).join("·") || "재료";
     showToast(`${missing} 재료가 부족합니다.`);
     return;
   }
   setCompositionMaterialHighlight();
-  handleAction(engine.evolve(recipeId));
+  handleAction(ctx.engine.evolve(recipeId));
 });
 must<HTMLElement>("#composition-branches").addEventListener("pointerover", (event) => {
   const recipeId = (event.target as HTMLElement).closest<HTMLButtonElement>("[data-composition-recipe]")?.dataset.compositionRecipe;
   if (!recipeId) return;
-  const branch = engine.compositionBranchesForSelected().find((candidate) => candidate.recipeId === recipeId);
+  const branch = ctx.engine.compositionBranchesForSelected().find((candidate) => candidate.recipeId === recipeId);
   setCompositionMaterialHighlight(
     branch?.materials.filter((material) => material.location === "board" && material.towerId !== null).map((material) => material.towerId as number) ?? []
   );
@@ -6701,7 +6132,7 @@ must<HTMLButtonElement>("#title-settings-button").addEventListener("click", () =
 });
 must<HTMLButtonElement>("#hover-glyph-toggle").addEventListener("click", () => {
   sound.unlock();
-  setHoverGlyphLarge(!hoverGlyphLarge);
+  setHoverGlyphLarge(!ctx.hoverGlyphLarge);
   sound.playUiConfirm();
 });
 must<HTMLButtonElement>("#settings-close").addEventListener("click", () => settingsDialog.close());
@@ -6716,15 +6147,14 @@ document.querySelectorAll<HTMLButtonElement>("[data-display-mode-option]").forEa
     settingsDialog.close();
   });
 });
-
 document.querySelectorAll<HTMLButtonElement>("[data-game-mode-option]").forEach((button) => {
   button.addEventListener("click", () => setSelectedGameMode(button.dataset.gameModeOption as GameMode));
 });
 must<HTMLButtonElement>("#auto-place-toggle").addEventListener("click", () => {
   sound.unlock();
-  const enabled = !engine.state.autoPlaceSummons;
+  const enabled = !ctx.engine.state.autoPlaceSummons;
   saveAutoPlaceSummons(enabled);
-  handleAction(engine.setAutoPlaceSummons(enabled));
+  handleAction(ctx.engine.setAutoPlaceSummons(enabled));
   syncAutoPlaceControl();
   sound.playUiConfirm();
 });
@@ -6752,10 +6182,10 @@ must<HTMLButtonElement>("#sfx-mute-button").addEventListener("click", () => {
 });
 must<HTMLButtonElement>("#codex-button").addEventListener("click", () => {
   // 별승급 진법에는 구성식 합성이 없다 — 조합표 분류는 랜덤 규칙과 무관하므로 숨긴다.
-  const casualRun = engine.state.mode === "casual";
+  const casualRun = ctx.engine.state.mode === "casual";
   const recipesTab = must<HTMLButtonElement>('[data-codex-mode="recipes"]');
   recipesTab.hidden = casualRun;
-  if (casualRun && codexMode === "recipes") setCodexMode("hanzi");
+  if (casualRun && ctx.codexMode === "recipes") setCodexMode("hanzi");
   const search = must<HTMLInputElement>("#codex-search");
   search.value = "";
   renderCodex("");
@@ -6768,34 +6198,22 @@ must<HTMLButtonElement>("#codex-button").addEventListener("click", () => {
   });
 });
 must<HTMLButtonElement>("#codex-close").addEventListener("click", () => codexDialog.close());
-
-/*
- * 바깥 클릭으로 닫기.
- *
- * P00·S13 은 진작 되는데 도감·설정·도움말만 안 돼서, 창을 닫으려고
- * 바깥을 눌렀다가 아무 반응이 없으면 갇힌 것처럼 읽혔다. 같은 규칙으로
- * 맞춘다 — 배경(백드롭)을 누르면 event.target 이 dialog 자신이 된다.
- */
-for (const dialog of [codexDialog, settingsDialog, helpDialog]) {
-  dialog.addEventListener("click", (event) => {
-    if (event.target === dialog) dialog.close();
-  });
-}
+wireCommon1();
 document.querySelectorAll<HTMLButtonElement>(".panel-tabs [data-panel-tab]").forEach((button) => {
   button.addEventListener("click", () => setPanelTab(button.dataset.panelTab as PanelTab));
 });
 document.querySelectorAll<HTMLButtonElement>("[data-goal-mode]").forEach((button) => {
   button.addEventListener("click", () => {
-    goalPanelMode = button.dataset.goalMode as GoalPanelMode;
-    goalSearchQuery = "";
+    ctx.goalPanelMode = button.dataset.goalMode as GoalPanelMode;
+    ctx.goalSearchQuery = "";
     must<HTMLInputElement>("#goal-search").value = "";
-    goalRenderKey = "";
+    ctx.goalRenderKey = "";
     renderGoal();
   });
 });
 must<HTMLInputElement>("#goal-search").addEventListener("input", (event) => {
-  goalSearchQuery = (event.target as HTMLInputElement).value;
-  goalRenderKey = "";
+  ctx.goalSearchQuery = (event.target as HTMLInputElement).value;
+  ctx.goalRenderKey = "";
   renderGoal();
 });
 must<HTMLElement>("#goal-selector-list").addEventListener("click", (event) => {
@@ -6803,10 +6221,10 @@ must<HTMLElement>("#goal-selector-list").addEventListener("click", (event) => {
   const char = target.closest<HTMLButtonElement>("[data-goal-char]")?.dataset.goalChar;
   const idiomId = target.closest<HTMLButtonElement>("[data-goal-idiom]")?.dataset.goalIdiom;
   if (char) {
-    handleAction(engine.setTarget(char));
+    handleAction(ctx.engine.setTarget(char));
     setPanelTab("goal");
   } else if (idiomId) {
-    handleAction(engine.setIdiomTarget(idiomId));
+    handleAction(ctx.engine.setIdiomTarget(idiomId));
     setPanelTab("goal");
   }
 });
@@ -6817,22 +6235,20 @@ must<HTMLElement>("#goal-selector-list").addEventListener("click", (event) => {
  * 그대로 남으므로 곧바로 배치할 수 있다(다시 열기 = 인벤 탭 또는 [보관고 열기]).
  */
 function deployRunInventorySelection(): void {
-  const selected = engine.state.inventoryTowers.find((tower) => tower.id === engine.state.selectedTowerId);
+  const selected = ctx.engine.state.inventoryTowers.find((tower) => tower.id === ctx.engine.state.selectedTowerId);
   if (!selected) return;
-  if (openFocusFrame === "inventory") setFocusFrame(null);
+  if (ctx.openFocusFrame === "inventory") setFocusFrame(null);
   showToast("전장 빈 칸을 눌러 배치 · 찬 칸은 교체됩니다");
   syncPanel();
 }
-
 function setRunInventoryBulkMode(enabled: boolean): void {
-  runInventoryBulkMode = enabled;
+  ctx.runInventoryBulkMode = enabled;
   // 모드를 끄면 바구니도 함께 비운다 — 보이지 않는 선택이 남아 있으면
   // 다음에 켰을 때 "누가 담았지" 가 된다.
   if (!enabled) runInventoryBulkSelection.clear();
-  runInventoryRenderKey = "";
+  ctx.runInventoryRenderKey = "";
   renderRunInventory();
 }
-
 /** 카드 한 장은 같은 한자 묶음이다. 담기·빼기도 묶음 단위로 한 번에 움직인다. */
 function toggleRunInventoryBulkStack(card: HTMLElement): void {
   const eligible = (card.dataset.runInventoryEligible ?? "").split(",").filter(Boolean).map(Number);
@@ -6845,10 +6261,9 @@ function toggleRunInventoryBulkStack(card: HTMLElement): void {
     if (allIn) runInventoryBulkSelection.delete(id);
     else runInventoryBulkSelection.add(id);
   }
-  runInventoryRenderKey = "";
+  ctx.runInventoryRenderKey = "";
   renderRunInventory();
 }
-
 /*
  * 더블클릭 지름길은 click 두 번으로 직접 센다.
  *
@@ -6858,7 +6273,6 @@ function toggleRunInventoryBulkStack(card: HTMLElement): void {
  */
 let runInventoryLastClickId = -1;
 let runInventoryLastClickAt = 0;
-
 must<HTMLElement>("#run-inventory-list").addEventListener("click", (event) => {
   const target = event.target as HTMLElement;
   if (target.closest("[data-inventory-goto-shop]")) {
@@ -6869,7 +6283,7 @@ must<HTMLElement>("#run-inventory-list").addEventListener("click", (event) => {
   if (!card) return;
   const id = Number(card.dataset.runInventoryId);
   if (!Number.isInteger(id)) return;
-  if (runInventoryBulkMode) {
+  if (ctx.runInventoryBulkMode) {
     toggleRunInventoryBulkStack(card);
     return;
   }
@@ -6878,9 +6292,9 @@ must<HTMLElement>("#run-inventory-list").addEventListener("click", (event) => {
   runInventoryLastClickId = id;
   runInventoryLastClickAt = now;
   // R19: 클릭은 고르기까지다. 배치·분해·잠금·농축은 아래 행동 바가 맡는다.
-  engine.selectTower(id);
-  selectedRenderKey = "";
-  runInventoryRenderKey = "";
+  ctx.engine.selectTower(id);
+  ctx.selectedRenderKey = "";
+  ctx.runInventoryRenderKey = "";
   // 숙련자 지름길 — R14 까지의 "클릭 = 즉시 배치" 를 더블클릭으로 옮겨 둔다.
   if (doubled) {
     runInventoryLastClickId = -1;
@@ -6893,29 +6307,29 @@ must<HTMLElement>("#run-inventory-layout").addEventListener("click", (event) => 
   const target = event.target as HTMLElement;
   const element = target.closest<HTMLButtonElement>("[data-inventory-element]")?.dataset.inventoryElement as Wuxing | undefined;
   if (element) {
-    runInventoryElementFilter = runInventoryElementFilter === element ? null : element;
-    runInventoryRenderKey = "";
+    ctx.runInventoryElementFilter = ctx.runInventoryElementFilter === element ? null : element;
+    ctx.runInventoryRenderKey = "";
     renderRunInventory();
     return;
   }
   const grade = target.closest<HTMLButtonElement>("[data-inventory-grade]")?.dataset.inventoryGrade;
   if (grade) {
     const band = grade === "all" ? null : (grade as RunInventoryGradeBandId);
-    runInventoryGradeFilter = runInventoryGradeFilter === band ? null : band;
-    runInventoryRenderKey = "";
+    ctx.runInventoryGradeFilter = ctx.runInventoryGradeFilter === band ? null : band;
+    ctx.runInventoryRenderKey = "";
     renderRunInventory();
     return;
   }
   if (target.closest("#run-inventory-sort")) {
-    runInventorySort = RUN_INVENTORY_SORTS[(RUN_INVENTORY_SORTS.indexOf(runInventorySort) + 1) % RUN_INVENTORY_SORTS.length]!;
-    runInventoryRenderKey = "";
+    ctx.runInventorySort = RUN_INVENTORY_SORTS[(RUN_INVENTORY_SORTS.indexOf(ctx.runInventorySort) + 1) % RUN_INVENTORY_SORTS.length]!;
+    ctx.runInventoryRenderKey = "";
     renderRunInventory();
     return;
   }
   if (target.closest("#run-inventory-bulk-toggle")) {
     sound.unlock();
-    setRunInventoryBulkMode(!runInventoryBulkMode);
-    showToast(runInventoryBulkMode
+    setRunInventoryBulkMode(!ctx.runInventoryBulkMode);
+    showToast(ctx.runInventoryBulkMode
       ? "일괄 모드 · 카드를 눌러 담고 아래에서 한 번에 분해합니다 (Esc 로 해제)"
       : "일괄 모드 해제 · 카드 클릭이 다시 고르기가 됩니다");
     return;
@@ -6926,83 +6340,81 @@ must<HTMLElement>("#run-inventory-layout").addEventListener("click", (event) => 
     return;
   }
   if (target.closest("#run-inventory-dismantle")) {
-    const selected = engine.state.inventoryTowers.find((tower) => tower.id === engine.state.selectedTowerId);
+    const selected = ctx.engine.state.inventoryTowers.find((tower) => tower.id === ctx.engine.state.selectedTowerId);
     if (!selected) return;
-    handleAction(engine.dismantleTowers([selected.id], dismantleOptions()));
+    handleAction(ctx.engine.dismantleTowers([selected.id], dismantleOptions()));
     return;
   }
   if (target.closest("#run-inventory-lock")) {
-    handleAction(engine.toggleSelectedLock());
+    handleAction(ctx.engine.toggleSelectedLock());
     return;
   }
   if (target.closest("#run-inventory-concentrate")) {
-    const selected = engine.state.inventoryTowers.find((tower) => tower.id === engine.state.selectedTowerId);
+    const selected = ctx.engine.state.inventoryTowers.find((tower) => tower.id === ctx.engine.state.selectedTowerId);
     if (!selected) return;
     // 농축 공방의 대상 지정 경로를 그대로 빌린다(패널 탭 전환이 프레임까지 연다).
-    concentrationTargetId = selected.id;
-    concentrationPayment = "essence";
+    ctx.concentrationTargetId = selected.id;
+    ctx.concentrationPayment = "essence";
     setPanelTab("concentration");
     return;
   }
   if (target.closest("#run-inventory-bulk-clear")) {
     runInventoryBulkSelection.clear();
-    runInventoryRenderKey = "";
+    ctx.runInventoryRenderKey = "";
     renderRunInventory();
     return;
   }
   if (target.closest("#run-inventory-bulk-dismantle")) {
-    const quote = engine.quoteDismantle([...runInventoryBulkSelection], dismantleOptions());
+    const quote = ctx.engine.quoteDismantle([...runInventoryBulkSelection], dismantleOptions());
     if (quote.ids.length === 0) return;
     const gainLabel = essenceGainLabel(quote.gains);
     // 되돌릴 수 없는 일괄 처리다 — 제련소 [선택 분해] 와 같은 확인을 세운다.
     if (!window.confirm(`${quote.ids.length}기를 한 번에 분해합니다.\n획득: ${gainLabel}`)) return;
-    const result = engine.dismantleTowers(quote.ids, dismantleOptions());
+    const result = ctx.engine.dismantleTowers(quote.ids, dismantleOptions());
     if (result.ok) runInventoryBulkSelection.clear();
     handleAction(result);
   }
 });
 must<HTMLButtonElement>("#run-inventory-frame-open").addEventListener("click", () => setFocusFrame("inventory"));
 must<HTMLButtonElement>("#cleanup-recommended-button").addEventListener("click", () => {
-  const candidates = engine.cleanupCandidates(8, true);
+  const candidates = ctx.engine.cleanupCandidates(8, true);
   if (candidates.length === 0) return;
   dismantleSelection.clear();
   for (const candidate of candidates) dismantleSelection.add(candidate.towerId);
-  growthRenderKey = "";
+  ctx.growthRenderKey = "";
   setPanelTab("growth");
 });
-
 must<HTMLElement>("#concentration-layout").addEventListener("click", (event) => {
   const target = event.target as HTMLElement;
   const targetId = Number(target.closest<HTMLButtonElement>("[data-concentration-target]")?.dataset.concentrationTarget);
   if (Number.isInteger(targetId)) {
-    concentrationTargetId = targetId;
-    engine.selectTower(targetId);
-    concentrationPayment = "essence";
-    concentrationRenderKey = "";
+    ctx.concentrationTargetId = targetId;
+    ctx.engine.selectTower(targetId);
+    ctx.concentrationPayment = "essence";
+    ctx.concentrationRenderKey = "";
     renderConcentration();
     return;
   }
-  if (!target.closest("#concentration-confirm-button") || concentrationTargetId === null) return;
-  const selected = engine.selectedTower();
-  if (!selected || selected.id !== concentrationTargetId) return;
+  if (!target.closest("#concentration-confirm-button") || ctx.concentrationTargetId === null) return;
+  const selected = ctx.engine.selectedTower();
+  if (!selected || selected.id !== ctx.concentrationTargetId) return;
   // 되돌릴 수 없는 선택지가 사라졌으므로 확인 대화상자도 함께 걷는다.
   const concentrationPath = autoConcentrationPath(selected);
-  const payment = concentrationPayment === "essence"
+  const payment = ctx.concentrationPayment === "essence"
     ? { kind: "essence" as const }
-    : { kind: "duplicate" as const, towerId: concentrationPayment };
-  handleAction(engine.concentrateTower(concentrationTargetId, concentrationPath, payment));
+    : { kind: "duplicate" as const, towerId: ctx.concentrationPayment };
+  handleAction(ctx.engine.concentrateTower(ctx.concentrationTargetId, concentrationPath, payment));
 });
 must<HTMLElement>("#concentration-layout").addEventListener("change", (event) => {
   const input = (event.target as HTMLElement).closest<HTMLInputElement>('input[name="concentration-payment"]');
   if (!input) return;
-  concentrationPayment = input.value === "essence" ? "essence" : Number(input.value);
-  concentrationRenderKey = "";
+  ctx.concentrationPayment = input.value === "essence" ? "essence" : Number(input.value);
+  ctx.concentrationRenderKey = "";
   renderConcentration();
 });
-
 for (const selector of ["#dismantle-element-filter", "#dismantle-stage-filter", "#dismantle-status-filter"] as const) {
   must<HTMLSelectElement>(selector).addEventListener("change", () => {
-    growthRenderKey = "";
+    ctx.growthRenderKey = "";
     renderGrowth();
   });
 }
@@ -7017,42 +6429,42 @@ must<HTMLElement>("#growth-dismantle-list").addEventListener("change", (event) =
   if (!Number.isInteger(id)) return;
   if (input.checked) dismantleSelection.add(id);
   else dismantleSelection.delete(id);
-  growthRenderKey = "";
+  ctx.growthRenderKey = "";
   renderGrowth();
 });
 must<HTMLButtonElement>("#dismantle-recommend-button").addEventListener("click", () => {
   dismantleSelection.clear();
   const visibleEligible = [...must<HTMLElement>("#growth-dismantle-list").querySelectorAll<HTMLInputElement>("[data-dismantle-id]:not(:disabled)")];
   for (const input of visibleEligible.slice(0, 12)) dismantleSelection.add(Number(input.dataset.dismantleId));
-  growthRenderKey = "";
+  ctx.growthRenderKey = "";
   renderGrowth();
 });
 must<HTMLButtonElement>("#dismantle-clear-button").addEventListener("click", () => {
   dismantleSelection.clear();
-  growthRenderKey = "";
+  ctx.growthRenderKey = "";
   renderGrowth();
 });
 must<HTMLButtonElement>("#dismantle-unique-toggle").addEventListener("click", () => {
   sound.unlock();
-  setDismantleProtectsUnique(!dismantleProtectsUnique);
+  setDismantleProtectsUnique(!ctx.dismantleProtectsUnique);
   sound.playUiConfirm();
 });
 must<HTMLButtonElement>("#dismantle-confirm-button").addEventListener("click", () => {
-  const quote = engine.quoteDismantle([...dismantleSelection], dismantleOptions());
+  const quote = ctx.engine.quoteDismantle([...dismantleSelection], dismantleOptions());
   if (quote.ids.length === 0 || quote.blocked.length > 0) return;
-  const towers = quote.ids.map((id) => engine.state.inventoryTowers.find((tower) => tower.id === id)).filter((tower): tower is Tower => Boolean(tower));
+  const towers = quote.ids.map((id) => ctx.engine.state.inventoryTowers.find((tower) => tower.id === id)).filter((tower): tower is Tower => Boolean(tower));
   const towerLabel = towers.map((tower) => `${tower.char}(${tower.wuxing} ${towerProgressionLabel(tower)})`).join(" · ");
   const gainLabel = (Object.entries(quote.gains) as Array<[Wuxing, number]>).filter(([, amount]) => amount > 0).map(([wuxing, amount]) => `${wuxing}+${amount}`).join(" · ");
   if (!window.confirm(`${towers.length}기를 한 번에 분해합니다.\n${towerLabel}\n획득: ${gainLabel}`)) return;
-  const result = engine.dismantleTowers(quote.ids, dismantleOptions());
+  const result = ctx.engine.dismantleTowers(quote.ids, dismantleOptions());
   if (result.ok) dismantleSelection.clear();
   handleAction(result);
 });
 must<HTMLElement>("#growth-element-tabs").addEventListener("click", (event) => {
   const wuxing = (event.target as HTMLElement).closest<HTMLButtonElement>("[data-growth-element]")?.dataset.growthElement as Wuxing | undefined;
   if (!wuxing) return;
-  growthElement = wuxing;
-  growthRenderKey = "";
+  ctx.growthElement = wuxing;
+  ctx.growthRenderKey = "";
   renderGrowth();
   // 탭만 바뀌고 화면은 그대로라 "눌렀는데 아무 일도 없다"로 읽혔다 — 해당 오행 섹션으로 데려간다.
   must<HTMLElement>("#growth-upgrade-list")
@@ -7068,16 +6480,16 @@ must<HTMLElement>("#growth-upgrade-list").addEventListener("click", (event) => {
   const stat = button.dataset.growthStat as UpgradeStat | undefined;
   const traitIndex = Number(button.dataset.growthTrait);
   const quote = scope === "global" && stat
-    ? engine.quoteGlobalUpgrade(stat, amount)
+    ? ctx.engine.quoteGlobalUpgrade(stat, amount)
     : scope === "element" && stat
-      ? engine.quoteElementUpgrade(growthElement, stat, amount)
-      : engine.quoteElementTraitUpgrade(growthElement, traitIndex, amount);
+      ? ctx.engine.quoteElementUpgrade(ctx.growthElement, stat, amount)
+      : ctx.engine.quoteElementTraitUpgrade(ctx.growthElement, traitIndex, amount);
   if (amount === "max" && !window.confirm(`실제 누적 비용 ${quote.cost}을 사용해 ${quote.levels}단계 강화할까요? (${quote.fromLevel} → ${quote.toLevel})`)) return;
   const result = scope === "global" && stat
-    ? engine.upgradeGlobal(stat, amount)
+    ? ctx.engine.upgradeGlobal(stat, amount)
     : scope === "element" && stat
-      ? engine.upgradeElement(growthElement, stat, amount)
-      : engine.upgradeElementTrait(growthElement, traitIndex, amount);
+      ? ctx.engine.upgradeElement(ctx.growthElement, stat, amount)
+      : ctx.engine.upgradeElementTrait(ctx.growthElement, traitIndex, amount);
   handleAction(result);
 });
 document.querySelectorAll<HTMLButtonElement>("[data-codex-mode]").forEach((button) => {
@@ -7087,13 +6499,13 @@ must<HTMLInputElement>("#codex-search").addEventListener("input", (event) => ren
 must<HTMLElement>("#codex-synthesis-filters").addEventListener("click", (event) => {
   const jaryeongFilterValue = (event.target as HTMLElement).closest<HTMLButtonElement>("[data-jaryeong-filter]")?.dataset.jaryeongFilter;
   if (jaryeongFilterValue) {
-    jaryeongDexFilter = jaryeongFilterValue as JaryeongDexFilter;
+    ctx.jaryeongDexFilter = jaryeongFilterValue as JaryeongDexFilter;
     renderCodex(must<HTMLInputElement>("#codex-search").value);
     return;
   }
   const value = (event.target as HTMLElement).closest<HTMLButtonElement>("[data-synthesis-depth]")?.dataset.synthesisDepth;
   if (!value) return;
-  codexSynthesisDepth = value === "all" || value === UNCOMBINABLE_STAGE_ONE ? value : Number(value);
+  ctx.codexSynthesisDepth = value === "all" || value === UNCOMBINABLE_STAGE_ONE ? value : Number(value);
   renderCodex(must<HTMLInputElement>("#codex-search").value);
 });
 must<HTMLElement>("#codex-list").addEventListener("click", (event) => {
@@ -7102,45 +6514,45 @@ must<HTMLElement>("#codex-list").addEventListener("click", (event) => {
     ?? target.closest<HTMLButtonElement>("[data-codex-recipe]")?.dataset.codexRecipe;
   const idiomId = target.closest<HTMLButtonElement>("[data-codex-idiom]")?.dataset.codexIdiom;
   if (char) {
-    selectedCodexChar = char;
+    ctx.selectedCodexChar = char;
     document.querySelectorAll<HTMLButtonElement>("[data-codex-char], [data-codex-recipe]").forEach((button) => {
       const buttonChar = button.dataset.codexChar ?? button.dataset.codexRecipe;
       const selected = buttonChar === char;
       button.classList.toggle("is-selected", selected);
       button.setAttribute("aria-current", String(selected));
     });
-    renderCodexDetail(engine.catalog.definitions.get(char));
+    renderCodexDetail(ctx.engine.catalog.definitions.get(char));
   }
   else if (idiomId) {
     // 한자 카드와 같은 패턴으로 선택 표시를 준다 — 누른 카드가 어느
     // 것인지 상세만 보고 되짚어야 했다.
-    selectedCodexIdiomId = idiomId;
+    ctx.selectedCodexIdiomId = idiomId;
     document.querySelectorAll<HTMLButtonElement>("[data-codex-idiom]").forEach((button) => {
       const selected = button.dataset.codexIdiom === idiomId;
       button.classList.toggle("is-selected", selected);
       button.setAttribute("aria-current", String(selected));
     });
-    renderIdiomCodexDetail(engine.allIdioms().find((idiom) => idiom.id === idiomId));
+    renderIdiomCodexDetail(ctx.engine.allIdioms().find((idiom) => idiom.id === idiomId));
   }
 });
 must<HTMLElement>("#codex-detail").addEventListener("click", (event) => {
   const target = event.target as HTMLElement;
   const targetChar = target.closest<HTMLButtonElement>("[data-target-char]")?.dataset.targetChar;
   if (targetChar) {
-    handleAction(engine.setTarget(targetChar));
+    handleAction(ctx.engine.setTarget(targetChar));
     codexDialog.close();
     return;
   }
   const codexChar = target.closest<HTMLButtonElement>("[data-codex-char]")?.dataset.codexChar;
   if (codexChar) {
-    selectedCodexChar = codexChar;
+    ctx.selectedCodexChar = codexChar;
     document.querySelectorAll<HTMLButtonElement>("[data-codex-char], [data-codex-recipe]").forEach((button) => {
       const buttonChar = button.dataset.codexChar ?? button.dataset.codexRecipe;
       const selected = buttonChar === codexChar;
       button.classList.toggle("is-selected", selected);
       button.setAttribute("aria-current", String(selected));
     });
-    renderCodexDetail(engine.catalog.definitions.get(codexChar));
+    renderCodexDetail(ctx.engine.catalog.definitions.get(codexChar));
     must<HTMLElement>("#codex-detail").scrollTo({ top: 0, behavior: reducedMotion ? "auto" : "smooth" });
   }
 });
@@ -7156,44 +6568,43 @@ must<HTMLElement>("#selected-card").addEventListener("click", (event) => {
   if (abilityId) openAbilityGuide(abilityId);
   else if (target.closest("[data-ability-guide]")) openAbilityGuide();
   else if (target.closest("#derivative-button")) {
-    if (engine.state.mode === "casual") {
-      const selected = engine.selectedTower();
+    if (ctx.engine.state.mode === "casual") {
+      const selected = ctx.engine.selectedTower();
       const selectable = selected !== undefined
         && casualStarOf(selected) < 8
-        && engine.casualMaterialProtection(selected.id) === null;
-      casualFusionSelection = selectable && selected ? [selected.id] : [];
-      evolutionRenderKey = "";
+        && ctx.engine.casualMaterialProtection(selected.id) === null;
+      ctx.casualFusionSelection = selectable && selected ? [selected.id] : [];
+      ctx.evolutionRenderKey = "";
       setPanelTab("evolution");
     } else openCompositionDrawer();
   }
-  else if (target.closest("#lock-button")) handleAction(engine.toggleSelectedLock());
+  else if (target.closest("#lock-button")) handleAction(ctx.engine.toggleSelectedLock());
   else if (target.closest("#store-button")) {
-    const result = engine.storeSelectedTower();
+    const result = ctx.engine.storeSelectedTower();
     if (result.ok) setPanelTab("inventory");
     handleAction(result);
   }
-  else if (target.closest("#sell-button")) handleAction(engine.sellSelected());
+  else if (target.closest("#sell-button")) handleAction(ctx.engine.sellSelected());
   else if (target.closest("#open-growth-button")) {
-    growthElement = engine.selectedTower()?.wuxing ?? growthElement;
+    ctx.growthElement = ctx.engine.selectedTower()?.wuxing ?? ctx.growthElement;
     setPanelTab("growth");
   }
   else if (target.closest("#open-concentration-button")) {
-    concentrationTargetId = engine.selectedTower()?.id ?? null;
+    ctx.concentrationTargetId = ctx.engine.selectedTower()?.id ?? null;
     setPanelTab("concentration");
   }
 });
-
 window.addEventListener("keydown", (event) => {
   if (event.target instanceof HTMLInputElement || helpDialog.open || settingsDialog.open || elementUpgradeDialog.open || abilityGuideDialog.open || casualFusionConfirmDialog.open || codexDialog.open) return;
   if (event.code === "Digit1") summonAndFocus();
   else if (event.code === "KeyQ") summonAndFocus(10);
   else if (event.code === "Digit2") {
-    if (engine.state.mode === "casual") setPanelTab("evolution");
+    if (ctx.engine.state.mode === "casual") setPanelTab("evolution");
     else {
-      const option = engine.availableEvolutions()[0];
-      handleAction(option ? engine.evolve(option.recipeId) : { ok: false, message: "현재 가능한 합성이 없습니다." });
+      const option = ctx.engine.availableEvolutions()[0];
+      handleAction(option ? ctx.engine.evolve(option.recipeId) : { ok: false, message: "현재 가능한 합성이 없습니다." });
     }
-  } else if (event.code === "Digit3") handleAction(engine.upgradeResearch());
+  } else if (event.code === "Digit3") handleAction(ctx.engine.upgradeResearch());
   else if (event.code === "Space") {
     event.preventDefault();
     toggleHanjaEmphasis();
@@ -7207,23 +6618,10 @@ window.addEventListener("keydown", (event) => {
   else if (event.code === "KeyF") cycleGameSpeed();
   else if (event.code === "KeyP") toggleManualPause();
 });
-
-/*
- * 일시정지.
- *
- * 도감·도움말·설정·S13 을 열어 두고 규칙을 읽는 동안에도 전투가 계속
- * 굴러가서, 창을 닫으면 진법이 이미 무너져 있었다. 모달이 열려 있으면
- * `engine.update` 만 건너뛰고 렌더 루프는 그대로 돌린다 — 화면이 얼어붙는
- * 대신 "멈춰 있다"가 그대로 보인다. P 키는 수동 토글이며 같은 칩을 쓴다.
- * 종료 화면은 이미 정지 상태라 무관하다.
- */
-let manualPause = false;
-
 /** 열려 있는 모달 다이얼로그가 하나라도 있으면 전투를 세운다. */
 function modalPauseActive(): boolean {
   return document.querySelector("dialog[open]") !== null;
 }
-
 function syncPauseChip(paused: boolean, manual: boolean): void {
   const chip = must<HTMLElement>("#pause-chip");
   if (chip.hidden !== !paused) chip.hidden = !paused;
@@ -7232,40 +6630,38 @@ function syncPauseChip(paused: boolean, manual: boolean): void {
   const label = must<HTMLElement>("#pause-reason");
   if (label.textContent !== reason) label.textContent = reason;
 }
-
 function toggleManualPause(): void {
-  if (engine.state.phase !== "prep" && engine.state.phase !== "combat") return;
-  manualPause = !manualPause;
-  showToast(manualPause ? "일시정지 — P 키로 계속합니다." : "다시 진행합니다.");
+  if (ctx.engine.state.phase !== "prep" && ctx.engine.state.phase !== "combat") return;
+  ctx.manualPause = !ctx.manualPause;
+  showToast(ctx.manualPause ? "일시정지 — P 키로 계속합니다." : "다시 진행합니다.");
 }
-
 function frame(now: number): void {
   const frameWorkStartedAt = performance.now();
-  const delta = Math.min(0.1, Math.max(0, (now - lastFrame) / 1000));
-  const running = engine.state.phase === "prep" || engine.state.phase === "combat";
-  const paused = running && (manualPause || modalPauseActive());
-  const simulationDelta = paused ? 0 : delta * gameSpeed;
-  lastFrame = now;
-  syncPauseChip(paused, manualPause);
-  if (!paused) engine.update(simulationDelta);
-  const audioPlan = engine.getCurrentPlan();
+  const delta = Math.min(0.1, Math.max(0, (now - ctx.lastFrame) / 1000));
+  const running = ctx.engine.state.phase === "prep" || ctx.engine.state.phase === "combat";
+  const paused = running && (ctx.manualPause || modalPauseActive());
+  const simulationDelta = paused ? 0 : delta * ctx.gameSpeed;
+  ctx.lastFrame = now;
+  syncPauseChip(paused, ctx.manualPause);
+  if (!paused) ctx.engine.update(simulationDelta);
+  const audioPlan = ctx.engine.getCurrentPlan();
   sound.syncBgm({
-    phase: engine.state.phase,
-    wave: engine.state.wave,
-    boss: engine.state.phase === "combat" && Boolean(audioPlan?.boss)
+    phase: ctx.engine.state.phase,
+    wave: ctx.engine.state.wave,
+    boss: ctx.engine.state.phase === "combat" && Boolean(audioPlan?.boss)
   }, now);
   const audioDebug = sound.getDebugState();
   shell.dataset.audioBgm = audioDebug.targetBgmId ?? "none";
   shell.dataset.audioPlaying = String(audioDebug.bgmPlaying);
-  const frameEvents = engine.consumeEvents();
+  const frameEvents = ctx.engine.consumeEvents();
   const waveStartedThisFrame = frameEvents.some((event) => event.type === "wave");
   for (const event of frameEvents) processEvent(event);
   const summonEvents = frameEvents.filter((event): event is Extract<GameEvent, { type: "summon" }> => event.type === "summon");
   if (summonEvents.length > 0) showSummonReveal(summonEvents);
   else showCasualFusionReveal(frameEvents.filter((event): event is Extract<GameEvent, { type: "casualFuse" }> => event.type === "casualFuse"));
-  if (engine.state.phase !== previousPhase) {
-    previousPhase = engine.state.phase;
-    if (previousPhase === "victory" || previousPhase === "defeat") showEndScreen(previousPhase);
+  if (ctx.engine.state.phase !== ctx.previousPhase) {
+    ctx.previousPhase = ctx.engine.state.phase;
+    if (ctx.previousPhase === "victory" || ctx.previousPhase === "defeat") showEndScreen(ctx.previousPhase);
   }
   // Simulation respects the selected speed, while visual feedback keeps a
   // stable real-time duration so 2x/3x does not make projectiles and skill
@@ -7277,7 +6673,6 @@ function frame(now: number): void {
   if (waveStartedThisFrame) canvas.dataset.waveStartWorkMs = (performance.now() - frameWorkStartedAt).toFixed(2);
   window.requestAnimationFrame(frame);
 }
-
 /*
  * 첫 실행 조작 안내.
  *
@@ -7304,7 +6699,6 @@ interface CoachStep {
     readonly control?: "wheel" | "click" | "drag";
   };
 }
-
 const COACH_STORAGE_KEY = "hanja-td:coach-seen-v1";
 const COACH_STEPS: readonly CoachStep[] = [
   {
@@ -7312,7 +6706,7 @@ const COACH_STEPS: readonly CoachStep[] = [
     title: "먼저 자령(=타워)을 소환하세요",
     body: "엽전을 써서 자령을 뽑습니다. 첫 자령의 오행에 맞는 4×4 진이 무료로 열립니다.",
     control: "click",
-    satisfied: () => engine.state.summonCount >= 1
+    satisfied: () => ctx.engine.state.summonCount >= 1
   },
   {
     target: "#battle-canvas",
@@ -7320,14 +6714,14 @@ const COACH_STEPS: readonly CoachStep[] = [
     body: "휠을 굴려 확대·축소하고, 빈 곳을 끌어 화면을 옮깁니다. 자령을 끌면 자리를 맞바꿉니다.",
     control: "wheel",
     // 설계 의도대로 "실제로 해내면 넘어간다" — 확대·축소 1회 또는 팬 1회.
-    satisfied: () => mapCameraGestures > coachGestureBaseline
+    satisfied: () => ctx.mapCameraGestures > coachGestureBaseline
   },
   {
     target: "#early-button",
     title: "준비되면 웨이브를 시작합니다",
     body: "즉시 시작하면 남은 준비 시간만큼 엽전을 더 받습니다.",
     control: "click",
-    satisfied: () => engine.state.wave >= 1,
+    satisfied: () => ctx.engine.state.wave >= 1,
     fallback: {
       target: '[data-summon-product="balanced"]',
       title: "먼저 소환부터",
@@ -7336,13 +6730,11 @@ const COACH_STEPS: readonly CoachStep[] = [
     }
   }
 ];
-
 let coachIndex = -1;
 /** 지금 실제로 짚고 있는 셀렉터. 대체 대상으로 넘어간 것을 알아채는 데 쓴다. */
 let coachResolvedTarget = "";
 /** 단계에 들어선 순간의 카메라 조작 횟수. 이보다 늘면 그 단계를 해낸 것이다. */
 let coachGestureBaseline = 0;
-
 /**
  * 대상이 화면에 없거나 크기가 0 이면 대체 대상으로 돌린다.
  * 둘 다 없으면 target 을 null 로 돌려 말풍선을 화면 아래 가운데로 보낸다.
@@ -7362,7 +6754,6 @@ function resolveCoachStep(step: CoachStep): { step: CoachStep; target: HTMLEleme
   }
   return { step, target: null };
 }
-
 function coachAlreadySeen(): boolean {
   try {
     return window.localStorage.getItem(COACH_STORAGE_KEY) === "1";
@@ -7370,7 +6761,6 @@ function coachAlreadySeen(): boolean {
     return false;
   }
 }
-
 function markCoachSeen(): void {
   try {
     window.localStorage.setItem(COACH_STORAGE_KEY, "1");
@@ -7378,7 +6768,6 @@ function markCoachSeen(): void {
     // 저장이 막혀 있어도 이번 판 안내는 정상 동작한다.
   }
 }
-
 function layoutCoach(): void {
   const base = COACH_STEPS[coachIndex];
   if (!base) return;
@@ -7428,7 +6817,6 @@ function layoutCoach(): void {
   bubble.style.top = fitsBelow ? `${below}px` : `${Math.max(8, focusTop - bubbleHeight - 14)}px`;
   bubble.style.left = `${Math.max(8, Math.min(shell.offsetWidth - bubbleWidth - 8, focusLeft + focusWidth / 2 - bubbleWidth / 2))}px`;
 }
-
 function renderCoach(): void {
   const layer = must<HTMLElement>("#coach-layer");
   const base = COACH_STEPS[coachIndex];
@@ -7450,7 +6838,6 @@ function renderCoach(): void {
   else delete bubble.dataset.coachControl;
   layoutCoach();
 }
-
 /**
  * 코치가 전장을 짚는 동안에는 소환 결과 카드(660×314)가 링 한가운데를
  * 그대로 덮어 wheel 을 삼킨다 — 안내대로 휠을 굴려도 줌이 변하지 않았다.
@@ -7459,15 +6846,13 @@ function renderCoach(): void {
 function coachIsPointingAtBoard(): boolean {
   return coachIndex >= 0 && COACH_STEPS[coachIndex]?.target === "#battle-canvas";
 }
-
 /** 단계에 들어설 때 카메라 조작 기준선을 다시 잡고, 방해물을 치운다. */
 function enterCoachStep(): void {
-  coachGestureBaseline = mapCameraGestures;
+  coachGestureBaseline = ctx.mapCameraGestures;
   coachResolvedTarget = COACH_STEPS[coachIndex] ? resolveCoachStep(COACH_STEPS[coachIndex]).step.target : "";
   if (coachIsPointingAtBoard()) hideSummonReveal();
   renderCoach();
 }
-
 function advanceCoach(): void {
   if (coachIndex < 0) return;
   if (coachIndex >= COACH_STEPS.length - 1) {
@@ -7477,19 +6862,16 @@ function advanceCoach(): void {
   coachIndex += 1;
   enterCoachStep();
 }
-
 function endCoach(): void {
   coachIndex = -1;
   must<HTMLElement>("#coach-layer").hidden = true;
   markCoachSeen();
 }
-
 function startCoach(force = false): void {
   if (!force && coachAlreadySeen()) return;
   coachIndex = 0;
   enterCoachStep();
 }
-
 /** 해당 조작을 실제로 해내면 안내가 저절로 넘어간다. */
 function syncCoachProgress(): void {
   if (coachIndex < 0) return;
@@ -7504,7 +6886,6 @@ function syncCoachProgress(): void {
   }
   if (base.satisfied()) advanceCoach();
 }
-
 /*
  * S00 2.5D 리그.
  *
@@ -7536,7 +6917,6 @@ async function mountS00(): Promise<void> {
     enableS00LayeredBackground();
   }
 }
-
 const s00Stage = document.querySelector<HTMLElement>(".s00-stage");
 if (s00Stage && !window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
   let parallaxRaf = 0;
@@ -7567,7 +6947,6 @@ if (s00Stage && !window.matchMedia("(prefers-reduced-motion: reduce)").matches) 
     if (!parallaxRaf) parallaxRaf = window.requestAnimationFrame(applyParallax);
   });
 }
-
 /*
  * 개발자 모드.
  *
@@ -7577,7 +6956,6 @@ if (s00Stage && !window.matchMedia("(prefers-reduced-motion: reduce)").matches) 
  */
 let devKeyStreak = 0;
 let devKeyTimer = 0;
-
 function setDevMode(enabled: boolean): void {
   shell.dataset.devMode = enabled ? "1" : "0";
   // 같은 시드 재도전은 재현·디버그용 — 일반 플레이어에겐 시드 개념을 노출하지 않는다.
@@ -7587,7 +6965,6 @@ function setDevMode(enabled: boolean): void {
     seedInput.select();
   }
 }
-
 window.addEventListener("keydown", (event) => {
   const target = event.target as HTMLElement | null;
   if (target && target.closest("input, textarea")) return;
@@ -7608,10 +6985,8 @@ window.addEventListener("keydown", (event) => {
   }
   devKeyStreak = 0;
 });
-
 must<HTMLButtonElement>("#coach-next").addEventListener("click", advanceCoach);
 must<HTMLButtonElement>("#coach-skip").addEventListener("click", endCoach);
-
 function fitShell(): void {
   shell.style.setProperty("--viewport-height", String(window.innerHeight) + "px");
   const rect = canvas.getBoundingClientRect();
@@ -7631,7 +7006,6 @@ function fitShell(): void {
   }
   context.setTransform(pixelScale, 0, 0, pixelScale, 0, 0);
 }
-
 fitShell();
 window.addEventListener("resize", () => {
   fitShell();
@@ -7650,14 +7024,12 @@ for (const path of ["assets/ui/main-menu-b/ui/p00-scroll-frame-v1.png"]) {
   // 하위 경로 배포(GitHub Pages)에서 루트 절대 경로는 404 가 된다 — 문서 기준으로.
   warm.src = new URL(`${import.meta.env.BASE_URL}${path}`, document.baseURI).toString();
 }
-
 syncMapZoomControl();
 setGameSpeed(1);
 setDisplayMode(initialDisplayMode, false);
 syncTitleModeSelection();
 syncAudioControls();
 syncPanel();
-
 /*
  * R11 부팅 순서.
  *
@@ -7683,5 +7055,4 @@ async function bootGame(): Promise<void> {
   await startP2();
   warmCombatSpriteCaches();
 }
-
 void bootGame();
