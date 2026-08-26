@@ -21,7 +21,6 @@ import { hasActiveSkills } from "./abilities";
 import {
   CASUAL_STAR_POWER,
   casualNaturalStar,
-  casualStarAfterFusion,
   casualStrokeCount
 } from "./casual";
 import { EvolutionService } from "./evolution";
@@ -201,11 +200,10 @@ export interface ConcentrationQuote {
 // 경고의 성격을 문자열이 아니라 종류로 남긴다. 자동 경로가 "무엇을 건너뛸지"를
 // 문안 매칭이 아니라 종류로 판정할 수 있어야 문구를 고쳐도 규칙이 흔들리지 않는다.
 export type CasualFusionIssueKind =
-  | "deployed"        // 전장에 세워 둔 자령 — 수비 공백이 생긴다
-  | "resonance"       // 오행진 공명 임계치가 깨진다
-  | "unique"          // 유일 보유 한자 — 3체 조합에서는 정상 동작이다
-  | "standard-recipe" // 일반 모드 합성식 재료
-  | "protected";      // 그 밖의 보호 사유
+  | "deployed"   // 전장에 세워 둔 자령 — 수비 공백이 생긴다
+  | "resonance"  // 오행진 공명 임계치가 깨진다
+  | "protected"  // 잠금·농축·목표·성어·합성식 — v3 에서는 아예 선정 불가
+  | "pool";      // 이 오행에 더 높은 별 글자가 없다
 
 export interface CasualFusionIssue {
   towerId: number | null;
@@ -213,24 +211,60 @@ export interface CasualFusionIssue {
   kind?: CasualFusionIssueKind;
 }
 
+/**
+ * 3기를 소모하고 나서 "무엇을 뽑을 수 있는가". 별 사다리(star+1 → +2 …)를
+ * 훑어 처음으로 비어 있지 않은 칸을 결과 풀로 삼는다.
+ */
+export interface CasualResultPool {
+  star: CasualStar;
+  candidates: readonly HanziDefinition[];
+  /** star+1 이 비어 상위 별로 건너뛰었는가 */
+  starFallback: boolean;
+  /** 이번 런 소환 풀에 후보가 없어 지역 로스터까지 넓혔는가 */
+  rosterFallback: boolean;
+}
+
 export interface CasualFusionQuote {
-  coreId: number;
+  /** 소모될 3기. v3 에는 남는 본체가 없다. */
   materialIds: number[];
   fromStar: CasualStar | null;
   toStar: CasualStar | null;
   wuxing: Wuxing | null;
+  /** 결과 무작위 후보 수 */
+  poolSize: number;
+  starFallback: boolean;
+  rosterFallback: boolean;
   blocked: CasualFusionIssue[];
   warnings: CasualFusionIssue[];
 }
 
 export interface CasualAutoFusionGroup {
-  coreId: number;
-  materialIds: [number, number];
+  wuxing: Wuxing;
+  materialIds: [number, number, number];
   fromStar: CasualStar;
   toStar: CasualStar;
+  poolSize: number;
+  starFallback: boolean;
+  rosterFallback: boolean;
   warnings: CasualFusionIssue[];
   /** 확인 없이 실행하는 원클릭 경로가 스스로 건너뛸 사유. null 이면 즉시 실행 대상. */
   autoSkipReason: string | null;
+}
+
+export interface CasualFusionGain {
+  wuxing: Wuxing;
+  char: string;
+  star: CasualStar;
+  cell: number;
+  newDiscovery: boolean;
+}
+
+export interface CasualFusionResult extends ActionResult {
+  gained: CasualFusionGain | null;
+  consumedChars: string[];
+  fromStar: CasualStar | null;
+  starFallback: boolean;
+  rosterFallback: boolean;
 }
 
 export interface CasualAutoFusionReport extends ActionResult {
@@ -238,27 +272,69 @@ export interface CasualAutoFusionReport extends ActionResult {
   consumed: number;
   skipped: number;
   skipReason: string | null;
+  gained: CasualFusionGain[];
   firstFusion: {
     wuxing: Wuxing;
     char: string;
     fromStar: CasualStar;
     toStar: CasualStar;
     consumedChars: string[];
+    newDiscovery: boolean;
+    starFallback: boolean;
+    rosterFallback: boolean;
   } | null;
 }
 
-// 캐주얼 3체 조합은 "서로 다른 한자 2기를 소모해 1기를 올린다"가 규칙 자체다.
-// 그래서 `유일 보유 한자` 경고는 이 모드에서 상시 발생하며 자동 실행을 막는
-// 근거가 될 수 없다. 잠금·농축·목표 계보·미완 성어·봉인 성어·일반 합성식은
-// 애초에 재료 후보에서 빠지므로(casualMaterialProtection) 남지 않는다.
-// `전장 배치` 역시 막지 않는다 — 뽑기 후 자동 배치가 기본이라 사실상 모든
-// 자령이 전장에 서 있고, 이것을 막으면 [한 번에 승급]이 아무 일도 못 한다.
-// 대신 소모 내역과 `전장 N기 소모` 배지로 무엇이 사라지는지 먼저 보여 준다.
+// v3 규칙: 3기가 전부 사라지고 같은 오행의 다음 별 글자 하나를 새로 얻는다.
+// 잠금·농축·목표 계보·미완 성어·봉인 성어·일반 합성식 자령은 애초에 3기 어디에도
+// 선정되지 않으므로(casualMaterialProtection) 경고가 아니라 차단 사유다.
+// `전장 배치` 는 막지 않는다 — 뽑기 후 자동 배치가 기본이라 사실상 모든 자령이
+// 전장에 서 있고, 이것을 막으면 [한 번에 승급]이 아무 일도 못 한다. 대신 소모
+// 내역과 `전장 N기 소모` 배지로 무엇이 사라지는지 먼저 보여 준다.
 // 되돌릴 수 없는 판 손실은 오행진 공명 임계치가 깨지는 경우 하나뿐이다.
 const CASUAL_AUTO_SKIP_KINDS = new Set<CasualFusionIssueKind>(["resonance"]);
 
 function casualAutoSkipReason(warnings: readonly CasualFusionIssue[]): string | null {
   return warnings.find((warning) => warning.kind !== undefined && CASUAL_AUTO_SKIP_KINDS.has(warning.kind))?.text ?? null;
+}
+
+/** `火 2★×3 → 3★ 炎 획득!` — 폴백이 있었으면 그대로 덧붙인다. */
+function casualFusionHeadline(info: {
+  wuxing: Wuxing;
+  char: string;
+  fromStar: CasualStar;
+  toStar: CasualStar;
+  newDiscovery: boolean;
+  starFallback: boolean;
+  rosterFallback: boolean;
+}): string {
+  const notes: string[] = [];
+  if (info.newDiscovery) notes.push("첫 발견!");
+  if (info.starFallback) notes.push(`${info.fromStar + 1}★ 글자가 없어 ${info.toStar}★에서 뽑음`);
+  if (info.rosterFallback) notes.push("소환 풀에 없어 지역 로스터에서 보충");
+  return `${info.wuxing} ${info.fromStar}★×3 → ${info.toStar}★ ${info.char} 획득!${notes.length > 0 ? ` · ${notes.join(" · ")}` : ""}`;
+}
+
+/**
+ * (오행, 자연 별) → 글자 목록 색인. 소환 풀은 런마다 새 배열로 다시 만들어지고
+ * 지역 로스터는 카탈로그 캐시라 둘 다 참조를 키로 삼는 WeakMap 이면 충분하다.
+ */
+const casualStarIndexCache = new WeakMap<object, Map<string, HanziDefinition[]>>();
+
+function casualStarIndexFor(key: object, definitions: Iterable<HanziDefinition>): Map<string, HanziDefinition[]> {
+  const cached = casualStarIndexCache.get(key);
+  if (cached) return cached;
+  const index = new Map<string, HanziDefinition[]>();
+  for (const definition of definitions) {
+    const star = casualNaturalStar(definition.char);
+    if (star === null) continue;
+    const bucket = `${definition.wuxing}:${star}`;
+    const list = index.get(bucket);
+    if (list) list.push(definition);
+    else index.set(bucket, [definition]);
+  }
+  casualStarIndexCache.set(key, index);
+  return index;
 }
 
 const REGION_ENEMY_HP_CURVE: Record<RegionCode, { base: number; chapterGrowth: number }> = {
@@ -1175,13 +1251,44 @@ export class GameEngine {
     return { ok: true, message: this.state.lastMessage };
   }
 
-  casualFusionQuote(coreId: number, materialIds: readonly number[]): CasualFusionQuote {
+  /**
+   * 같은 오행·같은 별 3기를 소모했을 때 무엇을 뽑게 되는지.
+   *
+   * 1순위는 이번 런의 소환 풀이다 — "내가 뽑을 수 있는 글자"가 결과로 나와야
+   * 규칙이 설명 가능하다. 그 오행에 상위 별 글자가 하나도 없으면(JP/CN 미리보기
+   * 풀은 30·32자뿐이라 흔히 그렇다) 지역 로스터 전체로 넓혀 승급 경로를 살린다.
+   * 두 단계 모두 star+1 → star+2 → … 순으로 가장 가까운 상위 별을 고른다.
+   */
+  casualResultPool(wuxing: Wuxing, fromStar: CasualStar): CasualResultPool | null {
+    if (fromStar >= 8) return null;
+    const sources: Array<{ index: Map<string, HanziDefinition[]>; rosterFallback: boolean }> = [
+      { index: casualStarIndexFor(this.runSummonPool, this.runSummonPool), rosterFallback: false },
+      { index: casualStarIndexFor(this.catalog.definitions, this.catalog.definitions.values()), rosterFallback: true }
+    ];
+    for (const source of sources) {
+      for (let star = (fromStar + 1) as CasualStar; star <= 8; star = (star + 1) as CasualStar) {
+        const candidates = source.index.get(`${wuxing}:${star}`);
+        if (!candidates || candidates.length === 0) continue;
+        return {
+          star,
+          candidates,
+          starFallback: star !== fromStar + 1,
+          rosterFallback: source.rosterFallback
+        };
+      }
+    }
+    return null;
+  }
+
+  casualFusionQuote(materialIds: readonly number[]): CasualFusionQuote {
     const quote: CasualFusionQuote = {
-      coreId,
       materialIds: [...materialIds],
       fromStar: null,
       toStar: null,
       wuxing: null,
+      poolSize: 0,
+      starFallback: false,
+      rosterFallback: false,
       blocked: [],
       warnings: []
     };
@@ -1189,66 +1296,71 @@ export class GameEngine {
       quote.blocked.push({ towerId: null, text: "캐주얼 8성전에서만 같은 오행 3체 조합을 사용할 수 있습니다." });
       return quote;
     }
-    if (materialIds.length !== 2) {
-      quote.blocked.push({ towerId: null, text: "본체 1기와 재료 2기를 정확히 선택하세요." });
+    if (materialIds.length !== 3) {
+      quote.blocked.push({ towerId: null, text: "같은 오행·같은 별 자령 3기를 정확히 선택하세요." });
       return quote;
     }
-    const uniqueIds = new Set([coreId, ...materialIds]);
-    if (uniqueIds.size !== 3) {
+    if (new Set(materialIds).size !== 3) {
       quote.blocked.push({ towerId: null, text: "서로 다른 자령 3기를 선택해야 합니다." });
       return quote;
     }
     const all = [...this.state.towers, ...this.state.inventoryTowers];
-    const core = all.find((tower) => tower.id === coreId);
     const materials = materialIds
       .map((id) => all.find((tower) => tower.id === id))
       .filter((tower): tower is Tower => Boolean(tower));
-    if (!core) quote.blocked.push({ towerId: coreId, text: "남길 본체 자령이 이동했거나 사라졌습니다." });
     for (const id of materialIds) {
-      if (!materials.some((tower) => tower.id === id)) quote.blocked.push({ towerId: id, text: `재료 #${id}이 이동했거나 사라졌습니다.` });
+      if (!materials.some((tower) => tower.id === id)) quote.blocked.push({ towerId: id, text: `자령 #${id}이 이동했거나 사라졌습니다.` });
     }
-    if (!core || materials.length !== 2) return quote;
+    if (materials.length !== 3) return quote;
 
-    const fromStar = core.casualStar ?? core.naturalStar ?? null;
+    const first = materials[0] as Tower;
+    const fromStar = first.casualStar ?? first.naturalStar ?? null;
     quote.fromStar = fromStar;
-    quote.toStar = fromStar === null ? null : casualStarAfterFusion(fromStar);
-    quote.wuxing = core.wuxing;
+    quote.wuxing = first.wuxing;
     if (fromStar === null || materials.some((tower) => (tower.casualStar ?? tower.naturalStar) === undefined)) {
       quote.blocked.push({ towerId: null, text: "선택한 자령의 별 정보를 확인할 수 없습니다." });
-    } else if (fromStar >= 8) {
-      quote.blocked.push({ towerId: core.id, text: `${core.char}은 이미 최고 8★입니다.` });
+      return quote;
+    }
+    if (fromStar >= 8) {
+      quote.blocked.push({ towerId: first.id, text: "8★ 자령은 더 승급할 수 없습니다." });
+      return quote;
     }
     for (const material of materials) {
-      if (material.locked) quote.blocked.push({ towerId: material.id, text: `${material.char}은 잠겨 있어 재료로 쓸 수 없습니다.` });
-      if (material.wuxing !== core.wuxing) quote.blocked.push({ towerId: material.id, text: `${material.char}은 ${core.wuxing}행이 아닙니다.` });
+      if (material.wuxing !== first.wuxing) quote.blocked.push({ towerId: material.id, text: `${material.char}은 ${first.wuxing}행이 아닙니다.` });
       if ((material.casualStar ?? material.naturalStar) !== fromStar) {
-        quote.blocked.push({ towerId: material.id, text: `${material.char}의 현재 별이 본체와 다릅니다.` });
+        quote.blocked.push({ towerId: material.id, text: `${material.char}의 현재 별이 ${fromStar}★가 아닙니다.` });
+      }
+    }
+    // v3 규칙 2: 보호 자령은 본체 자리가 없어졌으므로 3기 어디에도 못 들어간다.
+    const context = this.casualProtectionContext();
+    for (const material of materials) {
+      const protection = this.casualMaterialProtectionFor(material, context);
+      if (protection) {
+        quote.blocked.push({ towerId: material.id, text: `${material.char} · ${protection} — 소모할 수 없습니다.`, kind: "protected" });
       }
     }
     if (quote.blocked.length > 0) return quote;
 
+    const pool = this.casualResultPool(first.wuxing, fromStar);
+    if (!pool) {
+      quote.blocked.push({ towerId: null, text: `이 오행은 ${fromStar}★ 위 글자가 없습니다`, kind: "pool" });
+      return quote;
+    }
+    quote.toStar = pool.star;
+    quote.poolSize = pool.candidates.length;
+    quote.starFallback = pool.starFallback;
+    quote.rosterFallback = pool.rosterFallback;
+
     const assessmentById = new Map(this.cleanupAssessments().map((assessment) => [assessment.towerId, assessment]));
-    const standardMaterialIds = new Set(
-      this.evolution.getAvailableRecipes(all, this.state.targetChar, null, "semi")
-        .flatMap((option) => option.materialTowerIds)
-    );
     const warningKeys = new Set<string>();
     for (const material of materials) {
       const assessment = assessmentById.get(material.id);
       for (const reason of assessment?.protectedReasons ?? []) {
-        if (reason === "잠금 자령") continue;
+        if (!reason.endsWith("공명 임계치")) continue;
         const key = `${material.id}:${reason}`;
         if (warningKeys.has(key)) continue;
         warningKeys.add(key);
-        const kind: CasualFusionIssueKind = reason.endsWith("공명 임계치")
-          ? "resonance"
-          : reason === "유일 보유 한자" ? "unique" : "protected";
-        quote.warnings.push({ towerId: material.id, text: `${material.char} · ${reason}`, kind });
-      }
-      if (standardMaterialIds.has(material.id)) {
-        const key = `${material.id}:standard-recipe`;
-        if (!warningKeys.has(key)) quote.warnings.push({ towerId: material.id, text: `${material.char} · 일반 모드 합성식에 바로 쓸 수 있는 재료`, kind: "standard-recipe" });
-        warningKeys.add(key);
+        quote.warnings.push({ towerId: material.id, text: `${material.char} · ${reason}`, kind: "resonance" });
       }
       if (material.cell >= 0) {
         const key = `${material.id}:deployed`;
@@ -1316,66 +1428,59 @@ export class GameEngine {
     return null;
   }
 
-  fuseCasual(coreId: number, materialIds: readonly number[], allowWarnings = false): ActionResult {
-    if (!this.isRunActive()) return { ok: false, message: "진행 중인 수비전이 없습니다." };
-    const quote = this.casualFusionQuote(coreId, materialIds);
-    if (quote.blocked.length > 0) return { ok: false, message: `조합 중단 · ${quote.blocked[0]?.text ?? "조건을 다시 확인하세요."}` };
+  fuseCasual(materialIds: readonly number[], allowWarnings = false): CasualFusionResult {
+    const fail = (message: string): CasualFusionResult =>
+      ({ ok: false, message, gained: null, consumedChars: [], fromStar: null, starFallback: false, rosterFallback: false });
+    if (!this.isRunActive()) return fail("진행 중인 수비전이 없습니다.");
+    const quote = this.casualFusionQuote(materialIds);
+    if (quote.blocked.length > 0) return fail(`조합 중단 · ${quote.blocked[0]?.text ?? "조건을 다시 확인하세요."}`);
     if (!allowWarnings && quote.warnings.length > 0) {
-      return { ok: false, message: `확인 필요 · ${quote.warnings[0]?.text ?? "보호 대상이 포함되어 있습니다."}` };
+      return fail(`확인 필요 · ${quote.warnings[0]?.text ?? "전장 자령이 포함되어 있습니다."}`);
     }
     return this.performCasualFusion(quote);
   }
 
   casualAutoFusionPlan(wuxing: Wuxing): CasualAutoFusionGroup[] {
     if (this.state.mode !== "casual") return [];
-    const owned = [...this.state.towers, ...this.state.inventoryTowers]
-      .filter((tower) => tower.wuxing === wuxing && (tower.casualStar ?? 8) < 8);
     const context = this.casualProtectionContext();
-    const isSafeMaterial = (tower: Tower): boolean => this.casualMaterialProtectionFor(tower, context) === null;
-    // 본체는 "재료로 쓰면 안 되는 자령"부터 고른다. 보호 대상이 본체 자리에
-    // 앉아야 재료 후보가 최대로 남고, 보호 자령이 소모될 길도 함께 사라진다.
-    const coreRank = (tower: Tower): number =>
-      this.casualMaterialProtectionFor(tower, context) !== null ? 0 : tower.cell >= 0 ? 1 : 2;
+    // v3: 남는 본체가 없으므로 보호 자령은 후보 목록 자체에서 빠진다.
+    const owned = [...this.state.towers, ...this.state.inventoryTowers]
+      .filter((tower) => tower.wuxing === wuxing
+        && (tower.casualStar ?? tower.naturalStar ?? 8) < 8
+        && this.casualMaterialProtectionFor(tower, context) === null);
     const value = (tower: Tower): number => {
       const definition = definitionForTower(this.catalog, tower.definitionId);
       return definition.combat.baseDamage * this.towerPowerMultiplier(tower) * definition.combat.budgetMultiplier / this.towerAttackCooldown(tower);
     };
     const groups: CasualAutoFusionGroup[] = [];
     for (let star = 1 as CasualStar; star <= 7; star = (star + 1) as CasualStar) {
+      // 인벤토리 먼저, 그다음 약한 순. 전장의 주력을 마지막까지 남긴다.
       const available = owned
         .filter((tower) => (tower.casualStar ?? tower.naturalStar) === star)
-        .sort((left, right) => value(right) - value(left) || left.id - right.id);
+        .sort((left, right) =>
+          Number(left.cell >= 0) - Number(right.cell >= 0) || value(left) - value(right) || left.id - right.id);
       while (available.length >= 3) {
-        const safeMaterials = available.filter(isSafeMaterial);
-        if (safeMaterials.length < 2) break;
-        const core = [...available].sort((left, right) =>
-          coreRank(left) - coreRank(right) || value(right) - value(left) || left.id - right.id)[0];
-        if (!core) break;
-        const materialPool = available
-          .filter((tower) => tower.id !== core.id && isSafeMaterial(tower))
-          .sort((left, right) => Number(left.cell >= 0) - Number(right.cell >= 0) || value(left) - value(right) || right.id - left.id);
-        const materials = materialPool.slice(0, 2);
-        if (materials.length !== 2) break;
-        const quote = this.casualFusionQuote(core.id, materials.map((tower) => tower.id));
+        const materials = available.splice(0, 3);
+        const ids = materials.map((tower) => tower.id);
+        const quote = this.casualFusionQuote(ids);
         if (quote.blocked.length > 0 || quote.toStar === null) break;
         groups.push({
-          coreId: core.id,
-          materialIds: [materials[0]?.id ?? -1, materials[1]?.id ?? -1],
+          wuxing,
+          materialIds: [ids[0] ?? -1, ids[1] ?? -1, ids[2] ?? -1],
           fromStar: star,
           toStar: quote.toStar,
+          poolSize: quote.poolSize,
+          starFallback: quote.starFallback,
+          rosterFallback: quote.rosterFallback,
           warnings: quote.warnings,
           autoSkipReason: casualAutoSkipReason(quote.warnings)
         });
-        const usedIds = new Set([core.id, ...materials.map((tower) => tower.id)]);
-        for (let index = available.length - 1; index >= 0; index -= 1) {
-          if (usedIds.has(available[index]?.id ?? -1)) available.splice(index, 1);
-        }
       }
     }
     return groups;
   }
 
-  autoFuseCasualElement(wuxing: Wuxing, allowWarnings = false): ActionResult {
+  autoFuseCasualElement(wuxing: Wuxing, allowWarnings = false): CasualAutoFusionReport {
     return this.autoFuseCasual(wuxing, allowWarnings);
   }
 
@@ -1385,100 +1490,156 @@ export class GameEngine {
    * 건너뛴 수와 사유를 결과에 담아 화면이 반드시 알릴 수 있게 한다.
    */
   autoFuseCasual(scope: Wuxing | "all", allowWarnings = false, onlyStar: CasualStar | null = null): CasualAutoFusionReport {
-    const empty = { fused: 0, consumed: 0, skipped: 0, skipReason: null, firstFusion: null } as const;
-    if (!this.isRunActive()) return { ok: false, message: "진행 중인 수비전이 없습니다.", ...empty };
+    const empty = { fused: 0, consumed: 0, skipped: 0, skipReason: null, gained: [], firstFusion: null } as const;
+    if (!this.isRunActive()) return { ok: false, message: "진행 중인 수비전이 없습니다.", ...empty, gained: [] };
     const scopes: Wuxing[] = scope === "all" ? [...WUXING_ORDER] : [scope];
     const planned = scopes
       .flatMap((wuxing) => this.casualAutoFusionPlan(wuxing))
       .filter((group) => onlyStar === null || group.fromStar === onlyStar);
     if (planned.length === 0) {
       const label = scope === "all" ? "보유 자령" : `${scope}행 보유 자령`;
-      return { ok: false, message: `${label} 중 안전하게 묶을 같은 별 자령 3기가 없습니다.`, ...empty };
+      return { ok: false, message: `${label} 중 소모할 수 있는 같은 별 자령 3기가 없습니다.`, ...empty, gained: [] };
     }
     const runnable = allowWarnings ? planned : planned.filter((group) => group.autoSkipReason === null);
-    const skipped = planned.length - runnable.length;
+    let skipped = planned.length - runnable.length;
     const skipReason = planned.find((group) => group.autoSkipReason !== null)?.autoSkipReason ?? null;
     if (runnable.length === 0) {
       return {
         ok: false,
-        message: `보호로 ${skipped}묶음을 모두 건너뜀 · ${skipReason ?? "재료가 보호 대상입니다."}`,
+        message: `보호로 ${skipped}묶음을 모두 건너뜀 · ${skipReason ?? "소모 후보가 보호 대상입니다."}`,
         ...empty,
+        gained: [],
         skipped,
         skipReason
       };
     }
 
-    const all = [...this.state.towers, ...this.state.inventoryTowers];
     let fused = 0;
     let fromBoard = 0;
+    const gained: CasualFusionGain[] = [];
     let firstFusion: CasualAutoFusionReport["firstFusion"] = null;
     for (const group of runnable) {
-      const quote = this.casualFusionQuote(group.coreId, group.materialIds);
-      if (quote.blocked.length > 0) break;
-      const core = all.find((tower) => tower.id === group.coreId);
+      const quote = this.casualFusionQuote(group.materialIds);
+      // 앞선 승급이 성어 봉인을 새로 만들면 뒤 묶음이 보호로 막힐 수 있다.
+      // 전체를 중단하지 않고 그 묶음만 건너뛴다.
+      if (quote.blocked.length > 0) {
+        skipped += 1;
+        continue;
+      }
+      const all = [...this.state.towers, ...this.state.inventoryTowers];
       const consumedTowers = group.materialIds
         .map((id) => all.find((tower) => tower.id === id))
         .filter((tower): tower is Tower => tower !== undefined);
+      const boardCount = consumedTowers.filter((tower) => tower.cell >= 0).length;
       const result = this.performCasualFusion(quote);
-      if (!result.ok) break;
+      if (!result.ok || !result.gained) {
+        skipped += 1;
+        continue;
+      }
       fused += 1;
-      fromBoard += consumedTowers.filter((tower) => tower.cell >= 0).length;
-      if (!firstFusion && core) {
+      fromBoard += boardCount;
+      gained.push(result.gained);
+      if (!firstFusion) {
         firstFusion = {
-          wuxing: core.wuxing,
-          char: core.char,
+          wuxing: result.gained.wuxing,
+          char: result.gained.char,
           fromStar: group.fromStar,
-          toStar: group.toStar,
-          consumedChars: consumedTowers.map((tower) => tower.char)
+          toStar: result.gained.star,
+          consumedChars: result.consumedChars,
+          newDiscovery: result.gained.newDiscovery,
+          starFallback: result.starFallback,
+          rosterFallback: result.rosterFallback
         };
       }
     }
-    if (fused === 0) return { ok: false, message: "조합 대상이 바뀌었습니다. 다시 확인하세요.", ...empty, skipped, skipReason };
+    if (fused === 0) return { ok: false, message: "조합 대상이 바뀌었습니다. 다시 확인하세요.", ...empty, gained: [], skipped, skipReason };
 
-    const detail = firstFusion
-      ? `${firstFusion.wuxing} ${firstFusion.fromStar}★×3 → ${firstFusion.toStar}★ ${firstFusion.char} · 소모: ${firstFusion.consumedChars.join("·")}`
-      : "";
-    const head = fused > 1 ? `승급 ${fused}회 · 소모 ${fused * 2}기` : "승급 1회";
-    const board = fromBoard > 0 ? ` · 전장 ${fromBoard}기 포함` : "";
     const tail = skipped > 0 ? ` · 보호로 ${skipped}그룹 건너뜀` : "";
-    this.state.lastMessage = `${head}${detail ? ` · ${detail}` : ""}${board}${tail}`;
-    return { ok: true, message: this.state.lastMessage, fused, consumed: fused * 2, skipped, skipReason, firstFusion };
+    if (fused === 1 && firstFusion) {
+      this.state.lastMessage = `${casualFusionHeadline(firstFusion)} · 소모: ${firstFusion.consumedChars.join("·")}${tail}`;
+    } else {
+      const chars = gained.map((entry) => entry.char).join("·");
+      const newCount = gained.filter((entry) => entry.newDiscovery).length;
+      const detail = firstFusion ? ` · 첫 결과 ${casualFusionHeadline(firstFusion)}` : "";
+      const board = fromBoard > 0 ? ` · 전장 ${fromBoard}기 포함` : "";
+      this.state.lastMessage = `승급 ${fused}회 · 소모 ${fused * 3}기 · 획득: ${chars}${newCount > 0 ? ` · 첫 발견 ${newCount}` : ""}${detail}${board}${tail}`;
+    }
+    return { ok: true, message: this.state.lastMessage, fused, consumed: fused * 3, skipped, skipReason, gained, firstFusion };
   }
 
-  private performCasualFusion(quote: CasualFusionQuote): ActionResult {
-    if (quote.fromStar === null || quote.toStar === null || quote.wuxing === null) {
-      return { ok: false, message: "조합 별 정보를 다시 확인하세요." };
-    }
+  private performCasualFusion(quote: CasualFusionQuote): CasualFusionResult {
+    const fail = (message: string): CasualFusionResult =>
+      ({ ok: false, message, gained: null, consumedChars: [], fromStar: quote.fromStar, starFallback: false, rosterFallback: false });
+    if (quote.fromStar === null || quote.toStar === null || quote.wuxing === null) return fail("조합 별 정보를 다시 확인하세요.");
     const all = [...this.state.towers, ...this.state.inventoryTowers];
-    const core = all.find((tower) => tower.id === quote.coreId);
     const consumed = quote.materialIds
       .map((id) => all.find((tower) => tower.id === id))
       .filter((tower): tower is Tower => Boolean(tower));
-    if (!core || consumed.length !== 2) return { ok: false, message: "조합 대상이 바뀌었습니다. 다시 선택하세요." };
+    if (consumed.length !== 3) return fail("조합 대상이 바뀌었습니다. 다시 선택하세요.");
+    const pool = this.casualResultPool(quote.wuxing, quote.fromStar);
+    if (!pool) return fail(`이 오행은 ${quote.fromStar}★ 위 글자가 없습니다`);
+    const definition = pool.candidates[Math.floor(this.rng.next() * pool.candidates.length)] ?? pool.candidates[0] as HanziDefinition;
+
+    // 규칙 3: 소모분 중 전장에 서 있던 첫 자령의 자리를 새 자령이 이어받는다.
+    const inheritedCell = consumed.find((tower) => tower.cell >= 0)?.cell ?? -1;
+    const consumedChars = consumed.map((tower) => tower.char);
+    const consumedSnapshots = consumed.map((tower) => ({ ...tower }));
     const consumedIds = new Set(consumed.map((tower) => tower.id));
     const refunds = emptyElementEssence();
     for (const tower of consumed) refunds[tower.wuxing] += concentrationEssenceRefund(tower.concentration ?? 0);
     this.state.towers = this.state.towers.filter((tower) => !consumedIds.has(tower.id));
     this.state.inventoryTowers = this.state.inventoryTowers.filter((tower) => !consumedIds.has(tower.id));
     for (const wuxing of Object.keys(refunds) as Wuxing[]) this.state.elementEssence[wuxing] += refunds[wuxing];
-    core.casualStar = quote.toStar;
-    core.pulse = 1;
-    core.abilityFlash = 1;
-    this.state.selectedTowerId = core.id;
+
+    const newDiscovery = !this.state.discoveredChars.includes(definition.char);
+    const tower = this.createTower(definition, inheritedCell);
+    tower.pulse = 1;
+    tower.abilityFlash = 1;
+    if (inheritedCell >= 0) this.state.towers.push(tower);
+    else this.state.inventoryTowers.push(tower);
+    this.state.selectedTowerId = tower.id;
     this.state.casualFusionCount += 1;
-    const stroke = casualStrokeCount(core.char);
-    const natural = core.naturalStar ?? quote.fromStar;
-    const baseLabel = stroke === null ? "" : ` · 기본 ${natural}★(${stroke}획)`;
-    this.state.lastMessage = `${core.wuxing}행 3체 조합 · ${core.char} ${quote.fromStar}★→${quote.toStar}★${baseLabel}`;
+    this.discover(definition.char);
+
+    const gained: CasualFusionGain = {
+      wuxing: tower.wuxing,
+      char: tower.char,
+      star: pool.star,
+      cell: inheritedCell,
+      newDiscovery
+    };
+    const stroke = casualStrokeCount(tower.char);
+    const headline = casualFusionHeadline({
+      wuxing: quote.wuxing,
+      char: tower.char,
+      fromStar: quote.fromStar,
+      toStar: pool.star,
+      newDiscovery,
+      starFallback: pool.starFallback,
+      rosterFallback: pool.rosterFallback
+    });
+    this.state.lastMessage = `${headline} · 소모: ${consumedChars.join("·")}${stroke === null ? "" : ` · ${stroke}획`}`;
     this.events.push({
       type: "casualFuse",
-      at: core.cell >= 0 ? BOARD_CELLS[core.cell] as Point : { x: 440, y: 360 },
-      tower: { ...core },
-      consumed: consumed.map((tower) => ({ ...tower })),
+      at: inheritedCell >= 0 ? BOARD_CELLS[inheritedCell] as Point : { x: 440, y: 360 },
+      tower: { ...tower },
+      consumed: consumedSnapshots,
       fromStar: quote.fromStar,
-      toStar: quote.toStar
+      toStar: pool.star,
+      newDiscovery,
+      starFallback: pool.starFallback,
+      rosterFallback: pool.rosterFallback
     });
-    return { ok: true, message: this.state.lastMessage };
+    if (inheritedCell >= 0 && this.isRunActive()) this.resolveIdiomFormations();
+    return {
+      ok: true,
+      message: this.state.lastMessage,
+      gained,
+      consumedChars,
+      fromStar: quote.fromStar,
+      starFallback: pool.starFallback,
+      rosterFallback: pool.rosterFallback
+    };
   }
 
   availableEvolutions(): EvolutionOption[] {

@@ -8925,3 +8925,105 @@ span.codex-jaryeong-category { color: #4a3f30 !important; }
   font-size: 10px !important;
   text-shadow: none !important;
 }
+
+/* ===== V3 3합 ===== */
+/* 캐주얼 3체 조합 v3 — 본체 없음. 3기를 전부 소모하고 같은 오행의 다음 별
+   글자 1기를 무작위로 얻는다. 절 번호는 다른 트랙과 겹치지 않도록 V3-n 으로
+   따로 세며, 위 절들의 값만 덮어쓴다. */
+
+/* ── V3-1. 무작위 결과 칸 — "?" 가 주인공이고 별은 딸린 설명 ────── */
+
+.casual-fusion-result.is-random > b {
+  color: color-mix(in srgb, var(--star) 52%, #241c0e) !important;
+  font-family: system-ui, sans-serif !important;
+  font-weight: 900 !important;
+}
+
+.casual-fusion-result.is-random > span {
+  color: #7d4f0d !important;
+  font-weight: 900 !important;
+}
+
+/* 3슬롯이 모두 `소모` 라서 v2 의 청록(유지) 강조는 남기지 않는다 */
+.casual-fusion-slot > span em { color: #8e2a1e !important; }
+
+/* ── V3-2. 폴백 배지 — 별 사다리·로스터 보충을 카드에서 바로 읽는다 ── */
+
+.casual-group-badge.is-fallback {
+  color: #1f4a63;
+  background: rgba(48, 111, 137, 0.16);
+  box-shadow: inset 0 0 0 1px rgba(48, 111, 137, 0.46);
+}
+
+.casual-group-body .casual-group-badge + .casual-group-badge { margin-left: 4px; }
+
+/* ── V3-3. 확인 모달 결과 풀 줄 ──────────────────────────────── */
+
+.casual-fusion-confirm-content .casual-confirm-pool {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  margin: 7px 0 0;
+  padding: 6px 9px;
+  border-radius: var(--r-sm, 6px);
+  background: rgba(48, 111, 137, 0.12);
+  box-shadow: inset 3px 0 0 #306f89;
+}
+
+.casual-fusion-confirm-content .casual-confirm-pool b { color: #1f4a63; font-size: 12.5px; }
+.casual-fusion-confirm-content .casual-confirm-pool span { color: #4a3f30; font-size: 11.5px; }
+
+/* ── V3-4. 3합 공개 연출 — v5 팩 fusion-vortex 를 광채 위에 겹친다 ──
+   v5 IMPLEMENTATION 3절: 100–420ms 에 scale 0.78→1.04 · rotate 0→110deg ·
+   alpha 0→0.92→0.2. 파일을 못 읽으면 마스크가 비어 아무것도 그려지지 않으므로
+   기존 소환 광채만 남는 폴백이 된다. */
+
+.fusion-vortex {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  z-index: 0;
+  width: 256px;
+  height: 256px;
+  margin: -128px 0 0 -128px;
+  background: var(--vortex-tint, #d8b46a);
+  opacity: 0;
+  -webkit-mask-image: url("/assets/ui/v5/fusion-vortex-v1.png");
+  mask-image: url("/assets/ui/v5/fusion-vortex-v1.png");
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  pointer-events: none;
+}
+
+.fusion-vortex.is-active { animation: fusion-vortex-spin 0.42s ease-out 0.1s both; }
+
+@keyframes fusion-vortex-spin {
+  0% { opacity: 0; transform: scale(0.78) rotate(0deg); }
+  55% { opacity: 0.92; transform: scale(0.94) rotate(62deg); }
+  100% { opacity: 0.2; transform: scale(1.04) rotate(110deg); }
+}
+
+/* 카드·글자는 소용돌이 위에 온다 — 결과 한자가 가려지면 연출이 아니라 방해다 */
+.summon-reveal > header,
+.summon-reveal > p,
+.summon-reveal-list { position: relative; z-index: 1; }
+
+.summon-reveal.is-fusion > header span { color: #ffd9a6; }
+
+.summon-result-card.is-fusion > div mark {
+  color: #f0e2c4;
+  background: rgba(120, 76, 24, 0.5);
+}
+
+@keyframes fusion-vortex-fade {
+  0% { opacity: 0; }
+  50% { opacity: 0.6; }
+  100% { opacity: 0.2; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* 회전 없이 페이드만 — 결과는 즉시 공개된다 */
+  .fusion-vortex.is-active { animation: fusion-vortex-fade 0.24s linear both; }
+}
