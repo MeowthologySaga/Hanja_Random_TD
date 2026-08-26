@@ -129,6 +129,16 @@ import {
   type InkCorner,
   type InkDirection
 } from "./ui/ink-path-sprites";
+import {
+  CELL_SOCKET_SIZE,
+  cellSocketImage,
+  isCellSocketReady,
+  isNameplateReady,
+  nameplateImage,
+  nameplateStateFor,
+  preloadP0ComponentSprites,
+  type NameplateForm
+} from "./ui/p0-component-sprites";
 import { loadDisplayMode, saveDisplayMode, type DisplayMode } from "./ui/display-mode";
 import { jaryeongSpriteImage } from "./ui/jaryeong-sprites";
 import { loadAutoPlaceSummons, saveAutoPlaceSummons } from "./ui/summon-placement";
@@ -401,7 +411,7 @@ app.innerHTML = `
 
       <footer class="panel-footer">
         <span class="canvas-tip">
-          <i><em>휠</em>확대·축소</i><i><em>끌기</em>화면 이동</i><i><em>클릭</em>선택·이동</i><i><em>자령 끌기</em>자리 교환</i>
+          <i title="휠: 지도 확대·축소"><em>휠</em>확대·축소</i><i title="빈 곳 끌기: 화면 이동"><em>끌기</em>화면 이동</i><i title="클릭: 선택·이동"><em>클릭</em>선택·이동</i><i title="자령 끌기: 자리 교환"><em>자령 끌기</em>자리 교환</i>
         </span>
         <span><b id="message-value">지역과 목표 한자를 선택하세요.</b><span id="footer-seed" class="footer-seed"> · 시드 <b id="seed-value">-</b></span></span>
       </footer>
@@ -906,6 +916,7 @@ preloadCombatFxSprites();
 preloadInkPathSprites();
 preloadEnemySprites();
 preloadFormationPlates();
+preloadP0ComponentSprites();
 
 function setPanelTab(tab: PanelTab): void {
   if (tab !== "unit") closeCompositionDrawer();
@@ -3446,26 +3457,43 @@ function drawBoard(): void {
     // 좌표·크기·히트영역·테두리는 그대로다.
     const overPlate = plateRastered[formationIndex] === true;
 
-    // 소켓 바닥: 위가 어둡고 아래가 밝은 그라디언트가 파인 느낌을 만든다.
-    const socket = context.createLinearGradient(0, cell.y - 19, 0, cell.y + 19);
-    if (!unlocked) {
-      socket.addColorStop(0, overPlate ? "rgba(88, 84, 78, 0.10)" : "rgba(88, 84, 78, 0.42)");
-      socket.addColorStop(1, overPlate ? "rgba(132, 127, 118, 0.06)" : "rgba(132, 127, 118, 0.3)");
-    } else if (filled) {
-      socket.addColorStop(0, formation.color + (overPlate ? "50" : "74"));
-      socket.addColorStop(1, formation.color + (overPlate ? "28" : "3e"));
-    } else {
-      socket.addColorStop(0, formation.color + (overPlate ? "1e" : "4c"));
-      socket.addColorStop(1, formation.color + (overPlate ? "10" : "24"));
+    // 점유 칸에는 p0-ui-components-pack-v1 의 오행 소켓을 자령 아래 깔아 어느 진에
+    // 속한 칸인지 한눈에 남긴다. 빈 칸은 제단 래스터의 소켓 재질을 그대로 쓴다.
+    // 원본 114×114 → 38×38 축소만 하며 좌표·히트영역은 손대지 않는다.
+    const socketRastered = filled && unlocked && isCellSocketReady(formation.preferredWuxing, true);
+    if (socketRastered) {
+      context.drawImage(
+        cellSocketImage(formation.preferredWuxing, true),
+        cell.x - CELL_SOCKET_SIZE / 2,
+        cell.y - CELL_SOCKET_SIZE / 2,
+        CELL_SOCKET_SIZE,
+        CELL_SOCKET_SIZE
+      );
     }
-    context.fillStyle = socket;
-    context.beginPath();
-    context.roundRect(cell.x - 19, cell.y - 19, 38, 38, 5);
-    context.fill();
+
+    // 소켓 바닥: 위가 어둡고 아래가 밝은 그라디언트가 파인 느낌을 만든다.
+    // 래스터 소켓을 깐 칸에서는 재질을 덮지 않도록 코드 채움을 건너뛴다.
+    if (!socketRastered) {
+      const socket = context.createLinearGradient(0, cell.y - 19, 0, cell.y + 19);
+      if (!unlocked) {
+        socket.addColorStop(0, overPlate ? "rgba(88, 84, 78, 0.10)" : "rgba(88, 84, 78, 0.42)");
+        socket.addColorStop(1, overPlate ? "rgba(132, 127, 118, 0.06)" : "rgba(132, 127, 118, 0.3)");
+      } else if (filled) {
+        socket.addColorStop(0, formation.color + (overPlate ? "50" : "74"));
+        socket.addColorStop(1, formation.color + (overPlate ? "28" : "3e"));
+      } else {
+        socket.addColorStop(0, formation.color + (overPlate ? "1e" : "4c"));
+        socket.addColorStop(1, formation.color + (overPlate ? "10" : "24"));
+      }
+      context.fillStyle = socket;
+      context.beginPath();
+      context.roundRect(cell.x - 19, cell.y - 19, 38, 38, 5);
+      context.fill();
+    }
 
     // 아래 가장자리에 얇은 빛을 남겨 파인 깊이를 굳힌다.
-    // 래스터 판은 자체 베벨이 있으므로 이 선을 겹쳐 그리지 않는다.
-    if (!overPlate) {
+    // 래스터 판·소켓은 자체 베벨이 있으므로 이 선을 겹쳐 그리지 않는다.
+    if (!overPlate && !socketRastered) {
       context.strokeStyle = "rgba(255, 253, 244, 0.7)";
       context.lineWidth = 1;
       context.beginPath();
@@ -3680,23 +3708,48 @@ function drawSpiritTowerLabel(tower: Tower, cell: Point, selected: boolean, mate
   // Counter-scale the label so Hanja stays readable while the map zooms and pans.
   context.scale(1 / mapZoom, 1 / mapZoom);
 
-  const rim = selected || material ? "#ffe9b0" : style.color;
-  const plaque = context.createLinearGradient(0, top, 0, top + height);
-  plaque.addColorStop(0, "rgba(38, 44, 56, 0.97)");
-  plaque.addColorStop(0.5, "rgba(16, 21, 30, 0.97)");
-  plaque.addColorStop(1, "rgba(7, 10, 16, 0.97)");
-  context.fillStyle = plaque;
+  // p0-ui-components-pack-v1 한지 명패. 화면 고정 크기(wide 104×34 / glyph 34×34)와
+  // 한자 칸 34px·divider x=33 계약을 그대로 쓰므로 좌표는 아래 코드 판과 같다.
+  const plateForm: NameplateForm = glyphOnly ? "glyph" : "wide";
+  const plateState = nameplateStateFor(selected, material);
+  const plateReady = isNameplateReady(plateForm, plateState);
+  const rim = selected ? "#c8912f" : material ? "#9f2f23" : plateReady ? "rgba(122, 90, 42, 0.62)" : style.color;
+
+  context.save();
   context.shadowColor = selected || material ? "rgba(255, 231, 164, 0.5)" : "rgba(0, 0, 0, 0.55)";
   context.shadowBlur = selected || material ? 13 : 7;
   context.shadowOffsetY = 2;
-  context.beginPath();
-  context.roundRect(-width / 2, top, width, height, [3, 11, 3, 11]);
-  context.fill();
-  context.shadowBlur = 0;
-  context.shadowOffsetY = 0;
+  if (plateReady) {
+    // 그림자를 판 안쪽 사각형이 드리우게 해 래스터에 매 프레임 blur 를 걸지 않는다.
+    context.fillStyle = "rgba(30, 22, 12, 0.9)";
+    context.beginPath();
+    context.roundRect(-width / 2 + 3, top + 3, width - 6, height - 6, 6);
+    context.fill();
+  } else {
+    const plaque = context.createLinearGradient(0, top, 0, top + height);
+    plaque.addColorStop(0, "rgba(38, 44, 56, 0.97)");
+    plaque.addColorStop(0.5, "rgba(16, 21, 30, 0.97)");
+    plaque.addColorStop(1, "rgba(7, 10, 16, 0.97)");
+    context.fillStyle = plaque;
+    context.beginPath();
+    context.roundRect(-width / 2, top, width, height, [3, 11, 3, 11]);
+    context.fill();
+  }
+  context.restore();
+
+  if (plateReady) context.drawImage(nameplateImage(plateForm, plateState), -width / 2, top, width, height);
 
   // 한자 칸은 오행 색 바탕으로 구분해 명패가 두 구역으로 읽히게 한다.
-  if (!glyphOnly) {
+  // 한지 명패에는 divider 가 이미 인쇄돼 있으므로 옅은 오행 물듦만 남긴다.
+  if (!glyphOnly && plateReady) {
+    context.save();
+    context.beginPath();
+    context.roundRect(-width / 2, top, width, height, 6);
+    context.clip();
+    context.fillStyle = style.color + "26";
+    context.fillRect(-width / 2, top, glyphBox, height);
+    context.restore();
+  } else if (!glyphOnly) {
     context.save();
     context.beginPath();
     context.roundRect(-width / 2, top, width, height, [3, 11, 3, 11]);
@@ -3715,19 +3768,21 @@ function drawSpiritTowerLabel(tower: Tower, cell: Point, selected: boolean, mate
     context.restore();
   }
 
-  // 상단 광원 베벨
-  context.strokeStyle = "rgba(255, 246, 222, 0.2)";
-  context.lineWidth = 1;
-  context.beginPath();
-  context.moveTo(-width / 2 + 5, top + 0.5);
-  context.lineTo(width / 2 - 5, top + 0.5);
-  context.stroke();
+  // 상단 광원 베벨과 테두리는 코드 판에만 그린다. 한지 명패에는 이미 인쇄돼 있다.
+  if (!plateReady) {
+    context.strokeStyle = "rgba(255, 246, 222, 0.2)";
+    context.lineWidth = 1;
+    context.beginPath();
+    context.moveTo(-width / 2 + 5, top + 0.5);
+    context.lineTo(width / 2 - 5, top + 0.5);
+    context.stroke();
 
-  context.strokeStyle = rim;
-  context.lineWidth = selected || material ? 2 : 1.3;
-  context.beginPath();
-  context.roundRect(-width / 2, top, width, height, [3, 11, 3, 11]);
-  context.stroke();
+    context.strokeStyle = rim;
+    context.lineWidth = selected || material ? 2 : 1.3;
+    context.beginPath();
+    context.roundRect(-width / 2, top, width, height, [3, 11, 3, 11]);
+    context.stroke();
+  }
 
   // 자령을 가리키는 작은 꼬리
   context.fillStyle = rim;
@@ -3740,16 +3795,22 @@ function drawSpiritTowerLabel(tower: Tower, cell: Point, selected: boolean, mate
 
   context.textAlign = "center";
   context.textBaseline = "middle";
-  context.fillStyle = "#fff8e8";
+  // 한지 명패는 밝은 바탕이므로 글자를 먹색으로 뒤집는다. 코드 판은 흰 글자 유지.
+  context.fillStyle = plateReady ? "#241a0d" : "#fff8e8";
   context.font = `900 ${glyphOnly ? 24 : 23}px "Malgun Gothic", "Noto Sans CJK KR", serif`;
   context.fillText(tower.char, glyphOnly ? 0 : -width / 2 + glyphBox / 2, top + height / 2 + 1, glyphBox - 4);
   if (!glyphOnly) {
-    // 훈음은 명패 오른쪽 칸 전체(96px)를 쓴다. 최장 "수레 가기 힘들 가"도 들어간다.
+    // 훈음 칸은 좌우 4px padding 을 뺀 70px. 최장 "수레 가기 힘들 가" 10자가
+    // 눌려 보이지 않도록 12→9px 사이에서 들어가는 가장 큰 글꼴을 고른다.
     const readingLeft = -width / 2 + glyphBox;
     const readingWidth = width - glyphBox;
-    context.fillStyle = "#f3e8cd";
-    context.font = '800 12px "Malgun Gothic", sans-serif';
-    context.fillText(learning.short, readingLeft + readingWidth / 2, top + height / 2 + 1, readingWidth - 8);
+    const readingBox = readingWidth - 8;
+    context.fillStyle = plateReady ? "#3a2b14" : "#f3e8cd";
+    for (const size of [12, 11, 10, 9]) {
+      context.font = `800 ${size}px "Malgun Gothic", sans-serif`;
+      if (context.measureText(learning.short).width <= readingBox || size === 9) break;
+    }
+    context.fillText(learning.short, readingLeft + readingWidth / 2, top + height / 2 + 1, readingBox);
   }
   context.restore();
 }
@@ -5275,6 +5336,8 @@ interface CoachStep {
   readonly target: string;
   readonly title: string;
   readonly body: string;
+  /** 조작 픽토그램(p0-ui-components-pack-v1). 글보다 먼저 읽히는 그림 한 장. */
+  readonly control?: "wheel" | "click" | "drag";
   readonly satisfied: () => boolean;
 }
 
@@ -5284,18 +5347,21 @@ const COACH_STEPS: readonly CoachStep[] = [
     target: "#summon-button",
     title: "먼저 자령을 소환하세요",
     body: "엽전을 써서 자령을 뽑습니다. 첫 자령의 오행에 맞는 4×4 진이 무료로 열립니다.",
+    control: "click",
     satisfied: () => engine.state.summonCount >= 1
   },
   {
     target: "#battle-canvas",
     title: "전장을 살펴보세요",
     body: "휠을 굴려 확대·축소하고, 빈 곳을 끌어 화면을 옮깁니다. 자령을 끌면 자리를 맞바꿉니다.",
+    control: "wheel",
     satisfied: () => false
   },
   {
     target: "#early-button",
     title: "준비되면 웨이브를 시작합니다",
     body: "즉시 시작하면 남은 준비 시간만큼 엽전을 더 받습니다.",
+    control: "click",
     satisfied: () => engine.state.wave >= 1
   }
 ];
@@ -5370,6 +5436,10 @@ function renderCoach(): void {
   must<HTMLElement>("#coach-title").textContent = step.title;
   must<HTMLElement>("#coach-body").textContent = step.body;
   must<HTMLElement>("#coach-next").textContent = coachIndex === COACH_STEPS.length - 1 ? "마치기" : "다음";
+  // 조작 픽토그램은 장식이므로 aria 트리에 넣지 않고 CSS ::after 로만 얹는다.
+  const bubble = must<HTMLElement>("#coach-bubble");
+  if (step.control) bubble.dataset.coachControl = step.control;
+  else delete bubble.dataset.coachControl;
   layoutCoach();
 }
 
