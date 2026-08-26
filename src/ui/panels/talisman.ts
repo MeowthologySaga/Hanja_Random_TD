@@ -20,6 +20,7 @@
  * 선례)과 ctx 의 무료권 수로만 지급한다. 무료권 사용은 소환 비용만큼 엽전을
  * state 에 먼저 얹고 즉시 소환하는 래퍼다(실패 시 얹은 엽전을 물려 권 보존).
  */
+import { TALISMAN_ESSENCE_GOLD_VALUE } from "../../core/engine-tuning";
 import { type GameEngine } from "../../core/game";
 import { summonCost, WUXING_ORDER } from "../../core/hanzi";
 import { learningInfo } from "../../core/learning";
@@ -139,6 +140,21 @@ function syncRewardNote(): void {
   const text = recentRewardText();
   recent.textContent = text === "" ? "최근 보상 · 아직 없음" : `최근 보상 · ${text}`;
   recent.classList.toggle("is-empty", text === "");
+  // 상환 규칙은 숨기지 않는다 — 갚을 것이 남았으면 얼마인지까지 밝힌다.
+  const debt = Math.round(ctx.engine.talismanDebt);
+  must<HTMLElement>("#talisman-economy-note").textContent = debt > 0
+    ? `웨이브 정산에서 ${debt}엽전 상환 예정 — 부적으로 번 만큼만 되갚습니다`
+    : "받은 보상은 웨이브 정산에서 되갚습니다 · 안 쓰면 상환 없음";
+}
+
+/**
+ * HUD 렌더 틱이 부른다 — 부적 탭이 열려 있는 동안에만 머리글 숫자를 맞춘다.
+ * 웨이브가 넘어가며 보상 잔여 횟수와 상환 잔액이 바뀌는 것을 즉시 비춘다.
+ */
+export function syncTalismanPanel(): void {
+  if (ctx.activePanelTab !== "talisman") return;
+  if (!document.querySelector("#talisman-panel")) return;
+  syncRewardNote();
 }
 
 /** 현재 지역 로스터에서 다음 글자를 뽑는다(직전 글자는 피한다). */
@@ -269,15 +285,20 @@ function grantReward(): void {
     const amount = REWARD_GOLD_MIN + Math.floor(Math.random() * (REWARD_GOLD_MAX - REWARD_GOLD_MIN + 1));
     state.gold += amount;
     recentRewards.gold += amount;
+    // 받은 만큼 그대로 장부에 적는다 — 웨이브 정산에서 되갚는다.
+    ctx.engine.talismanDebt += amount;
     grants.push({ kind: "gold", amount, glyph: "錢", label: `+${amount} 엽전` });
   } else if (roll < REWARD_GOLD_WEIGHT + REWARD_ESSENCE_WEIGHT) {
     state.elementEssence[wuxing] += 1;
     state.elementEssenceGenerated[wuxing] += 1;
     recentRewards.essence[wuxing] = (recentRewards.essence[wuxing] ?? 0) + 1;
+    ctx.engine.talismanDebt += TALISMAN_ESSENCE_GOLD_VALUE;
     grants.push({ kind: "essence", amount: 1, wuxing, glyph: wuxing, label: "+1 문기" });
   } else {
     ctx.talismanFreeSummonTokens += 1;
     recentRewards.tokens += 1;
+    // 무료권이 아껴 줄 액수는 지금 소환가와 같다 — 그만큼만 적는다.
+    ctx.engine.talismanDebt += summonCost(state.summonCount);
     grants.push({ kind: "token", amount: 1, glyph: "券", label: "+1 소환 무료권" });
   }
   const summary = grants.map((grant) => grant.label).join(" · ");
@@ -509,6 +530,7 @@ const PANEL_MARKUP = `
       <button id="talisman-redraw" class="small-button" type="button" data-testid="talisman-redraw">다시 뽑기</button>
       <button id="talisman-submit" class="small-button talisman-submit" type="button" data-testid="talisman-submit" disabled>부적 봉인</button>
     </div>
+    <p id="talisman-economy-note" class="talisman-economy-note">받은 보상은 웨이브 정산에서 되갚습니다 · 안 쓰면 상환 없음</p>
   </div>`;
 
 function mountTalismanPanel(): void {

@@ -45,6 +45,7 @@ import { renderActiveIdioms, renderIdiomHud } from "./panels/idiom";
 import { renderRunInventory, setRunInventoryBulkMode } from "./panels/inventory";
 import { closeCompositionDrawer, renderCompositionDrawer, renderSelected } from "./panels/selected";
 import { renderFormationUnlocks, renderSummonShop } from "./panels/shop";
+import { syncTalismanPanel } from "./panels/talisman";
 import { talismanGoldRoll } from "./talisman-reward";
 
 /*
@@ -453,6 +454,7 @@ export function syncPanel(): void {
   renderRunInventory();
   if (ctx.activePanelTab === "concentration") renderConcentration();
   if (ctx.activePanelTab === "growth") renderGrowth();
+  if (ctx.activePanelTab === "talisman") syncTalismanPanel();
   renderIdiomHud();
   renderActiveIdioms();
 }

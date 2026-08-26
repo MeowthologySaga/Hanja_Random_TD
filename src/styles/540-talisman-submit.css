@@ -15,10 +15,32 @@
    숫자·최근 보상 줄)는 남고 움직임만 사라진다.
    ══════════════════════════════════════════════════════════════ */
 
+/* 세로 예산 되찾기 — 작업 영역(.context-deck)은 368px 뿐인데 바닥줄이 1행에서
+   3행(상태 · 버튼 · 상환 안내)으로 늘었다. 실측 397px 을 여백과 버튼 높이에서
+   33px 되찾아 364px 로 앉힌다. 부적지(264px)는 손대지 않는다 — 제시 글자
+   180px 하한이 걸린 유일한 칸이라 여기서 줄이면 명세가 깨진다. */
+#talisman-panel {
+  gap: 3px;
+  padding-top: 4px;
+  padding-bottom: 4px;
+}
+
+#talisman-panel > .workbench-heading {
+  padding-bottom: 0;
+}
+
+/* 마지막 4px 은 부적지의 겉테에서 되찾는다 — 캔버스 논리 크기(196×260)와
+   화면 크기를 정확히 1:1 로 맞추는 값이라 오히려 먹선이 또렷해지고, 제시
+   글자는 186px 그대로 남아 하한을 지킨다. */
+.talisman-paper {
+  width: 196px;
+  height: 260px;
+}
+
 .talisman-footer {
   flex-direction: column;
   align-items: stretch;
-  gap: 3px;
+  gap: 2px;
 }
 
 .talisman-status {
@@ -47,8 +69,10 @@
 
 .talisman-actions > .small-button {
   min-width: 0;
-  min-height: 26px;
+  height: 24px;
+  min-height: 0;
   padding: 0 4px;
+  line-height: 1;
 }
 
 /* [부적 봉인] 은 이 패널의 단 하나뿐인 주행동이라, 이 버튼이 찍어 낼 인장
@@ -89,6 +113,19 @@
 .talisman-recent-reward.is-empty {
   color: var(--text-400);
   font-weight: 700;
+}
+
+/* 상환 규칙(트랙 C2 ③)은 숨기지 않는다 — 패널 바닥에 상시 한 줄. */
+.talisman-economy-note {
+  margin: 0;
+  overflow: hidden;
+  color: var(--text-400);
+  font-size: 9.5px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* ── ③ 인장 — "쾅" 하고 찍힌다 ──────────────────────────────── */

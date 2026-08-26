@@ -813,7 +813,7 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
         <i aria-hidden="true"><em>OFF</em></i>
       </button>
       <button id="talisman-mode-toggle" class="settings-toggle" type="button" role="switch" aria-checked="false" data-testid="talisman-mode-toggle">
-        <span><b>학습 모드 · 부적 만들기</b><small>켜면 패널에 「부적」 탭이 생깁니다. 부적지의 한자를 마우스로 따라 쓰면 봉인 부적이 완성되고, 웨이브당 3회까지 소소한 보상을 받습니다.</small></span>
+        <span><b>학습 모드 · 부적 만들기</b><small>패널에 「부적」 탭이 섭니다. 부적지의 한자를 따라 쓰고 [부적 봉인]을 누르면 그 글자의 자령이 보상을 두고 갑니다(웨이브당 3회). 받은 보상은 웨이브 정산에서 되갚으므로 총 수입은 일반 런과 대등합니다 — 쓰지 않으면 상환도 없습니다.</small></span>
         <i aria-hidden="true"><em>OFF</em></i>
       </button>
       <section class="audio-settings" aria-labelledby="audio-settings-title">
