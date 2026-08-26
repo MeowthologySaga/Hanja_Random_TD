@@ -546,6 +546,7 @@ app.innerHTML = `
               <button type="button" data-s13-display="spirit" role="radio"><b>자령 모드</b><small>머리 위 훈음 명패</small></button>
               <button type="button" data-s13-display="study" role="radio"><b>공부 모드</b><small>큰 한자와 읽기</small></button>
               <button type="button" id="s13-emphasis" aria-pressed="true"><b>한자 강조</b><small class="s13-state">ON</small></button>
+              <button type="button" id="s13-hover-glyph" aria-pressed="true"><b>큰 한자 미리보기</b><small class="s13-state">ON</small></button>
             </div>
           </div>
 
@@ -626,6 +627,10 @@ app.innerHTML = `
       </div>
       <button id="auto-place-toggle" class="settings-toggle" type="button" role="switch" aria-checked="true" data-testid="auto-place-toggle">
         <span><b>뽑기 후 자동 배치</b><small>켜면 현재처럼 빈 오행진 칸에 즉시 배치합니다. 끄면 런 인벤토리에서 원하는 칸을 고릅니다.</small></span>
+        <i aria-hidden="true"><em>ON</em></i>
+      </button>
+      <button id="hover-glyph-toggle" class="settings-toggle" type="button" role="switch" aria-checked="true" data-testid="hover-glyph-toggle">
+        <span><b>팝오버 큰 한자</b><small>자령에 마우스를 올리면 한자를 크게 보여줍니다.</small></span>
         <i aria-hidden="true"><em>ON</em></i>
       </button>
       <section class="audio-settings" aria-labelledby="audio-settings-title">
@@ -961,6 +966,15 @@ let mapPanMoved = false;
 let mapPanClickCell = -1;
 let hoveredTowerId: number | null = null;
 let hanjaEmphasis = true;
+// 호버 팝오버 우상단 큰 한자. 기본 ON, 선택은 브라우저에 저장한다.
+const HOVER_GLYPH_STORAGE_KEY = "hanja-td:hover-glyph-large";
+let hoverGlyphLarge = ((): boolean => {
+  try {
+    return window.localStorage.getItem(HOVER_GLYPH_STORAGE_KEY) !== "false";
+  } catch {
+    return true;
+  }
+})();
 const MIN_MAP_ZOOM = 0.72;
 const BASE_MAP_ZOOM = 2.6;
 const DEFAULT_MAP_ZOOM = 2;
@@ -1020,6 +1034,26 @@ function syncDisplayModeControls(): void {
     button.classList.toggle("is-selected", selected);
     button.setAttribute("aria-checked", String(selected));
   });
+}
+
+function syncHoverGlyphControl(): void {
+  const button = must<HTMLButtonElement>("#hover-glyph-toggle");
+  button.classList.toggle("is-on", hoverGlyphLarge);
+  button.setAttribute("aria-checked", String(hoverGlyphLarge));
+  must<HTMLElement>("#hover-glyph-toggle i em").textContent = hoverGlyphLarge ? "ON" : "OFF";
+}
+
+function setHoverGlyphLarge(enabled: boolean): void {
+  hoverGlyphLarge = enabled;
+  try {
+    window.localStorage.setItem(HOVER_GLYPH_STORAGE_KEY, String(enabled));
+  } catch {
+    // 사생활 보호 모드 등에서 저장이 막혀도 이번 세션 선택은 살린다.
+  }
+  syncHoverGlyphControl();
+  showToast(enabled
+    ? "팝오버 큰 한자 ON · 자령에 마우스를 올리면 한자를 크게 보여줍니다"
+    : "팝오버 큰 한자 OFF · 팝오버는 기존 글줄만 표시합니다");
 }
 
 function syncAutoPlaceControl(): void {
@@ -4224,7 +4258,11 @@ function drawHoveredTowerCard(): void {
   const explanation = koreanMeaningExplanation(tower.char, learning.short, learning.meaning);
   const visual = jaryeongVisualFor(tower.char, tower.wuxing, engine.state.region);
   const image = jaryeongSpriteImage(visual);
-  const width = 284;
+  // 큰 한자는 기존 글줄 상자를 좁히지 않고 오른쪽에 제 칸을 받는다.
+  // 훈음은 "엄쪽(어음을 쪼갠 한 쪽) 권" 처럼 14자까지 오는데, 172px 상자를
+  // 90px 로 줄이면 maxWidth 압축이 38% 까지 찌그러진다.
+  const glyphColumn = hoverGlyphLarge ? 80 : 0;
+  const width = 284 + glyphColumn;
   const height = 176;
   const x = point.x + 36 + width > WORLD_WIDTH - 10 ? point.x - width - 36 : point.x + 36;
   const y = Math.min(WORLD_HEIGHT - height - 18, Math.max(72, point.y - height / 2));
@@ -4250,6 +4288,23 @@ function drawHoveredTowerCard(): void {
   context.fill();
   context.stroke();
   context.shadowBlur = 0;
+
+  // 우상단 사분면의 빈자리에 한자를 크게. 카드가 어두운 계열이라
+  // 스펙의 먹/밝은획을 뒤집어 밝은 글자 + 어두운 아래획(양각)으로 그린다.
+  // 세로로는 쉬운 뜻 구분선(y+98) 위에서 끝난다.
+  if (hoverGlyphLarge) {
+    const glyphX = x + width - glyphColumn / 2 - 6;
+    const glyphY = y + 58;
+    context.save();
+    context.textAlign = "center";
+    context.textBaseline = "middle";
+    context.font = '900 60px "Batang", "Noto Sans CJK KR", serif';
+    context.fillStyle = "rgba(2, 6, 12, 0.85)";
+    context.fillText(tower.char, glyphX + 2, glyphY + 2, 72);
+    context.fillStyle = "rgba(255, 247, 222, 0.92)";
+    context.fillText(tower.char, glyphX, glyphY, 72);
+    context.restore();
+  }
 
   const portraitX = x + 10;
   const portraitY = y + 10;
@@ -4288,7 +4343,7 @@ function drawHoveredTowerCard(): void {
   context.fillText(tower.char, portraitX + portraitSize - 8, portraitY + portraitSize - 7);
 
   const copyX = x + 100;
-  const copyWidth = width - 112;
+  const copyWidth = width - 112 - glyphColumn;
   context.textAlign = "left";
   context.textBaseline = "alphabetic";
   context.fillStyle = "#f7edcf";
@@ -4934,6 +4989,10 @@ function syncS13(): void {
   emphasisButton.setAttribute("aria-pressed", String(hanjaEmphasis));
   must<HTMLElement>("#s13-emphasis .s13-state").textContent = hanjaEmphasis ? "ON" : "OFF";
   emphasisButton.classList.toggle("is-on", hanjaEmphasis);
+  const hoverGlyphButton = must<HTMLButtonElement>("#s13-hover-glyph");
+  hoverGlyphButton.setAttribute("aria-pressed", String(hoverGlyphLarge));
+  must<HTMLElement>("#s13-hover-glyph .s13-state").textContent = hoverGlyphLarge ? "ON" : "OFF";
+  hoverGlyphButton.classList.toggle("is-on", hoverGlyphLarge);
   const autoButton = must<HTMLButtonElement>("#s13-autoplace");
   autoButton.setAttribute("aria-pressed", String(engine.state.autoPlaceSummons));
   must<HTMLElement>("#s13-autoplace .s13-state").textContent = engine.state.autoPlaceSummons ? "ON" : "OFF";
@@ -4979,6 +5038,13 @@ s13Dialog.addEventListener("click", (event) => {
   }
   if (target.closest("#s13-emphasis")) {
     toggleHanjaEmphasis();
+    syncS13();
+    return;
+  }
+  if (target.closest("#s13-hover-glyph")) {
+    sound.unlock();
+    setHoverGlyphLarge(!hoverGlyphLarge);
+    sound.playUiConfirm();
     syncS13();
     return;
   }
@@ -5152,9 +5218,12 @@ must<HTMLButtonElement>("#settings-button").addEventListener("click", () => {
   sound.unlock();
   syncDisplayModeControls();
   syncAutoPlaceControl();
+  syncHoverGlyphControl();
   syncAudioControls();
   settingsDialog.showModal();
 });
+// 저장된 선택이 OFF 면 첫 그림부터 반영되도록 초기 1회 맞춘다.
+syncHoverGlyphControl();
 
 must<HTMLButtonElement>("#composition-drawer-close").addEventListener("click", closeCompositionDrawer);
 must<HTMLElement>("#composition-branches").addEventListener("click", (event) => {
@@ -5187,8 +5256,14 @@ must<HTMLButtonElement>("#title-settings-button").addEventListener("click", () =
   sound.unlock();
   syncDisplayModeControls();
   syncAutoPlaceControl();
+  syncHoverGlyphControl();
   syncAudioControls();
   settingsDialog.showModal();
+});
+must<HTMLButtonElement>("#hover-glyph-toggle").addEventListener("click", () => {
+  sound.unlock();
+  setHoverGlyphLarge(!hoverGlyphLarge);
+  sound.playUiConfirm();
 });
 must<HTMLButtonElement>("#settings-close").addEventListener("click", () => settingsDialog.close());
 document.querySelectorAll<HTMLButtonElement>("[data-display-mode-option]").forEach((button) => {
