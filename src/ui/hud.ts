@@ -315,7 +315,7 @@ export function syncPanel(): void {
   must<HTMLElement>("#interest-preview").textContent = "이자 +" + String(interestForGold(state.gold));
   must<HTMLElement>("#enemy-cap-value").textContent = String(MAX_ENEMIES) + "체";
   must<HTMLElement>("#tower-count-value").textContent = String(state.towers.length) + " / " + String(ctx.engine.deployedTowerCapacity());
-  must<HTMLElement>("#goal-count-value").textContent = String(state.goalsCompleted.length) + " / " + String(ctx.engine.catalog.goalOrder.length);
+  must<HTMLElement>("#goal-count-value").textContent = String(state.goalsCompleted.length) + " / " + String(ctx.engine.goalOrder.length);
   must<HTMLElement>("#seed-value").textContent = state.seed;
   must<HTMLElement>("#message-value").textContent = state.lastMessage;
   renderFormationUnlocks();

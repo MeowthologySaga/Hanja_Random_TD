@@ -627,4 +627,40 @@ describe("casual eight-star mode", () => {
     expect(standard.casualSplashRadiusScale(high)).toBe(1);
     expect(standard.casualSplashRatioScale(high)).toBe(1);
   });
+
+  it("keeps every casual goal inside the summonable pool in all regions (F2)", () => {
+    // F2: JP/CN 목표(林·森 등)가 미리보기 소환 풀 밖이라 달성 불가였다.
+    for (const region of ["KR", "JP", "CN"] as const) {
+      const engine = casualEngine(`casual-goal-pool-${region}`, region);
+      const pool = new Set(engine.summonDefinitions().map((definition) => definition.char));
+      expect(engine.goalOrder.length).toBeGreaterThan(0);
+      expect(engine.goalOrder.length).toBe(engine.catalog.goalOrder.length);
+      for (const char of engine.goalOrder) expect(pool.has(char)).toBe(true);
+      expect(engine.state.targetChar).toBe(engine.goalOrder[0]);
+    }
+    // 표준 모드 목표는 그대로다.
+    const standard = new GameEngine("standard-goal-pool", "JP");
+    standard.begin();
+    expect(standard.goalOrder).toEqual(standard.catalog.goalOrder);
+  });
+
+  it("completes the casual goal when the target char arrives through a fusion (F2)", () => {
+    // JP 캐주얼의 첫 목표 故 는 火 1★→2★ 결과 풀의 유일 후보라 승급 결과가 보장된다.
+    const engine = casualEngine("casual-goal-fusion", "JP");
+    expect(engine.state.targetChar).toBe("故");
+    const pool = engine.casualResultPool("火", 1);
+    expect(pool?.candidates.map((definition) => definition.char)).toEqual(["故"]);
+
+    const protectedChars = new Set([engine.state.targetChar, ...(engine.currentIdiomTarget()?.chars ?? "")]);
+    const material = engine.catalog.activePool.find((definition) =>
+      definition.wuxing === "火" && casualNaturalStar(definition.char) === 1 && !protectedChars.has(definition.char));
+    expect(material).toBeDefined();
+    engine.state.towers = [];
+    engine.state.inventoryTowers = [1501, 1502, 1503].map((id) => casualTower(material as HanziDefinition, id, -1, 1));
+    const result = engine.fuseCasual([1501, 1502, 1503], true);
+    expect(result.ok).toBe(true);
+    expect(result.gained?.char).toBe("故");
+    expect(engine.state.goalsCompleted).toContain("故");
+    expect(engine.state.targetChar).toBe(engine.goalOrder[1]);
+  });
 });

@@ -457,6 +457,40 @@ function regionEnemyHpMultiplier(region: RegionCode, wave: number, mode: GameMod
   return regional * (mode === "casual" ? CASUAL_ENEMY_HP_SCALE : 1);
 }
 
+/**
+ * F2: 별승급(캐주얼) 목표는 "뽑을 수 있는 글자"여야 한다.
+ *
+ * 지역 목표(GOAL_ORDER)는 자형연성 합성 계보 기준이라 JP/CN 미리보기 소환
+ * 풀(30·32자) 밖의 글자가 섞여 있고, 캐주얼에는 합성이 없어 그 목표는 원리적으로
+ * 달성 불가였다. 데이터는 손대지 않고 선정 로직만 좁힌다 — 풀 안 목표를
+ * 순서대로 남기고, 모자라면 활성 풀에서 2★ 이상 글자를 별 오름차순(같은 별은
+ * 획수순)으로 채워 "뽑고 승급해서 도달하는" 목표 사다리를 만든다.
+ */
+function casualGoalOrder(catalog: HanziCatalog): readonly string[] {
+  const poolChars = new Set(catalog.activePool.map((definition) => definition.char));
+  const order = catalog.goalOrder.filter((char) => poolChars.has(char));
+  const goalCount = Math.max(1, catalog.goalOrder.length);
+  if (order.length >= goalCount) return order;
+  const fallback = catalog.activePool
+    .filter((definition) => !order.includes(definition.char))
+    .map((definition) => ({
+      char: definition.char,
+      star: casualNaturalStar(definition.char) ?? 1,
+      strokes: casualStrokeCount(definition.char) ?? 0
+    }))
+    .sort((left, right) => left.star - right.star || left.strokes - right.strokes || left.char.localeCompare(right.char));
+  for (const entry of fallback) {
+    if (order.length >= goalCount) break;
+    if (entry.star >= 2) order.push(entry.char);
+  }
+  // 2★ 이상이 부족한 극소형 풀이면 1★ 라도 채워 목표 자체는 남긴다.
+  for (const entry of fallback) {
+    if (order.length >= goalCount) break;
+    if (!order.includes(entry.char)) order.push(entry.char);
+  }
+  return order;
+}
+
 function weightedPick(rng: SeededRng, entries: readonly HanziDefinition[], weights: readonly number[]): HanziDefinition {
   const total = weights.reduce((sum, weight) => sum + weight, 0);
   let roll = rng.next() * total;
@@ -471,6 +505,8 @@ export class GameEngine {
   readonly state: GameState;
   readonly catalog: HanziCatalog;
   readonly evolution: EvolutionService;
+  /** 이 런의 목표 사다리. 표준은 지역 목표 그대로, 캐주얼은 풀 안 글자로 좁힌다(F2). */
+  readonly goalOrder: readonly string[];
   private rng: SeededRng;
   private events: GameEvent[] = [];
   private nextTowerId = 1;
@@ -492,7 +528,8 @@ export class GameEngine {
     this.catalog = getCatalog(region);
     this.evolution = new EvolutionService(this.catalog);
     this.rng = new SeededRng(seed);
-    const targetChar = this.catalog.goalOrder[0] ?? this.catalog.activePool[0]?.char ?? "";
+    this.goalOrder = mode === "casual" ? casualGoalOrder(this.catalog) : this.catalog.goalOrder;
+    const targetChar = this.goalOrder[0] ?? this.catalog.activePool[0]?.char ?? "";
     this.state = {
       seed,
       region,
@@ -552,7 +589,7 @@ export class GameEngine {
     this.nextAbilityZoneId = 1;
     this.currentPlan = null;
     this.autoEvolutionCooldown = 0;
-    const targetChar = this.catalog.goalOrder[0] ?? this.catalog.activePool[0]?.char ?? "";
+    const targetChar = this.goalOrder[0] ?? this.catalog.activePool[0]?.char ?? "";
     Object.assign(this.state, {
       phase: "prep",
       wave: 0,
@@ -1931,6 +1968,9 @@ export class GameEngine {
       starFallback: pool.starFallback,
       rosterFallback: pool.rosterFallback
     });
+    // F2: 별승급의 목표 사다리는 소환만이 아니라 승급으로도 오른다. 목표 글자가
+    // 승급 결과로 나왔는데 달성 처리가 안 되면 상위 별 목표는 원리적으로 못 깬다.
+    if (definition.char === this.state.targetChar) this.completeGoal(definition.char);
     // 유지형 규칙에서는 소모된 재료가 판을 떠난 것만으로도 봉인이 흩어질 수 있다.
     // 승급 결과가 보관고로 갔더라도(inheritedCell < 0) 판정은 다시 해야 한다.
     if (this.isRunActive()) this.resolveIdiomFormations();
@@ -2019,7 +2059,7 @@ export class GameEngine {
     this.state.lineageClueProgress = 0;
     this.state.lineageTargetProgress = 0;
     this.events.push({ type: "goal", char, reward });
-    const next = this.catalog.goalOrder.find((candidate) => !this.state.goalsCompleted.includes(candidate));
+    const next = this.goalOrder.find((candidate) => !this.state.goalsCompleted.includes(candidate));
     if (next) {
       this.state.targetChar = next;
       this.state.lastMessage = char + " 목표 달성 · " + String(reward) + "엽전 · 다음 목표 " + next;
