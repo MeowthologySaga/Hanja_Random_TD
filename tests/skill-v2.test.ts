@@ -18,6 +18,7 @@ import {
   REAPER_EXECUTE_CAP,
   reaperExecuteThreshold,
   SEMANTIC_ABILITY_TABLE,
+  scorchZoneSeconds,
   hasActiveSkills,
   semanticCharGroup
 } from "../src/core/abilities";
@@ -314,5 +315,46 @@ describe("[SKILL-V2] 호령 (號令)", () => {
     // 지속 시간이 끝나면 명령은 소멸한다.
     engine.state.elapsed += COMMAND_RALLY_CAP_SECONDS + 0.01;
     expect(engine.commandRallyAt(0)).toBeNull();
+  });
+});
+
+describe("[SKILL-V2] 소흔 (燒痕)", () => {
+  it("잔불 지속 — 기본 2.5초, 캐주얼 별당 +0.2초", () => {
+    expect(scorchZoneSeconds(null)).toBeCloseTo(2.5, 6);
+    expect(scorchZoneSeconds(1)).toBeCloseTo(2.5, 6);
+    expect(scorchZoneSeconds(8)).toBeCloseTo(3.9, 6);
+  });
+
+  it("처치한 자리에 잔불이 남고 밟는 적이 초당 피해를 입는다 — 트리거는 처치뿐", () => {
+    const definition = familyDefinition("KR", "scorch");
+    const engine = new GameEngine("skill-scorch-ember", "KR");
+    const { tower, enemy } = arrangeDuel(engine, definition);
+    // 처치 전에는 잔불이 없다 — 주기 발동으로는 생기지 않는다.
+    for (let step = 0; step < 10; step += 1) {
+      tower.cooldownLeft = 0;
+      engine.update(0.02);
+    }
+    expect(engine.state.abilityZones).toHaveLength(0);
+    // 마지막 적 처치로 웨이브가 끝나 combat 이 닫히지 않게, 멀리 닻 적을 세워 둔다.
+    const anchor = makeEnemy(-3, "normal", { progress: (progressNearCell(tower.cell) + 0.5) % 1 });
+    engine.state.enemies = [enemy, anchor];
+    // 처치 순간 잔불이 깔린다.
+    enemy.hp = 1;
+    tower.cooldownLeft = 0;
+    engine.update(0.02);
+    expect(engine.state.enemies.some((candidate) => candidate.id === enemy.id)).toBe(false);
+    const zone = engine.state.abilityZones.find((candidate) => candidate.towerId === tower.id);
+    expect(zone?.kind).toBe("ember");
+    expect(zone?.damagePerSecond ?? 0).toBeGreaterThan(0);
+    expect((zone?.expiresAt ?? 0) - engine.state.elapsed).toBeCloseTo(scorchZoneSeconds(null), 1);
+    // 잔불 위에 선 다음 적은 초당 피해를 입는다 — 뒤로 밀리지는 않는다.
+    const follower = makeEnemy(-4, "normal", { progress: zone!.progress });
+    engine.state.enemies = [follower, anchor];
+    tower.cooldownLeft = 999; // 직접 타격을 잠그고 잔불 피해만 본다.
+    const hpBefore = follower.hp;
+    const progressBefore = follower.progress;
+    for (let step = 0; step < 10; step += 1) engine.update(0.05);
+    expect(follower.hp).toBeLessThan(hpBefore);
+    expect(follower.progress).toBeGreaterThanOrEqual(progressBefore);
   });
 });
