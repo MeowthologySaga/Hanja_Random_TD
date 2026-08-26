@@ -427,6 +427,7 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
         <p class="tutorial-step-count">수련 <span id="tutorial-step-index">1</span> / <span id="tutorial-step-total">8</span></p>
         <b id="tutorial-title"></b>
         <p id="tutorial-body"></p>
+        <p id="tutorial-emphasis" class="tutorial-emphasis" hidden></p>
       </div>
       <button id="tutorial-exit" class="tutorial-exit" type="button" data-testid="tutorial-exit">수련 그만두기</button>
       <section id="tutorial-complete" class="tutorial-complete" aria-labelledby="tutorial-complete-title" hidden>

@@ -17,6 +17,12 @@ const SHOT_DIR = ".claude/uiux/fbt";
 /** 트랙 H(#8 죽은 시간 제거) 실측 스크린샷 보관처. */
 const TRACK_H_DIR = ".claude/uiux/track-h";
 
+/** 트랙 H3(수련장 마감) 실측 스크린샷 보관처. */
+const TRACK_H3_DIR = ".claude/uiux/track-h3";
+
+/** 관전형 안내 자동 진행 시간 — tutorial.ts 의 GUIDANCE_MS 와 같아야 한다. */
+const GUIDANCE_MS = 6_000;
+
 async function canvasPositionForWorld(page: Page, worldX: number, worldY: number): Promise<{ x: number; y: number }> {
   const canvas = page.locator("#battle-canvas");
   const box = await canvas.boundingBox();
@@ -46,11 +52,12 @@ async function clickCell(page: Page, cell: number): Promise<void> {
 }
 
 test("walks the training grounds through all eight scripted steps", async ({ page }) => {
-  // 3걸음은 전멸 대기 없이 관전(4초 자동 또는 아무 곳 클릭) 뒤 곧장 넘어간다.
+  // 3걸음은 전멸 대기 없이 관전(6초 자동 또는 아무 곳 클릭) 뒤 곧장 넘어간다.
   // 여유는 자산 로딩·저사양 CI 를 위한 것이다.
   test.setTimeout(120_000);
   mkdirSync(SHOT_DIR, { recursive: true });
   mkdirSync(TRACK_H_DIR, { recursive: true });
+  mkdirSync(TRACK_H3_DIR, { recursive: true });
   await page.goto("/");
   const shell = page.locator(".game-shell");
 
@@ -90,13 +97,13 @@ test("walks the training grounds through all eight scripted steps", async ({ pag
   await expect(page.locator("#tutorial-title")).toContainText("자령에게 맡겨요");
   await expect(page.locator("#tutorial-body")).toContainText("아무 곳이나 눌러 계속");
   await page.screenshot({ path: `${TRACK_H_DIR}/tutorial-step3-combat-watch-1280x720.png` });
-  // 관전 클릭 진행 — 4초 자동을 기다리지 않고 아무 곳 클릭이 곧 [다음]이다.
+  // 관전 클릭 진행 — 6초 자동을 기다리지 않고 아무 곳 클릭이 곧 [다음]이다.
   await page.locator("#tutorial-bubble").click();
   await expect(shell).toHaveAttribute("data-tutorial-step", "4", { timeout: 3_000 });
   const step3Seconds = (Date.now() - waveStartedAt) / 1000;
   console.log(`[track-h] step-3 wave duration: ${step3Seconds.toFixed(1)}s`);
-  // 4초 자동 진행보다 먼저 도달했어야 클릭 진행이 증명된다.
-  expect(step3Seconds).toBeLessThan(4);
+  // 자동 진행(GUIDANCE_MS)보다 먼저 도달했어야 클릭 진행이 증명된다.
+  expect(step3Seconds).toBeLessThan(GUIDANCE_MS / 1000);
 
   // 4걸음 — 3합 승급. 같은 별 3기가 지급돼 있다.
   await page.locator('[data-panel-tab="evolution"]').click();
@@ -109,12 +116,16 @@ test("walks the training grounds through all eight scripted steps", async ({ pag
   await expect(page.locator("#tutorial-title")).toContainText("승급이 문기를 남겼어요");
   await expect(page.locator("#tutorial-body")).toContainText("아무 곳이나 눌러 계속");
   await page.screenshot({ path: `${TRACK_H_DIR}/tutorial-step4-essence-spotlight-1280x720.png` });
-  // 아무 곳 클릭 진행 — soft-lock 이 삼키는 상단 띠 클릭도 [다음]으로 친다.
+  // 아무 곳 클릭 진행 — soft-lock 이 삼키는 클릭도 [다음]으로 친다. 이 좌표는
+  // 상단 띠처럼 보이지만 실제로는 전장 캔버스(잠긴 칸) 위다.
   await page.mouse.click(500, 28);
   await expect(shell).toHaveAttribute("data-tutorial-step", "5", { timeout: 3_000 });
+  // 회귀 방어(트랙 H3): 이 클릭이 soft-lock 을 새어 나가 잠긴 칸에 닿으면
+  // 진 해금 창이 떠 다음 걸음의 갈피 클릭을 통째로 삼킨다.
+  await expect(page.locator("#formation-unlock-dialog")).toBeHidden();
 
   // 5걸음 — 티어 소환. 중급 소환 값이 지급돼 있다.
-  await page.locator('[data-panel-tab="shop"]').click();
+  await page.locator('.panel-tabs [data-panel-tab="shop"]').click();
   const midstar = page.locator('[data-summon-product="midstar"]');
   await expect(midstar).toBeEnabled();
   await midstar.click();
@@ -122,19 +133,46 @@ test("walks the training grounds through all eight scripted steps", async ({ pag
 
   // 6걸음 — 문기 교육. 출처(승급·분해) 도입 → 강화 [1회] 조작 → 맺음 메시지.
   await expect(page.locator("#tutorial-body")).toContainText("3체 승급과 자령 분해");
-  await page.locator('[data-panel-tab="growth"]').click();
+  await page.locator('.panel-tabs [data-panel-tab="growth"]').click();
   const upgrade = page
     .locator('#growth-upgrade-list [data-growth-upgrade-scope="element"][data-growth-amount="1"]:not([disabled])')
     .first();
   await expect(upgrade).toBeVisible();
   // 본문 — 강화 조작 + 농축 소개(조작은 강화 1회뿐).
   await expect(page.locator("#tutorial-body")).toContainText("농축");
+  // 링 정합(트랙 H3) — 스포트라이트가 실제로 눌러야 할 [1회] 버튼을 감싼다.
+  // 목록이 다시 그려져 스크롤이 되감기면 링만 남고 대상이 밀리던 버그의 방어선.
+  await expect.poll(async () => {
+    const ring = await page.locator("#tutorial-ring").boundingBox();
+    const target = await upgrade.boundingBox();
+    if (!ring || !target) return "측정 불가";
+    const wraps = ring.x <= target.x + 1
+      && ring.y <= target.y + 1
+      && ring.x + ring.width >= target.x + target.width - 1
+      && ring.y + ring.height >= target.y + target.height - 1
+      && ring.width <= target.width + 40
+      && ring.height <= target.height + 40;
+    return wraps ? "감쌈" : `어긋남 ring=${JSON.stringify(ring)} target=${JSON.stringify(target)}`;
+  }, { timeout: 5_000 }).toBe("감쌈");
   await page.screenshot({ path: `${TRACK_H_DIR}/tutorial-step6-growth-body-1280x720.png` });
+  await page.screenshot({ path: `${TRACK_H3_DIR}/tutorial-step6-ring-on-upgrade-1280x720.png` });
   await upgrade.click();
   // 맺음 — "낮은 별이어도 괜찮아요"가 성어 걸음(7) 직전에 선다. 클릭 진행.
   await expect(page.locator("#tutorial-title")).toContainText("낮은 별이어도 괜찮아요");
   await expect(page.locator("#tutorial-body")).toContainText("아무 곳이나 눌러 계속");
+  // 결론 한 줄은 본문과 다른 금박 강조 줄로 따로 선다(사용자 지적: 묻힌다).
+  const emphasis = page.locator("#tutorial-emphasis");
+  await expect(emphasis).toBeVisible();
+  await expect(emphasis).toContainText("낮은 별 자령을 배치해도 불리하지 않아요");
+  expect(await emphasis.evaluate((element) => getComputedStyle(element).fontWeight)).toBe("900");
+  expect(await emphasis.evaluate((element) => getComputedStyle(element).color))
+    .not.toBe(await page.locator("#tutorial-body").evaluate((element) => getComputedStyle(element).color));
+  // 결론 줄이 붙어 말풍선이 길어져도 화면 아래로 잘리지 않는다.
+  const bubbleBox = await page.locator("#tutorial-bubble").boundingBox();
+  const shellBox = await shell.boundingBox();
+  expect(bubbleBox && shellBox ? bubbleBox.y + bubbleBox.height <= shellBox.y + shellBox.height + 1 : false).toBe(true);
   await page.screenshot({ path: `${TRACK_H_DIR}/tutorial-step6-growth-close-1280x720.png` });
+  await page.screenshot({ path: `${TRACK_H3_DIR}/tutorial-step6-emphasis-line-1280x720.png` });
   await page.locator("#tutorial-bubble").click();
   await expect(shell).toHaveAttribute("data-tutorial-step", "7", { timeout: 3_000 });
 
@@ -142,21 +180,35 @@ test("walks the training grounds through all eight scripted steps", async ({ pag
   const cellsAttribute = await shell.getAttribute("data-tutorial-idiom-cells");
   const cells = (cellsAttribute ?? "").split(",").map(Number);
   expect(cells).toHaveLength(4);
+  // 발동 규칙은 순서다(core/idioms findIdiomPath) — 문구도 그렇게 말한다.
   await expect(page.locator("#tutorial-body")).toContainText("줄을 지키는 동안만");
-  await expect(page.locator("#tutorial-body")).toContainText("순서는 자유");
+  await expect(page.locator("#tutorial-body")).toContainText("순번대로 놓아야 발동");
   await page.screenshot({ path: `${SHOT_DIR}/tutorial-step7-idiom-1280x720.png` });
-  // 순서 비강제 — 순번과 어긋난 칸부터(③번 칸에 ②, ④번 칸에 ③) 놓아도
-  // 각본이 제 순번 칸으로 맞춰 발동까지 이어진다.
-  const scrambled = [cells[2] as number, cells[3] as number, cells[3] as number];
-  for (const cell of scrambled) {
+
+  // 금색 점선(다음 칸 안내)은 언제나 "지금 눌러야 하는 한 칸"만 짚는다.
+  const canvasHint = page.locator("#battle-canvas");
+  await expect(canvasHint).toHaveAttribute("data-idiom-next-cells", String(cells[1]));
+
+  // ① 순번 밖 칸은 배치가 아니라 말풍선 흔들림으로 답한다 — 자령 수가 그대로다.
+  const deployed = page.locator("#tower-count-value");
+  const beforeWrong = await deployed.textContent();
+  await clickCell(page, cells[3] as number); // ④번 칸 — 아직 차례가 아니다
+  await expect(page.locator("#tutorial-bubble")).toHaveClass(/is-nudge/);
+  await page.screenshot({ path: `${TRACK_H3_DIR}/tutorial-step7-wrong-cell-nudge-1280x720.png` });
+  await page.waitForTimeout(300);
+  expect(await deployed.textContent()).toBe(beforeWrong);
+  await expect(canvasHint).toHaveAttribute("data-idiom-next-cells", String(cells[1]));
+
+  // ② 순번대로 ②→③→④ 를 누르면 줄이 채워지고 발동한다.
+  for (const cell of [cells[1] as number, cells[2] as number, cells[3] as number]) {
     await clickCell(page, cell);
-    // 배치 정렬·다음 글자 자동 선택이 한 프레임 돌 시간을 준다.
+    // 배치·다음 글자 자동 선택이 한 프레임 돌 시간을 준다.
     await page.waitForTimeout(250);
   }
   await expect(shell).toHaveAttribute("data-tutorial-step", "8", { timeout: 10_000 });
 
-  // 8걸음 — 수료. 발동 연출 4초(또는 아무 곳 클릭) 뒤 수료막(배운 것 4줄)이
-  // 뜨고 기록이 남는다. 여기서는 4초 자동 경로를 그대로 태운다.
+  // 8걸음 — 수료. 발동 연출 6초(또는 아무 곳 클릭) 뒤 수료막(배운 것 4줄)이
+  // 뜨고 기록이 남는다. 여기서는 6초 자동 경로를 그대로 태운다.
   await expect(page.locator("#tutorial-complete")).toBeVisible({ timeout: 10_000 });
   await expect(page.locator("#tutorial-summary li")).toHaveCount(4);
   await expect(page.getByTestId("tutorial-exit")).toBeHidden();
