@@ -46,3 +46,70 @@
   letter-spacing: -0.03em;
   opacity: 0.95;
 }
+
+/* ── J-2. 분해 불가 사유 한 줄 ─────────────────────────────────
+   사유는 경고지 오류가 아니다 — 인주를 왼쪽 띠로만 쓰고 바탕은 종이로
+   둔다. 붉은 판을 깔면 "고장났다" 로 읽힌다. */
+.dismantle-block-note {
+  display: block;
+  margin: 0;
+  padding: 5px 8px;
+  color: #7a2c1c;
+  font-size: 10.5px;
+  font-weight: 800;
+  line-height: 1.35;
+  text-align: left;
+  letter-spacing: -0.02em;
+  border-radius: var(--r-sm);
+  background: rgba(159, 47, 35, 0.09) !important;
+  box-shadow: inset 3px 0 0 var(--seal, #9f2f23) !important;
+}
+
+/* 자령 카드 — 2열 버튼 격자 아래 전폭 한 줄. */
+.selected-actions .dismantle-block-note {
+  grid-column: 1 / -1;
+}
+
+/* 가방 행동 바 — 버튼 줄을 접어 그 아래 한 줄로 앉힌다. 프레임 본문은
+   격자(1fr)가 줄어들며 자리를 내주므로 바닥 줄이 밀려 나가지 않는다. */
+.run-inventory-action-set {
+  flex-wrap: wrap;
+}
+
+#run-inventory-dismantle-note {
+  flex-basis: 100%;
+  margin-top: 1px;
+}
+
+#run-inventory-dismantle-note[hidden] {
+  display: none;
+}
+
+/* 92px 카드의 꼬리표는 두 글자가 한계다 — "보호·유일" 까지만 싣고 나머지
+   설명은 우측 미니 상세와 행동 바가 받는다. */
+#run-inventory-layout .run-inventory-card.is-protected-stack em {
+  color: #8a5a3c;
+  letter-spacing: -0.05em;
+}
+
+/* 우측 미니 상세의 회수량·보호 사유 — 전문을 여기서 편다. */
+.run-inventory-detail-card .detail-yield,
+.run-inventory-detail-card .detail-protection {
+  margin-top: 3px;
+  padding: 3px 6px;
+  font-size: 9.5px !important;
+  font-style: normal;
+  font-weight: 800;
+  line-height: 1.35;
+  border-radius: var(--r-sm);
+}
+
+.run-inventory-detail-card .detail-yield {
+  color: #4a3f2a;
+  background: rgba(70, 52, 26, 0.1);
+}
+
+.run-inventory-detail-card .detail-protection {
+  color: #7a2c1c;
+  background: rgba(159, 47, 35, 0.1);
+}

@@ -269,6 +269,7 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
                 <button id="run-inventory-dismantle" class="run-inventory-action run-inventory-action--dismantle" type="button" data-testid="inventory-dismantle" disabled>분해</button>
                 <button id="run-inventory-lock" class="run-inventory-action" type="button" data-testid="inventory-lock" disabled>잠금</button>
                 <button id="run-inventory-concentrate" class="run-inventory-action" type="button" data-testid="inventory-concentrate" disabled>농축으로</button>
+                <p id="run-inventory-dismantle-note" class="dismantle-block-note" data-testid="inventory-dismantle-note" hidden></p>
               </div>
               <div id="run-inventory-action-bulk" class="run-inventory-action-set" hidden>
                 <span id="run-inventory-bulk-hint" class="run-inventory-action-hint">카드를 눌러 담으세요</span>

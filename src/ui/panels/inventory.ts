@@ -20,10 +20,12 @@ import {
 } from "../app-context";
 import {
   casualStarOf,
+  dismantleBlockNote,
   escapeHtml,
   essenceAmountChip,
   essenceAmountLabel,
   essenceGainsLabel,
+  protectionShortLabel,
   visualBackgroundStyle
 } from "../format";
 import { handleAction, setFocusFrame, setPanelTab, showToast, syncPanel } from "../hud";
@@ -73,7 +75,11 @@ function essenceGainLabel(gains: Record<Wuxing, number>): string {
  * 있어야 클릭이 곧 배치가 아니게 된 값을 한다.
  * 일괄 모드에서는 개별 자령 대신 담은 바구니의 오행별 회수량을 보여 준다.
  */
-function renderRunInventoryDetail(selected: Tower | undefined, stackSize: number): void {
+function renderRunInventoryDetail(
+  selected: Tower | undefined,
+  stackSize: number,
+  assessment: ReturnType<GameEngine["cleanupAssessments"]>[number] | undefined
+): void {
   const detail = must<HTMLElement>("#run-inventory-detail");
   if (ctx.runInventoryBulkMode) {
     const quote = ctx.engine.quoteDismantle([...runInventoryBulkSelection], dismantleOptions());
@@ -103,7 +109,9 @@ function renderRunInventoryDetail(selected: Tower | undefined, stackSize: number
     <p><i>${selected.wuxing}행</i><u>${escapeHtml(progression)}</u></p>
     <small>${escapeHtml(runInventoryAbilityLine(selected))}</small>
     <em>보관 ${stackSize}기${concentration > 0 ? ` · 농축 ${concentration}단계` : ""}${selected.locked ? " · 鎖 잠금" : ""}</em>
-    <em class="detail-yield">분해하면 ${escapeHtml(essenceAmountLabel(selected.wuxing, ctx.engine.towerDismantleEssenceValue(selected)))}</em>
+    ${assessment?.protected
+      ? `<em class="detail-protection">${escapeHtml(dismantleBlockNote(assessment.protectedReasons))}</em>`
+      : `<em class="detail-yield">분해하면 ${escapeHtml(essenceAmountLabel(selected.wuxing, ctx.engine.towerDismantleEssenceValue(selected)))}</em>`}
   </div>`;
 }
 
@@ -141,6 +149,7 @@ function renderRunInventoryActions(
     must<HTMLElement>("#run-inventory-bulk-hint").textContent = quote.ids.length > 0
       ? `담은 ${quote.ids.length}기${quote.blocked.length > 0 ? ` · 보호 제외 ${quote.blocked.length}기` : ""}`
       : "카드를 눌러 담으세요 · 보호 자령은 담기지 않습니다";
+    must<HTMLElement>("#run-inventory-dismantle-note").hidden = true;
     return;
   }
 
@@ -166,7 +175,19 @@ function renderRunInventoryActions(
     ? "먼저 카드를 고르세요"
     : dismantleReady
       ? `${essenceAmountLabel(selected.wuxing, essence)} 를 회수하고 이 자령을 없앱니다. 되돌릴 수 없습니다.`
-      : `보호 중 · ${(assessment?.protectedReasons ?? ["보호 상태를 확인할 수 없습니다."]).join(" · ")}`;
+      : dismantleBlockNote(assessment?.protectedReasons ?? []);
+
+  /*
+   * [J-2] 분해가 막힌 이유를 버튼 바로 아래 한 줄로 편다.
+   *
+   * 사용자 원문: "잠금 안 했는데 분해 안 되는 애가 있는데 이건 뭐지?"
+   * 사유는 여태 title 툴팁에만 있었다 — 마우스를 얹고 기다려야 나오는 곳이라
+   * 사실상 없는 정보였다. 비활성 버튼 옆의 침묵을 이 줄이 메운다.
+   */
+  const note = must<HTMLElement>("#run-inventory-dismantle-note");
+  const blocked = Boolean(selected) && !dismantleReady;
+  note.hidden = !blocked;
+  note.textContent = blocked ? dismantleBlockNote(assessment?.protectedReasons ?? []) : "";
 
   const lock = must<HTMLButtonElement>("#run-inventory-lock");
   lock.disabled = !selected;
@@ -240,7 +261,7 @@ export function renderRunInventory(): void {
   const selectedStackSize = selectedTower
     ? ctx.engine.state.inventoryTowers.filter((tower) => tower.char === selectedTower.char && (ctx.engine.state.mode !== "casual" || casualStarOf(tower) === casualStarOf(selectedTower))).length
     : 0;
-  renderRunInventoryDetail(selectedTower, selectedStackSize);
+  renderRunInventoryDetail(selectedTower, selectedStackSize, selectedTower ? cleanupAssessments.get(selectedTower.id) : undefined);
   renderRunInventoryActions(selectedTower, cleanupAssessments, active);
   if (ctx.engine.state.inventoryTowers.length === 0) {
     list.innerHTML = '<div class="empty-run-inventory"><b>보관 중인 자령이 없습니다</b><span>상점에서 소환하세요</span><button type="button" data-inventory-goto-shop>상점으로</button></div>';
@@ -276,10 +297,13 @@ export function renderRunInventory(): void {
     const star = casualStarOf(tower);
     const progression = ctx.engine.state.mode === "casual" ? `${star}★ ${CASUAL_STAR_NAMES[star]}` : STAGE_NAMES[tower.stage];
     const skill = ctx.engine.towerHasActiveSkills(tower) ? definitionForTower(ctx.engine.catalog, tower.definitionId).combat.abilities.semantic.name : ctx.engine.state.mode === "casual" ? "기본 공격·2★ 해금" : "기본 공격·합성 재료";
+    // [J-2] 보호 사유를 92px 카드가 감당할 두 글자로 줄여 꼬리표에 싣는다.
+    const stackReasons = stack.flatMap((candidate) => cleanupAssessments.get(candidate.id)?.protectedReasons ?? []);
+    const protectionTag = protectionShortLabel(stackReasons);
     const detail = `${tower.char} ${learning.short} · ${tower.wuxing}행 · ${progression} · ${skill}${concentration > 0 ? ` · 농축 ${concentration}` : ""} · 보관 ${stack.length}기`;
     const hint = ctx.runInventoryBulkMode
-      ? eligible.length === 0 ? "보호 중 — 담을 수 없습니다" : checked > 0 ? `담김 ${checked}기 · 눌러 빼기` : `눌러 ${eligible.length}기 담기`
-      : "클릭 = 고르기 · 더블클릭 = 바로 배치";
+      ? eligible.length === 0 ? `보호 중(${protectionTag}) — 담을 수 없습니다` : checked > 0 ? `담김 ${checked}기 · 눌러 빼기` : `눌러 ${eligible.length}기 담기`
+      : eligible.length === 0 ? `${dismantleBlockNote(stackReasons)} · 클릭 = 고르기` : "클릭 = 고르기 · 더블클릭 = 바로 배치";
     const stateClass = ctx.runInventoryBulkMode
       ? `is-bulk ${eligible.length === 0 ? "is-bulk-blocked" : ""} ${checked > 0 ? "is-checked" : ""}`
       : `${selected ? "is-selected" : ""} ${eligible.length > 0 ? "is-cleanup-candidate" : "is-protected-stack"}`;
@@ -291,7 +315,7 @@ export function renderRunInventory(): void {
       ${stack.length > 1 ? `<mark class="run-inventory-stack">×${stack.length}</mark>` : ""}
       ${ctx.engine.state.mode === "casual" ? `<u class="run-inventory-star">${star}★</u>` : ""}
       ${ctx.runInventoryBulkMode ? `<span class="run-inventory-check" aria-hidden="true">${eligible.length === 0 ? "보호" : checked > 0 ? `✓${checked}` : ""}</span>` : ""}
-      <em>${selected ? "선택됨" : eligible.length > 0 ? "정리" : "보호"}</em>
+      <em>${selected ? "선택됨" : eligible.length > 0 ? "정리" : `보호·${protectionTag}`}</em>
     </button>`;
   }).join("");
 }
@@ -323,7 +347,10 @@ export function setRunInventoryBulkMode(enabled: boolean): void {
 function toggleRunInventoryBulkStack(card: HTMLElement): void {
   const eligible = (card.dataset.runInventoryEligible ?? "").split(",").filter(Boolean).map(Number);
   if (eligible.length === 0) {
-    showToast("보호 중인 자령입니다 · 잠금·농축·유일 여부를 확인하세요", true);
+    // [J-2] "확인하세요" 가 아니라 사유 그 자체를 말한다.
+    const id = Number(card.dataset.runInventoryId);
+    const reasons = ctx.engine.cleanupAssessments(dismantleOptions()).find((assessment) => assessment.towerId === id)?.protectedReasons ?? [];
+    showToast(dismantleBlockNote(reasons), true);
     return;
   }
   const allIn = eligible.every((id) => runInventoryBulkSelection.has(id));

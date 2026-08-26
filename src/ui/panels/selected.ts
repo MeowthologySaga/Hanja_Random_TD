@@ -26,6 +26,7 @@ import { type AbilitySpec, type CompositionBranchPreview, type HanziDefinition, 
 import { abilityGuideDialog, canvas, ctx, must } from "../app-context";
 import {
   casualStarOf,
+  dismantleBlockNote,
   escapeHtml,
   essenceAmountChip,
   essenceAmountLabel,
@@ -34,6 +35,7 @@ import {
   visualBackgroundStyle
 } from "../format";
 import { handleAction, setPanelTab, showToast } from "../hud";
+import { dismantleOptions } from "./growth";
 
 function setCompositionMaterialHighlight(ids: readonly number[] = []): void {
   ctx.hoveredCompositionMaterialIds = new Set(ids);
@@ -145,7 +147,7 @@ export function renderSelected(): void {
   const duplicateCount = tower ? ctx.engine.state.inventoryTowers.filter((candidate) => candidate.id !== tower.id && candidate.char === tower.char && !candidate.locked).length : 0;
   const branchKey = branches.map((branch) => `${branch.recipeId}:${branch.ready ? "R" : branch.materials.map((material) => material.location).join(",")}`).join("|");
   const polarisActive = tower ? ctx.engine.casualPolarisAuraActive(tower.wuxing) : false;
-  const key = tower ? tower.definitionId + "|" + String(tower.id) + "|" + String(tower.locked) + "|" + String(stored) + "|" + String(ctx.engine.isSynergyActive(tower.wuxing)) + "|" + branchKey + `|M${ctx.engine.state.mode}:S${tower.casualStar ?? 0}|C${concentration}:${concentrationPath ?? "none"}:D${duplicateCount}:E${ctx.engine.state.elementEssence[tower.wuxing]}|P${polarisActive ? 1 : 0}` : "none";
+  const key = tower ? tower.definitionId + "|" + String(tower.id) + "|" + String(tower.locked) + "|" + String(stored) + "|" + String(ctx.engine.isSynergyActive(tower.wuxing)) + "|" + branchKey + `|M${ctx.engine.state.mode}:S${tower.casualStar ?? 0}|C${concentration}:${concentrationPath ?? "none"}:D${duplicateCount}:E${ctx.engine.state.elementEssence[tower.wuxing]}|P${polarisActive ? 1 : 0}|U${ctx.dismantleProtectsUnique ? 1 : 0}` : "none";
   if (key === ctx.selectedRenderKey) {
     if (tower && definition) syncSelectedCharge(card, tower, definition, chargeStep);
     return;
@@ -178,9 +180,11 @@ export function renderSelected(): void {
   const concentrationStatus = concentration >= MAX_CONCENTRATION_LEVEL
     ? `濃 3/3 완성 · ${concentrationPathLabel(concentrationPath ?? autoConcentrationPath(tower))}`
     : duplicateCount > 0 ? `중복 ${duplicateCount}기 사용 가능` : `${tower.wuxing} 문기 ${ctx.engine.state.elementEssence[tower.wuxing]}/${nextEssenceCost}`;
-  const cleanup = ctx.engine.cleanupAssessments().find((assessment) => assessment.towerId === tower.id);
+  // [J-2] 보호 판정은 분해 경로와 같은 옵션(유일 자령 보호 토글)으로 읽어야
+  // 한 화면 안에서 "여기선 보호, 저기선 분해 가능" 같은 어긋남이 안 생긴다.
+  const cleanup = ctx.engine.cleanupAssessments(dismantleOptions()).find((assessment) => assessment.towerId === tower.id);
   const cleanupLabel = cleanup?.protected
-    ? `보호 · ${cleanup.protectedReasons[0] ?? "전략 재료"}`
+    ? `보호 · ${cleanup.protectedReasons.join(" · ")}`
     : `정리 후보 · ${cleanup?.reasons[0] ?? "직접 판단"}`;
   // [J-1] 판매는 엽전과 (농축했다면) 환급 문기 두 값을 함께 준다 — 둘 다 단위를 단다.
   const sellGold = ctx.engine.towerSellValue(tower);
@@ -222,6 +226,7 @@ export function renderSelected(): void {
       <button id="open-growth-button" type="button" title="${escapeHtml(`강화 제련소 탭으로 이동 · 분해하면 ${essenceAmountLabel(tower.wuxing, dismantleEssence)} 회수`)}">분해 ›<small class="action-price">${essenceAmountChip(tower.wuxing, dismantleEssence)}</small></button>
       <button id="open-concentration-button" type="button" title="농축 공방 탭으로 이동" ${concentration >= MAX_CONCENTRATION_LEVEL ? "disabled" : ""}>농축 ›</button>
       <button id="sell-button" type="button" title="${escapeHtml(`${goldAmountLabel(sellGold)}${sellEssence > 0 ? ` · ${essenceAmountLabel(tower.wuxing, sellEssence)}` : ""} 를 받고 즉시 제거 — 되돌릴 수 없음`)}" ${tower.locked ? "disabled" : ""}>판매<small class="action-price">${goldAmountLabel(sellGold, true)}${sellEssence > 0 ? ` · ${essenceAmountChip(tower.wuxing, sellEssence)}` : ""}</small></button>
+      ${cleanup?.protected ? `<p class="dismantle-block-note">${escapeHtml(dismantleBlockNote(cleanup.protectedReasons))}</p>` : ""}
     </div>
     <button type="button" class="selected-ability-summary" data-ability-guide><b>${activeSkills ? `技 기술 ${abilityLoadout.length}개 · 모두 자동 판정` : "技 기술 해금 전"}</b><span>${activeSkills ? `주기 ${periodicAbilities.length} · 공격 연동 1 · 조건 특성 1` : "현재 기본 공격 · 2단 합성 필요"}</span><em>설명 ›</em></button>
     ${activeSkills

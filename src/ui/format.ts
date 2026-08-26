@@ -113,3 +113,37 @@ export function essenceGainsLabel(gains: Partial<Record<Wuxing, number>>): strin
     .map(([wuxing, amount]) => essenceAmountLabel(wuxing, amount))
     .join(" · ");
 }
+
+/*
+ * [트랙 J-2] 분해가 막힌 이유를 화면에 올린다.
+ *
+ * 사용자 원문: "잠금 안 했는데 분해 안 되는 애가 있는데 이건 뭐지?"
+ * 엔진의 보호 사유(`cleanupAssessments().protectedReasons`)는 지금까지
+ * title 툴팁에만 실렸다 — 마우스를 얹고 기다려야 나오는 곳이라 사실상
+ * 없는 정보였다. 아래 두 함수가 그 사유를 라벨로 승격시킨다.
+ */
+const DISMANTLE_UNIQUE_TOGGLE_LABEL = "유일 자령 보호";
+
+const PROTECTION_SHORT_LABELS: ReadonlyArray<readonly [RegExp, string]> = [
+  [/잠금/u, "잠금"],
+  [/농축/u, "농축"],
+  [/유일/u, "유일"],
+  [/목표/u, "목표"],
+  [/사자성어/u, "성어"],
+  [/재료/u, "재료"],
+  [/공명/u, "공명"]
+];
+
+/** 92px 카드 꼬리표에 들어갈 두 글자. 사유 7종을 한 눈에 가른다. */
+export function protectionShortLabel(reasons: readonly string[]): string {
+  const first = reasons[0];
+  if (!first) return "보호";
+  return PROTECTION_SHORT_LABELS.find(([pattern]) => pattern.test(first))?.[1] ?? "보호";
+}
+
+/** 분해 불가 한 줄. 토글로 풀리는 사유(유일 보유)면 푸는 법까지 붙인다. */
+export function dismantleBlockNote(reasons: readonly string[]): string {
+  const listed = reasons.length > 0 ? reasons.join(" · ") : "보호 상태를 확인할 수 없습니다";
+  const unlockable = reasons.some((reason) => reason.includes("유일 보유"));
+  return `분해 불가 — ${listed}${unlockable ? ` · 강화 제련소에서 [${DISMANTLE_UNIQUE_TOGGLE_LABEL}]를 끄면 분해할 수 있어요` : ""}`;
+}
