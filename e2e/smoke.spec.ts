@@ -8,14 +8,27 @@ import { expect, test, type Page } from "@playwright/test";
 const COACH_STORAGE_KEY = "hanja-td:coach-seen-v1";
 /** 코치를 실제로 띄우는 스펙에 붙이는 태그. 이 태그가 붙은 스펙만 첫 방문 상태로 시작한다. */
 const ONBOARDING_TAG = "@onboarding";
+/** FB4 1회성 안내(src/ui/hint.ts)의 항목별 저장 키. 코치와 같은 사전 차단 대상이다. */
+const HINT_STORAGE_KEYS = ["stroke-star", "midstar-open", "research-open", "first-fuse", "essence"]
+  .map((id) => `hanja-td:hint:${id}:v1`);
+/** 1회성 안내를 실제로 띄우는 스펙에 붙이는 태그. 코치는 본 상태, 안내만 첫 노출 상태로 시작한다. */
+const HINT_TAG = "@one-shot-hints";
 /** 기본 카메라는 기준 배율(100% = 2.60)이 아니라 전장이 한눈에 들어오는 2.00 에서 시작한다. */
 const DEFAULT_MAP_ZOOM_LABEL = "77%";
 
 // 코치 오버레이(#coach-layer)는 스포트라이트 말풍선으로 패널 탭 위를 덮어 클릭을 가로챈다.
+// FB4 의 1회성 안내(#hint-layer) 말풍선도 클릭을 받는 표면이라 같은 이유로 사전 차단한다.
 // 첫 방문자 안내는 전용 스펙에서 따로 검증하고, 나머지 스펙은 "안내를 이미 본 사용자"로 시작한다.
 test.beforeEach(async ({ page }, testInfo) => {
   if (testInfo.tags.includes(ONBOARDING_TAG)) return;
   await page.addInitScript((key) => window.localStorage.setItem(key, "1"), COACH_STORAGE_KEY);
+  // 시작 보너스 1회 안내(#early-hint)도 이미 본 것으로 시작한다 — FB4 안내 스펙의
+  // 관찰 대상이 아니고, 첫 소환 직후의 자리를 두고 새 안내와 경쟁하기 때문이다.
+  await page.addInitScript((key) => window.localStorage.setItem(key, "1"), "hanja-td:early-hint-v1");
+  if (testInfo.tags.includes(HINT_TAG)) return;
+  await page.addInitScript((keys: string[]) => {
+    for (const key of keys) window.localStorage.setItem(key, "1");
+  }, HINT_STORAGE_KEYS);
 });
 
 async function canvasPositionForWorld(page: Page, worldX: number, worldY: number): Promise<{ x: number; y: number }> {
@@ -1096,4 +1109,61 @@ test("spotlights the first run with a three-step coach that can be skipped for g
   await page.reload();
   await page.getByTestId("start-run").click();
   await expect(page.locator("#coach-layer")).toBeHidden();
+});
+
+// FB4 — 1회성 안내. 별승급 진법에서 중급 소환 해금 안내가 먼저 서고,
+// 첫 소환 공개 연출에는 획수→별 규칙 안내가 딱 한 번 붙는다.
+test("teaches summon tiers and the stroke-to-star rule with one-shot hints", { tag: HINT_TAG }, async ({ page }) => {
+  await page.goto("/?seed=HINT-E2E-01");
+  await page.getByTestId("start-run").click();
+
+  // 중급 소환(2~5★)이 열려 있는 순간 — 카드가 링으로 짚인다.
+  await expect(page.locator("#hint-layer")).toBeVisible();
+  await expect(page.locator("#hint-title")).toContainText("별 확률");
+  await page.locator("#hint-dismiss").click();
+  await expect(page.locator("#hint-layer")).toBeHidden();
+
+  // 첫 소환 공개 연출 위에 획수→별 규칙 안내가 1회 선다.
+  await page.getByTestId("summon-button").click();
+  await expect(page.locator("#summon-reveal")).toHaveClass(/is-active/u);
+  await expect(page.locator("#hint-layer")).toBeVisible();
+  await expect(page.locator("#hint-title")).toContainText("획이 많은 한자");
+  await page.locator("#hint-dismiss").click();
+  await expect(page.locator("#hint-layer")).toBeHidden();
+
+  // 같은 안내는 다시 뜨지 않는다 — 두 번째 소환 연출은 조용하다.
+  await page.getByTestId("summon-button").click();
+  await expect(page.locator("#summon-reveal")).toHaveClass(/is-active/u);
+  await expect(page.locator("#hint-layer")).toBeHidden();
+});
+
+// FB4 — 표준(자형연성) 전용 안내 2종. 웨이브 10 인연 연구 개방과 문기 첫 획득은
+// 실플레이로는 분 단위라, 개발 전용 손잡이(__HANJA_CTX_QA__)로 상태만 재현한다.
+test("hints research unlock and first Munki once in standard mode", { tag: HINT_TAG }, async ({ page }) => {
+  await page.goto("/?seed=HINT-E2E-02&mode=standard");
+  await page.getByTestId("start-run").click();
+  await expect(page.locator("#shop-panel")).toBeVisible();
+  // 준비 페이즈에 들어선 뒤에야 상태를 만진다 — 그 전에 심으면 런 시작이 덮어쓴다.
+  await expect(page.locator(".game-shell")).toHaveAttribute("data-phase", "prep");
+
+  // 자형연성에는 중급 소환이 없으므로 개시 직후에는 어떤 안내도 서지 않는다.
+  await expect(page.locator("#hint-layer")).toBeHidden();
+
+  // 실플레이 상태에 맞춘다 — 웨이브 10 이면 첫 소환·초반 안내 접힘은 이미
+  // 지난 뒤라, 소환 한 번으로 상점의 행동 버튼 줄을 실제 보이는 위치에 세운다.
+  await page.getByTestId("summon-button").click();
+  await page.locator("#summon-reveal-close").click();
+  await page.evaluate(() => {
+    (window as unknown as { __HANJA_CTX_QA__: { engine: { state: { wave: number } } } }).__HANJA_CTX_QA__.engine.state.wave = 10;
+  });
+  await expect(page.locator("#hint-layer")).toBeVisible();
+  await expect(page.locator("#hint-title")).toContainText("인연 연구");
+  await page.locator("#hint-dismiss").click();
+  await expect(page.locator("#hint-layer")).toBeHidden();
+
+  await page.evaluate(() => {
+    (window as unknown as { __HANJA_CTX_QA__: { engine: { state: { elementEssence: Record<string, number> } } } }).__HANJA_CTX_QA__.engine.state.elementEssence["木"] = 4;
+  });
+  await expect(page.locator("#hint-layer")).toBeVisible();
+  await expect(page.locator("#hint-title")).toContainText("문기");
 });

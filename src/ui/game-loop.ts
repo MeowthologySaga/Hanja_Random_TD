@@ -7,6 +7,7 @@ import { drawWorld } from "./battle/draw";
 import { syncCoachProgress } from "./coach";
 import { showEndScreen } from "./dialogs/end";
 import { processEvent } from "./events";
+import { syncOneShotHints } from "./hint";
 import { showToast, syncPanel } from "./hud";
 import { showCasualFusionReveal, showSummonReveal } from "./summon-reveal";
 
@@ -65,6 +66,8 @@ export function frame(now: number): void {
   drawWorld(paused ? 0 : delta);
   syncPanel();
   syncCoachProgress();
+  // 1회성 안내는 코치보다 뒤에서 판정한다 — 코치가 떠 있으면 항상 기다린다.
+  syncOneShotHints();
   if (waveStartedThisFrame) canvas.dataset.waveStartWorkMs = (performance.now() - frameWorkStartedAt).toFixed(2);
   window.requestAnimationFrame(frame);
 }
