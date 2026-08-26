@@ -2345,6 +2345,9 @@ function processEvent(event: GameEvent): void {
 }
 
 function showEndScreen(phase: "victory" | "defeat"): void {
+  // 강화·농축 프레임을 연 채 패배하면 종료 화면 뒤에 프레임이 남아,
+  // 재도전 직후 전장이 어두운 유리 아래 갇힌다.
+  setFocusFrame(null);
   const state = engine.state;
   const victory = phase === "victory";
   // 최고 기록은 이번 판을 저장하기 "전"에 읽어야 갱신 여부를 알 수 있다.
@@ -3146,13 +3149,21 @@ function renderCasualFusion(): void {
   container.classList.add("is-casual");
   const buckets = casualFusionBuckets(allTowers, plans, protections);
   const fuseAllButton = must<HTMLButtonElement>("#casual-fuse-all");
-  fuseAllButton.disabled = !active || readyCount === 0;
-  must<HTMLElement>("#casual-fuse-all-count").textContent = `(${readyCount}회)`;
-  must<HTMLElement>("#casual-fuse-all-note").textContent = readyCount > 0
-    ? "3기가 모두 사라지고 같은 오행의 다음 별 자령 1기를 무작위로 얻습니다. 인벤토리 자령을 먼저 씁니다."
-    : buckets.some((bucket) => bucket.shortReason !== null)
-      ? "3체는 모였지만 소모할 수 없는 자령이 섞여 있습니다. 아래 카드에서 사유를 확인하세요."
-      : "같은 오행·같은 별 자령이 3체 모이면 여기서 한 번에 승급합니다.";
+  // 일괄 실행은 전장 재료 묶음을 건너뛰므로, 버튼이 세는 수도 실제로
+  // 실행될 묶음만이어야 한다. "(2회)"를 보고 눌렀는데 0회 승급되는
+  // 죽은 버튼을 만들지 않는다. 건너뛸 묶음은 안내문이 카드로 보낸다.
+  const runnableCount = [...plans.values()]
+    .reduce((sum, groups) => sum + groups.filter((group) => group.autoSkipReason === null).length, 0);
+  const heldCount = readyCount - runnableCount;
+  fuseAllButton.disabled = !active || runnableCount === 0;
+  must<HTMLElement>("#casual-fuse-all-count").textContent = `(${runnableCount}회)`;
+  must<HTMLElement>("#casual-fuse-all-note").textContent = runnableCount > 0
+    ? `3기가 모두 사라지고 같은 오행의 다음 별 자령 1기를 무작위로 얻습니다. 인벤토리 자령을 먼저 씁니다.${heldCount > 0 ? ` 전장 자령이 낀 ${heldCount}묶음은 아래 카드에서 개별 실행하세요.` : ""}`
+    : heldCount > 0
+      ? `모인 ${heldCount}묶음이 전부 전장 자령을 소모합니다. 일괄에서는 건너뛰니, 아래 카드의 [승급] 버튼으로 하나씩 실행하세요.`
+      : buckets.some((bucket) => bucket.shortReason !== null)
+        ? "3체는 모였지만 소모할 수 없는 자령이 섞여 있습니다. 아래 카드에서 사유를 확인하세요."
+        : "같은 오행·같은 별 자령이 3체 모이면 여기서 한 번에 승급합니다.";
   if (key === evolutionRenderKey) return;
   evolutionRenderKey = key;
 
@@ -7888,6 +7899,9 @@ window.addEventListener("keydown", (event) => {
     }, 1200);
     if (devKeyStreak >= 5) {
       devKeyStreak = 0;
+      // 켜는 순간 시드 입력칸에 포커스가 가므로, 이 백틱 자체가 선택된
+      // 시드 문자열을 "`" 로 덮어써 버린다. 입력만 막는다.
+      event.preventDefault();
       setDevMode(shell.dataset.devMode !== "1");
     }
     return;
