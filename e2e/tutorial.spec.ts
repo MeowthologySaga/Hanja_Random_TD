@@ -14,6 +14,9 @@ const TUTORIAL_STORAGE_KEY = "hanja-td:tutorial-complete-v1";
 /** 단계별 스크린샷 보관처 — 보고용(.claude/uiux/fbt/). */
 const SHOT_DIR = ".claude/uiux/fbt";
 
+/** 트랙 H(#8 죽은 시간 제거) 실측 스크린샷 보관처. */
+const TRACK_H_DIR = ".claude/uiux/track-h";
+
 async function canvasPositionForWorld(page: Page, worldX: number, worldY: number): Promise<{ x: number; y: number }> {
   const canvas = page.locator("#battle-canvas");
   const box = await canvas.boundingBox();
@@ -43,9 +46,11 @@ async function clickCell(page: Page, cell: number): Promise<void> {
 }
 
 test("walks the training grounds through all eight scripted steps", async ({ page }) => {
-  // 3걸음의 실전 웨이브(완화 스케일)가 실시간 ~30초를 쓴다.
-  test.setTimeout(180_000);
+  // 3걸음은 이제 전멸 대기 없이 관전 2.6초 뒤 곧장 넘어간다. 여유는 자산
+  // 로딩·저사양 CI 를 위한 것이다.
+  test.setTimeout(120_000);
   mkdirSync(SHOT_DIR, { recursive: true });
+  mkdirSync(TRACK_H_DIR, { recursive: true });
   await page.goto("/");
   const shell = page.locator(".game-shell");
 
@@ -76,11 +81,18 @@ test("walks the training grounds through all eight scripted steps", async ({ pag
 
   // 3걸음 — 첫 웨이브. 지원 2기가 각본 지급되고 [시작 보너스]만 열린다.
   await expect(page.locator("#early-button")).toBeEnabled();
+  const waveStartedAt = Date.now();
   await page.locator("#early-button").click({ force: true }); // 맥동(early-beacon) 이 stable 판정을 막는다
 
   await expect(shell).toHaveAttribute("data-phase", "combat");
-  // 완화 스케일 웨이브를 전멸시키면 준비로 돌아오고 4걸음이 열린다.
-  await expect(shell).toHaveAttribute("data-tutorial-step", "4", { timeout: 90_000 });
+  // 관전 말풍선(적 한계·자동 공격 설명)이 뜨고, 전멸을 기다리지 않는다.
+  await expect(page.locator("#tutorial-title")).toContainText("자령에게 맡겨요");
+  await page.screenshot({ path: `${TRACK_H_DIR}/tutorial-step3-combat-watch-1280x720.png` });
+  // 관전 2.6초 뒤 전투가 배경에서 계속되는 채로 4걸음이 열린다(≤10초 게이트).
+  await expect(shell).toHaveAttribute("data-tutorial-step", "4", { timeout: 15_000 });
+  const step3Seconds = (Date.now() - waveStartedAt) / 1000;
+  console.log(`[track-h] step-3 wave duration: ${step3Seconds.toFixed(1)}s`);
+  expect(step3Seconds).toBeLessThan(10);
 
   // 4걸음 — 3합 승급. 같은 별 3기가 지급돼 있다.
   await page.locator('[data-panel-tab="evolution"]').click();
@@ -133,8 +145,9 @@ test("walks the training grounds through all eight scripted steps", async ({ pag
   await expect(page.getByTestId("tutorial-button")).not.toHaveClass(/is-fresh/);
 });
 
-test("keeps the skip control live and returns to the mode selection", async ({ page }) => {
+test("guards the quit control behind one confirmation and returns to the mode selection", async ({ page }) => {
   mkdirSync(SHOT_DIR, { recursive: true });
+  mkdirSync(TRACK_H_DIR, { recursive: true });
   await page.goto("/");
   await expect(page.getByTestId("tutorial-button")).toBeVisible();
   // 부팅 막(#boot-loader)이 걷힌 실제 서재 화면을 담는다.
@@ -143,9 +156,28 @@ test("keeps the skip control live and returns to the mode selection", async ({ p
   await page.screenshot({ path: `${SHOT_DIR}/tutorial-entry-s00-1280x720.png` });
   await page.getByTestId("tutorial-button").click();
   await expect(page.locator("#tutorial-layer")).toBeVisible({ timeout: 20_000 });
-  await page.getByTestId("tutorial-exit").click();
+
+  // "다음"으로 오인되지 않는 문구·확인 1회 — 누르면 곧장 나가지 않는다.
+  const exit = page.getByTestId("tutorial-exit");
+  await expect(exit).toContainText("수련 그만두기");
+  await exit.click();
+  const quitDialog = page.locator("#tutorial-quit-dialog");
+  await expect(quitDialog).toBeVisible();
+  await expect(quitDialog).toContainText("수련을 그만두고 나갈까요?");
+  await expect(quitDialog).toContainText("저장되지 않아요");
+  await page.screenshot({ path: `${TRACK_H_DIR}/tutorial-quit-confirm-1280x720.png` });
+
+  // [계속 수련하기] — 수련은 그대로 이어진다.
+  await page.getByTestId("tutorial-quit-cancel").click();
+  await expect(quitDialog).toBeHidden();
+  await expect(page.locator("#tutorial-layer")).toBeVisible();
+
+  // 다시 열어 [그만두기] — 이번에야 모드 선택으로 나간다.
+  await exit.click();
+  await expect(quitDialog).toBeVisible();
+  await page.getByTestId("tutorial-quit-confirm").click();
   await expect(page.locator("#title-overlay")).toBeVisible({ timeout: 20_000 });
-  // 건너뛰기는 수료가 아니다 — 기록은 남지 않고 강조도 유지된다.
+  // 그만두기는 수료가 아니다 — 기록은 남지 않고 강조도 유지된다.
   expect(await page.evaluate((key) => window.localStorage.getItem(key), TUTORIAL_STORAGE_KEY)).toBeNull();
   await expect(page.getByTestId("tutorial-button")).toHaveClass(/is-fresh/);
 });
