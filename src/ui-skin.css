@@ -7596,3 +7596,73 @@ span.codex-jaryeong-category { color: #4a3f30 !important; }
 .coach-bubble[data-coach-control="wheel"] { --coach-control-icon: url("/assets/ui/p0-v1/control-icons/control-wheel-72-v1.png"); }
 .coach-bubble[data-coach-control="click"] { --coach-control-icon: url("/assets/ui/p0-v1/control-icons/control-left-click-72-v1.png"); }
 .coach-bubble[data-coach-control="drag"] { --coach-control-icon: url("/assets/ui/p0-v1/control-icons/control-drag-72-v1.png"); }
+
+/* ══════════════════════════════════════════════════════════════════
+   82. P1/P2 마감 에셋 v1 — 보스 띠와 소환 광채
+   출처: handoff/to-claude/p1-p2-polish-assets-pack-v1/assets/fx/
+   설치: public/assets/ui/polish-v1/
+
+   나머지 항목(옻칠 버튼 4상태·카드 프레임 4상태·서책 모달 프레임·한지/옻칠/
+   창호 타일·금박 모서리·진 접지 그림자)은 이미 코드나 앞선 팩으로 대체돼 있어
+   눈검증에서 더 나아 보이지 않았다. 판단 근거는 인계 보고서에 적었다.
+   ══════════════════════════════════════════════════════════════════ */
+
+/* 웨이브·보스 알림 띠. 880x64 원본을 좌우 60 / 상하 14 로 9-slice 해서
+   가운데 띠만 늘린다. 문구·보스 이름·웨이브·낭독은 전부 DOM 이 유지한다. */
+.boss-banner {
+  padding: 10px 30px;
+  border: 0;
+  border-radius: 0;
+  color: #f6e3c4;
+  border-image: url("/assets/ui/polish-v1/fx/boss-alert-ribbon-880x64-v1.png") 14 60 fill / 14px 30px stretch;
+  background: linear-gradient(180deg, #2a1a10 0%, #170f08 100%);
+  box-shadow: var(--lift-2);
+}
+
+/* 보스일 때만 인주 발광을 얹는다. 색만으로 알리지 않도록 "⚠ 우두머리" 문구는
+   그대로 남는다. */
+.boss-banner--boss {
+  color: #ffe2d2;
+  box-shadow:
+    0 0 34px rgba(159, 47, 35, 0.55),
+    var(--lift-2);
+}
+
+/* 소환 광채 3상태.
+   new  = 첫 도감 발견(rare 를 덮어쓴다)
+   rare = 현재 목표·성어 재료로 실제 판정된 자령(`is-helpful`)
+   common = 그 외
+   확률을 실제 소환표와 다르게 암시하지 않도록, 이미 코드가 판정해 화면에
+   표기 중인 두 상태만 쓴다. 1200px 원본이지만 결과 카드가 110px 대라
+   명세의 400px 대신 96px 로 줄여 초상 뒤에 깐다. */
+.summon-result-card::before {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 50%;
+  z-index: 0;
+  width: 96px;
+  height: 96px;
+  transform: translateX(-50%);
+  pointer-events: none;
+  opacity: 0.85;
+  background: var(--summon-glow, none) center / contain no-repeat;
+}
+
+.summon-result-card { --summon-glow: url("/assets/ui/polish-v1/fx/summon-glow-common-1200-v1.png"); }
+.summon-result-card.is-helpful { --summon-glow: url("/assets/ui/polish-v1/fx/summon-glow-rare-1200-v1.png"); }
+.summon-result-card.is-new { --summon-glow: url("/assets/ui/polish-v1/fx/summon-glow-new-1200-v1.png"); }
+
+/* 글자·초상은 광채 위로. */
+.summon-result-spirit,
+.summon-result-card > strong,
+.summon-result-card > b,
+.summon-result-card > small,
+.summon-result-card > div {
+  position: relative;
+  z-index: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .summon-result-card::before { opacity: 0.7; }
+}

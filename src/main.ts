@@ -139,6 +139,17 @@ import {
   preloadP0ComponentSprites,
   type NameplateForm
 } from "./ui/p0-component-sprites";
+import {
+  EXIT_SEAL_SIZE,
+  IDIOM_SEAL_SIZE,
+  STAR_RING_SIZE,
+  clampStarLevel,
+  exitSealImage,
+  idiomCompletionSealImage,
+  isReady as isPolishSpriteReady,
+  preloadPolishSprites,
+  starAscentRingImage
+} from "./ui/polish-sprites";
 import { loadDisplayMode, saveDisplayMode, type DisplayMode } from "./ui/display-mode";
 import { jaryeongSpriteImage } from "./ui/jaryeong-sprites";
 import { loadAutoPlaceSummons, saveAutoPlaceSummons } from "./ui/summon-placement";
@@ -828,6 +839,27 @@ const ringPool: RingFx[] = [];
 const abilityBurstPool: AbilityBurstFx[] = [];
 const towerAbilityPopups = new Map<number, TowerAbilityPopup>();
 
+/**
+ * p1-p2-polish-assets-pack-v1 의 일회성 래스터 연출(별승급 고리·사자성어 봉인).
+ * 순수 피드백이라 승급·봉인 규칙이나 수치에는 관여하지 않는다. 에셋이 없으면
+ * 이 연출만 건너뛰고 상태 전이는 그대로 진행된다.
+ */
+interface RasterBurstFx {
+  readonly image: HTMLImageElement;
+  readonly at: Point;
+  readonly size: number;
+  age: number;
+}
+const rasterBursts: RasterBurstFx[] = [];
+/** 0~120ms 0.72→1.05, 120~520ms 1.0 으로 안착, 900ms 에 소멸. */
+const RASTER_BURST_LIFE = 0.9;
+
+function pushRasterBurst(image: HTMLImageElement, at: Point, size: number): void {
+  if (!isPolishSpriteReady(image)) return;
+  if (rasterBursts.length >= 8) rasterBursts.shift();
+  rasterBursts.push({ image, at: { x: at.x, y: at.y }, size, age: 0 });
+}
+
 function pushPooled<T>(active: T[], pool: T[], item: T, limit: number): void {
   if (active.length >= limit) {
     const recycled = active.shift();
@@ -917,6 +949,7 @@ preloadInkPathSprites();
 preloadEnemySprites();
 preloadFormationPlates();
 preloadP0ComponentSprites();
+preloadPolishSprites();
 
 function setPanelTab(tab: PanelTab): void {
   if (tab !== "unit") closeCompositionDrawer();
@@ -1546,6 +1579,8 @@ function processEvent(event: GameEvent): void {
       const color = CASUAL_STAR_COLORS[event.toStar];
       pushPooled(rings, ringPool, takeRing(event.at, color, 1.05), 32);
       pushPooled(floaters, floaterPool, takeFloater(event.at, `${event.fromStar}★→${event.toStar}★`, color, 1.15, true), 48);
+      // 고리는 "결과" 별 등급으로 고른다. 소모한 재료 등급이 아니다.
+      pushRasterBurst(starAscentRingImage(clampStarLevel(event.toStar)), event.at, STAR_RING_SIZE);
       addCombatFeed(event.tower.char, `${event.tower.wuxing}행 3체 조합`, `${event.consumed.map((tower) => tower.char).join("+")} 소모 · ${event.toStar}★ 승급`, color);
       break;
     }
@@ -1569,6 +1604,7 @@ function processEvent(event: GameEvent): void {
       const points = event.cells.map((cell) => BOARD_CELLS[cell] as Point);
       const center = points.reduce((total, point) => ({ x: total.x + point.x / points.length, y: total.y + point.y / points.length }), { x: 0, y: 0 });
       for (const point of points) pushPooled(rings, ringPool, takeRing(point, event.color, 1.05), 32);
+      pushRasterBurst(idiomCompletionSealImage(), center, IDIOM_SEAL_SIZE);
       const flourishAt = { x: center.x, y: Math.min(WORLD_HEIGHT - 100, center.y + 115) };
       pushPooled(floaters, floaterPool, takeFloater(flourishAt, event.reading + " 자동 봉인!", event.color, 1.25, true), 48);
       showIdiomResult(event.reading, event.meaning, event.bonus, event.color);
@@ -3258,25 +3294,37 @@ function drawSpawnPortals(): void {
     { x: -34, y: 3 }
   ];
   for (let index = 0; index < ENEMY_SPAWN_PROGRESS.length; index += 1) {
-    const point = positionOnPath(ENEMY_SPAWN_PROGRESS[index] as number);
+    const spawnProgress = ENEMY_SPAWN_PROGRESS[index] as number;
+    const point = positionOnPath(spawnProgress);
     const labelOffset = labelOffsets[index] as Point;
-    context.fillStyle = "rgba(151, 47, 36, 0.12)";
-    context.strokeStyle = "rgba(145, 39, 31, 0.92)";
-    context.lineWidth = 2.4;
-    context.beginPath();
-    context.arc(point.x, point.y, 14, 0, Math.PI * 2);
-    context.fill();
-    context.stroke();
-    context.strokeStyle = "rgba(145, 39, 31, 0.58)";
-    context.lineWidth = 1;
-    context.beginPath();
-    context.arc(point.x, point.y, 9.5, 0, Math.PI * 2);
-    context.stroke();
-    context.fillStyle = "#8e2f27";
-    context.font = '900 10px "Batang", serif';
-    context.textAlign = "center";
-    context.textBaseline = "middle";
-    context.fillText("出", point.x, point.y + 1);
+    // 이 출구에서 방금 나온 적이 있으면 spawning. 색만으로 알리지 않도록
+    // "出" 글자와 "출구 N" 라벨은 두 상태 모두 그대로 남는다.
+    const spawning = engine.state.enemies.some((enemy) => {
+      const delta = enemy.progress - spawnProgress;
+      return delta >= 0 && delta < 0.02;
+    });
+    const seal = exitSealImage(spawning ? "spawning" : "waiting");
+    if (isPolishSpriteReady(seal)) {
+      context.drawImage(seal, point.x - EXIT_SEAL_SIZE / 2, point.y - EXIT_SEAL_SIZE / 2, EXIT_SEAL_SIZE, EXIT_SEAL_SIZE);
+    } else {
+      context.fillStyle = "rgba(151, 47, 36, 0.12)";
+      context.strokeStyle = "rgba(145, 39, 31, 0.92)";
+      context.lineWidth = 2.4;
+      context.beginPath();
+      context.arc(point.x, point.y, 14, 0, Math.PI * 2);
+      context.fill();
+      context.stroke();
+      context.strokeStyle = "rgba(145, 39, 31, 0.58)";
+      context.lineWidth = 1;
+      context.beginPath();
+      context.arc(point.x, point.y, 9.5, 0, Math.PI * 2);
+      context.stroke();
+      context.fillStyle = "#8e2f27";
+      context.font = '900 10px "Batang", serif';
+      context.textAlign = "center";
+      context.textBaseline = "middle";
+      context.fillText("出", point.x, point.y + 1);
+    }
     context.fillStyle = "#493426";
     context.font = '900 9px "Malgun Gothic", sans-serif';
     context.textAlign = "center";
@@ -4274,6 +4322,30 @@ function updateAndDrawFx(delta: number): void {
   for (const projectile of projectiles) projectile.age += delta;
   for (const floater of floaters) floater.age += delta;
   for (const ring of rings) ring.age += delta;
+  for (let index = rasterBursts.length - 1; index >= 0; index -= 1) {
+    const burst = rasterBursts[index] as RasterBurstFx;
+    burst.age += delta;
+    if (burst.age >= RASTER_BURST_LIFE) {
+      rasterBursts.splice(index, 1);
+      continue;
+    }
+    if (!isWorldPointVisible(burst.at, burst.size * 0.6)) continue;
+    // reduced motion: 확대·회전 없이 0.25초 정지 후 페이드만.
+    const scale = reducedMotion
+      ? 1
+      : burst.age < 0.12
+        ? 0.72 + (burst.age / 0.12) * 0.33
+        : burst.age < 0.52
+          ? 1.05 - ((burst.age - 0.12) / 0.4) * 0.05
+          : 1;
+    const fadeFrom = reducedMotion ? 0.25 : 0.52;
+    const alpha = burst.age < fadeFrom ? 1 : 1 - (burst.age - fadeFrom) / (RASTER_BURST_LIFE - fadeFrom);
+    const drawn = burst.size * scale;
+    context.save();
+    context.globalAlpha = Math.max(0, alpha);
+    context.drawImage(burst.image, burst.at.x - drawn / 2, burst.at.y - drawn / 2, drawn, drawn);
+    context.restore();
+  }
   for (const burst of abilityBursts) burst.age += delta;
   for (const popup of towerAbilityPopups.values()) popup.age += delta;
   let projectileSpriteDrawnThisFrame = false;
