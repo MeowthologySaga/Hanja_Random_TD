@@ -794,6 +794,7 @@ const casualFusionConfirmDialog = must<HTMLDialogElement>("#casual-fusion-confir
 const codexDialog = must<HTMLDialogElement>("#codex-dialog");
 const summonReveal = must<HTMLElement>("#summon-reveal");
 const sound = new SoundManager();
+sound.attachUiSfx(document);
 if (import.meta.env.DEV) Object.assign(window, { __HANJA_AUDIO_QA__: sound });
 const initialSeed = new URLSearchParams(window.location.search).get("seed")?.slice(0, 24) || createRunSeed();
 seedInput.value = initialSeed;
@@ -1142,6 +1143,7 @@ function setFocusFrame(id: FocusFrameId | null): void {
 }
 
 function setPanelTab(tab: PanelTab): void {
+  if (tab !== activePanelTab) sound.playTabSwitch();
   if (tab !== "unit") closeCompositionDrawer();
   activePanelTab = tab;
   shell.dataset.panelTab = tab;
@@ -1364,6 +1366,7 @@ function startRun(useNewSeed = false): void {
 }
 
 function handleAction(result: ActionResult, options: { invalidatePanels?: boolean } = {}): void {
+  sound.playActionOutcome(result.ok);
   if (!result.ok || !result.message.includes("자동 봉인")) showToast(result.message, !result.ok);
   if (options.invalidatePanels !== false) {
     evolutionRenderKey = "";
@@ -5003,6 +5006,7 @@ function finishTowerDrag(event: PointerEvent, applyMove: boolean): void {
   const targetCell = cellAtPoint(canvasPoint(event));
   if (targetCell < 0) return;
   engine.selectTower(draggedTowerId);
+  sound.expectPlacement();
   handleAction(engine.relocateSelectedToCell(targetCell));
 }
 
@@ -5030,8 +5034,8 @@ function finishMapPan(event: PointerEvent, applyClick: boolean): boolean {
       selectedRenderKey = "";
       syncPanel();
     } else {
-      if (!engine.isCellUnlocked(clickCell)) handleAction(engine.unlockFormation(Math.floor(clickCell / CELLS_PER_FORMATION)));
-      else handleAction(engine.moveSelectedToCell(clickCell));
+      if (!engine.isCellUnlocked(clickCell)) { sound.expectFormationUnlock(); handleAction(engine.unlockFormation(Math.floor(clickCell / CELLS_PER_FORMATION))); }
+      else { sound.expectPlacement(); handleAction(engine.moveSelectedToCell(clickCell)); }
     }
   }
   return true;
@@ -5318,6 +5322,7 @@ must<HTMLElement>("#formation-unlock-list").addEventListener("click", (event) =>
   const button = (event.target as HTMLElement).closest<HTMLButtonElement>("[data-formation-index]");
   if (!button) return;
   sound.unlock();
+  sound.expectFormationUnlock();
   handleAction(engine.unlockFormation(Number(button.dataset.formationIndex)));
 });
 must<HTMLButtonElement>("#auto-arrange-button").addEventListener("click", () => { sound.unlock(); handleAction(engine.autoArrangeTowers()); });
