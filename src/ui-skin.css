@@ -7513,10 +7513,10 @@ span.codex-jaryeong-category { color: #4a3f30 !important; }
   white-space: nowrap;
 }
 
-.canvas-tip i:nth-child(1) { --control-icon: url("/assets/ui/p0-v1/control-icons/control-wheel-72-v1.png"); }
-.canvas-tip i:nth-child(2) { --control-icon: url("/assets/ui/p0-v1/control-icons/control-drag-72-v1.png"); }
-.canvas-tip i:nth-child(3) { --control-icon: url("/assets/ui/p0-v1/control-icons/control-left-click-72-v1.png"); }
-.canvas-tip i:nth-child(4) { --control-icon: url("/assets/ui/p0-v1/control-icons/control-drag-72-v1.png"); }
+/* 휠 안내는 지도 배율 칩이 담당한다(중복 제거) — 남은 3칩: 끌기·클릭·자령 끌기 */
+.canvas-tip i:nth-child(1) { --control-icon: url("/assets/ui/p0-v1/control-icons/control-drag-72-v1.png"); }
+.canvas-tip i:nth-child(2) { --control-icon: url("/assets/ui/p0-v1/control-icons/control-left-click-72-v1.png"); }
+.canvas-tip i:nth-child(3) { --control-icon: url("/assets/ui/p0-v1/control-icons/control-drag-72-v1.png"); }
 
 /* 지도 배율 조작물에도 같은 휠 픽토그램을 준다. */
 #map-zoom-reset small::before {

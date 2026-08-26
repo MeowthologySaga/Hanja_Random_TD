@@ -770,7 +770,7 @@ test("automatically seals four correctly placed towers with readable feedback", 
   await expect(page.locator("#idiom-result-meaning")).toContainText("마음이 통함");
   await expect(page.locator("#idiom-result-bonus")).toHaveText("모든 자령 사거리 +28");
   // 자동 판정 안내는 패널 바닥 조작 팁(.canvas-tip)이 아니라 성어 패널 자체가 설명한다.
-  await expect(page.locator(".canvas-tip")).toContainText("확대·축소");
+  await expect(page.locator(".canvas-tip")).toContainText("화면 이동");
   await expect(page.locator("#idiom-panel")).toContainText("자동 봉인");
   await expect(page.locator("#idiom-panel")).not.toContainText("선을 그");
   await page.screenshot({ path: "artifacts/idiom-seal-1280x720.png", fullPage: true });
