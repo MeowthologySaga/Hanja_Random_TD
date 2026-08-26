@@ -1702,7 +1702,7 @@ function processEvent(event: GameEvent): void {
       break;
     case "interest":
       showToast("은행 이자 +" + String(event.amount) + "엽전");
-      addCombatFeed("財", "은행 이자", `보유 ${event.gold - event.amount}엽전 · 10엽전당 1엽전`, "#f3d47a");
+      addCombatFeed("財", "은행 이자", `보유 ${event.gold - event.amount}엽전 · 20엽전당 1엽전 · 최대 20`, "#f3d47a");
       break;
     case "summon":
       if (!event.stored) pushPooled(rings, ringPool, takeRing(event.at, ELEMENT_STYLES[event.tower.wuxing].color, 0.52), 32);
