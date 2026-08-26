@@ -10456,9 +10456,18 @@ dialog {
   bottom: 0;
   z-index: 3;
   margin-top: 10px;
-  padding: 8px 2px 3px;
-  background: linear-gradient(180deg, rgba(241, 230, 201, 0), #f1e6c9 38%);
+  padding: 7px 2px 3px;
+  /* 투명 페이드는 밑으로 지나가는 카드가 비쳐 겹침처럼 보인다 — 불투명 + 먹선 */
+  background: #f1e6c9;
+  border-top: 1px solid rgba(122, 90, 42, 0.4);
+  box-shadow: 0 -7px 12px -8px rgba(46, 32, 14, 0.45);
 }
+
+/* 스크롤러의 자체 하단 패딩만큼 바가 위에 떠서 그 틈으로 내용이 비친다.
+   패딩을 바에 흡수시켜 바닥에 밀착시킨다. */
+#shop-panel.shop-workbench { padding-bottom: 0; }
+
+.shop-pinned { margin-bottom: 0; }
 
 .shop-pinned .action-button--auto-arrange {
   width: 100%;
