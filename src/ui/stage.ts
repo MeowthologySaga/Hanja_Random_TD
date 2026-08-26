@@ -40,13 +40,20 @@ function measure(): number {
 
 function apply(): void {
   const next = measure();
-  if (applied && next === scale) return;
+  // 브라우저 축소 줌(사이트별로 기억됨)은 devicePixelRatio 를 1 아래로
+  // 끌어내려 무대 배율과 무관하게 화면 전체를 다운샘플한다. 확대 쪽(고DPI
+  // 포함)은 뭉개짐이 없으므로 1 위는 세지 않는다.
+  const zoomPenalty = Math.min(1, window.devicePixelRatio || 1);
+  // 무대가 1 이상으로 커져도 줌 다운샘플을 상쇄하지는 못한다 — 확대분은 캡.
+  const effective = Math.min(1, next) * zoomPenalty;
+  const band = effective < 0.85 ? "small" : "full";
+  if (applied && next === scale && document.documentElement.dataset.stageScaleBand === band) return;
   scale = next;
   applied = true;
   document.documentElement.style.setProperty("--stage-scale", String(scale));
-  // 축소 배율에서는 합성 볼드 세리프·넓은 발광이 다운스케일에 뭉개진다.
+  // 축소 "실효" 배율에서는 합성 볼드 세리프·넓은 발광이 뭉개진다.
   // CSS 가 media query 로는 배율을 읽을 수 없으므로 대역을 데이터로 공개한다.
-  document.documentElement.dataset.stageScaleBand = scale < 0.85 ? "small" : "full";
+  document.documentElement.dataset.stageScaleBand = band;
 }
 
 /**
