@@ -33,6 +33,14 @@ async function canvasPositionForWorld(page: Page, worldX: number, worldY: number
   };
 }
 
+/** 판 칸 번호 → 월드 좌표. content.ts 의 진 중심·간격(44)을 그대로 되짚는다. */
+function worldXY(cell: number): [number, number] {
+  const centers = [{ x: 440, y: 160 }, { x: 240, y: 360 }, { x: 440, y: 360 }, { x: 640, y: 360 }, { x: 440, y: 560 }];
+  const center = centers[Math.floor(cell / 16)] as { x: number; y: number };
+  const local = cell % 16;
+  return [center.x + (local % 4 - 1.5) * 44, center.y + (Math.floor(local / 4) - 1.5) * 44];
+}
+
 async function openShop(page: Page): Promise<void> {
   await page.locator("#shop-tab").click();
   await expect(page.locator("#shop-panel")).toBeVisible();
@@ -646,7 +654,12 @@ test("stores manual summons in the run inventory, deploys them, and returns boar
   await expect(page.locator("#tower-count-value")).toHaveText("0 / 16");
   await expect(page.locator("#run-inventory-count")).toHaveText("1");
   await expect(page.locator("#run-inventory-panel")).toBeVisible();
-  // 패널의 [보관고 열기] 로도 다시 연다(탭 재클릭과 같은 경로).
+  // [보관] 은 탭 재진입이라 집중 프레임이 자동으로 열리고, 프레임이 열린
+  // 동안 요약의 [보관고 열기] 는 숨는다(감사 M2). 닫은 뒤 버튼으로 다시
+  // 여는 경로까지 이어서 본다.
+  await expect(page.locator("#inventory-frame")).toBeVisible();
+  await page.locator("#inventory-frame-close").click();
+  await expect(page.locator("#run-inventory-frame-open")).toBeVisible();
   await page.locator("#run-inventory-frame-open").click();
   await expect(page.locator("#inventory-frame")).toBeVisible();
   await page.screenshot({ path: "artifacts/run-inventory-1280x720.png", fullPage: true });
@@ -848,6 +861,46 @@ test("automatically seals four correctly placed towers with readable feedback", 
   await expect(page.locator("#idiom-panel")).not.toContainText("선을 그");
   await page.screenshot({ path: "artifacts/idiom-seal-1280x720.png", fullPage: true });
 
+  // R18 유지형 성어 — 해제·재발동 왕복.
+  // 봉인 효과는 네 자령이 그 줄을 지키는 동안만 산다. 한 기를 옮기면 발동 스택과
+  // 상태 줄이 즉시 회갈로 내려가고, 제자리로 되돌리면 같은 봉인이 재발동한다.
+  await expect(page.locator("#active-idioms .active-idiom")).toHaveCount(1);
+  await expect(page.locator("#idiom-seal-status .idiom-seal-row.is-live")).toHaveCount(1);
+  await expect(page.locator("#idiom-seal-status")).toContainText("발동 중");
+  const sealedCells = (await page.locator("#battle-canvas").getAttribute("data-idiom-seal-cells") ?? "")
+    .split("-")
+    .map((value) => Number(value));
+  expect(sealedCells).toHaveLength(4);
+  const sealedCell = sealedCells[3] as number;
+  // 같은 진 안에서 봉인이 쓰지 않는 칸 하나 — 옮겨 놓을 자리다.
+  const formationStart = Math.floor(sealedCell / 16) * 16;
+  const parkCell = Array.from({ length: 16 }, (_, offset) => formationStart + offset)
+    .find((cell) => !sealedCells.includes(cell)) as number;
+  await page.screenshot({ path: "artifacts/idiom-hold-active-1280x720.png", fullPage: true });
+
+  await page.locator("#battle-canvas").click({ position: await canvasPositionForWorld(page, ...worldXY(sealedCell)) });
+  await expect(page.locator("#battle-canvas")).not.toHaveAttribute("data-selected-tower-id", "");
+  await page.locator("#battle-canvas").click({ position: await canvasPositionForWorld(page, ...worldXY(parkCell)) });
+
+  await expect(page.locator("#toast")).toContainText("『이심전심』 봉인 해제");
+  await expect(page.locator("#active-idioms .active-idiom")).toHaveCount(0);
+  await expect(page.locator("#battle-canvas")).toHaveAttribute("data-idiom-seal-cells", "");
+  await page.getByRole("tab", { name: /성어/ }).click();
+  await expect(page.locator("#idiom-seal-status .idiom-seal-row.is-scattered")).toHaveCount(1);
+  await expect(page.locator("#idiom-seal-status")).toContainText("봉인 이력 · 지금은 흩어짐");
+  await expect(page.locator("#idiom-result-name")).toHaveText("이심전심 봉인 해제");
+  // 달성 기록은 그대로다 — 카운트는 여전히 1/5 이고 도감도 발동 이력을 지우지 않는다.
+  await expect(page.locator("#idiom-count")).toHaveText("1 / 5");
+  await page.screenshot({ path: "artifacts/idiom-hold-broken-1280x720.png", fullPage: true });
+
+  await page.locator("#battle-canvas").click({ position: await canvasPositionForWorld(page, ...worldXY(parkCell)) });
+  await page.locator("#battle-canvas").click({ position: await canvasPositionForWorld(page, ...worldXY(sealedCell)) });
+  await expect(page.locator("#active-idioms .active-idiom")).toHaveCount(1);
+  await expect(page.locator("#idiom-seal-status .idiom-seal-row.is-live")).toHaveCount(1);
+  await expect(page.locator("#idiom-result-name")).toHaveText("이심전심 재봉인");
+  await expect(page.locator("#idiom-count")).toHaveText("1 / 5");
+  await page.screenshot({ path: "artifacts/idiom-hold-rejoined-1280x720.png", fullPage: true });
+
   await page.locator("#codex-button").click();
   await page.getByRole("tab", { name: "사자성어" }).click();
   await expect(page.locator("#codex-summary")).toContainText("104/104");
@@ -979,6 +1032,9 @@ test("opens the rules and exposes synthesis keyboard guidance", async ({ page })
   await expect(page.locator("#help-panel-growth")).toContainText("능력 조합");
   await page.locator("#help-tab-idiom").click();
   await expect(page.locator("#help-panel-idiom")).toContainText("사자성어");
+  // R18: 성어 보너스는 런 내내가 아니라 그 줄이 유지되는 동안만 발동한다.
+  await expect(page.locator("#help-panel-idiom")).toContainText("그 줄을 지키는 동안만");
+  await expect(page.locator("#help-panel-idiom")).not.toContainText("런 동안 계속 유지");
 
   // 다시 열면 첫 갈피로 되돌아온다.
   await page.locator("#help-dialog .dialog-heading button").click();
