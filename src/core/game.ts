@@ -31,9 +31,18 @@ import {
   CASUAL_STAR_HASTE_PER_STAR,
   CASUAL_STAR_POWER,
   CASUAL_STAR_RANGE,
-  casualNaturalStar,
-  casualStrokeCount
+  casualNaturalStar
 } from "./casual";
+import {
+  autoFuseCasual as runAutoFuseCasual,
+  casualAutoFusionPlan as buildCasualAutoFusionPlan,
+  casualFusionQuote as buildCasualFusionQuote,
+  casualMaterialProtection as findCasualMaterialProtection,
+  casualMaterialProtections as listCasualMaterialProtections,
+  casualResultPool as findCasualResultPool,
+  fuseCasual as runFuseCasual,
+  type CasualFusionContext
+} from "./casual-fusion";
 import {
   BOARD_CELLS,
   BOARD_FORMATIONS,
@@ -59,7 +68,6 @@ import {
 import {
   type CasualAutoFusionGroup,
   type CasualAutoFusionReport,
-  type CasualFusionGain,
   type CasualFusionQuote,
   type CasualFusionResult,
   type CasualResultPool,
@@ -74,15 +82,10 @@ import {
 import {
   autoConcentrationPath,
   CASUAL_BOSS_HP_TRIM,
-  casualAutoSkipReason,
   casualDismantleEssence,
   casualDismantleScore,
-  casualFusionDismantleScore,
-  casualFusionEssenceRefund,
-  casualFusionHeadline,
   casualGoalOrder,
   casualStarBandShare,
-  casualStarIndexFor,
   casualSummonStarDistribution,
   concentrationEssenceCost,
   concentrationEssenceRefund,
@@ -144,8 +147,7 @@ import {
   SUMMON_SURCHARGE,
   summonCost,
   UPGRADE_STAT_META,
-  upgradeEffectiveLevels,
-  WUXING_ORDER
+  upgradeEffectiveLevels
 } from "./hanzi";
 import {
   featuredIdiomsForRun,
@@ -1693,134 +1695,42 @@ export class GameEngine {
   }
 
   /**
-   * 같은 오행·같은 별 3기를 소모했을 때 무엇을 뽑게 되는지.
-   *
-   * 1순위는 이번 런의 소환 풀이다 — "내가 뽑을 수 있는 글자"가 결과로 나와야
-   * 규칙이 설명 가능하다. 그 오행에 상위 별 글자가 하나도 없으면(JP/CN 미리보기
-   * 풀은 30·32자뿐이라 흔히 그렇다) 지역 로스터 전체로 넓혀 승급 경로를 살린다.
-   * 두 단계 모두 star+1 → star+2 → … 순으로 가장 가까운 상위 별을 고른다.
+   * 캐주얼 승급 구현은 별도 모듈에 두되 GameEngine 공개 표면은 유지한다.
+   * private 상태를 통째로 노출하지 않고 필요한 동작만 콜백으로 전달한다.
    */
+  private casualFusionContext(): CasualFusionContext {
+    return {
+      state: this.state,
+      catalog: this.catalog,
+      runSummonPool: () => this.runSummonPool,
+      random: () => this.rng.next(),
+      getTargetPath: (targetChar) => this.evolution.getTargetPath(targetChar),
+      standardMaterialIds: (towers, targetChar) =>
+        this.evolution.getAvailableRecipes(towers, targetChar, null, "semi").flatMap((option) => option.materialTowerIds),
+      trackedIdioms: () => this.trackedIdioms(),
+      idioms: () => this.idioms(),
+      sealedIdiomTowerIds: () => this.sealedIdiomTowerIds(),
+      cleanupAssessments: () => this.cleanupAssessments(),
+      towerPowerMultiplier: (tower) => this.towerPowerMultiplier(tower),
+      towerAttackCooldown: (tower) => this.towerAttackCooldown(tower),
+      createTower: (definition, cell) => this.createTower(definition, cell),
+      discover: (char) => this.discover(char),
+      completeGoal: (char) => this.completeGoal(char),
+      resolveIdiomFormations: () => { this.resolveIdiomFormations(); },
+      isRunActive: () => this.isRunActive(),
+      emit: (event) => { this.events.push(event); }
+    };
+  }
+
   casualResultPool(wuxing: Wuxing, fromStar: CasualStar): CasualResultPool | null {
-    if (fromStar >= 8) return null;
-    const sources: Array<{ index: Map<string, HanziDefinition[]>; rosterFallback: boolean }> = [
-      { index: casualStarIndexFor(this.runSummonPool, this.runSummonPool), rosterFallback: false },
-      { index: casualStarIndexFor(this.catalog.definitions, this.catalog.definitions.values()), rosterFallback: true }
-    ];
-    for (const source of sources) {
-      for (let star = (fromStar + 1) as CasualStar; star <= 8; star = (star + 1) as CasualStar) {
-        const candidates = source.index.get(`${wuxing}:${star}`);
-        if (!candidates || candidates.length === 0) continue;
-        return {
-          star,
-          candidates,
-          starFallback: star !== fromStar + 1,
-          rosterFallback: source.rosterFallback
-        };
-      }
-    }
-    return null;
+    return findCasualResultPool(this.casualFusionContext(), wuxing, fromStar);
   }
 
   casualFusionQuote(materialIds: readonly number[]): CasualFusionQuote {
-    const quote: CasualFusionQuote = {
-      materialIds: [...materialIds],
-      fromStar: null,
-      toStar: null,
-      wuxing: null,
-      poolSize: 0,
-      starFallback: false,
-      rosterFallback: false,
-      blocked: [],
-      warnings: []
-    };
-    if (this.state.mode !== "casual") {
-      quote.blocked.push({ towerId: null, text: "별승급 진법에서만 같은 오행 3체 조합을 사용할 수 있습니다." });
-      return quote;
-    }
-    if (materialIds.length !== 3) {
-      quote.blocked.push({ towerId: null, text: "같은 오행·같은 별 자령 3기를 정확히 선택하세요." });
-      return quote;
-    }
-    if (new Set(materialIds).size !== 3) {
-      quote.blocked.push({ towerId: null, text: "서로 다른 자령 3기를 선택해야 합니다." });
-      return quote;
-    }
-    const all = [...this.state.towers, ...this.state.inventoryTowers];
-    const materials = materialIds
-      .map((id) => all.find((tower) => tower.id === id))
-      .filter((tower): tower is Tower => Boolean(tower));
-    for (const id of materialIds) {
-      if (!materials.some((tower) => tower.id === id)) quote.blocked.push({ towerId: id, text: `자령 #${id}이 이동했거나 사라졌습니다.` });
-    }
-    if (materials.length !== 3) return quote;
-
-    const first = materials[0] as Tower;
-    const fromStar = first.casualStar ?? first.naturalStar ?? null;
-    quote.fromStar = fromStar;
-    quote.wuxing = first.wuxing;
-    if (fromStar === null || materials.some((tower) => (tower.casualStar ?? tower.naturalStar) === undefined)) {
-      quote.blocked.push({ towerId: null, text: "선택한 자령의 별 정보를 확인할 수 없습니다." });
-      return quote;
-    }
-    if (fromStar >= 8) {
-      quote.blocked.push({ towerId: first.id, text: "8★ 자령은 더 승급할 수 없습니다." });
-      return quote;
-    }
-    for (const material of materials) {
-      if (material.wuxing !== first.wuxing) quote.blocked.push({ towerId: material.id, text: `${material.char}은 ${first.wuxing}행이 아닙니다.` });
-      if ((material.casualStar ?? material.naturalStar) !== fromStar) {
-        quote.blocked.push({ towerId: material.id, text: `${material.char}의 현재 별이 ${fromStar}★가 아닙니다.` });
-      }
-    }
-    // v3 규칙 2: 보호 자령은 본체 자리가 없어졌으므로 3기 어디에도 못 들어간다.
-    const context = this.casualProtectionContext();
-    for (const material of materials) {
-      const protection = this.casualMaterialProtectionFor(material, context);
-      if (protection) {
-        quote.blocked.push({ towerId: material.id, text: `${material.char} · ${protection} — 소모할 수 없습니다.`, kind: "protected" });
-      }
-    }
-    if (quote.blocked.length > 0) return quote;
-
-    const pool = this.casualResultPool(first.wuxing, fromStar);
-    if (!pool) {
-      quote.blocked.push({ towerId: null, text: `이 오행은 ${fromStar}★ 위 글자가 없습니다`, kind: "pool" });
-      return quote;
-    }
-    quote.toStar = pool.star;
-    quote.poolSize = pool.candidates.length;
-    quote.starFallback = pool.starFallback;
-    quote.rosterFallback = pool.rosterFallback;
-
-    const assessmentById = new Map(this.cleanupAssessments().map((assessment) => [assessment.towerId, assessment]));
-    const warningKeys = new Set<string>();
-    for (const material of materials) {
-      const assessment = assessmentById.get(material.id);
-      for (const reason of assessment?.protectedReasons ?? []) {
-        if (!reason.endsWith("공명 임계치")) continue;
-        const key = `${material.id}:${reason}`;
-        if (warningKeys.has(key)) continue;
-        warningKeys.add(key);
-        quote.warnings.push({ towerId: material.id, text: `${material.char} · ${reason}`, kind: "resonance" });
-      }
-      if (material.cell >= 0) {
-        const key = `${material.id}:deployed`;
-        if (!warningKeys.has(key)) quote.warnings.push({ towerId: material.id, text: `${material.char} · 현재 전장에 배치됨`, kind: "deployed" });
-        warningKeys.add(key);
-      }
-    }
-    return quote;
+    return buildCasualFusionQuote(this.casualFusionContext(), materialIds);
   }
 
-  /**
-   * 지금 발동 중인 사자성어에 참여하고 있는 전장 자령 id 집합.
-   *
-   * 두 곳이 이 집합을 쓴다.
-   *  - 캐주얼 3합·정리 보호: 봉인 성어의 글자를 재료로 태우면 발동이 꺼진다.
-   *  - 자동배치 자리 고정: 유지형 규칙에서는 자동배치가 이 넷을 흩뜨리면
-   *    제 손으로 보너스를 끄는 셈이라 이동 후보에서 통째로 뺀다.
-   * 흩어진 기록(비활성)은 지킬 줄이 없으므로 포함하지 않는다.
-   */
+  /** 지금 발동 중인 사자성어에 참여하는 전장 자령 id 집합. */
   sealedIdiomTowerIds(): Set<number> {
     const sealedCells = new Set(this.activeIdiomSeals().flatMap((seal) => seal.cells));
     if (sealedCells.size === 0) return new Set<number>();
@@ -1829,306 +1739,28 @@ export class GameEngine {
     );
   }
 
-  /**
-   * 이 자령을 3체 조합 재료로 쓰면 안 되는 사유. null 이면 재료로 안전하다.
-   * 자동 경로의 안전 필터이자 수동 경로에서 "그 자리에서" 보여 줄 사유다.
-   */
   casualMaterialProtection(towerId: number): string | null {
-    const tower = [...this.state.towers, ...this.state.inventoryTowers].find((candidate) => candidate.id === towerId);
-    if (!tower) return null;
-    return this.casualMaterialProtectionFor(tower, this.casualProtectionContext());
+    return findCasualMaterialProtection(this.casualFusionContext(), towerId);
   }
 
-  /**
-   * 보유 자령 전체의 보호 사유를 한 번에. 화면은 매 프레임 목록 전체를 훑으므로
-   * 자령마다 casualMaterialProtection 을 부르면 합성식 조회가 그만큼 반복된다.
-   * 문맥을 한 번만 만들고 재사용한다.
-   */
   casualMaterialProtections(): Map<number, string> {
-    const context = this.casualProtectionContext();
-    const protections = new Map<number, string>();
-    for (const tower of [...this.state.towers, ...this.state.inventoryTowers]) {
-      const reason = this.casualMaterialProtectionFor(tower, context);
-      if (reason !== null) protections.set(tower.id, reason);
-    }
-    return protections;
-  }
-
-  /*
-   * v3 는 3기 전부를 보호 대상에서 빼므로 보호 범위가 곧 "승급이 되느냐"다.
-   * v2 범위를 그대로 쓰면 JP/CN 미리보기 소환 풀(30·32자)은 성어 글자와 일반
-   * 합성식 부모가 풀 전체를 덮어 한 묶음도 만들 수 없다(실측 0자 여유).
-   * 그래서 캐주얼에서는 두 가지를 좁힌다.
-   *  - 일반 모드 합성식: 캐주얼에는 합성 자체가 없다(availableEvolutions()=[]).
-   *    쓰지도 못할 조합을 이유로 소모를 막는 것은 규칙이 아니라 사고다.
-   *  - 미완성 사자성어: 추적 중인 성어(trackedIdioms, 최대 3)만 지킨다.
-   *    추적하지 않은 성어까지 글자 단위로 잠글 이유가 없다.
-   * 잠금·농축·목표 글자·봉인 완료 성어는 기획 문서가 못 박은 대로 그대로 둔다.
-   */
-  private casualProtectionContext(): {
-    targetPath: Set<string>;
-    unfinishedIdiomChars: Set<string>;
-    standardMaterialIds: Set<number>;
-    sealedTowerIds: Set<number>;
-  } {
-    const casual = this.state.mode === "casual";
-    const all = [...this.state.towers, ...this.state.inventoryTowers];
-    return {
-      targetPath: casual ? new Set([this.state.targetChar]) : this.evolution.getTargetPath(this.state.targetChar),
-      unfinishedIdiomChars: new Set(
-        casual
-          ? this.trackedIdioms().flatMap((idiom) => [...idiom.chars])
-          : this.idioms()
-            .filter((idiom) => !this.state.idiomSeals.some((seal) => seal.idiomId === idiom.id))
-            .flatMap((idiom) => [...idiom.chars])
-      ),
-      standardMaterialIds: casual
-        ? new Set<number>()
-        : new Set(this.evolution.getAvailableRecipes(all, this.state.targetChar, null, "semi").flatMap((option) => option.materialTowerIds)),
-      sealedTowerIds: this.sealedIdiomTowerIds()
-    };
-  }
-
-  private casualMaterialProtectionFor(
-    tower: Tower,
-    context: ReturnType<GameEngine["casualProtectionContext"]>
-  ): string | null {
-    if (tower.locked) return "잠금 자령";
-    if ((tower.concentration ?? 0) > 0) return `농축 ${tower.concentration}단계 투자`;
-    if (context.targetPath.has(tower.char)) return "현재 목표 합성 계보";
-    if (context.unfinishedIdiomChars.has(tower.char)) return "미완성 사자성어 재료";
-    if (context.sealedTowerIds.has(tower.id)) return "발동 중 사자성어 참여";
-    if (context.standardMaterialIds.has(tower.id)) return "일반 모드 합성식 재료";
-    return null;
+    return listCasualMaterialProtections(this.casualFusionContext());
   }
 
   fuseCasual(materialIds: readonly number[], allowWarnings = false): CasualFusionResult {
-    const fail = (message: string): CasualFusionResult =>
-      ({ ok: false, message, gained: null, consumedChars: [], fromStar: null, starFallback: false, rosterFallback: false });
-    if (!this.isRunActive()) return fail("진행 중인 수비전이 없습니다.");
-    const quote = this.casualFusionQuote(materialIds);
-    if (quote.blocked.length > 0) return fail(`조합 중단 · ${quote.blocked[0]?.text ?? "조건을 다시 확인하세요."}`);
-    if (!allowWarnings && quote.warnings.length > 0) {
-      return fail(`확인 필요 · ${quote.warnings[0]?.text ?? "전장 자령이 포함되어 있습니다."}`);
-    }
-    return this.performCasualFusion(quote);
+    return runFuseCasual(this.casualFusionContext(), materialIds, allowWarnings);
   }
 
   casualAutoFusionPlan(wuxing: Wuxing): CasualAutoFusionGroup[] {
-    if (this.state.mode !== "casual") return [];
-    const context = this.casualProtectionContext();
-    // v3: 남는 본체가 없으므로 보호 자령은 후보 목록 자체에서 빠진다.
-    const owned = [...this.state.towers, ...this.state.inventoryTowers]
-      .filter((tower) => tower.wuxing === wuxing
-        && (tower.casualStar ?? tower.naturalStar ?? 8) < 8
-        && this.casualMaterialProtectionFor(tower, context) === null);
-    const value = (tower: Tower): number => {
-      const definition = definitionForTower(this.catalog, tower.definitionId);
-      return definition.combat.baseDamage * this.towerPowerMultiplier(tower) * definition.combat.budgetMultiplier / this.towerAttackCooldown(tower);
-    };
-    const groups: CasualAutoFusionGroup[] = [];
-    for (let star = 1 as CasualStar; star <= 7; star = (star + 1) as CasualStar) {
-      // 인벤토리 먼저, 그다음 약한 순. 전장의 주력을 마지막까지 남긴다.
-      const available = owned
-        .filter((tower) => (tower.casualStar ?? tower.naturalStar) === star)
-        .sort((left, right) =>
-          Number(left.cell >= 0) - Number(right.cell >= 0) || value(left) - value(right) || left.id - right.id);
-      while (available.length >= 3) {
-        const materials = available.splice(0, 3);
-        const ids = materials.map((tower) => tower.id);
-        const quote = this.casualFusionQuote(ids);
-        if (quote.blocked.length > 0 || quote.toStar === null) break;
-        groups.push({
-          wuxing,
-          materialIds: [ids[0] ?? -1, ids[1] ?? -1, ids[2] ?? -1],
-          fromStar: star,
-          toStar: quote.toStar,
-          poolSize: quote.poolSize,
-          starFallback: quote.starFallback,
-          rosterFallback: quote.rosterFallback,
-          warnings: quote.warnings,
-          autoSkipReason: casualAutoSkipReason(quote.warnings)
-        });
-      }
-    }
-    return groups;
+    return buildCasualAutoFusionPlan(this.casualFusionContext(), wuxing);
   }
 
   autoFuseCasualElement(wuxing: Wuxing, allowWarnings = false): CasualAutoFusionReport {
     return this.autoFuseCasual(wuxing, allowWarnings);
   }
 
-  /**
-   * 원클릭 승급. `scope` 가 "all" 이면 오행 전체를 순서대로 처리한다.
-   * warning 이 있는 묶음은 예전처럼 전체를 중단시키지 않고 그 묶음만 건너뛰며,
-   * 건너뛴 수와 사유를 결과에 담아 화면이 반드시 알릴 수 있게 한다.
-   */
   autoFuseCasual(scope: Wuxing | "all", allowWarnings = false, onlyStar: CasualStar | null = null): CasualAutoFusionReport {
-    const empty = { fused: 0, consumed: 0, skipped: 0, skipReason: null, gained: [], firstFusion: null } as const;
-    if (!this.isRunActive()) return { ok: false, message: "진행 중인 수비전이 없습니다.", ...empty, gained: [] };
-    const scopes: Wuxing[] = scope === "all" ? [...WUXING_ORDER] : [scope];
-    const planned = scopes
-      .flatMap((wuxing) => this.casualAutoFusionPlan(wuxing))
-      .filter((group) => onlyStar === null || group.fromStar === onlyStar);
-    if (planned.length === 0) {
-      const label = scope === "all" ? "보유 자령" : `${scope}행 보유 자령`;
-      return { ok: false, message: `${label} 중 소모할 수 있는 같은 별 자령 3기가 없습니다.`, ...empty, gained: [] };
-    }
-    const runnable = allowWarnings ? planned : planned.filter((group) => group.autoSkipReason === null);
-    let skipped = planned.length - runnable.length;
-    const skipReason = planned.find((group) => group.autoSkipReason !== null)?.autoSkipReason ?? null;
-    if (runnable.length === 0) {
-      return {
-        ok: false,
-        message: `보호로 ${skipped}묶음을 모두 건너뜀 · ${skipReason ?? "소모 후보가 보호 대상입니다."}`,
-        ...empty,
-        gained: [],
-        skipped,
-        skipReason
-      };
-    }
-
-    let fused = 0;
-    let fromBoard = 0;
-    const gained: CasualFusionGain[] = [];
-    let firstFusion: CasualAutoFusionReport["firstFusion"] = null;
-    for (const group of runnable) {
-      const quote = this.casualFusionQuote(group.materialIds);
-      // 앞선 승급이 성어 봉인을 새로 만들면 뒤 묶음이 보호로 막힐 수 있다.
-      // 전체를 중단하지 않고 그 묶음만 건너뛴다.
-      if (quote.blocked.length > 0) {
-        skipped += 1;
-        continue;
-      }
-      const all = [...this.state.towers, ...this.state.inventoryTowers];
-      const consumedTowers = group.materialIds
-        .map((id) => all.find((tower) => tower.id === id))
-        .filter((tower): tower is Tower => tower !== undefined);
-      const boardCount = consumedTowers.filter((tower) => tower.cell >= 0).length;
-      const result = this.performCasualFusion(quote);
-      if (!result.ok || !result.gained) {
-        skipped += 1;
-        continue;
-      }
-      fused += 1;
-      fromBoard += boardCount;
-      gained.push(result.gained);
-      if (!firstFusion) {
-        firstFusion = {
-          wuxing: result.gained.wuxing,
-          char: result.gained.char,
-          fromStar: group.fromStar,
-          toStar: result.gained.star,
-          consumedChars: result.consumedChars,
-          newDiscovery: result.gained.newDiscovery,
-          starFallback: result.starFallback,
-          rosterFallback: result.rosterFallback
-        };
-      }
-    }
-    if (fused === 0) return { ok: false, message: "조합 대상이 바뀌었습니다. 다시 확인하세요.", ...empty, gained: [], skipped, skipReason };
-
-    const tail = skipped > 0 ? ` · 보호로 ${skipped}그룹 건너뜀` : "";
-    if (fused === 1 && firstFusion) {
-      this.state.lastMessage = `${casualFusionHeadline(firstFusion)} · 소모: ${firstFusion.consumedChars.join("·")}${tail}`;
-    } else {
-      const chars = gained.map((entry) => entry.char).join("·");
-      const newCount = gained.filter((entry) => entry.newDiscovery).length;
-      const detail = firstFusion ? ` · 첫 결과 ${casualFusionHeadline(firstFusion)}` : "";
-      const board = fromBoard > 0 ? ` · 전장 ${fromBoard}기 포함` : "";
-      this.state.lastMessage = `승급 ${fused}회 · 소모 ${fused * 3}기 · 획득: ${chars}${newCount > 0 ? ` · 첫 발견 ${newCount}` : ""}${detail}${board}${tail}`;
-    }
-    return { ok: true, message: this.state.lastMessage, fused, consumed: fused * 3, skipped, skipReason, gained, firstFusion };
-  }
-
-  private performCasualFusion(quote: CasualFusionQuote): CasualFusionResult {
-    const fail = (message: string): CasualFusionResult =>
-      ({ ok: false, message, gained: null, consumedChars: [], fromStar: quote.fromStar, starFallback: false, rosterFallback: false });
-    if (quote.fromStar === null || quote.toStar === null || quote.wuxing === null) return fail("조합 별 정보를 다시 확인하세요.");
-    const all = [...this.state.towers, ...this.state.inventoryTowers];
-    const consumed = quote.materialIds
-      .map((id) => all.find((tower) => tower.id === id))
-      .filter((tower): tower is Tower => Boolean(tower));
-    if (consumed.length !== 3) return fail("조합 대상이 바뀌었습니다. 다시 선택하세요.");
-    const pool = this.casualResultPool(quote.wuxing, quote.fromStar);
-    if (!pool) return fail(`이 오행은 ${quote.fromStar}★ 위 글자가 없습니다`);
-    const definition = pool.candidates[Math.floor(this.rng.next() * pool.candidates.length)] ?? pool.candidates[0] as HanziDefinition;
-
-    // 규칙 3: 소모분 중 전장에 서 있던 첫 자령의 자리를 새 자령이 이어받는다.
-    const inheritedCell = consumed.find((tower) => tower.cell >= 0)?.cell ?? -1;
-    const consumedChars = consumed.map((tower) => tower.char);
-    const consumedSnapshots = consumed.map((tower) => ({ ...tower }));
-    const consumedIds = new Set(consumed.map((tower) => tower.id));
-    const refunds = emptyElementEssence();
-    for (const tower of consumed) refunds[tower.wuxing] += concentrationEssenceRefund(tower.concentration ?? 0);
-    this.state.towers = this.state.towers.filter((tower) => !consumedIds.has(tower.id));
-    this.state.inventoryTowers = this.state.inventoryTowers.filter((tower) => !consumedIds.has(tower.id));
-    for (const wuxing of Object.keys(refunds) as Wuxing[]) this.state.elementEssence[wuxing] += refunds[wuxing];
-
-    // 삼체일득 문기. 승급이 분해 대기열을 통째로 먹는 구조라 승급 자체를 문기
-    // 입구로 삼는다. 농축 환급과 달리 이것은 새로 생기는 문기이므로 생성량에도
-    // 함께 적는다(분해 점수도 같이 올라야 오행 특성이 열린다).
-    const fusionEssence = casualFusionEssenceRefund(quote.fromStar);
-    if (fusionEssence > 0) {
-      this.state.elementEssence[quote.wuxing] += fusionEssence;
-      this.state.elementEssenceGenerated[quote.wuxing] += fusionEssence;
-      this.state.elementDismantleScore[quote.wuxing] += casualFusionDismantleScore(quote.fromStar);
-    }
-
-    const newDiscovery = !this.state.discoveredChars.includes(definition.char);
-    const tower = this.createTower(definition, inheritedCell);
-    tower.pulse = 1;
-    tower.abilityFlash = 1;
-    if (inheritedCell >= 0) this.state.towers.push(tower);
-    else this.state.inventoryTowers.push(tower);
-    this.state.selectedTowerId = tower.id;
-    this.state.casualFusionCount += 1;
-    this.discover(definition.char);
-
-    const gained: CasualFusionGain = {
-      wuxing: tower.wuxing,
-      char: tower.char,
-      star: pool.star,
-      cell: inheritedCell,
-      newDiscovery
-    };
-    const stroke = casualStrokeCount(tower.char);
-    const headline = casualFusionHeadline({
-      wuxing: quote.wuxing,
-      char: tower.char,
-      fromStar: quote.fromStar,
-      toStar: pool.star,
-      newDiscovery,
-      starFallback: pool.starFallback,
-      rosterFallback: pool.rosterFallback
-    });
-    this.state.lastMessage = `${headline} · 소모: ${consumedChars.join("·")}${stroke === null ? "" : ` · ${stroke}획`}`;
-    this.events.push({
-      type: "casualFuse",
-      at: inheritedCell >= 0 ? BOARD_CELLS[inheritedCell] as Point : { x: 440, y: 360 },
-      tower: { ...tower },
-      consumed: consumedSnapshots,
-      fromStar: quote.fromStar,
-      toStar: pool.star,
-      newDiscovery,
-      starFallback: pool.starFallback,
-      rosterFallback: pool.rosterFallback
-    });
-    // F2: 별승급의 목표 사다리는 소환만이 아니라 승급으로도 오른다. 목표 글자가
-    // 승급 결과로 나왔는데 달성 처리가 안 되면 상위 별 목표는 원리적으로 못 깬다.
-    if (definition.char === this.state.targetChar) this.completeGoal(definition.char);
-    // 유지형 규칙에서는 소모된 재료가 판을 떠난 것만으로도 봉인이 흩어질 수 있다.
-    // 승급 결과가 보관고로 갔더라도(inheritedCell < 0) 판정은 다시 해야 한다.
-    if (this.isRunActive()) this.resolveIdiomFormations();
-    return {
-      ok: true,
-      message: this.state.lastMessage,
-      gained,
-      consumedChars,
-      fromStar: quote.fromStar,
-      starFallback: pool.starFallback,
-      rosterFallback: pool.rosterFallback
-    };
+    return runAutoFuseCasual(this.casualFusionContext(), scope, allowWarnings, onlyStar);
   }
 
   availableEvolutions(): EvolutionOption[] {
