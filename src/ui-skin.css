@@ -1654,7 +1654,7 @@ input[type="checkbox"] {
   box-shadow: inset 0 0 0 1px rgba(128, 108, 74, 0.2);
 }
 
-.growth-element-tabs button.is-active {
+.growth-element-tabs button.is-selected {
   background: var(--mat-brass-hot) !important;
   box-shadow: var(--bevel-up);
 }
@@ -2614,7 +2614,7 @@ body {
 .codex-mode-tabs button[aria-selected="true"],
 .codex-toolbar button.is-active,
 .codex-synthesis-filters button.is-active,
-.growth-element-tabs button.is-active,
+.growth-element-tabs button.is-selected,
 .synergy-strip span.is-active {
   color: var(--gold-100) !important;
   background: linear-gradient(180deg, #fdf7e6 0%, #f0e5c9 100%) !important;
@@ -3159,7 +3159,7 @@ select option {
 }
 
 .formation-unlock-list button.is-active,
-.growth-element-tabs button.is-active,
+.growth-element-tabs button.is-selected,
 .synergy-strip span.is-active,
 .concentration-target-list > button.is-selected {
   background: linear-gradient(180deg, #3b352c 0%, #221f19 100%) !important;
@@ -6869,3 +6869,568 @@ dialog,
 .shop-workbench .action-button:not(:disabled) .hotkey { color: #7a5a26 !important; }
 .shop-workbench .action-button--summon:not(:disabled) b { color: #2b2009 !important; }
 .shop-workbench .action-button--summon:not(:disabled) :is(small, em) { color: #5c4312 !important; }
+
+/* ══════════════════════════════════════════════════════════════════
+   78. 신입 감사 2라운드 — 캐주얼 승급소·다이얼로그·강화·자령 탭
+   ══════════════════════════════════════════════════════════════════ */
+
+/* ── 78-A. 캐주얼 "3체 조합 · 팔성 승급" 전면 종이화 ──────────────
+   실측 대비 1.1~1.5:1 의 최악 지대. styles.css 의
+   `.game-shell[data-game-mode="casual"][data-panel-tab="evolution"] …`
+   접두(선택자 4개)가 74·75절 종이 규칙을 이겨 남색 판이 그대로 남았다.
+   같은 무게로는 못 이기므로 색·바탕에 한해 !important 로 되돌린다. */
+
+.casual-fusion-toolbar,
+.casual-rarity-rule,
+.casual-fusion-slot,
+.casual-fusion-result,
+.casual-fusion-status,
+.evolution-options .casual-fusion-tower,
+.casual-auto-buttons button[data-casual-auto] {
+  border: 0 !important;
+  background: linear-gradient(180deg, #f2e8cd 0%, #e2d4b2 100%) !important;
+  box-shadow: var(--bevel-up), 0 0 0 1px rgba(122, 90, 42, 0.3) !important;
+}
+
+/* 자동조합 툴바 안내문 */
+.casual-rule-copy b { color: #2e2212 !important; font-size: 11.5px !important; }
+.casual-rule-copy span { color: #4a3f30 !important; font-size: 11px !important; line-height: 1.4; }
+
+/* 획수 기본 별 눈금: 별 색은 칩의 왼줄로만 남기고 바탕을 종이로 */
+.casual-rarity-rule { min-height: 46px !important; }
+
+.casual-rarity-rule > span b { color: #2e2212 !important; font-size: 11px !important; }
+.casual-rarity-rule > span small { color: #6d5a3c !important; font-size: 11px !important; }
+
+.casual-rarity-rule > i {
+  min-height: 38px !important;
+  border: 0 !important;
+  border-left: 3px solid var(--star) !important;
+  border-radius: var(--r-sm) !important;
+  background: linear-gradient(180deg, #fbf5e4 0%, #ece0c2 100%) !important;
+  box-shadow: inset 0 0 0 1px rgba(122, 90, 42, 0.22) !important;
+}
+
+.casual-rarity-rule > i b { color: color-mix(in srgb, var(--star) 46%, #241c0e) !important; font-size: 11px !important; }
+.casual-rarity-rule > i small { color: #6d5a3c !important; font-size: 11px !important; }
+
+/* 3체 슬롯 — 본체(남김)는 청록, 재료(소모)는 인주 왼줄 */
+.casual-fusion-slot.is-core {
+  box-shadow: var(--bevel-up), 0 0 0 1px rgba(122, 90, 42, 0.3), inset 4px 0 0 #2f6f5d !important;
+}
+
+.casual-fusion-slot.is-material {
+  box-shadow: var(--bevel-up), 0 0 0 1px rgba(122, 90, 42, 0.3), inset 4px 0 0 var(--seal) !important;
+}
+
+.casual-fusion-slot > span { color: #2e2212 !important; font-size: 11px !important; }
+.casual-fusion-slot > span em { color: #1f5645 !important; font-size: 11px !important; }
+.casual-fusion-slot.is-material > span em { color: #8e2a1e !important; }
+.casual-fusion-slot > b { color: color-mix(in srgb, var(--star) 42%, #241c0e) !important; }
+.casual-fusion-slot > div strong { color: #2e2212 !important; font-size: 11px !important; }
+.casual-fusion-slot > div small { color: #6d5a3c !important; font-size: 11px !important; }
+.casual-fusion-slot:not(.is-filled) > b { color: #5f5341 !important; }
+.casual-fusion-slot:not(.is-filled) > strong { color: #4a3f30 !important; font-size: 11px !important; }
+.casual-fusion-slot:not(.is-filled) > small { color: #6d5a3c !important; font-size: 11px !important; }
+
+/* 승급 결과 */
+.casual-fusion-result {
+  box-shadow: var(--bevel-up), 0 0 0 2px color-mix(in srgb, var(--star) 46%, rgba(122, 90, 42, 0.5)) !important;
+}
+
+.casual-fusion-result > span { color: #6d5a3c !important; font-size: 11px !important; }
+.casual-fusion-result > b { color: #2e2212 !important; }
+.casual-fusion-result > strong { color: color-mix(in srgb, var(--star) 46%, #241c0e) !important; }
+.casual-fusion-result > small { color: #6d5a3c !important; font-size: 11px !important; }
+
+/* "?★" 는 아무 정보도 주지 않아 문장으로 바꿨다 — 18px 자리에 들어가게 줄인다 */
+.casual-fusion-result > strong.is-placeholder {
+  color: #6d5a3c !important;
+  font-size: 11px !important;
+  font-weight: 800;
+  line-height: 1.3;
+  text-align: center;
+}
+
+/* 0/3 선택 상태 바 */
+.casual-fusion-status {
+  border-left: 4px solid var(--gold-500) !important;
+}
+
+.casual-fusion-status b { color: #2e2212 !important; font-size: 11.5px !important; }
+.casual-fusion-status span { color: #3a2c16 !important; font-size: 11px !important; }
+.casual-fusion-status.is-ready { border-left-color: #2f6f5d !important; }
+.casual-fusion-status.is-ready b { color: #1f5645 !important; }
+.casual-fusion-status.has-warning { border-left-color: #a9701c !important; }
+.casual-fusion-status.has-warning b { color: #7d4f0d !important; }
+.casual-fusion-status.is-blocked { border-left-color: var(--seal) !important; }
+.casual-fusion-status.is-blocked b { color: #8e2a1e !important; }
+
+/* 소모 목록 확인 버튼 */
+.workbench-primary.casual-fusion-review {
+  color: #2b2009 !important;
+  border: 0 !important;
+  background: var(--mat-brass) !important;
+  box-shadow: var(--bevel-up), var(--lift-1) !important;
+  font-size: 11.5px !important;
+}
+
+.workbench-primary.casual-fusion-review:hover:not(:disabled) {
+  background: var(--mat-brass-hot) !important;
+}
+
+.workbench-primary.casual-fusion-review:disabled {
+  opacity: 1 !important;
+  color: #5f5341 !important;
+  background: linear-gradient(180deg, #d6c9a8 0%, #c4b491 100%) !important;
+  box-shadow: inset 0 0 0 1px rgba(122, 90, 42, 0.26) !important;
+}
+
+/* 보유 자령 후보 카드 */
+.evolution-options .casual-fusion-tower > b { color: color-mix(in srgb, var(--star) 42%, #241c0e) !important; }
+.evolution-options .casual-fusion-tower strong { color: #2e2212 !important; font-size: 11px !important; }
+.evolution-options .casual-fusion-tower small { color: #6d5a3c !important; font-size: 11px !important; }
+.evolution-options .casual-fusion-tower > em { color: #5c4a1f !important; font-size: 11px !important; }
+.evolution-options .casual-fusion-tower.is-core > em { color: #1f5645 !important; }
+.evolution-options .casual-fusion-tower.is-material > em { color: #8e2a1e !important; }
+
+.evolution-options .casual-fusion-tower:not(:disabled):hover {
+  background: linear-gradient(180deg, #f9f0d9 0%, #eadec0 100%) !important;
+}
+
+.evolution-options .casual-fusion-tower.is-selected {
+  background: linear-gradient(180deg, #fdf7e6 0%, #efe3c5 100%) !important;
+  box-shadow: var(--bevel-up), inset 0 -3px 0 var(--seal), 0 0 0 2px var(--gold-400) !important;
+}
+
+/* 비활성은 투명도가 아니라 눌린 종이로 — 글자는 끝까지 읽혀야 한다 */
+.evolution-options .casual-fusion-tower:disabled:not(.is-selected) {
+  opacity: 1 !important;
+  filter: none !important;
+  background: linear-gradient(180deg, #d6c9a8 0%, #c4b491 100%) !important;
+  box-shadow: inset 0 0 0 1px rgba(122, 90, 42, 0.26) !important;
+}
+
+.evolution-options .casual-fusion-tower:disabled:not(.is-selected) :is(b, strong, small, em) {
+  color: #5f5341 !important;
+}
+
+/* 오행별 자동조합 버튼 */
+.casual-auto-buttons button[data-casual-auto] {
+  border-top: 3px solid var(--element) !important;
+}
+
+.casual-auto-buttons button[data-casual-auto] b { color: color-mix(in srgb, var(--element) 45%, #241c0e) !important; }
+.casual-auto-buttons button[data-casual-auto] span { color: #3a2c16 !important; font-size: 10.5px !important; }
+.casual-auto-buttons button[data-casual-auto] em { color: #5c4a1f !important; font-size: 10.5px !important; }
+
+.casual-auto-buttons button[data-casual-auto]:not(:disabled):hover {
+  background: linear-gradient(180deg, #fdf7e6 0%, #efe3c5 100%) !important;
+}
+
+.casual-auto-buttons button[data-casual-auto]:disabled {
+  opacity: 1 !important;
+  background: linear-gradient(180deg, #d6c9a8 0%, #c4b491 100%) !important;
+  box-shadow: inset 0 0 0 1px rgba(122, 90, 42, 0.26) !important;
+}
+
+.casual-auto-buttons button[data-casual-auto]:disabled :is(b, span, em) { color: #5f5341 !important; }
+
+/* ── 78-B. 다이얼로그 대비 (실측 1.1~2.9:1) ──────────────────── */
+
+/* (B1) 키캡 — #e7d39e 글자 / #202532 판이 한지 다이얼로그 위에 남아 있었다 */
+#help-dialog kbd {
+  padding: 2px 6px;
+  color: #2e2212 !important;
+  font-weight: 900;
+  border: 0 !important;
+  border-radius: var(--r-sm);
+  background: linear-gradient(180deg, #eaded8 0%, #d8cbb0 100%) !important;
+  box-shadow: var(--bevel-up), 0 1px 0 rgba(96, 76, 40, 0.34) !important;
+}
+
+#help-dialog .key-guide span { color: #4a3f30 !important; font-size: 12px !important; }
+
+/* (B2) 도감 × — 설정·도움말 × 와 같은 먹으로 */
+#codex-close { color: rgb(51, 43, 34) !important; }
+
+/* (B3) 설정의 오디오 섹션이 통째로 남색 카드였다 */
+#settings-dialog .audio-settings {
+  border: 0 !important;
+  background: linear-gradient(180deg, #f2e8cd 0%, #e2d4b2 100%) !important;
+  box-shadow: var(--bevel-up), 0 0 0 1px rgba(122, 90, 42, 0.3) !important;
+}
+
+#settings-dialog .audio-settings-heading { color: #2e2212 !important; }
+#settings-dialog .audio-settings-heading small { color: #6d5a3c !important; font-size: 11px !important; }
+
+#settings-dialog .audio-setting-row {
+  border: 0 !important;
+  background: linear-gradient(180deg, #fbf5e4 0%, #ece0c2 100%) !important;
+  box-shadow: var(--bevel-in), 0 0 0 1px rgba(122, 90, 42, 0.22) !important;
+}
+
+#settings-dialog .audio-setting-row > span b { color: #2e2212 !important; }
+#settings-dialog .audio-setting-row > span small { color: #6d5a3c !important; font-size: 11px !important; }
+#settings-dialog .audio-setting-row label { color: #4a3f30 !important; font-size: 11px !important; }
+#settings-dialog .audio-setting-row output { color: #5c4a1f !important; font-size: 11px !important; }
+
+#settings-dialog .audio-mute-button {
+  color: #4a3f30 !important;
+  font-size: 11px !important;
+  border: 0 !important;
+  background: linear-gradient(180deg, #e6d9b8 0%, #d3c39e 100%) !important;
+  box-shadow: var(--bevel-up), 0 0 0 1px rgba(122, 90, 42, 0.28) !important;
+}
+
+#settings-dialog .audio-mute-button.is-on {
+  color: #2b2009 !important;
+  background: var(--mat-brass-hot) !important;
+  box-shadow: var(--bevel-up), 0 0 0 2px var(--gold-400) !important;
+}
+
+/* (B4) 도감 사자성어 상세의 40px 글자 타일이 네이비였다 */
+.idiom-codex-glyphs span {
+  color: #2e2212 !important;
+  border: 0 !important;
+  background: linear-gradient(180deg, #f7f0dd 0%, #e6d9b8 100%) !important;
+  box-shadow: var(--bevel-up), 0 0 0 2px color-mix(in srgb, var(--codex) 52%, rgba(122, 90, 42, 0.5)) !important;
+}
+
+.idiom-codex-glyphs small { color: color-mix(in srgb, var(--codex) 42%, #241c0e) !important; font-size: 11px !important; }
+
+/* 도감 목록 카드의 hover 가 24절의 옛 어두운 판(#362b1d) 그대로라,
+   종이 카드 위 먹 글자가 마우스만 올리면 통째로 사라졌다(실측 1.3:1). */
+.codex-list :is(.codex-jaryeong-card, .codex-recipe-card, .codex-idiom-card, .codex-review-card):hover {
+  color: #2e2212 !important;
+  background: linear-gradient(180deg, #fdf7e6 0%, #eee2c4 100%) !important;
+  box-shadow: var(--bevel-up), 0 0 0 2px var(--gold-400) !important;
+}
+
+.codex-list :is(.codex-jaryeong-card, .codex-recipe-card, .codex-idiom-card, .codex-review-card).is-selected {
+  color: #2e2212 !important;
+  background: linear-gradient(180deg, #fdf7e6 0%, #efe3c5 100%) !important;
+  box-shadow: var(--bevel-up), inset 0 -3px 0 var(--seal), 0 0 0 2px var(--gold-400) !important;
+}
+
+/* (B5) 능력 카드와 "필요 한자와 획득법" 버튼이 다크 반투명이었다 */
+#codex-detail .codex-abilities article {
+  opacity: 1 !important;
+  filter: none !important;
+  color: var(--text-100) !important;
+  border: 0 !important;
+  border-left: 3px solid color-mix(in srgb, var(--ability) 68%, #6a5326) !important;
+  background:
+    linear-gradient(180deg,
+      color-mix(in srgb, var(--ability) 9%, #f4ecd6) 0%,
+      color-mix(in srgb, var(--ability) 5%, #e5d9ba) 100%) !important;
+  box-shadow: var(--bevel-up), 0 0 0 1px rgba(122, 90, 42, 0.28) !important;
+}
+
+#codex-detail .codex-abilities article > b { color: color-mix(in srgb, var(--ability) 48%, #241c0e) !important; }
+#codex-detail .codex-abilities strong { color: #2e2212 !important; }
+#codex-detail .codex-abilities small { color: #4a3f30 !important; font-size: 11px !important; }
+#codex-detail .codex-abilities em { color: #4f4639 !important; font-size: 11px !important; }
+
+#codex-detail .idiom-material-guide {
+  border: 0 !important;
+  background: linear-gradient(180deg, #f2e8cd 0%, #e2d4b2 100%) !important;
+  box-shadow: var(--bevel-up), 0 0 0 1px rgba(122, 90, 42, 0.3) !important;
+}
+
+#codex-detail .idiom-material-guide h4 { color: #2e2212 !important; }
+
+#codex-detail .idiom-material-guide button {
+  color: #3a2c16 !important;
+  border: 0 !important;
+  background: linear-gradient(180deg, #fbf5e4 0%, #ece0c2 100%) !important;
+  box-shadow: var(--bevel-up), 0 0 0 1px color-mix(in srgb, var(--codex) 36%, rgba(122, 90, 42, 0.32)) !important;
+}
+
+#codex-detail .idiom-material-guide button:hover {
+  background: linear-gradient(180deg, #fdf7e6 0%, #efe3c5 100%) !important;
+}
+
+#codex-detail .idiom-material-guide button b { color: color-mix(in srgb, var(--codex) 44%, #241c0e) !important; }
+#codex-detail .idiom-material-guide button span { color: #2e2212 !important; font-size: 11px !important; }
+#codex-detail .idiom-material-guide button small { color: #6d5a3c !important; font-size: 11px !important; }
+
+/* (B6) 자령 도감 카드 분류줄 — 금색이라 종이 위에서 흐렸다 */
+span.codex-jaryeong-category { color: #4a3f30 !important; }
+
+/* (B7) 근흑 알약 위 금색 글자는 2.6:1 이었다 */
+.codex-tier-stars,
+.codex-independent-badge { color: #e8dcc2 !important; }
+
+/* (B8) 도움말이 스크롤된다는 사실 자체가 안 보였다 — 아래 60% 를 놓친다 */
+#help-dialog { overflow: hidden; }
+
+#help-dialog > form {
+  display: block;
+  max-height: min(74vh, 618px);
+  padding-right: 6px;
+  padding-bottom: 26px;
+  overflow-y: auto;
+  scrollbar-width: auto;
+  scrollbar-gutter: stable;
+}
+
+#help-dialog > form::-webkit-scrollbar { width: 13px; }
+
+#help-dialog > form::-webkit-scrollbar-track {
+  border-radius: 3px;
+  background: rgba(122, 90, 42, 0.14);
+}
+
+#help-dialog > form::-webkit-scrollbar-thumb {
+  border-radius: 7px;
+  background: linear-gradient(180deg, #b08a45 0%, #7a5a26 100%);
+  box-shadow: inset 0 0 0 1px rgba(255, 246, 222, 0.35);
+}
+
+#help-dialog::after {
+  content: "";
+  position: absolute;
+  z-index: 2;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 52px;
+  background: linear-gradient(180deg, rgba(235, 224, 196, 0) 0%, rgba(233, 222, 192, 0.86) 66%, rgba(228, 216, 184, 0.96) 100%);
+  pointer-events: none;
+}
+
+/* (B9) 용어부터 막힌다 — 첫 화면에 ①②③ 과 용어 대응표를 둔다 */
+#help-dialog .help-quickstart {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 5px 12px;
+  margin: 12px 0 2px;
+  padding: 10px 13px;
+  border: 0;
+  border-left: 4px solid var(--seal);
+  border-radius: var(--r-md);
+  background: linear-gradient(180deg, #f7f0dd 0%, #e8dcbe 100%);
+  box-shadow: var(--bevel-up), 0 0 0 1px rgba(122, 90, 42, 0.3);
+}
+
+#help-dialog .help-quickstart > b {
+  grid-column: 1 / -1;
+  color: #2e2212 !important;
+  font-size: 13px;
+  letter-spacing: 0.04em;
+}
+
+#help-dialog .help-quickstart > span {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+  color: #3a2c16 !important;
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+
+#help-dialog .help-quickstart > span i {
+  color: var(--seal) !important;
+  font-size: 14px;
+  font-style: normal;
+  font-weight: 900;
+}
+
+#help-dialog .help-quickstart > small {
+  grid-column: 1 / -1;
+  margin-top: 2px;
+  color: #6d5a3c !important;
+  font-size: 11.5px;
+  line-height: 1.5;
+}
+
+/* ── 78-C. 강화 제련소 ────────────────────────────────────────── */
+
+/* (C1·C2) 오행 탭은 `is-active` 가 아니라 `is-selected` 로 렌더된다.
+   29절 등 기존 `is-active` 블록을 전부 치환했고, 선택 상태는 표준 반전으로. */
+.growth-element-tabs button {
+  min-height: 52px;
+  border: 0 !important;
+  border-top: 3px solid var(--element) !important;
+  border-radius: var(--r-sm) !important;
+  background: linear-gradient(180deg, #f2e8cd 0%, #e2d4b2 100%) !important;
+  box-shadow: var(--bevel-up), 0 0 0 1px rgba(122, 90, 42, 0.3) !important;
+}
+
+/* 30-2·31절의 `.growth-workbench .growth-element-tabs button …` 가 (0,3,1) 로
+   더 무겁다 — 같은 접두를 써야 종이 위 먹이 산다 */
+.growth-workbench .growth-element-tabs button b,
+.growth-element-tabs button b { color: color-mix(in srgb, var(--element) 45%, #241c0e) !important; }
+
+.growth-workbench .growth-element-tabs button :is(span, small),
+.growth-element-tabs button :is(span, small) { font-size: 11px !important; }
+
+.growth-workbench .growth-element-tabs button span,
+.growth-element-tabs button span { color: #3a2c16 !important; }
+
+.growth-workbench .growth-element-tabs button small,
+.growth-element-tabs button small { color: #6d5a3c !important; }
+
+.growth-element-tabs button:hover {
+  background: linear-gradient(180deg, #f9f0d9 0%, #eadec0 100%) !important;
+}
+
+.growth-element-tabs button.is-selected {
+  background: linear-gradient(180deg, #fdf7e6 0%, #efe3c5 100%) !important;
+  box-shadow: var(--bevel-up), inset 0 -3px 0 var(--seal), 0 0 0 2px var(--gold-400) !important;
+}
+
+.growth-workbench .growth-element-tabs button.is-selected b,
+.growth-element-tabs button.is-selected b { color: color-mix(in srgb, var(--element) 55%, #1c1509) !important; }
+
+/* (C3) 가격과 사유는 비활성일 때가 오히려 더 중요하다 — 투명도 대신 눌린 종이 */
+#growth-upgrade-list button:disabled,
+#dismantle-confirm-button:disabled {
+  opacity: 1 !important;
+  color: #5f5341 !important;
+  border: 0 !important;
+  background: linear-gradient(180deg, #d6c9a8 0%, #c4b491 100%) !important;
+  box-shadow: inset 0 0 0 1px rgba(122, 90, 42, 0.26) !important;
+}
+
+.growth-trait-row.is-locked {
+  opacity: 1 !important;
+  filter: none !important;
+}
+
+.growth-trait-row.is-locked :is(strong, span, small) { color: #6d5a3c !important; }
+.growth-trait-row.is-locked .trait-seal b { color: #5f5341 !important; }
+
+/* 섹션 헤더는 오행 탭 클릭의 착지점이다 */
+.growth-upgrade-section > header[data-growth-section] { scroll-margin-top: 4px; }
+
+/* (C6) 빈 분해 목록에서 다음 행동으로 나가는 문 */
+.growth-dismantle-list .workbench-empty b { color: #2e2212 !important; font-size: 12px !important; }
+
+.growth-dismantle-list .workbench-empty [data-goto-inventory] {
+  margin-top: 6px;
+  min-height: 26px;
+  padding: 0 13px;
+  color: #2b2009 !important;
+  font-size: 11.5px !important;
+  font-weight: 900;
+  border: 0;
+  border-radius: var(--r-sm);
+  background: var(--mat-brass);
+  box-shadow: var(--bevel-up), var(--lift-1);
+  cursor: pointer;
+}
+
+.growth-dismantle-list .workbench-empty [data-goto-inventory]:hover {
+  background: var(--mat-brass-hot);
+}
+
+/* ── 78-D. 자령 탭 ────────────────────────────────────────────── */
+
+/* 기술 카드 분류줄과 글리프가 옅은 회색(3.3:1)이었다.
+   회색 처리는 기술 해금 전(`--locked`) 카드에만 남긴다. */
+.ability-pills .ability-card em,
+.ability-pills .ability-card > i { color: #4f4639 !important; }
+
+.ability-pills:not(.ability-pills--locked) .ability-card > i {
+  color: color-mix(in srgb, var(--ability) 52%, #241c0e) !important;
+}
+
+.ability-pills:not(.ability-pills--locked) .ability-card {
+  opacity: 1 !important;
+  filter: none !important;
+}
+
+/* 누를 수 있다는 신호 */
+.selected-actions button { cursor: pointer; }
+.selected-actions button:disabled { cursor: default; }
+.selected-actions button:hover:not(:disabled) { background: #f9f0d9 !important; }
+
+/* 웨이브 요약이 한 줄에서 잘려 "…" 로 끝났다 — 두 줄까지 편다 */
+#wave-briefing {
+  display: -webkit-box !important;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-height: 1.26;
+  text-overflow: clip !important;
+  white-space: normal !important;
+}
+
+/* 늘어난 둘째 줄이 아래 패널 머리를 덮었다 — 격자 셋째 줄에 자리를 준다.
+   styles.css 7108(기본)·7514(축소 미디어) 두 정의를 같은 형태로 다시 쓴다. */
+.control-panel { grid-template-rows: 42px 54px 82px minmax(0, 1fr) 76px 28px 30px; }
+
+@media (max-width: 1100px), (max-height: 680px) {
+  .control-panel { grid-template-rows: 40px 50px 76px minmax(0, 1fr) 70px 26px 28px; }
+}
+
+/* 보호·정리 사유는 결정을 좌우한다 */
+.cleanup-reason { color: #4f4639 !important; font-size: 12px !important; }
+
+/* ── 78-E. 소품 대비 일괄 ─────────────────────────────────────── */
+
+/* 어두운 원형 인장(#4c3b25) 위에 28절의 `.control-panel span` 먹이 얹혀 1.3:1 이었다 */
+.control-panel .evolution-index,
+.evolution-index { color: #f2e8d5 !important; }
+#discover-count { color: #efe3c6 !important; }
+#evolution-kicker,
+#evolution-heading-label { color: #4a3517 !important; }
+
+#cleanup-recommended-button {
+  color: #5c4a1f !important;
+  font-size: 11px !important;
+  border: 0 !important;
+  background: rgba(155, 113, 55, 0.16) !important;
+  box-shadow: inset 0 0 0 1px rgba(122, 90, 42, 0.3) !important;
+}
+
+#cleanup-recommended-button:hover:not(:disabled) {
+  background: rgba(155, 113, 55, 0.26) !important;
+}
+
+/* 성어 목표 리스트의 글자 타일 */
+.goal-choice-idiom-glyphs i {
+  color: #3a2c16 !important;
+  border: 0 !important;
+  background: linear-gradient(180deg, #f7f0dd 0%, #e6d9b8 100%) !important;
+  box-shadow: var(--bevel-up), 0 0 0 1px rgba(122, 90, 42, 0.28) !important;
+}
+
+.goal-choice-idiom-glyphs i.is-owned {
+  color: #241c0e !important;
+  background: var(--mat-brass-hot) !important;
+  box-shadow: var(--bevel-up), 0 0 0 2px var(--gold-400), inset 0 -3px 0 var(--seal) !important;
+}
+
+#goal-owned-summary,
+#goal-owned-summary :is(b, span) { font-size: 11px !important; }
+
+/* 발동 조건은 9~10px 로 눌려 있었다 */
+#idiom-panel .idiom-hud > small,
+#idiom-panel .idiom-heading,
+#idiom-panel .idiom-result small,
+#idiom-panel .idiom-result em,
+#idiom-panel #idiom-result-bonus { font-size: 11px !important; }
+
+/* 발동 보너스 알약이 형광 하늘색(#79dfff) 그대로라 종이 위에서 1.2:1 이었다 */
+#idiom-panel .idiom-result mark {
+  color: #2e2212 !important;
+  border: 0 !important;
+  background: color-mix(in srgb, var(--idiom-result-color) 26%, #f4ecd6) !important;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--idiom-result-color) 45%, rgba(122, 90, 42, 0.45)) !important;
+}
+
+/* 합성 목록은 "행을 누르면 곧바로 소모"라는 사실을 알리지 않았다 */
+.evolution-warning {
+  margin: 0 0 6px;
+  padding: 5px 9px;
+  color: #5c4a1f;
+  font-size: 11.5px;
+  font-weight: 800;
+  border-left: 3px solid var(--seal);
+  border-radius: var(--r-sm);
+  background: linear-gradient(180deg, #f4ecd6 0%, #e7dbbc 100%);
+  box-shadow: inset 0 0 0 1px rgba(122, 90, 42, 0.22);
+}

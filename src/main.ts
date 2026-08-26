@@ -425,7 +425,7 @@ app.innerHTML = `
             <i class="s00-skin" aria-hidden="true"></i><b>자형연성 진법</b><small>실제 한자 구성식 · 목표 계보</small><em>선택됨</em>
           </button>
           <button type="button" class="s00-mode game-mode-option" data-game-mode-option="casual" role="radio" aria-checked="false">
-            <i class="s00-skin" aria-hidden="true"></i><b>별승급 진법</b><small>KEEP 1기 + USE 2기 · 최고 8성</small><em>선택됨</em>
+            <i class="s00-skin" aria-hidden="true"></i><b>별승급 진법</b><small>1기는 남기고 2기를 재료로 · 최고 8성</small><em>선택됨</em>
           </button>
         </div>
 
@@ -534,6 +534,7 @@ app.innerHTML = `
     <dialog id="help-dialog" class="help-dialog">
       <form method="dialog">
         <div class="dialog-heading"><div><p class="eyebrow">놀이 방법</p><h2>봉인술 입문</h2></div><button aria-label="도움말 닫기">×</button></div>
+        <div class="help-quickstart"><b>처음이라면</b><span><i>①</i> 소환(1키)으로 자령 뽑기</span><span><i>②</i> 첫 오행진이 무료로 열림</span><span><i>③</i> 시작 버튼으로 웨이브 개시</span><small>자령=타워 · 봉인=처치 · 엽전=골드 · 문기=오행 재료 · 농축=중복 강화</small></div>
         <ol>
           <li><b>소환</b><span>지역별 1단계 한자를 품은 자령이 무작위로 나옵니다. 목표의 부족한 재료는 소프트 천장으로 조금씩 유리해집니다.</span></li>
           <li><b>목적 소환</b><span>균형·탐색·계보·중복 수집 중 원하는 목적을 고릅니다. 중복 수집은 농축과 분해에 쓸 보유 한자를 다시 부릅니다.</span></li>
@@ -1355,6 +1356,8 @@ function growthStateSignature(): string {
   return `${engine.state.mode}:${upgradeStateSignature()}:${inventory}:${traits}:${scores}:${filters}:${[...dismantleSelection].sort((a, b) => a - b).join(",")}:${growthElement}`;
 }
 
+const UPGRADE_UNAVAILABLE_LABEL = "투자 불가";
+
 function upgradeAmountLabel(scope: "global" | "element" | "trait", stat: UpgradeStat | null, traitIndex: number | null, amount: number | "max"): string {
   const quote = scope === "global" && stat
     ? engine.quoteGlobalUpgrade(stat, amount)
@@ -1362,7 +1365,7 @@ function upgradeAmountLabel(scope: "global" | "element" | "trait", stat: Upgrade
       ? engine.quoteElementUpgrade(growthElement, stat, amount)
       : engine.quoteElementTraitUpgrade(growthElement, traitIndex ?? 0, amount);
   if (amount !== "max") return `${amount}회 · ${quote.cost}`;
-  return quote.levels > 0 ? `최대 +${quote.levels} · ${quote.cost}` : "투자 불가";
+  return quote.levels > 0 ? `최대 +${quote.levels} · ${quote.cost}` : UPGRADE_UNAVAILABLE_LABEL;
 }
 
 function renderGrowth(): void {
@@ -1391,7 +1394,7 @@ function renderGrowth(): void {
       <input type="checkbox" data-dismantle-id="${tower.id}" ${dismantleSelection.has(tower.id) ? "checked" : ""} ${protectedState || !active ? "disabled" : ""}>
       <b>${escapeHtml(tower.char)}</b><span><strong>${tower.wuxing}행 · ${towerProgressionLabel(tower)} · #${tower.id}</strong><small>${protectedState ? protectedReasons.map(escapeHtml).join(" · ") : (assessment?.reasons ?? []).map(escapeHtml).join(" · ") || "분해 가능"}</small></span><em>${protectedState ? "보호" : `${tower.wuxing}+${essence}`}</em>
     </label>`;
-  }).join("") : `<div class="workbench-empty"><b>조건에 맞는 인벤토리 자령이 없습니다</b><span>필터를 바꾸거나 소환 자령을 인벤토리에 보관하세요.</span></div>`;
+  }).join("") : `<div class="workbench-empty"><b>조건에 맞는 인벤토리 자령이 없습니다</b><span>필터를 바꾸거나 소환 자령을 인벤토리에 보관하세요.</span><button type="button" data-goto-inventory>인벤 탭 열기</button></div>`;
 
   const quote = engine.quoteDismantle([...dismantleSelection]);
   const gainLabel = (Object.entries(quote.gains) as Array<[Wuxing, number]>).filter(([, amount]) => amount > 0).map(([wuxing, amount]) => `${wuxing}+${amount}`).join(" · ");
@@ -1404,7 +1407,10 @@ function renderGrowth(): void {
 
   const batchButtons = (scope: "global" | "element", stat: UpgradeStat): string => ([1, 5, "max"] as const).map((amount) => {
     const quoteForAmount = scope === "global" ? engine.quoteGlobalUpgrade(stat, amount) : engine.quoteElementUpgrade(growthElement, stat, amount);
-    return `<button type="button" data-growth-upgrade-scope="${scope}" data-growth-stat="${stat}" data-growth-amount="${amount}" ${!active || quoteForAmount.levels <= 0 || !quoteForAmount.affordable ? "disabled" : ""}>${upgradeAmountLabel(scope, stat, null, amount)}${scope === "global" ? " 엽전" : ` ${growthElement}`}</button>`;
+    // "투자 불가" 는 비용이 아니라 사유다 — 뒤에 화폐를 붙이면 "투자 불가 엽전" 같은 비문이 된다.
+    const label = upgradeAmountLabel(scope, stat, null, amount);
+    const currency = label === UPGRADE_UNAVAILABLE_LABEL ? "" : scope === "global" ? " 엽전" : ` ${growthElement}`;
+    return `<button type="button" data-growth-upgrade-scope="${scope}" data-growth-stat="${stat}" data-growth-amount="${amount}" ${!active || quoteForAmount.levels <= 0 || !quoteForAmount.affordable ? "disabled" : ""}>${label}${currency}</button>`;
   }).join("");
   const globalRows = UPGRADE_STAT_ORDER.map((stat) => {
     const meta = UPGRADE_STAT_META[stat];
@@ -1422,11 +1428,12 @@ function renderGrowth(): void {
     const unlocked = engine.state.elementDismantleScore[growthElement] >= unlockScore;
     const buttons = ([1, 5, "max"] as const).map((amount) => {
       const traitQuote = engine.quoteElementTraitUpgrade(growthElement, traitIndex, amount);
-      return `<button type="button" data-growth-upgrade-scope="trait" data-growth-trait="${traitIndex}" data-growth-amount="${amount}" ${!active || !unlocked || traitQuote.levels <= 0 || !traitQuote.affordable ? "disabled" : ""}>${upgradeAmountLabel("trait", null, traitIndex, amount)} ${growthElement}</button>`;
+      const label = upgradeAmountLabel("trait", null, traitIndex, amount);
+      return `<button type="button" data-growth-upgrade-scope="trait" data-growth-trait="${traitIndex}" data-growth-amount="${amount}" ${!active || !unlocked || traitQuote.levels <= 0 || !traitQuote.affordable ? "disabled" : ""}>${label}${label === UPGRADE_UNAVAILABLE_LABEL ? "" : ` ${growthElement}`}</button>`;
     }).join("");
     return `<article class="growth-trait-row ${unlocked ? "is-unlocked" : "is-locked"}" style="--element:${ELEMENT_STYLES[growthElement].color}"><div class="trait-seal"><b>${traitIndex + 1}</b><small>${unlocked ? "개방" : `${unlockScore}점`}</small></div><div><strong>${trait.name} <em>Lv.${level}/${ELEMENT_TRAIT_MAX_LEVEL}</em></strong><span>${trait.summary} +${trait.perLevel}${trait.unit}/단계${trait.milestone ? ` · ${trait.milestone}` : ""}</span><small>${unlocked ? `다음 비용 ${elementTraitUpgradeCost(level) ?? "최고"} 문기` : `분해 점수 ${engine.state.elementDismantleScore[growthElement]}/${unlockScore}`}</small></div><nav>${buttons}</nav></article>`;
   }).join("");
-  must<HTMLElement>("#growth-upgrade-list").innerHTML = `<section class="growth-upgrade-section"><header><b>공용 능력 강화</b><small>엽전 투자 · 5능력치×99단계</small></header>${globalRows}</section><section class="growth-upgrade-section"><header><b>${growthElement}행 능력 강화</b><small>문기 투자 · 1회·5회·최대</small></header>${elementRows}</section><section class="growth-upgrade-section"><header><b>${growthElement}행 고유 특성</b><small>분해 점수 5·15·30 순차 개방</small></header>${traitRows}</section>`;
+  must<HTMLElement>("#growth-upgrade-list").innerHTML = `<section class="growth-upgrade-section"><header><b>공용 능력 강화</b><small>엽전 투자 · 5능력치×99단계</small></header>${globalRows}</section><section class="growth-upgrade-section"><header data-growth-section="${growthElement}"><b>${growthElement}행 능력 강화</b><small>문기 투자 · 1회·5회·최대</small></header>${elementRows}</section><section class="growth-upgrade-section"><header><b>${growthElement}행 고유 특성</b><small>분해 점수 5·15·30 순차 개방</small></header>${traitRows}</section>`;
 }
 
 function registerKillCombo(): void {
@@ -1958,7 +1965,7 @@ function renderEvolutions(): void {
     container.innerHTML = `<div class="empty-evolution"><b>${manual ? "전장의 한자를 선택하세요" : "재료를 모으는 중"}</b><span>${manual ? "선택한 한자가 들어가는 조합만 표시됩니다." : "목표 재료는 소환 확률이 서서히 보정됩니다."}</span></div>`;
     return;
   }
-  container.innerHTML = options.slice(0, 3).map((option, index) => evolutionCard(option, index)).join("");
+  container.innerHTML = `<p class="evolution-warning">행을 누르면 재료 자령을 소모해 바로 합성됩니다</p>` + options.slice(0, 3).map((option, index) => evolutionCard(option, index)).join("");
 }
 
 function casualStarOf(tower: Tower): CasualStar {
@@ -2054,7 +2061,7 @@ function renderCasualFusion(): void {
   must<HTMLElement>("#evolve-action-label").textContent = "3체 조합";
   must<HTMLElement>("#evolve-action-detail").textContent = "회 가능";
   must<HTMLElement>("#evolution-tab-label").textContent = "3체 조합";
-  must<HTMLElement>("#evolution-kicker").textContent = "팔성 승급소";
+  must<HTMLElement>("#evolution-kicker").textContent = "3체 조합 · 팔성 승급";
   must<HTMLElement>("#evolution-heading-label").textContent = "현재 가능한 조합";
   must<HTMLElement>("#standard-evolution-modes").hidden = true;
   must<HTMLElement>("#casual-fusion-toolbar").hidden = false;
@@ -2097,7 +2104,7 @@ function renderCasualFusion(): void {
   const selectedStar = core ? casualStarOf(core) : null;
   container.innerHTML = `
     <div class="casual-rarity-rule"><span><b>획수 기본 별</b><small>실제 Unicode kTotalStrokes</small></span>${([1, 2, 3, 4, 5, 6, 7, 8] as CasualStar[]).map((star) => `<i style="--star:${CASUAL_STAR_COLORS[star]}"><b>${star}★</b><small>${casualStarRangeLabel(star)}</small></i>`).join("")}</div>
-    <div class="casual-fusion-slots">${slotMarkup}<i aria-hidden="true">→</i><div class="casual-fusion-result" style="--star:${selectedStar ? CASUAL_STAR_COLORS[Math.min(8, selectedStar + 1) as CasualStar] : "#526274"}"><span>승급 결과</span><b>${core ? escapeHtml(core.char) : "?"}</b><strong>${core ? `${Math.min(8, selectedStar as number + 1)}★` : "?★"}</strong><small>${core ? `피해 ×${CASUAL_STAR_POWER[Math.min(8, selectedStar as number + 1) as CasualStar].toFixed(2)} · 본체 유지` : "본체 선택 필요"}</small></div></div>
+    <div class="casual-fusion-slots">${slotMarkup}<i aria-hidden="true">→</i><div class="casual-fusion-result" style="--star:${selectedStar ? CASUAL_STAR_COLORS[Math.min(8, selectedStar + 1) as CasualStar] : "#526274"}"><span>승급 결과</span><b>${core ? escapeHtml(core.char) : "?"}</b><strong${core ? "" : ` class="is-placeholder"`}>${core ? `${Math.min(8, selectedStar as number + 1)}★` : "별 미정 — 본체를 먼저 선택"}</strong><small>${core ? `피해 ×${CASUAL_STAR_POWER[Math.min(8, selectedStar as number + 1) as CasualStar].toFixed(2)} · 본체 유지` : "본체 선택 필요"}</small></div></div>
     ${status}
     <button id="casual-fusion-review" class="workbench-primary casual-fusion-review" type="button" ${!quote || quote.blocked.length > 0 ? "disabled" : ""}>소모 목록 확인 후 ${quote?.toStar ?? "?"}★ 조합</button>
     <div class="casual-candidate-heading"><div><b>보유 자령</b><small>${core ? `${core.wuxing}행 ${casualStarOf(core)}★만 표시` : "본체를 고르면 맞는 재료만 남습니다"}</small></div><em>잠금: 본체 우선 · 재료 제외</em></div>
@@ -2315,12 +2322,12 @@ function renderSelected(): void {
       <small class="cleanup-reason ${cleanup?.protected ? "is-protected" : "is-candidate"}">${escapeHtml(cleanupLabel)} · ${escapeHtml(concentrationStatus)}</small>
     </div>
     <div class="selected-actions">
-      <button id="lock-button" class="${tower.locked ? "is-locked" : ""}" type="button" data-testid="lock-tower">${tower.locked ? "鎖 잠금됨" : "잠금"}</button>
-      <button id="store-button" type="button" data-testid="store-tower" ${stored ? "disabled" : ""}>${stored ? "보관 중" : "보관"}</button>
-      <button id="derivative-button" class="${readyBranches > 0 ? "has-ready" : ""}" type="button" data-testid="derivative-composition">${engine.state.mode === "casual" ? casualStar >= 8 ? "8★ 최고 단계" : "3체 조합 ›" : `합성 ${readyBranches}`}</button>
-      <button id="sell-button" type="button" ${tower.locked ? "disabled" : ""}>판매 +${engine.towerSellValue(tower)}</button>
-      <button id="open-growth-button" type="button">분해 ›</button>
-      <button id="open-concentration-button" type="button" ${concentration >= MAX_CONCENTRATION_LEVEL ? "disabled" : ""}>농축 ›</button>
+      <button id="lock-button" class="${tower.locked ? "is-locked" : ""}" type="button" data-testid="lock-tower" title="판매·합성 재료로 쓰이지 않게 보호">${tower.locked ? "鎖 잠금됨" : "잠금"}</button>
+      <button id="store-button" type="button" data-testid="store-tower" title="인벤으로 이동 — 전장 자리를 비웁니다" ${stored ? "disabled" : ""}>${stored ? "보관 중" : "보관"}</button>
+      <button id="derivative-button" class="${readyBranches > 0 ? "has-ready" : ""}" type="button" data-testid="derivative-composition" title="이 자령이 재료인 파생 조합 목록">${engine.state.mode === "casual" ? casualStar >= 8 ? "8★ 최고 단계" : "3체 조합 ›" : `합성 ${readyBranches}`}</button>
+      <button id="sell-button" type="button" title="엽전을 받고 즉시 제거 — 되돌릴 수 없음" ${tower.locked ? "disabled" : ""}>판매 +${engine.towerSellValue(tower)}</button>
+      <button id="open-growth-button" type="button" title="강화 제련소 탭으로 이동">분해 ›</button>
+      <button id="open-concentration-button" type="button" title="농축 공방 탭으로 이동" ${concentration >= MAX_CONCENTRATION_LEVEL ? "disabled" : ""}>농축 ›</button>
     </div>
     <button type="button" class="selected-ability-summary" data-ability-guide><b>${activeSkills ? `技 기술 ${abilityLoadout.length}개 · 모두 자동 판정` : "技 기술 해금 전"}</b><span>${activeSkills ? `주기 ${periodicAbilities.length} · 공격 연동 1 · 조건 특성 1` : "현재 기본 공격 · 2단 합성 필요"}</span><em>설명 ›</em></button>
     ${activeSkills
@@ -2830,7 +2837,7 @@ function renderCodexDetail(definition: HanziDefinition | undefined): void {
         <h4>${engine.state.mode === "casual" ? "캐주얼 3체 조합" : "조합표 · 별과 독립은 별개"}</h4>
         ${recipeMain}
       </section>
-      <p class="combo-key">능력 조합 코드 · ${escapeHtml(abilities.comboKey)}</p>
+      ${shell.dataset.devMode === "1" ? `<p class="combo-key">능력 조합 코드 · ${escapeHtml(abilities.comboKey)}</p>` : ""}
       ${engine.state.mode === "casual" || definition.acquisition === "craft" ? `<button id="set-target-button" type="button" data-target-char="${definition.char}">이 한자를 목표로 지정</button>` : ""}
     </div>
   `;
@@ -4982,6 +4989,10 @@ for (const selector of ["#dismantle-element-filter", "#dismantle-stage-filter", 
     renderGrowth();
   });
 }
+must<HTMLElement>("#growth-dismantle-list").addEventListener("click", (event) => {
+  if (!(event.target as HTMLElement).closest("[data-goto-inventory]")) return;
+  setPanelTab("inventory");
+});
 must<HTMLElement>("#growth-dismantle-list").addEventListener("change", (event) => {
   const input = (event.target as HTMLElement).closest<HTMLInputElement>("[data-dismantle-id]");
   if (!input) return;
@@ -5021,6 +5032,10 @@ must<HTMLElement>("#growth-element-tabs").addEventListener("click", (event) => {
   growthElement = wuxing;
   growthRenderKey = "";
   renderGrowth();
+  // 탭만 바뀌고 화면은 그대로라 "눌렀는데 아무 일도 없다"로 읽혔다 — 해당 오행 섹션으로 데려간다.
+  must<HTMLElement>("#growth-upgrade-list")
+    .querySelector<HTMLElement>(`[data-growth-section='${wuxing}']`)
+    ?.scrollIntoView({ block: "start", behavior: reducedMotion ? "auto" : "smooth" });
 });
 must<HTMLElement>("#growth-upgrade-list").addEventListener("click", (event) => {
   const button = (event.target as HTMLElement).closest<HTMLButtonElement>("[data-growth-upgrade-scope]");
