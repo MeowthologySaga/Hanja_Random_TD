@@ -145,7 +145,7 @@ test("runs the casual eight-star entry and readable one-click promotion workshop
   await expect(page.locator(".game-shell")).toHaveAttribute("data-panel-tab", "evolution");
   await expect(page.locator("#standard-evolution-modes")).toBeHidden();
   await expect(page.locator("#casual-fusion-toolbar")).toBeVisible();
-  // v2 기본 뷰는 [한 번에 승급] + 그룹 카드. 4연 소환으로는 같은 오행·같은
+  // 기본 뷰는 [한 번에 승급] + 그룹 카드. 4연 소환으로는 같은 오행·같은
   // 별 3체가 모이지 않으므로 버튼은 비활성이고 빈 상태 안내가 뜬다.
   await expect(page.locator("#casual-fuse-all")).toBeDisabled();
   await expect(page.locator("#casual-fuse-all-count")).toHaveText("지금은 0회");
@@ -153,17 +153,22 @@ test("runs the casual eight-star entry and readable one-click promotion workshop
   await expect(page.locator(".casual-group-empty")).toBeVisible();
   await expect(page.locator("#casual-goto-shop")).toBeVisible();
 
-  // 수동 3슬롯은 [직접 고르기] 접힘으로 강등됐고 KEEP/USE 용어는 사라졌다.
+  // v3: 남길 자령(본체)이 사라졌다. 3슬롯 전부 `소모`이고 결과는 무작위다.
   await expect(page.locator(".casual-fusion-slot").first()).toBeHidden();
   await page.locator("#casual-manual-details > summary").click();
   await expect(page.locator("#casual-manual-details")).toHaveAttribute("open", "");
   await expect(page.locator(".casual-rarity-rule > i")).toHaveCount(8);
   await expect(page.locator(".casual-fusion-slot")).toHaveCount(3);
-  await expect(page.locator(".casual-fusion-slot.is-core")).toContainText("남길 자령");
-  await expect(page.locator(".casual-fusion-slot").nth(1)).toContainText("재료");
+  await expect(page.locator(".casual-fusion-slot.is-core")).toHaveCount(0);
+  for (const index of [0, 1, 2]) {
+    await expect(page.locator(".casual-fusion-slot").nth(index)).toContainText("소모");
+  }
+  await expect(page.locator(".casual-fusion-slots")).not.toContainText("남길");
+  await expect(page.locator(".casual-fusion-slots")).not.toContainText("본체");
   await expect(page.locator(".casual-fusion-slots")).not.toContainText("KEEP");
   await expect(page.locator(".casual-fusion-slots")).not.toContainText("USE");
-  // 요구 1 해소: 3체가 안 모인 자령은 흐림 + `3체 미달` 배지로 못 고른다.
+  await expect(page.locator(".casual-fusion-result")).toHaveClass(/is-random/u);
+  // 3체가 안 모인 자령은 흐림 + `3체 미달` 배지로 못 고른다.
   await expect(page.locator(".casual-fusion-tower")).toHaveCount(4);
   // 8★ 는 `최고` 라벨을 받으므로 `3체 미달` 배지는 8★ 미만에만 붙는다.
   await expect(page.locator(".casual-fusion-tower.is-short")).not.toHaveCount(0);

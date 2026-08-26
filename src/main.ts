@@ -331,7 +331,7 @@ app.innerHTML = `
             <button id="casual-fuse-all" class="casual-fuse-all" type="button">
               <b>한 번에 승급</b><span id="casual-fuse-all-count">0회 가능</span>
             </button>
-            <p id="casual-fuse-all-note" class="casual-fuse-all-note">같은 오행·같은 별 자령 3체를 자동으로 묶습니다. 잠금·농축·목표·사자성어 자령은 재료에서 빠집니다.</p>
+            <p id="casual-fuse-all-note" class="casual-fuse-all-note">같은 오행·같은 별 자령 3체를 자동으로 묶습니다. 3기가 모두 사라지고 다음 별 자령 1기를 무작위로 얻습니다.</p>
           </section>
           <div id="evolution-options" class="evolution-options">
             <div class="empty-evolution"><b>재료를 모으는 중</b><span>목표 재료는 소환 확률이 서서히 보정됩니다.</span></div>
@@ -496,8 +496,8 @@ app.innerHTML = `
             <i class="s00-skin" aria-hidden="true"></i><b>자형연성 진법</b><small aria-hidden="true"><span class="s00-mode-sub s00-mode-sub--full">실제 한자 구성식 · 목표 계보</span><span class="s00-mode-sub s00-mode-sub--compact">구성식 합성 · 계보 목표</span></small><em>선택됨</em>
           </button>
           <button type="button" class="s00-mode game-mode-option" data-game-mode-option="casual" role="radio" aria-checked="false"
-            aria-label="별승급 진법. 1기는 남기고 2기를 재료로 사용해 최고 8성까지 승급하는 진법">
-            <i class="s00-skin" aria-hidden="true"></i><b>별승급 진법</b><small aria-hidden="true"><span class="s00-mode-sub s00-mode-sub--full">1기는 남기고 2기를 재료로 · 최고 8성</span><span class="s00-mode-sub s00-mode-sub--compact">1+2 승급 · 최고 8성</span></small><em>선택됨</em>
+            aria-label="별승급 진법. 같은 오행·같은 별 3기를 모아 다음 별 자령을 얻는 진법. 최고 8성">
+            <i class="s00-skin" aria-hidden="true"></i><b>별승급 진법</b><small aria-hidden="true"><span class="s00-mode-sub s00-mode-sub--full">같은 오행·같은 별 3기 → 다음 별 · 최고 8성</span><span class="s00-mode-sub s00-mode-sub--compact">3합 승급 · 최고 8성</span></small><em>선택됨</em>
           </button>
         </div>
 
@@ -581,7 +581,7 @@ app.innerHTML = `
             <span class="s13-group-label">진법 규칙</span>
             <div class="s13-options">
               <button type="button" data-s13-mode="standard" role="radio"><b>자형연성</b><small>실제 구성식 합성</small></button>
-              <button type="button" data-s13-mode="casual" role="radio"><b>별승급</b><small>같은 오행 3체 승급</small></button>
+              <button type="button" data-s13-mode="casual" role="radio"><b>별승급</b><small>3기 소모 · 다음 별 무작위</small></button>
               <button type="button" id="s13-autoplace" aria-pressed="true"><b>소환 자동 배치</b><small class="s13-state">ON</small></button>
             </div>
           </div>
@@ -613,7 +613,7 @@ app.innerHTML = `
           <li><b>목적 소환</b><span>균형·탐색·계보·중복 수집 중 원하는 목적을 고릅니다. 중복 수집은 농축과 분해에 쓸 보유 한자를 다시 부릅니다.</span></li>
           <li><b>10연 소환</b><span>10웨이브를 지키면 개방됩니다. Q키 또는 10연 버튼으로 현재 소환 비용 10회를 한 번에 지불합니다.</span></li>
           <li><b>합성</b><span>실제 구성식의 재료를 모두 보유하면 조합 서책에 카드가 열립니다. 木+木처럼 같은 글자 두 개도 각각 필요합니다.</span></li>
-          <li><b>캐주얼 8성전</b><span>천자문 실제 획수로 기본 별이 정해집니다. 같은 오행·같은 현재 별 자령 3기를 고르면 남길 본체가 1성 오르며 최고 8성입니다. 속성별 자동조합도 소모 목록을 먼저 확인합니다.</span></li>
+          <li><b>캐주얼 8성전</b><span>천자문 실제 획수로 기본 별이 정해집니다. 같은 오행·같은 현재 별 자령 3기를 고르면 3기가 모두 사라지고 같은 오행의 다음 별 자령 1기를 무작위로 얻으며 최고 8성입니다. 잠금·농축·목표·사자성어 자령은 소모 대상에서 빠집니다.</span></li>
           <li><b>방식</b><span>반자동은 가능한 조합만 제안합니다. 목표 자동은 목표 경로의 조합만 자동 실행하며, 수동은 선택한 한자가 포함된 조합만 봅니다.</span></li>
           <li><b>사자성어</b><span>이웃한 네 칸에 글자를 올바른 순서로 배치하면 자동 봉인됩니다. 직접 선을 그을 필요가 없으며, 보너스는 그 런 동안 계속 유지됩니다.</span></li>
           <li><b>첫 오행진</b><span>열린 진 없이 상점에서 시작합니다. 첫 소환 자령과 같은 오행진이 무료로 열리고, 나머지는 원하는 순서로 18·32·52·78엽전에 개방합니다.</span></li>
@@ -699,7 +699,7 @@ app.innerHTML = `
 
     <dialog id="casual-fusion-confirm-dialog" class="casual-fusion-confirm-dialog" aria-labelledby="casual-fusion-confirm-title">
       <div class="dialog-heading">
-        <div><p class="eyebrow">삼체 일승</p><h2 id="casual-fusion-confirm-title">3체 조합 확인</h2></div>
+        <div><p class="eyebrow">삼체 일득</p><h2 id="casual-fusion-confirm-title">3체 조합 확인</h2></div>
         <button id="casual-fusion-confirm-close" type="button" aria-label="조합 확인 닫기">×</button>
       </div>
       <div id="casual-fusion-confirm-content" class="casual-fusion-confirm-content"></div>
@@ -1192,7 +1192,7 @@ function syncTitleModeSelection(): void {
   if (s13?.open) syncS13();
   must<HTMLElement>("#s00-start-sub").textContent = REGION_MENU_INFO[selectedRegion].pool;
   must<HTMLElement>("#title-lead").innerHTML = selectedGameMode === "casual"
-    ? "획수가 희귀도를 정하고, 같은 오행 세 자령이 한 별을 올립니다.<br />남길 본체를 직접 골라 8성 대봉인까지 성장시키세요."
+    ? "획수가 희귀도를 정하고, 같은 오행 세 자령을 모두 바쳐 다음 별을 부릅니다.<br />무엇이 나올지는 열어 봐야 압니다 — 8성 대봉인까지 성장시키세요."
     : "운으로 글자를 부르고, 실제 구성 원리로 합성하라.<br />열 개의 장과 백 번의 망령 행렬을 넘어 대봉인을 완성하세요.";
   must<HTMLElement>("#title-note").textContent = selectedRegion === "KR"
     ? "심사 권장 · 현재 제출 기준 콘텐츠"
@@ -3141,7 +3141,7 @@ function renderCodexDetail(definition: HanziDefinition | undefined): void {
     ? `${naturalStar}★ · ${casualStrokeCount(definition.char) ?? "?"}획 · ${casualStarRangeLabel(naturalStar)}`
     : `${synthesisDepth}단 · ${STAGE_NAMES[definition.stage]}`;
   const recipeMain = engine.state.mode === "casual"
-    ? `<div class="recipe-guide-main"><span><b>${definition.wuxing}</b><small>${naturalStar}★ 본체</small></span><em>+</em><span><b>${definition.wuxing}</b><small>${naturalStar}★ 재료</small></span><em>+</em><span><b>${definition.wuxing}</b><small>${naturalStar}★ 재료</small></span><em>→</em><span class="is-result"><b>${Math.min(8, naturalStar + 1)}★</b><small>본체 유지</small></span></div><p><b>안전 규칙</b> 잠금·농축·목표·사자성어 자령은 재료에서 빠지고, 남길 자령 1기와 재료 2기를 카드에 미리 보여 준 뒤 승급합니다.</p>`
+    ? `<div class="recipe-guide-main"><span><b>${definition.wuxing}</b><small>${naturalStar}★ 소모</small></span><em>+</em><span><b>${definition.wuxing}</b><small>${naturalStar}★ 소모</small></span><em>+</em><span><b>${definition.wuxing}</b><small>${naturalStar}★ 소모</small></span><em>→</em><span class="is-result"><b>${Math.min(8, naturalStar + 1)}★</b><small>무작위 1기</small></span></div><p><b>안전 규칙</b> 3기가 모두 사라지고 같은 오행의 다음 별 글자 하나를 무작위로 얻습니다. 잠금·농축·목표·사자성어 자령은 소모 대상에서 빠지고, 소모할 3기를 카드에 미리 보여 준 뒤 실행합니다.</p>`
     : `<div class="recipe-guide-main">${definition.acquisition === "direct"
       ? `<span class="${independent ? "is-independent" : ""}"><b>${definition.char}</b><small>${independent ? "직접 소환 · 독립" : "직접 소환 · 상위 재료"}</small></span>`
       : `${definition.parents.map((parent) => `<span><b>${parent}</b><small>${escapeHtml(learningInfo(engine.state.region, parent).short)}</small></span>`).join("<em>+</em>")}<em>→</em><span class="is-result"><b>${definition.char}</b><small>${escapeHtml(learning.short)}</small></span>`}</div>
