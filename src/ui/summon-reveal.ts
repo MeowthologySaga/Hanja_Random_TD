@@ -1,4 +1,4 @@
-/*
+﻿/*
  * 소환·3합 결과 발표막.
  */
 import { CASUAL_STAR_COLORS, CASUAL_STAR_NAMES, casualStrokeCount } from "../core/casual";
@@ -6,6 +6,7 @@ import { BOARD_FORMATIONS } from "../core/content";
 import { definitionForTower, ELEMENT_STYLES } from "../core/hanzi";
 import { jaryeongVisualFor } from "../core/jaryeongs";
 import { learningInfoForNotation } from "../core/learning";
+import { notationShortHtml } from "./notation-substitute";
 import { type GameEvent, type Wuxing } from "../core/types";
 import { ctx, fusionVortex, must, summonReveal } from "./app-context";
 import { coachIsPointingAtBoard } from "./coach";
@@ -67,7 +68,7 @@ export function showCasualFusionReveal(events: Array<Extract<GameEvent, { type: 
     return `<article class="summon-result-card is-fusion ${event.newDiscovery ? "is-new" : "is-helpful"}" style="--summon:${style.color};--summon-star:${CASUAL_STAR_COLORS[star]};--summon-delay:${index * 45}ms">
       <span class="summon-result-spirit" style="${visualBackgroundStyle(visual)}" aria-hidden="true"></span>
       <strong>${escapeHtml(tower.char)}</strong>
-      <b>${escapeHtml(learning.short)}</b>
+      <b>${notationShortHtml(learning, ctx.engine.state.notation)}</b>
       <small>${style.name}행 · ${star}★ ${CASUAL_STAR_NAMES[star]} · ${casualStrokeCount(tower.char) ?? "?"}획</small>
       <div><em>${event.newDiscovery ? "NEW" : "무작위 획득"}</em><mark>${escapeHtml(event.consumed.map((consumed) => consumed.char).join("·"))} 소모</mark></div>
     </article>`;
@@ -124,7 +125,7 @@ export function showSummonReveal(events: Array<Extract<GameEvent, { type: "summo
     return `<article class="summon-result-card ${event.newDiscovery ? "is-new" : ""} ${event.helpful ? "is-helpful" : ""} ${event.jackpot ? "is-jackpot" : ""}" style="--summon:${style.color};--summon-star:${CASUAL_STAR_COLORS[star]};--summon-delay:${index * 45}ms">
       <span class="summon-result-spirit" style="${visualBackgroundStyle(visual)}" aria-hidden="true"></span>
       <strong>${tower.char}</strong>
-      <b>${escapeHtml(learning.short)}</b>
+      <b>${notationShortHtml(learning, ctx.engine.state.notation)}</b>
       <small>${style.name}행 · ${ctx.engine.state.mode === "casual" ? `${star}★ ${CASUAL_STAR_NAMES[star]} · ${casualStrokeCount(tower.char) ?? "?"}획` : escapeHtml(definition.combat.roleLabel)}</small>
       <div><em>${utilityLabel}</em>${event.jackpot ? `<mark class="summon-jackpot">상한 돌파</mark>` : ""}${helpfulLabel ? `<mark>${helpfulLabel}</mark>` : ""}</div>
     </article>`;

@@ -179,6 +179,7 @@ import {
   type GameMode,
   type GameState,
   type GoalProgress,
+  type NotationCode,
   type HanziCatalog,
   type HanziDefinition,
   type IdiomBonusKind,
@@ -1506,6 +1507,19 @@ export class GameEngine {
         ? "가방 보관"
         : `전장 ${amount - storedCount}체 · 가방 ${storedCount}체`;
     this.state.lastMessage = `${amount}연 소환 완료 · 새 한자 ${discovered}종 · 목표·성어 재료 ${helpful}체 · ${placement}`;
+    return { ok: true, message: this.state.lastMessage };
+  }
+
+  /**
+   * 읽기 표기 축을 런 도중에 바꾼다. (gripe #6, 트랙 Q)
+   *
+   * 표기는 화면 설정이라 전투 판정에 하나도 닿지 않는다 — learningInfo 계열은
+   * ui/ 밖에서 호출되지 않으므로 시드·난수·수치가 흔들릴 여지가 없다.
+   * 그래서 다음 런을 기다리지 않고 즉시 갈아 끼운다.
+   */
+  setNotation(notation: NotationCode): ActionResult {
+    this.state.notation = notation;
+    this.state.lastMessage = `읽기 표기 · ${notation === "kr-hunum" ? "한국 훈음" : notation === "jp-onkun" ? "일본 음훈" : "중국 병음"}`;
     return { ok: true, message: this.state.lastMessage };
   }
 
