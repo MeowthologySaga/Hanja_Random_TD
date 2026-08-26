@@ -61,10 +61,12 @@ import {
   researchUnlockWave,
   sellValue,
   CASUAL_PAIR_WEIGHT,
+  CASUAL_STAR_DECAY,
+  isTierSummonIntent,
   MIN_TIER_POOL_SIZE,
   SUMMON_INTENT_LABELS,
+  SUMMON_STAR_BANDS,
   SUMMON_SURCHARGE,
-  SUMMON_TIER_FLOOR,
   summonCost,
   WUXING_ORDER
 } from "./hanzi";
@@ -120,10 +122,16 @@ export function elementZoneKind(wuxing: Wuxing): AbilityZone["kind"] {
 }
 
 /**
- * 캐주얼 티어 소환 3종. 별 보장 여부만 다르고 나머지 규칙은 같으므로
+ * 캐주얼 티어 소환 3종. 별 밴드만 다르고 나머지 규칙은 같으므로
  * 짝 맞추기 가중은 이 셋에 공통으로 적용한다.
  */
 const TIERED_SUMMON_INTENTS: ReadonlySet<SummonIntent> = new Set<SummonIntent>(["balanced", "midstar", "highstar"]);
+
+/** 캐주얼 소환의 실효 별 밴드. 상·하한 모두 포함하는 닫힌 구간이다. */
+export interface SummonStarBand {
+  readonly min: number;
+  readonly max: number;
+}
 
 export function interestForGold(gold: number): number {
   return Math.min(20, Math.max(0, Math.floor(gold / 20)));
@@ -1127,19 +1135,24 @@ export class GameEngine {
   /**
    * `surcharge` 는 상점 상품 카드가 청구하는 목적 정찰료다. 자동 시뮬레이션과
    * 10연 소환은 0을 그대로 써서 기존 기본가 곡선을 유지한다.
+   * `guaranteedStar` 는 10연 마지막 한 장이 밴드 상한을 채워 주는 보장 경로다.
    */
-  summon(forceIntent = false, surcharge = 0): ActionResult {
+  summon(forceIntent = false, surcharge = 0, guaranteedStar: number | null = null): ActionResult {
     if (!this.isRunActive()) return { ok: false, message: "진행 중인 수비전이 없습니다." };
     const cost = summonCost(this.state.summonCount) + Math.max(0, surcharge);
     if (this.state.gold < cost) return { ok: false, message: "엽전이 " + String(cost - this.state.gold) + " 부족합니다." };
     if (this.runSummonPool.length === 0) return { ok: false, message: "이 지역의 활성 소환 풀이 비어 있습니다." };
     const maxStage = this.state.mode === "casual" ? 5 : maxSummonStageForWave(this.state.wave);
-    // 티어 소환은 확률 가중이 아니라 후보 풀 자체를 잘라 "확정"을 만든다.
-    const tierFloor = this.summonTierFloor(this.state.summonIntent);
+    // 캐주얼 소환은 확률 가중이 아니라 후보 풀 자체를 밴드로 잘라 상·하한을 만든다.
+    const band = this.summonStarBand(this.state.summonIntent);
+    const casualPool = (): HanziDefinition[] => {
+      const banded = band === null ? [...this.runSummonPool] : this.starBandCandidates(band.min, band.max);
+      if (guaranteedStar === null) return banded;
+      const guaranteed = banded.filter((definition) => (casualNaturalStar(definition.char) ?? 1) === guaranteedStar);
+      return guaranteed.length > 0 ? guaranteed : banded;
+    };
     const summonPool = this.state.mode === "casual"
-      ? (tierFloor === null
-        ? [...this.runSummonPool]
-        : this.runSummonPool.filter((definition) => (casualNaturalStar(definition.char) ?? 1) >= tierFloor))
+      ? casualPool()
       : this.runSummonPool.filter((definition) => definition.stage <= maxStage);
     if (summonPool.length === 0) return { ok: false, message: "현재 장에서 소환 가능한 자령이 없습니다." };
 
@@ -1206,6 +1219,9 @@ export class GameEngine {
       }
       return weight * stageWeight;
     });
+    // 짝 맞추기·목적 가중까지 끝난 뒤에 별 단위 목표 분포로 다시 눌러 준다.
+    // 순서가 바뀌면 글자 수가 많은 낮은 별이 밴드 분포를 통째로 삼킨다.
+    if (band !== null) this.applyStarBandDecay(summonPool, weights);
     const targetDefinition = this.catalog.definitions.get(this.state.targetChar);
     const targetGuaranteeReady = this.state.summonIntent === "lineage"
       && this.state.lineageTargetProgress >= 29
@@ -1296,9 +1312,20 @@ export class GameEngine {
     if (this.runSummonPool.length === 0) return { ok: false, message: "이 지역의 활성 소환 풀이 비어 있습니다." };
 
     const eventStart = this.events.length;
+    // 캐주얼 10연은 밴드 상한(기본 1~3★ → 3★) 1기를 보장한다. 열 장을 뽑고도
+    // 상한이 한 번도 안 나왔으면 마지막 한 장의 후보를 상한 별로 좁힌다.
+    const band = this.summonStarBand(this.state.summonIntent);
+    let bandTopSeen = false;
     for (let index = 0; index < amount; index += 1) {
-      const result = this.summon(index === amount - 1 && amount >= 10);
+      const last = index === amount - 1 && amount >= 10;
+      const guaranteedStar = last && band !== null && !bandTopSeen ? band.max : null;
+      const result = this.summon(last, 0, guaranteedStar);
       if (!result.ok) return result;
+      if (band !== null && !bandTopSeen) {
+        const drawn = this.events.slice(eventStart).filter((event): event is Extract<GameEvent, { type: "summon" }> => event.type === "summon");
+        const star = drawn[drawn.length - 1]?.tower.naturalStar ?? 0;
+        if (star >= band.max) bandTopSeen = true;
+      }
     }
     const summons = this.events.slice(eventStart).filter((event): event is Extract<GameEvent, { type: "summon" }> => event.type === "summon");
     const helpful = summons.filter((event) => event.helpful).length;
@@ -1333,7 +1360,7 @@ export class GameEngine {
     if (!this.isSummonProductAvailable(intent)) {
       return {
         ok: false,
-        message: TIERED_SUMMON_INTENTS.has(intent) && intent !== "balanced"
+        message: isTierSummonIntent(intent)
           ? `${SUMMON_INTENT_LABELS[intent]} 소환은 이 지역·모드에서 열리지 않습니다.`
           : "계보 소환은 자형연성 모드에서만 열립니다."
       };
@@ -1353,25 +1380,78 @@ export class GameEngine {
   }
 
   /**
-   * 티어 소환의 실효 보장 별.
+   * 캐주얼 소환의 실효 별 밴드.
    *
-   * 요청 별을 그대로 걸면 활성 풀이 좁은 지역(JP·CN)에서 후보가 서너 글자로
-   * 줄어 같은 자령만 반복된다. 후보가 `MIN_TIER_POOL_SIZE` 미만이면 한 단계씩
-   * 낮추고, 2★ 에서도 모자라면 보장이 성립하지 않으므로 `null`(상품 미개방)이다.
+   * 티어 소환은 광고한 하한을 그대로 걸면 활성 풀이 좁은 지역(JP·CN)에서 후보가
+   * 서너 글자로 줄어 같은 자령만 반복된다. 후보가 `MIN_TIER_POOL_SIZE` 미만이면
+   * 하한을 한 단계씩 낮추고, 2★ 에서도 모자라면 밴드가 성립하지 않으므로
+   * `null`(상품 미개방)이다. 하한 1인 기본 계열은 언제나 성립한다.
    */
-  summonTierFloor(intent: SummonIntent): number | null {
-    const requested = SUMMON_TIER_FLOOR[intent];
-    if (requested === undefined || this.state.mode !== "casual") return null;
-    for (let floor = requested; floor >= 2; floor -= 1) {
-      const count = this.runSummonPool.filter((definition) => (casualNaturalStar(definition.char) ?? 1) >= floor).length;
-      if (count >= MIN_TIER_POOL_SIZE) return floor;
+  summonStarBand(intent: SummonIntent): SummonStarBand | null {
+    const band = SUMMON_STAR_BANDS[intent];
+    if (band === null || this.state.mode !== "casual") return null;
+    const [requested, max] = band;
+    if (requested <= 1) return { min: requested, max };
+    for (let min = requested; min >= 2; min -= 1) {
+      if (this.starBandCandidates(min, max).length >= MIN_TIER_POOL_SIZE) return { min, max };
     }
     return null;
   }
 
+  /**
+   * 밴드 안 후보. 특정 밴드가 통째로 비는 소형 풀(JP·CN 미리보기)에서는 상한을
+   * 먼저 위로 넓히고, 그래도 없으면 하한을 아래로 넓힌다. 마지막에는 전체 풀로
+   * 되돌려 소환 자체가 막히는 일이 없게 한다.
+   */
+  private starBandCandidates(min: number, max: number): HanziDefinition[] {
+    const inRange = (low: number, high: number) => this.runSummonPool.filter((definition) => {
+      const star = casualNaturalStar(definition.char) ?? 1;
+      return star >= low && star <= high;
+    });
+    const exact = inRange(min, max);
+    if (exact.length > 0) return exact;
+    for (let high = max + 1; high <= 8; high += 1) {
+      const widened = inRange(min, high);
+      if (widened.length > 0) return widened;
+    }
+    for (let low = min - 1; low >= 1; low -= 1) {
+      const widened = inRange(low, 8);
+      if (widened.length > 0) return widened;
+    }
+    return [...this.runSummonPool];
+  }
+
+  /**
+   * 밴드 안 별 분포를 `CASUAL_STAR_DECAY^(별 - 밴드하한)` 으로 눌러 낮은 별을 흔하게 만든다.
+   *
+   * 별 단위로 먼저 목표 몫을 정하고 같은 별의 글자들이 그 몫을 나눠 갖는다.
+   * 글자를 하나씩 곱하기만 하면 1★ 332자와 8★ 18자처럼 칸 크기가 다른 구간에서
+   * 감쇠가 글자 수 차이에 묻혀 버린다.
+   */
+  private applyStarBandDecay(pool: readonly HanziDefinition[], weights: number[]): void {
+    const starOf = (definition: HanziDefinition) => casualNaturalStar(definition.char) ?? 1;
+    let bandMin = 8;
+    for (const definition of pool) bandMin = Math.min(bandMin, starOf(definition));
+    const totals = new Map<number, number>();
+    pool.forEach((definition, index) => {
+      const weight = weights[index] ?? 0;
+      if (weight <= 0) return;
+      const star = starOf(definition);
+      totals.set(star, (totals.get(star) ?? 0) + weight);
+    });
+    pool.forEach((definition, index) => {
+      const weight = weights[index] ?? 0;
+      if (weight <= 0) return;
+      const star = starOf(definition);
+      const total = totals.get(star) ?? 0;
+      if (total <= 0) return;
+      weights[index] = (weight / total) * Math.pow(CASUAL_STAR_DECAY, star - bandMin);
+    });
+  }
+
   /** 모드·지역별 상품 노출. 계보는 자형연성 전용, 티어는 캐주얼 + 충분한 풀 전용. */
   isSummonProductAvailable(intent: SummonIntent): boolean {
-    if (SUMMON_TIER_FLOOR[intent] !== undefined) return this.summonTierFloor(intent) !== null;
+    if (isTierSummonIntent(intent)) return this.summonStarBand(intent) !== null;
     if (intent === "lineage") return this.state.mode === "standard";
     return true;
   }

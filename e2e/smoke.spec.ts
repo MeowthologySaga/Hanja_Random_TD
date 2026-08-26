@@ -564,12 +564,20 @@ test("stores manual summons in the run inventory, deploys them, and returns boar
   await page.getByTestId("summon-button").click();
   await expect(page.locator("#tower-count-value")).toHaveText("0 / 16");
   await expect(page.locator("#run-inventory-count")).toHaveText("1");
+  // R14: 인벤 탭 진입 = 보관고 집중 프레임 자동 오픈. 목록은 8열 격자로
+  // 프레임 본문에 얹혀 있고, 패널에는 요약 + [보관고 열기] 만 남는다.
   await page.locator("#run-inventory-tab").click();
+  await expect(page.locator("#inventory-frame")).toBeVisible();
+  await expect(page.locator("#run-inventory-list")).toHaveCSS("grid-template-columns", /(\S+ ){7}\S+/u);
   const inventoryCard = page.locator(".run-inventory-card").first();
   await expect(inventoryCard).toBeVisible();
   await expect(inventoryCard.locator(".run-inventory-spirit")).toHaveCSS("background-image", /assets\/jaryeongs\//u);
   await inventoryCard.click();
   await expect(inventoryCard).toHaveClass(/is-selected/u);
+  // 프레임은 전장을 덮으므로 고른 즉시 걷힌다 — 그래야 다음 클릭이 칸에 닿는다.
+  await expect(page.locator("#inventory-frame")).toBeHidden();
+  await expect(page.locator("#focus-dim")).toBeHidden();
+  await expect(page.locator("#run-inventory-frame-open")).toBeVisible();
 
   // 상점 해금 바가 사라져 개방 진 번호를 DOM 에서 읽을 수 없다.
   // 다섯 진의 배치 칸을 차례로 눌러 배치가 성사되는 곳(=개방 진)을 찾는다.
@@ -594,7 +602,12 @@ test("stores manual summons in the run inventory, deploys them, and returns boar
   await expect(page.locator("#tower-count-value")).toHaveText("0 / 16");
   await expect(page.locator("#run-inventory-count")).toHaveText("1");
   await expect(page.locator("#run-inventory-panel")).toBeVisible();
+  // 패널의 [보관고 열기] 로도 다시 연다(탭 재클릭과 같은 경로).
+  await page.locator("#run-inventory-frame-open").click();
+  await expect(page.locator("#inventory-frame")).toBeVisible();
   await page.screenshot({ path: "artifacts/run-inventory-1280x720.png", fullPage: true });
+  await page.locator("#inventory-frame-close").click();
+  await expect(page.locator("#inventory-frame")).toBeHidden();
 
   await page.reload();
   await page.getByRole("button", { name: "화면 모드 설정" }).click();

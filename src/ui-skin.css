@@ -10517,6 +10517,364 @@ span.codex-jaryeong-category { color: #4a3f30 !important; }
 }
 
 /* ══════════════════════════════════════════════════════════════════
+   ===== R14 보관고 =====
+
+   사용자 원문: "인벤토리 불편하다. 창/팝업 띄워서 그리드로 보여줘.
+   많이 뽑는 구조라 스크롤 너무 많다."
+
+   376px 패널의 1열 목록으로는 20~30기가 쌓이는 순간 스크롤이 끝없이
+   길어졌다. R4 집중 프레임 문법(강화·농축)을 그대로 빌려, 목록 DOM
+   (#run-inventory-layout)을 전장 위 대형 프레임으로 **옮기고** 8열
+   격자로 편다. 패널에는 요약 + [보관고 열기] 만 남는다.
+
+   프레임 그림은 새로 만들지 않는다 — 89·90절의 PNG 액자 대신 절차적
+   한지(그라디언트 + 먹테 + 격자결)로 같은 크롬을 세운다. 그림에 맞춘
+   % 여백이 없으므로 머리띠·본문 여백을 px 로 다시 잡는다.
+   ══════════════════════════════════════════════════════════════════ */
+
+/* ── R14-1. 보관고 액자 — 절차 한지 ─────────────────────────────
+   전장은 880x720, 상단 HUD 띠가 y12~50 을 쓴다. 그 아래 y54 부터
+   848x650 을 잡으면 좌우 16px 여백이 남고 바닥에 16px 이 남는다. */
+.focus-frame--vault {
+  top: 54px;
+  right: 16px;
+  display: flex;
+  width: 848px;
+  height: 650px;
+  flex-direction: column;
+  padding: 14px 24px 16px;
+  border-radius: 10px;
+  background-color: #efe3c6;
+  background-image:
+    linear-gradient(180deg, rgba(255, 252, 240, 0.72) 0%, rgba(221, 205, 170, 0.5) 100%),
+    repeating-linear-gradient(90deg, rgba(122, 90, 42, 0.05) 0 1px, transparent 1px 7px),
+    repeating-linear-gradient(0deg, rgba(122, 90, 42, 0.05) 0 1px, transparent 1px 7px);
+  background-size: 100% 100%, auto, auto;
+  box-shadow:
+    0 0 0 2px #2b2118,
+    0 0 0 8px #a8926a,
+    0 0 0 10px #2b2118,
+    0 22px 46px rgba(8, 5, 3, 0.52);
+}
+
+/* 89절 머리띠는 그림 좌표에 맞춘 % 라 그림 없는 액자에서는 어긋난다. */
+.focus-frame--vault .focus-frame-head {
+  position: static;
+  height: 40px;
+  padding: 0 4px 8px;
+  border-bottom: 1px solid rgba(122, 90, 42, 0.34);
+}
+
+.focus-frame--vault .focus-frame-body {
+  position: static;
+  flex: 1;
+  min-height: 0;
+  margin-top: 10px;
+}
+
+/* ── R14-2. 도구 한 줄 + 격자 ───────────────────────────────────
+   본문은 약 800x560 이다. 8열 · 카드 92x110 · 간격 8px 로
+   (800 - 7*8) / 8 = 93px 이 떨어진다. 스크롤은 격자 안에서만 난다. */
+#run-inventory-layout {
+  display: grid;
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 8px;
+}
+
+.run-inventory-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.run-inventory-chips {
+  display: flex;
+  gap: 6px;
+}
+
+.run-inventory-chips button {
+  display: flex;
+  min-width: 52px;
+  align-items: baseline;
+  justify-content: center;
+  gap: 4px;
+  min-height: 30px;
+  padding: 0 9px;
+  color: #4a3f2a;
+  font-size: 15px;
+  font-weight: 900;
+  cursor: pointer;
+  border: 0;
+  border-radius: var(--r-sm);
+  background: linear-gradient(180deg, #f6eed9 0%, #e2d5b4 100%);
+  box-shadow: inset 0 0 0 1px rgba(122, 90, 42, 0.26);
+}
+
+.run-inventory-chips button small {
+  color: #7b6a4c;
+  font-size: 10.5px;
+  font-weight: 800;
+}
+
+.run-inventory-chips button.is-active {
+  color: #fff6e2;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--filter-element) 82%, #2c2318) 0%, color-mix(in srgb, var(--filter-element) 58%, #1d160f) 100%);
+  box-shadow: inset 0 0 0 1px rgba(20, 14, 8, 0.45), 0 0 10px color-mix(in srgb, var(--filter-element) 34%, transparent);
+}
+
+.run-inventory-chips button.is-active small {
+  color: #f0e3c4;
+}
+
+#run-inventory-sort {
+  min-width: 74px;
+  min-height: 30px;
+  padding: 0 12px;
+  color: var(--gold-100);
+  font-size: 12.5px;
+  font-weight: 900;
+  cursor: pointer;
+  border: 0;
+  border-radius: var(--r-sm);
+  background: var(--mat-brass);
+  box-shadow: var(--bevel-up), 0 0 0 1px rgba(122, 90, 42, 0.3);
+}
+
+#run-inventory-sort:hover {
+  background: var(--mat-brass-hot);
+}
+
+/* 격자 홈. 1642·2541 절이 준 어두운 well 대신 종이 위 옅은 홈으로 둔다. */
+#run-inventory-layout .run-inventory-list {
+  display: grid;
+  min-height: 0;
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+  grid-auto-rows: 110px;
+  align-content: start;
+  gap: 8px;
+  padding: 8px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  border-radius: var(--r-md);
+  background: rgba(70, 52, 26, 0.09);
+  box-shadow: inset 0 0 0 1px rgba(122, 90, 42, 0.2);
+}
+
+/* ── R14-3. 카드 92x110 — 초상 · 한자 · 훈음 · 오행 점 · 별 ──── */
+#run-inventory-layout .run-inventory-card {
+  position: relative;
+  display: grid;
+  min-width: 0;
+  min-height: 0;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: 46px auto minmax(0, 1fr);
+  justify-items: center;
+  align-content: start;
+  gap: 1px;
+  padding: 5px 4px 4px;
+  text-align: center;
+  border: 0 !important;
+  border-radius: var(--r-sm) !important;
+  background: linear-gradient(180deg, #f8f1de 0%, #e6d9b8 100%) !important;
+  box-shadow:
+    var(--bevel-up),
+    0 0 0 1px color-mix(in srgb, var(--inventory-element) 42%, rgba(122, 90, 42, 0.3));
+  cursor: pointer;
+}
+
+#run-inventory-layout .run-inventory-card:hover {
+  background: linear-gradient(180deg, #fffaea 0%, #ecdfbe 100%) !important;
+  box-shadow:
+    var(--bevel-up),
+    0 0 0 2px var(--inventory-element),
+    0 0 12px color-mix(in srgb, var(--inventory-element) 30%, transparent);
+}
+
+#run-inventory-layout .run-inventory-card.is-selected {
+  background: linear-gradient(180deg, #fff3cf 0%, #f0dda8 100%) !important;
+  box-shadow:
+    var(--bevel-up),
+    0 0 0 3px var(--gold-500),
+    0 0 16px rgba(196, 150, 62, 0.45);
+}
+
+#run-inventory-layout .run-inventory-spirit {
+  width: 46px;
+  height: 46px;
+  background-repeat: no-repeat;
+  background-position: left top;
+  background-size: 200% 200%;
+}
+
+#run-inventory-layout .run-inventory-card > b {
+  color: #2c2216;
+  font-family: "Batang", "Malgun Gothic", serif;
+  font-size: 22px !important;
+  font-weight: 900;
+  line-height: 1.05;
+}
+
+#run-inventory-layout .run-inventory-card > span:nth-of-type(2) {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+}
+
+#run-inventory-layout .run-inventory-card strong,
+#run-inventory-layout .run-inventory-card small {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#run-inventory-layout .run-inventory-card strong {
+  color: #40341f;
+  font-size: 10.5px !important;
+  font-weight: 800;
+  line-height: 1.25;
+}
+
+#run-inventory-layout .run-inventory-card small {
+  color: #7b6a4c;
+  font-size: 9px !important;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+/* 오행 점 — 왼쪽 위 */
+#run-inventory-layout .run-inventory-dot {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  display: grid;
+  width: 15px;
+  height: 15px;
+  place-items: center;
+  color: #fff6e4;
+  font-size: 9px;
+  font-style: normal;
+  font-weight: 900;
+  border-radius: 50%;
+  background: var(--inventory-element);
+  box-shadow: 0 0 0 1px rgba(24, 17, 10, 0.32);
+}
+
+/* 겹친 수 — 오른쪽 위 */
+#run-inventory-layout .run-inventory-stack {
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  padding: 0 4px;
+  color: var(--gold-100);
+  font-size: 9.5px;
+  font-weight: 900;
+  line-height: 15px;
+  border-radius: 7px;
+  background: var(--mat-brass);
+  box-shadow: 0 0 0 1px rgba(24, 17, 10, 0.3);
+}
+
+/* 별 — 캐주얼 전용, 왼쪽 아래 */
+#run-inventory-layout .run-inventory-star {
+  position: absolute;
+  bottom: 3px;
+  left: 3px;
+  padding: 0 4px;
+  color: #221a10;
+  font-size: 9px;
+  font-weight: 900;
+  line-height: 14px;
+  text-decoration: none;
+  border-radius: 6px;
+  background: var(--inventory-star, var(--gold-500));
+  box-shadow: 0 0 0 1px rgba(24, 17, 10, 0.28);
+}
+
+/* 정리·보호 꼬리표 — 오른쪽 아래, 가장 약한 층위 */
+#run-inventory-layout .run-inventory-card em {
+  position: absolute;
+  right: 4px;
+  bottom: 3px;
+  color: #8a7754;
+  font-size: 8.5px;
+  font-style: normal;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+#run-inventory-layout .run-inventory-card.is-cleanup-candidate em {
+  color: #9c5b32;
+}
+
+#run-inventory-layout .run-inventory-card.is-selected em {
+  color: #6b4c14;
+}
+
+/* 빈 상태 — 격자 전 폭을 쓴다 */
+#run-inventory-layout .empty-run-inventory {
+  display: flex;
+  grid-column: 1 / -1;
+  grid-row: 1 / -1;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 220px;
+  color: #7b6a4c;
+  text-align: center;
+}
+
+#run-inventory-layout .empty-run-inventory b {
+  color: #3b301c;
+  font-size: 16px;
+  font-weight: 900;
+}
+
+#run-inventory-layout .empty-run-inventory span {
+  font-size: 12.5px;
+  font-weight: 700;
+}
+
+#run-inventory-layout .empty-run-inventory button {
+  min-height: 34px;
+  padding: 0 18px;
+  color: var(--gold-100);
+  font-size: 13px;
+  font-weight: 900;
+  cursor: pointer;
+  border: 0;
+  border-radius: var(--r-sm);
+  background: var(--mat-brass);
+  box-shadow: var(--bevel-up), 0 0 0 1px rgba(122, 90, 42, 0.3);
+}
+
+#run-inventory-layout .empty-run-inventory button:hover {
+  background: var(--mat-brass-hot);
+}
+
+/* ── R14-4. 패널 잔여 — 요약 + [보관고 열기] ───────────────────
+   89-B 와 같은 어휘다. 목록이 프레임으로 빠져 나가면 패널에는 제목줄과
+   이 두 줄만 남는다. */
+/* 3469 절이 패널 안 b/strong 을 먹색으로 !important 고정해 둔다. 요약 수치는
+   [보관고 열기] 와 짝지어 읽혀야 하므로 놋쇠색을 같은 무게로 되돌린다. */
+#run-inventory-panel .focus-panel-summary p b {
+  color: #6d5312 !important;
+}
+
+/* R8 고정무대 아래에서 전장은 언제나 880x720 이고 프레임은 848px 그대로다
+   (max-width 는 856px 이라 걸리지 않는다). 89-B 처럼 좁은 창용 @media 로
+   열 수를 바꾸면 창 크기마다 다른 그림이 되므로 8열을 고정한다. */
+
+/* ══════════════════════════════════════════════════════════════════
    ===== R8 고정무대 =====
 
    1280x720 설계 해상도를 한 덩어리(#stage)로 묶어 균일 배율로만 키우고

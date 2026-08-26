@@ -268,6 +268,13 @@ app.innerHTML = `
         </header>
         <div id="concentration-frame-body" class="focus-frame-body concentration-workbench"></div>
       </section>
+      <section id="inventory-frame" class="focus-frame focus-frame--vault" role="dialog" aria-modal="false" aria-labelledby="inventory-frame-title" hidden>
+        <header class="focus-frame-head">
+          <div><strong id="inventory-frame-title">자령 보관고</strong><span>눌러 고르고, 전장에 배치</span></div>
+          <button id="inventory-frame-close" class="focus-frame-close" type="button" data-focus-close="inventory" aria-label="자령 보관고 닫기">닫기 ✕</button>
+        </header>
+        <div id="inventory-frame-body" class="focus-frame-body run-inventory-vault"></div>
+      </section>
     </section>
 
     <aside class="control-panel" aria-label="합성과 수비 조작 패널">
@@ -425,14 +432,24 @@ app.innerHTML = `
 
         <section id="run-inventory-panel" class="run-inventory-panel panel-view" data-panel-view="inventory" aria-label="이번 판 자령 인벤토리">
           <div class="run-inventory-heading">
-            <div><span>런 인벤토리</span><strong>배치 대기 <b id="run-inventory-heading-count">0개 · 0종</b></strong></div>
+            <div><span>이번 판에 뽑은 자령</span><strong>자령 보관고</strong></div>
             <div class="run-inventory-tools">
               <small id="essence-summary">문기 木0 火0 土0 金0 水0</small>
               <button id="cleanup-recommended-button" type="button">정리 후보 분해</button>
             </div>
           </div>
-          <div id="run-inventory-list" class="run-inventory-list">
-            <div class="empty-run-inventory"><b>대기 중인 자령이 없습니다</b><span>설정에서 자동 배치를 끄거나 전장 자령을 보관하세요.</span></div>
+          <div id="run-inventory-layout" class="run-inventory-layout">
+            <div class="run-inventory-toolbar">
+              <div id="run-inventory-element-filters" class="run-inventory-chips" role="group" aria-label="오행 필터"></div>
+              <button id="run-inventory-sort" type="button" aria-label="보관고 정렬 전환">획득순</button>
+            </div>
+            <div id="run-inventory-list" class="run-inventory-list">
+              <div class="empty-run-inventory"><b>보관 중인 자령이 없습니다</b><span>상점에서 소환하세요</span><button type="button" data-inventory-goto-shop>상점으로</button></div>
+            </div>
+          </div>
+          <div class="focus-panel-summary">
+            <p id="run-inventory-panel-summary">보관 <b id="run-inventory-heading-count">0기 · 0종</b></p>
+            <button id="run-inventory-frame-open" class="focus-open-button" type="button">보관고 열기</button>
           </div>
         </section>
 
@@ -669,10 +686,10 @@ app.innerHTML = `
         <div class="help-quickstart"><b>처음이라면</b><span><i>①</i> 소환(1키)으로 자령 뽑기</span><span><i>②</i> 첫 오행진이 무료로 열림</span><span><i>③</i> 시작 버튼으로 웨이브 개시</span><small class="help-glossary">자령=타워 · 엽전=골드 · 문기=오행 재료 · 濃=농축 단계(최고 3) · 봉인=적 처치, 또는 사자성어 발동</small></div>
         <ol>
           <li><b>소환</b><span>지역별 1단계 한자를 품은 자령이 무작위로 나옵니다. 목표에 모자란 재료는 뽑을수록 확률이 올라갑니다.</span></li>
-          <li><b>목적 소환</b><span>네 가지 중 하나를 고릅니다. <em>균형</em>은 목표와 성어 재료를 고루 섞고, <em>탐색</em>은 아직 못 본 한자를 우선하며, <em>계보</em>는 목표 계보의 재료만 노리고(12회마다 재료 1기 보장 · 30회 누적 시 확정 지급), <em>중복 수집</em>은 농축과 분해에 쓸 보유 한자를 다시 부릅니다.</span></li>
+          <li><b>목적 소환</b><span>네 가지 중 하나를 고릅니다. <em>균형</em>은 목표와 성어 재료를 고루 섞고, <em>탐색</em>은 아직 못 본 한자를 우선하며, <em>계보</em>는 목표 계보의 재료만 노리고(12회마다 재료 1기 보장 · 30회 누적 시 확정 지급), <em>중복 수집</em>은 농축과 분해에 쓸 보유 한자를 다시 부릅니다. 별승급 진법에서는 상품마다 나오는 별 구간이 정해져 있습니다 — <em>기본·탐색·중복</em> 1~3★, <em>중급</em> 2~5★, <em>고급</em> 3~8★ 이며 구간 안에서도 낮은 별이 더 흔합니다. 상위 별은 뽑기가 아니라 3기 조합으로 올립니다.</span></li>
           <li><b>오행 공명</b><span>같은 진에 그 진의 오행 자령을 4·8·12·16기 모으면 단계가 올라가고, 단계마다 그 진의 피해가 더해집니다. 자동배치가 알려 주는 "오행 공명 N→M단계"가 이 값입니다.</span></li>
           <li><b>인연 연구</b><span>엽전을 들여 목표 재료가 나올 가중치를 올립니다. 최고 5단계이며 각 단계는 정해진 웨이브를 지나야 열립니다(3키).</span></li>
-          <li><b>10연 소환</b><span>10웨이브를 지키면 개방됩니다. Q키 또는 10연 버튼으로 현재 소환 비용 10회를 한 번에 지불합니다.</span></li>
+          <li><b>10연 소환</b><span>10웨이브를 지키면 개방됩니다. Q키 또는 10연 버튼으로 현재 소환 비용 10회를 한 번에 지불합니다. 별승급 진법에서는 열 장 안에 기본 밴드 상단인 3★ 1기가 보장됩니다.</span></li>
           <li><b>합성</b><span>실제 구성식의 재료를 모두 보유하면 조합 서책에 카드가 열립니다. 木+木처럼 같은 글자 두 개도 각각 필요합니다.</span></li>
           <li><b>별승급 진법</b><span>천자문 실제 획수로 기본 별이 정해집니다. 같은 오행·같은 현재 별 자령 3기를 고르면 3기가 모두 사라지고 같은 오행의 다음 별 자령 1기를 무작위로 얻으며 최고 8성입니다. 잠금·농축·목표·사자성어 자령은 소모 대상에서 빠집니다.</span></li>
           <li><b>방식</b><span>반자동은 가능한 조합만 제안합니다. 목표 자동은 목표 경로의 조합만 자동 실행하며, 수동은 선택한 한자가 포함된 조합만 봅니다.</span></li>
@@ -937,6 +954,12 @@ let evolutionRenderKey = "";
 let goalRenderKey = "";
 let selectedRenderKey = "";
 let runInventoryRenderKey = "";
+/* R14 보관고 도구는 상단 한 줄로 최소화한다 — 오행 칩 5 + 정렬 토글 1.
+   한 판 안에서만 쓰는 임시 시야라 localStorage 로 남기지 않는다. */
+type RunInventorySort = "recent" | "element" | "star";
+const RUN_INVENTORY_SORTS: readonly RunInventorySort[] = ["recent", "element", "star"];
+let runInventoryElementFilter: Wuxing | null = null;
+let runInventorySort: RunInventorySort = "recent";
 let idiomRenderKey = "";
 let elementUpgradeRenderKey = "";
 let formationRenderKey = "";
@@ -1282,11 +1305,14 @@ function warmCombatSpriteCaches(): void {
  * 패널에는 요약 몇 줄과 [열기] 버튼만 남는다.
  * 엔진은 계속 돌기 때문에 aria-modal 은 false 다.
  */
-type FocusFrameId = "growth" | "concentration";
+type FocusFrameId = "growth" | "concentration" | "inventory";
 
 const FOCUS_FRAME_MOUNTS: ReadonlyArray<{ id: FocusFrameId; source: string; target: string }> = [
   { id: "growth", source: ".growth-layout", target: "#growth-frame-body" },
-  { id: "concentration", source: "#concentration-layout", target: "#concentration-frame-body" }
+  { id: "concentration", source: "#concentration-layout", target: "#concentration-frame-body" },
+  // R14: 보관고. 많이 뽑는 구조라 376px 패널의 1열 목록으로는 스크롤이 끝없이
+  // 길어졌다. 목록 DOM 을 통째로 전장 위 격자 프레임으로 옮긴다.
+  { id: "inventory", source: "#run-inventory-layout", target: "#inventory-frame-body" }
 ];
 
 let openFocusFrame: FocusFrameId | null = null;
@@ -1317,6 +1343,9 @@ function setFocusFrame(id: FocusFrameId | null): void {
   } else if (id === "concentration") {
     concentrationRenderKey = "";
     renderConcentration();
+  } else if (id === "inventory") {
+    runInventoryRenderKey = "";
+    renderRunInventory();
   }
 }
 
@@ -2295,8 +2324,8 @@ interface SummonProductMeta {
 // 두 티어가 같은 별 아이콘을 쓰면 색만이 유일한 구분이 되어 색각 차이에서 무너진다.
 const SUMMON_PRODUCTS: readonly SummonProductMeta[] = Object.freeze([
   { intent: "balanced", label: "기본 소환", effect: "전체 풀", tint: "#a8791f", icon: "v4/shop/shop-default-coin-v1" },
-  { intent: "midstar", label: "중급 소환", effect: "2★ 이상 확정", tint: "#306f89", icon: "v5/shop/shop-tier-mid-v1" },
-  { intent: "highstar", label: "고급 소환", effect: "3★ 이상 확정", tint: "#af3629", icon: "v5/shop/shop-tier-high-v1" },
+  { intent: "midstar", label: "중급 소환", effect: "2~5★ 확정", tint: "#306f89", icon: "v5/shop/shop-tier-mid-v1" },
+  { intent: "highstar", label: "고급 소환", effect: "3~8★ 확정", tint: "#af3629", icon: "v5/shop/shop-tier-high-v1" },
   { intent: "discovery", label: "탐색 소환", effect: "새 한자 ×3.4", tint: "#3f7d6e", icon: "v4/shop/shop-explore-compass-lantern-v1" },
   { intent: "lineage", label: "계보 소환", effect: "목표·성어 재료 ×3.2", tint: "#3a5794", icon: "v4/shop/shop-lineage-scroll-v1" },
   { intent: "concentration", label: "중복 소환", effect: "보유 중복 ↑ · 농축 재료", tint: "#9a6d16", icon: "v4/shop/shop-duplicate-cards-v1" }
@@ -2347,24 +2376,30 @@ function renderSummonShop(): void {
   const products = SUMMON_PRODUCTS
     .filter((product) => engine.isSummonProductAvailable(product.intent))
     .map((product) => {
-      // 좁은 지역 풀에서는 보장 별이 한 단계 내려간다. 카드 문구도 실효 값을 따른다.
-      const floor = engine.summonTierFloor(product.intent);
-      return floor === null ? product : { ...product, effect: `${floor}★ 이상 확정` };
+      // 좁은 지역 풀에서는 밴드 하한이 한 단계 내려간다. 카드 문구도 실효 밴드를 따른다.
+      const band = engine.summonStarBand(product.intent);
+      if (band === null) return { ...product, band: null, bandLabel: "" };
+      const bandLabel = `${band.min}~${band.max}★${band.min > 1 ? " 확정" : ""}`;
+      // 탐색·중복은 밴드가 아니라 가중이 정체성이므로 효과 문구를 그대로 두고
+      // 밴드는 툴팁으로만 알린다. 기본·티어는 밴드 자체가 상품 설명이다.
+      const showsBand = product.intent === "balanced" || band.min > 1;
+      return { ...product, band, bandLabel, effect: showsBand ? bandLabel : product.effect };
     });
-  const casualTier = state.mode === "casual";
+  // 10연은 균형 밴드를 그대로 쓰므로 보장선도 그 상한(기본 3★)이다.
+  const multiBand = engine.summonStarBand("balanced");
   const key = `${state.mode}|${base}|${tenCost}|${multiUnlocked ? "10" : "-"}|${state.gold}|${active ? "on" : "off"}`
+    + `|${multiBand === null ? "-" : multiBand.max}`
     + `|${products.map((product) => `${product.intent}:${product.effect}`).join(",")}`;
   if (key === summonShopRenderKey) return;
   summonShopRenderKey = key;
   const cards = products.map((product) => {
     const price = base + SUMMON_SURCHARGE[product.intent];
     const affordable = state.gold >= price;
-    const tiered = casualTier && (product.intent === "balanced" || engine.summonTierFloor(product.intent) !== null);
-    const effect = tiered && product.intent === "balanced" ? "전체 풀 · 짝 맞춤 보정" : product.effect;
+    const banded = product.band !== null;
     return summonCardMarkup({
       key: product.intent,
       label: product.label,
-      effect,
+      effect: product.effect,
       tint: product.tint,
       icon: product.icon,
       price: `${price} 엽전`,
@@ -2374,13 +2409,14 @@ function renderSummonShop(): void {
       testId: product.intent === "balanced" ? "summon-button" : undefined,
       title: `${product.label} · ${product.effect} · ${price}엽전`
         + (product.intent === "balanced" ? "" : ` (기본 ${base} + 목적 ${SUMMON_SURCHARGE[product.intent]})`)
-        + (tiered ? ` · ${PAIR_BOOST_NOTE}` : "")
+        + (banded && product.effect !== product.bandLabel ? ` · ${product.bandLabel}` : "")
+        + (banded ? ` · 낮은 별이 더 흔합니다 · ${PAIR_BOOST_NOTE}` : "")
     });
   });
   cards.push(summonCardMarkup({
     key: "multi",
     label: "10연 소환",
-    effect: multiUnlocked ? "기본 확률 10회" : "10웨이브에 개방",
+    effect: multiUnlocked ? (multiBand === null ? "기본 확률 10회" : `${multiBand.max}★ 1기 보장`) : "10웨이브에 개방",
     tint: "#a8791f",
     icon: "v4/shop/shop-ten-pull-coin-bundle-v1",
     price: multiUnlocked ? `${tenCost} 엽전` : "10W 개방",
@@ -2389,7 +2425,10 @@ function renderSummonShop(): void {
     hotkey: "Q",
     wide: cards.length % 2 === 1,
     testId: "multi-summon-button",
-    title: multiUnlocked ? `10연 소환 · ${tenCost}엽전 · 할증 없음` : "10웨이브를 지키면 열립니다"
+    title: multiUnlocked
+      ? `10연 소환 · ${tenCost}엽전 · 할증 없음`
+        + (multiBand === null ? "" : ` · 기본 밴드 ${multiBand.min}~${multiBand.max}★ · ${multiBand.max}★ 1기 보장`)
+      : "10웨이브를 지키면 열립니다"
   }));
   must<HTMLElement>("#summon-shop").innerHTML = cards.join("");
 }
@@ -3849,10 +3888,23 @@ function renderCodexDetail(definition: HanziDefinition | undefined): void {
     </div>
   `;
 }
+function runInventorySortLabel(sort: RunInventorySort): string {
+  return sort === "recent" ? "획득순" : sort === "element" ? "오행순" : engine.state.mode === "casual" ? "별순" : "단계순";
+}
+
+/*
+ * R14 보관고.
+ *
+ * 목록 DOM(#run-inventory-layout)은 집중 프레임 본문에 얹혀 있다. 카드는
+ * 격자 한 칸(약 92x110)이라 한 눈에 들어오는 정보만 남긴다 — 초상 · 한자 ·
+ * 훈음 · 오행 점 · 별. 나머지(기술 이름·농축 단계)는 title 로 내린다.
+ * 같은 한자 묶음(캐주얼은 한자+별)은 계속 한 장으로 겹쳐 ×N 으로 센다.
+ */
 function renderRunInventory(): void {
   const selectedId = engine.state.selectedTowerId;
   const active = engine.state.phase === "prep" || engine.state.phase === "combat";
-  const key = engine.state.inventoryTowers.map((tower) => `${tower.id}:${tower.locked}:S${tower.casualStar ?? 0}:C${tower.concentration ?? 0}:${tower.concentrationPath ?? "-"}`).join("|") + `|${selectedId ?? "none"}|${active ? "active" : "inactive"}|${engine.state.mode}`;
+  const key = engine.state.inventoryTowers.map((tower) => `${tower.id}:${tower.locked}:S${tower.casualStar ?? 0}:C${tower.concentration ?? 0}:${tower.concentrationPath ?? "-"}`).join("|")
+    + `|${selectedId ?? "none"}|${active ? "active" : "inactive"}|${engine.state.mode}|${runInventoryElementFilter ?? "all"}|${runInventorySort}`;
   must<HTMLElement>("#run-inventory-count").textContent = String(engine.state.inventoryTowers.length);
   if (key === runInventoryRenderKey) return;
   runInventoryRenderKey = key;
@@ -3862,20 +3914,41 @@ function renderRunInventory(): void {
     const groupKey = engine.state.mode === "casual" ? `${tower.char}:${casualStarOf(tower)}` : tower.char;
     grouped.set(groupKey, [...(grouped.get(groupKey) ?? []), tower]);
   }
-  must<HTMLElement>("#run-inventory-heading-count").textContent = `${engine.state.inventoryTowers.length}개 · ${grouped.size}종`;
+  must<HTMLElement>("#run-inventory-heading-count").textContent = `${engine.state.inventoryTowers.length}기 · ${grouped.size}종`;
   const cleanupAssessments = new Map(engine.cleanupAssessments().map((assessment) => [assessment.towerId, assessment]));
   const cleanupCandidates = engine.cleanupCandidates(8, true);
   must<HTMLButtonElement>("#cleanup-recommended-button").disabled = !active || cleanupCandidates.length === 0;
   must<HTMLButtonElement>("#cleanup-recommended-button").textContent = cleanupCandidates.length > 0 ? `정리 후보 ${cleanupCandidates.length}기 분해` : "보호 완료";
+  const elementCounts = new Map<Wuxing, number>(WUXING_ORDER.map((wuxing) => [wuxing, 0]));
+  for (const tower of engine.state.inventoryTowers) elementCounts.set(tower.wuxing, (elementCounts.get(tower.wuxing) ?? 0) + 1);
+  must<HTMLElement>("#run-inventory-element-filters").innerHTML = WUXING_ORDER.map((wuxing) => {
+    const on = runInventoryElementFilter === wuxing;
+    return `<button type="button" data-inventory-element="${wuxing}" class="${on ? "is-active" : ""}" aria-pressed="${String(on)}" title="${wuxing}행만 보기 (다시 누르면 전체)" style="--filter-element:${ELEMENT_STYLES[wuxing].color}">${wuxing}<small>${elementCounts.get(wuxing) ?? 0}</small></button>`;
+  }).join("");
+  const sortButton = must<HTMLButtonElement>("#run-inventory-sort");
+  sortButton.textContent = runInventorySortLabel(runInventorySort);
+  sortButton.title = `정렬 · ${runInventorySortLabel(runInventorySort)} (눌러 전환)`;
   if (engine.state.inventoryTowers.length === 0) {
-    list.innerHTML = '<div class="empty-run-inventory"><b>대기 중인 자령이 없습니다</b><span>설정에서 자동 배치를 끄거나 전장 자령을 보관하세요.</span></div>';
+    list.innerHTML = '<div class="empty-run-inventory"><b>보관 중인 자령이 없습니다</b><span>상점에서 소환하세요</span><button type="button" data-inventory-goto-shop>상점으로</button></div>';
     return;
   }
   const selectedTower = engine.state.inventoryTowers.find((tower) => tower.id === selectedId);
-  list.innerHTML = [...grouped.values()].sort((left, right) => {
-    const leftCandidate = left.some((tower) => cleanupAssessments.get(tower.id)?.protected === false) ? 0 : 1;
-    const rightCandidate = right.some((tower) => cleanupAssessments.get(tower.id)?.protected === false) ? 0 : 1;
-    return leftCandidate - rightCandidate || right.length - left.length || left[0]!.char.localeCompare(right[0]!.char);
+  const visible = [...grouped.values()].filter((stack) => runInventoryElementFilter === null || stack[0]!.wuxing === runInventoryElementFilter);
+  if (visible.length === 0) {
+    list.innerHTML = `<div class="empty-run-inventory"><b>${runInventoryElementFilter}행 자령이 없습니다</b><span>오행 칩을 다시 눌러 전체를 보세요</span></div>`;
+    return;
+  }
+  const rank = (stack: Tower[]): number => Math.max(...stack.map((tower) => tower.id));
+  const grade = (tower: Tower): number => (engine.state.mode === "casual" ? casualStarOf(tower) : tower.stage);
+  list.innerHTML = visible.sort((left, right) => {
+    if (runInventorySort === "element") {
+      const gap = WUXING_ORDER.indexOf(left[0]!.wuxing) - WUXING_ORDER.indexOf(right[0]!.wuxing);
+      if (gap !== 0) return gap;
+    } else if (runInventorySort === "star") {
+      const gap = grade(right[0]!) - grade(left[0]!);
+      if (gap !== 0) return gap;
+    }
+    return rank(right) - rank(left);
   }).map((stack) => {
     const tower = selectedTower && stack.some((candidate) => candidate.id === selectedTower.id) ? selectedTower : stack.find((candidate) => !candidate.locked) ?? stack[0]!;
     const visual = jaryeongVisualFor(tower.char, tower.wuxing, engine.state.region);
@@ -3886,11 +3959,15 @@ function renderRunInventory(): void {
     const star = casualStarOf(tower);
     const progression = engine.state.mode === "casual" ? `${star}★ ${CASUAL_STAR_NAMES[star]}` : STAGE_NAMES[tower.stage];
     const skill = engine.towerHasActiveSkills(tower) ? definitionForTower(engine.catalog, tower.definitionId).combat.abilities.semantic.name : engine.state.mode === "casual" ? "기본 공격·2★ 해금" : "기본 공격·합성 재료";
-    return `<button class="run-inventory-card ${selected ? "is-selected" : ""} ${candidates > 0 ? "is-cleanup-candidate" : "is-protected-stack"}" type="button" data-run-inventory-id="${tower.id}" style="--inventory-element:${ELEMENT_STYLES[tower.wuxing].color};--inventory-star:${engine.state.mode === "casual" ? CASUAL_STAR_COLORS[star] : STAGE_COLORS[tower.stage]}">
+    const detail = `${tower.char} ${learning.short} · ${tower.wuxing}행 · ${progression} · ${skill}${concentration > 0 ? ` · 농축 ${concentration}` : ""} · 보관 ${stack.length}기`;
+    return `<button class="run-inventory-card ${selected ? "is-selected" : ""} ${candidates > 0 ? "is-cleanup-candidate" : "is-protected-stack"}" type="button" data-run-inventory-id="${tower.id}" title="${escapeHtml(detail)}" aria-label="${escapeHtml(detail)}" style="--inventory-element:${ELEMENT_STYLES[tower.wuxing].color};--inventory-star:${engine.state.mode === "casual" ? CASUAL_STAR_COLORS[star] : STAGE_COLORS[tower.stage]}">
       <span class="run-inventory-spirit" style="${visualBackgroundStyle(visual)}" aria-hidden="true"></span>
       <b>${tower.char}</b>
-      <span><strong>${escapeHtml(learning.short)} <i>×${stack.length}</i></strong><small>${progression} · ${skill}${concentration > 0 ? ` · 濃 ${concentration}` : ""}</small></span>
-      <em>${selected ? "찬 칸 교체" : candidates > 0 ? `정리 ${candidates}` : "보호"}</em>
+      <span><strong>${escapeHtml(learning.short)}</strong><small>${engine.state.mode === "casual" ? CASUAL_STAR_NAMES[star] : progression}</small></span>
+      <i class="run-inventory-dot" aria-hidden="true">${tower.wuxing}</i>
+      ${stack.length > 1 ? `<mark class="run-inventory-stack">×${stack.length}</mark>` : ""}
+      ${engine.state.mode === "casual" ? `<u class="run-inventory-star">${star}★</u>` : ""}
+      <em>${selected ? "선택됨" : candidates > 0 ? "정리" : "보호"}</em>
     </button>`;
   }).join("");
 }
@@ -6890,14 +6967,38 @@ must<HTMLElement>("#goal-selector-list").addEventListener("click", (event) => {
   }
 });
 must<HTMLElement>("#run-inventory-list").addEventListener("click", (event) => {
-  const id = Number((event.target as HTMLElement).closest<HTMLButtonElement>("[data-run-inventory-id]")?.dataset.runInventoryId);
+  const target = event.target as HTMLElement;
+  if (target.closest("[data-inventory-goto-shop]")) {
+    setPanelTab("shop");
+    return;
+  }
+  const id = Number(target.closest<HTMLButtonElement>("[data-run-inventory-id]")?.dataset.runInventoryId);
   if (!Number.isInteger(id)) return;
   engine.selectTower(id);
   selectedRenderKey = "";
   runInventoryRenderKey = "";
-  showToast("배치할 자령을 선택했습니다. 빈 칸은 배치, 찬 칸은 원자 교체합니다.");
+  // 보관고 프레임은 전장을 덮는다. 고른 즉시 걷어야 다음 클릭이 칸에 닿는다.
+  // 선택 상태는 그대로 남으므로 곧바로 배치할 수 있다(다시 열기 = 인벤 탭).
+  if (openFocusFrame === "inventory") setFocusFrame(null);
+  showToast("전장 빈 칸을 눌러 배치 · 찬 칸은 교체됩니다");
   syncPanel();
 });
+must<HTMLElement>("#run-inventory-layout").addEventListener("click", (event) => {
+  const target = event.target as HTMLElement;
+  const element = target.closest<HTMLButtonElement>("[data-inventory-element]")?.dataset.inventoryElement as Wuxing | undefined;
+  if (element) {
+    runInventoryElementFilter = runInventoryElementFilter === element ? null : element;
+    runInventoryRenderKey = "";
+    renderRunInventory();
+    return;
+  }
+  if (target.closest("#run-inventory-sort")) {
+    runInventorySort = RUN_INVENTORY_SORTS[(RUN_INVENTORY_SORTS.indexOf(runInventorySort) + 1) % RUN_INVENTORY_SORTS.length]!;
+    runInventoryRenderKey = "";
+    renderRunInventory();
+  }
+});
+must<HTMLButtonElement>("#run-inventory-frame-open").addEventListener("click", () => setFocusFrame("inventory"));
 must<HTMLButtonElement>("#cleanup-recommended-button").addEventListener("click", () => {
   const candidates = engine.cleanupCandidates(8, true);
   if (candidates.length === 0) return;
@@ -7575,10 +7676,11 @@ window.addEventListener("resize", () => {
  * 도착 전까지 먹 글자와 버튼만 메뉴 위에 둥둥 떠 보였다. CSS 가 쓰는
  * 것과 같은 경로로 미리 받아 둔다(R7-30 의 한지 바탕과 짝).
  */
-for (const path of ["/assets/ui/main-menu-b/ui/p00-scroll-frame-v1.png"]) {
+for (const path of ["assets/ui/main-menu-b/ui/p00-scroll-frame-v1.png"]) {
   const warm = new Image();
   warm.decoding = "async";
-  warm.src = path;
+  // 하위 경로 배포(GitHub Pages)에서 루트 절대 경로는 404 가 된다 — 문서 기준으로.
+  warm.src = new URL(`${import.meta.env.BASE_URL}${path}`, document.baseURI).toString();
 }
 
 syncMapZoomControl();
