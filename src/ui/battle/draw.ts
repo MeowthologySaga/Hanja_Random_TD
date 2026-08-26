@@ -46,7 +46,7 @@ import { jaryeongSpriteImage } from "../jaryeong-sprites";
 import { isLockSpriteReady, LOCK_SPRITE_SIZE, lockSpriteImage } from "../lock-sprites";
 import { CELL_SOCKET_SIZE, cellSocketImage, isCellSocketReady } from "../p0-component-sprites";
 import { EXIT_SEAL_SIZE, exitSealImage, isReady as isPolishSpriteReady } from "../polish-sprites";
-import { calmBattlefield, canvas, context, ctx, reducedMotion } from "../app-context";
+import { calmBattlefield, canvas, context, ctx, reducedMotion, shell } from "../app-context";
 import { casualStarOf } from "../format";
 import { drawHoveredTowerCard, drawTower, flushTowerPlaques } from "./draw-tower";
 import { type IdiomRippleFx, idiomRipples, pushPooled, ringPool, rings, takeRing, updateAndDrawFx } from "./fx";
@@ -777,10 +777,24 @@ function refreshSealedIdiomTowerMarks(): void {
   if (canvas.dataset.idiomSealCells !== signature) canvas.dataset.idiomSealCells = signature;
 }
 
+/**
+ * 수련장 7걸음이 정해 둔 성어 줄(전역 칸 번호). 수련 중이 아니면 null.
+ *
+ * 같은 칸에서 여러 방향(가로·세로·대각)으로 줄이 자랄 수 있어 점선 안내가
+ * 여러 칸에 흩어진다. 수련장은 각본이 줄 하나를 정해 두고 그 줄의 다음 칸
+ * 하나만 누를 수 있게 잠그므로(tutorial.ts allowCell), 점선도 그 줄 안으로
+ * 좁혀야 "점선인데 안 눌리는 칸"이 생기지 않는다.
+ */
+function tutorialIdiomLine(): Set<number> | null {
+  const raw = shell.dataset.tutorialIdiomCells;
+  if (!raw) return null;
+  return new Set(raw.split(",").map(Number).filter((cell) => Number.isInteger(cell)));
+}
+
 function refreshIdiomPlacementGuide(): void {
   const idiom = ctx.engine.currentIdiomTarget();
   const key = idiom
-    ? `${idiom.id}|${ctx.engine.state.towers.map((tower) => `${tower.cell}:${tower.char}`).sort().join(",")}|${ctx.engine.state.unlockedFormations.join("")}`
+    ? `${idiom.id}|${ctx.engine.state.towers.map((tower) => `${tower.cell}:${tower.char}`).sort().join(",")}|${ctx.engine.state.unlockedFormations.join("")}|${shell.dataset.tutorialIdiomCells ?? ""}`
     : "";
   if (key === idiomPlacementGuideKey) return;
   idiomPlacementGuideKey = key;
@@ -819,7 +833,10 @@ function refreshIdiomPlacementGuide(): void {
   }
 
   // 직선 규칙에서는 다음 자리가 줄 위에 정해져 있다. 코어가 짚어 준 칸만 쓴다.
-  const nextCells = chain.complete ? [] : chain.nextCells.filter((cell) => ctx.engine.isCellUnlocked(cell));
+  const scriptedLine = tutorialIdiomLine();
+  const nextCells = chain.complete
+    ? []
+    : chain.nextCells.filter((cell) => ctx.engine.isCellUnlocked(cell) && (scriptedLine === null || scriptedLine.has(cell)));
   ctx.idiomPlacementGuide = { idiom, chain, orders, nextCells };
   // 배치 안내 상태를 캔버스 데이터셋으로 내보내 캡처·e2e 가 읽을 수 있게 한다.
   canvas.dataset.idiomTarget = idiom.chars;
