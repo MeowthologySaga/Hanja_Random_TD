@@ -33,7 +33,7 @@ test("settings toggle opens the talisman tab and tracing earns sealed rewards", 
   await page.getByTestId("start-run").click();
 
   // 기본 꺼짐 — 탭바는 9개 그대로, 부적 탭은 DOM 에도 없다.
-  await expect(page.locator(".panel-tabs > button")).toHaveCount(9);
+  await expect(page.locator(".panel-tabs > button")).toHaveCount(8);
   await expect(page.locator("#talisman-tab")).toHaveCount(0);
 
   // 설정의 「학습 모드 · 부적 만들기」 토글을 켠다.
@@ -45,7 +45,7 @@ test("settings toggle opens the talisman tab and tracing earns sealed rewards", 
 
   // 탭 등장 → 부적지 패널 진입. 훈음이 병기된다.
   await expect(page.locator("#talisman-tab")).toBeVisible();
-  await expect(page.locator(".panel-tabs > button")).toHaveCount(10);
+  await expect(page.locator(".panel-tabs > button")).toHaveCount(9);
   await page.locator("#talisman-tab").click();
   await expect(page.locator(".game-shell")).toHaveAttribute("data-panel-tab", "talisman");
   await expect(page.locator("#talisman-panel")).toBeVisible();
