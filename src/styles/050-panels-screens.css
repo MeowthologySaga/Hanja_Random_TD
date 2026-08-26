@@ -1,0 +1,728 @@
+/* src/ui-skin.css 1607~2334줄에서 그대로 옮겨 왔다 — 절 22~26 — 패널 탭 공통·시작/결과 화면·응급 수정. 순서는 ui-skin.css 배럴이 지킨다. */
+/* ══════════════════════════════════════════════════════
+   22. 남은 패널 탭 공통 — 능력·강화·농축·인벤·성어·기록
+   ══════════════════════════════════════════════════════ */
+
+/* 카드류: 남색 유리판 → 먹지 판 */
+.ability-pills span,
+.ability-guide-card,
+.ability-loadout > *,
+.growth-stat-row,
+.growth-trait-row,
+.growth-upgrade-section,
+.dismantle-row,
+.dismantle-quote,
+.concentration-focus,
+.concentration-paths > *,
+.concentration-payment > *,
+.concentration-compare > *,
+.run-inventory-card,
+.idiom-target-card,
+.idiom-result,
+.idiom-strategy,
+.idiom-material-guide,
+.selected-actions > * {
+  border: 0 !important;
+  border-radius: var(--r-sm) !important;
+  background: linear-gradient(180deg, #241d15 0%, #16110c 100%) !important;
+  box-shadow:
+    var(--bevel-up),
+    0 0 0 1px rgba(122, 90, 42, 0.14);
+}
+
+/* 목록 홈 */
+.growth-upgrade-list,
+.growth-dismantle-list,
+.concentration-target-list,
+.run-inventory-list,
+.evolution-options,
+.combat-feed,
+.ability-guide-list {
+  border-radius: var(--r-md);
+  background: var(--mat-well);
+  box-shadow: var(--bevel-in), 0 0 0 1px rgba(122, 90, 42, 0.1);
+}
+
+/* 오행 탭 (강화 제련소) */
+.growth-element-tabs button {
+  border: 0 !important;
+  border-radius: var(--r-sm) !important;
+  background: rgba(0, 0, 0, 0.42) !important;
+  box-shadow: inset 0 0 0 1px rgba(128, 108, 74, 0.2);
+}
+
+.growth-element-tabs button.is-selected {
+  background: var(--mat-brass-hot) !important;
+  box-shadow: var(--bevel-up);
+}
+
+/* 전투 기록 */
+.combat-feed li {
+  border: 0;
+  border-left: 3px solid var(--gold-500);
+  border-radius: var(--r-sm);
+  background: rgba(0, 0, 0, 0.34);
+  font-size: var(--fs-2xs);
+}
+
+.combat-feed li > b {
+  color: var(--gold-100);
+}
+
+/* 성어 진법 */
+.idiom-glyphs i,
+.idiom-target-glyphs i,
+.idiom-codex-glyphs i {
+  border: 0 !important;
+  border-radius: var(--r-sm) !important;
+  background: rgba(0, 0, 0, 0.46) !important;
+  box-shadow: inset 0 0 0 1px rgba(128, 108, 74, 0.24);
+  color: var(--text-300);
+}
+
+.idiom-glyphs i.is-owned,
+.idiom-target-glyphs i.is-owned {
+  color: var(--gold-100);
+  background: var(--mat-brass-hot) !important;
+  box-shadow: var(--bevel-up), 0 0 12px rgba(155, 113, 55, 0.3);
+}
+
+/* 14px 미만으로 남아 읽기 힘들던 본문들 */
+.growth-stat-row span,
+.growth-trait-row span,
+.concentration-focus span,
+.run-inventory-card span,
+.ability-pills span > b small,
+.dismantle-row span {
+  font-size: var(--fs-2xs);
+}
+
+/* 자령 탭 우측 조작 버튼이 말줄임으로 잘리던 문제 */
+.selected-actions {
+  gap: var(--sp-1);
+}
+
+.selected-actions button {
+  padding: 3px 6px;
+  font-size: 10px;
+  letter-spacing: -0.02em;
+}
+
+/* 좁은 3열 격자 안에서 화살표 여백이 글자를 밀어내 "모든 5"처럼 잘렸다. */
+select,
+.growth-filters select,
+.dismantle-toolbar select {
+  min-width: 0;
+  padding: 4px 16px 4px 6px;
+  overflow: hidden;
+  background-position:
+    calc(100% - 9px) 50%,
+    calc(100% - 5px) 50%,
+    0 0;
+  text-overflow: ellipsis;
+  letter-spacing: -0.03em;
+}
+
+/* ══════════════════════════════════════════════════════
+   23. 시작 화면 · 결과 화면
+   ══════════════════════════════════════════════════════ */
+
+.title-seal i {
+  border: 0;
+  border-radius: 999px;
+  background: radial-gradient(circle at 42% 34%, var(--gold-200), var(--gold-500) 62%, var(--gold-700));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 245, 214, 0.5),
+    inset 0 -2px 4px rgba(0, 0, 0, 0.5),
+    0 3px 10px rgba(0, 0, 0, 0.6),
+    0 0 22px rgba(155, 113, 55, 0.28);
+  color: #2b2009;
+  font-weight: 900;
+}
+
+.title-lead {
+  color: var(--text-200);
+  font-size: var(--fs-sm);
+  line-height: 1.7;
+}
+
+.game-mode-option,
+.region-option {
+  clip-path: var(--clip-cut-sm);
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: linear-gradient(180deg, #2a2218 0%, #17120c 100%) !important;
+  box-shadow:
+    var(--bevel-up),
+    0 0 0 1px rgba(122, 90, 42, 0.16);
+}
+
+.game-mode-option:hover,
+.region-option:hover:not(:disabled) {
+  background: linear-gradient(180deg, #3a2e1f 0%, #201911 100%) !important;
+  box-shadow: var(--bevel-up), 0 0 0 1px rgba(122, 90, 42, 0.45);
+}
+
+.game-mode-option.is-selected,
+.region-option.is-selected {
+  background: linear-gradient(180deg, #5c4722 0%, #33270f 100%) !important;
+  box-shadow:
+    var(--bevel-up),
+    0 0 0 2px var(--gold-300),
+    0 0 24px rgba(155, 113, 55, 0.28);
+}
+
+.game-mode-option i,
+.region-option i,
+.region-option > span:first-child {
+  color: var(--gold-100);
+  border-radius: var(--r-sm);
+  background: rgba(0, 0, 0, 0.44);
+  box-shadow: inset 0 0 0 1px rgba(122, 90, 42, 0.34);
+}
+
+.game-mode-option b,
+.region-option b {
+  color: var(--text-100);
+  font-size: var(--fs-md);
+}
+
+.game-mode-option small,
+.region-option small {
+  color: var(--text-300);
+  font-size: var(--fs-2xs);
+}
+
+.game-mode-option em {
+  color: var(--gold-300);
+  border-radius: 999px;
+  background: rgba(122, 90, 42, 0.14);
+  box-shadow: inset 0 0 0 1px rgba(122, 90, 42, 0.32);
+  font-size: 9px;
+  font-style: normal;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+}
+
+.seed-field {
+  color: var(--gold-200);
+  border: 0;
+  border-radius: var(--r-sm);
+  background: var(--mat-well);
+  box-shadow: var(--bevel-in), 0 0 0 1px rgba(122, 90, 42, 0.24);
+  font-weight: 900;
+  letter-spacing: 0.08em;
+}
+
+/* 봉인전 시작 — 화면의 유일한 1차 행동 */
+#start-button {
+  clip-path: var(--clip-cut-sm);
+  color: #2b2009;
+  border: 0;
+  border-radius: 0;
+  background: linear-gradient(180deg, var(--gold-100) 0%, var(--gold-300) 46%, var(--gold-500) 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 252, 240, 0.7),
+    inset 0 -3px 0 rgba(78, 58, 22, 0.55),
+    0 4px 0 rgba(0, 0, 0, 0.55),
+    0 10px 26px rgba(0, 0, 0, 0.55),
+    0 0 34px rgba(155, 113, 55, 0.3);
+  font-weight: 900;
+  letter-spacing: 0.04em;
+}
+
+#start-button:hover {
+  background: linear-gradient(180deg, #fff8e2 0%, var(--gold-200) 46%, var(--gold-400) 100%);
+}
+
+#start-button:active {
+  box-shadow:
+    inset 0 3px 8px rgba(78, 58, 22, 0.6),
+    0 1px 0 rgba(0, 0, 0, 0.5);
+  transform: translateY(2px);
+}
+
+.title-link-row button,
+.title-help-button {
+  color: var(--text-300);
+  background: transparent;
+  font-size: var(--fs-xs);
+}
+
+.title-link-row button:hover,
+.title-help-button:hover {
+  color: var(--gold-200);
+}
+
+.title-note {
+  color: var(--text-400);
+  font-size: var(--fs-2xs);
+}
+
+.end-stats > * {
+  border: 0 !important;
+  border-radius: var(--r-sm) !important;
+  background: linear-gradient(180deg, #241d15 0%, #16110c 100%) !important;
+  box-shadow: var(--bevel-up), 0 0 0 1px rgba(122, 90, 42, 0.14);
+}
+
+/* .seed-field 는 라벨 감싸개라 홈 처리를 하면 줄 전체가 황동판이 된다. 안쪽 입력만 판다. */
+.seed-field {
+  background: none;
+  box-shadow: none;
+  color: var(--text-300);
+  font-weight: 700;
+  letter-spacing: normal;
+}
+
+.seed-field input {
+  color: var(--gold-200);
+  border: 0;
+  border-radius: var(--r-sm);
+  background: var(--mat-well);
+  box-shadow: var(--bevel-in), 0 0 0 1px rgba(122, 90, 42, 0.26);
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-align: center;
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   24. 표면 매핑 감사 반영 — 액자·모달·잔여 규칙
+   (8개 에이전트 실측 지적: 패널 액자 9종과 모달 5종이 미스킨이었다)
+   ══════════════════════════════════════════════════════════════════ */
+
+/* ── 24-A. 9개 패널의 "액자" 자체가 미스킨이었다 ──────────────
+   내용물에만 재질을 입히고 액자는 12px 라운드 + 1px 헤어라인 그대로여서
+   골격이 계속 대시보드로 읽혔다. */
+.goal-workbench,
+.shop-workbench,
+.evolution-workbench,
+.concentration-workbench,
+.growth-workbench,
+.run-inventory-panel,
+.idiom-panel,
+.combat-readout,
+.selected-card {
+  clip-path: var(--clip-cut);
+  border: 0 !important;
+  border-radius: 0 !important;
+  background:
+    var(--grain),
+    linear-gradient(180deg, #221b13 0%, #16110c 46%, #100c08 100%) !important;
+  box-shadow:
+    var(--bevel-up),
+    0 0 0 1px rgba(122, 90, 42, 0.18);
+}
+
+.concentration-layout > aside,
+.dismantle-workbench,
+.element-growth-workbench {
+  border: 0 !important;
+  border-radius: var(--r-md) !important;
+  background: var(--mat-well) !important;
+  box-shadow: var(--bevel-in), 0 0 0 1px rgba(122, 90, 42, 0.12);
+}
+
+/* ── 24-B. 5개 모달이 통째로 미스킨이었다 ─────────────────────
+   실루엣 5가지(16/16/16/17/4px), 액센트 4계열(금·보라·청록·금)이 섞여 있었다. */
+#help-dialog,
+#settings-dialog,
+#element-upgrade-dialog,
+#ability-guide-dialog,
+#casual-fusion-confirm-dialog {
+  clip-path: var(--clip-cut);
+  border: 0;
+  border-radius: 0;
+  background:
+    var(--changho),
+    var(--grain),
+    radial-gradient(ellipse 90% 46% at 50% 0%, rgba(122, 90, 42, 0.11), transparent 66%),
+    linear-gradient(160deg, #251e15 0%, #17120d 48%, #100c08 100%);
+  box-shadow:
+    var(--bevel-up),
+    0 0 0 1px rgba(122, 90, 42, 0.4),
+    0 28px 90px rgba(0, 0, 0, 0.8);
+}
+
+#help-dialog::backdrop,
+#settings-dialog::backdrop,
+#element-upgrade-dialog::backdrop,
+#ability-guide-dialog::backdrop,
+#casual-fusion-confirm-dialog::backdrop,
+#codex-dialog::backdrop {
+  background: rgba(6, 4, 3, 0.8);
+  backdrop-filter: blur(3px);
+}
+
+.display-mode-option {
+  clip-path: var(--clip-cut-sm);
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: linear-gradient(180deg, #2a2218 0%, #17120c 100%) !important;
+  box-shadow: var(--bevel-up), 0 0 0 1px rgba(122, 90, 42, 0.16);
+}
+
+.display-mode-option.is-selected {
+  background: linear-gradient(180deg, #5c4722 0%, #33270f 100%) !important;
+  box-shadow: var(--bevel-up), 0 0 0 2px var(--gold-300), 0 0 20px rgba(155, 113, 55, 0.24);
+}
+
+.mode-preview {
+  border: 0 !important;
+  border-radius: var(--r-sm) !important;
+  box-shadow: var(--bevel-in), 0 0 0 1px rgba(122, 90, 42, 0.2);
+}
+
+/* iOS 토글 스위치는 게임 UI에서 가장 확실한 "웹앱" 신호다.
+   황동 홈에 물리는 걸쇠로 바꾼다. */
+.settings-toggle {
+  border: 0 !important;
+  border-radius: var(--r-sm) !important;
+  background: linear-gradient(180deg, #241d15 0%, #16110c 100%) !important;
+  box-shadow: var(--bevel-up), 0 0 0 1px rgba(122, 90, 42, 0.16);
+}
+
+.settings-toggle > i {
+  border-radius: var(--r-sm) !important;
+  background: var(--ji-900) !important;
+  box-shadow: var(--bevel-in), inset 0 0 0 1px rgba(128, 108, 74, 0.24) !important;
+}
+
+.settings-toggle > i em {
+  border-radius: 2px !important;
+  background: linear-gradient(180deg, var(--gold-200), var(--gold-500)) !important;
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 248, 226, 0.5) !important;
+}
+
+.audio-setting-row {
+  border: 0 !important;
+  border-radius: var(--r-sm) !important;
+  background: linear-gradient(180deg, #241d15 0%, #16110c 100%) !important;
+  box-shadow: var(--bevel-up), 0 0 0 1px rgba(122, 90, 42, 0.14);
+}
+
+.audio-mute-button {
+  border: 0 !important;
+  border-radius: var(--r-sm) !important;
+  background: var(--mat-brass) !important;
+  box-shadow: var(--bevel-up) !important;
+  color: var(--gold-200) !important;
+}
+
+/* ── 24-C. 도감 카드가 특정도(0,2,0)에 밀려 베벨을 못 받고 있었다 ── */
+.codex-list .codex-jaryeong-card,
+.codex-list .codex-recipe-card,
+.codex-list .codex-idiom-card,
+.codex-list .codex-review-card {
+  box-shadow:
+    var(--bevel-up),
+    0 0 0 1px rgba(122, 90, 42, 0.16);
+}
+
+.codex-list .codex-jaryeong-card.is-selected,
+.codex-list .codex-idiom-card.is-selected {
+  box-shadow:
+    var(--bevel-up),
+    0 0 0 2px var(--gold-300),
+    0 0 22px rgba(155, 113, 55, 0.26);
+}
+
+/* 도감 텍스트 104개를 쓸어가던 포괄 규칙(styles.css:2029)의 차가운 회청색 */
+.codex-list span,
+.codex-toolbar span {
+  color: var(--text-300);
+}
+
+.codex-list .codex-jaryeong-card > img,
+.codex-list .codex-jaryeong-identity i,
+.codex-jaryeong-portrait > span,
+.codex-abilities article,
+.codex-jaryeong-observation article {
+  border: 0 !important;
+  box-shadow: inset 0 0 0 1px rgba(122, 90, 42, 0.24) !important;
+}
+
+.codex-independent-badge {
+  border: 0 !important;
+}
+
+/* ── 24-D. 남은 목록 행·칩의 남색 잔재 ───────────────────────── */
+.growth-stat-row button,
+.growth-trait-row button,
+.growth-element-tabs button,
+.trait-seal,
+.dismantle-toolbar button,
+.goal-choice-card,
+.goal-selector-tools label,
+.goal-mode-tabs,
+.concentration-target-list > button,
+.concentration-focus > header,
+.payment-option,
+.formation-unlock-list button,
+.opening-guide > div,
+.shop-help-strip,
+.ability-pills .ability-card,
+.ability-overview > button,
+.selected-copy h3 .selected-radical,
+.mode-tabs,
+.synergy-strip {
+  border-color: rgba(122, 90, 42, 0.2) !important;
+}
+
+.growth-stat-row button,
+.growth-trait-row button,
+.dismantle-toolbar button,
+.formation-unlock-list button,
+.ability-overview > button {
+  background: var(--mat-brass) !important;
+  box-shadow: var(--bevel-up);
+  color: var(--gold-200) !important;
+}
+
+.growth-stat-row button:hover:not(:disabled),
+.growth-trait-row button:hover:not(:disabled),
+.dismantle-toolbar button:hover:not(:disabled),
+.formation-unlock-list button:hover:not(:disabled) {
+  background: var(--mat-brass-hot) !important;
+  color: var(--gold-100) !important;
+}
+
+.goal-choice-card,
+.opening-guide > div,
+.payment-option,
+.concentration-target-list > button {
+  background: linear-gradient(180deg, #241d15 0%, #16110c 100%) !important;
+  box-shadow: var(--bevel-up), 0 0 0 1px rgba(122, 90, 42, 0.14);
+}
+
+/* 7px 까지 떨어져 있던 강화 탭 본문 */
+.growth-stat-row button,
+.growth-trait-row button {
+  font-size: 10px !important;
+}
+
+/* ── 24-E. 한글로 바꾼 소제목의 조판 ─────────────────────────── */
+.eyebrow,
+.section-heading span,
+.evolution-heading span,
+.codex-dialog .eyebrow {
+  text-transform: none;
+  letter-spacing: 0.34em;
+  font-size: 10px;
+}
+
+/* ── 24-F. 유리효과(backdrop blur)는 웹앱의 서명이다 ─────────── */
+.stage-chip,
+.map-zoom-control,
+.hanja-emphasis-control {
+  backdrop-filter: none;
+}
+
+/* ── 24-G. 1차 행동에 압도적 무게를 준다 ─────────────────────
+   모든 버튼이 같은 크기·같은 채도라 시선이 갈 곳이 없었다. */
+.action-button--summon {
+  background: linear-gradient(180deg, var(--gold-300) 0%, var(--gold-400) 44%, var(--gold-600) 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 250, 232, 0.6),
+    inset 0 -3px 0 rgba(60, 44, 16, 0.6),
+    0 3px 0 rgba(0, 0, 0, 0.55),
+    0 8px 20px rgba(0, 0, 0, 0.5),
+    0 0 30px rgba(155, 113, 55, 0.34);
+}
+
+.action-button--summon b {
+  color: #2b2009;
+  font-size: var(--fs-md);
+}
+
+.action-button--summon small,
+.action-button--summon em {
+  color: #4a3712;
+  font-weight: 900;
+}
+
+.action-button--summon .hotkey {
+  color: var(--gold-100);
+  background: rgba(43, 32, 9, 0.42);
+  box-shadow: inset 0 0 0 1px rgba(43, 32, 9, 0.4);
+}
+
+.action-button--summon:hover:not(:disabled) {
+  background: linear-gradient(180deg, var(--gold-200) 0%, var(--gold-300) 44%, var(--gold-500) 100%);
+}
+
+/* ══════════════════════════════════════════════════════
+   25. 드래그 선택 · 우클릭 메뉴 차단
+   UI 글자가 끌려 파랗게 반전되면 게임 화면이 아니라 문서로 보인다.
+   입력창만 예외로 남긴다.
+   ══════════════════════════════════════════════════════ */
+
+.game-shell,
+.game-shell *,
+.modal-layer,
+.modal-layer *,
+dialog,
+dialog * {
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-user-drag: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.game-shell input,
+.game-shell textarea,
+dialog input,
+dialog textarea {
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+.game-shell img,
+dialog img {
+  pointer-events: none;
+  -webkit-user-drag: none;
+}
+
+::selection {
+  background: rgba(122, 90, 42, 0.32);
+  color: var(--gold-100);
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   26. 공모전 제출 전 응급 수정
+   6개 관점 평가단이 공통 지적한 항목 중 스크린샷에 직접 찍히는 것들.
+   ══════════════════════════════════════════════════════════════════ */
+
+/* ── 26-1. 타이틀 뒤로 게임 UI가 비쳐 "임시 창"으로 보였다 ──────
+   심사위원이 보는 첫 프레임이다. 완전히 가린다. */
+#title-overlay,
+#end-overlay {
+  background:
+    var(--changho),
+    var(--grain),
+    radial-gradient(ellipse 70% 50% at 50% 22%, rgba(150, 112, 50, 0.14), transparent 72%),
+    linear-gradient(180deg, #17120d 0%, #0d0a07 52%, #060504 100%);
+  backdrop-filter: none;
+}
+
+/* ── 26-4. 좌하단 칩 겹침 ──────────────────────────────────────
+   지도 배율 칩과 한자 강조 칩이 1024 폭에서 실제로 포개졌고,
+   오행진 해금 배너가 그 위를 지나 글자가 서로 먹혔다. */
+.map-zoom-control {
+  left: 12px;
+  bottom: 12px;
+  z-index: 12;
+  min-width: 118px;
+  padding: 6px 10px;
+}
+
+.hanja-emphasis-control {
+  left: 138px;
+  bottom: 12px;
+  z-index: 12;
+  min-height: 42px;
+  padding: 6px 10px;
+}
+
+.map-zoom-control small {
+  font-size: 9px;
+}
+
+/* 진 해금 배너가 칩 위로 올라오지 않도록 */
+.canvas-tip,
+.boss-banner {
+  z-index: 11;
+}
+
+/* ── 26-5. 조합표 카드가 4번째 줄 글자 중간에서 잘렸다 ─────────
+   140장 전부 같은 지점에서 잘려, "실제 한자 구성 원리" 주장의
+   유일한 증거 화면이 시각적으로 부정되고 있었다. */
+.codex-recipe-card {
+  min-height: 98px;
+}
+
+.codex-recipe-card small,
+.codex-recipe-card p {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* 도감 상세 본문이 하단 고정 안내문에 가려 문장 중간에서 끊겼다 */
+.codex-detail,
+.codex-jaryeong-detail {
+  padding-bottom: 30px;
+}
+
+/* ── 26-6. 되돌릴 수 없는 버튼이 안전 버튼 옆에 섞여 있었다 ────
+   6개 액션 중 온전히 읽히는 것이 하필 비가역 행동인 "판매 +4" 뿐이라
+   시선이 거기로 먼저 갔다. 색과 여백으로 분리한다. */
+#sell-button,
+.selected-actions button[id*="dismantle"],
+.selected-actions button[data-action="sell"] {
+  color: #ffd9d2 !important;
+  background: linear-gradient(180deg, #4a1e16 0%, #2a100c 100%) !important;
+  box-shadow:
+    var(--bevel-up),
+    0 0 0 1px rgba(159, 47, 35, 0.62) !important;
+}
+
+#sell-button:hover:not(:disabled) {
+  background: linear-gradient(180deg, #6a2a1e 0%, #3a1710 100%) !important;
+}
+
+/* ── 26-9. 남은 영문 라벨 ─────────────────────────────────────── */
+.codex-dialog .eyebrow {
+  font-size: 9px;
+}
+
+/* ── 26-8. 1024x640 응급 처치 ──────────────────────────────────
+   완전한 반응형 재설계는 마감 전날에 할 일이 아니다.
+   겹쳐서 글자가 먹히는 것만 막고, 넘치면 스크롤되게 한다. */
+@media (max-height: 700px), (max-width: 1100px) {
+  .context-deck {
+    overflow-y: auto;
+  }
+
+  .panel-view {
+    min-height: 0;
+  }
+
+  /* 텍스트가 안 보이는 빈 상자로 렌더되던 온보딩 칩과 필터 스트립 */
+  .opening-guide,
+  .shop-help-strip {
+    display: none;
+  }
+
+  .action-button b,
+  .action-button small {
+    word-break: keep-all;
+    overflow-wrap: normal;
+  }
+
+  .hanja-emphasis-control {
+    left: 126px;
+  }
+
+  .hanja-emphasis-control span {
+    display: none;
+  }
+}
+
+/* ── 26-E. 빈 탭이 검은 상자로 방치됐다 ────────────────────────
+   탭을 눌렀는데 340px 순수 검정이 나오면 "고장났나"로 읽힌다. */
+.combat-feed:empty::after {
+  content: "아직 기록이 없습니다. 전투가 시작되면 발동한 능력과 대상이 순서대로 쌓입니다.";
+  display: block;
+  padding: var(--sp-4) var(--sp-3);
+  color: var(--text-400);
+  font-size: var(--fs-xs);
+  line-height: 1.7;
+  text-align: center;
+}
+
+/* ── 26-G. 웨이브 브리핑 대비가 3:1 수준이라 획이 뭉갰다 ──────── */
+.wave-card small {
+  color: var(--text-200);
+}

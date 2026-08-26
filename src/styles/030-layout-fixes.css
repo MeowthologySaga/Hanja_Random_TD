@@ -1,0 +1,351 @@
+/* src/ui-skin.css 875~1225줄에서 그대로 옮겨 왔다 — 절 13~18 — 표면 변경의 여파 정리와 코치마크. 순서는 ui-skin.css 배럴이 지킨다. */
+/* ══════════════════════════════════════════════════════
+   13. 레이아웃 교정 — 12절까지의 표면 변경으로 생긴 여파 정리
+   ══════════════════════════════════════════════════════ */
+
+/* 탭 띠는 2줄 유지. 40px는 너무 낮아 두 줄이 겹쳤다. */
+@media (min-width: 800px) {
+  .control-panel {
+    grid-template-rows: 34px 56px 52px minmax(0, 1fr) 56px 22px 24px;
+  }
+}
+
+@media (min-width: 1500px) and (min-height: 850px) {
+  .control-panel {
+    grid-template-rows: 40px 64px 60px minmax(0, 1fr) 64px 26px 28px;
+  }
+}
+
+.panel-tabs button {
+  min-height: 24px;
+  padding: 1px 3px;
+  line-height: 1.1;
+}
+
+/* .action-row 는 flex:1 이라 남는 세로 공간을 전부 흡수해 버튼이 빈 상자가 된다.
+   상한을 두고 남는 공간은 상점 섹션 사이에 고르게 흩어 놓는다. */
+.shop-workbench {
+  justify-content: flex-start;
+  gap: var(--sp-2);
+  border: 0;
+  border-radius: var(--r-md);
+  background: none;
+  box-shadow: none;
+}
+
+.action-row {
+  flex: 0 0 auto;
+  max-height: 132px;
+  min-height: 92px;
+}
+
+.summon-action-group,
+.action-button--evolve {
+  max-height: 132px;
+}
+
+/* 웨이브 브리핑이 잘리지 않게 */
+.wave-card > div:first-child {
+  min-width: 0;
+}
+
+.wave-card small {
+  display: block;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* 상점 내부 판들도 홈/판 구분을 갖게 */
+.opening-guide,
+.formation-unlock-bar {
+  padding: var(--sp-2);
+}
+
+.shop-help-strip {
+  color: var(--text-400);
+  font-size: 10px;
+}
+
+/* ══════════════════════════════════════════════════════
+   14. 줄바꿈으로 깨지던 소형 라벨 정리
+   ══════════════════════════════════════════════════════ */
+
+/* "중복 수 집", "탐색 새 한 자" 처럼 두세 글자에서 끊기던 것을 한 줄로 고정 */
+.summon-intent-tabs button,
+.mode-tabs button,
+.goal-mode-tabs button,
+.synergy-strip span,
+.shop-help-strip b,
+.shop-help-strip span {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.shop-help-strip {
+  display: flex;
+  gap: var(--sp-2);
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+/* 상점 하단에 고이던 빈 공간을 섹션 사이로 흩는다 */
+.shop-workbench {
+  justify-content: space-between;
+}
+
+/* ══════════════════════════════════════════════════════
+   15. 큰 화면에서 상점 패널에 고이던 빈 공간
+   ══════════════════════════════════════════════════════ */
+
+/* space-between 은 섹션 사이마다 틈을 벌려 오히려 성기게 보였다.
+   내용은 위에서부터 쌓고, 안내 띠만 바닥에 고정해 여백을 한 곳으로 모은다. */
+.shop-workbench {
+  justify-content: flex-start;
+}
+
+.shop-help-strip {
+  margin-top: auto;
+}
+
+/* ══════════════════════════════════════════════════════
+   16. 첫 실행 조작 안내 (코치마크)
+   ══════════════════════════════════════════════════════ */
+
+.coach-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 60;
+  pointer-events: none;
+}
+
+.coach-layer[hidden] {
+  display: none;
+}
+
+/* 거대한 spread 그림자로 대상만 남기고 주변을 어둡게 덮는다. */
+.coach-ring {
+  position: absolute;
+  border: 2px solid var(--gold-200);
+  border-radius: var(--r-md);
+  box-shadow:
+    0 0 0 9999px rgba(8, 6, 4, 0.62),
+    0 0 22px rgba(155, 113, 55, 0.55),
+    inset 0 0 18px rgba(155, 113, 55, 0.28);
+  animation: coach-pulse 1.7s ease-in-out infinite;
+}
+
+@keyframes coach-pulse {
+  0%, 100% { border-color: var(--gold-300); }
+  50% { border-color: var(--gold-100); }
+}
+
+.coach-bubble {
+  position: absolute;
+  width: 258px;
+  padding: var(--sp-3) var(--sp-3) var(--sp-2);
+  pointer-events: auto;
+  clip-path: var(--clip-cut-sm);
+  background:
+    var(--grain),
+    linear-gradient(180deg, #33291c 0%, #1d1710 52%, #14100b 100%);
+  box-shadow:
+    var(--bevel-up),
+    0 0 0 1px rgba(122, 90, 42, 0.42),
+    var(--lift-2);
+}
+
+.coach-step {
+  margin: 0 0 2px;
+  color: var(--gold-500);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.16em;
+}
+
+.coach-bubble b {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--gold-100);
+  font-size: var(--fs-md);
+  font-weight: 900;
+}
+
+.coach-bubble p#coach-body {
+  margin: 0 0 var(--sp-2);
+  color: var(--text-200);
+  font-size: var(--fs-xs);
+  line-height: 1.5;
+}
+
+.coach-actions {
+  display: flex;
+  gap: var(--sp-2);
+  justify-content: flex-end;
+}
+
+.coach-skip,
+.coach-next {
+  padding: 5px 12px;
+  border: 0;
+  border-radius: var(--r-sm);
+  font-size: var(--fs-2xs);
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.coach-skip {
+  color: var(--text-300);
+  background: transparent;
+  box-shadow: inset 0 0 0 1px rgba(128, 108, 74, 0.28);
+}
+
+.coach-skip:hover {
+  color: var(--text-100);
+}
+
+.coach-next {
+  color: var(--gold-100);
+  background: var(--mat-brass-hot);
+  box-shadow: var(--bevel-up);
+}
+
+.coach-next:hover {
+  box-shadow: var(--bevel-up), 0 0 14px rgba(155, 113, 55, 0.42);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .coach-ring {
+    animation: none;
+  }
+}
+
+/* ══════════════════════════════════════════════════════
+   17. 바닥 조작 범례 — 한 문장 나열을 칩으로 분해
+   ══════════════════════════════════════════════════════ */
+
+.canvas-tip {
+  display: flex;
+  gap: 5px;
+  overflow: hidden;
+}
+
+.canvas-tip i {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  flex: 0 0 auto;
+  padding: 1px 6px 1px 2px;
+  color: var(--text-300);
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.4);
+  box-shadow: inset 0 0 0 1px rgba(128, 108, 74, 0.18);
+  font-size: 10px;
+  font-style: normal;
+  white-space: nowrap;
+}
+
+.canvas-tip i em {
+  padding: 1px 5px;
+  color: var(--gold-200);
+  border-radius: 999px;
+  background: rgba(122, 90, 42, 0.14);
+  font-size: 9px;
+  font-style: normal;
+  font-weight: 900;
+}
+
+/* ══════════════════════════════════════════════════════
+   18. 소환 결과 — 낱글자로 쪼개지던 요약과 밋밋한 봉투
+   ══════════════════════════════════════════════════════ */
+
+.summon-reveal {
+  clip-path: var(--clip-cut);
+  border: 0;
+  border-radius: 0;
+  background:
+    var(--grain),
+    radial-gradient(ellipse 80% 60% at 50% 0%, rgba(122, 90, 42, 0.12), transparent 70%),
+    linear-gradient(180deg, #2c2318 0%, #1a140e 46%, #100c08 100%);
+  box-shadow:
+    var(--bevel-up),
+    0 0 0 1px rgba(122, 90, 42, 0.42),
+    0 0 70px rgba(0, 0, 0, 0.75);
+}
+
+.summon-reveal > header {
+  align-items: center;
+  padding-bottom: var(--sp-2);
+  border-bottom: 1px solid rgba(122, 90, 42, 0.22);
+}
+
+.summon-reveal > header span {
+  color: var(--gold-500);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.2em;
+}
+
+.summon-reveal > header strong {
+  color: var(--gold-100);
+  font-size: var(--fs-xl);
+  font-weight: 900;
+}
+
+.summon-reveal > header button {
+  color: var(--gold-200);
+  border: 0;
+  border-radius: var(--r-sm);
+  background: var(--mat-brass);
+  box-shadow: var(--bevel-up);
+}
+
+/* "새 발/견 1" 처럼 두 글자에서 끊기던 요약을 칩으로 고정한다. */
+#summon-reveal-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px var(--sp-2);
+  align-items: center;
+  color: var(--text-300);
+  font-size: var(--fs-2xs);
+}
+
+#summon-reveal-summary > b,
+#summon-reveal-summary > span,
+#summon-reveal-summary > em {
+  flex: 0 0 auto;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.42);
+  box-shadow: inset 0 0 0 1px rgba(128, 108, 74, 0.2);
+  font-size: var(--fs-2xs);
+  font-style: normal;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+#summon-reveal-summary > b {
+  color: var(--gold-100);
+  background: rgba(122, 90, 42, 0.16);
+  box-shadow: inset 0 0 0 1px rgba(122, 90, 42, 0.4);
+}
+
+#summon-reveal-summary > em {
+  color: var(--dan-noe);
+  margin-left: auto;
+}
+
+/* 결과 카드: 두루마리에서 뽑아 올린 인장처럼 */
+.summon-reveal-list > * {
+  clip-path: var(--clip-cut-sm);
+  border: 0 !important;
+  border-radius: 0 !important;
+  background:
+    radial-gradient(ellipse 70% 50% at 50% 22%, rgba(122, 90, 42, 0.14), transparent 72%),
+    linear-gradient(180deg, #241d14 0%, #14100b 100%) !important;
+  box-shadow:
+    var(--bevel-up),
+    0 0 0 1px rgba(122, 90, 42, 0.3),
+    var(--lift-1);
+}

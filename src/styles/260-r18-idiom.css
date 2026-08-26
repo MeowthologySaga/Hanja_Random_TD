@@ -1,0 +1,107 @@
+/* src/ui-skin.css 11985~12091줄에서 그대로 옮겨 왔다 — R18 유지형 성어. 순서는 ui-skin.css 배럴이 지킨다. */
+/* ══════════════════════════════════════════════════════════════════
+   ===== R18 유지형 성어 =====
+
+   성어 보너스가 "한 번 봉인하면 런 내내"에서 "네 자령이 그 줄을 지키는
+   동안"으로 바뀌었다. 그래서 화면에는 없던 상태가 하나 생겼다 — 봉인한
+   적은 있지만 지금은 흩어진 성구. 달성 기록(금박)과 지금 발동 중(금박 +
+   발광)을 회갈로 갈라 성어 탭 바닥에 한 줄씩 세운다.
+   ══════════════════════════════════════════════════════════════════ */
+
+/* ── R18-1. 성어 탭 봉인 상태 줄 ──────────────────────────────── */
+.idiom-seal-status {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 8px;
+}
+
+.idiom-seal-status[hidden] { display: none; }
+
+.idiom-seal-row {
+  display: grid;
+  grid-template-columns: minmax(0, auto) minmax(0, 1fr) minmax(0, auto);
+  grid-template-areas: "glyph reading state" "glyph bonus state";
+  align-items: center;
+  column-gap: 8px;
+  padding: 4px 8px;
+  border: 1px solid rgba(120, 104, 78, 0.34);
+  border-left: 3px solid currentColor;
+  border-radius: 7px;
+  background: rgba(10, 14, 22, 0.55);
+}
+
+.idiom-seal-row b {
+  grid-area: glyph;
+  font-family: "Malgun Gothic", serif;
+  font-size: 14px;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+}
+
+.idiom-seal-row span {
+  grid-area: reading;
+  overflow: hidden;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.idiom-seal-row em {
+  grid-area: bonus;
+  overflow: hidden;
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.idiom-seal-row mark {
+  grid-area: state;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: transparent;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+}
+
+/* 발동 중 — 금박. 성어색 테를 두르고 상태 배지에 금을 입힌다. */
+.idiom-seal-row.is-live {
+  border-color: color-mix(in srgb, var(--idiom) 44%, rgba(169, 191, 225, 0.18));
+  border-left-color: var(--idiom);
+  background: linear-gradient(90deg, color-mix(in srgb, var(--idiom) 15%, rgba(8, 12, 20, 0.82)), rgba(8, 12, 20, 0.7));
+}
+
+.idiom-seal-row.is-live b { color: #fff4d8; }
+.idiom-seal-row.is-live span { color: color-mix(in srgb, var(--idiom) 72%, #f2f6ff); }
+.idiom-seal-row.is-live em { color: rgba(232, 240, 255, 0.72); }
+
+.idiom-seal-row.is-live mark {
+  border: 1px solid rgba(255, 216, 121, 0.55);
+  background: linear-gradient(180deg, rgba(255, 216, 121, 0.24), rgba(255, 186, 84, 0.14));
+  color: #ffe7a8;
+}
+
+/* 흩어짐 — 회갈. 기록은 남았다는 뜻이라 지우지 않고 채도만 뺀다. */
+.idiom-seal-row.is-scattered {
+  border-color: rgba(112, 98, 76, 0.4);
+  border-left-color: rgba(146, 128, 100, 0.7);
+  background: rgba(9, 11, 16, 0.5);
+}
+
+.idiom-seal-row.is-scattered b { color: rgba(216, 205, 184, 0.66); }
+.idiom-seal-row.is-scattered span { color: rgba(198, 186, 165, 0.6); }
+.idiom-seal-row.is-scattered em { color: rgba(178, 166, 146, 0.5); }
+
+.idiom-seal-row.is-scattered mark {
+  border: 1px solid rgba(146, 128, 100, 0.45);
+  background: rgba(90, 78, 60, 0.28);
+  color: rgba(206, 192, 168, 0.82);
+}

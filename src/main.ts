@@ -1,5 +1,5 @@
 import "./styles.css";
-import "./ui-skin.css";
+import "./styles/ui-skin.css";
 import { wireInput1, wireInput2 } from "./ui/battle/input";
 import { wireBoot1, wireBoot2, wireBoot3, wireBoot4 } from "./ui/boot";
 import { wireCoach1 } from "./ui/coach";
