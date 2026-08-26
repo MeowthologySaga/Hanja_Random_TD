@@ -47,7 +47,9 @@
 .panel-tabs button[data-panel-tab="growth"]        { --tab-icon: url("/assets/ui/icons/icon-growth-v2.png"); }
 .panel-tabs button[data-panel-tab="goal"]          { --tab-icon: url("/assets/ui/icons/icon-goal-v2.png"); }
 .panel-tabs button[data-panel-tab="idiom"]         { --tab-icon: url("/assets/ui/icons/icon-idiom-v2.png"); }
-.panel-tabs button[data-panel-tab="record"]        { --tab-icon: url("/assets/ui/icons/icon-record-v2.png"); }
+/* 기록 탭(gripe #4)이 사라지며 죽어 있던 규칙을 부적 탭이 물려받는다 —
+   두루마리·기록 결이 "부적을 쓴다"와도 맞는다(사용자 지시, 새 자산 없음). */
+.panel-tabs button[data-panel-tab="talisman"]      { --tab-icon: url("/assets/ui/icons/icon-record-v2.png"); }
 .panel-tabs button#codex-button                    { --tab-icon: url("/assets/ui/icons/icon-codex-v2.png"); }
 
 /* 아이콘이 들어가면서 라벨은 한 줄로 눌린다 */
