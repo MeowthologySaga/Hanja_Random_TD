@@ -40,6 +40,7 @@ import {
   Vector3,
   WebGLRenderer
 } from "three";
+import { STAGE_HEIGHT, STAGE_WIDTH } from "./stage";
 
 const MENU_ASSET = (relative: string): string => `${import.meta.env.BASE_URL}assets/ui/main-menu-b/${relative}`;
 
@@ -92,6 +93,9 @@ const CROPS: Record<string, ArtCrop> = {
 };
 
 /** DOM 버튼을 붙일 3D 앵커(모델 면 중심). 중립 카메라 대비 편차만 적용한다. */
+/** 투영된 쪽지가 무대 가장자리에 닿을 때 남겨 둘 여백. */
+const ANCHOR_MARGIN = 2;
+
 const DOM_ANCHORS: ReadonlyArray<{ selector: string; at: Vector3 }> = [
   { selector: ".s00-modes .s00-mode:nth-of-type(1)", at: new Vector3(-5.05, -0.02, -1.45) },
   { selector: ".s00-modes .s00-mode:nth-of-type(2)", at: new Vector3(-5.05, -0.24, -0.05) },
@@ -221,10 +225,15 @@ export function startMenu3d(host: HTMLElement): Menu3dHandle {
   renderer.toneMapping = ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.12;
   const updateRendererScale = (): void => {
-    const shownWidth = host.getBoundingClientRect().width || 1280;
-    const effective = (window.devicePixelRatio || 1) * (shownWidth / 1280);
+    // 실측 폭은 고정 무대(#stage)의 transform 이 반영된 값이라
+    // shownWidth / STAGE_WIDTH 가 곧 무대 배율이다. 예전에는 .s00-stage 가
+    // 창과 무관하게 늘 1280px 라 이 값이 항상 1 이었고, 큰 화면에서 3D 서재만
+    // 1280x720 을 늘린 듯 뭉개졌다. 이제 배율만큼 렌더 해상도가 따라 올라가고,
+    // 축소(<1)일 때는 1 로 눌러 과다 렌더를 막는다.
+    const shownWidth = host.getBoundingClientRect().width || STAGE_WIDTH;
+    const effective = (window.devicePixelRatio || 1) * (shownWidth / STAGE_WIDTH);
     renderer.setPixelRatio(Math.min(2.5, Math.max(1, effective)));
-    renderer.setSize(1280, 720, false);
+    renderer.setSize(STAGE_WIDTH, STAGE_HEIGHT, false);
   };
   updateRendererScale();
   window.addEventListener("resize", updateRendererScale);
@@ -809,12 +818,24 @@ export function startMenu3d(host: HTMLElement): Menu3dHandle {
       }
     }
 
+    // 투영 기준은 설계 좌표계다. host 의 offsetWidth/Height 는 고정 무대의
+    // transform 에 영향받지 않는 레이아웃 치수(=1280x720)라, 배율이 얼마든
+    // 같은 값이 나온다. 상수를 직접 쓰지 않고 실측하는 편이 설계 해상도가
+    // 바뀌어도 따라오므로 안전하다.
+    const stageW = host.offsetWidth || STAGE_WIDTH;
+    const stageH = host.offsetHeight || STAGE_HEIGHT;
     for (const anchor of domAnchors) {
       projected.copy(anchor.at).project(camera);
-      const x = (projected.x * 0.5 + 0.5) * 1280;
-      const y = (-projected.y * 0.5 + 0.5) * 720;
-      anchor.element.style.left = `${(x - anchor.width / 2).toFixed(1)}px`;
-      anchor.element.style.top = `${(y - anchor.height / 2).toFixed(1)}px`;
+      const x = (projected.x * 0.5 + 0.5) * stageW;
+      const y = (-projected.y * 0.5 + 0.5) * stageH;
+      // 책 왼쪽 서갈피는 원근 + 카메라 흔들림 탓에 투영점이 무대 밖으로
+      // 최대 29px 까지 밀려 잘려 나갔다. 무대 안에 붙들어 둔다.
+      const maxLeft = Math.max(ANCHOR_MARGIN, stageW - anchor.width - ANCHOR_MARGIN);
+      const maxTop = Math.max(ANCHOR_MARGIN, stageH - anchor.height - ANCHOR_MARGIN);
+      const left = Math.min(maxLeft, Math.max(ANCHOR_MARGIN, x - anchor.width / 2));
+      const top = Math.min(maxTop, Math.max(ANCHOR_MARGIN, y - anchor.height / 2));
+      anchor.element.style.left = `${left.toFixed(1)}px`;
+      anchor.element.style.top = `${top.toFixed(1)}px`;
     }
 
     renderer.render(scene, camera);
