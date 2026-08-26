@@ -137,6 +137,9 @@ test("keeps the skip control live and returns to the mode selection", async ({ p
   mkdirSync(SHOT_DIR, { recursive: true });
   await page.goto("/");
   await expect(page.getByTestId("tutorial-button")).toBeVisible();
+  // 부팅 막(#boot-loader)이 걷힌 실제 서재 화면을 담는다.
+  await expect(page.locator("#boot-loader")).toHaveClass(/is-done/, { timeout: 20_000 });
+  await page.waitForTimeout(700);
   await page.screenshot({ path: `${SHOT_DIR}/tutorial-entry-s00-1280x720.png` });
   await page.getByTestId("tutorial-button").click();
   await expect(page.locator("#tutorial-layer")).toBeVisible({ timeout: 20_000 });
