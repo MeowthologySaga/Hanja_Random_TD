@@ -3,6 +3,7 @@ import {
   CHAINSEAL_STACK_WINDOW,
   CHAINSEAL_STORE_RATIO,
   chainsealMaxStacks,
+  commandRallySeconds,
   FROST_ZONE_DURATION,
   FROST_ZONE_RADIUS,
   frostSlowRatio,
@@ -240,6 +241,8 @@ export class GameEngine {
   private readonly combatFormationBonuses = [0, 0, 0, 0, 0];
   // [SKILL-V1] 성어의 가호: 진별 가호 배율 캐시(발동 중 봉인 기준).
   private readonly combatIdiomBlessings = [0, 0, 0, 0, 0];
+  // [SKILL-V2] 호령: 진별 집중 명령(대상 공유). 4초 남짓의 일시 상태라 세이브 밖이다.
+  private readonly commandRallies: Array<{ targetId: number; until: number } | null> = [null, null, null, null, null];
   private combatDistinctElements = 0;
   /** FB7-8성: 이번 틱에 극성 개안 오라가 살아 있는 오행. 오행당 최대 1개. */
   private readonly combatPolarisElements = new Set<Wuxing>();
@@ -311,6 +314,8 @@ export class GameEngine {
     this.nextAbilityZoneId = 1;
     this.currentPlan = null;
     this.autoEvolutionCooldown = 0;
+    // [SKILL-V2] 호령 집중 명령은 런을 넘기지 않는다.
+    this.commandRallies.fill(null);
     const targetChar = this.goalOrder[0] ?? this.catalog.activePool[0]?.char ?? "";
     Object.assign(this.state, {
       phase: "prep",
@@ -616,6 +621,13 @@ export class GameEngine {
     return { label: "서리길", duration: FROST_ZONE_DURATION, damagePerSecond: 0 };
   }
 
+  /** [SKILL-V2] 호령 — 이 진에 살아 있는 집중 명령. 없거나 끝났으면 null. */
+  commandRallyAt(formationIndex: number): { targetId: number; until: number } | null {
+    const rally = this.commandRallies[formationIndex];
+    if (!rally || rally.until <= this.state.elapsed) return null;
+    return rally;
+  }
+
   private updateTowers(delta: number): void {
     for (const tower of this.state.towers) {
       tower.pulse = Math.max(0, tower.pulse - delta * 3);
@@ -693,6 +705,13 @@ export class GameEngine {
     candidates.length = 0;
     for (const enemy of this.state.enemies) if (distance(origin, this.enemyPoint(enemy)) <= range) candidates.push(enemy);
     if (candidates.length === 0) return undefined;
+    // [SKILL-V2] 호령: 집중 명령이 살아 있으면 같은 진의 자령은 그 대상을 우선한다.
+    // 사거리 밖이면 따르지 않고(candidates 에 없음) 평소 우선순위로 돌아간다.
+    const rally = this.commandRallyAt(Math.floor(tower.cell / CELLS_PER_FORMATION));
+    if (rally) {
+      const focus = candidates.find((enemy) => enemy.id === rally.targetId);
+      if (focus) return focus;
+    }
     const priority = definition.combat.abilities.targetPriority;
     let best = candidates[0] as Enemy;
     let bestValue = -Infinity;
@@ -1018,6 +1037,14 @@ export class GameEngine {
       effect = "최고 체력 적 간파 · 이번 공격 ×" + tuning.semanticMultiplier.toFixed(2);
     } else if (family === "metalwork") {
       effect = "최고 장갑 적 우선 · 추가 관통 22%";
+    } else if (family === "command") {
+      // [SKILL-V2] 호령: 같은 진 전원이 시전자의 대상을 집중 공격(대상 공유만, AI 단순).
+      const rallySeconds = commandRallySeconds(this.state.mode === "casual" ? tower.casualStar ?? tower.naturalStar ?? 1 : null);
+      const formation = Math.floor(tower.cell / CELLS_PER_FORMATION);
+      this.commandRallies[formation] = { targetId: target.id, until: this.state.elapsed + rallySeconds };
+      const allies = this.state.towers.filter((candidate) => candidate.id !== tower.id && Math.floor(candidate.cell / CELLS_PER_FORMATION) === formation);
+      targets = Math.max(1, allies.length);
+      effect = `같은 진 ${allies.length}기 집중 호령 · ${rallySeconds.toFixed(1)}초 · 사거리 밖 제외`;
     } else if (family === "reaper") {
       // [SKILL-V2] 참명 주기: 우두머리·정예 한정 현재 체력 3% 참격(즉시 소멸 면역 보상).
       const threshold = reaperExecuteThreshold(this.state.mode === "casual" ? tower.casualStar ?? tower.naturalStar ?? 1 : null);

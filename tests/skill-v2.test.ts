@@ -12,6 +12,8 @@ import { describe, expect, it } from "vitest";
 import {
   CHAINSEAL_SEAL_SECONDS,
   chainsealMaxStacks,
+  commandRallySeconds,
+  COMMAND_RALLY_CAP_SECONDS,
   REAPER_BOSS_CHIP_RATIO,
   REAPER_EXECUTE_CAP,
   reaperExecuteThreshold,
@@ -240,5 +242,77 @@ describe("[SKILL-V2] 참명 (斬命)", () => {
     // 최소한 참격분(현재 체력 3% 언저리)은 깎였어야 한다.
     expect(hpBefore - boss2.hp).toBeGreaterThanOrEqual(hpBefore * REAPER_BOSS_CHIP_RATIO * 0.9);
     expect(engine2.state.enemies.some((candidate) => candidate.id === boss2.id)).toBe(true);
+  });
+});
+
+describe("[SKILL-V2] 호령 (號令)", () => {
+  it("집중 지속 — 기본 4초, 캐주얼 별당 +0.25초, 상한 6초", () => {
+    expect(commandRallySeconds(null)).toBeCloseTo(4, 6);
+    expect(commandRallySeconds(1)).toBeCloseTo(4, 6);
+    expect(commandRallySeconds(8)).toBeCloseTo(5.75, 6);
+    expect(commandRallySeconds(99)).toBeCloseTo(COMMAND_RALLY_CAP_SECONDS, 6);
+  });
+
+  it("발동하면 같은 진 자령이 시전자의 대상을 집중 공격한다 — 대상 공유·진 경계·만료", () => {
+    const commander = familyDefinition("KR", "command");
+    const ally = familyDefinition("KR", "gate", (definition) => definition.combat.abilities.targetPriority === "front");
+    const engine = new GameEngine("skill-command-rally", "KR");
+    engine.begin();
+    const commandTower = makeTower(commander, 9500, {
+      cell: 0,
+      shotCount: commander.combat.abilities.tuning.semanticEvery - 1
+    });
+    const allyTower = makeTower(ally, 9501, { cell: 1, cooldownLeft: 999 });
+    engine.state.towers = [commandTower, allyTower];
+    engine.state.summonCount = 2;
+    engine.state.startingFormationIndex = 0;
+    engine.state.unlockedFormations = [0];
+    engine.consumeEvents();
+    engine.startWaveEarly();
+    const near = progressNearCell(0);
+    // strongest(호령 대상)와 front(동료의 평소 대상)를 서로 다른 적으로 갈라 둔다.
+    const strongest = makeEnemy(-7, "normal", { progress: near, hp: 100000, maxHp: 100000 });
+    const front = makeEnemy(-6, "normal", { progress: Math.min(0.99, near + 0.004), hp: 500, maxHp: 500 });
+    engine.state.enemies = [strongest, front];
+    engine.state.spawned = 9999;
+    engine.update(0.02);
+    expect(commandTower.shotCount % commander.combat.abilities.tuning.semanticEvery).toBe(0);
+    const rally = engine.commandRallyAt(0);
+    expect(rally?.targetId).toBe(strongest.id);
+    // 다른 진에는 집중 명령이 없다.
+    expect(engine.commandRallyAt(1)).toBeNull();
+    // 동료의 다음 공격은 평소 우선순위(front) 대신 공유 대상(strongest)을 노린다.
+    // (호령 발동이 깐 오행 장판의 틱 피해가 섞이므로 판정은 탄도 이벤트로 본다.)
+    const allyOrigin = BOARD_CELLS[allyTower.cell]!;
+    commandTower.cooldownLeft = 999;
+    allyTower.cooldownLeft = 0;
+    engine.consumeEvents();
+    engine.update(0.02);
+    const allyShots = engine.consumeEvents().filter(
+      (event): event is Extract<import("../src/core/types").GameEvent, { type: "shot" }> =>
+        event.type === "shot" && event.from.x === allyOrigin.x && event.from.y === allyOrigin.y
+    );
+    expect(allyShots.length).toBeGreaterThan(0);
+    const strongestPoint = positionOnPath(strongest.progress);
+    for (const shot of allyShots) {
+      expect(Math.hypot(shot.to.x - strongestPoint.x, shot.to.y - strongestPoint.y)).toBeLessThan(1);
+    }
+    // 공유 대상이 사라지면(사거리 밖과 같은 경로) 평소 우선순위로 돌아간다.
+    engine.state.enemies = [front];
+    allyTower.cooldownLeft = 0;
+    engine.consumeEvents();
+    engine.update(0.02);
+    const fallbackShots = engine.consumeEvents().filter(
+      (event): event is Extract<import("../src/core/types").GameEvent, { type: "shot" }> =>
+        event.type === "shot" && event.from.x === allyOrigin.x && event.from.y === allyOrigin.y
+    );
+    expect(fallbackShots.length).toBeGreaterThan(0);
+    const frontPoint = positionOnPath(front.progress);
+    for (const shot of fallbackShots) {
+      expect(Math.hypot(shot.to.x - frontPoint.x, shot.to.y - frontPoint.y)).toBeLessThan(1);
+    }
+    // 지속 시간이 끝나면 명령은 소멸한다.
+    engine.state.elapsed += COMMAND_RALLY_CAP_SECONDS + 0.01;
+    expect(engine.commandRallyAt(0)).toBeNull();
   });
 });
