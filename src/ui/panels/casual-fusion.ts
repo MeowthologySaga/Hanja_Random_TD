@@ -24,7 +24,7 @@ function casualFusionTowerMarkup(tower: Tower, selected: boolean, disabled: bool
   const strokes = casualStrokeCount(tower.char);
   const selectedIndex = ctx.casualFusionSelection.indexOf(tower.id);
   const selectedRole = selectedIndex >= 0 ? `소모 ${selectedIndex + 1}` : "";
-  const location = tower.cell < 0 ? "인벤" : BOARD_FORMATIONS[Math.floor(tower.cell / CELLS_PER_FORMATION)]?.label ?? "전장";
+  const location = tower.cell < 0 ? "가방" : BOARD_FORMATIONS[Math.floor(tower.cell / CELLS_PER_FORMATION)]?.label ?? "전장";
   const visual = jaryeongVisualFor(tower.char, tower.wuxing, ctx.engine.state.region);
   return `<button type="button" class="casual-fusion-tower ${selected ? "is-selected is-material" : ""} ${badge ? "is-short" : ""}" data-casual-fusion-tower="${tower.id}" style="--element:${ELEMENT_STYLES[tower.wuxing].color};--star:${CASUAL_STAR_COLORS[star]}" aria-pressed="${String(selected)}" ${disabled ? "disabled" : ""}>
     <i class="casual-fusion-sprite" style="${visualBackgroundStyle(visual)}" aria-hidden="true"></i>
@@ -44,7 +44,7 @@ function casualFusionSlotMarkup(tower: Tower | undefined, index: number): string
   const star = casualStarOf(tower);
   const natural = tower.naturalStar ?? casualNaturalStar(tower.char) ?? star;
   const strokes = casualStrokeCount(tower.char);
-  const location = tower.cell < 0 ? "인벤" : BOARD_FORMATIONS[Math.floor(tower.cell / CELLS_PER_FORMATION)]?.label ?? "전장";
+  const location = tower.cell < 0 ? "가방" : BOARD_FORMATIONS[Math.floor(tower.cell / CELLS_PER_FORMATION)]?.label ?? "전장";
   const visual = jaryeongVisualFor(tower.char, tower.wuxing, ctx.engine.state.region);
   return `<button type="button" class="casual-fusion-slot is-filled is-material" data-casual-fusion-slot="${index}" style="--element:${ELEMENT_STYLES[tower.wuxing].color};--star:${CASUAL_STAR_COLORS[star]}" aria-label="${roleLabel} ${tower.char} 선택 해제">
     <span>${roleLabel} <em>소모</em></span>
@@ -256,7 +256,7 @@ export function renderCasualFusion(): void {
   fuseAllButton.disabled = !active || runnableCount === 0;
   must<HTMLElement>("#casual-fuse-all-count").textContent = `(${runnableCount}회)`;
   must<HTMLElement>("#casual-fuse-all-note").textContent = runnableCount > 0
-    ? `3기가 모두 사라지고 같은 오행의 다음 별 자령 1기를 무작위로 얻습니다. 인벤토리 자령을 먼저 씁니다.${heldCount > 0 ? ` 전장 자령이 낀 ${heldCount}묶음은 아래 카드에서 개별 실행하세요.` : ""}`
+    ? `3기가 모두 사라지고 같은 오행의 다음 별 자령 1기를 무작위로 얻습니다. 가방 자령을 먼저 씁니다.${heldCount > 0 ? ` 전장 자령이 낀 ${heldCount}묶음은 아래 카드에서 개별 실행하세요.` : ""}`
     : heldCount > 0
       ? `모인 ${heldCount}묶음이 전부 전장 자령을 소모합니다. 일괄에서는 건너뛰니, 아래 카드의 [승급] 버튼으로 하나씩 실행하세요.`
       : buckets.some((bucket) => bucket.shortReason !== null)
@@ -326,7 +326,7 @@ function casualConfirmTowerRow(tower: Tower): string {
   const star = casualStarOf(tower);
   const strokes = casualStrokeCount(tower.char);
   const visual = jaryeongVisualFor(tower.char, tower.wuxing, ctx.engine.state.region);
-  return `<article class="casual-confirm-tower is-material" style="--element:${ELEMENT_STYLES[tower.wuxing].color};--star:${CASUAL_STAR_COLORS[star]}"><i class="casual-confirm-sprite" style="${visualBackgroundStyle(visual)}" aria-hidden="true"></i><b>${escapeHtml(tower.char)}</b><span><strong>소모 · 복구 불가</strong><small>${tower.wuxing}행 · ${star}★ · ${strokes ?? "?"}획 · ${tower.cell < 0 ? "인벤" : "전장"}</small></span><em>소모</em></article>`;
+  return `<article class="casual-confirm-tower is-material" style="--element:${ELEMENT_STYLES[tower.wuxing].color};--star:${CASUAL_STAR_COLORS[star]}"><i class="casual-confirm-sprite" style="${visualBackgroundStyle(visual)}" aria-hidden="true"></i><b>${escapeHtml(tower.char)}</b><span><strong>소모 · 복구 불가</strong><small>${tower.wuxing}행 · ${star}★ · ${strokes ?? "?"}획 · ${tower.cell < 0 ? "가방" : "전장"}</small></span><em>소모</em></article>`;
 }
 
 export function openCasualManualReview(): void {

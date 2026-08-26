@@ -257,7 +257,7 @@ describe("four-character idiom formation", () => {
     expect(engine.autoArrangeTowers()).toMatchObject({ ok: true });
     expect(engine.state.idiomSeals.some((seal) => seal.idiomId === "heart")).toBe(true);
     expect(engine.state.inventoryTowers).toHaveLength(0);
-    expect(engine.state.lastMessage).toContain("인벤토리 1기 투입");
+    expect(engine.state.lastMessage).toContain("가방 1기 투입");
   });
 });
 

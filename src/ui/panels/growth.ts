@@ -110,7 +110,7 @@ export function renderGrowth(): void {
       <input type="checkbox" data-dismantle-id="${tower.id}" ${dismantleSelection.has(tower.id) ? "checked" : ""} ${protectedState || !active ? "disabled" : ""}>
       ${spiritPortraitMarkup(tower.char, tower.wuxing, "workbench-spirit--dismantle")}<b>${escapeHtml(tower.char)}</b><span><strong>${soleBadge}${tower.wuxing}행 · ${towerProgressionLabel(tower)} · #${tower.id}</strong><small>${protectedState ? `분해 불가 — ${protectedReasons.map(escapeHtml).join(" · ")}` : (assessment?.reasons ?? []).map(escapeHtml).join(" · ") || "분해 가능"}</small></span><em>${protectedState ? "보호" : essenceAmountChip(tower.wuxing, essence)}</em>
     </label>`;
-  }).join("") : `<div class="workbench-empty"><b>조건에 맞는 인벤토리 자령이 없습니다</b><span>필터를 바꾸거나 소환 자령을 인벤토리에 보관하세요.</span><button type="button" data-goto-inventory>인벤 탭 열기</button></div>`;
+  }).join("") : `<div class="workbench-empty"><b>조건에 맞는 가방 자령이 없습니다</b><span>필터를 바꾸거나 소환 자령을 가방에 보관하세요.</span><button type="button" data-goto-inventory>가방 탭 열기</button></div>`;
 
   const quote = ctx.engine.quoteDismantle([...dismantleSelection], dismantleOptions());
   // [J-1] "木+3" 은 무엇이 3인지 안 말한다 — 문기·분해 점수 각각에 단위를 붙인다.

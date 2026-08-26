@@ -160,7 +160,7 @@ function renderRunInventoryActions(
 
   const deploy = must<HTMLButtonElement>("#run-inventory-deploy");
   deploy.disabled = !active || !selected;
-  deploy.title = selected ? "보관고를 걷고 전장 칸을 고르는 배치 모드로 넘어갑니다 (카드 더블클릭도 같은 길)" : "먼저 카드를 고르세요";
+  deploy.title = selected ? "가방을 걷고 전장 칸을 고르는 배치 모드로 넘어갑니다 (카드 더블클릭도 같은 길)" : "먼저 카드를 고르세요";
 
   const dismantle = must<HTMLButtonElement>("#run-inventory-dismantle");
   const essence = selected ? ctx.engine.towerDismantleEssenceValue(selected) : 0;
@@ -335,7 +335,7 @@ export function renderRunInventory(): void {
  * 보관고에서 고른 자령을 전장 배치 모드로 넘긴다.
  *
  * 프레임은 전장을 덮으므로 여기서 걷어야 다음 클릭이 칸에 닿는다. 선택은
- * 그대로 남으므로 곧바로 배치할 수 있다(다시 열기 = 인벤 탭 또는 [보관고 열기]).
+ * 그대로 남으므로 곧바로 배치할 수 있다(다시 열기 = 가방 탭 또는 [가방 열기]).
  */
 function deployRunInventorySelection(): void {
   const selected = ctx.engine.state.inventoryTowers.find((tower) => tower.id === ctx.engine.state.selectedTowerId);

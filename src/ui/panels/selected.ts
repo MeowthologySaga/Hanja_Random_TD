@@ -224,7 +224,7 @@ export function renderSelected(): void {
     </div>
     <div class="selected-actions">
       <button id="lock-button" class="${tower.locked ? "is-locked" : ""}" type="button" data-testid="lock-tower" title="판매·합성 재료로 쓰이지 않게 보호">${tower.locked ? "鎖 잠금됨" : "잠금"}</button>
-      <button id="store-button" type="button" data-testid="store-tower" title="인벤으로 이동 — 전장 자리를 비웁니다" ${stored ? "disabled" : ""}>${stored ? "보관 중" : "보관"}</button>
+      <button id="store-button" type="button" data-testid="store-tower" title="가방으로 이동 — 전장 자리를 비웁니다" ${stored ? "disabled" : ""}>${stored ? "보관 중" : "보관"}</button>
       <button id="derivative-button" class="${readyBranches > 0 ? "has-ready" : ""}" type="button" data-testid="derivative-composition" title="이 자령이 재료인 파생 조합 목록">${ctx.engine.state.mode === "casual" ? casualStar >= 8 ? "8★ 최고 단계" : "3체 조합 ›" : `합성 ${readyBranches}`}</button>
       <button id="open-growth-button" class="${cleanup?.protected ? "is-blocked" : ""}" type="button" title="${escapeHtml(cleanup?.protected ? dismantleBlockNote(cleanup.protectedReasons) : `강화 제련소 탭으로 이동 · 분해하면 ${essenceAmountLabel(tower.wuxing, dismantleEssence)} 회수`)}">${cleanup?.protected
         ? `분해 불가<small class="action-price">${escapeHtml(protectionShortLabel(cleanup.protectedReasons))} 보호</small>`
@@ -252,7 +252,7 @@ function compositionMaterialChip(material: CompositionBranchPreview["materials"]
   const locationLabel = material.location === "board"
     ? "전장"
     : material.location === "inventory"
-      ? "인벤"
+      ? "가방"
       : material.location === "locked" ? "잠금" : "0/1";
   return `<span class="composition-material is-${material.location}"><b>${material.char}</b>${locationLabel}</span>`;
 }
@@ -294,7 +294,7 @@ export function renderCompositionDrawer(): void {
   must<HTMLElement>("#composition-ready-count").textContent = String(branches.filter((branch) => branch.ready).length);
   must<HTMLElement>("#composition-source").innerHTML = `
     <i class="composition-source-spirit" style="${spriteStyle(definition)}" aria-hidden="true"></i>
-    <span><b>${selected.char}</b><strong>${escapeHtml(learningInfo(ctx.engine.state.region, selected.char).short)}</strong><small>${selected.cell < 0 ? "런 인벤토리" : "전장 배치"} · 직접 파생 ${branches.length}개</small></span>
+    <span><b>${selected.char}</b><strong>${escapeHtml(learningInfo(ctx.engine.state.region, selected.char).short)}</strong><small>${selected.cell < 0 ? "가방" : "전장 배치"} · 직접 파생 ${branches.length}개</small></span>
   `;
   must<HTMLElement>("#composition-branches").innerHTML = branches.length > 0
     ? branches.map(compositionBranchCard).join("")

@@ -93,7 +93,7 @@ export function renderGoal(): void {
   must<HTMLElement>("#goal-tab-progress").textContent = `${modePercent}%`;
   const boardUnique = new Set(ctx.engine.state.towers.map((tower) => tower.char)).size;
   const storedUnique = new Set(ctx.engine.state.inventoryTowers.map((tower) => tower.char)).size;
-  must<HTMLElement>("#goal-owned-summary").innerHTML = `<b>${ownedCounts.size}자 · ${ownedTowers.length}기 보유</b><span>전장 ${boardUnique}자 · 인벤 ${storedUnique}자</span>`;
+  must<HTMLElement>("#goal-owned-summary").innerHTML = `<b>${ownedCounts.size}자 · ${ownedTowers.length}기 보유</b><span>전장 ${boardUnique}자 · 가방 ${storedUnique}자</span>`;
 
   const search = must<HTMLInputElement>("#goal-search");
   search.placeholder = ctx.goalPanelMode === "hanzi" ? "원하는 한자·훈음·뜻 검색" : "원하는 성어·읽기·뜻 검색";

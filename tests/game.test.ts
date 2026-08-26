@@ -578,7 +578,7 @@ describe("regional recipe defense run", () => {
     expect(engine.state.inventoryTowers).toHaveLength(0);
     expect(engine.state.towers.every((unit) => unit.cell >= 0)).toBe(true);
     expect(new Set(engine.state.towers.map((unit) => unit.cell)).size).toBe(4);
-    expect(engine.state.lastMessage).toContain("인벤토리 3기 투입");
+    expect(engine.state.lastMessage).toContain("가방 3기 투입");
   });
 
   it("can auto-arrange directly from an inventory-only board state", () => {
