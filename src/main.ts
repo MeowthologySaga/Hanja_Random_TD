@@ -196,6 +196,7 @@ app.innerHTML = `
         <div id="summon-reveal-list" class="summon-reveal-list"></div>
       </section>
 
+      <div id="early-hint" class="early-hint" role="status" hidden>다음 웨이브를 일찍 부르면 엽전 보너스!</div>
       <div id="focus-dim" class="focus-dim" hidden></div>
       <section id="growth-frame" class="focus-frame focus-frame--forge" role="dialog" aria-modal="false" aria-labelledby="growth-frame-title" hidden>
         <header class="focus-frame-head">
@@ -1001,6 +1002,68 @@ let hoverGlyphLarge = ((): boolean => {
     return true;
   }
 })();
+/*
+ * 시작 보너스 버튼 주목성.
+ *
+ * 맥동은 "아직 한 번도 안 써 본 사람"에게만 필요하다. 두 번 눌러 본
+ * 뒤에는 잔잔한 금테만 남긴다(과자극 방지). 안내 말풍선은 첫 런에서
+ * 조기 시작이 처음 가능해지는 순간 딱 한 번 뜬다.
+ */
+const EARLY_USED_STORAGE_KEY = "hanja-td:early-used";
+const EARLY_HINT_STORAGE_KEY = "hanja-td:early-hint-v1";
+const EARLY_CALM_THRESHOLD = 2;
+
+function readEarlyUsedCount(): number {
+  try {
+    return Number.parseInt(window.localStorage.getItem(EARLY_USED_STORAGE_KEY) ?? "0", 10) || 0;
+  } catch {
+    return 0;
+  }
+}
+
+function syncEarlyCalmState(): void {
+  shell.dataset.earlyCalm = readEarlyUsedCount() >= EARLY_CALM_THRESHOLD ? "1" : "0";
+}
+
+function noteEarlyStartUsed(): void {
+  const next = readEarlyUsedCount() + 1;
+  try {
+    window.localStorage.setItem(EARLY_USED_STORAGE_KEY, String(next));
+  } catch {
+    // 저장이 막혀 있어도 이번 세션 동작에는 영향이 없다.
+  }
+  syncEarlyCalmState();
+}
+
+let earlyHintTimer = 0;
+
+function hideEarlyHint(): void {
+  window.clearTimeout(earlyHintTimer);
+  const hint = document.querySelector<HTMLElement>("#early-hint");
+  if (hint) hint.hidden = true;
+}
+
+function maybeShowEarlyHint(): void {
+  const hint = document.querySelector<HTMLElement>("#early-hint");
+  const button = document.querySelector<HTMLButtonElement>("#early-button");
+  if (!hint || !button || !hint.hidden || button.disabled) return;
+  // 코치마크가 떠 있는 동안에는 안내를 겹치지 않는다.
+  if (!must<HTMLElement>("#coach-layer").hidden) return;
+  try {
+    if (window.localStorage.getItem(EARLY_HINT_STORAGE_KEY) === "1") return;
+    window.localStorage.setItem(EARLY_HINT_STORAGE_KEY, "1");
+  } catch {
+    return;
+  }
+  const stage = must<HTMLElement>(".battle-stage").getBoundingClientRect();
+  const rect = button.getBoundingClientRect();
+  const scale = stage.width / Math.max(1, must<HTMLElement>(".battle-stage").offsetWidth);
+  hint.style.left = `${(rect.left - stage.left) / scale}px`;
+  hint.style.top = `${(rect.bottom - stage.top) / scale + 10}px`;
+  hint.hidden = false;
+  earlyHintTimer = window.setTimeout(hideEarlyHint, 5000);
+}
+
 const MIN_MAP_ZOOM = 0.72;
 const BASE_MAP_ZOOM = 2.6;
 const DEFAULT_MAP_ZOOM = 2;
@@ -1102,6 +1165,7 @@ function setPanelTab(tab: PanelTab): void {
 }
 
 mountFocusFrames();
+syncEarlyCalmState();
 
 function syncDisplayModeControls(): void {
   document.querySelectorAll<HTMLButtonElement>("[data-display-mode-option]").forEach((button) => {
@@ -1915,6 +1979,8 @@ function syncPanel(): void {
   earlyButton.textContent = state.phase === "prep"
     ? state.summonCount === 0 ? "첫 소환 필요" : "시작 +" + String(Math.floor(state.prepRemaining / 2)) + "엽전"
     : "교전 중";
+  if (earlyButton.disabled) hideEarlyHint();
+  else maybeShowEarlyHint();
   const openingGuide = must<HTMLElement>("#opening-guide");
   openingGuide.classList.toggle("is-collapsed", state.wave >= 1);
   const openingStep = state.summonCount === 0 ? 1 : state.summonCount < 3 ? 2 : 3;
@@ -5299,10 +5365,12 @@ elementUpgradeDialog.addEventListener("click", (event) => {
 });
 must<HTMLButtonElement>("#early-button").addEventListener("click", () => {
   sound.unlock();
+  hideEarlyHint();
   const bonus = Math.floor(engine.state.prepRemaining / 2);
   const result = engine.startWaveEarly();
   handleAction(result, { invalidatePanels: false });
   if (result.ok) {
+    noteEarlyStartUsed();
     // 이득이 "일어났다"가 눈에 남게: 버튼 자리에서 엽전 팝이 떠오른다.
     const button = must<HTMLButtonElement>("#early-button");
     const pop = document.createElement("span");

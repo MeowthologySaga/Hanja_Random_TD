@@ -4686,16 +4686,20 @@ select option {
   gap: 6px;
 }
 
+/* 92절 주: background·box-shadow 의 !important 를 걷어냈다. 그것 때문에
+   50절의 :hover 배경과 @keyframes 가 통째로 무력화돼 있었다 — 애니메이션
+   선언은 !important 일반 선언을 이기지 못한다. 값은 그대로 두고 층위만
+   낮춘다(같은 값을 50절 `#early-button.early-start` 가 다시 깐다). */
 #early-button:not(:disabled) {
   min-height: 40px;
   padding: 4px 10px;
   color: #2b2009 !important;
-  background: linear-gradient(180deg, #ffeec4 0%, #dbb96e 46%, #b8934a 100%) !important;
+  background: linear-gradient(180deg, #ffeec4 0%, #dbb96e 46%, #b8934a 100%);
   box-shadow:
     inset 0 1px 0 rgba(255, 252, 240, 0.8),
     inset 0 -3px 0 rgba(78, 58, 22, 0.5),
     0 2px 0 rgba(0, 0, 0, 0.4),
-    0 0 18px rgba(219, 185, 110, 0.55) !important;
+    0 0 18px rgba(219, 185, 110, 0.55);
   font-size: 12px !important;
   font-weight: 900;
   animation: early-pulse 1.4s ease-in-out infinite;
@@ -8924,4 +8928,120 @@ span.codex-jaryeong-category { color: #4a3f30 !important; }
   background: rgba(250, 241, 217, 0.95) !important;
   font-size: 10px !important;
   text-shadow: none !important;
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   92. 시작 보너스 버튼이 "정지 화면"이었다
+   지적: "눈에 잘 안 띈다. 점멸을 하든 눈에 띄게 해."
+   진단 2건.
+   (1) 46-3절이 background·box-shadow 에 !important 를 걸어 50절의
+       :hover 도, `@keyframes early-pulse` 도 이기지 못했다. 실측에서
+       early-pulse 가 running 인데 box-shadow 4프레임 샘플이 전부
+       동일했다 — 돌긴 도는데 화면이 안 바뀌는 애니메이션이었다.
+       -> 46-3절의 두 !important 를 제거했다(위).
+   (2) 그것만으로도 부족하다. 이 버튼은 `clip-path: var(--clip-cut-sm)`
+       로 모서리를 자르는데, clip-path 는 바깥 box-shadow 까지 잘라낸다.
+       즉 `0 0 26px` 글로우는 애초에 화면에 못 나온다.
+       -> 잘리지 않는 축(바탕 밝기 · inset 테 · scale)으로 맥동시킨다.
+   ══════════════════════════════════════════════════════════════════ */
+
+@keyframes early-beacon {
+  0%, 100% {
+    background: linear-gradient(180deg, #ffeec4 0%, #dbb96e 46%, #b8934a 100%);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 252, 240, 0.8),
+      inset 0 -3px 0 rgba(78, 58, 22, 0.5),
+      inset 0 0 0 0 rgba(255, 247, 224, 0),
+      0 2px 0 rgba(0, 0, 0, 0.4);
+    scale: 1;
+  }
+  50% {
+    background: linear-gradient(180deg, #fffdf6 0%, #ffe6a4 46%, #e6bc63 100%);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 250, 0.95),
+      inset 0 -3px 0 rgba(78, 58, 22, 0.5),
+      inset 0 0 0 3px rgba(255, 247, 224, 0.9),
+      0 2px 0 rgba(0, 0, 0, 0.4);
+    scale: 1.05;
+  }
+}
+
+#early-button.early-start:not(:disabled) {
+  animation: early-beacon 1.6s ease-in-out infinite;
+}
+
+#early-button.early-start:hover:not(:disabled) {
+  background: linear-gradient(180deg, #fffdf6 0%, #ffeeba 46%, #edc673 100%);
+  animation-play-state: paused;
+}
+
+#early-button.early-start:active:not(:disabled) {
+  translate: 0 2px;
+  scale: 0.985;
+  background: linear-gradient(180deg, #f2dcac 0%, #cfa957 46%, #a8843e 100%);
+}
+
+/* 과자극 방지: 2회 써 본 사람에게는 맥동을 멈추고 잔잔한 금테만 남긴다 */
+.game-shell[data-early-calm="1"] #early-button.early-start:not(:disabled) {
+  animation: none;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 252, 240, 0.8),
+    inset 0 -3px 0 rgba(78, 58, 22, 0.5),
+    inset 0 0 0 2px rgba(255, 247, 224, 0.55),
+    0 2px 0 rgba(0, 0, 0, 0.4);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #early-button.early-start:not(:disabled),
+  .game-shell[data-early-calm="1"] #early-button.early-start:not(:disabled) {
+    animation: none;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 252, 240, 0.8),
+      inset 0 -3px 0 rgba(78, 58, 22, 0.5),
+      inset 0 0 0 2px rgba(255, 247, 224, 0.92),
+      0 2px 0 rgba(0, 0, 0, 0.4);
+  }
+}
+
+/* ── 92-B. 1회성 안내 말풍선 — 처음 조기 시작이 가능해지는 순간 ── */
+
+.early-hint {
+  position: absolute;
+  z-index: 22;
+  max-width: 260px;
+  padding: 7px 11px;
+  color: #2b2009;
+  border-radius: 8px;
+  background: linear-gradient(180deg, #fff4d8 0%, #f0dcaa 100%);
+  box-shadow:
+    inset 0 0 0 1px rgba(122, 90, 42, 0.5),
+    0 6px 18px rgba(0, 0, 0, 0.5);
+  font-size: 12.5px;
+  font-weight: 800;
+  word-break: keep-all;
+  pointer-events: none;
+  animation: early-hint-in 200ms ease-out both;
+}
+
+.early-hint::before {
+  content: "";
+  position: absolute;
+  top: -6px;
+  left: 22px;
+  width: 12px;
+  height: 12px;
+  rotate: 45deg;
+  background: #fff4d8;
+  box-shadow: inset 1px 1px 0 rgba(122, 90, 42, 0.5);
+}
+
+.early-hint[hidden] { display: none; }
+
+@keyframes early-hint-in {
+  from { opacity: 0; translate: 0 -6px; }
+  to { opacity: 1; translate: 0 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .early-hint { animation: none; }
 }
