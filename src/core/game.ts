@@ -82,6 +82,7 @@ import {
   FIRST_PREP_SECONDS,
   FORMATION_ROUTE_COVERAGE_MULTIPLIER,
   GATE_OPENING_WARD,
+  IDIOM_RESEARCH_CONNECTION_SCALE,
   idiomWishCost,
   interestForGold,
   MAX_CONCENTRATION_LEVEL,
@@ -201,6 +202,7 @@ export {
   MAX_CONCENTRATION_LEVEL,
   FIRST_PREP_SECONDS,
   GATE_OPENING_WARD,
+  IDIOM_RESEARCH_CONNECTION_SCALE,
   concentrationEssenceCost,
   autoConcentrationPath,
   concentrationPathLabel,
@@ -215,6 +217,13 @@ export {
   TUTORIAL_ENEMY_HP_SCALE,
   TUTORIAL_ENEMY_COUNT_SCALE
 } from "./engine-tuning";
+
+/**
+ * 목표 서책의 성어 동시 추적 상한 — gripe #3 합의값. 부족 글자 합집합이
+ * 소환 가중을 나눠 갖는 구조라, 셋을 넘기면 가중이 묽어져 "고르는 재미"가
+ * 사라진다.
+ */
+export const MAX_TRACKED_IDIOMS = 3;
 
 export class GameEngine {
   readonly state: GameState;
@@ -250,6 +259,7 @@ export class GameEngine {
     this.rng = new SeededRng(seed);
     this.goalOrder = mode === "casual" ? casualGoalOrder(this.catalog) : this.catalog.goalOrder;
     const targetChar = this.goalOrder[0] ?? this.catalog.activePool[0]?.char ?? "";
+    const featuredIdiomIds = featuredIdiomsForRun(region, seed).map((idiom) => idiom.id);
     this.state = {
       seed,
       region,
@@ -287,7 +297,9 @@ export class GameEngine {
       targetChar,
       goalsCompleted: [],
       idiomSeals: [],
-      featuredIdiomIds: featuredIdiomsForRun(region, seed).map((idiom) => idiom.id),
+      featuredIdiomIds,
+      // 기존의 "현재 성어 목표" 를 그대로 승계 — 첫 목표 성어 1개 추적으로 시작한다.
+      trackedIdiomIds: featuredIdiomIds.slice(0, 1),
       discoveredChars: [],
       softPity: 0,
       lineageClueProgress: 0,
@@ -345,6 +357,7 @@ export class GameEngine {
       goalsCompleted: [],
       idiomSeals: [],
       featuredIdiomIds: [...this.state.featuredIdiomIds],
+      trackedIdiomIds: this.state.featuredIdiomIds.slice(0, 1),
       discoveredChars: [],
       softPity: 0,
       lineageClueProgress: 0,
@@ -1139,13 +1152,12 @@ export class GameEngine {
     const helpfulChars = this.state.mode === "casual"
       ? new Set([this.state.targetChar])
       : this.evolution.getHelpfulDirectCharacters(ownedTowers, this.state.targetChar);
-    const idiomTarget = this.currentIdiomTarget();
-    const idiomHelpfulChars = idiomTarget
-      ? this.state.mode === "casual"
-        ? new Set([...idiomTarget.chars])
-        : helpfulDirectCharsForIdiom(this.catalog, ownedTowers, idiomTarget)
-      : new Set<string>();
+    // gripe #3 전면 통합: 성어 가중은 추적 성어(최대 3)들의 부족 글자 합집합.
+    const idiomHelpfulChars = this.trackedIdiomMissingChars(ownedTowers);
     const connectionBonus = researchConnectionBonus(this.state.researchLevel);
+    // 연구를 실제로 산 만큼만 성어 부족 글자에 얹는다(0단계 기저 0.12 는 제외)
+    // — 연구 전 소환 분포가 통합 이전과 동일하게 유지된다.
+    const idiomConnectionBonus = connectionBonus - researchConnectionBonus(0);
     // The Korean playable-preview pool is much wider than the original
     // prototype pool. Scale focused additions with pool breadth so choosing a
     // Hanja or idiom remains a meaningful player decision among 1,000 entries.
@@ -1186,7 +1198,8 @@ export class GameEngine {
       let weight = baseWeight * exposureWeight;
       if (helpfulChars.has(definition.char)) weight += (GAME_CONFIG.targetWeightBase + connectionBonus * 3.2) * pityMultiplier * focusPoolScale * 0.65;
       if (definition.char === this.state.targetChar) weight += GAME_CONFIG.targetWeightBase * 1.4 * pityMultiplier * focusPoolScale;
-      if (idiomHelpfulChars.has(definition.char)) weight += GAME_CONFIG.idiomWeightBase * pityMultiplier * focusPoolScale * 0.7;
+      // 인연 연구가 성어 부족 글자에도 향한다 — "성어가 곧 목표"의 가중 절반.
+      if (idiomHelpfulChars.has(definition.char)) weight += (GAME_CONFIG.idiomWeightBase + idiomConnectionBonus * IDIOM_RESEARCH_CONNECTION_SCALE) * pityMultiplier * focusPoolScale * 0.7;
       if (this.state.summonIntent === "discovery") weight *= discovered.has(definition.char) ? 0.42 : 3.4;
       else if (this.state.summonIntent === "lineage") weight *= helpfulChars.has(definition.char) || idiomHelpfulChars.has(definition.char) ? 3.2 : 0.72;
       else if (this.state.summonIntent === "concentration") {
@@ -1660,8 +1673,8 @@ export class GameEngine {
    * 그래서 캐주얼에서는 두 가지를 좁힌다.
    *  - 일반 모드 합성식: 캐주얼에는 합성 자체가 없다(availableEvolutions()=[]).
    *    쓰지도 못할 조합을 이유로 소모를 막는 것은 규칙이 아니라 사고다.
-   *  - 미완성 사자성어: 지금 노리는 한 성어(currentIdiomTarget)만 지킨다.
-   *    아직 순서가 오지 않은 성어까지 글자 단위로 잠글 이유가 없다.
+   *  - 미완성 사자성어: 추적 중인 성어(trackedIdioms, 최대 3)만 지킨다.
+   *    추적하지 않은 성어까지 글자 단위로 잠글 이유가 없다.
    * 잠금·농축·목표 글자·봉인 완료 성어는 기획 문서가 못 박은 대로 그대로 둔다.
    */
   private casualProtectionContext(): {
@@ -1676,7 +1689,7 @@ export class GameEngine {
       targetPath: casual ? new Set([this.state.targetChar]) : this.evolution.getTargetPath(this.state.targetChar),
       unfinishedIdiomChars: new Set(
         casual
-          ? [...(this.currentIdiomTarget()?.chars ?? "")]
+          ? this.trackedIdioms().flatMap((idiom) => [...idiom.chars])
           : this.idioms()
             .filter((idiom) => !this.state.idiomSeals.some((seal) => seal.idiomId === idiom.id))
             .flatMap((idiom) => [...idiom.chars])
@@ -2054,18 +2067,97 @@ export class GameEngine {
     return { ok: true, message: this.state.lastMessage };
   }
 
+  /**
+   * 성어를 이번 런 목표 다섯 구에 편입시킨다. 추적(발동 판정·자동배치 후보)의
+   * 전제 조건이라 setIdiomTarget/setIdiomTracking 이 함께 쓴다. 봉인 이력과
+   * 추적 중인 구는 다섯 자리 정리에서 살아남는다.
+   */
+  private ensureFeaturedIdiom(id: string): void {
+    const rest = this.state.featuredIdiomIds.filter((candidate) => candidate !== id);
+    const sealedIds = rest.filter((candidate) => this.state.idiomSeals.some((seal) => seal.idiomId === candidate));
+    const trackedIds = rest.filter((candidate) => !sealedIds.includes(candidate) && this.state.trackedIdiomIds.includes(candidate));
+    const pendingIds = rest.filter((candidate) => !sealedIds.includes(candidate) && !trackedIds.includes(candidate));
+    // 다섯 자리 정리 우선순위: 새 추적 > 기존 추적 > 봉인 이력 > 나머지.
+    // 봉인 이력이 다섯 자리에서 밀려도 발동·해제 판정은 idiomSeals 목록이
+    // 따로 지키므로(resolveIdiomFormations) 효과는 끊기지 않는다 — 반대로
+    // 추적 중인 구가 밀리면 봉인 자체가 성립하지 않으니 추적이 앞선다.
+    this.state.featuredIdiomIds = [id, ...trackedIds, ...sealedIds, ...pendingIds].slice(0, 5);
+  }
+
+  /** 이 성어를 1순위 추적 목표로 세운다(수련장·"목표로 지정" 경로). */
   setIdiomTarget(id: string): ActionResult {
     const idiom = idiomById(this.state.region, id);
     if (!idiom) return { ok: false, message: "이 지역에서 사용할 수 없는 성어입니다." };
     if (this.state.idiomSeals.some((seal) => seal.idiomId === id)) return { ok: false, message: `${idiom.reading}은 이미 봉인했습니다.` };
-    const currentIds = this.state.featuredIdiomIds.filter((candidate) => candidate !== id);
-    const sealedIds = currentIds.filter((candidate) => this.state.idiomSeals.some((seal) => seal.idiomId === candidate));
-    const pendingIds = currentIds.filter((candidate) => !sealedIds.includes(candidate));
-    this.state.featuredIdiomIds = [id, ...sealedIds, ...pendingIds].slice(0, 5);
+    const current = this.trackedIdioms().map((entry) => entry.id).filter((candidate) => candidate !== id);
+    this.state.trackedIdiomIds = [id, ...current].slice(0, MAX_TRACKED_IDIOMS);
+    this.ensureFeaturedIdiom(id);
     this.state.lineageClueProgress = Math.floor(this.state.lineageClueProgress / 2);
     this.runSummonPool = this.buildRunSummonPool();
     this.state.lastMessage = `성어 목표를 ${idiom.chars} · ${idiom.reading}으로 변경했습니다.`;
     return { ok: true, message: this.state.lastMessage };
+  }
+
+  /**
+   * 목표 서책의 추적 체크 토글. 최대 3개·최소 1개 — "성어가 곧 목표"라
+   * 추적이 완전히 비는 상태는 두지 않는다(비면 어차피 첫 미봉인 목표 성어가
+   * 승계된다). 승계로만 존재하던 기본 추적도 토글 순간 상태로 굳힌다.
+   */
+  setIdiomTracking(id: string, tracked: boolean): ActionResult {
+    const idiom = idiomById(this.state.region, id);
+    if (!idiom) return { ok: false, message: "이 지역에서 사용할 수 없는 성어입니다." };
+    if (this.state.idiomSeals.some((seal) => seal.idiomId === id)) return { ok: false, message: `${idiom.reading}은 이미 봉인했습니다.` };
+    const current = this.trackedIdioms().map((entry) => entry.id);
+    if (tracked) {
+      if (current.includes(id)) return { ok: true, message: `${idiom.reading}은 이미 추적 중입니다.` };
+      if (current.length >= MAX_TRACKED_IDIOMS) {
+        return { ok: false, message: `추적은 최대 ${MAX_TRACKED_IDIOMS}개까지입니다. 다른 성어의 추적을 먼저 해제하세요.` };
+      }
+      this.state.trackedIdiomIds = [...current, id];
+      this.ensureFeaturedIdiom(id);
+      this.runSummonPool = this.buildRunSummonPool();
+      this.state.lastMessage = `${idiom.chars} · ${idiom.reading} 추적 시작 — 부족 글자에 소환·연구 가중이 붙습니다.`;
+      return { ok: true, message: this.state.lastMessage };
+    }
+    if (!current.includes(id)) return { ok: true, message: `${idiom.reading}은 추적 중이 아닙니다.` };
+    if (current.length <= 1) return { ok: false, message: "성어 목표는 최소 1개를 추적해야 합니다. 다른 성어를 먼저 추적하세요." };
+    this.state.trackedIdiomIds = current.filter((candidate) => candidate !== id);
+    this.runSummonPool = this.buildRunSummonPool();
+    this.state.lastMessage = `${idiom.chars} · ${idiom.reading} 추적 해제`;
+    return { ok: true, message: this.state.lastMessage };
+  }
+
+  /**
+   * 추적 중 성어 정의 목록. 봉인 완료·미존재 id 는 걸러 내고, 목록이 비면
+   * 예전 currentIdiomTarget 규칙 그대로 첫 미봉인 목표 성어 하나를 승계한다
+   * — 봇과 기존 화면이 이 승계에 기대므로 기본 동작이 바뀌지 않는다.
+   */
+  trackedIdioms(): readonly IdiomDefinition[] {
+    const sealedIds = new Set(this.state.idiomSeals.map((seal) => seal.idiomId));
+    const resolved = this.state.trackedIdiomIds
+      .map((id) => idiomById(this.state.region, id))
+      .filter((idiom): idiom is IdiomDefinition => idiom !== undefined && !sealedIds.has(idiom.id));
+    if (resolved.length > 0) return resolved;
+    const inherited = this.idioms().find((idiom) => !sealedIds.has(idiom.id));
+    return inherited ? [inherited] : [];
+  }
+
+  /**
+   * 추적 성어들의 부족 글자 합집합 — 소환 가중과 인연 연구 가중이 함께 향하는
+   * 곳이다. 캐주얼은 아직 보유하지 못한 글자 그 자체, 표준은 그 글자의 합성
+   * 계보에서 지금 부족한 직접 소환 재료를 센다.
+   */
+  trackedIdiomMissingChars(owned?: readonly Tower[]): Set<string> {
+    const towers = owned ?? [...this.state.towers, ...this.state.inventoryTowers];
+    const chars = new Set<string>();
+    for (const idiom of this.trackedIdioms()) {
+      if (this.state.mode === "casual") {
+        for (const char of this.idiomProgress(idiom.id).missingChars) chars.add(char);
+      } else {
+        for (const char of helpfulDirectCharsForIdiom(this.catalog, towers, idiom)) chars.add(char);
+      }
+    }
+    return chars;
   }
 
   idiomProgress(id: string): { owned: number; total: number; readiness: number; missingChars: string[] } {
@@ -2816,8 +2908,9 @@ export class GameEngine {
     return this.runSummonPool;
   }
 
+  /** 1순위 추적 성어. 배치 안내·성어 HUD·계보 소환 표시가 이 한 구를 본다. */
   currentIdiomTarget(): IdiomDefinition | undefined {
-    return this.idioms().find((idiom) => !this.state.idiomSeals.some((seal) => seal.idiomId === idiom.id));
+    return this.trackedIdioms()[0];
   }
 
   /**
@@ -2844,8 +2937,7 @@ export class GameEngine {
   }
 
   private buildRunSummonPool(): readonly HanziDefinition[] {
-    const target = this.currentIdiomTarget();
-    const directChars = idiomDirectPoolChars(this.catalog, target ? [target] : []);
+    const directChars = idiomDirectPoolChars(this.catalog, this.trackedIdioms());
     const definitions = [...this.catalog.activePool];
     const included = new Set(definitions.map((definition) => definition.char));
     for (const char of directChars) {
@@ -3023,6 +3115,9 @@ export class GameEngine {
 
   private activateIdiom(idiom: IdiomDefinition, cells: readonly number[]): void {
     this.state.idiomSeals.push({ idiomId: idiom.id, cells: [...cells], completedAt: this.state.elapsed, active: true });
+    // 봉인한 성어는 목표에서 은퇴한다. 목록이 비면 trackedIdioms() 가
+    // 다음 미봉인 목표 성어를 승계하므로 진행이 끊기지 않는다.
+    this.state.trackedIdiomIds = this.state.trackedIdiomIds.filter((id) => id !== idiom.id);
     this.announceIdiom(idiom, cells, false);
     this.runSummonPool = this.buildRunSummonPool();
   }

@@ -273,11 +273,13 @@ function autoplayPurchaseUpgrades(engine: GameEngine): void {
 
 function autoplayProtectedChars(engine: GameEngine): Set<string> {
   const protectedChars = engine.evolution.getTargetPath(engine.state.targetChar);
-  const idiom = engine.currentIdiomTarget();
-  if (!idiom) return protectedChars;
-  for (const char of idiom.chars) {
-    protectedChars.add(char);
-    for (const pathChar of engine.evolution.getTargetPath(char)) protectedChars.add(pathChar);
+  // 추적 성어(기본 1구 — 봇은 추적을 넓히지 않으므로 기존 동작과 같다)의
+  // 글자와 그 합성 계보를 소모 후보에서 지킨다.
+  for (const idiom of engine.trackedIdioms()) {
+    for (const char of idiom.chars) {
+      protectedChars.add(char);
+      for (const pathChar of engine.evolution.getTargetPath(char)) protectedChars.add(pathChar);
+    }
   }
   return protectedChars;
 }
@@ -292,11 +294,12 @@ function autoplayEvolutionOption(engine: GameEngine): EvolutionOption | undefine
     .filter((option) => !option.materialTowerIds.some((id) => sealedIds.has(id)));
   // 아직 줄이 없는(혹은 흩어진) 성어의 글자도 지킨다 — 재봉인 재료다.
   const pendingIdioms = engine.idioms().filter((candidate) => !engine.isIdiomSealActive(candidate.id));
-  const idiom = engine.currentIdiomTarget();
   if (pendingIdioms.length === 0) return options.find((candidate) => candidate.onTargetPath) ?? options[0];
   const exactChars = new Set(pendingIdioms.flatMap((candidate) => [...candidate.chars]));
   const idiomPath = new Set<string>();
-  for (const char of idiom?.chars ?? "") for (const pathChar of engine.evolution.getTargetPath(char)) idiomPath.add(pathChar);
+  for (const tracked of engine.trackedIdioms()) {
+    for (const char of tracked.chars) for (const pathChar of engine.evolution.getTargetPath(char)) idiomPath.add(pathChar);
+  }
   const required = new Map<string, number>();
   for (const candidate of pendingIdioms) {
     for (const char of candidate.chars) required.set(char, (required.get(char) ?? 0) + 1);

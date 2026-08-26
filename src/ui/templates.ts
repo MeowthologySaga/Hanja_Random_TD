@@ -82,6 +82,13 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
         </header>
         <div id="inventory-frame-body" class="focus-frame-body run-inventory-vault"></div>
       </section>
+      <section id="goal-frame" class="focus-frame focus-frame--codex-goal" role="dialog" aria-modal="false" aria-labelledby="goal-frame-title" hidden>
+        <header class="focus-frame-head">
+          <div><strong id="goal-frame-title">목표 서책</strong><span>성어를 고르면 부족한 글자가 목표가 됩니다 · 추적 최대 3구</span></div>
+          <button id="goal-frame-close" class="focus-frame-close" type="button" data-focus-close="goal" aria-label="목표 서책 닫기">닫기 ✕</button>
+        </header>
+        <div id="goal-frame-body" class="focus-frame-body goal-codex-workbench"></div>
+      </section>
     </section>
 
     <aside class="control-panel" aria-label="합성과 수비 조작 패널">
@@ -100,7 +107,7 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
         <div><span>엽전 <em id="interest-preview">이자 +2</em></span><strong id="gold-value">${GAME_CONFIG.startingGold}</strong></div>
         <div><span>적 한계</span><strong id="enemy-cap-value">${MAX_ENEMIES}체</strong></div>
         <div title="전장에 배치된 자령 수 / 열린 진의 칸 수"><span>배치</span><strong id="tower-count-value">0 / 16</strong></div>
-        <div title="이번 런에 완성한 목표 한자 수 / 목표 개수"><span>목표</span><strong id="goal-count-value">0</strong></div>
+        <div title="이번 런에 봉인한 성어 수 / 이번 런 성어 목표 수"><span>성어 봉인</span><strong id="goal-count-value">0 / 5</strong></div>
       </section>
 
       <section class="wave-card">
@@ -109,33 +116,24 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
       </section>
 
       <div class="context-deck">
-        <section id="goal-panel" class="goal-workbench panel-view" data-panel-view="goal" aria-label="목표 선택 서책">
+        <section id="goal-panel" class="goal-workbench panel-view" data-panel-view="goal" aria-label="목표 서책">
           <header class="goal-workbench-heading">
-            <div><span>보유 기준 목표</span><strong>목표 서책</strong></div>
-            <div class="goal-mode-tabs" role="tablist" aria-label="목표 종류">
-              <button type="button" class="is-active" data-goal-mode="hanzi" role="tab" aria-selected="true">한자 목표</button>
-              <button type="button" data-goal-mode="idiom" role="tab" aria-selected="false">성어 목표</button>
-            </div>
+            <div><span>성어가 곧 목표</span><strong>목표 서책</strong></div>
           </header>
-
-          <section class="goal-card" aria-label="현재 목표 한자">
-            <div class="goal-glyph" id="goal-glyph">相</div>
-            <div class="goal-copy">
-              <div class="section-heading"><span>현재 한자 목표</span><b id="goal-stage">2단계</b></div>
-              <strong id="goal-recipe">木 + 目 → 相</strong>
-              <span id="goal-reading" class="goal-reading">훈음 · 서로 상</span>
-              <div id="goal-materials" class="goal-materials"></div>
-              <div class="goal-progress"><i id="goal-progress-fill"></i></div>
+          <div id="goal-codex-layout" class="goal-codex-layout">
+            <div class="goal-codex-browse">
+              <div class="goal-selector-tools">
+                <label><span>四</span><input id="goal-search" type="search" placeholder="원하는 성어·읽기·뜻 검색" autocomplete="off" /></label>
+                <div id="goal-owned-summary" class="goal-owned-summary"></div>
+              </div>
+              <div id="goal-selector-list" class="goal-selector-list" aria-live="polite"></div>
             </div>
-          </section>
-
-          <section id="idiom-target-card" class="idiom-target-card" aria-label="현재 성어 목표"></section>
-
-          <div class="goal-selector-tools">
-            <label><span>目</span><input id="goal-search" type="search" placeholder="원하는 한자·훈음·성어를 검색" autocomplete="off" /></label>
-            <div id="goal-owned-summary" class="goal-owned-summary"></div>
+            <aside id="goal-codex-detail" class="goal-codex-detail" aria-label="선택한 성어 상세"></aside>
           </div>
-          <div id="goal-selector-list" class="goal-selector-list" aria-live="polite"></div>
+          <div class="focus-panel-summary">
+            <p id="goal-panel-summary">추적 중 성어 <b>1구</b></p>
+            <button id="goal-frame-open" class="focus-open-button" type="button">서책 열기</button>
+          </div>
         </section>
 
         <section id="shop-panel" class="shop-workbench panel-view is-active" data-panel-view="shop" aria-label="자령 상점과 운영 행동">
@@ -195,12 +193,6 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
             <div class="empty-evolution"><b>재료를 모으는 중</b><span>목표 재료는 소환 확률이 서서히 보정됩니다.</span></div>
           </div>
         </section>
-
-        <div class="combat-readout panel-view" data-panel-view="record" aria-label="전투 발동 기록">
-          <div class="record-heading"><span>최근 능력 기록</span><small>무엇이 왜 발동했는지 표시됩니다.</small></div>
-          <div id="combo-meter" class="combo-meter"><span>연쇄 봉인</span><b id="combo-count">× 3</b></div>
-          <ol id="combat-feed" class="combat-feed"></ol>
-        </div>
 
         <section id="idiom-panel" class="idiom-panel panel-view" data-panel-view="idiom" aria-label="사자성어 진법" aria-live="polite">
           <section class="idiom-rule-guide" aria-label="성어 발동 규칙">
@@ -352,7 +344,6 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
         <i class="tab-divider" aria-hidden="true"></i>
         <button id="goal-tab" type="button" data-panel-tab="goal" role="tab" aria-selected="false">목표 <small id="goal-tab-progress">0%</small></button>
         <button id="idiom-tab" type="button" data-panel-tab="idiom" role="tab" aria-selected="false">성어 <small id="idiom-tab-count">0/5</small></button>
-        <button id="record-tab" type="button" data-panel-tab="record" role="tab" aria-selected="false">기록</button>
       </nav>
 
 

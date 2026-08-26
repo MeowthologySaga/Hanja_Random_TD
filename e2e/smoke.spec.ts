@@ -156,7 +156,8 @@ test("freezes the opening until the first summon opens its matching formation", 
   await page.getByTestId("start-run").click();
   await expect(page.locator("#shop-panel")).toBeVisible();
   await expect(page.locator("#shop-tab")).toHaveClass(/is-active/u);
-  await expect(page.locator(".panel-tabs > button")).toHaveCount(9);
+  // 기록 탭 제거(트랙 B) — 탭바는 8개다.
+  await expect(page.locator(".panel-tabs > button")).toHaveCount(8);
   await expect(page.getByTestId("early-wave")).toBeDisabled();
   await expect(page.getByTestId("early-wave")).toHaveText("첫 소환 필요");
   await expect(page.locator("#wave-kicker")).toContainText("시간 정지");
@@ -397,30 +398,34 @@ test("dismantles a deployed jaryeong straight from the selected card", async ({ 
   await expect(page.locator(".essence-floater")).toHaveText(/\+\d+ 문기/u);
 });
 
-test("uses tabbed owned-aware goals and summons from all one thousand Cheonjamun sprites", async ({ page }) => {
+test("opens the idiom goal codex frame and summons from all one thousand Cheonjamun sprites", async ({ page }) => {
   await page.goto("/?seed=EVO-E2E-2&mode=standard");
   await page.getByTestId("start-run").click();
-  await expect(page.locator(".panel-tabs > button")).toHaveCount(9);
+  await expect(page.locator(".panel-tabs > button")).toHaveCount(8);
   await expect(page.locator("#selected-card")).toBeHidden();
   await expect(page.locator("#goal-panel")).toBeHidden();
   await expect(page.locator("#shop-panel")).toBeVisible();
 
+  // 트랙 B: 목표 탭 진입 = 서책 집중 프레임 자동 오픈(보관고 선례).
   await page.locator("#goal-tab").click();
   await expect(page.locator("#goal-panel")).toBeVisible();
-  await page.locator("#goal-search").fill("天");
-  await expect(page.locator('#goal-selector-list [data-goal-char="天"]')).toHaveCount(1);
-  await page.locator('[data-goal-char="天"]').click();
-  await expect(page.locator("#goal-glyph")).toHaveText("天");
-  await expect(page.locator("#goal-recipe")).toHaveText("天 자령을 소환하면 달성");
-  await expect(page.locator('[data-goal-char="天"]')).toHaveAttribute("aria-pressed", "true");
-
-  await page.locator('button[data-goal-mode="idiom"]').click();
+  await expect(page.locator("#goal-frame")).toBeVisible();
+  await expect(page.locator("#focus-dim")).toBeVisible();
+  // 승계: 추적은 기존 성어 목표 1구로 시작한다.
+  await expect(page.locator(".goal-idiom-track[aria-pressed='true']")).toHaveCount(1);
   await page.locator("#goal-search").fill("天地玄黃");
   await expect(page.locator('#goal-selector-list [data-goal-idiom="cheonjamun-001"]')).toHaveCount(1);
   await page.locator('[data-goal-idiom="cheonjamun-001"]').click();
-  await expect(page.locator("#idiom-target-card")).toContainText("천지현황");
-  await expect(page.locator("#idiom-target-card")).toContainText("0/4자 보유");
-  await expect(page.locator("#idiom-target-card")).toContainText("부족 天·地·玄·黃");
+  const detail = page.locator("#goal-codex-detail");
+  await expect(detail).toContainText("천지현황");
+  await expect(detail).toContainText("천자문 제1구");
+  await expect(detail).toContainText("부족 4자");
+  // 추적 토글 → 부족 글자에 소환·연구 가중이 붙는다는 안내와 함께 2구가 된다.
+  await detail.locator("[data-goal-track]").click();
+  await expect(page.locator("#goal-owned-summary")).toContainText("추적 2/3구");
+  await expect(page.locator('#goal-selector-list [data-goal-idiom="cheonjamun-001"] .goal-idiom-track')).toHaveAttribute("aria-pressed", "true");
+  await page.keyboard.press("Escape");
+  await expect(page.locator("#goal-frame")).toBeHidden();
 
   await openShop(page);
   await expect(page.locator("#shop-pool-count")).toHaveText("1,000");
@@ -458,6 +463,61 @@ test("uses tabbed owned-aware goals and summons from all one thousand Cheonjamun
   expect(layout.overflowY).toBeLessThanOrEqual(0);
   expect(layout.scrollbarColor).not.toBe("auto");
   await page.screenshot({ path: "artifacts/goal-shop-cheonjamun-1000-1280x720.png", fullPage: true });
+});
+
+// 트랙 B: 성어 복수 추적 — 최대 3구 상한과 마지막 1구 유지, 요약·재오픈 동선.
+test("tracks up to three idiom goals with a hard cap and keeps the last one", async ({ page }) => {
+  await page.goto("/?seed=GOAL-CODEX-E2E&mode=casual");
+  await page.getByTestId("start-run").click();
+  await page.locator("#goal-tab").click();
+  await expect(page.locator("#goal-frame")).toBeVisible();
+  await expect(page.locator(".goal-idiom-track[aria-pressed='true']")).toHaveCount(1);
+
+  // 추적 2·3구 — 카드의 체크 토글로 늘린다.
+  await page.locator("#goal-selector-list .goal-idiom-track[aria-pressed='false']:not([disabled])").first().click();
+  await expect(page.locator(".goal-idiom-track[aria-pressed='true']")).toHaveCount(2);
+  await page.locator("#goal-selector-list .goal-idiom-track[aria-pressed='false']:not([disabled])").first().click();
+  await expect(page.locator(".goal-idiom-track[aria-pressed='true']")).toHaveCount(3);
+  await expect(page.locator("#goal-owned-summary")).toContainText("추적 3/3구");
+  await page.screenshot({ path: "artifacts/goal-codex-tracked-three-1280x720.png", fullPage: true });
+
+  // 4구째는 거절 — 상한 안내 토스트.
+  await page.locator("#goal-selector-list .goal-idiom-track[aria-pressed='false']:not([disabled])").first().click();
+  await expect(page.locator(".goal-idiom-track[aria-pressed='true']")).toHaveCount(3);
+  await expect(page.locator("#toast")).toContainText("추적은 최대 3개");
+
+  // 해제는 2구까지 자유롭고, 마지막 1구는 거절된다("성어가 곧 목표").
+  await page.locator(".goal-idiom-track[aria-pressed='true']").first().click();
+  await page.locator(".goal-idiom-track[aria-pressed='true']").first().click();
+  await expect(page.locator(".goal-idiom-track[aria-pressed='true']")).toHaveCount(1);
+  await page.locator(".goal-idiom-track[aria-pressed='true']").first().click();
+  await expect(page.locator(".goal-idiom-track[aria-pressed='true']")).toHaveCount(1);
+  await expect(page.locator("#toast")).toContainText("최소 1개");
+
+  // 닫으면 패널 요약과 [서책 열기]가 돌아오고, 버튼으로 재오픈된다.
+  await page.locator("#goal-frame-close").click();
+  await expect(page.locator("#goal-frame")).toBeHidden();
+  await expect(page.locator("#goal-panel-summary")).toContainText("추적 중 성어");
+  await page.locator("#goal-frame-open").click();
+  await expect(page.locator("#goal-frame")).toBeVisible();
+});
+
+// 트랙 B: 표준(자형연성)은 부족 글자마다 합성 하위 트리를 자동 전개한다.
+test("expands synthesis part trees for missing idiom characters in standard mode", async ({ page }) => {
+  await page.goto("/?seed=GOAL-TREE-E2E&mode=standard");
+  await page.getByTestId("start-run").click();
+  await page.locator("#goal-tab").click();
+  await expect(page.locator("#goal-frame")).toBeVisible();
+  await page.locator("#goal-search").fill("온고지신");
+  await page.locator("#goal-selector-list .goal-idiom-card").first().click();
+  const detail = page.locator("#goal-codex-detail");
+  await expect(detail).toContainText("부품을 모아 합성합니다");
+  // 知 는 합성 글자 — "이 글자는 이 부품들로"(知 ← 矢 + 口)가 펼쳐진다.
+  const knowTree = detail.locator(".goal-missing-item", { hasText: "知" }).locator(".goal-tree-row").first();
+  await expect(knowTree).toContainText("知");
+  await expect(knowTree).toContainText("矢");
+  await expect(knowTree).toContainText("口");
+  await page.screenshot({ path: "artifacts/goal-codex-standard-tree-1280x720.png", fullPage: true });
 });
 
 test("opens the dedicated growth tab with batch upgrade controls", async ({ page }) => {
@@ -520,8 +580,9 @@ test("starts a KR run and exposes the finished core loop at 1280x720", async ({ 
   await expect(page.locator("#speed-button")).toHaveText("3×");
   await page.locator("#speed-button").click();
   await expect(page.locator("#speed-button")).toHaveText("1×");
-  await expect(page.locator("#goal-glyph")).toHaveText("相");
-  await expect(page.locator("#goal-recipe")).toHaveText("木 + 目 → 相");
+  // 트랙 B: 자원칸 목표 카운터는 성어 봉인 수를 센다. 한자 목표 카드는 은퇴했다.
+  await expect(page.locator("#goal-count-value")).toHaveText("0 / 5");
+  await expect(page.locator("#goal-glyph")).toHaveCount(0);
   await openShop(page);
   for (let index = 0; index < 4; index += 1) await page.getByTestId("summon-button").click();
   await expect(page.locator("#tower-count-value")).toHaveText("4 / 16");
@@ -544,7 +605,6 @@ test("starts a KR run and exposes the finished core loop at 1280x720", async ({ 
   await expect(page.locator("#selected-card .selected-learning")).toContainText("훈음");
   await expect(page.locator("#selected-card .selected-radical")).toContainText("훈음");
   await expect(page.locator("#selected-card .selected-radical")).not.toContainText("부수");
-  await expect(page.locator("#goal-reading")).toContainText("서로 상");
   // 리소스 타이밍 폴링은 dev 서버 모듈 수가 바뀌면 페인트 경계가 밀려 깨지는
   // 취약 단언이었다(엔진 분할 때 실증). 같은 의도를 계산된 스타일로 검증한다.
   await expect.poll(() => page.evaluate(() => document.querySelector("[style*='jaryeongs']") !== null)).toBe(true);
@@ -607,8 +667,12 @@ test("starts a KR run and exposes the finished core loop at 1280x720", async ({ 
   await expect(page.locator("#battle-canvas")).toHaveAttribute("data-projectile-sprite-draw", "true");
   await page.screenshot({ path: "artifacts/projectile-sprite-active-1280x720.png", fullPage: true });
   await expect(page.locator("#ability-banner")).toHaveCount(0);
-  // 기록은 탭도 별도 티커도 아니고, 패널 바닥 푸터의 상시 메시지 줄로 노출된다.
+  // 기록은 탭도 티커도 아니다(트랙 B 완전 제거) — 상시 메시지는 패널 푸터,
+  // 능력 발동은 타워 위 말풍선이 맡는다.
   await expect(page.locator("#record-ticker")).toHaveCount(0);
+  await expect(page.locator("#record-tab")).toHaveCount(0);
+  await expect(page.locator("#combat-feed")).toHaveCount(0);
+  await expect(page.locator("#combo-meter")).toHaveCount(0);
   await expect(page.locator(".panel-footer #message-value")).toBeVisible();
   await expect(page.locator(".panel-footer #message-value")).not.toHaveText("");
   await page.getByRole("tab", { name: "자령" }).click();
@@ -855,8 +919,9 @@ test("keeps CN glyphs regional and opens the complete codex", async ({ page }) =
   await chooseRegion(page, "CN");
   await page.getByTestId("start-run").click();
   await expect(page.locator("#stage-region")).toHaveText("중국");
-  await expect(page.locator("#goal-glyph")).toHaveText("刘");
-  await expect(page.locator("#goal-recipe")).toHaveText("文 + 刀 → 刘");
+  // 트랙 B: 한자 목표 카드는 은퇴했다 — 내부 목표 사다리는 CN 첫 목표(刘)로 남는다.
+  await expect(page.locator("#goal-count-value")).toHaveText("0 / 4");
+  expect(await page.evaluate(() => (window as unknown as { __HANJA_CTX_QA__: { engine: { state: { targetChar: string } } } }).__HANJA_CTX_QA__.engine.state.targetChar)).toBe("刘");
 
   await openCodex(page);
   await expect(page.getByRole("heading", { name: /중국.*통합 자령 도감/u })).toBeVisible();
@@ -888,9 +953,11 @@ test("renders only QC-passed generated CN sprites at 1280x720", async ({ page })
   await page.goto("/?seed=CN-ASSET-1000-5&mode=standard");
   await chooseRegion(page, "CN");
   await page.getByTestId("start-run").click();
-  await page.locator("#goal-tab").click();
-  await page.locator("#goal-search").fill("一");
-  await page.locator('[data-goal-char="一"]').click();
+  // 한자 목표 선택 UI 는 은퇴했다 — 계보 소환을 一 로 고정하는 데는 dev QA
+  // 핸들(엔진 setTarget)을 쓴다. 스프라이트 QC 검증이 목적이라 규칙 우회가 아니다.
+  await page.evaluate(() => {
+    (window as unknown as { __HANJA_CTX_QA__: { engine: { setTarget: (char: string) => unknown } } }).__HANJA_CTX_QA__.engine.setTarget("一");
+  });
   await openShop(page);
   await page.locator('button[data-summon-product="lineage"]').click();
 
@@ -920,13 +987,12 @@ test("shows Japanese on and kun readings as separate learning labels", async ({ 
   await chooseRegion(page, "JP");
   await page.getByTestId("start-run").click();
 
-  // 일본 지역은 한국식 "훈음" 이 아니라 "음독·훈독" 라벨을 쓴다. 목표 서책이 그 라벨을 그대로 노출한다.
+  // 일본 지역은 한국식 "훈음" 이 아니라 "음독·훈독" 라벨을 쓴다.
+  // 목표 서책의 부족 글자 칸이 그 라벨을 그대로 노출한다.
   await page.locator("#goal-tab").click();
-  await page.locator("#goal-search").fill("木");
-  await page.locator('[data-goal-char="木"]').click();
-  await expect(page.locator("#goal-reading")).toContainText("음독·훈독");
-  await expect(page.locator("#goal-reading")).toContainText("ボク·モク");
-  await expect(page.locator('#goal-selector-list [data-goal-char="木"]')).toContainText("음독·훈독");
+  await expect(page.locator("#goal-frame")).toBeVisible();
+  await page.locator("#goal-selector-list .goal-idiom-card").first().click();
+  await expect(page.locator("#goal-codex-detail .goal-missing-item").first()).toContainText("음독·훈독");
 
   await openCodex(page);
   await page.locator("#codex-search").fill("木");
@@ -1033,11 +1099,14 @@ test("keeps the full game surface on a small laptop without a browser page scrol
   const workbenchScrollbar = await page.locator("#growth-upgrade-list").evaluate((element) => getComputedStyle(element).scrollbarColor);
   expect(workbenchScrollbar).not.toBe("auto");
 
+  // 트랙 B: 목표 서책 프레임도 작은 화면(고정 무대 축소)에서 전장 안에 선다.
+  await page.locator("#goal-tab").click();
+  await expect(page.locator("#goal-frame")).toBeVisible();
   const layout = await page.evaluate(() => {
     const shell = document.querySelector<HTMLElement>(".game-shell")?.getBoundingClientRect();
     const stage = document.querySelector<HTMLElement>(".battle-stage")?.getBoundingClientRect();
     const panel = document.querySelector<HTMLElement>(".control-panel")?.getBoundingClientRect();
-    const goalGlyph = document.querySelector<HTMLElement>(".goal-glyph");
+    const goalFrame = document.querySelector<HTMLElement>("#goal-frame")?.getBoundingClientRect();
     return {
       shellWidth: shell?.width ?? 0,
       shellHeight: shell?.height ?? 0,
@@ -1045,7 +1114,9 @@ test("keeps the full game surface on a small laptop without a browser page scrol
       panelLeft: panel?.left ?? 0,
       stageTop: stage?.top ?? 0,
       panelTop: panel?.top ?? 0,
-      goalGlyphSize: Number.parseFloat(goalGlyph ? getComputedStyle(goalGlyph).fontSize : "0"),
+      goalFrameInsideStage: !!goalFrame && !!stage
+        && goalFrame.left >= stage.left - 1 && goalFrame.right <= stage.right + 1
+        && goalFrame.top >= stage.top - 1 && goalFrame.bottom <= stage.bottom + 1,
       overflowX: document.documentElement.scrollWidth - window.innerWidth,
       overflowY: document.documentElement.scrollHeight - window.innerHeight,
       pageScrollbar: getComputedStyle(document.documentElement).scrollbarColor
@@ -1056,7 +1127,7 @@ test("keeps the full game surface on a small laptop without a browser page scrol
   expect(layout.shellHeight).toBeLessThanOrEqual(700);
   expect(layout.panelLeft).toBeGreaterThanOrEqual(layout.stageRight - 1);
   expect(Math.abs(layout.panelTop - layout.stageTop)).toBeLessThanOrEqual(1);
-  expect(layout.goalGlyphSize).toBeGreaterThanOrEqual(48);
+  expect(layout.goalFrameInsideStage).toBe(true);
   expect(layout.overflowX).toBeLessThanOrEqual(0);
   expect(layout.overflowY).toBeLessThanOrEqual(0);
   expect(layout.pageScrollbar).not.toBe("auto");

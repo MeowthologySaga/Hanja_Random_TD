@@ -47,6 +47,18 @@ export function elementZoneKind(wuxing: Wuxing): AbilityZone["kind"] {
  */
 export const TIERED_SUMMON_INTENTS: ReadonlySet<SummonIntent> = new Set<SummonIntent>(["balanced", "midstar", "highstar"]);
 
+/**
+ * 인연 연구가 성어 부족 글자에 얹는 가중 배율(트랙 B — "성어가 곧 목표").
+ *
+ * 목표 한자 경로는 connectionBonus×3.2 를 받는데, 성어 경로는 연구와 무관했다.
+ * 목표 서책이 성어 축으로 통합되면서 연구의 절반은 성어 부족 글자를 향해야
+ * 한다. 곱해지는 값은 0단계 기저(0.12)를 뺀 "실제로 산 연구"만이라 연구 전
+ * 분포는 통합 이전과 동일하다. 같은 3.2 에서 시작하되 성어 줄 전체에 ×0.7 이
+ * 곱해지므로 실효는 목표 경로의 약 2.24 다. 시뮬 게이트(--runs=135 표준 /
+ * 45 캐주얼)를 벗어나면 이 값부터 줄인다.
+ */
+export const IDIOM_RESEARCH_CONNECTION_SCALE = 3.2;
+
 /** 캐주얼 소환의 실효 별 밴드. 상·하한 모두 포함하는 닫힌 구간이다. */
 export interface SummonStarBand {
   readonly min: number;
@@ -256,8 +268,12 @@ const REGION_ENEMY_HP_CURVE: Record<RegionCode, { base: number; chapterGrowth: n
  * 수렴하도록 이 계수만 조정한다 — 웨이브 구성·규칙은 그대로다.
  * (3.8 은 스킬 1차 세트·농축 중복 기본화가 얹힌 뒤의 재고정값. 수량 0.85 와
  * 짝이므로 웨이브 총 내구 기준으로는 ×3.23 상당이다.)
+ *
+ * 트랙 B 재고정: 성어 가중이 "부족 글자 합집합"으로 바뀌며 보유한 성어
+ * 글자가 소환 가중을 더는 빨아들이지 않는다 — 소환이 다양해져 캐주얼 실측
+ * 승률이 0.489→0.778 로 뛰었다(45런). 규칙이 좋아진 만큼 체력으로 되받는다.
  */
-const MODE_ENEMY_HP_SCALE: Record<GameMode, number> = { standard: 1, casual: 3.8 };
+const MODE_ENEMY_HP_SCALE: Record<GameMode, number> = { standard: 1, casual: 4.02 };
 
 /**
  * 모드별 적 수량 계수. 캐주얼은 웨이브당 몸수를 15% 줄이는 대신 체력 계수를
@@ -273,8 +289,11 @@ export const MODE_ENEMY_COUNT_SCALE: Record<GameMode, number> = { standard: 1, c
  * "중앙값 43~50분"을 동시에 만족하는 창이 비어 있었다(3.2 이하 = 승률 초과,
  * 3.35 이상 = 런 시간 초과). 보스만 트림해 보스전 길이(런 시간)와 일반
  * 웨이브 난이도(승률)를 분리한다. 규칙 변경이 아니라 체력 계수다.
+ *
+ * 트랙 B 재고정: 일반 체력 3.8→4.02 인상이 런 시간을 50분 경계까지 밀어,
+ * 트림을 0.78→0.76 으로 함께 내려 시간을 되샀다(45런 실측 0.556 / 49.3분).
  */
-export const CASUAL_BOSS_HP_TRIM = 0.78;
+export const CASUAL_BOSS_HP_TRIM = 0.76;
 
 // The center formation overlaps more of the loop than the east formation.
 // These small route-coverage coefficients make "which element appeared first"

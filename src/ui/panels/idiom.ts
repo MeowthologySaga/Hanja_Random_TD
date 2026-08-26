@@ -70,13 +70,13 @@ function markIdiomHintSeen(): void {
 }
 
 /**
- * 성어 탭을 세 번 맥동시켜 "더 볼 곳"을 짚는다.
+ * 성어·목표 탭을 세 번 맥동시켜 "더 볼 곳"을 짚는다.
  *
- * 목표 탭 안의 성어 서브탭은 목표 패널을 열어 둔 사람에게만 보이므로, 항상
- * 보이는 성어 패널 탭도 함께 맥동시킨다. 안내가 아무 데도 안 닿으면 무의미하다.
+ * 트랙 B 통합 후 성어 목표는 목표 서책(#goal-tab)이 담당한다 — 상태를 보는
+ * 성어 탭과 목표를 고르는 서책 탭을 함께 맥동시킨다.
  */
 function pulseIdiomGoalTab(): void {
-  const tabs = [idiomTab, document.querySelector<HTMLButtonElement>('[data-goal-mode="idiom"]')];
+  const tabs = [idiomTab, document.querySelector<HTMLButtonElement>("#goal-tab")];
   for (const tab of tabs) {
     if (!tab) continue;
     tab.classList.remove("is-hint-pulsing");
