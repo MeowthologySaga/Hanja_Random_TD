@@ -2,10 +2,11 @@
  * 소환 상점 패널.
  */
 import { BOARD_FORMATIONS } from "../../core/content";
+import { IDIOM_WISH_COST_MULTIPLIER } from "../../core/engine-tuning";
 import { multiSummonCost, SUMMON_SURCHARGE, summonCost } from "../../core/hanzi";
 import { type SummonIntent } from "../../core/types";
 import { ctx, must } from "../app-context";
-import { summonAndFocus } from "../battle/camera";
+import { summonAndFocus, summonIdiomWishAndFocus } from "../battle/camera";
 import { escapeHtml } from "../format";
 import { showToast } from "../hud";
 
@@ -97,8 +98,12 @@ export function renderSummonShop(): void {
     });
   // 10연은 균형 밴드를 그대로 쓰므로 보장선도 그 상한(기본 3★)이다.
   const multiBand = ctx.engine.summonStarBand("balanced");
+  // 성어 기원(트랙 F) — 추적 성어의 부족 글자만 부르는 전투력 비연동 상품.
+  const wish = ctx.engine.idiomWishQuote();
+  const wishChars = wish.pool.map((definition) => definition.char);
   const key = `${state.mode}|${base}|${tenCost}|${multiUnlocked ? "10" : "-"}|${state.gold}|${active ? "on" : "off"}`
     + `|${multiBand === null ? "-" : multiBand.max}`
+    + `|wish:${wish.cost}:${wish.reason ?? wishChars.join("")}`
     + `|${products.map((product) => `${product.intent}:${product.effect}`).join(",")}`;
   if (key === summonShopRenderKey) return;
   summonShopRenderKey = key;
@@ -124,6 +129,27 @@ export function renderSummonShop(): void {
         + (product.band !== null && product.band.min > 1 ? ` · ${STROKE_STAR_NOTE}` : "")
     });
   });
+  // 성어 기원 — 부족 글자가 없으면(추적 없음/완성) 비활성 + 사유를 효과 줄에 적는다.
+  // 결과는 항상 1★라 전투력이 아니라 성어 완성을 사는 상품이다. 별승급(캐주얼)
+  // 전용 — 자형연성은 부족 글자가 곧 합성 재료라 승률로 새는 것이 실측돼
+  // (짝시드 90런 0.556→0.733) 계보 소환에 남긴다. 티어 카드와 같은 노출 규칙.
+  if (state.mode === "casual") cards.push(summonCardMarkup({
+    key: "idiom-wish",
+    label: "성어 기원",
+    effect: wish.reason === null
+      ? `부족 ${wishChars.slice(0, 4).join("·")}${wishChars.length > 4 ? "…" : ""} · 1★`
+      : wish.reason,
+    tint: "#96324a",
+    icon: "v4/shop/shop-lineage-scroll-v1",
+    price: `${wish.cost} 엽전`,
+    disabled: !active || wish.reason !== null || state.gold < wish.cost,
+    affordable: !active || wish.reason !== null || state.gold >= wish.cost,
+    testId: "idiom-wish-button",
+    title: "성어 기원 · 추적 성어의 부족 글자를 부릅니다(1★)"
+      + ` · ${wish.cost}엽전 (기본 ${base} × ${IDIOM_WISH_COST_MULTIPLIER})`
+      + " · 부적에 기원을 적어 올리는 소환 — 전투력이 아니라 성어 완성을 삽니다"
+      + (wish.reason === null ? ` · 부족 ${wishChars.join("·")}` : ` · ${wish.reason}`)
+  }));
   cards.push(summonCardMarkup({
     key: "multi",
     label: "10연 소환",
@@ -172,6 +198,7 @@ export function wireShop1(): void {
     if (!card || card.disabled) return;
     const product = card.dataset.summonProduct ?? "balanced";
     if (product === "multi") summonAndFocus(10);
+    else if (product === "idiom-wish") summonIdiomWishAndFocus();
     else summonAndFocus(1, product as SummonIntent);
   });
 }

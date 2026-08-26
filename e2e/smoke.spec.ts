@@ -138,6 +138,10 @@ test("shows a readable single summon reveal and explains the ten-pull milestone"
   await page.locator("#battle-canvas").click({ position: { x: 40, y: 110 } });
   await expect(page.locator("#summon-reveal")).not.toHaveClass(/is-active/u);
 
+  // 트랙 F: 성어 기원 카드는 별승급(캐주얼) 전용이다 — 자형연성 상점에는 없다
+  // (부족 글자 = 합성 재료라 승률로 새는 것이 짝시드 실험에서 실측돼 잠갔다).
+  await expect(page.getByTestId("idiom-wish-button")).toHaveCount(0);
+
   await page.reload();
   await page.getByTestId("start-run").click();
   await openShop(page);
@@ -231,12 +235,17 @@ test("runs the casual eight-star entry and readable one-click promotion workshop
   await expect(page.locator("#casual-goto-shop")).toBeVisible();
   await page.locator("#casual-goto-shop").click();
   await expect(page.locator(".game-shell")).toHaveAttribute("data-panel-tab", "shop");
+  // 트랙 F: 성어 기원 카드(별승급 전용)는 첫 소환 전에는 가드 사유로 잠긴다.
+  await expect(page.getByTestId("idiom-wish-button")).toBeDisabled();
   for (let index = 0; index < 4; index += 1) {
     await page.getByTestId("summon-button").click();
     await expect(page.locator("#summon-reveal")).toHaveClass(/is-active/u);
     await expect(page.locator(".summon-result-card")).toContainText(/\d★/u);
     await page.locator("#summon-reveal-close").click();
   }
+  // 첫 소환 뒤에는 추적 성어의 부족 글자를 사유 대신 효과 줄에 적는다(1★ 고정).
+  await expect(page.getByTestId("idiom-wish-button")).toContainText("부족");
+  await expect(page.getByTestId("idiom-wish-button")).toContainText("1★");
 
   await page.getByRole("tab", { name: "3체 조합", exact: true }).click();
   await expect(page.locator(".game-shell")).toHaveAttribute("data-panel-tab", "evolution");

@@ -82,6 +82,7 @@ import {
   FIRST_PREP_SECONDS,
   FORMATION_ROUTE_COVERAGE_MULTIPLIER,
   GATE_OPENING_WARD,
+  idiomWishCost,
   interestForGold,
   MAX_CONCENTRATION_LEVEL,
   MODE_ENEMY_COUNT_SCALE,
@@ -139,7 +140,8 @@ import {
   idiomById,
   type IdiomDefinition,
   idiomDirectPoolChars,
-  idiomsForRegion
+  idiomsForRegion,
+  idiomWishChars
 } from "./idioms";
 import { defaultNotationForRegion } from "./notation";
 import { SeededRng } from "./rng";
@@ -203,6 +205,8 @@ export {
   autoConcentrationPath,
   concentrationPathLabel,
   concentrationEssenceRefund,
+  IDIOM_WISH_COST_MULTIPLIER,
+  idiomWishCost,
   dismantleEssenceValue,
   casualDismantleEssence,
   casualDismantleScore,
@@ -2851,6 +2855,114 @@ export class GameEngine {
       included.add(char);
     }
     return definitions;
+  }
+
+  /**
+   * [병합 지점] 성어 기원 소환이 살피는 "추적 성어" 목록.
+   *
+   * 지금은 단일 추적(currentIdiomTarget) 하나다. 목표 체계가 "성어=목표,
+   * 복수 추적 3"으로 개편되면 이 메서드가 추적 배열을 돌려주도록만 바꾸면 된다 —
+   * 부족 글자 합집합(idiomWishChars)·상점 카드·소환 본체는 그대로 붙는다.
+   */
+  idiomWishTargets(): readonly IdiomDefinition[] {
+    const target = this.currentIdiomTarget();
+    return target ? [target] : [];
+  }
+
+  /** 성어 기원 소환 후보 — 추적 성어들의 부족 글자 정의. 비어 있으면 상품 비활성. */
+  idiomWishPool(): readonly HanziDefinition[] {
+    const chars = idiomWishChars(
+      this.catalog,
+      [...this.state.towers, ...this.state.inventoryTowers],
+      this.idiomWishTargets(),
+      this.state.mode
+    );
+    const pool: HanziDefinition[] = [];
+    for (const char of chars) {
+      const definition = this.catalog.definitions.get(char);
+      if (!definition) continue;
+      // 캐주얼은 별 데이터가 없는 글자로 자령을 만들 수 없다(createTower 방어와 짝).
+      if (this.state.mode === "casual" && casualNaturalStar(char) === null) continue;
+      pool.push(definition);
+    }
+    return pool;
+  }
+
+  /**
+   * 성어 기원 카드 한 장이 필요로 하는 전부 — 후보·가격·비활성 사유.
+   *
+   * 별승급(캐주얼) 전용이다. 자형연성에서는 부족 글자가 곧 합성 재료라
+   * "반드시 유용한 소환"이 진화 루프(전투력)로 직결된다 — 45런 짝시드 실험
+   * 2회에서 승률 +24.5pp/+11.1pp(합산 0.556→0.733)가 재현됐고 성어 봉인은
+   * 오히려 줄었다(0.16→0.13, 0.27→0.16). 성어 가중 3배 기각과 같은 결이라
+   * 자형연성은 기존 계보 소환(확률 가중)에 남긴다.
+   */
+  idiomWishQuote(): { pool: readonly HanziDefinition[]; cost: number; reason: string | null } {
+    const pool = this.idiomWishPool();
+    const cost = idiomWishCost(summonCost(this.state.summonCount));
+    const reason = this.state.mode !== "casual"
+      ? "별승급 진법 전용 — 자형연성은 계보 소환이 성어 재료를 맡습니다"
+      : this.state.summonCount === 0
+        ? "첫 소환으로 오행진을 먼저 여세요"
+        : this.idiomWishTargets().length === 0
+          ? "추적 성어가 없습니다"
+          : pool.length === 0
+            ? "부족 글자가 없습니다 — 성어 재료 완성"
+            : null;
+    return { pool, cost, reason };
+  }
+
+  /**
+   * 성어 기원 소환 — 부적에 기원을 적어 올려 추적 성어의 부족 글자를 부른다.
+   *
+   * 일반 소환(summon)과 완전히 분리된 구매 경로다: 확률 가중·별 밴드·소프트
+   * 연민·계보 진행도를 전혀 건드리지 않고 RNG 도 구매한 순간에만 쓴다 —
+   * 상품을 사지 않는 런(자동 시뮬 포함)의 시드 결정성은 그대로다. 결과 자령은
+   * 캐주얼에서 항상 1★로 태어나 전투력 유입을 최소화한다. "성어 가중"을
+   * 올리면 승률까지 오르던 과거 기각안과 달리, 이 경로는 성어 완성만 판다.
+   */
+  summonIdiomWish(): ActionResult {
+    if (!this.isRunActive()) return { ok: false, message: "진행 중인 수비전이 없습니다." };
+    const { pool, cost, reason } = this.idiomWishQuote();
+    if (reason !== null) return { ok: false, message: `성어 기원 · ${reason}` };
+    if (this.state.gold < cost) return { ok: false, message: "엽전이 " + String(cost - this.state.gold) + " 부족합니다." };
+    const emptyCell = this.state.autoPlaceSummons ? this.firstEmptyCell() : null;
+    const stored = !this.state.autoPlaceSummons || emptyCell === null;
+    const cell = stored ? -1 : emptyCell;
+    if (cell === null) return { ok: false, message: "소환 위치를 찾지 못했습니다." };
+    const definition = this.rng.pick(pool);
+    this.state.gold -= cost;
+    const tower = this.createTower(definition, cell);
+    if (this.state.mode === "casual") {
+      // 기원으로 태어난 자령은 언제나 1★ 그릇이다 — 성어 줄을 채우는 것이
+      // 목적이지 전투력이 목적이 아니다(획수 별과 무관하게 고정).
+      tower.naturalStar = 1;
+      tower.casualStar = 1;
+    }
+    if (stored) this.state.inventoryTowers.push(tower);
+    else this.state.towers.push(tower);
+    this.state.summonCount += 1;
+    this.state.selectedTowerId = tower.id;
+    const newDiscovery = !this.state.discoveredChars.includes(definition.char);
+    this.discover(definition.char);
+    this.state.lastMessage = `성어 기원 · ${definition.char} · ${definition.combat.roleLabel}`
+      + `${this.state.mode === "casual" ? " · 1★" : ""}${stored ? " 인벤토리 보관" : " 소환"} · 사자성어 재료!`;
+    const eventAt = stored
+      ? ((this.state.startingFormationIndex !== null ? BOARD_FORMATIONS[this.state.startingFormationIndex]?.center : undefined) ?? { x: 400, y: 300 })
+      : BOARD_CELLS[cell] as Point;
+    this.events.push({
+      type: "summon",
+      at: eventAt,
+      tower: { ...tower },
+      stored,
+      helpful: true,
+      helpfulReason: "idiom",
+      newDiscovery,
+      utility: newDiscovery ? "new" : "synthesis"
+    });
+    if (definition.char === this.state.targetChar) this.completeGoal(definition.char);
+    if (!stored) this.resolveIdiomFormations();
+    return { ok: true, message: this.state.lastMessage };
   }
 
   /**

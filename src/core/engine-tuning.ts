@@ -324,6 +324,21 @@ export function casualGoalOrder(catalog: HanziCatalog): readonly string[] {
 }
 
 /*
+ * 성어 기원 소환 — 부적에 기원을 적어 추적 성어의 부족 글자만 부르는 상점 상품.
+ *
+ * 밸런스 전수조사에서 KR 성어 획득률이 0.8%에 그쳐 헤드라인 기능이 사실상
+ * 보이지 않았다. 과거 "성어 가중 3배"안은 승률(전투력)까지 끌어올려 기각됐으므로
+ * 이번 경로는 전투력과 분리한다 — 결과는 캐주얼에서 항상 1★로 태어나고,
+ * 자형연성에서는 저단계 직접 재료만 나온다. 가격은 기본 소환가의 배수로
+ * "성어 완성에 지불하는 값"이며 2.5~3배 사이에서 조율한다.
+ */
+export const IDIOM_WISH_COST_MULTIPLIER = 2.75;
+
+export function idiomWishCost(baseCost: number): number {
+  return Math.round(baseCost * IDIOM_WISH_COST_MULTIPLIER);
+}
+
+/*
  * 수련장(튜토리얼) 완화 계수.
  *
  * 수련장은 각본이 정한 여덟 걸음을 "반드시 이기며" 밟는 판이다. 규칙은
