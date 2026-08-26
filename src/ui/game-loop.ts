@@ -2,7 +2,7 @@
  * requestAnimationFrame 루프와 일시정지.
  */
 import { type GameEvent } from "../core/types";
-import { canvas, ctx, must, shell, sound } from "./app-context";
+import { canvas, ctx, must, shell, sound, summonReveal } from "./app-context";
 import { drawWorld } from "./battle/draw";
 import { syncCoachProgress } from "./coach";
 import { showEndScreen } from "./dialogs/end";
@@ -12,16 +12,31 @@ import { syncOneShotHints } from "./hint";
 import { showToast, syncPanel } from "./hud";
 import { showCasualFusionReveal, showSummonReveal } from "./summon-reveal";
 
-/** 열려 있는 모달 다이얼로그가 하나라도 있으면 전투를 세운다. */
+/**
+ * 소환·3합 공개 연출은 `<dialog>` 가 아니라 화면을 덮는 `<section>` 이라
+ * `dialog[open]` 판정에 걸리지 않았다. 3초 남짓한 연출을 읽는 동안 적이 계속
+ * 밀려들어 "카드를 읽었더니 판이 무너져 있다"가 됐다 — 도움말 다이얼로그와
+ * 같은 규칙으로 세운다.
+ */
+export function revealPauseActive(): boolean {
+  return summonReveal.classList.contains("is-active");
+}
+
+/** 열려 있는 모달 다이얼로그·공개 연출이 하나라도 있으면 전투를 세운다. */
 function modalPauseActive(): boolean {
-  return document.querySelector("dialog[open]") !== null;
+  return document.querySelector("dialog[open]") !== null || revealPauseActive();
 }
 
 function syncPauseChip(paused: boolean, manual: boolean): void {
   const chip = must<HTMLElement>("#pause-chip");
   if (chip.hidden !== !paused) chip.hidden = !paused;
   if (!paused) return;
-  const reason = manual ? "P 키로 계속" : "창을 닫으면 계속";
+  // 연출은 닫는 방법이 창과 달라(아무 곳이나 누름) 안내 문구도 갈라 준다.
+  const reason = manual
+    ? "P 키로 계속"
+    : revealPauseActive() && document.querySelector("dialog[open]") === null
+      ? "결과를 닫으면 계속"
+      : "창을 닫으면 계속";
   const label = must<HTMLElement>("#pause-reason");
   if (label.textContent !== reason) label.textContent = reason;
 }
