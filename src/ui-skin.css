@@ -9268,3 +9268,141 @@ span.codex-jaryeong-category { color: #4a3f30 !important; }
   box-shadow: none !important;
   text-shadow: none;
 }
+
+/* ══════════════════════════════════════════════════════════════════
+   R7-C. 도감 묶음 (항목 15~20 · 26~27)
+   ══════════════════════════════════════════════════════════════════ */
+
+/* ── 15. 조합표 카드 잘림 — styles.css `.codex-list button`(0,1,1) 의
+   min-height:80px 에 `.codex-recipe-card`(0,1,0) 98px 가 지고 있었다.
+   140식 전부 같은 지점에서 잘려 "실제 구성 원리"의 유일한 증거 화면이
+   시각적으로 부정됐다. 같은 (0,2,0) 으로 올려 되찾는다. ── */
+.codex-list .codex-recipe-card {
+  min-height: 98px;
+}
+
+/* ── 16. 카드 번호 — 10px 영문 일련번호를 한국어 12px 로 ── */
+.codex-jaryeong-number {
+  font-size: var(--fs-2xs) !important;
+  font-weight: 800;
+  letter-spacing: 0;
+  color: var(--text-300) !important;
+}
+
+/* 16·26. dex 항목이 없는 자령의 스프라이트는 안쪽 칸에 그린다.
+   바깥 칸의 "우물" 배경이 !important 라 같은 요소에 얹으면 지워졌다. */
+.codex-sprite-fill {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background-repeat: no-repeat;
+}
+
+/* ── 18. 성어 순번 — 2.5~4:1 옅은 숫자를 먹 원판 + 밝은 숫자로 반전.
+   R6 의 순번 인장과 같은 어휘를 쓴다. ── */
+.idiom-codex-glyphs span small {
+  display: grid;
+  width: 17px;
+  height: 17px;
+  place-items: center;
+  color: #fbf3dd !important;
+  border-radius: 999px;
+  background: var(--text-100) !important;
+  box-shadow: 0 0 0 1px rgba(250, 243, 221, 0.55);
+  font-size: var(--fs-2xs) !important;
+  font-weight: 900;
+  line-height: 1;
+}
+
+/* ── 19. 필터·요약·주석 — --text-400 군이 도감 한지면에서 옅었다 ── */
+#codex-summary,
+#codex-note,
+.codex-filter-label,
+#codex-kicker {
+  color: var(--text-200) !important;
+}
+
+/* ── 19·27. 이번 런 발견 마킹 ── */
+.codex-jaryeong-card {
+  position: relative;
+}
+
+.codex-found-mark {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  z-index: 2;
+  padding: 1px 6px;
+  color: #2b2009;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #ffeec4, #dbb96e);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+  font-size: 11px;
+  font-weight: 900;
+  line-height: 1.35;
+}
+
+.codex-list .codex-jaryeong-card.is-found {
+  box-shadow:
+    var(--bevel-up),
+    0 0 0 1px rgba(176, 138, 69, 0.75);
+}
+
+/* ── 17. 성어 카드 선택 표시 — 한자 카드와 같은 어휘 ── */
+.codex-list .codex-idiom-card.is-selected {
+  box-shadow:
+    var(--bevel-up),
+    inset 0 -3px 0 var(--seal),
+    0 0 0 1px rgba(122, 90, 42, 0.55);
+}
+
+/* ── 20. 12px 바닥 — 조합 경로·훈 풀이·사실표 계열 49건 ── */
+.codex-dialog .codex-jaryeong-badges em,
+.codex-dialog .codex-progression-badges span,
+.codex-dialog .codex-meaning-explanation span,
+.codex-dialog .codex-meaning-explanation h4 small,
+.codex-dialog .codex-meaning-explanation em,
+.codex-dialog .codex-meaning-explanation p,
+.codex-dialog .codex-jaryeong-entry span,
+.codex-dialog .codex-jaryeong-facts div span,
+.codex-dialog .codex-jaryeong-category,
+.codex-dialog .codex-jaryeong-recipe,
+.codex-dialog .codex-jaryeong-identity-panel .eyebrow,
+.codex-dialog .codex-jaryeong-name div p,
+.codex-dialog .codex-mode-tabs button small,
+.codex-dialog #codex-synthesis-filters button small,
+.codex-dialog #codex-kicker,
+.codex-dialog .codex-recipe-card small,
+.codex-dialog .codex-idiom-card small,
+.codex-dialog #codex-detail .eyebrow,
+.codex-dialog .idiom-strategy span,
+.codex-dialog .idiom-strategy small,
+.codex-dialog .idiom-material-guide button span,
+.codex-dialog .idiom-material-guide button small,
+.codex-dialog .codex-jaryeong-trait p,
+.codex-dialog .codex-jaryeong-observation p,
+.codex-dialog .codex-jaryeong-observation span,
+.codex-dialog .codex-abilities article small,
+.codex-dialog .codex-abilities article em,
+.codex-dialog .recipe-guide ol li span,
+.codex-dialog .recipe-guide p button,
+.codex-dialog .recipe-guide-main small,
+.codex-dialog .strategy-note span,
+.codex-dialog .codex-stats span small {
+  font-size: var(--fs-2xs) !important;
+}
+
+/* 78절이 `#codex-detail .idiom-material-guide button span`(1,2,0) 으로
+   11px 을 못박아 뒀다. 클래스만으로는 못 이기므로 같은 형태로 되짚는다. */
+#codex-detail .idiom-material-guide button span,
+#codex-detail .idiom-material-guide button small {
+  font-size: var(--fs-2xs) !important;
+}
+
+/* 조합식의 '+'·'→' 이음표가 4.0:1 로 아슬아슬했다. 식을 읽는 축이라
+   28절의 일괄 먹(--text-200)보다 한 단계 더 짙게 못박는다. */
+.codex-recipe-card .codex-recipe-formula em,
+.codex-jaryeong-detail .recipe-guide-main em {
+  color: var(--text-100) !important;
+  font-weight: 800;
+}

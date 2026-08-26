@@ -52,6 +52,7 @@ import {
   CHEONJAMUN_JARYEONG_DEX_META,
   type CheonjamunJaryeongDexEntry
 } from "./core/cheonjamun-jaryeong-dex";
+import { CHEONJAMUN_SUPPLEMENTAL_CHARACTERS } from "./core/cheonjamun-roster";
 import { koreanMeaningExplanation } from "./core/korean-meaning-explanations";
 import { LEARNING_DATA_META, learningInfo } from "./core/learning";
 import { radicalGlyph, radicalLearningLabel } from "./core/radicals";
@@ -221,7 +222,7 @@ app.innerHTML = `
           <button id="speed-button" class="speed-button" type="button" aria-label="게임 배속 1배" title="게임 배속 전환 (F)">1×</button>
           <button id="settings-button" class="icon-button" type="button" aria-label="화면 설정 열기" title="화면 설정">⚙</button>
           <button id="sound-button" class="icon-button" type="button" aria-label="소리 끄기" title="소리 켜기/끄기 (M)">♪</button>
-          <button id="codex-button" class="icon-button icon-button--codex" type="button" aria-label="통합 자령 도감 열기" title="자령 도감 (C)"><b>도감</b><small><em id="discover-count">0</em></small></button>
+          <button id="codex-button" class="icon-button icon-button--codex" type="button" aria-label="통합 자령 도감 열기" title="자령 도감 — 배지는 이번 런에서 처음 만난 한자 수입니다 (C)"><b>도감</b><small><em id="discover-count">0</em></small></button>
           <button id="help-button" class="icon-button" type="button" aria-label="도움말 열기">?</button>
         </div>
       </header>
@@ -865,6 +866,8 @@ let codexMode: CodexMode = "hanzi";
 let codexSynthesisDepth: SynthesisTierFilter = "all";
 let jaryeongDexFilter: JaryeongDexFilter = "all";
 let selectedCodexChar = CHEONJAMUN_JARYEONG_DEX_ENTRIES[0]?.hanja ?? "";
+/** 성어 카드에도 한자 카드와 같은 선택 표시를 준다(항목 17). */
+let selectedCodexIdiomId = "";
 let goalPanelMode: GoalPanelMode = "hanzi";
 let goalSearchQuery = "";
 let activePanelTab: PanelTab = "shop";
@@ -1949,7 +1952,11 @@ function syncPanel(): void {
   const nextResearchWave = researchUnlockWave(state.researchLevel);
   const researchUnlocked = state.researchLevel < 5 && state.wave >= nextResearchWave;
   must<HTMLElement>("#research-cost").textContent = state.researchLevel >= 5 ? "최고" : researchUnlocked ? `${researchCost(state.researchLevel)} 엽전` : `${nextResearchWave}W 개방`;
-  must<HTMLElement>("#discover-count").textContent = String(state.discoveredChars.length);
+  // 발견 수는 런-로컬이다(항목 27). 새로고침하면 0 으로 돌아가는 것이
+  // 버그로 읽히지 않도록 배지가 무엇을 세는지 라벨로 못박는다.
+  const discovered = must<HTMLElement>("#discover-count");
+  discovered.textContent = String(state.discoveredChars.length);
+  discovered.setAttribute("aria-label", `이번 런 발견 ${state.discoveredChars.length}자`);
   must<HTMLElement>("#essence-summary").textContent = "문기 " + WUXING_ORDER.map((wuxing) => `${wuxing}${state.elementEssence[wuxing]}`).join(" ");
   document.querySelectorAll<HTMLButtonElement>("[data-summon-intent]").forEach((button) => {
     const selected = button.dataset.summonIntent === state.summonIntent;
@@ -2901,11 +2908,12 @@ function setCodexMode(mode: CodexMode): void {
     button.setAttribute("aria-selected", String(selected));
   });
   const search = must<HTMLInputElement>("#codex-search");
-  must<HTMLElement>("#codex-kicker").textContent = mode === "hanzi" ? "자령 기록" : mode === "recipes" ? "SYNTHESIS ROUTE ARCHIVE" : "FOUR-CHARACTER SEAL ARCHIVE";
+  // 영문 키커는 한국어 화면에서 혼자 읽히지 않는 장식이었다.
+  must<HTMLElement>("#codex-kicker").textContent = mode === "hanzi" ? "자령 기록" : mode === "recipes" ? "조합 경로 서고" : "사자성어 봉인 서고";
   must<HTMLElement>("#codex-title-label").textContent = mode === "hanzi" ? " 통합 자령 도감" : mode === "recipes" ? " 조합 도감" : " 사자성어 도감";
   search.placeholder = mode === "recipes" ? "결과·재료·훈음·능력 검색" : mode === "idioms" ? "사자성어·효과 검색" : "한자·훈음·쉬운 뜻·오행 검색";
   must<HTMLElement>("#codex-note").textContent = mode === "hanzi"
-    ? `한국 1,001자는 국립국어원 한국어기초사전과 글자별 교정표를 바탕으로 모두 쉬운 오늘말 풀이를 제공합니다. 훈음·독음 데이터 ${LEARNING_DATA_META.version}.`
+    ? `별은 합성 깊이를 뜻합니다 — 별이 많을수록 여러 번 합성해야 닿는 자령입니다. 한국 1,001자는 국립국어원 한국어기초사전과 글자별 교정표를 바탕으로 모두 쉬운 오늘말 풀이를 제공합니다. 훈음·독음 데이터 ${LEARNING_DATA_META.version}.`
     : mode === "recipes"
       ? "별은 합성 깊이를, 독립 표식은 상위 조합 재료로 쓰이지 않는 자령을 뜻합니다. 별과 독립 여부는 별개의 정보입니다."
       : "네 글자를 순서대로 이웃 배치하면 해당 사자성어의 봉인 효과가 발동합니다.";
@@ -2916,22 +2924,41 @@ function jaryeongDexImageUrl(entry: CheonjamunJaryeongDexEntry): string {
   return `${import.meta.env.BASE_URL}${entry.imagePath}`;
 }
 
+const CHEONJAMUN_SUPPLEMENTAL_CHARS = new Set(CHEONJAMUN_SUPPLEMENTAL_CHARACTERS.map((entry) => entry.c));
+
 function dexEntryForDefinition(definition: HanziDefinition): CheonjamunJaryeongDexEntry | undefined {
   return engine.state.region === "KR" ? CHEONJAMUN_JARYEONG_DEX_BY_HANJA.get(definition.char) : undefined;
 }
 
+/**
+ * 도감 카드·상세의 번호 라벨.
+ *
+ * 도감 항목이 없으면 무조건 'SYNTHESIS EXTRA' 를 찍고 있었는데, 실제로
+ * 걸리는 글자는 烈 하나뿐이고 이 글자는 합성 부산물이 아니라 천자문
+ * 글자다(cheonjamun-jaryeongs.json 이 "천자문 164번째 글자이나 기존 KR
+ * 런타임에 누락됨"으로 기록해 둔 보충 글자). 합성으로 얻는 글자와
+ * 직접 소환하는 글자를 사실대로 갈라 적는다.
+ */
+function codexNumberLabel(definition: HanziDefinition, entry: CheonjamunJaryeongDexEntry | undefined): string {
+  if (entry) return `천자문 제${entry.number}자`;
+  if (CHEONJAMUN_SUPPLEMENTAL_CHARS.has(definition.char)) return "천자문 보유 자령";
+  return definition.acquisition === "craft" ? "합성 전용 자령" : "추가 수록 자령";
+}
+
 function codexCardPortrait(definition: HanziDefinition, entry: CheonjamunJaryeongDexEntry | undefined): string {
   const accessible = escapeHtml(`${definition.char} ${learningInfo(engine.state.region, definition.char).short} 자령 초상화`);
+  // 스프라이트는 안쪽 칸에 그린다 — 바깥 칸의 "우물" 배경이 !important 라
+  // 같은 요소에 배경으로 얹으면 통째로 지워졌다(烈 빈 초상의 원인).
   return entry
     ? `<img src="${jaryeongDexImageUrl(entry)}" alt="${accessible}" width="104" height="104" loading="lazy">`
-    : `<i class="codex-jaryeong-card-portrait" style="${spriteStyle(definition)}" role="img" aria-label="${accessible}"></i>`;
+    : `<i class="codex-jaryeong-card-portrait" role="img" aria-label="${accessible}"><b class="codex-sprite-fill" style="${spriteStyle(definition)}"></b></i>`;
 }
 
 function codexDetailPortrait(definition: HanziDefinition, entry: CheonjamunJaryeongDexEntry | undefined): string {
   const accessible = escapeHtml(`${definition.char} ${learningInfo(engine.state.region, definition.char).short} 자령 초상화`);
   return entry
     ? `<img src="${jaryeongDexImageUrl(entry)}" alt="${accessible}" width="214" height="214">`
-    : `<i class="codex-jaryeong-detail-sprite" style="${spriteStyle(definition)}" role="img" aria-label="${accessible}"></i>`;
+    : `<i class="codex-jaryeong-detail-sprite" role="img" aria-label="${accessible}"><b class="codex-sprite-fill" style="${spriteStyle(definition)}"></b></i>`;
 }
 
 function directAcquisitionLabel(definition: HanziDefinition, independent: boolean): string {
@@ -3008,9 +3035,18 @@ function renderCodex(query = ""): void {
     list.innerHTML = idioms.map((idiom) => {
       const sealed = engine.state.idiomSeals.some((seal) => seal.idiomId === idiom.id);
       const active = activeIds.has(idiom.id);
-      return `<button type="button" data-codex-idiom="${idiom.id}" class="codex-idiom-card ${sealed ? "is-discovered" : ""} ${active ? "is-featured" : ""}" style="--codex:${idiom.color}"><b>${idiom.chars}</b><span>${idiom.reading}</span><small>${active ? "이번 런 · " : ""}${idiom.bonus.label}</small></button>`;
+      const selected = idiom.id === selectedCodexIdiomId;
+      return `<button type="button" data-codex-idiom="${idiom.id}" class="codex-idiom-card ${sealed ? "is-discovered" : ""} ${active ? "is-featured" : ""} ${selected ? "is-selected" : ""}" style="--codex:${idiom.color}" aria-current="${String(selected)}"><b>${idiom.chars}</b><span>${idiom.reading}</span><small>${active ? "이번 런 · " : ""}${idiom.bonus.label}</small></button>`;
     }).join("") || '<p class="codex-empty">검색 결과가 없습니다.</p>';
-    renderIdiomCodexDetail(idioms[0]);
+    // 상세에 뜬 성어와 목록의 선택 표시를 항상 같은 것으로 맞춘다.
+    const shown = idioms.find((idiom) => idiom.id === selectedCodexIdiomId) ?? idioms[0];
+    if (shown && shown.id !== selectedCodexIdiomId) {
+      selectedCodexIdiomId = shown.id;
+      const card = list.querySelector<HTMLButtonElement>(`[data-codex-idiom="${shown.id}"]`);
+      card?.classList.add("is-selected");
+      card?.setAttribute("aria-current", "true");
+    }
+    renderIdiomCodexDetail(shown);
     return;
   }
 
@@ -3057,7 +3093,8 @@ function renderCodex(query = ""): void {
     }).join("");
   } else {
     const independentShown = definitions.filter((definition) => uncombinableStageOne.has(definition.char)).length;
-    must<HTMLElement>("#codex-summary").textContent = `자령 ${definitions.length.toLocaleString("ko-KR")}/${engine.catalog.definitions.size.toLocaleString("ko-KR")} · 독립 ${independentShown.toLocaleString("ko-KR")} · 별/조합 정보 통합`;
+    const discoveredThisRun = new Set(engine.state.discoveredChars);
+    must<HTMLElement>("#codex-summary").textContent = `자령 ${definitions.length.toLocaleString("ko-KR")}/${engine.catalog.definitions.size.toLocaleString("ko-KR")} · 독립 ${independentShown.toLocaleString("ko-KR")} · 이번 런 발견 ${discoveredThisRun.size.toLocaleString("ko-KR")}`;
     list.innerHTML = definitions.map((definition) => {
       const learning = learningInfo(engine.state.region, definition.char);
       const entry = dexEntryForDefinition(definition);
@@ -3066,10 +3103,12 @@ function renderCodex(query = ""): void {
       const naturalStar = casualNaturalStar(definition.char) ?? 1;
       const selected = definition.char === selectedCodexChar;
       const explanation = koreanMeaningExplanation(definition.char, learning.short, learning.meaning);
-      const numberLabel = entry ? `CHEONJAMUN No.${String(entry.number).padStart(3, "0")}` : "SYNTHESIS EXTRA";
+      const numberLabel = codexNumberLabel(definition, entry);
+      const found = discoveredThisRun.has(definition.char);
       const progression = engine.state.mode === "casual" ? `<span class="codex-tier-stars">${"★".repeat(naturalStar)}</span>` : synthesisTierBadge(depth);
-      return `<button type="button" data-codex-char="${definition.char}" class="codex-jaryeong-card ${selected ? "is-selected" : ""}" style="--codex:${ELEMENT_STYLES[definition.wuxing].color}" aria-current="${String(selected)}" aria-label="${escapeHtml(`${numberLabel} ${definition.char} ${learning.short} ${definition.wuxing}행`)}">
+      return `<button type="button" data-codex-char="${definition.char}" class="codex-jaryeong-card ${selected ? "is-selected" : ""} ${found ? "is-found" : ""}" style="--codex:${ELEMENT_STYLES[definition.wuxing].color}" aria-current="${String(selected)}" aria-label="${escapeHtml(`${numberLabel} ${definition.char} ${learning.short} ${definition.wuxing}행${found ? " · 이번 런 발견" : ""}`)}">
         <span class="codex-jaryeong-number">${numberLabel}</span>
+        ${found ? '<mark class="codex-found-mark">이번 런 발견</mark>' : ""}
         ${codexCardPortrait(definition, entry)}
         <span class="codex-jaryeong-copy">
           <span class="codex-jaryeong-identity"><b>${definition.char}</b><strong>${escapeHtml(learning.short)}</strong><i>${definition.wuxing}</i></span>
@@ -3130,7 +3169,7 @@ function renderCodexDetail(definition: HanziDefinition | undefined): void {
   const progression = engine.state.mode === "casual"
     ? `<span class="codex-tier-stars" aria-label="${naturalStar}별">${"★".repeat(naturalStar)}</span>`
     : synthesisTierBadge(synthesisTier);
-  const numberLabel = entry ? `CHEONJAMUN No.${String(entry.number).padStart(3, "0")}` : "SYNTHESIS EXTRA";
+  const numberLabel = codexNumberLabel(definition, entry);
   const acquisitionLabel = engine.state.mode === "casual"
     ? "전 자령 직접 소환 · 같은 오행/별 3체 조합"
     : directAcquisitionLabel(definition, independent);
@@ -3190,7 +3229,10 @@ function renderCodexDetail(definition: HanziDefinition | undefined): void {
       </article>
 
       <div class="codex-jaryeong-facts">
-        <div><span>훈음</span><b>${escapeHtml(learning.short)}</b></div>
+        <!-- R7-26: 라벨과 값을 둘 다 상수·요약으로 박아 둬서 JP 훈독(き·こ)이
+             도감에서 통째로 사라지고 JP/CN 라벨까지 전부 '훈음'으로 찍혔다.
+             learning.ts 가 지역별로 만들어 주는 값을 그대로 쓴다. -->
+        <div><span>${escapeHtml(learning.readingLabel)}</span><b>${escapeHtml(learning.reading)}</b></div>
         <div><span>부수</span><b>${radicalLearningLabel(definition.char)}</b></div>
         <div><span>별 등급</span><b>${progression} · ${escapeHtml(progressionDetail)}</b></div>
         <div><span>조합 성격</span><b>${escapeHtml(acquisitionLabel)}</b></div>
@@ -5716,7 +5758,17 @@ must<HTMLElement>("#codex-list").addEventListener("click", (event) => {
     });
     renderCodexDetail(engine.catalog.definitions.get(char));
   }
-  else if (idiomId) renderIdiomCodexDetail(engine.allIdioms().find((idiom) => idiom.id === idiomId));
+  else if (idiomId) {
+    // 한자 카드와 같은 패턴으로 선택 표시를 준다 — 누른 카드가 어느
+    // 것인지 상세만 보고 되짚어야 했다.
+    selectedCodexIdiomId = idiomId;
+    document.querySelectorAll<HTMLButtonElement>("[data-codex-idiom]").forEach((button) => {
+      const selected = button.dataset.codexIdiom === idiomId;
+      button.classList.toggle("is-selected", selected);
+      button.setAttribute("aria-current", String(selected));
+    });
+    renderIdiomCodexDetail(engine.allIdioms().find((idiom) => idiom.id === idiomId));
+  }
 });
 must<HTMLElement>("#codex-detail").addEventListener("click", (event) => {
   const target = event.target as HTMLElement;
