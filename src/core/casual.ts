@@ -103,6 +103,18 @@ export const CASUAL_SPLASH_STAR_SCALE = Object.freeze({
   ratioPerStar: 0.04
 });
 
+/**
+ * 별별 사거리 성장 곡선 — 사용자 직접 지시.
+ *
+ * 기존 캐주얼 사거리 보정은 +(별-1)×3 으로 1★→8★ 차이가 +21 뿐이라
+ * "초반부터 다들 사거리가 넓고" 별이 올라도 성장감이 없었다.
+ * 기본 −18 에 별당 +8 로 바꿔 1★ −18 → 8★ +38, 스프레드 56 을 만든다.
+ * (1★ 실효 사거리 208~246 — 모든 진의 어느 칸에서도 경로에는 닿는다.)
+ * 공속 성장도 별당 2% → 3% 로 올려 같은 정신의 축을 하나 더 세운다.
+ */
+export const CASUAL_STAR_RANGE = Object.freeze({ base: -18, perStar: 8 });
+export const CASUAL_STAR_HASTE_PER_STAR = 0.03;
+
 export const CASUAL_STAR_NAMES: Record<CasualStar, string> = Object.freeze({
   1: "일반",
   2: "숙련",

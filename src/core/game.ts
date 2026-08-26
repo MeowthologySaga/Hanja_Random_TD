@@ -23,7 +23,9 @@ import { hasActiveSkills } from "./abilities";
 import {
   CASUAL_POLARIS_AURA,
   CASUAL_SPLASH_STAR_SCALE,
+  CASUAL_STAR_HASTE_PER_STAR,
   CASUAL_STAR_POWER,
+  CASUAL_STAR_RANGE,
   casualNaturalStar,
   casualStrokeCount
 } from "./casual";
@@ -2283,8 +2285,9 @@ export class GameEngine {
     const concentration = tower.concentration ?? 0;
     const concentrationHaste = tower.concentrationPath === "swift" ? concentration * 0.075 : concentration * 0.02;
     const upgradeHaste = this.combinedUpgradeBonus(tower.wuxing, "attackSpeed");
+    // 수술 7: 캐주얼 공속 성장 별당 2% → 3%. 별이 오르면 실제로 빨라진다.
     const progressionHaste = this.state.mode === "casual"
-      ? ((tower.casualStar ?? tower.naturalStar ?? 1) - 1) * 0.02
+      ? ((tower.casualStar ?? tower.naturalStar ?? 1) - 1) * CASUAL_STAR_HASTE_PER_STAR
       : (tower.stage - 1) * 0.035;
     return Math.max(0.28, profile.cooldown * (1 - progressionHaste) * (1 - concentrationHaste) / (1 + upgradeHaste));
   }
@@ -2325,8 +2328,10 @@ export class GameEngine {
   }
 
   towerRangeBonus(tower: Tower): number {
+    // 수술 7: 저별은 좁게, 별당 성장은 크게(기본 −18 · 별당 +8, 스프레드 56).
+    // 예전 +(별-1)×3 은 1★→8★ 차이가 +21 뿐이라 성장감이 없었다.
     return this.state.mode === "casual"
-      ? ((tower.casualStar ?? tower.naturalStar ?? 1) - 1) * 3
+      ? CASUAL_STAR_RANGE.base + ((tower.casualStar ?? tower.naturalStar ?? 1) - 1) * CASUAL_STAR_RANGE.perStar
       : (tower.stage - 1) * 7;
   }
 
@@ -2740,7 +2745,7 @@ export class GameEngine {
       * (1 + this.combinedUpgradeBonus(tower.wuxing, "damage"));
     const concentrationHaste = level * (path === "swift" ? 0.075 : 0.02);
     const progressionHaste = this.state.mode === "casual"
-      ? ((tower.casualStar ?? tower.naturalStar ?? 1) - 1) * 0.02
+      ? ((tower.casualStar ?? tower.naturalStar ?? 1) - 1) * CASUAL_STAR_HASTE_PER_STAR
       : (tower.stage - 1) * 0.035;
     const cooldown = Math.max(0.28, profile.cooldown * (1 - progressionHaste) * (1 - concentrationHaste)
       / (1 + this.combinedUpgradeBonus(tower.wuxing, "attackSpeed")));

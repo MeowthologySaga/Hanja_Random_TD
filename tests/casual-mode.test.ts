@@ -628,6 +628,25 @@ describe("casual eight-star mode", () => {
     expect(standard.casualSplashRatioScale(high)).toBe(1);
   });
 
+  it("narrows low-star reach and steepens per-star range and haste growth", () => {
+    // 수술 7(사용자 지시): "등급별 강해지는 느낌" — 저별 사거리를 낮추고 별당 성장을 키운다.
+    const engine = casualEngine("casual-star-range");
+    const definition = safeCasualDefinitions(engine, 1)[0] as HanziDefinition;
+    const low = casualTower(definition, 1601, 0, 1);
+    const high = casualTower(definition, 1602, 1, 8);
+    expect(engine.towerRangeBonus(low)).toBe(-18);
+    expect(engine.towerRangeBonus(high)).toBe(38);
+    // 1★ 실효 사거리도 경로에는 닿아야 한다(전 역할 최저 기본 226 기준 208).
+    expect(definition.combat.range + engine.towerRangeBonus(low)).toBeGreaterThanOrEqual(190);
+    // 공속: 별당 3% — 8★ 는 1★ 보다 뚜렷이 빠르다.
+    expect(engine.towerAttackCooldown(high)).toBeLessThan(engine.towerAttackCooldown(low) * 0.85);
+
+    const standard = new GameEngine("standard-star-range", "KR");
+    standard.begin();
+    expect(standard.towerRangeBonus({ ...low, stage: 1 })).toBe(0);
+    expect(standard.towerRangeBonus({ ...low, stage: 5 })).toBe(28);
+  });
+
   it("keeps every casual goal inside the summonable pool in all regions (F2)", () => {
     // F2: JP/CN 목표(林·森 등)가 미리보기 소환 풀 밖이라 달성 불가였다.
     for (const region of ["KR", "JP", "CN"] as const) {
