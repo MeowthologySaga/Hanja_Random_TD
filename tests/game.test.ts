@@ -175,7 +175,8 @@ describe("regional recipe defense run", () => {
   });
 
   it("splits repeatable gold and elemental essence upgrades by stat", () => {
-    expect([0, 1, 2, 3, 4].map((level) => globalUpgradeCost("damage", level))).toEqual([16, 19, 22, 25, 29]);
+    // FB7-강화: 전역 비용 2차항 완화(/12 → /20). 4단계부터 1엽전씩 싸진다.
+    expect([0, 1, 2, 3, 4].map((level) => globalUpgradeCost("damage", level))).toEqual([16, 19, 22, 25, 28]);
     expect([0, 1, 5, 6, 12].map(elementUpgradeCost)).toEqual([1, 1, 1, 2, 3]);
     const engine = new GameEngine("element-upgrades", "KR");
     engine.begin();

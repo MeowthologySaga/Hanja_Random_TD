@@ -70,6 +70,7 @@ import {
   SUMMON_STAR_BANDS,
   SUMMON_SURCHARGE,
   summonCost,
+  upgradeEffectiveLevels,
   WUXING_ORDER
 } from "./hanzi";
 import { SeededRng } from "./rng";
@@ -2209,11 +2210,12 @@ export class GameEngine {
   }
 
   globalUpgradeBonus(stat: UpgradeStat): number {
-    return this.state.globalUpgrades[stat] * UPGRADE_STAT_META[stat].globalPerLevel;
+    // FB7-강화: 10단계 이정표마다 4단계치(공용 공격력 기준 +5%p)를 더 얹는다.
+    return upgradeEffectiveLevels(this.state.globalUpgrades[stat]) * UPGRADE_STAT_META[stat].globalPerLevel;
   }
 
   elementUpgradeBonus(wuxing: Wuxing, stat: UpgradeStat): number {
-    return this.state.elementUpgrades[wuxing][stat] * UPGRADE_STAT_META[stat].elementPerLevel;
+    return upgradeEffectiveLevels(this.state.elementUpgrades[wuxing][stat]) * UPGRADE_STAT_META[stat].elementPerLevel;
   }
 
   combinedUpgradeBonus(wuxing: Wuxing, stat: UpgradeStat): number {

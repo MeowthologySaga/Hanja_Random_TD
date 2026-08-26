@@ -468,11 +468,34 @@ export const UPGRADE_STAT_META: Record<UpgradeStat, UpgradeStatMeta> = {
   statusPower: { label: "효과 지속", glyph: "持", description: "감속·봉쇄·독 지속시간", globalPerLevel: 0.01, elementPerLevel: 0.014, globalBaseCost: 15, globalCostGrowth: 3 }
 };
 
+/**
+ * FB7-강화: "강화 효율이 초반에만 좋다"에 대한 이정표 곡선.
+ *
+ * 보너스는 단계당 선형(+1.25%p 등)인데 비용은 2차로 체증해 후반 1단계의
+ * 가성비가 계속 나빠졌다. 10단계 이정표에 도달할 때마다 4단계치 보너스를
+ * 더 얹는다 — 공용 공격력 기준 정확히 +5%p 다. 값 자체는 스탯별 단가
+ * (perLevel × 4)로 계산하므로 사거리 같은 비백분율 스탯에도 같은 규칙이 선다.
+ */
+export const UPGRADE_MILESTONE_INTERVAL = 10;
+export const UPGRADE_MILESTONE_LEVEL_BONUS = 4;
+
+/** 이정표 가산을 포함한 실효 단계 수. 보너스 = perLevel × 실효 단계. */
+export function upgradeEffectiveLevels(level: number): number {
+  const safeLevel = Math.max(0, Math.floor(level));
+  return safeLevel + Math.floor(safeLevel / UPGRADE_MILESTONE_INTERVAL) * UPGRADE_MILESTONE_LEVEL_BONUS;
+}
+
+/** 이 단계까지 지나온 10단계 이정표 수. 강화 버튼 표기가 함께 쓴다. */
+export function upgradeMilestoneCount(level: number): number {
+  return Math.floor(Math.max(0, Math.floor(level)) / UPGRADE_MILESTONE_INTERVAL);
+}
+
 export function globalUpgradeCost(stat: UpgradeStat, level: number): number {
   if (level >= MAX_UPGRADE_LEVEL) return 0;
   const meta = UPGRADE_STAT_META[stat];
   const safeLevel = Math.max(0, Math.floor(level));
-  return meta.globalBaseCost + meta.globalCostGrowth * safeLevel + Math.floor(safeLevel * safeLevel / 12);
+  // FB7-강화: 2차항을 /12 → /20 으로 완화해 중·후반 단계 단가를 낮춘다.
+  return meta.globalBaseCost + meta.globalCostGrowth * safeLevel + Math.floor(safeLevel * safeLevel / 20);
 }
 
 export function elementUpgradeCost(level: number): number {

@@ -12862,3 +12862,24 @@ dialog {
 .boss-banner {
   z-index: 22;
 }
+
+/* ══════════════════════════════════════════════════════════════════
+   [FB7-강화] 강화 이정표 표식 — 10단계마다 추가 보너스를 알리는 里 배지
+   ══════════════════════════════════════════════════════════════════
+
+   강화 버튼 안에서 이번 투자가 10단계 이정표를 지나는 경우에만 나타난다.
+   비용 숫자와 구분되도록 금색 소형 배지로 얹는다. */
+
+.growth-milestone-flag {
+  display: inline-block;
+  margin-left: 3px;
+  padding: 0 3px;
+  border-radius: 4px;
+  background: rgba(255, 214, 108, 0.16);
+  border: 1px solid rgba(255, 214, 108, 0.55);
+  color: #ffd66c;
+  font-style: normal;
+  font-size: 0.82em;
+  font-weight: 900;
+  line-height: 1.35;
+}
