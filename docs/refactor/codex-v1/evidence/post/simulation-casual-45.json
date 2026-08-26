@@ -1,0 +1,2757 @@
+{
+  "mode": "casual",
+  "regions": [
+    "KR"
+  ],
+  "totalRuns": 45,
+  "workers": 1,
+  "byRegion": {
+    "KR": {
+      "runs": 45,
+      "victories": 25,
+      "defeats": 20,
+      "timeouts": 0,
+      "victoryRate": 0.556,
+      "elapsedMinutes": {
+        "p10": 44.82,
+        "median": 48.46,
+        "p90": 51.32
+      },
+      "wave": {
+        "p10": 90,
+        "median": 100,
+        "p90": 100
+      },
+      "goals": {
+        "median": 5,
+        "p90": 5
+      },
+      "idioms": {
+        "median": 5,
+        "p90": 5
+      },
+      "evolutions": {
+        "median": 0,
+        "p90": 0
+      },
+      "casualFusions": {
+        "median": 59,
+        "p90": 74
+      },
+      "peakTowers": {
+        "median": 80,
+        "p90": 80
+      },
+      "discoveries": {
+        "median": 281,
+        "p90": 315
+      },
+      "dismantles": {
+        "median": 7,
+        "p90": 13
+      },
+      "essence": {
+        "generatedMedian": 154,
+        "spentMedian": 145,
+        "spendRateMedian": 0.941
+      },
+      "elementTraits": {
+        "木": [
+          3,
+          3,
+          2
+        ],
+        "火": [
+          3,
+          2,
+          0
+        ],
+        "土": [
+          3,
+          2,
+          1
+        ],
+        "金": [
+          3,
+          3,
+          2
+        ],
+        "水": [
+          3,
+          2,
+          1
+        ]
+      },
+      "checkpoints": {
+        "10": {
+          "reached": 45,
+          "formations": 2,
+          "towers": 27,
+          "inventory": 0,
+          "summons": 40,
+          "evolutions": 0,
+          "casualFusions": 4,
+          "discoveries": 42,
+          "gold": 45,
+          "dismantles": 0,
+          "essenceGenerated": 6,
+          "essenceSpent": 5
+        },
+        "20": {
+          "reached": 44,
+          "formations": 3,
+          "towers": 40,
+          "inventory": 0,
+          "summons": 71,
+          "evolutions": 0,
+          "casualFusions": 12,
+          "discoveries": 77,
+          "gold": 61,
+          "dismantles": 0,
+          "essenceGenerated": 20,
+          "essenceSpent": 16
+        },
+        "30": {
+          "reached": 43,
+          "formations": 3,
+          "towers": 48,
+          "inventory": 0,
+          "summons": 103,
+          "evolutions": 0,
+          "casualFusions": 19,
+          "discoveries": 107,
+          "gold": 109,
+          "dismantles": 0,
+          "essenceGenerated": 36,
+          "essenceSpent": 30
+        },
+        "40": {
+          "reached": 43,
+          "formations": 4,
+          "towers": 63,
+          "inventory": 0,
+          "summons": 141,
+          "evolutions": 0,
+          "casualFusions": 28,
+          "discoveries": 149,
+          "gold": 89,
+          "dismantles": 0,
+          "essenceGenerated": 59,
+          "essenceSpent": 52
+        },
+        "50": {
+          "reached": 43,
+          "formations": 4,
+          "towers": 64,
+          "inventory": 0,
+          "summons": 172,
+          "evolutions": 0,
+          "casualFusions": 38,
+          "discoveries": 182,
+          "gold": 129,
+          "dismantles": 0,
+          "essenceGenerated": 77,
+          "essenceSpent": 70
+        },
+        "60": {
+          "reached": 43,
+          "formations": 5,
+          "towers": 80,
+          "inventory": 3,
+          "summons": 223,
+          "evolutions": 0,
+          "casualFusions": 51,
+          "discoveries": 229,
+          "gold": 140,
+          "dismantles": 1,
+          "essenceGenerated": 114,
+          "essenceSpent": 105
+        },
+        "70": {
+          "reached": 43,
+          "formations": 5,
+          "towers": 80,
+          "inventory": 10,
+          "summons": 261,
+          "evolutions": 0,
+          "casualFusions": 54,
+          "discoveries": 245,
+          "gold": 201,
+          "dismantles": 4,
+          "essenceGenerated": 129,
+          "essenceSpent": 121
+        },
+        "80": {
+          "reached": 43,
+          "formations": 5,
+          "towers": 80,
+          "inventory": 11,
+          "summons": 292,
+          "evolutions": 0,
+          "casualFusions": 57,
+          "discoveries": 262,
+          "gold": 237,
+          "dismantles": 6,
+          "essenceGenerated": 144,
+          "essenceSpent": 134
+        },
+        "90": {
+          "reached": 43,
+          "formations": 5,
+          "towers": 80,
+          "inventory": 12,
+          "summons": 317,
+          "evolutions": 0,
+          "casualFusions": 60,
+          "discoveries": 272,
+          "gold": 259,
+          "dismantles": 6,
+          "essenceGenerated": 150,
+          "essenceSpent": 140
+        },
+        "100": {
+          "reached": 27,
+          "formations": 5,
+          "towers": 80,
+          "inventory": 13,
+          "summons": 336,
+          "evolutions": 0,
+          "casualFusions": 57,
+          "discoveries": 278,
+          "gold": 247,
+          "dismantles": 7,
+          "essenceGenerated": 148,
+          "essenceSpent": 141
+        }
+      },
+      "defeatReasons": {
+        "적 80체가 전장을 뒤덮었습니다.": 7,
+        "제한시간 120초 안에 보스를 처치하지 못했습니다.": 9,
+        "제한시간 126초 안에 보스를 처치하지 못했습니다.": 2,
+        "제한시간 72초 안에 보스를 처치하지 못했습니다.": 1,
+        "제한시간 78초 안에 보스를 처치하지 못했습니다.": 1
+      }
+    }
+  },
+  "byStartingElement": {
+    "木": {
+      "runs": 12,
+      "victories": 4,
+      "defeats": 8,
+      "timeouts": 0,
+      "victoryRate": 0.333,
+      "elapsedMinutes": {
+        "p10": 45.55,
+        "median": 48.18,
+        "p90": 50.88
+      },
+      "wave": {
+        "p10": 90,
+        "median": 99,
+        "p90": 100
+      },
+      "goals": {
+        "median": 5,
+        "p90": 5
+      },
+      "idioms": {
+        "median": 5,
+        "p90": 5
+      },
+      "evolutions": {
+        "median": 0,
+        "p90": 0
+      },
+      "casualFusions": {
+        "median": 64,
+        "p90": 73
+      },
+      "peakTowers": {
+        "median": 80,
+        "p90": 80
+      },
+      "discoveries": {
+        "median": 289,
+        "p90": 296
+      },
+      "dismantles": {
+        "median": 9,
+        "p90": 11
+      },
+      "essence": {
+        "generatedMedian": 165,
+        "spentMedian": 158,
+        "spendRateMedian": 0.941
+      },
+      "elementTraits": {
+        "木": [
+          4,
+          3,
+          3
+        ],
+        "火": [
+          3,
+          3,
+          1
+        ],
+        "土": [
+          3,
+          2,
+          1
+        ],
+        "金": [
+          3,
+          3,
+          2
+        ],
+        "水": [
+          3,
+          2,
+          2
+        ]
+      },
+      "checkpoints": {
+        "10": {
+          "reached": 12,
+          "formations": 2,
+          "towers": 25,
+          "inventory": 0,
+          "summons": 41,
+          "evolutions": 0,
+          "casualFusions": 4,
+          "discoveries": 42,
+          "gold": 47,
+          "dismantles": 0,
+          "essenceGenerated": 7,
+          "essenceSpent": 6
+        },
+        "20": {
+          "reached": 12,
+          "formations": 3,
+          "towers": 37,
+          "inventory": 0,
+          "summons": 69,
+          "evolutions": 0,
+          "casualFusions": 12,
+          "discoveries": 77,
+          "gold": 57,
+          "dismantles": 0,
+          "essenceGenerated": 23,
+          "essenceSpent": 19
+        },
+        "30": {
+          "reached": 12,
+          "formations": 3,
+          "towers": 48,
+          "inventory": 0,
+          "summons": 103,
+          "evolutions": 0,
+          "casualFusions": 18,
+          "discoveries": 105,
+          "gold": 123,
+          "dismantles": 0,
+          "essenceGenerated": 34,
+          "essenceSpent": 30
+        },
+        "40": {
+          "reached": 12,
+          "formations": 4,
+          "towers": 58,
+          "inventory": 0,
+          "summons": 140,
+          "evolutions": 0,
+          "casualFusions": 30,
+          "discoveries": 148,
+          "gold": 88,
+          "dismantles": 0,
+          "essenceGenerated": 60,
+          "essenceSpent": 55
+        },
+        "50": {
+          "reached": 12,
+          "formations": 4,
+          "towers": 64,
+          "inventory": 0,
+          "summons": 173,
+          "evolutions": 0,
+          "casualFusions": 39,
+          "discoveries": 184,
+          "gold": 149,
+          "dismantles": 0,
+          "essenceGenerated": 77,
+          "essenceSpent": 70
+        },
+        "60": {
+          "reached": 12,
+          "formations": 5,
+          "towers": 80,
+          "inventory": 3,
+          "summons": 225,
+          "evolutions": 0,
+          "casualFusions": 52,
+          "discoveries": 225,
+          "gold": 139,
+          "dismantles": 2,
+          "essenceGenerated": 116,
+          "essenceSpent": 108
+        },
+        "70": {
+          "reached": 12,
+          "formations": 5,
+          "towers": 80,
+          "inventory": 9,
+          "summons": 260,
+          "evolutions": 0,
+          "casualFusions": 59,
+          "discoveries": 253,
+          "gold": 186,
+          "dismantles": 4,
+          "essenceGenerated": 132,
+          "essenceSpent": 124
+        },
+        "80": {
+          "reached": 12,
+          "formations": 5,
+          "towers": 80,
+          "inventory": 11,
+          "summons": 299,
+          "evolutions": 0,
+          "casualFusions": 61,
+          "discoveries": 271,
+          "gold": 235,
+          "dismantles": 6,
+          "essenceGenerated": 154,
+          "essenceSpent": 148
+        },
+        "90": {
+          "reached": 12,
+          "formations": 5,
+          "towers": 80,
+          "inventory": 12,
+          "summons": 326,
+          "evolutions": 0,
+          "casualFusions": 64,
+          "discoveries": 285,
+          "gold": 240,
+          "dismantles": 8,
+          "essenceGenerated": 163,
+          "essenceSpent": 155
+        },
+        "100": {
+          "reached": 4,
+          "formations": 5,
+          "towers": 80,
+          "inventory": 13,
+          "summons": 332,
+          "evolutions": 0,
+          "casualFusions": 55,
+          "discoveries": 273,
+          "gold": 275,
+          "dismantles": 9,
+          "essenceGenerated": 147,
+          "essenceSpent": 137
+        }
+      },
+      "defeatReasons": {
+        "적 80체가 전장을 뒤덮었습니다.": 3,
+        "제한시간 120초 안에 보스를 처치하지 못했습니다.": 5
+      }
+    },
+    "火": {
+      "runs": 11,
+      "victories": 5,
+      "defeats": 6,
+      "timeouts": 0,
+      "victoryRate": 0.455,
+      "elapsedMinutes": {
+        "p10": 45.44,
+        "median": 48.3,
+        "p90": 51.12
+      },
+      "wave": {
+        "p10": 90,
+        "median": 100,
+        "p90": 100
+      },
+      "goals": {
+        "median": 5,
+        "p90": 5
+      },
+      "idioms": {
+        "median": 5,
+        "p90": 5
+      },
+      "evolutions": {
+        "median": 0,
+        "p90": 0
+      },
+      "casualFusions": {
+        "median": 61,
+        "p90": 74
+      },
+      "peakTowers": {
+        "median": 80,
+        "p90": 80
+      },
+      "discoveries": {
+        "median": 282,
+        "p90": 318
+      },
+      "dismantles": {
+        "median": 6,
+        "p90": 13
+      },
+      "essence": {
+        "generatedMedian": 160,
+        "spentMedian": 152,
+        "spendRateMedian": 0.933
+      },
+      "elementTraits": {
+        "木": [
+          3,
+          3,
+          2
+        ],
+        "火": [
+          3,
+          2,
+          0
+        ],
+        "土": [
+          3,
+          2,
+          2
+        ],
+        "金": [
+          3,
+          3,
+          2
+        ],
+        "水": [
+          3,
+          2,
+          2
+        ]
+      },
+      "checkpoints": {
+        "10": {
+          "reached": 11,
+          "formations": 2,
+          "towers": 27,
+          "inventory": 0,
+          "summons": 40,
+          "evolutions": 0,
+          "casualFusions": 5,
+          "discoveries": 42,
+          "gold": 43,
+          "dismantles": 0,
+          "essenceGenerated": 7,
+          "essenceSpent": 5
+        },
+        "20": {
+          "reached": 11,
+          "formations": 3,
+          "towers": 40,
+          "inventory": 0,
+          "summons": 70,
+          "evolutions": 0,
+          "casualFusions": 11,
+          "discoveries": 74,
+          "gold": 61,
+          "dismantles": 0,
+          "essenceGenerated": 21,
+          "essenceSpent": 15
+        },
+        "30": {
+          "reached": 11,
+          "formations": 3,
+          "towers": 48,
+          "inventory": 0,
+          "summons": 103,
+          "evolutions": 0,
+          "casualFusions": 19,
+          "discoveries": 107,
+          "gold": 126,
+          "dismantles": 0,
+          "essenceGenerated": 34,
+          "essenceSpent": 27
+        },
+        "40": {
+          "reached": 11,
+          "formations": 4,
+          "towers": 63,
+          "inventory": 0,
+          "summons": 140,
+          "evolutions": 0,
+          "casualFusions": 32,
+          "discoveries": 153,
+          "gold": 88,
+          "dismantles": 0,
+          "essenceGenerated": 61,
+          "essenceSpent": 52
+        },
+        "50": {
+          "reached": 11,
+          "formations": 4,
+          "towers": 64,
+          "inventory": 0,
+          "summons": 170,
+          "evolutions": 0,
+          "casualFusions": 37,
+          "discoveries": 180,
+          "gold": 173,
+          "dismantles": 0,
+          "essenceGenerated": 77,
+          "essenceSpent": 69
+        },
+        "60": {
+          "reached": 11,
+          "formations": 5,
+          "towers": 79,
+          "inventory": 1,
+          "summons": 222,
+          "evolutions": 0,
+          "casualFusions": 52,
+          "discoveries": 232,
+          "gold": 117,
+          "dismantles": 1,
+          "essenceGenerated": 120,
+          "essenceSpent": 112
+        },
+        "70": {
+          "reached": 11,
+          "formations": 5,
+          "towers": 80,
+          "inventory": 9,
+          "summons": 264,
+          "evolutions": 0,
+          "casualFusions": 55,
+          "discoveries": 251,
+          "gold": 197,
+          "dismantles": 3,
+          "essenceGenerated": 130,
+          "essenceSpent": 121
+        },
+        "80": {
+          "reached": 11,
+          "formations": 5,
+          "towers": 80,
+          "inventory": 11,
+          "summons": 288,
+          "evolutions": 0,
+          "casualFusions": 56,
+          "discoveries": 262,
+          "gold": 262,
+          "dismantles": 4,
+          "essenceGenerated": 136,
+          "essenceSpent": 126
+        },
+        "90": {
+          "reached": 11,
+          "formations": 5,
+          "towers": 80,
+          "inventory": 12,
+          "summons": 319,
+          "evolutions": 0,
+          "casualFusions": 60,
+          "discoveries": 273,
+          "gold": 262,
+          "dismantles": 6,
+          "essenceGenerated": 155,
+          "essenceSpent": 148
+        },
+        "100": {
+          "reached": 6,
+          "formations": 5,
+          "towers": 80,
+          "inventory": 13,
+          "summons": 345,
+          "evolutions": 0,
+          "casualFusions": 62,
+          "discoveries": 288,
+          "gold": 262,
+          "dismantles": 7,
+          "essenceGenerated": 175,
+          "essenceSpent": 161
+        }
+      },
+      "defeatReasons": {
+        "적 80체가 전장을 뒤덮었습니다.": 3,
+        "제한시간 120초 안에 보스를 처치하지 못했습니다.": 2,
+        "제한시간 126초 안에 보스를 처치하지 못했습니다.": 1
+      }
+    },
+    "土": {
+      "runs": 3,
+      "victories": 2,
+      "defeats": 1,
+      "timeouts": 0,
+      "victoryRate": 0.667,
+      "elapsedMinutes": {
+        "p10": 50.29,
+        "median": 51.29,
+        "p90": 51.32
+      },
+      "wave": {
+        "p10": 100,
+        "median": 100,
+        "p90": 100
+      },
+      "goals": {
+        "median": 5,
+        "p90": 5
+      },
+      "idioms": {
+        "median": 5,
+        "p90": 5
+      },
+      "evolutions": {
+        "median": 0,
+        "p90": 0
+      },
+      "casualFusions": {
+        "median": 56,
+        "p90": 74
+      },
+      "peakTowers": {
+        "median": 80,
+        "p90": 80
+      },
+      "discoveries": {
+        "median": 281,
+        "p90": 318
+      },
+      "dismantles": {
+        "median": 12,
+        "p90": 16
+      },
+      "essence": {
+        "generatedMedian": 163,
+        "spentMedian": 150,
+        "spendRateMedian": 0.963
+      },
+      "elementTraits": {
+        "木": [
+          3,
+          3,
+          0
+        ],
+        "火": [
+          3,
+          3,
+          2
+        ],
+        "土": [
+          3,
+          2,
+          2
+        ],
+        "金": [
+          4,
+          4,
+          3
+        ],
+        "水": [
+          3,
+          2,
+          0
+        ]
+      },
+      "checkpoints": {
+        "10": {
+          "reached": 3,
+          "formations": 2,
+          "towers": 29,
+          "inventory": 0,
+          "summons": 41,
+          "evolutions": 0,
+          "casualFusions": 4,
+          "discoveries": 45,
+          "gold": 48,
+          "dismantles": 0,
+          "essenceGenerated": 5,
+          "essenceSpent": 3
+        },
+        "20": {
+          "reached": 3,
+          "formations": 3,
+          "towers": 43,
+          "inventory": 0,
+          "summons": 74,
+          "evolutions": 0,
+          "casualFusions": 10,
+          "discoveries": 78,
+          "gold": 61,
+          "dismantles": 0,
+          "essenceGenerated": 22,
+          "essenceSpent": 18
+        },
+        "30": {
+          "reached": 3,
+          "formations": 3,
+          "towers": 48,
+          "inventory": 0,
+          "summons": 102,
+          "evolutions": 0,
+          "casualFusions": 18,
+          "discoveries": 106,
+          "gold": 94,
+          "dismantles": 0,
+          "essenceGenerated": 33,
+          "essenceSpent": 32
+        },
+        "40": {
+          "reached": 3,
+          "formations": 4,
+          "towers": 62,
+          "inventory": 0,
+          "summons": 144,
+          "evolutions": 0,
+          "casualFusions": 26,
+          "discoveries": 148,
+          "gold": 81,
+          "dismantles": 0,
+          "essenceGenerated": 58,
+          "essenceSpent": 51
+        },
+        "50": {
+          "reached": 3,
+          "formations": 4,
+          "towers": 64,
+          "inventory": 0,
+          "summons": 177,
+          "evolutions": 0,
+          "casualFusions": 39,
+          "discoveries": 186,
+          "gold": 106,
+          "dismantles": 0,
+          "essenceGenerated": 82,
+          "essenceSpent": 77
+        },
+        "60": {
+          "reached": 3,
+          "formations": 5,
+          "towers": 80,
+          "inventory": 3,
+          "summons": 229,
+          "evolutions": 0,
+          "casualFusions": 51,
+          "discoveries": 236,
+          "gold": 172,
+          "dismantles": 0,
+          "essenceGenerated": 126,
+          "essenceSpent": 116
+        },
+        "70": {
+          "reached": 3,
+          "formations": 5,
+          "towers": 80,
+          "inventory": 10,
+          "summons": 270,
+          "evolutions": 0,
+          "casualFusions": 52,
+          "discoveries": 247,
+          "gold": 205,
+          "dismantles": 3,
+          "essenceGenerated": 130,
+          "essenceSpent": 123
+        },
+        "80": {
+          "reached": 3,
+          "formations": 5,
+          "towers": 80,
+          "inventory": 11,
+          "summons": 299,
+          "evolutions": 0,
+          "casualFusions": 55,
+          "discoveries": 261,
+          "gold": 263,
+          "dismantles": 6,
+          "essenceGenerated": 146,
+          "essenceSpent": 134
+        },
+        "90": {
+          "reached": 3,
+          "formations": 5,
+          "towers": 80,
+          "inventory": 12,
+          "summons": 323,
+          "evolutions": 0,
+          "casualFusions": 55,
+          "discoveries": 269,
+          "gold": 267,
+          "dismantles": 8,
+          "essenceGenerated": 151,
+          "essenceSpent": 139
+        },
+        "100": {
+          "reached": 3,
+          "formations": 5,
+          "towers": 80,
+          "inventory": 12,
+          "summons": 350,
+          "evolutions": 0,
+          "casualFusions": 56,
+          "discoveries": 281,
+          "gold": 218,
+          "dismantles": 12,
+          "essenceGenerated": 163,
+          "essenceSpent": 150
+        }
+      },
+      "defeatReasons": {
+        "제한시간 126초 안에 보스를 처치하지 못했습니다.": 1
+      }
+    },
+    "金": {
+      "runs": 9,
+      "victories": 8,
+      "defeats": 1,
+      "timeouts": 0,
+      "victoryRate": 0.889,
+      "elapsedMinutes": {
+        "p10": 46.22,
+        "median": 48.82,
+        "p90": 50.74
+      },
+      "wave": {
+        "p10": 99,
+        "median": 100,
+        "p90": 100
+      },
+      "goals": {
+        "median": 5,
+        "p90": 5
+      },
+      "idioms": {
+        "median": 5,
+        "p90": 5
+      },
+      "evolutions": {
+        "median": 0,
+        "p90": 0
+      },
+      "casualFusions": {
+        "median": 57,
+        "p90": 83
+      },
+      "peakTowers": {
+        "median": 80,
+        "p90": 80
+      },
+      "discoveries": {
+        "median": 268,
+        "p90": 328
+      },
+      "dismantles": {
+        "median": 8,
+        "p90": 11
+      },
+      "essence": {
+        "generatedMedian": 148,
+        "spentMedian": 141,
+        "spendRateMedian": 0.938
+      },
+      "elementTraits": {
+        "木": [
+          3,
+          3,
+          3
+        ],
+        "火": [
+          3,
+          2,
+          0
+        ],
+        "土": [
+          3,
+          2,
+          1
+        ],
+        "金": [
+          3,
+          3,
+          2
+        ],
+        "水": [
+          3,
+          2,
+          1
+        ]
+      },
+      "checkpoints": {
+        "10": {
+          "reached": 9,
+          "formations": 2,
+          "towers": 31,
+          "inventory": 0,
+          "summons": 44,
+          "evolutions": 0,
+          "casualFusions": 4,
+          "discoveries": 44,
+          "gold": 46,
+          "dismantles": 0,
+          "essenceGenerated": 6,
+          "essenceSpent": 6
+        },
+        "20": {
+          "reached": 9,
+          "formations": 3,
+          "towers": 45,
+          "inventory": 0,
+          "summons": 72,
+          "evolutions": 0,
+          "casualFusions": 11,
+          "discoveries": 78,
+          "gold": 61,
+          "dismantles": 0,
+          "essenceGenerated": 19,
+          "essenceSpent": 15
+        },
+        "30": {
+          "reached": 9,
+          "formations": 3,
+          "towers": 48,
+          "inventory": 0,
+          "summons": 103,
+          "evolutions": 0,
+          "casualFusions": 19,
+          "discoveries": 112,
+          "gold": 116,
+          "dismantles": 0,
+          "essenceGenerated": 37,
+          "essenceSpent": 33
+        },
+        "40": {
+          "reached": 9,
+          "formations": 4,
+          "towers": 64,
+          "inventory": 0,
+          "summons": 142,
+          "evolutions": 0,
+          "casualFusions": 28,
+          "discoveries": 151,
+          "gold": 123,
+          "dismantles": 0,
+          "essenceGenerated": 63,
+          "essenceSpent": 54
+        },
+        "50": {
+          "reached": 9,
+          "formations": 5,
+          "towers": 70,
+          "inventory": 0,
+          "summons": 171,
+          "evolutions": 0,
+          "casualFusions": 36,
+          "discoveries": 181,
+          "gold": 93,
+          "dismantles": 0,
+          "essenceGenerated": 71,
+          "essenceSpent": 67
+        },
+        "60": {
+          "reached": 9,
+          "formations": 5,
+          "towers": 80,
+          "inventory": 3,
+          "summons": 221,
+          "evolutions": 0,
+          "casualFusions": 47,
+          "discoveries": 217,
+          "gold": 155,
+          "dismantles": 1,
+          "essenceGenerated": 110,
+          "essenceSpent": 100
+        },
+        "70": {
+          "reached": 9,
+          "formations": 5,
+          "towers": 80,
+          "inventory": 10,
+          "summons": 256,
+          "evolutions": 0,
+          "casualFusions": 51,
+          "discoveries": 240,
+          "gold": 216,
+          "dismantles": 4,
+          "essenceGenerated": 122,
+          "essenceSpent": 114
+        },
+        "80": {
+          "reached": 9,
+          "formations": 5,
+          "towers": 80,
+          "inventory": 10,
+          "summons": 284,
+          "evolutions": 0,
+          "casualFusions": 54,
+          "discoveries": 248,
+          "gold": 253,
+          "dismantles": 7,
+          "essenceGenerated": 140,
+          "essenceSpent": 130
+        },
+        "90": {
+          "reached": 9,
+          "formations": 5,
+          "towers": 80,
+          "inventory": 12,
+          "summons": 309,
+          "evolutions": 0,
+          "casualFusions": 56,
+          "discoveries": 259,
+          "gold": 259,
+          "dismantles": 7,
+          "essenceGenerated": 143,
+          "essenceSpent": 136
+        },
+        "100": {
+          "reached": 8,
+          "formations": 5,
+          "towers": 80,
+          "inventory": 13,
+          "summons": 334,
+          "evolutions": 0,
+          "casualFusions": 57,
+          "discoveries": 268,
+          "gold": 282,
+          "dismantles": 10,
+          "essenceGenerated": 148,
+          "essenceSpent": 141
+        }
+      },
+      "defeatReasons": {
+        "적 80체가 전장을 뒤덮었습니다.": 1
+      }
+    },
+    "水": {
+      "runs": 10,
+      "victories": 6,
+      "defeats": 4,
+      "timeouts": 0,
+      "victoryRate": 0.6,
+      "elapsedMinutes": {
+        "p10": 9.08,
+        "median": 48.98,
+        "p90": 51.84
+      },
+      "wave": {
+        "p10": 20,
+        "median": 100,
+        "p90": 100
+      },
+      "goals": {
+        "median": 5,
+        "p90": 5
+      },
+      "idioms": {
+        "median": 5,
+        "p90": 5
+      },
+      "evolutions": {
+        "median": 0,
+        "p90": 0
+      },
+      "casualFusions": {
+        "median": 57,
+        "p90": 74
+      },
+      "peakTowers": {
+        "median": 80,
+        "p90": 80
+      },
+      "discoveries": {
+        "median": 278,
+        "p90": 310
+      },
+      "dismantles": {
+        "median": 6,
+        "p90": 14
+      },
+      "essence": {
+        "generatedMedian": 133,
+        "spentMedian": 126,
+        "spendRateMedian": 0.947
+      },
+      "elementTraits": {
+        "木": [
+          3,
+          2,
+          2
+        ],
+        "火": [
+          3,
+          2,
+          0
+        ],
+        "土": [
+          3,
+          2,
+          1
+        ],
+        "金": [
+          3,
+          3,
+          2
+        ],
+        "水": [
+          3,
+          2,
+          0
+        ]
+      },
+      "checkpoints": {
+        "10": {
+          "reached": 10,
+          "formations": 2,
+          "towers": 24,
+          "inventory": 0,
+          "summons": 35,
+          "evolutions": 0,
+          "casualFusions": 4,
+          "discoveries": 39,
+          "gold": 45,
+          "dismantles": 0,
+          "essenceGenerated": 5,
+          "essenceSpent": 4
+        },
+        "20": {
+          "reached": 9,
+          "formations": 3,
+          "towers": 39,
+          "inventory": 0,
+          "summons": 70,
+          "evolutions": 0,
+          "casualFusions": 11,
+          "discoveries": 76,
+          "gold": 59,
+          "dismantles": 0,
+          "essenceGenerated": 20,
+          "essenceSpent": 15
+        },
+        "30": {
+          "reached": 8,
+          "formations": 3,
+          "towers": 48,
+          "inventory": 0,
+          "summons": 106,
+          "evolutions": 0,
+          "casualFusions": 23,
+          "discoveries": 115,
+          "gold": 94,
+          "dismantles": 0,
+          "essenceGenerated": 46,
+          "essenceSpent": 37
+        },
+        "40": {
+          "reached": 8,
+          "formations": 4,
+          "towers": 64,
+          "inventory": 0,
+          "summons": 142,
+          "evolutions": 0,
+          "casualFusions": 29,
+          "discoveries": 151,
+          "gold": 91,
+          "dismantles": 0,
+          "essenceGenerated": 59,
+          "essenceSpent": 52
+        },
+        "50": {
+          "reached": 8,
+          "formations": 4,
+          "towers": 64,
+          "inventory": 0,
+          "summons": 178,
+          "evolutions": 0,
+          "casualFusions": 40,
+          "discoveries": 188,
+          "gold": 164,
+          "dismantles": 0,
+          "essenceGenerated": 79,
+          "essenceSpent": 67
+        },
+        "60": {
+          "reached": 8,
+          "formations": 5,
+          "towers": 80,
+          "inventory": 4,
+          "summons": 223,
+          "evolutions": 0,
+          "casualFusions": 48,
+          "discoveries": 230,
+          "gold": 168,
+          "dismantles": 1,
+          "essenceGenerated": 104,
+          "essenceSpent": 95
+        },
+        "70": {
+          "reached": 8,
+          "formations": 5,
+          "towers": 80,
+          "inventory": 10,
+          "summons": 266,
+          "evolutions": 0,
+          "casualFusions": 55,
+          "discoveries": 253,
+          "gold": 213,
+          "dismantles": 4,
+          "essenceGenerated": 115,
+          "essenceSpent": 105
+        },
+        "80": {
+          "reached": 8,
+          "formations": 5,
+          "towers": 80,
+          "inventory": 11,
+          "summons": 295,
+          "evolutions": 0,
+          "casualFusions": 57,
+          "discoveries": 264,
+          "gold": 235,
+          "dismantles": 6,
+          "essenceGenerated": 147,
+          "essenceSpent": 136
+        },
+        "90": {
+          "reached": 8,
+          "formations": 5,
+          "towers": 80,
+          "inventory": 12,
+          "summons": 316,
+          "evolutions": 0,
+          "casualFusions": 57,
+          "discoveries": 272,
+          "gold": 264,
+          "dismantles": 7,
+          "essenceGenerated": 148,
+          "essenceSpent": 138
+        },
+        "100": {
+          "reached": 6,
+          "formations": 5,
+          "towers": 80,
+          "inventory": 13,
+          "summons": 342,
+          "evolutions": 0,
+          "casualFusions": 59,
+          "discoveries": 281,
+          "gold": 243,
+          "dismantles": 7,
+          "essenceGenerated": 161,
+          "essenceSpent": 158
+        }
+      },
+      "defeatReasons": {
+        "제한시간 120초 안에 보스를 처치하지 못했습니다.": 2,
+        "제한시간 72초 안에 보스를 처치하지 못했습니다.": 1,
+        "제한시간 78초 안에 보스를 처치하지 못했습니다.": 1
+      }
+    }
+  },
+  "byRegionAndStartingElement": {
+    "KR": {
+      "木": {
+        "runs": 12,
+        "victories": 4,
+        "defeats": 8,
+        "timeouts": 0,
+        "victoryRate": 0.333,
+        "elapsedMinutes": {
+          "p10": 45.55,
+          "median": 48.18,
+          "p90": 50.88
+        },
+        "wave": {
+          "p10": 90,
+          "median": 99,
+          "p90": 100
+        },
+        "goals": {
+          "median": 5,
+          "p90": 5
+        },
+        "idioms": {
+          "median": 5,
+          "p90": 5
+        },
+        "evolutions": {
+          "median": 0,
+          "p90": 0
+        },
+        "casualFusions": {
+          "median": 64,
+          "p90": 73
+        },
+        "peakTowers": {
+          "median": 80,
+          "p90": 80
+        },
+        "discoveries": {
+          "median": 289,
+          "p90": 296
+        },
+        "dismantles": {
+          "median": 9,
+          "p90": 11
+        },
+        "essence": {
+          "generatedMedian": 165,
+          "spentMedian": 158,
+          "spendRateMedian": 0.941
+        },
+        "elementTraits": {
+          "木": [
+            4,
+            3,
+            3
+          ],
+          "火": [
+            3,
+            3,
+            1
+          ],
+          "土": [
+            3,
+            2,
+            1
+          ],
+          "金": [
+            3,
+            3,
+            2
+          ],
+          "水": [
+            3,
+            2,
+            2
+          ]
+        },
+        "checkpoints": {
+          "10": {
+            "reached": 12,
+            "formations": 2,
+            "towers": 25,
+            "inventory": 0,
+            "summons": 41,
+            "evolutions": 0,
+            "casualFusions": 4,
+            "discoveries": 42,
+            "gold": 47,
+            "dismantles": 0,
+            "essenceGenerated": 7,
+            "essenceSpent": 6
+          },
+          "20": {
+            "reached": 12,
+            "formations": 3,
+            "towers": 37,
+            "inventory": 0,
+            "summons": 69,
+            "evolutions": 0,
+            "casualFusions": 12,
+            "discoveries": 77,
+            "gold": 57,
+            "dismantles": 0,
+            "essenceGenerated": 23,
+            "essenceSpent": 19
+          },
+          "30": {
+            "reached": 12,
+            "formations": 3,
+            "towers": 48,
+            "inventory": 0,
+            "summons": 103,
+            "evolutions": 0,
+            "casualFusions": 18,
+            "discoveries": 105,
+            "gold": 123,
+            "dismantles": 0,
+            "essenceGenerated": 34,
+            "essenceSpent": 30
+          },
+          "40": {
+            "reached": 12,
+            "formations": 4,
+            "towers": 58,
+            "inventory": 0,
+            "summons": 140,
+            "evolutions": 0,
+            "casualFusions": 30,
+            "discoveries": 148,
+            "gold": 88,
+            "dismantles": 0,
+            "essenceGenerated": 60,
+            "essenceSpent": 55
+          },
+          "50": {
+            "reached": 12,
+            "formations": 4,
+            "towers": 64,
+            "inventory": 0,
+            "summons": 173,
+            "evolutions": 0,
+            "casualFusions": 39,
+            "discoveries": 184,
+            "gold": 149,
+            "dismantles": 0,
+            "essenceGenerated": 77,
+            "essenceSpent": 70
+          },
+          "60": {
+            "reached": 12,
+            "formations": 5,
+            "towers": 80,
+            "inventory": 3,
+            "summons": 225,
+            "evolutions": 0,
+            "casualFusions": 52,
+            "discoveries": 225,
+            "gold": 139,
+            "dismantles": 2,
+            "essenceGenerated": 116,
+            "essenceSpent": 108
+          },
+          "70": {
+            "reached": 12,
+            "formations": 5,
+            "towers": 80,
+            "inventory": 9,
+            "summons": 260,
+            "evolutions": 0,
+            "casualFusions": 59,
+            "discoveries": 253,
+            "gold": 186,
+            "dismantles": 4,
+            "essenceGenerated": 132,
+            "essenceSpent": 124
+          },
+          "80": {
+            "reached": 12,
+            "formations": 5,
+            "towers": 80,
+            "inventory": 11,
+            "summons": 299,
+            "evolutions": 0,
+            "casualFusions": 61,
+            "discoveries": 271,
+            "gold": 235,
+            "dismantles": 6,
+            "essenceGenerated": 154,
+            "essenceSpent": 148
+          },
+          "90": {
+            "reached": 12,
+            "formations": 5,
+            "towers": 80,
+            "inventory": 12,
+            "summons": 326,
+            "evolutions": 0,
+            "casualFusions": 64,
+            "discoveries": 285,
+            "gold": 240,
+            "dismantles": 8,
+            "essenceGenerated": 163,
+            "essenceSpent": 155
+          },
+          "100": {
+            "reached": 4,
+            "formations": 5,
+            "towers": 80,
+            "inventory": 13,
+            "summons": 332,
+            "evolutions": 0,
+            "casualFusions": 55,
+            "discoveries": 273,
+            "gold": 275,
+            "dismantles": 9,
+            "essenceGenerated": 147,
+            "essenceSpent": 137
+          }
+        },
+        "defeatReasons": {
+          "적 80체가 전장을 뒤덮었습니다.": 3,
+          "제한시간 120초 안에 보스를 처치하지 못했습니다.": 5
+        }
+      },
+      "火": {
+        "runs": 11,
+        "victories": 5,
+        "defeats": 6,
+        "timeouts": 0,
+        "victoryRate": 0.455,
+        "elapsedMinutes": {
+          "p10": 45.44,
+          "median": 48.3,
+          "p90": 51.12
+        },
+        "wave": {
+          "p10": 90,
+          "median": 100,
+          "p90": 100
+        },
+        "goals": {
+          "median": 5,
+          "p90": 5
+        },
+        "idioms": {
+          "median": 5,
+          "p90": 5
+        },
+        "evolutions": {
+          "median": 0,
+          "p90": 0
+        },
+        "casualFusions": {
+          "median": 61,
+          "p90": 74
+        },
+        "peakTowers": {
+          "median": 80,
+          "p90": 80
+        },
+        "discoveries": {
+          "median": 282,
+          "p90": 318
+        },
+        "dismantles": {
+          "median": 6,
+          "p90": 13
+        },
+        "essence": {
+          "generatedMedian": 160,
+          "spentMedian": 152,
+          "spendRateMedian": 0.933
+        },
+        "elementTraits": {
+          "木": [
+            3,
+            3,
+            2
+          ],
+          "火": [
+            3,
+            2,
+            0
+          ],
+          "土": [
+            3,
+            2,
+            2
+          ],
+          "金": [
+            3,
+            3,
+            2
+          ],
+          "水": [
+            3,
+            2,
+            2
+          ]
+        },
+        "checkpoints": {
+          "10": {
+            "reached": 11,
+            "formations": 2,
+            "towers": 27,
+            "inventory": 0,
+            "summons": 40,
+            "evolutions": 0,
+            "casualFusions": 5,
+            "discoveries": 42,
+            "gold": 43,
+            "dismantles": 0,
+            "essenceGenerated": 7,
+            "essenceSpent": 5
+          },
+          "20": {
+            "reached": 11,
+            "formations": 3,
+            "towers": 40,
+            "inventory": 0,
+            "summons": 70,
+            "evolutions": 0,
+            "casualFusions": 11,
+            "discoveries": 74,
+            "gold": 61,
+            "dismantles": 0,
+            "essenceGenerated": 21,
+            "essenceSpent": 15
+          },
+          "30": {
+            "reached": 11,
+            "formations": 3,
+            "towers": 48,
+            "inventory": 0,
+            "summons": 103,
+            "evolutions": 0,
+            "casualFusions": 19,
+            "discoveries": 107,
+            "gold": 126,
+            "dismantles": 0,
+            "essenceGenerated": 34,
+            "essenceSpent": 27
+          },
+          "40": {
+            "reached": 11,
+            "formations": 4,
+            "towers": 63,
+            "inventory": 0,
+            "summons": 140,
+            "evolutions": 0,
+            "casualFusions": 32,
+            "discoveries": 153,
+            "gold": 88,
+            "dismantles": 0,
+            "essenceGenerated": 61,
+            "essenceSpent": 52
+          },
+          "50": {
+            "reached": 11,
+            "formations": 4,
+            "towers": 64,
+            "inventory": 0,
+            "summons": 170,
+            "evolutions": 0,
+            "casualFusions": 37,
+            "discoveries": 180,
+            "gold": 173,
+            "dismantles": 0,
+            "essenceGenerated": 77,
+            "essenceSpent": 69
+          },
+          "60": {
+            "reached": 11,
+            "formations": 5,
+            "towers": 79,
+            "inventory": 1,
+            "summons": 222,
+            "evolutions": 0,
+            "casualFusions": 52,
+            "discoveries": 232,
+            "gold": 117,
+            "dismantles": 1,
+            "essenceGenerated": 120,
+            "essenceSpent": 112
+          },
+          "70": {
+            "reached": 11,
+            "formations": 5,
+            "towers": 80,
+            "inventory": 9,
+            "summons": 264,
+            "evolutions": 0,
+            "casualFusions": 55,
+            "discoveries": 251,
+            "gold": 197,
+            "dismantles": 3,
+            "essenceGenerated": 130,
+            "essenceSpent": 121
+          },
+          "80": {
+            "reached": 11,
+            "formations": 5,
+            "towers": 80,
+            "inventory": 11,
+            "summons": 288,
+            "evolutions": 0,
+            "casualFusions": 56,
+            "discoveries": 262,
+            "gold": 262,
+            "dismantles": 4,
+            "essenceGenerated": 136,
+            "essenceSpent": 126
+          },
+          "90": {
+            "reached": 11,
+            "formations": 5,
+            "towers": 80,
+            "inventory": 12,
+            "summons": 319,
+            "evolutions": 0,
+            "casualFusions": 60,
+            "discoveries": 273,
+            "gold": 262,
+            "dismantles": 6,
+            "essenceGenerated": 155,
+            "essenceSpent": 148
+          },
+          "100": {
+            "reached": 6,
+            "formations": 5,
+            "towers": 80,
+            "inventory": 13,
+            "summons": 345,
+            "evolutions": 0,
+            "casualFusions": 62,
+            "discoveries": 288,
+            "gold": 262,
+            "dismantles": 7,
+            "essenceGenerated": 175,
+            "essenceSpent": 161
+          }
+        },
+        "defeatReasons": {
+          "적 80체가 전장을 뒤덮었습니다.": 3,
+          "제한시간 120초 안에 보스를 처치하지 못했습니다.": 2,
+          "제한시간 126초 안에 보스를 처치하지 못했습니다.": 1
+        }
+      },
+      "土": {
+        "runs": 3,
+        "victories": 2,
+        "defeats": 1,
+        "timeouts": 0,
+        "victoryRate": 0.667,
+        "elapsedMinutes": {
+          "p10": 50.29,
+          "median": 51.29,
+          "p90": 51.32
+        },
+        "wave": {
+          "p10": 100,
+          "median": 100,
+          "p90": 100
+        },
+        "goals": {
+          "median": 5,
+          "p90": 5
+        },
+        "idioms": {
+          "median": 5,
+          "p90": 5
+        },
+        "evolutions": {
+          "median": 0,
+          "p90": 0
+        },
+        "casualFusions": {
+          "median": 56,
+          "p90": 74
+        },
+        "peakTowers": {
+          "median": 80,
+          "p90": 80
+        },
+        "discoveries": {
+          "median": 281,
+          "p90": 318
+        },
+        "dismantles": {
+          "median": 12,
+          "p90": 16
+        },
+        "essence": {
+          "generatedMedian": 163,
+          "spentMedian": 150,
+          "spendRateMedian": 0.963
+        },
+        "elementTraits": {
+          "木": [
+            3,
+            3,
+            0
+          ],
+          "火": [
+            3,
+            3,
+            2
+          ],
+          "土": [
+            3,
+            2,
+            2
+          ],
+          "金": [
+            4,
+            4,
+            3
+          ],
+          "水": [
+            3,
+            2,
+            0
+          ]
+        },
+        "checkpoints": {
+          "10": {
+            "reached": 3,
+            "formations": 2,
+            "towers": 29,
+            "inventory": 0,
+            "summons": 41,
+            "evolutions": 0,
+            "casualFusions": 4,
+            "discoveries": 45,
+            "gold": 48,
+            "dismantles": 0,
+            "essenceGenerated": 5,
+            "essenceSpent": 3
+          },
+          "20": {
+            "reached": 3,
+            "formations": 3,
+            "towers": 43,
+            "inventory": 0,
+            "summons": 74,
+            "evolutions": 0,
+            "casualFusions": 10,
+            "discoveries": 78,
+            "gold": 61,
+            "dismantles": 0,
+            "essenceGenerated": 22,
+            "essenceSpent": 18
+          },
+          "30": {
+            "reached": 3,
+            "formations": 3,
+            "towers": 48,
+            "inventory": 0,
+            "summons": 102,
+            "evolutions": 0,
+            "casualFusions": 18,
+            "discoveries": 106,
+            "gold": 94,
+            "dismantles": 0,
+            "essenceGenerated": 33,
+            "essenceSpent": 32
+          },
+          "40": {
+            "reached": 3,
+            "formations": 4,
+            "towers": 62,
+            "inventory": 0,
+            "summons": 144,
+            "evolutions": 0,
+            "casualFusions": 26,
+            "discoveries": 148,
+            "gold": 81,
+            "dismantles": 0,
+            "essenceGenerated": 58,
+            "essenceSpent": 51
+          },
+          "50": {
+            "reached": 3,
+            "formations": 4,
+            "towers": 64,
+            "inventory": 0,
+            "summons": 177,
+            "evolutions": 0,
+            "casualFusions": 39,
+            "discoveries": 186,
+            "gold": 106,
+            "dismantles": 0,
+            "essenceGenerated": 82,
+            "essenceSpent": 77
+          },
+          "60": {
+            "reached": 3,
+            "formations": 5,
+            "towers": 80,
+            "inventory": 3,
+            "summons": 229,
+            "evolutions": 0,
+            "casualFusions": 51,
+            "discoveries": 236,
+            "gold": 172,
+            "dismantles": 0,
+            "essenceGenerated": 126,
+            "essenceSpent": 116
+          },
+          "70": {
+            "reached": 3,
+            "formations": 5,
+            "towers": 80,
+            "inventory": 10,
+            "summons": 270,
+            "evolutions": 0,
+            "casualFusions": 52,
+            "discoveries": 247,
+            "gold": 205,
+            "dismantles": 3,
+            "essenceGenerated": 130,
+            "essenceSpent": 123
+          },
+          "80": {
+            "reached": 3,
+            "formations": 5,
+            "towers": 80,
+            "inventory": 11,
+            "summons": 299,
+            "evolutions": 0,
+            "casualFusions": 55,
+            "discoveries": 261,
+            "gold": 263,
+            "dismantles": 6,
+            "essenceGenerated": 146,
+            "essenceSpent": 134
+          },
+          "90": {
+            "reached": 3,
+            "formations": 5,
+            "towers": 80,
+            "inventory": 12,
+            "summons": 323,
+            "evolutions": 0,
+            "casualFusions": 55,
+            "discoveries": 269,
+            "gold": 267,
+            "dismantles": 8,
+            "essenceGenerated": 151,
+            "essenceSpent": 139
+          },
+          "100": {
+            "reached": 3,
+            "formations": 5,
+            "towers": 80,
+            "inventory": 12,
+            "summons": 350,
+            "evolutions": 0,
+            "casualFusions": 56,
+            "discoveries": 281,
+            "gold": 218,
+            "dismantles": 12,
+            "essenceGenerated": 163,
+            "essenceSpent": 150
+          }
+        },
+        "defeatReasons": {
+          "제한시간 126초 안에 보스를 처치하지 못했습니다.": 1
+        }
+      },
+      "金": {
+        "runs": 9,
+        "victories": 8,
+        "defeats": 1,
+        "timeouts": 0,
+        "victoryRate": 0.889,
+        "elapsedMinutes": {
+          "p10": 46.22,
+          "median": 48.82,
+          "p90": 50.74
+        },
+        "wave": {
+          "p10": 99,
+          "median": 100,
+          "p90": 100
+        },
+        "goals": {
+          "median": 5,
+          "p90": 5
+        },
+        "idioms": {
+          "median": 5,
+          "p90": 5
+        },
+        "evolutions": {
+          "median": 0,
+          "p90": 0
+        },
+        "casualFusions": {
+          "median": 57,
+          "p90": 83
+        },
+        "peakTowers": {
+          "median": 80,
+          "p90": 80
+        },
+        "discoveries": {
+          "median": 268,
+          "p90": 328
+        },
+        "dismantles": {
+          "median": 8,
+          "p90": 11
+        },
+        "essence": {
+          "generatedMedian": 148,
+          "spentMedian": 141,
+          "spendRateMedian": 0.938
+        },
+        "elementTraits": {
+          "木": [
+            3,
+            3,
+            3
+          ],
+          "火": [
+            3,
+            2,
+            0
+          ],
+          "土": [
+            3,
+            2,
+            1
+          ],
+          "金": [
+            3,
+            3,
+            2
+          ],
+          "水": [
+            3,
+            2,
+            1
+          ]
+        },
+        "checkpoints": {
+          "10": {
+            "reached": 9,
+            "formations": 2,
+            "towers": 31,
+            "inventory": 0,
+            "summons": 44,
+            "evolutions": 0,
+            "casualFusions": 4,
+            "discoveries": 44,
+            "gold": 46,
+            "dismantles": 0,
+            "essenceGenerated": 6,
+            "essenceSpent": 6
+          },
+          "20": {
+            "reached": 9,
+            "formations": 3,
+            "towers": 45,
+            "inventory": 0,
+            "summons": 72,
+            "evolutions": 0,
+            "casualFusions": 11,
+            "discoveries": 78,
+            "gold": 61,
+            "dismantles": 0,
+            "essenceGenerated": 19,
+            "essenceSpent": 15
+          },
+          "30": {
+            "reached": 9,
+            "formations": 3,
+            "towers": 48,
+            "inventory": 0,
+            "summons": 103,
+            "evolutions": 0,
+            "casualFusions": 19,
+            "discoveries": 112,
+            "gold": 116,
+            "dismantles": 0,
+            "essenceGenerated": 37,
+            "essenceSpent": 33
+          },
+          "40": {
+            "reached": 9,
+            "formations": 4,
+            "towers": 64,
+            "inventory": 0,
+            "summons": 142,
+            "evolutions": 0,
+            "casualFusions": 28,
+            "discoveries": 151,
+            "gold": 123,
+            "dismantles": 0,
+            "essenceGenerated": 63,
+            "essenceSpent": 54
+          },
+          "50": {
+            "reached": 9,
+            "formations": 5,
+            "towers": 70,
+            "inventory": 0,
+            "summons": 171,
+            "evolutions": 0,
+            "casualFusions": 36,
+            "discoveries": 181,
+            "gold": 93,
+            "dismantles": 0,
+            "essenceGenerated": 71,
+            "essenceSpent": 67
+          },
+          "60": {
+            "reached": 9,
+            "formations": 5,
+            "towers": 80,
+            "inventory": 3,
+            "summons": 221,
+            "evolutions": 0,
+            "casualFusions": 47,
+            "discoveries": 217,
+            "gold": 155,
+            "dismantles": 1,
+            "essenceGenerated": 110,
+            "essenceSpent": 100
+          },
+          "70": {
+            "reached": 9,
+            "formations": 5,
+            "towers": 80,
+            "inventory": 10,
+            "summons": 256,
+            "evolutions": 0,
+            "casualFusions": 51,
+            "discoveries": 240,
+            "gold": 216,
+            "dismantles": 4,
+            "essenceGenerated": 122,
+            "essenceSpent": 114
+          },
+          "80": {
+            "reached": 9,
+            "formations": 5,
+            "towers": 80,
+            "inventory": 10,
+            "summons": 284,
+            "evolutions": 0,
+            "casualFusions": 54,
+            "discoveries": 248,
+            "gold": 253,
+            "dismantles": 7,
+            "essenceGenerated": 140,
+            "essenceSpent": 130
+          },
+          "90": {
+            "reached": 9,
+            "formations": 5,
+            "towers": 80,
+            "inventory": 12,
+            "summons": 309,
+            "evolutions": 0,
+            "casualFusions": 56,
+            "discoveries": 259,
+            "gold": 259,
+            "dismantles": 7,
+            "essenceGenerated": 143,
+            "essenceSpent": 136
+          },
+          "100": {
+            "reached": 8,
+            "formations": 5,
+            "towers": 80,
+            "inventory": 13,
+            "summons": 334,
+            "evolutions": 0,
+            "casualFusions": 57,
+            "discoveries": 268,
+            "gold": 282,
+            "dismantles": 10,
+            "essenceGenerated": 148,
+            "essenceSpent": 141
+          }
+        },
+        "defeatReasons": {
+          "적 80체가 전장을 뒤덮었습니다.": 1
+        }
+      },
+      "水": {
+        "runs": 10,
+        "victories": 6,
+        "defeats": 4,
+        "timeouts": 0,
+        "victoryRate": 0.6,
+        "elapsedMinutes": {
+          "p10": 9.08,
+          "median": 48.98,
+          "p90": 51.84
+        },
+        "wave": {
+          "p10": 20,
+          "median": 100,
+          "p90": 100
+        },
+        "goals": {
+          "median": 5,
+          "p90": 5
+        },
+        "idioms": {
+          "median": 5,
+          "p90": 5
+        },
+        "evolutions": {
+          "median": 0,
+          "p90": 0
+        },
+        "casualFusions": {
+          "median": 57,
+          "p90": 74
+        },
+        "peakTowers": {
+          "median": 80,
+          "p90": 80
+        },
+        "discoveries": {
+          "median": 278,
+          "p90": 310
+        },
+        "dismantles": {
+          "median": 6,
+          "p90": 14
+        },
+        "essence": {
+          "generatedMedian": 133,
+          "spentMedian": 126,
+          "spendRateMedian": 0.947
+        },
+        "elementTraits": {
+          "木": [
+            3,
+            2,
+            2
+          ],
+          "火": [
+            3,
+            2,
+            0
+          ],
+          "土": [
+            3,
+            2,
+            1
+          ],
+          "金": [
+            3,
+            3,
+            2
+          ],
+          "水": [
+            3,
+            2,
+            0
+          ]
+        },
+        "checkpoints": {
+          "10": {
+            "reached": 10,
+            "formations": 2,
+            "towers": 24,
+            "inventory": 0,
+            "summons": 35,
+            "evolutions": 0,
+            "casualFusions": 4,
+            "discoveries": 39,
+            "gold": 45,
+            "dismantles": 0,
+            "essenceGenerated": 5,
+            "essenceSpent": 4
+          },
+          "20": {
+            "reached": 9,
+            "formations": 3,
+            "towers": 39,
+            "inventory": 0,
+            "summons": 70,
+            "evolutions": 0,
+            "casualFusions": 11,
+            "discoveries": 76,
+            "gold": 59,
+            "dismantles": 0,
+            "essenceGenerated": 20,
+            "essenceSpent": 15
+          },
+          "30": {
+            "reached": 8,
+            "formations": 3,
+            "towers": 48,
+            "inventory": 0,
+            "summons": 106,
+            "evolutions": 0,
+            "casualFusions": 23,
+            "discoveries": 115,
+            "gold": 94,
+            "dismantles": 0,
+            "essenceGenerated": 46,
+            "essenceSpent": 37
+          },
+          "40": {
+            "reached": 8,
+            "formations": 4,
+            "towers": 64,
+            "inventory": 0,
+            "summons": 142,
+            "evolutions": 0,
+            "casualFusions": 29,
+            "discoveries": 151,
+            "gold": 91,
+            "dismantles": 0,
+            "essenceGenerated": 59,
+            "essenceSpent": 52
+          },
+          "50": {
+            "reached": 8,
+            "formations": 4,
+            "towers": 64,
+            "inventory": 0,
+            "summons": 178,
+            "evolutions": 0,
+            "casualFusions": 40,
+            "discoveries": 188,
+            "gold": 164,
+            "dismantles": 0,
+            "essenceGenerated": 79,
+            "essenceSpent": 67
+          },
+          "60": {
+            "reached": 8,
+            "formations": 5,
+            "towers": 80,
+            "inventory": 4,
+            "summons": 223,
+            "evolutions": 0,
+            "casualFusions": 48,
+            "discoveries": 230,
+            "gold": 168,
+            "dismantles": 1,
+            "essenceGenerated": 104,
+            "essenceSpent": 95
+          },
+          "70": {
+            "reached": 8,
+            "formations": 5,
+            "towers": 80,
+            "inventory": 10,
+            "summons": 266,
+            "evolutions": 0,
+            "casualFusions": 55,
+            "discoveries": 253,
+            "gold": 213,
+            "dismantles": 4,
+            "essenceGenerated": 115,
+            "essenceSpent": 105
+          },
+          "80": {
+            "reached": 8,
+            "formations": 5,
+            "towers": 80,
+            "inventory": 11,
+            "summons": 295,
+            "evolutions": 0,
+            "casualFusions": 57,
+            "discoveries": 264,
+            "gold": 235,
+            "dismantles": 6,
+            "essenceGenerated": 147,
+            "essenceSpent": 136
+          },
+          "90": {
+            "reached": 8,
+            "formations": 5,
+            "towers": 80,
+            "inventory": 12,
+            "summons": 316,
+            "evolutions": 0,
+            "casualFusions": 57,
+            "discoveries": 272,
+            "gold": 264,
+            "dismantles": 7,
+            "essenceGenerated": 148,
+            "essenceSpent": 138
+          },
+          "100": {
+            "reached": 6,
+            "formations": 5,
+            "towers": 80,
+            "inventory": 13,
+            "summons": 342,
+            "evolutions": 0,
+            "casualFusions": 59,
+            "discoveries": 281,
+            "gold": 243,
+            "dismantles": 7,
+            "essenceGenerated": 161,
+            "essenceSpent": 158
+          }
+        },
+        "defeatReasons": {
+          "제한시간 120초 안에 보스를 처치하지 못했습니다.": 2,
+          "제한시간 72초 안에 보스를 처치하지 못했습니다.": 1,
+          "제한시간 78초 안에 보스를 처치하지 못했습니다.": 1
+        }
+      }
+    }
+  },
+  "aggregate": {
+    "runs": 45,
+    "victories": 25,
+    "defeats": 20,
+    "timeouts": 0,
+    "victoryRate": 0.556,
+    "elapsedMinutes": {
+      "p10": 44.82,
+      "median": 48.46,
+      "p90": 51.32
+    },
+    "wave": {
+      "p10": 90,
+      "median": 100,
+      "p90": 100
+    },
+    "goals": {
+      "median": 5,
+      "p90": 5
+    },
+    "idioms": {
+      "median": 5,
+      "p90": 5
+    },
+    "evolutions": {
+      "median": 0,
+      "p90": 0
+    },
+    "casualFusions": {
+      "median": 59,
+      "p90": 74
+    },
+    "peakTowers": {
+      "median": 80,
+      "p90": 80
+    },
+    "discoveries": {
+      "median": 281,
+      "p90": 315
+    },
+    "dismantles": {
+      "median": 7,
+      "p90": 13
+    },
+    "essence": {
+      "generatedMedian": 154,
+      "spentMedian": 145,
+      "spendRateMedian": 0.941
+    },
+    "elementTraits": {
+      "木": [
+        3,
+        3,
+        2
+      ],
+      "火": [
+        3,
+        2,
+        0
+      ],
+      "土": [
+        3,
+        2,
+        1
+      ],
+      "金": [
+        3,
+        3,
+        2
+      ],
+      "水": [
+        3,
+        2,
+        1
+      ]
+    },
+    "checkpoints": {
+      "10": {
+        "reached": 45,
+        "formations": 2,
+        "towers": 27,
+        "inventory": 0,
+        "summons": 40,
+        "evolutions": 0,
+        "casualFusions": 4,
+        "discoveries": 42,
+        "gold": 45,
+        "dismantles": 0,
+        "essenceGenerated": 6,
+        "essenceSpent": 5
+      },
+      "20": {
+        "reached": 44,
+        "formations": 3,
+        "towers": 40,
+        "inventory": 0,
+        "summons": 71,
+        "evolutions": 0,
+        "casualFusions": 12,
+        "discoveries": 77,
+        "gold": 61,
+        "dismantles": 0,
+        "essenceGenerated": 20,
+        "essenceSpent": 16
+      },
+      "30": {
+        "reached": 43,
+        "formations": 3,
+        "towers": 48,
+        "inventory": 0,
+        "summons": 103,
+        "evolutions": 0,
+        "casualFusions": 19,
+        "discoveries": 107,
+        "gold": 109,
+        "dismantles": 0,
+        "essenceGenerated": 36,
+        "essenceSpent": 30
+      },
+      "40": {
+        "reached": 43,
+        "formations": 4,
+        "towers": 63,
+        "inventory": 0,
+        "summons": 141,
+        "evolutions": 0,
+        "casualFusions": 28,
+        "discoveries": 149,
+        "gold": 89,
+        "dismantles": 0,
+        "essenceGenerated": 59,
+        "essenceSpent": 52
+      },
+      "50": {
+        "reached": 43,
+        "formations": 4,
+        "towers": 64,
+        "inventory": 0,
+        "summons": 172,
+        "evolutions": 0,
+        "casualFusions": 38,
+        "discoveries": 182,
+        "gold": 129,
+        "dismantles": 0,
+        "essenceGenerated": 77,
+        "essenceSpent": 70
+      },
+      "60": {
+        "reached": 43,
+        "formations": 5,
+        "towers": 80,
+        "inventory": 3,
+        "summons": 223,
+        "evolutions": 0,
+        "casualFusions": 51,
+        "discoveries": 229,
+        "gold": 140,
+        "dismantles": 1,
+        "essenceGenerated": 114,
+        "essenceSpent": 105
+      },
+      "70": {
+        "reached": 43,
+        "formations": 5,
+        "towers": 80,
+        "inventory": 10,
+        "summons": 261,
+        "evolutions": 0,
+        "casualFusions": 54,
+        "discoveries": 245,
+        "gold": 201,
+        "dismantles": 4,
+        "essenceGenerated": 129,
+        "essenceSpent": 121
+      },
+      "80": {
+        "reached": 43,
+        "formations": 5,
+        "towers": 80,
+        "inventory": 11,
+        "summons": 292,
+        "evolutions": 0,
+        "casualFusions": 57,
+        "discoveries": 262,
+        "gold": 237,
+        "dismantles": 6,
+        "essenceGenerated": 144,
+        "essenceSpent": 134
+      },
+      "90": {
+        "reached": 43,
+        "formations": 5,
+        "towers": 80,
+        "inventory": 12,
+        "summons": 317,
+        "evolutions": 0,
+        "casualFusions": 60,
+        "discoveries": 272,
+        "gold": 259,
+        "dismantles": 6,
+        "essenceGenerated": 150,
+        "essenceSpent": 140
+      },
+      "100": {
+        "reached": 27,
+        "formations": 5,
+        "towers": 80,
+        "inventory": 13,
+        "summons": 336,
+        "evolutions": 0,
+        "casualFusions": 57,
+        "discoveries": 278,
+        "gold": 247,
+        "dismantles": 7,
+        "essenceGenerated": 148,
+        "essenceSpent": 141
+      }
+    },
+    "defeatReasons": {
+      "적 80체가 전장을 뒤덮었습니다.": 7,
+      "제한시간 120초 안에 보스를 처치하지 못했습니다.": 9,
+      "제한시간 126초 안에 보스를 처치하지 못했습니다.": 2,
+      "제한시간 72초 안에 보스를 처치하지 못했습니다.": 1,
+      "제한시간 78초 안에 보스를 처치하지 못했습니다.": 1
+    }
+  },
+  "gates": {
+    "noTimeouts": true,
+    "medianRunMinutesInTargetBand": true,
+    "victoryRateInTargetBand": true,
+    "regionVictoryGapAtMost15Points": true,
+    "startingElementVictoryHomogeneous": true,
+    "victoryEssenceSpendRateMedianAtLeast70Percent": true
+  },
+  "diagnostics": {
+    "p10Wave": 90,
+    "medianWave": 100,
+    "medianGoals": 5,
+    "medianFormationsAt20": 3,
+    "medianFormationsAt40": 4,
+    "medianFormationsAt60": 5,
+    "regionVictoryGap": 0,
+    "startingElementVictoryGap": 0.556,
+    "startingElementHomogeneity": {
+      "chiSquare": 7.135,
+      "degreesOfFreedom": 4,
+      "critical": 13.277,
+      "homogeneous": true,
+      "gap": 0.5555555555555556,
+      "groups": [
+        {
+          "label": "木",
+          "runs": 12,
+          "victories": 4,
+          "rate": 0.333
+        },
+        {
+          "label": "火",
+          "runs": 11,
+          "victories": 5,
+          "rate": 0.455
+        },
+        {
+          "label": "土",
+          "runs": 3,
+          "victories": 2,
+          "rate": 0.667
+        },
+        {
+          "label": "金",
+          "runs": 9,
+          "victories": 8,
+          "rate": 0.889
+        },
+        {
+          "label": "水",
+          "runs": 10,
+          "victories": 6,
+          "rate": 0.6
+        }
+      ]
+    },
+    "victoryEssenceSpendRateMedian": 0.935
+  },
+  "pass": true
+}
