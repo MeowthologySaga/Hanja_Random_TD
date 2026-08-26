@@ -43,4 +43,20 @@ describe("웨이브 브리핑", () => {
     expect(composeWaveBriefing(plan.briefing, 7, false, null)).not.toContain("잔존");
     expect(composeWaveBriefing(plan.briefing, 7, false, 12)).toContain("잔존 12체 합류");
   });
+
+  /*
+   * [S/P-10] 두 줄 클램프는 넘치는 순간 뒤부터 삼킨다. 잔존 수는 이 문장
+   * 에서만 알 수 있는 값이고, 장·우두머리 예고는 웨이브 수로 되짚을 수
+   * 있다 — 그러니 잔존이 앞, 장이 뒤여야 한다.
+   */
+  it("잔존 합류는 장·우두머리 예고보다 앞선다", () => {
+    for (const wave of [7, 20, 50, 99]) {
+      const plan = wavePlan(wave);
+      const text = composeWaveBriefing(plan.briefing, wave, plan.boss, 42);
+      const chapterMark = `제${Math.max(1, Math.ceil(wave / 10))}장`;
+      expect(text).toContain("잔존 42체 합류");
+      expect(text).toContain(chapterMark);
+      expect(text.indexOf("잔존 42체 합류")).toBeLessThan(text.indexOf(chapterMark));
+    }
+  });
 });

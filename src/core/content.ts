@@ -182,11 +182,22 @@ export const WAVE_BRIEFING_CHAR_BUDGET = 60;
  * 겹치는 말도 턴다 — 우두머리 웨이브에서는 원문이 이미 "우두머리"라고
  * 말하므로 "우두머리 N웨이브" 예고를 빼고 제한시간만 남긴다. 그러지 않으면
  * 「우두머리 · 제한 · 잔존」 세 꼬리가 겹쳐 최장 조합만 예산을 넘는다.
+ *
+ * [S/P-10] 조각 차례는 "잃어도 되는 것을 뒤로" 다.
+ *
+ * 두 줄 클램프는 넘치는 순간 말줄임 없이 **뒤부터** 삼킨다. 그런데 잔존
+ * 합류 수는 이 문장에서 유일하게 여기서만 알 수 있는 값이다 — 장 번호와
+ * 우두머리 웨이브는 위 칩의 웨이브 수만 보면 되짚을 수 있고, 원문은 적
+ * 유형별로 고정된 조언이다. 그래서 잔존을 장·우두머리 앞으로 옮겨,
+ * 언젠가 조판이 밀리더라도 마지막까지 남는 쪽이 되게 한다.
+ * (지금 조판에서는 301개 조합 전수가 두 줄 안이다 — e2e 「keeps every
+ * wave briefing inside the two-line clamp」가 실제 높이로 잰다.)
  */
 export function composeWaveBriefing(base: string, wave: number, bossLimited: boolean, survivors: number | null): string {
   const chapter = Math.max(1, Math.ceil(wave / 10));
-  const parts = [base, bossLimited ? `제${chapter}장 · 제한 내 처치 필수` : `제${chapter}장 · 우두머리 ${chapter * 10}웨이브`];
+  const parts = [base];
   if (survivors !== null) parts.push(`잔존 ${survivors}체 합류`);
+  parts.push(bossLimited ? `제${chapter}장 · 제한 내 처치 필수` : `제${chapter}장 · 우두머리 ${chapter * 10}웨이브`);
   return parts.join(" · ");
 }
 

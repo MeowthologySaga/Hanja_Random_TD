@@ -85,6 +85,41 @@ test("routes destructive actions through the shared in-game confirm dialog", asy
   await expect(page.locator("#message-value")).toContainText("분해");
 });
 
+// ── S/P-10 · 웨이브 브리핑 잔존 꼬리 ───────────────────────────────
+// 두 줄 클램프는 넘치는 순간 뒤부터 삼킨다. 잔존 수는 이 문장에서만 알 수
+// 있는 값이므로 장·우두머리 예고보다 앞에 서야 한다. 조판도 함께 잰다 —
+// 자형연성(표준) 모드의 카드 폭은 별승급과 다를 수 있다.
+test("keeps the survivor tail ahead of the chapter note and inside two lines", async ({ page }) => {
+  await page.goto("/?seed=TRACK-S-BRIEF&mode=standard");
+  await page.getByTestId("start-run").click();
+  await expect(page.locator("#wave-briefing")).toBeVisible();
+
+  const report = await page.evaluate(async () => {
+    const specifier = "/src/core/content.ts";
+    const module = await import(specifier) as typeof import("../src/core/content");
+    const element = document.getElementById("wave-briefing") as HTMLElement;
+    const original = element.textContent;
+    const overflowing: Array<{ wave: number; survivors: number; overflow: number; text: string }> = [];
+    const misordered: number[] = [];
+    for (let wave = 1; wave <= 100; wave += 1) {
+      const plan = module.wavePlan(wave);
+      for (const survivors of [1, 9, 79]) {
+        const text = module.composeWaveBriefing(plan.briefing, wave, plan.boss, survivors);
+        const tail = `잔존 ${survivors}체 합류`;
+        const chapter = `제${Math.max(1, Math.ceil(wave / 10))}장`;
+        if (text.indexOf(tail) > text.indexOf(chapter)) misordered.push(wave);
+        element.textContent = text;
+        const overflow = element.scrollHeight - element.clientHeight;
+        if (overflow > 1) overflowing.push({ wave, survivors, overflow, text });
+      }
+    }
+    element.textContent = original;
+    return { overflowing, misordered };
+  });
+  expect(report.misordered).toEqual([]);
+  expect(report.overflowing).toEqual([]);
+});
+
 // [최대] 강화도 같은 창을 쓴다. 비용을 통째로 쓰는 조작이라 확인 1회가 붙는다.
 test("confirms max-level upgrades in the same dialog", async ({ page }) => {
   await page.goto("/?seed=TRACK-S-MAXUP&mode=standard");
