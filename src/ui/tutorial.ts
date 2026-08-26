@@ -10,7 +10,7 @@
  */
 import { WORLD_HEIGHT, WORLD_WIDTH } from "../core/content";
 import { GameEngine } from "../core/game";
-import { summonProductCost } from "../core/hanzi";
+import { summonProductCost } from "../core/engine-tuning";
 import { type Wuxing } from "../core/types";
 import { isBattleAssetsReady, whenBattleAssetsReady } from "./asset-loader";
 import { canvas, ctx, must, shell, sound } from "./app-context";

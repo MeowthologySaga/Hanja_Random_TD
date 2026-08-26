@@ -13,7 +13,8 @@ import {
   casualFusionDismantleScore,
   casualFusionEssenceRefund
 } from "../src/core/game";
-import { MIN_TIER_POOL_SIZE, SUMMON_SURCHARGE, summonCost, WUXING_ORDER } from "../src/core/hanzi";
+import { CASUAL_STAR_DECAY, MIN_TIER_POOL_SIZE, SUMMON_STAR_BANDS, WUXING_ORDER } from "../src/core/hanzi";
+import { multiSummonCost, SUMMON_COST_MULTIPLIER, summonCost, summonProductCost } from "../src/core/engine-tuning";
 import type { CasualStar, HanziDefinition, RegionCode, Tower, Wuxing } from "../src/core/types";
 
 function casualTower(definition: HanziDefinition, id: number, cell: number, star = casualNaturalStar(definition.char)): Tower {
@@ -429,7 +430,7 @@ describe("casual eight-star mode", () => {
       expect(engine.isSummonProductAvailable(intent)).toBe(true);
       for (let index = 0; index < 200; index += 1) {
         // 보상·이자가 섞이지 않게 가격 경계로 청구액을 재단한다.
-        const expected = summonCost(engine.state.summonCount) + SUMMON_SURCHARGE[intent];
+        const expected = summonProductCost(engine.state.summonCount, intent);
         engine.state.gold = expected - 1;
         expect(engine.summonProduct(intent)).toMatchObject({ ok: false, message: "엽전이 1 부족합니다." });
         engine.state.gold = expected;
@@ -443,7 +444,7 @@ describe("casual eight-star mode", () => {
       // 소환 목적은 카드 한 장 안에서만 유효하다. 상태로 남지 않는다.
       expect(engine.state.summonIntent).toBe("balanced");
     }
-    expect(SUMMON_SURCHARGE.balanced).toBe(0);
+    expect(SUMMON_COST_MULTIPLIER.balanced).toBe(1);
 
     // 자형연성은 별 수집이 루프가 아니므로 티어 상품도 밴드도 없다.
     const standard = new GameEngine("standard-tier", "KR", "standard");
@@ -453,6 +454,60 @@ describe("casual eight-star mode", () => {
     expect(standard.isSummonProductAvailable("midstar")).toBe(false);
     expect(standard.isSummonProductAvailable("highstar")).toBe(false);
     expect(standard.isSummonProductAvailable("lineage")).toBe(true);
+  });
+
+  it("prices every summon product as a ratio of the base so the per-coin ranking never flips", () => {
+    // gripe #9. 정찰료가 정액(+5/+12)이던 시절, 기본가가 7→24 로 오르는 동안
+    // 정찰료만 굳어 있어서 엽전당 전투력이 뒤집혔다(기본 0.052 < 고급 0.074).
+    // 정률로 바꾼 뒤에도 뒤집히지 않는다는 것을 계수에서 직접 재현한다.
+    const bandPower = (intent: "balanced" | "midstar" | "highstar"): number => {
+      const band = SUMMON_STAR_BANDS[intent];
+      if (band === null) throw new Error(`밴드 없는 상품: ${intent}`);
+      const [min, max] = band;
+      let weightSum = 0;
+      let powerSum = 0;
+      for (let star = min; star <= max; star += 1) {
+        const weight = Math.pow(CASUAL_STAR_DECAY, star - min);
+        weightSum += weight;
+        powerSum += weight * CASUAL_STAR_POWER[star as CasualStar];
+      }
+      return powerSum / weightSum;
+    };
+
+    // 초반 가격은 정액 시절과 한 푼도 다르지 않아야 한다 — 계수는 그 조건으로 골랐다.
+    expect([0, 12, 204].map((count) => summonCost(count))).toEqual([7, 8, 24]);
+    const priceRow = (count: number) =>
+      (["balanced", "discovery", "lineage", "concentration", "midstar", "highstar"] as const)
+        .map((intent) => summonProductCost(count, intent));
+    expect(priceRow(0)).toEqual([7, 9, 10, 9, 12, 19]);
+    expect(priceRow(204)).toEqual([24, 31, 35, 31, 41, 65]);
+
+    for (let count = 0; count <= 240; count += 12) {
+      const base = summonCost(count);
+      const [balanced, discovery, lineage, concentration, midstar, highstar] = priceRow(count);
+      // 가격 사다리는 기본가 전 구간에서 엄격히 단조롭다.
+      expect(balanced).toBe(base);
+      expect(discovery).toBe(concentration);
+      expect(discovery as number).toBeGreaterThan(balanced as number);
+      expect(lineage as number).toBeGreaterThan(discovery as number);
+      expect(midstar as number).toBeGreaterThan(lineage as number);
+      expect(highstar as number).toBeGreaterThan(midstar as number);
+      // 가격은 언제나 [기본가 × 배수]에서 반올림 한 칸 이내다(= 정액 정찰료로 되돌아가면 깨진다).
+      for (const intent of ["discovery", "lineage", "concentration", "midstar", "highstar"] as const) {
+        expect(Math.abs(summonProductCost(count, intent) - base * SUMMON_COST_MULTIPLIER[intent])).toBeLessThanOrEqual(0.5 + 1e-9);
+      }
+      // 엽전당 전투력 순위: 기본(화력) > 중급 > 고급(별 프리미엄). 전 구간 고정.
+      const perCoin = (intent: "balanced" | "midstar" | "highstar") => bandPower(intent) / summonProductCost(count, intent);
+      expect(perCoin("balanced")).toBeGreaterThan(perCoin("midstar"));
+      expect(perCoin("midstar")).toBeGreaterThan(perCoin("highstar"));
+    }
+
+    // 10연은 균형가 열 장 값 그대로다 — 할인도 할증도 없다.
+    for (const count of [0, 96, 204]) {
+      const straight = Array.from({ length: 10 }, (_, index) => summonProductCost(count + index, "balanced"))
+        .reduce((total, cost) => total + cost, 0);
+      expect(multiSummonCost(count, 10)).toBe(straight);
+    }
   });
 
   it("slopes the in-band distribution so the band floor is common and the ceiling is rare", () => {
@@ -465,7 +520,7 @@ describe("casual eight-star mode", () => {
       engine.begin();
       const counts = new Map<number, number>();
       for (let index = 0; index < trials; index += 1) {
-        engine.state.gold = summonCost(engine.state.summonCount) + SUMMON_SURCHARGE[intent];
+        engine.state.gold = summonProductCost(engine.state.summonCount, intent);
         expect(engine.summonProduct(intent)).toMatchObject({ ok: true });
         const drawn = engine.state.inventoryTowers[engine.state.inventoryTowers.length - 1];
         const star = drawn?.naturalStar ?? 0;

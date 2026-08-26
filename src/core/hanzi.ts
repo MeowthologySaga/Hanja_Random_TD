@@ -369,26 +369,6 @@ export function definitionForTower(catalog: HanziCatalog, definitionId: string):
   return definition;
 }
 
-export function summonCost(summonCount: number): number {
-  return Math.min(24, 7 + Math.floor(Math.max(0, summonCount) / 12));
-}
-
-/**
- * 상점 소환 상품의 기본가 가산분.
- *
- * 확률 보정은 공짜가 아니다. 목적 소환은 기본가 위에 정찰료를 얹어
- * "무엇을 노리는가"가 곧 지출 판단이 되도록 한다. 균형 소환만 0이며
- * 10연 소환은 균형가를 그대로 쓴다(`multiSummonCost`).
- */
-export const SUMMON_SURCHARGE: Readonly<Record<SummonIntent, number>> = Object.freeze({
-  balanced: 0,
-  discovery: 2,
-  lineage: 3,
-  concentration: 2,
-  midstar: 5,
-  highstar: 12
-});
-
 export const SUMMON_INTENT_LABELS: Readonly<Record<SummonIntent, string>> = Object.freeze({
   balanced: "기본",
   discovery: "탐색",
@@ -436,16 +416,6 @@ export const MIN_TIER_POOL_SIZE = 30;
 
 /** 같은 (오행, 별) 묶음을 1~2기 들고 있을 때 후보 가중치 배수. */
 export const CASUAL_PAIR_WEIGHT = 2.2;
-
-/** 상품 카드에 표시하고 실제로 청구하는 1회 소환가. */
-export function summonProductCost(summonCount: number, intent: SummonIntent): number {
-  return summonCost(summonCount) + SUMMON_SURCHARGE[intent];
-}
-
-export function multiSummonCost(summonCount: number, amount = 10): number {
-  return Array.from({ length: Math.max(0, amount) }, (_, index) => summonCost(summonCount + index))
-    .reduce((total, cost) => total + cost, 0);
-}
 
 export const MAX_UPGRADE_LEVEL = 99;
 export const UPGRADE_STAT_ORDER: readonly UpgradeStat[] = ["damage", "attackSpeed", "range", "abilityPower", "statusPower"];

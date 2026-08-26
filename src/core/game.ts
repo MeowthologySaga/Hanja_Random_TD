@@ -85,8 +85,11 @@ import {
   interestForGold,
   MAX_CONCENTRATION_LEVEL,
   MODE_ENEMY_COUNT_SCALE,
+  multiSummonCost,
   regionEnemyHpMultiplier,
   SUMMON_STAGE_WEIGHTS,
+  summonCost,
+  summonSurcharge,
   type SummonStarBand,
   TIERED_SUMMON_INTENTS,
   TUTORIAL_ENEMY_COUNT_SCALE,
@@ -118,7 +121,6 @@ import {
   MAX_UPGRADE_LEVEL,
   maxSummonStageForWave,
   MIN_TIER_POOL_SIZE,
-  multiSummonCost,
   researchConnectionBonus,
   researchCost,
   researchUnlockWave,
@@ -126,8 +128,6 @@ import {
   STAGE_MULTIPLIERS,
   SUMMON_INTENT_LABELS,
   SUMMON_STAR_BANDS,
-  SUMMON_SURCHARGE,
-  summonCost,
   UPGRADE_STAT_META,
   upgradeEffectiveLevels,
   WUXING_ORDER
@@ -1396,7 +1396,7 @@ export class GameEngine {
     const previous = this.state.summonIntent;
     this.state.summonIntent = intent;
     try {
-      const result = this.summon(false, SUMMON_SURCHARGE[intent]);
+      const result = this.summon(false, summonSurcharge(this.state.summonCount, intent));
       if (result.ok && intent !== "balanced") {
         this.state.lastMessage = `${SUMMON_INTENT_LABELS[intent]} 소환 · ${result.message}`;
         return { ok: true, message: this.state.lastMessage };

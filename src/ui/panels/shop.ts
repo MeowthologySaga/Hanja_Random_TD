@@ -2,7 +2,7 @@
  * 소환 상점 패널.
  */
 import { BOARD_FORMATIONS } from "../../core/content";
-import { multiSummonCost, SUMMON_SURCHARGE, summonCost } from "../../core/hanzi";
+import { multiSummonCost, SUMMON_COST_MULTIPLIER, summonCost, summonProductCost } from "../../core/engine-tuning";
 import { type SummonIntent } from "../../core/types";
 import { ctx, must } from "../app-context";
 import { summonAndFocus } from "../battle/camera";
@@ -103,7 +103,7 @@ export function renderSummonShop(): void {
   if (key === summonShopRenderKey) return;
   summonShopRenderKey = key;
   const cards = products.map((product) => {
-    const price = base + SUMMON_SURCHARGE[product.intent];
+    const price = summonProductCost(state.summonCount, product.intent);
     const affordable = state.gold >= price;
     const banded = product.band !== null;
     return summonCardMarkup({
@@ -118,7 +118,11 @@ export function renderSummonShop(): void {
       hotkey: product.intent === "balanced" ? "1" : undefined,
       testId: product.intent === "balanced" ? "summon-button" : undefined,
       title: `${product.label} · ${product.effect} · ${price}엽전`
-        + (product.intent === "balanced" ? "" : ` (기본 ${base} + 목적 ${SUMMON_SURCHARGE[product.intent]})`)
+        // 정찰료는 정액이 아니라 기본가 배수다. 후반 기본가 24 에서 "기본 24 + 목적 12"
+        // 처럼 굳은 덧셈으로 읽히면 값이 왜 41·65 인지 설명이 끊긴다. 표기는 "×N" 이 아니라
+        // "N배" 로 적는다 — 탐색 카드의 효과 문구가 이미 "새 한자 ×3.4"(가중 배수)라서
+        // 나란히 놓이면 두 곱셈이 같은 종류로 읽힌다.
+        + (product.intent === "balanced" ? "" : ` (기본 ${base}의 ${SUMMON_COST_MULTIPLIER[product.intent]}배)`)
         + (banded && product.effect !== product.bandLabel ? ` · ${product.bandLabel}` : "")
         + (banded ? ` · 낮은 별이 더 흔합니다 · ${PAIR_BOOST_NOTE}` : "")
         + (product.band !== null && product.band.min > 1 ? ` · ${STROKE_STAR_NOTE}` : "")

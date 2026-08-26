@@ -26,14 +26,13 @@ import {
   elementTraitUpgradeCost
 } from "../src/core/growth";
 import {
-  SUMMON_SURCHARGE,
   UPGRADE_STAT_ORDER,
   elementUpgradeCost,
   globalUpgradeCost,
   researchCost,
-  researchUnlockWave,
-  summonCost
+  researchUnlockWave
 } from "../src/core/hanzi";
+import { summonCost, summonProductCost } from "../src/core/engine-tuning";
 import type { CasualStar, EvolutionOption, GameEvent, GameMode, RegionCode, Tower, Wuxing } from "../src/core/types";
 import { writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -415,11 +414,10 @@ function probeAutoplay(seed: string, options: ProbeOptions, maxSeconds = 5_400):
 /** 캐주얼 티어 소환을 살 여유가 있는가. 고급 우선, 다음이 중급. */
 function affordableTierIntent(engine: GameEngine): "midstar" | "highstar" | null {
   if (engine.state.mode !== "casual") return null;
-  const base = summonCost(engine.state.summonCount);
   const reserve = 12;
   for (const intent of ["highstar", "midstar"] as const) {
     if (!engine.isSummonProductAvailable(intent)) continue;
-    if (engine.state.gold >= base + SUMMON_SURCHARGE[intent] + reserve) return intent;
+    if (engine.state.gold >= summonProductCost(engine.state.summonCount, intent) + reserve) return intent;
   }
   return null;
 }

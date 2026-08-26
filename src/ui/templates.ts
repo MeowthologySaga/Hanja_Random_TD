@@ -7,7 +7,8 @@
 import { CASUAL_STAR_BINS, CASUAL_STAR_COLORS } from "../core/casual";
 import { MAX_ENEMIES, WORLD_HEIGHT, WORLD_WIDTH } from "../core/content";
 import { CHEONJAMUN_JARYEONG_DEX_META } from "../core/cheonjamun-jaryeong-dex";
-import { GAME_CONFIG } from "../core/hanzi";
+import { SUMMON_COST_MULTIPLIER } from "../core/engine-tuning";
+import { GAME_CONFIG, SUMMON_INTENT_LABELS } from "../core/hanzi";
 import type { DisplayMode } from "./display-mode";
 
 /**
@@ -21,6 +22,20 @@ function helpStrokeBinsHtml(): string {
   return CASUAL_STAR_BINS
     .map((bin) => `<i style="--star:${CASUAL_STAR_COLORS[bin.star]}"><b>★${bin.star}</b><span>${bin.minStrokes}~${bin.maxStrokes}획</span><small>${bin.count}자</small></i>`)
     .join("");
+}
+
+/**
+ * 목적 소환 값의 배수표 — 상수(SUMMON_COST_MULTIPLIER)에서 그대로 읽어 그린다.
+ *
+ * 정찰료가 정액이던 시절에는 "+5·+12" 를 도움말에 적어도 틀리지 않았지만,
+ * 정률로 바꾼 뒤에는 기본가마다 실액이 달라진다. 문구를 손으로 적어 두면
+ * 계수를 만질 때마다 낡으므로 배수 자체를 보여 준다.
+ */
+function helpSummonPriceRatiosHtml(): string {
+  return (["discovery", "concentration", "lineage", "midstar", "highstar"] as const)
+    .filter((intent) => SUMMON_COST_MULTIPLIER[intent] !== 1)
+    .map((intent) => `${SUMMON_INTENT_LABELS[intent]} ${SUMMON_COST_MULTIPLIER[intent]}배`)
+    .join(" · ");
 }
 
 /** `#app` 에 넣을 게임 셸 전체 마크업. */
@@ -600,6 +615,7 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
               <article class="help-card"><b>계보<em class="help-mode-badge is-synth">자형연성</em></b><span>목표 계보의 재료만 노립니다. 12회마다 재료 1기 보장 · 30회 누적 시 확정 지급.</span></article>
               <article class="help-card"><b>중복 수집</b><span>농축과 분해에 쓸 보유 한자를 다시 부릅니다.</span></article>
             </div>
+            <p class="help-note">목적 소환의 값은 <b>기본 소환가의 배수</b>입니다 — ${helpSummonPriceRatiosHtml()}. 뽑을수록 기본가가 올라도 상품 사이의 값 비율은 그대로라, 초반에 유리하던 선택이 후반에 뒤집히지 않습니다.</p>
             <h3 class="help-subhead">더 얻는 길</h3>
             <div class="help-cards">
               <article class="help-card"><b>소환<em><kbd>1</kbd></em></b><span>지역별 1단계 한자를 품은 자령이 무작위로 나옵니다. 목표에 모자란 재료는 뽑을수록 확률이 올라갑니다.</span></article>
