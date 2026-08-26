@@ -20,6 +20,11 @@ const DEFAULT_MAP_ZOOM_LABEL = "77%";
 // FB4 의 1회성 안내(#hint-layer) 말풍선도 클릭을 받는 표면이라 같은 이유로 사전 차단한다.
 // 첫 방문자 안내는 전용 스펙에서 따로 검증하고, 나머지 스펙은 "안내를 이미 본 사용자"로 시작한다.
 test.beforeEach(async ({ page }, testInfo) => {
+  // 리소스 타이밍 단언(/assets/jaryeongs/ 등)은 크롬 기본 버퍼 250entry 절벽
+  // 위에 서 있었다 — dev 서버는 src/ 모듈 하나가 요청 하나라, 소스 파일이
+  // 하나만 늘어도 250번째 자리의 스프라이트 엔트리가 밀려나 단언이 무너진다
+  // (트랙 A 에서 essence-feedback.ts 1개 추가로 실측 재현). 버퍼를 넉넉히 세운다.
+  await page.addInitScript(() => performance.setResourceTimingBufferSize(4_096));
   if (testInfo.tags.includes(ONBOARDING_TAG)) return;
   await page.addInitScript((key) => window.localStorage.setItem(key, "1"), COACH_STORAGE_KEY);
   // 시작 보너스 1회 안내(#early-hint)도 이미 본 것으로 시작한다 — FB4 안내 스펙의
@@ -298,21 +303,24 @@ test("runs the casual eight-star entry and readable one-click promotion workshop
     const candidates = document.querySelector<HTMLElement>(".casual-fusion-candidates")!;
     return {
       workbenchLeft: workbench.left,
+      workbenchRight: workbench.right,
       workbenchWidth: workbench.width,
       workbenchHeight: workbench.height,
       panelLeft: panel.left,
+      panelRight: panel.right,
       overflowX: document.body.scrollWidth - window.innerWidth,
       overflowY: document.body.scrollHeight - window.innerHeight,
       candidateScrollbar: getComputedStyle(candidates).scrollbarColor
     };
   });
-  expect(desktopLayout.workbenchLeft).toBeLessThan(desktopLayout.panelLeft);
-  // R16: 그림 한 문장 카드(인장 34 + 초상 40x3 + 여분 + 화살 + 결과 52 + 버튼)는
-  // 실측 400px 대에서 성립한다. 전장을 덜 가리도록 확장을 -333 -> -110px 로 줄였고
-  // 작업대 폭도 699 -> 476px 가 됐다. 상한을 함께 두어 다시 넓어지는 것을 막는다.
-  expect(desktopLayout.workbenchWidth).toBeGreaterThan(430);
-  expect(desktopLayout.workbenchWidth).toBeLessThan(520);
-  expect(desktopLayout.workbenchHeight).toBeGreaterThanOrEqual(440);
+  // 트랙 A #1(2026-08-27 지적 물결, 사용자 결정): 좌측 돌출 오버레이를 걷고
+  // 패널 폭 안 인라인으로 복귀했다. 작업대는 패널 경계를 한 픽셀도 넘지 않는다.
+  // (구 단언 workbenchLeft < panelLeft · 폭 430~520 은 오버레이 시절 계약이라 폐기.)
+  expect(desktopLayout.workbenchLeft).toBeGreaterThanOrEqual(desktopLayout.panelLeft);
+  expect(desktopLayout.workbenchRight).toBeLessThanOrEqual(desktopLayout.panelRight + 1);
+  expect(desktopLayout.workbenchWidth).toBeGreaterThan(300);
+  expect(desktopLayout.workbenchWidth).toBeLessThan(400);
+  expect(desktopLayout.workbenchHeight).toBeGreaterThanOrEqual(360);
   expect(desktopLayout.overflowX).toBeLessThanOrEqual(0);
   expect(desktopLayout.overflowY).toBeLessThanOrEqual(0);
   expect(desktopLayout.candidateScrollbar).not.toBe("auto");
@@ -343,6 +351,41 @@ test("runs the casual eight-star entry and readable one-click promotion workshop
   expect(narrowLayout.bodyWidth).toBeLessThanOrEqual(1024);
   expect(narrowLayout.brandFits).toBe(true);
   await page.screenshot({ path: "artifacts/casual-fusion-workshop-1024x720.png", fullPage: true });
+});
+
+// 트랙 A #7: 전장 배치 자령을 선택 카드에서 확인 1회로 즉시 분해한다.
+// 엔진 분해는 인벤 전용이라 UI 가 보관(전장→인벤)과 분해를 이어 붙인다.
+// 분해 순간 문기 증가는 A-2 의 "+N 문기" 플로팅으로도 보여야 한다.
+test("dismantles a deployed jaryeong straight from the selected card", async ({ page }) => {
+  await page.goto("/?seed=CASUAL-EIGHT-STAR-E2E&mode=standard");
+  await page.getByRole("radio", { name: /별승급 진법/ }).click();
+  await page.getByTestId("start-run").click();
+  await expect(page.locator(".game-shell")).toHaveAttribute("data-game-mode", "casual");
+  await page.getByTestId("summon-button").click();
+  await expect(page.locator("#summon-reveal")).toHaveClass(/is-active/u);
+  await page.locator("#summon-reveal-close").click();
+  await openUnit(page);
+  const dismantle = page.getByTestId("dismantle-tower");
+  await expect(dismantle).toBeVisible();
+  // 유일 보유 1기는 보호로 잠기고, 사유는 title 이 말한다.
+  await expect(dismantle).toBeDisabled();
+  await expect(dismantle).toHaveAttribute("title", /보호 중/u);
+  // 제련소 [유일 보유 보호] 토글과 같은 ctx 플래그를 끄면 버튼이 열린다.
+  await page.evaluate(() => {
+    (window as unknown as { __HANJA_CTX_QA__: { dismantleProtectsUnique: boolean } }).__HANJA_CTX_QA__.dismantleProtectsUnique = false;
+  });
+  await expect(dismantle).toBeEnabled();
+  await expect(dismantle).toHaveText(/^분해 \+\d+문기$/u);
+  await expect(page.locator("#tower-count-value")).toHaveText("1 / 16");
+  page.once("dialog", (dialog) => {
+    expect(dialog.message()).toContain("되돌릴 수 없습니다");
+    void dialog.accept();
+  });
+  await dismantle.click();
+  await expect(page.locator("#message-value")).toContainText("분해 완료");
+  await expect(page.locator("#tower-count-value")).toHaveText("0 / 16");
+  // A-2: 획득 순간 오행색 "+N 문기" 플로팅이 자원칸 근처에 선다.
+  await expect(page.locator(".essence-floater")).toHaveText(/\+\d+ 문기/u);
 });
 
 test("uses tabbed owned-aware goals and summons from all one thousand Cheonjamun sprites", async ({ page }) => {

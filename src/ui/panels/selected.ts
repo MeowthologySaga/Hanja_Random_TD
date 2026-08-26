@@ -136,7 +136,7 @@ export function renderSelected(): void {
   const duplicateCount = tower ? ctx.engine.state.inventoryTowers.filter((candidate) => candidate.id !== tower.id && candidate.char === tower.char && !candidate.locked).length : 0;
   const branchKey = branches.map((branch) => `${branch.recipeId}:${branch.ready ? "R" : branch.materials.map((material) => material.location).join(",")}`).join("|");
   const polarisActive = tower ? ctx.engine.casualPolarisAuraActive(tower.wuxing) : false;
-  const key = tower ? tower.definitionId + "|" + String(tower.id) + "|" + String(tower.locked) + "|" + String(stored) + "|" + String(ctx.engine.isSynergyActive(tower.wuxing)) + "|" + branchKey + `|M${ctx.engine.state.mode}:S${tower.casualStar ?? 0}|C${concentration}:${concentrationPath ?? "none"}:D${duplicateCount}:E${ctx.engine.state.elementEssence[tower.wuxing]}|P${polarisActive ? 1 : 0}` : "none";
+  const key = tower ? tower.definitionId + "|" + String(tower.id) + "|" + String(tower.locked) + "|" + String(stored) + "|" + String(ctx.engine.isSynergyActive(tower.wuxing)) + "|" + branchKey + `|M${ctx.engine.state.mode}:S${tower.casualStar ?? 0}|C${concentration}:${concentrationPath ?? "none"}:D${duplicateCount}:E${ctx.engine.state.elementEssence[tower.wuxing]}|P${polarisActive ? 1 : 0}|U${ctx.dismantleProtectsUnique ? 1 : 0}` : "none";
   if (key === ctx.selectedRenderKey) {
     if (tower && definition) syncSelectedCharge(card, tower, definition, chargeStep);
     return;
@@ -169,10 +169,18 @@ export function renderSelected(): void {
   const concentrationStatus = concentration >= MAX_CONCENTRATION_LEVEL
     ? `濃 3/3 완성 · ${concentrationPathLabel(concentrationPath ?? autoConcentrationPath(tower))}`
     : duplicateCount > 0 ? `중복 ${duplicateCount}기 사용 가능` : `${tower.wuxing} 문기 ${ctx.engine.state.elementEssence[tower.wuxing]}/${nextEssenceCost}`;
-  const cleanup = ctx.engine.cleanupAssessments().find((assessment) => assessment.towerId === tower.id);
+  // 분해 경로와 같은 보호 셈법 — 제련소의 유일 보유 보호 토글을 따른다(growth.ts dismantleOptions).
+  const cleanup = ctx.engine.cleanupAssessments({ protectUnique: ctx.dismantleProtectsUnique }).find((assessment) => assessment.towerId === tower.id);
   const cleanupLabel = cleanup?.protected
     ? `보호 · ${cleanup.protectedReasons[0] ?? "전략 재료"}`
     : `정리 후보 · ${cleanup?.reasons[0] ?? "직접 판단"}`;
+  // 트랙 A #7: 전장 배치 상태 그대로 확인 1회 → 즉시 분해. 보호에 걸리면
+  // 버튼을 잠그고 사유를 title 로 남긴다.
+  const dismantleEssence = ctx.engine.towerDismantleEssenceValue(tower);
+  const dismantleBlocked = cleanup?.protected !== false;
+  const dismantleTitle = dismantleBlocked
+    ? `보호 중 · ${(cleanup?.protectedReasons ?? ["보호 상태를 확인할 수 없습니다."]).join(" · ")}`
+    : `${tower.char}를 분해해 ${tower.wuxing} 문기 +${dismantleEssence} 회수 — 확인 한 번 뒤 즉시 분해, 되돌릴 수 없습니다`;
   const casualStar = casualStarOf(tower);
   const progressionLabel = ctx.engine.state.mode === "casual" ? `${casualStar}★ ${CASUAL_STAR_NAMES[casualStar]}` : STAGE_NAMES[tower.stage];
   const progressionColor = ctx.engine.state.mode === "casual" ? CASUAL_STAR_COLORS[casualStar] : STAGE_COLORS[tower.stage];
@@ -206,7 +214,7 @@ export function renderSelected(): void {
       <button id="lock-button" class="${tower.locked ? "is-locked" : ""}" type="button" data-testid="lock-tower" title="판매·합성 재료로 쓰이지 않게 보호">${tower.locked ? "鎖 잠금됨" : "잠금"}</button>
       <button id="store-button" type="button" data-testid="store-tower" title="인벤으로 이동 — 전장 자리를 비웁니다" ${stored ? "disabled" : ""}>${stored ? "보관 중" : "보관"}</button>
       <button id="derivative-button" class="${readyBranches > 0 ? "has-ready" : ""}" type="button" data-testid="derivative-composition" title="이 자령이 재료인 파생 조합 목록">${ctx.engine.state.mode === "casual" ? casualStar >= 8 ? "8★ 최고 단계" : "3체 조합 ›" : `합성 ${readyBranches}`}</button>
-      <button id="open-growth-button" type="button" title="강화 제련소 탭으로 이동">분해 ›</button>
+      <button id="dismantle-button" type="button" data-testid="dismantle-tower" title="${escapeHtml(dismantleTitle)}" ${dismantleBlocked ? "disabled" : ""}>분해 +${dismantleEssence}문기</button>
       <button id="open-concentration-button" type="button" title="농축 공방 탭으로 이동" ${concentration >= MAX_CONCENTRATION_LEVEL ? "disabled" : ""}>농축 ›</button>
       <button id="sell-button" type="button" title="엽전을 받고 즉시 제거 — 되돌릴 수 없음" ${tower.locked ? "disabled" : ""}>판매 +${ctx.engine.towerSellValue(tower)}</button>
     </div>
@@ -277,6 +285,31 @@ export function renderCompositionDrawer(): void {
   must<HTMLElement>("#composition-branches").innerHTML = branches.length > 0
     ? branches.map(compositionBranchCard).join("")
     : `<div class="empty-composition"><b>직접 파생 합성이 없습니다</b><span>이 자령은 현재 조합표의 끝 단계입니다.</span></div>`;
+}
+
+/**
+ * 트랙 A #7: 전장 자령 즉석 분해.
+ *
+ * 엔진의 dismantleTowers 는 인벤토리 전용이라("인벤토리 자령만"), 전장 자령은
+ * 기존 공개 API 둘을 이어 붙인다 — storeSelectedTower(전장 → 인벤) 뒤
+ * dismantleTowers 1기. 엔진은 손대지 않는다. 확인은 제련소 [선택 분해]와
+ * 같은 window.confirm 1회다. 보호 셈법은 렌더가 이미 잠갔지만, 상태가 그 사이
+ * 바뀌었을 수 있으므로 실패 문장은 그대로 토스트로 올린다(그 경우 자령은
+ * 인벤토리에 남는다 — 사라지지는 않는다).
+ */
+function dismantleSelectedInPlace(): void {
+  const tower = ctx.engine.selectedTower();
+  if (!tower) return;
+  const essence = ctx.engine.towerDismantleEssenceValue(tower);
+  if (!window.confirm(`${tower.char}를 분해해 ${tower.wuxing} 문기 +${essence} — 되돌릴 수 없습니다. 분해하시겠습니까?`)) return;
+  if (tower.cell >= 0) {
+    const storeResult = ctx.engine.storeSelectedTower();
+    if (!storeResult.ok) {
+      handleAction(storeResult);
+      return;
+    }
+  }
+  handleAction(ctx.engine.dismantleTowers([tower.id], { protectUnique: ctx.dismantleProtectsUnique }));
 }
 
 function openCompositionDrawer(): void {
@@ -356,10 +389,7 @@ export function wireSelected3(): void {
       handleAction(result);
     }
     else if (target.closest("#sell-button")) handleAction(ctx.engine.sellSelected());
-    else if (target.closest("#open-growth-button")) {
-      ctx.growthElement = ctx.engine.selectedTower()?.wuxing ?? ctx.growthElement;
-      setPanelTab("growth");
-    }
+    else if (target.closest("#dismantle-button")) dismantleSelectedInPlace();
     else if (target.closest("#open-concentration-button")) {
       ctx.concentrationTargetId = ctx.engine.selectedTower()?.id ?? null;
       setPanelTab("concentration");

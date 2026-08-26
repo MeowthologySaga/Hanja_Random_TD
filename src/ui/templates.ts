@@ -668,6 +668,7 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
             </div>
             <p class="help-note">같은 한자 중복 1기 또는 같은 오행 문기 4·6·8을 재료로 직접 고릅니다. 실행 전에 전후 전투 수치를 나란히 비교해 보여 줍니다.</p>
             <h3 class="help-subhead">강화 제련소</h3>
+            <p class="help-note"><b>문기는 자령 분해와 3체 승급이 남깁니다.</b> 판매도 농축에 투자한 문기를 돌려줍니다.</p>
             <div class="help-cards">
               <article class="help-card"><b>① 분해</b><span>안 쓰는 인벤토리 자령을 보호 규칙 아래 일괄 분해해 오행 문기로 바꿉니다.</span></article>
               <article class="help-card"><b>② 오행 강화</b><span>공용·오행 5능력치를 각 99단계까지, 오행별 고유 특성 3종을 각 10단계까지 한 화면에서 투자합니다.</span></article>

@@ -107,7 +107,7 @@ const ONE_SHOT_HINTS: readonly OneShotHint[] = [
     id: "essence",
     target: "#growth-tab",
     title: () => "문기를 얻었습니다",
-    body: () => "문기는 강화 제련소에서 오행별로 씁니다. [강화] 탭에서 분해·오행 강화·고유 특성에 투자하세요.",
+    body: () => "문기는 자령 분해와 3체 승급이 남깁니다. 강화 제련소에서 오행별로 씁니다 — [강화] 탭에서 분해·오행 강화·고유 특성에 투자하세요.",
     when: () => WUXING_ORDER.some((wuxing) => ctx.engine.state.elementEssence[wuxing] > 0)
   }
 ];
