@@ -1241,6 +1241,8 @@ function drawEnemy(enemy: Enemy, point = positionOnPath(enemy.progress)): void {
   if (enemy.poisonUntil > ctx.engine.state.elapsed) statuses.push({ glyph: "毒", color: ELEMENT_STYLES.木.color });
   if (enemy.slowFactor < 1 && enemy.slowUntil > ctx.engine.state.elapsed) statuses.push({ glyph: "凍", color: ELEMENT_STYLES.水.color });
   if (enemy.stunnedUntil > ctx.engine.state.elapsed) statuses.push({ glyph: "封", color: ELEMENT_STYLES.土.color });
+  // [SKILL-V1] 상극 각인: 낙인 오행 색의 克 표식. 남은 시간 동안만 보인다.
+  if ((enemy.brandUntil ?? 0) > ctx.engine.state.elapsed && enemy.brandWuxing) statuses.push({ glyph: "克", color: ELEMENT_STYLES[enemy.brandWuxing].color });
   if (enemy.armor >= 0.15) statuses.push({ glyph: "甲", color: ELEMENT_STYLES.金.color });
   for (let index = 0; index < statuses.length; index += 1) {
     const status = statuses[index] as { glyph: string; color: string };

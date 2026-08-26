@@ -20,6 +20,11 @@ import {
   wavePlan
 } from "./content";
 import { hasActiveSkills } from "./abilities";
+// [SKILL-V1] 스킬 1차 세트 상수·순수 계산.
+import {
+  WARFARE_BRAND_DURATION,
+  warfareBrandPower
+} from "./abilities";
 import {
   CASUAL_STAR_POWER,
   casualNaturalStar,
@@ -865,6 +870,11 @@ export class GameEngine {
     if (this.state.wave <= 10 && towerFormationIndex === this.state.startingFormationIndex) damage *= 1.15;
     if (synergy) damage *= 1 + GAME_CONFIG.synergyBonus + (profile.role === "support" ? 0.08 : 0);
     if (weakness) damage *= GAME_CONFIG.weaknessMultiplier;
+    // [SKILL-V1] 상극 각인: 낙인이 남은 동안 같은 오행 공격이 주는 피해가 커진다.
+    // 약점 배율과 같은 층에서 곱해, 이 공격에서 파생되는 확산·연쇄·독도 함께 강해진다.
+    if ((target.brandUntil ?? 0) > this.state.elapsed && target.brandWuxing === tower.wuxing) {
+      damage *= 1 + (target.brandPower ?? 0);
+    }
     if (tower.wuxing === "火" && (target.boss || target.hp / target.maxHp <= 0.3)) {
       damage *= 1 + this.elementTraitLevel("火", 2) * 0.015;
     }
@@ -1059,6 +1069,13 @@ export class GameEngine {
       effect = "최고 체력 적 간파 · 이번 공격 ×" + tuning.semanticMultiplier.toFixed(2);
     } else if (family === "metalwork") {
       effect = "최고 장갑 적 우선 · 추가 관통 22%";
+    } else if (family === "warfare" && this.state.enemies.includes(target)) {
+      // [SKILL-V1] 상극 각인: 대상에게 자기 오행의 상극 낙인(4초). 밀거나 되돌리지 않는다.
+      const brandPower = warfareBrandPower(this.state.mode === "casual" ? tower.casualStar ?? tower.naturalStar ?? 1 : null);
+      target.brandWuxing = tower.wuxing;
+      target.brandPower = brandPower;
+      target.brandUntil = this.state.elapsed + WARFARE_BRAND_DURATION;
+      effect = `${tower.wuxing}행 상극 낙인 ${WARFARE_BRAND_DURATION}초 · 같은 오행 피해 +${Math.round(brandPower * 100)}%`;
     } else {
       effect = "뜻 구현 · 이번 공격 ×" + tuning.semanticMultiplier.toFixed(2);
     }
