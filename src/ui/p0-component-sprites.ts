@@ -12,6 +12,7 @@
  */
 
 import type { Wuxing } from "../core/types";
+import { preloadedImage } from "./asset-loader";
 
 export type NameplateForm = "wide" | "glyph";
 /** 상태 우선순위: selected > material > default. */
@@ -43,6 +44,17 @@ const entries = new Map<string, Entry>();
 
 function load(path: string, expected: readonly [number, number]): Entry {
   const url = `${import.meta.env.BASE_URL}assets/ui/p0-v1/${path}`;
+  // 프리로드본이 있으면 그대로 채택한다(명패·셀 소켓이 늦게 뜨는 구간 제거).
+  const preloaded = preloadedImage(url);
+  if (preloaded) {
+    const ready = preloaded.naturalWidth === expected[0] && preloaded.naturalHeight === expected[1];
+    if (!ready) {
+      console.warn(`[p0-component-sprites] 크기 불일치: ${url} (기대 ${expected[0]}×${expected[1]}, 실제 ${preloaded.naturalWidth}×${preloaded.naturalHeight})`);
+    }
+    const cached: Entry = { image: preloaded, ready };
+    entries.set(path, cached);
+    return cached;
+  }
   const image = new Image();
   const entry: Entry = { image, ready: false };
   image.decoding = "async";

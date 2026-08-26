@@ -7,10 +7,133 @@
     <meta name="description" content="자형연성 진법과 획수 기반 별승급 진법으로 100웨이브를 막는 한자 랜덤 타워 디펜스" />
     <link rel="icon" type="image/png" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=" />
     <title>한자 운명진 · 랜덤 타워 디펜스</title>
+    <!--
+      R11 부팅 로딩 막.
+
+      번들(2.9MB)이 도착하기 전에도 떠 있어야 하므로 마크업·스타일·안전장치를
+      전부 인라인으로 둔다. 외부 파일을 하나라도 참조하면 그 왕복만큼 흰 화면이
+      길어진다. 실제 진행률은 번들이 붙은 뒤 `src/ui/asset-loader.ts` 가 채운다.
+    -->
+    <style>
+      #boot-loader {
+        position: fixed;
+        inset: 0;
+        z-index: 2147483000;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 26px;
+        background:
+          radial-gradient(circle at 50% 42%, rgba(120, 86, 44, 0.22), rgba(6, 4, 3, 0) 62%),
+          radial-gradient(circle at 18% 88%, rgba(70, 48, 24, 0.18), rgba(6, 4, 3, 0) 55%),
+          #0a0705;
+        color: #e2cfa4;
+        font-family: "Batang", "Noto Serif KR", serif;
+        transition: opacity 420ms ease;
+      }
+      #boot-loader.is-done { opacity: 0; pointer-events: none; }
+
+      /* 먹지 결: 한지 텍스처 PNG 를 기다리지 않도록 반복 그라디언트로만 만든다. */
+      #boot-loader::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        opacity: 0.5;
+        background-image:
+          repeating-linear-gradient(94deg, rgba(214, 186, 132, 0.045) 0 1px, rgba(0, 0, 0, 0) 1px 7px),
+          repeating-linear-gradient(3deg, rgba(214, 186, 132, 0.03) 0 1px, rgba(0, 0, 0, 0) 1px 11px);
+      }
+
+      .boot-brush { position: relative; width: 108px; height: 108px; }
+      .boot-brush svg { width: 100%; height: 100%; }
+      /* 붓으로 한 획에 그린 원. 트인 곳이 돌면서 획이 이어지는 것처럼 보인다. */
+      .boot-brush .boot-ring {
+        transform-origin: 50% 50%;
+        animation: boot-spin 1500ms cubic-bezier(0.62, 0.05, 0.38, 0.95) infinite;
+      }
+      .boot-brush .boot-seal {
+        transform-origin: 50% 50%;
+        animation: boot-pulse 2400ms ease-in-out infinite;
+      }
+      @keyframes boot-spin { to { transform: rotate(360deg); } }
+      @keyframes boot-pulse { 0%, 100% { opacity: 0.75; } 50% { opacity: 1; } }
+
+      .boot-caption { position: relative; text-align: center; line-height: 1.7; }
+      .boot-caption b {
+        display: block;
+        font-size: 26px;
+        letter-spacing: 0.42em;
+        text-indent: 0.42em;
+        color: #f0dcb0;
+      }
+      .boot-caption span {
+        display: block;
+        margin-top: 4px;
+        font-size: 12px;
+        letter-spacing: 0.24em;
+        text-indent: 0.24em;
+        color: rgba(210, 182, 132, 0.62);
+      }
+
+      .boot-progress { position: relative; width: 260px; text-align: center; }
+      .boot-progress i {
+        display: block;
+        height: 3px;
+        border-radius: 2px;
+        background: rgba(226, 207, 164, 0.14);
+        overflow: hidden;
+      }
+      .boot-progress i > b {
+        display: block;
+        width: 0%;
+        height: 100%;
+        border-radius: 2px;
+        background: linear-gradient(90deg, #8a6a34, #d8bb7e);
+        transition: width 220ms ease;
+      }
+      .boot-progress em {
+        display: block;
+        margin-top: 9px;
+        font-size: 11px;
+        font-style: normal;
+        letter-spacing: 0.2em;
+        text-indent: 0.2em;
+        color: rgba(210, 182, 132, 0.55);
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        #boot-loader { transition: none; }
+        .boot-brush .boot-ring, .boot-brush .boot-seal { animation: none; }
+      }
+    </style>
   </head>
   <body>
     <!-- 1280x720 고정 설계 무대. src/ui/stage.ts 가 균일 배율을 매긴다. -->
     <div id="stage"><div id="app"></div></div>
+    <!-- 부팅 막은 무대 밖 뷰포트 층 — 배율과 무관하게 전체 화면을 덮는다. -->
+    <div id="boot-loader" role="status" aria-live="polite" aria-label="에셋을 불러오는 중">
+      <div class="boot-brush" aria-hidden="true">
+        <svg viewBox="0 0 120 120">
+          <circle cx="60" cy="60" r="42" fill="none" stroke="rgba(226, 207, 164, 0.1)" stroke-width="6" />
+          <circle class="boot-ring" cx="60" cy="60" r="42" fill="none" stroke="#d8bb7e" stroke-width="6"
+                  stroke-linecap="round" stroke-dasharray="74 190" />
+          <rect class="boot-seal" x="49" y="49" width="22" height="22" rx="3" fill="#9d2f24" />
+        </svg>
+      </div>
+      <p class="boot-caption"><b>천자진</b><span>서재를 펼치는 중</span></p>
+      <p class="boot-progress"><i><b id="boot-bar"></b></i><em id="boot-percent">0%</em></p>
+    </div>
+    <script>
+      // 번들이 아예 오지 않는 경우(스크립트 404·구문 오류)에만 막을 걷는 최후
+      // 안전장치. 번들이 붙는 즉시 asset-loader 가 이 타이머를 거둬 간다 —
+      // 느린 회선에서 아직 받는 중인 막을 시계만 보고 걷어 버리면, 없애려던
+      // "덜 그려진 메뉴"가 그대로 나온다.
+      window.__hanjaBootSafety = setTimeout(function () {
+        var layer = document.getElementById("boot-loader");
+        if (layer) layer.remove();
+      }, 30000);
+    </script>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

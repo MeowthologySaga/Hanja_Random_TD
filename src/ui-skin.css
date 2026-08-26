@@ -10685,3 +10685,50 @@ dialog {
    실측에서 토스트 바닥이 18px 로 내려앉아 칩(12~34px)과 겹쳤다.
    출처 불명의 규칙을 이기도록 핀포인트 + !important 로 못박는다. */
 .battle-stage > #toast.toast { bottom: 46px !important; }
+/* ===== R11 로딩 ===== */
+
+/* ══════════════════════════════════════════════════════════════════
+   R11-1. 출정 버튼 진행 인디케이터
+
+   부팅 막(index.html 인라인)이 걷힌 뒤에도 전투용 에셋 61장은 뒤에서
+   계속 내려온다. 출정 클릭이 그보다 빨랐을 때만 버튼 아래에 얇은 먹띠가
+   차오르고, 다 차면(또는 상한 1.5초) 전장으로 들어간다. 이미 받아 뒀으면
+   이 상태 자체가 생기지 않으므로 평소 출정 감각은 그대로다.
+
+   버튼의 위치·크기·히트 영역은 건드리지 않는다. 띠는 의사요소 장식층이다.
+   ══════════════════════════════════════════════════════════════════ */
+
+.s00-start[data-loading="1"] { cursor: progress; }
+
+.s00-start[data-loading="1"]::after {
+  content: "";
+  position: absolute;
+  left: 22%;
+  right: 22%;
+  bottom: 16px;
+  z-index: 2;
+  height: 3px;
+  border-radius: 2px;
+  background: rgba(18, 10, 5, 0.62);
+  box-shadow: inset 0 0 0 1px rgba(255, 233, 184, 0.22);
+  pointer-events: none;
+}
+
+/* 차오르는 먹띠. --p2-progress 는 main.ts 가 프레임마다 0~1 로 채운다. */
+.s00-start[data-loading="1"]::before {
+  content: "";
+  position: absolute;
+  left: 22%;
+  bottom: 16px;
+  z-index: 3;
+  width: calc((100% - 44%) * var(--p2-progress, 0));
+  height: 3px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, #a8763a, #ffe9b8);
+  pointer-events: none;
+  transition: width 160ms linear;
+}
+
+/* 3D 서재에서는 버튼이 걸쇠 모델 위로 재투영돼 판 안쪽이 좁다. 띠를 당긴다. */
+.s00-stage.is-3d .s00-start[data-loading="1"]::before,
+.s00-stage.is-3d .s00-start[data-loading="1"]::after { bottom: 8px; }

@@ -126,6 +126,18 @@ import type {
   UpgradeStat,
   Wuxing
 } from "./core/types";
+import {
+  battleAssetProgress,
+  dismissBootScreen,
+  isBattleAssetsReady,
+  preloadP1,
+  registerServiceWorker,
+  startP2,
+  takeOverBootScreen,
+  updateBootProgress,
+  whenBattleAssetsReady,
+  type S00Mode
+} from "./ui/asset-loader";
 import { SoundManager } from "./ui/audio";
 import { abilityZoneSpriteLayout, deterministicZoneRotation } from "./ui/combat-fx-layout";
 import { elementProjectileImage, elementZoneImage, preloadCombatFxSprites } from "./ui/combat-fx-sprites";
@@ -199,6 +211,12 @@ initStage();
 
 const app = document.querySelector<HTMLDivElement>("#app");
 if (!app) throw new Error("#app element is missing.");
+/**
+ * S00 은 3D 서재가 기본이고 `?menu3d=0` 이면 2D 그림 배경으로 되돌아간다.
+ * 어느 쪽을 쓰는지에 따라 1차 프리로드 목록과 2D 레이어 `src` 부착 여부가
+ * 갈리므로 부팅 맨 앞에서 한 번만 정한다.
+ */
+const s00Mode: S00Mode = new URLSearchParams(window.location.search).get("menu3d") === "0" ? "2d" : "3d";
 const initialDisplayMode = loadDisplayMode();
 const initialAutoPlaceSummons = loadAutoPlaceSummons();
 
@@ -503,11 +521,11 @@ app.innerHTML = `
 
     <section id="title-overlay" class="modal-layer modal-layer--visible" aria-labelledby="title-heading">
       <div class="s00-stage" data-screen-id="S00">
-        <img class="s00-env s00-env--legacy" src="${import.meta.env.BASE_URL}assets/ui/main-menu-b/background/S00-living-codex-empty-1280x720-v1.png" alt="" aria-hidden="true" />
+        <img class="s00-env s00-env--legacy" data-src="${import.meta.env.BASE_URL}assets/ui/main-menu-b/background/S00-living-codex-empty-1280x720-v1.png" alt="" aria-hidden="true" />
         <div id="s00-parallax" class="s00-parallax" aria-hidden="true">
-          <img id="s00-desk" class="s00-env s00-env--desk" src="${import.meta.env.BASE_URL}assets/ui/s00-layers-v1/S00-bg-desk-v2.png" alt="" aria-hidden="true" />
-          <img id="s00-book" class="s00-env s00-env--book" src="${import.meta.env.BASE_URL}assets/ui/s00-layers-v1/S00-bg-book-v2.png" alt="" aria-hidden="true" />
-          <img id="s00-foreground" class="s00-env s00-env--foreground" src="${import.meta.env.BASE_URL}assets/ui/s00-layers-v1/S00-fg-props-v2.png" alt="" aria-hidden="true" />
+          <img id="s00-desk" class="s00-env s00-env--desk" data-src="${import.meta.env.BASE_URL}assets/ui/s00-layers-v1/S00-bg-desk-v2.png" alt="" aria-hidden="true" />
+          <img id="s00-book" class="s00-env s00-env--book" data-src="${import.meta.env.BASE_URL}assets/ui/s00-layers-v1/S00-bg-book-v2.png" alt="" aria-hidden="true" />
+          <img id="s00-foreground" class="s00-env s00-env--foreground" data-src="${import.meta.env.BASE_URL}assets/ui/s00-layers-v1/S00-fg-props-v2.png" alt="" aria-hidden="true" />
         </div>
 
         <div class="s00-title-plaque">
@@ -535,11 +553,11 @@ app.innerHTML = `
         </div>
 
         <div class="s00-showcase" aria-hidden="true">
-          <figure style="left:455px;top:116px"><img class="s00-ring" src="${import.meta.env.BASE_URL}assets/ui/main-menu-b/rings/summon-ring-wood-v1.png" alt="" /><img class="s00-spirit" src="${import.meta.env.BASE_URL}assets/ui/main-menu-b/jaryeongs/menu-wood-orchid-frame-v1.png" alt="" /></figure>
-          <figure style="left:803px;top:112px"><img class="s00-ring" src="${import.meta.env.BASE_URL}assets/ui/main-menu-b/rings/summon-ring-earth-v1.png" alt="" /><img class="s00-spirit" src="${import.meta.env.BASE_URL}assets/ui/main-menu-b/jaryeongs/menu-earth-pottery-frame-v1.png" alt="" /></figure>
-          <figure style="left:368px;top:334px"><img class="s00-ring" src="${import.meta.env.BASE_URL}assets/ui/main-menu-b/rings/summon-ring-water-v1.png" alt="" /><img class="s00-spirit" src="${import.meta.env.BASE_URL}assets/ui/main-menu-b/jaryeongs/menu-water-ice-frame-v1.png" alt="" /></figure>
-          <figure style="left:637px;top:336px"><img class="s00-ring" src="${import.meta.env.BASE_URL}assets/ui/main-menu-b/rings/summon-ring-fire-v1.png" alt="" /><img class="s00-spirit" src="${import.meta.env.BASE_URL}assets/ui/main-menu-b/jaryeongs/menu-fire-fox-frame-v1.png" alt="" /></figure>
-          <figure style="left:965px;top:333px"><img class="s00-ring" src="${import.meta.env.BASE_URL}assets/ui/main-menu-b/rings/summon-ring-metal-v1.png" alt="" /><img class="s00-spirit" src="${import.meta.env.BASE_URL}assets/ui/main-menu-b/jaryeongs/menu-metal-mirror-frame-v1.png" alt="" /></figure>
+          <figure style="left:455px;top:116px"><img class="s00-ring" data-src="${import.meta.env.BASE_URL}assets/ui/main-menu-b/rings/summon-ring-wood-v1.png" alt="" /><img class="s00-spirit" data-src="${import.meta.env.BASE_URL}assets/ui/main-menu-b/jaryeongs/menu-wood-orchid-frame-v1.png" alt="" /></figure>
+          <figure style="left:803px;top:112px"><img class="s00-ring" data-src="${import.meta.env.BASE_URL}assets/ui/main-menu-b/rings/summon-ring-earth-v1.png" alt="" /><img class="s00-spirit" data-src="${import.meta.env.BASE_URL}assets/ui/main-menu-b/jaryeongs/menu-earth-pottery-frame-v1.png" alt="" /></figure>
+          <figure style="left:368px;top:334px"><img class="s00-ring" data-src="${import.meta.env.BASE_URL}assets/ui/main-menu-b/rings/summon-ring-water-v1.png" alt="" /><img class="s00-spirit" data-src="${import.meta.env.BASE_URL}assets/ui/main-menu-b/jaryeongs/menu-water-ice-frame-v1.png" alt="" /></figure>
+          <figure style="left:637px;top:336px"><img class="s00-ring" data-src="${import.meta.env.BASE_URL}assets/ui/main-menu-b/rings/summon-ring-fire-v1.png" alt="" /><img class="s00-spirit" data-src="${import.meta.env.BASE_URL}assets/ui/main-menu-b/jaryeongs/menu-fire-fox-frame-v1.png" alt="" /></figure>
+          <figure style="left:965px;top:333px"><img class="s00-ring" data-src="${import.meta.env.BASE_URL}assets/ui/main-menu-b/rings/summon-ring-metal-v1.png" alt="" /><img class="s00-spirit" data-src="${import.meta.env.BASE_URL}assets/ui/main-menu-b/jaryeongs/menu-metal-mirror-frame-v1.png" alt="" /></figure>
         </div>
 
         <button id="custom-formation-button" class="s00-custom" type="button"
@@ -799,7 +817,7 @@ const context: CanvasRenderingContext2D = canvasContext;
 const seedInput = must<HTMLInputElement>("#seed-input");
 const titleOverlay = must<HTMLElement>("#title-overlay");
 /**
- * S00 2D 폴백(`?menu3d=0`)의 3레이어 배경.
+ * S00 2D 폴백(`?menu3d=0` · WebGL 초기화 실패)의 3레이어 배경.
  *
  * 출처: handoff/to-claude/s00-layered-bg-pack-v1/assets/
  * 설치: public/assets/ui/s00-layers-v1/
@@ -807,11 +825,24 @@ const titleOverlay = must<HTMLElement>("#title-overlay");
  * 세 장이 전부 도착했을 때만 기존 단일 배경을 끈다. 한 장이라도 실패하면
  * 합성이 어긋난 채 보이느니 원래 한 장짜리 배경을 그대로 쓴다. 다섯 먹 고리는
  * 책 레이어 RGB 에 그대로 있으므로 좌표가 바뀌지 않는다.
+ *
+ * R11: `src` 대신 `data-src` 로 들고 있다가 2D 로 갈 때만 붙인다. 3D 가 기본인데
+ * `display:none` 인 `<img>` 도 브라우저는 그대로 받아 가서, 쓰지도 않을 6.8MB
+ * (배경 4장 4.8MB + 쇼케이스 고리·자령 10장 2.0MB)가 매번 S00 텍스처와 대역을
+ * 나눠 쓰고 있었다. 3D 에서 고리·자령은 같은 파일을 텍스처로 쓰므로 그림 자체는
+ * 그대로 나온다.
  */
-(function initS00ParallaxLayers(): void {
+function enableS00LayeredBackground(): void {
+  const stage = document.querySelector<HTMLElement>(".s00-stage");
   const group = document.querySelector<HTMLElement>("#s00-parallax");
-  if (!group) return;
+  if (!stage || !group) return;
+  const legacy = stage.querySelector<HTMLImageElement>(".s00-env--legacy");
+  if (legacy?.dataset.src && !legacy.src) legacy.src = legacy.dataset.src;
+  for (const showcase of stage.querySelectorAll<HTMLImageElement>(".s00-showcase img[data-src]")) {
+    if (!showcase.src) showcase.src = showcase.dataset.src ?? "";
+  }
   const layers = Array.from(group.querySelectorAll<HTMLImageElement>("img"));
+  if (layers.length === 0 || layers[0]?.src) return;
   let settled = 0;
   let failed = false;
   const settle = (ok: boolean, image: HTMLImageElement): void => {
@@ -823,14 +854,11 @@ const titleOverlay = must<HTMLElement>("#title-overlay");
     if (settled === layers.length && !failed) group.classList.add("is-ready");
   };
   for (const image of layers) {
-    if (image.complete) {
-      settle(image.naturalWidth > 0, image);
-      continue;
-    }
     image.addEventListener("load", () => settle(true, image), { once: true });
     image.addEventListener("error", () => settle(false, image), { once: true });
+    if (image.dataset.src) image.src = image.dataset.src;
   }
-})();
+}
 
 const endOverlay = must<HTMLElement>("#end-overlay");
 const toast = must<HTMLElement>("#toast");
@@ -1197,22 +1225,37 @@ let mapCameraGestures = 0;
 type GameSpeed = 1 | 2 | 3;
 let gameSpeed: GameSpeed = 1;
 const hanjiPaperUrl = `${import.meta.env.BASE_URL}assets/map/hanji-ink-field/hanji-paper-base.png`;
-canvas.style.backgroundImage = `radial-gradient(circle at 50% 44%, rgba(255, 252, 235, 0.08), rgba(115, 78, 39, 0.09)), url("${hanjiPaperUrl}")`;
+/**
+ * 한지 바탕(2.0MB)은 전장에서만 보인다. 모듈 평가 시점에 붙이면 S00 텍스처와
+ * 대역을 다투므로 `bootGame()` 이 1차 프리로드를 마친 뒤에 붙인다.
+ */
+function attachHanjiPaperBackground(): void {
+  canvas.style.backgroundImage = `radial-gradient(circle at 50% 44%, rgba(255, 252, 235, 0.08), rgba(115, 78, 39, 0.09)), url("${hanjiPaperUrl}")`;
+}
 canvas.style.backgroundPosition = "center";
 canvas.style.backgroundRepeat = "no-repeat";
 canvas.style.backgroundSize = "cover";
 canvas.dataset.hitFeedback = "ink-local";
 canvas.dataset.formationTileColorMode = "element";
 canvas.dataset.formationTilePalette = BOARD_FORMATIONS.map((formation) => `${formation.preferredWuxing}:${formation.color}`).join("|");
-preloadCombatFxSprites();
-preloadInkPathSprites();
-preloadEnemySprites();
-preloadFormationPlates();
-preloadLockSprites();
-preloadP0ComponentSprites();
-preloadPolishSprites();
-preloadIdiomSprites();
-preloadNameplateSprites();
+/**
+ * 전투 스프라이트 예열은 `bootGame()` 의 2차 프리로드가 끝난 뒤로 옮겼다.
+ * 여기서 바로 부르면 60여 장이 모듈 평가 즉시 나가 S00 텍스처를 굶긴다
+ * (12Mbps 실측: s00-3d 8장이 15초 뒤에도 미도착). 모듈 캐시는 그때
+ * `asset-loader` 가 받아 둔 원본을 그대로 집어 간다.
+ * (병합 추가: 자물쇠·성어 인장·명패도 같은 2차 예열에 태운다)
+ */
+function warmCombatSpriteCaches(): void {
+  preloadCombatFxSprites();
+  preloadInkPathSprites();
+  preloadEnemySprites();
+  preloadFormationPlates();
+  preloadLockSprites();
+  preloadP0ComponentSprites();
+  preloadPolishSprites();
+  preloadIdiomSprites();
+  preloadNameplateSprites();
+}
 
 /*
  * 집중 프레임(S06 강화 · S07 농축).
@@ -6538,7 +6581,39 @@ must<HTMLElement>("#evolution-options").addEventListener("pointerout", (event) =
   if (!related || !must<HTMLElement>("#evolution-options").contains(related)) hoveredRecipeId = null;
 });
 
-must<HTMLButtonElement>("#start-button").addEventListener("click", () => startRun(false));
+/**
+ * 출정 게이트 (R11).
+ *
+ * 2차 프리로드가 끝나 있으면 한 프레임도 늦추지 않고 그대로 들어간다. 아직이면
+ * 출정 버튼 자체에 소형 진행 띠를 띄우고 `BATTLE_GATE_CAP_MS` 까지만 기다린다.
+ * 목적은 대기가 아니라 전장 첫 2초의 적·제단 팝인을 없애는 것이다.
+ */
+let enteringRun = false;
+async function enterRun(button: HTMLButtonElement): Promise<void> {
+  if (enteringRun) return;
+  if (isBattleAssetsReady()) {
+    startRun(false);
+    return;
+  }
+  enteringRun = true;
+  button.dataset.loading = "1";
+  let ticking = 0;
+  const tick = (): void => {
+    const { done, total } = battleAssetProgress();
+    button.style.setProperty("--p2-progress", total === 0 ? "1" : (done / total).toFixed(3));
+    ticking = window.requestAnimationFrame(tick);
+  };
+  tick();
+  await whenBattleAssetsReady();
+  window.cancelAnimationFrame(ticking);
+  delete button.dataset.loading;
+  button.style.removeProperty("--p2-progress");
+  enteringRun = false;
+  startRun(false);
+}
+
+const startButton = must<HTMLButtonElement>("#start-button");
+startButton.addEventListener("click", () => void enterRun(startButton));
 must<HTMLButtonElement>("#retry-button").addEventListener("click", () => startRun(false));
 must<HTMLButtonElement>("#new-seed-button").addEventListener("click", () => startRun(true));
 /*
@@ -7364,18 +7439,26 @@ function syncCoachProgress(): void {
  */
 // 3D 서재가 기본 메인 메뉴다. ?menu3d=0 으로 2D 그림 배경으로 되돌릴 수
 // 있고, WebGL 초기화가 실패하면 자동으로 2D 로 폴백한다.
-if (new URLSearchParams(window.location.search).get("menu3d") !== "0") {
+// R11: 1차 프리로드가 끝난 뒤에 세운다. 텍스처가 이미 캐시에 있으므로
+// `startMenu3d` 안의 재질 교체가 동기로 끝나고 절차 재질이 화면에 남지 않는다.
+async function mountS00(): Promise<void> {
   const stage = document.querySelector<HTMLElement>(".s00-stage");
-  if (stage) {
-    stage.classList.add("is-3d");
-    void import("./ui/menu3d")
-      .then(({ startMenu3d }) => {
-        const handle = startMenu3d(stage);
-        must<HTMLButtonElement>("#start-button").addEventListener("click", () => handle.dispose(), { once: true });
-      })
-      .catch(() => {
-        stage.classList.remove("is-3d");
-      });
+  if (!stage) return;
+  if (s00Mode === "2d") {
+    enableS00LayeredBackground();
+    return;
+  }
+  stage.classList.add("is-3d");
+  try {
+    const { startMenu3d } = await import("./ui/menu3d");
+    const handle = startMenu3d(stage);
+    must<HTMLButtonElement>("#start-button").addEventListener("click", () => handle.dispose(), { once: true });
+  } catch (error) {
+    // WebGL 이 없으면 2D 배경으로 되돌린다. 이때 비로소 레이어를 내려받는다.
+    // 조용히 삼키면 3D 가 왜 안 뜨는지 알 길이 없어 이유는 남긴다.
+    console.warn("[menu3d] 3D 서재 초기화 실패, 2D 배경으로 되돌린다:", error instanceof Error ? error.message : error);
+    stage.classList.remove("is-3d");
+    enableS00LayeredBackground();
   }
 }
 
@@ -7492,6 +7575,32 @@ setGameSpeed(1);
 setDisplayMode(initialDisplayMode, false);
 syncTitleModeSelection();
 syncAudioControls();
-drawWorld(0);
 syncPanel();
-window.requestAnimationFrame(frame);
+
+/*
+ * R11 부팅 순서.
+ *
+ *   1) 1차(P1) 프리로드 — S00 이 완성된 모습으로 뜨는 데 필요한 것만. 이 동안
+ *      `index.html` 인라인 막이 화면을 덮고 진행률을 보여 준다.
+ *   2) S00 을 세운다. 텍스처는 이미 캐시에 있으므로 첫 프레임부터 실물이다.
+ *   3) 막을 걷고 전장 루프를 돌린다. 전장 첫 draw 가 여기서 처음 일어나므로
+ *      제단·먹길 스프라이트 요청도 P1 을 방해하지 않는다.
+ *   4) 2차(P2) 프리로드를 뒤에서 시작한다. 출정 클릭이 더 빠르면
+ *      `whenBattleAssetsReady()` 가 잠깐만 붙잡는다.
+ */
+async function bootGame(): Promise<void> {
+  // 번들이 살아 있음이 증명됐다. 인라인 안전장치를 거두고 막의 수명을 넘겨받는다.
+  takeOverBootScreen();
+  // 첫 방문에도 워커가 곧바로 페이지를 물어 P1·P2 응답을 캐시에 담게 한다.
+  registerServiceWorker();
+  await preloadP1(s00Mode, updateBootProgress);
+  await mountS00();
+  dismissBootScreen();
+  attachHanjiPaperBackground();
+  drawWorld(0);
+  window.requestAnimationFrame(frame);
+  await startP2();
+  warmCombatSpriteCaches();
+}
+
+void bootGame();

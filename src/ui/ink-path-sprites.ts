@@ -6,6 +6,8 @@
  * 표현만 포장도로에서 번지는 붓길로 교체한다.
  */
 
+import { preloadedImage } from "./asset-loader";
+
 export type InkPathKind = "straight-h" | "straight-v" | "cross" | "corner" | "portal" | "arrow";
 export type InkDirection = "r" | "d" | "l" | "u";
 /** 열린 두 방향. `rd`는 오른쪽+아래가 열린 모서리다. */
@@ -16,9 +18,15 @@ const images = new Map<string, HTMLImageElement>();
 function imageFor(file: string): HTMLImageElement {
   const cached = images.get(file);
   if (cached) return cached;
+  const url = `${import.meta.env.BASE_URL}assets/ui/path/${file}`;
+  const preloaded = preloadedImage(url);
+  if (preloaded) {
+    images.set(file, preloaded);
+    return preloaded;
+  }
   const image = new Image();
   image.decoding = "async";
-  image.src = `${import.meta.env.BASE_URL}assets/ui/path/${file}`;
+  image.src = url;
   images.set(file, image);
   void image.decode().catch(() => undefined);
   return image;

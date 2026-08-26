@@ -11,6 +11,8 @@
  * 전부 장식이다. 좌표·히트영역·전투 수치·진행 규칙에 손대지 않는다.
  */
 
+import { preloadedImage } from "./asset-loader";
+
 export type ExitSealState = "waiting" | "spawning";
 /** 승급 "결과" 별 등급. 소모한 재료 등급이 아니다. */
 export type StarLevel = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
@@ -27,9 +29,15 @@ const images = new Map<string, HTMLImageElement>();
 function imageFor(path: string): HTMLImageElement {
   const cached = images.get(path);
   if (cached) return cached;
+  const url = `${import.meta.env.BASE_URL}assets/ui/polish-v1/${path}`;
+  const preloaded = preloadedImage(url);
+  if (preloaded) {
+    images.set(path, preloaded);
+    return preloaded;
+  }
   const image = new Image();
   image.decoding = "async";
-  image.src = `${import.meta.env.BASE_URL}assets/ui/polish-v1/${path}`;
+  image.src = url;
   images.set(path, image);
   void image.decode().catch(() => undefined);
   return image;
