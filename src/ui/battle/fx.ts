@@ -4,7 +4,7 @@
 import { type AbilityFxKind, type GameEvent, type Point, type Wuxing } from "../../core/types";
 import { elementProjectileImage } from "../combat-fx-sprites";
 import { isReady as isPolishSpriteReady } from "../polish-sprites";
-import { canvas, context, ctx, reducedMotion } from "../app-context";
+import { calmBattlefield, canvas, context, ctx } from "../app-context";
 import { drawIdiomRipples, isWorldPointVisible } from "./draw";
 
 interface ProjectileFx {
@@ -166,15 +166,16 @@ export function updateAndDrawFx(delta: number): void {
       continue;
     }
     if (!isWorldPointVisible(burst.at, burst.size * 0.6)) continue;
-    // reduced motion: 확대·회전 없이 0.25초 정지 후 페이드만.
-    const scale = reducedMotion
+    // reduced motion·차분한 화면: 확대·회전 없이 0.25초 정지 후 페이드만.
+    const calm = calmBattlefield();
+    const scale = calm
       ? 1
       : burst.age < 0.12
         ? 0.72 + (burst.age / 0.12) * 0.33
         : burst.age < 0.52
           ? 1.05 - ((burst.age - 0.12) / 0.4) * 0.05
           : 1;
-    const fadeFrom = reducedMotion ? 0.25 : 0.52;
+    const fadeFrom = calm ? 0.25 : 0.52;
     const alpha = burst.age < fadeFrom ? 1 : 1 - (burst.age - fadeFrom) / (RASTER_BURST_LIFE - fadeFrom);
     const drawn = burst.size * scale;
     context.save();
@@ -201,7 +202,8 @@ export function updateAndDrawFx(delta: number): void {
     context.strokeStyle = projectile.color;
     context.lineWidth = projectile.critical ? 3.6 : 2.4;
     context.shadowColor = projectile.color;
-    context.shadowBlur = projectile.critical ? 12 : 7;
+    // FB6: 탄도 발광 12/7 → 9/5 (-25~29%).
+    context.shadowBlur = projectile.critical ? 9 : 5;
     context.beginPath();
     context.moveTo(projectile.from.x + (x - projectile.from.x) * 0.58, projectile.from.y + (y - projectile.from.y) * 0.58);
     context.lineTo(x, y);
@@ -225,7 +227,8 @@ export function updateAndDrawFx(delta: number): void {
     context.strokeStyle = ring.color;
     context.lineWidth = 4 - ratio * 2;
     context.shadowColor = ring.color;
-    context.shadowBlur = 18;
+    // FB6: 고리 발광 18 → 13 (-28%).
+    context.shadowBlur = 13;
     context.beginPath();
     context.arc(ring.at.x, ring.at.y, 18 + ratio * 58, 0, Math.PI * 2);
     context.stroke();
