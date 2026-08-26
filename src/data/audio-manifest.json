@@ -3,7 +3,7 @@
   "cacheVersion": "suno-audio-20260826-v2",
   "provider": "Suno",
   "generatedAt": "2026-08-26",
-  "workspace": "김길우-한자td",
+  "workspace": "hanja-td",
   "normalization": {
     "bgm": "ffmpeg loudnorm I=-20:TP=-1.5:LRA=11",
     "sfx": "ffmpeg peak normalization to -1 dBFS"
