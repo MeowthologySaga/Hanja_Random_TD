@@ -80,8 +80,12 @@ const CHARGES_PER_WAVE = 3;
  */
 const CHARGE_CAP = 30;
 
-/** 보상 연출(talisman-reward.ts VISIT_MS 1.4초)이 끝난 뒤 다음 장으로 넘어간다. */
-const NEXT_SHEET_DELAY_MS = 1_500;
+/**
+ * 보상 연출(talisman-reward.ts VISIT_MS 2.7초)이 끝난 뒤 다음 장으로 넘어간다.
+ * 종이가 먼저 넘어가면 자령·꾸러미가 도중에 잘려 "뭘 얻었는지" 다시 모르게
+ * 되므로, 연출 총 길이보다 항상 뒤에 선다(트랙 C3).
+ */
+const NEXT_SHEET_DELAY_MS = 2_800;
 
 /** 종이 넘김 — 절반 지점에서 새 글자를 앉힌다. 540절의 애니메이션 길이와 맞춘다. */
 const PAGE_TURN_MS = 350;
@@ -363,16 +367,16 @@ function grantReward(): void {
     const amount = REWARD_GOLD_MIN + Math.floor(Math.random() * (REWARD_GOLD_MAX - REWARD_GOLD_MIN + 1));
     state.gold += amount;
     recentRewards.gold += amount;
-    grants.push({ kind: "gold", amount, glyph: "錢", label: `+${amount} 엽전` });
+    grants.push({ kind: "gold", amount, glyph: "錢", label: `엽전 +${amount}` });
   } else if (roll < REWARD_GOLD_WEIGHT + REWARD_ESSENCE_WEIGHT) {
     state.elementEssence[wuxing] += 1;
     state.elementEssenceGenerated[wuxing] += 1;
     recentRewards.essence[wuxing] = (recentRewards.essence[wuxing] ?? 0) + 1;
-    grants.push({ kind: "essence", amount: 1, wuxing, glyph: wuxing, label: "+1 문기" });
+    grants.push({ kind: "essence", amount: 1, wuxing, glyph: wuxing, label: `${wuxing} 문기 +1` });
   } else {
     ctx.talismanFreeSummonTokens += 1;
     recentRewards.tokens += 1;
-    grants.push({ kind: "token", amount: 1, glyph: "券", label: "+1 소환 무료권" });
+    grants.push({ kind: "token", amount: 1, glyph: "券", label: "무료 소환권 +1" });
   }
   const summary = grants.map((grant) => grant.label).join(" · ");
   showToast(`${char} 자령이 응답했습니다 — 보상을 두고 갑니다 · ${summary}`);

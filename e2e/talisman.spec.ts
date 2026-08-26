@@ -7,8 +7,9 @@
  * C2 의 핵심 규칙 두 가지를 여기서 못박는다.
  *   ① 획을 떼도 저절로 완성되지 않는다 — 판정은 제출 버튼만의 권한이다.
  *   ② 미달 제출은 벌이 없다 — 안내만 남고 그린 먹선은 그대로 살아 있다.
- * C3 가 더한 것도 함께 본다.
+ * C3 가 더한 두 가지도 함께 본다.
  *   ③ 화면은 소진율(n / 3)이 아니라 **남은 장수**를 센다. 잠금은 0장일 때뿐이다.
+ *   ④ 보상 연출은 2.4초 이상 머물고, 무엇을 받았는지 글자로 읽힌다.
  * 손그림 채점은 글꼴 렌더링에 좌우돼 불안정하므로, 임계 통과선까지의 그리기는
  * 개발 전용 QA 자동 따라쓰기(__HANJA_TALISMAN_QA__.autoTrace — 실제 포인터
  * 이벤트 합성)로 결정론화하고 제출은 실제 버튼 클릭으로 한다.
@@ -119,6 +120,7 @@ test("the default-on talisman tab turns a submitted trace into a jaryeong reward
 
   // ④ 제출 → 완성 인장 · 자령 강림 · 보상.
   await page.getByTestId("talisman-submit").click();
+  const rewardShownAt = Date.now();
   await expect(page.locator("#talisman-status")).toContainText("부적 완성");
   await expect(page.locator("#talisman-seal")).toBeVisible();
   await expect(page.locator("#toast")).toContainText("자령이 응답했습니다");
@@ -126,7 +128,22 @@ test("the default-on talisman tab turns a submitted trace into a jaryeong reward
   await expect(page.locator(".talisman-visit")).toHaveCount(1);
   await expect(page.locator(".talisman-visit-name")).toContainText("자령");
   await expect(page.locator(".talisman-gift")).toHaveCount(1);
+  // 트랙 C3 ④: 무엇을 받았는지 글자로 남는다 — 숫자만 날아가면 알 수 없다.
+  await expect(page.locator(".talisman-gift > em"))
+    .toHaveText(/^(엽전|[金木水火土] 문기|무료 소환권) \+\d+$/);
+  // 연출 중에도 전투 조작은 살아 있어야 한다 — 포인터가 전부 통과한다.
+  for (const selector of [".talisman-visit", ".talisman-gift-fly", ".talisman-gift"]) {
+    const pointerEvents = await page.locator(selector)
+      .evaluate((element) => getComputedStyle(element).pointerEvents);
+    expect(pointerEvents).toBe("none");
+  }
+  // 0.9초가 지나도 보상이 그대로 크게 서 있다 — 읽을 시간을 준다.
+  await page.waitForTimeout(900);
+  await expect(page.locator(".talisman-gift")).toHaveCount(1);
   await page.screenshot({ path: "artifacts/talisman-reward-visit-1280x720.png", fullPage: true });
+  // 총 길이는 2.4초 이상. 예전 1.4초로는 "뭘 얻었는지 모르겠어"였다.
+  await expect(page.locator(".talisman-visit")).toHaveCount(0, { timeout: 8_000 });
+  expect(Date.now() - rewardShownAt).toBeGreaterThanOrEqual(2_400);
   // 연출이 지나가도 "최근 보상" 줄에 누적이 남는다.
   await expect(page.locator("#talisman-recent-reward")).not.toContainText("아직 없음");
   // 한 장을 썼으니 남은 장수가 하나 줄어든다.

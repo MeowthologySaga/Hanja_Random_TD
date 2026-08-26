@@ -8,7 +8,8 @@
       되찾아 부적지를 밀어내지 않는다(아래 「세로 예산 되찾기」).
    ② 통과 순간의 자령 강림 — 부적에 응답한 자령이 내려와 보상을 놓고
       떠난다. 초상은 공방 공용 .workbench-spirit 을 그대로 쓰고 크기 변형만
-      더한다(새 에셋 없음).
+      더한다(새 에셋 없음). 트랙 C3 에서 총 길이를 1.4초→2.7초로 늘리고
+      늘린 몫을 전부 "머무는" 구간에 얹었다 — 보상 꾸러미도 함께 키웠다.
    ③ 남은 장수(트랙 C3) — 웨이브마다 3장이 더해지고 쓰지 않으면 쌓인다.
       머리글은 「남은 부적 n장」 + 이번 웨이브 적립분이고, 다음 장으로
       넘어가는 종이 넘김은 그대로, 종이는 남은 장수가 0일 때만 잠긴다.
@@ -296,27 +297,29 @@
 }
 
 /* 강림(1.3→1.0)과 인사하듯 흐려지는 퇴장은 한 애니메이션의 앞뒤다.
-   총 길이는 JS 의 VISIT_MS 와 맞춘다. */
+   총 길이는 JS 의 VISIT_MS 와 맞춘다 — 트랙 C3 에서 1.4초→2.7초.
+   늘린 몫은 전부 가운데 "머무는" 구간에 얹어(4%→88%), 자령과 그 발치의
+   보상 꾸러미를 읽을 시간을 만든다. */
 .talisman-visit.is-motion {
-  animation: talisman-visit-arc 1.4s ease-out forwards;
+  animation: talisman-visit-arc 2.7s ease-out forwards;
 }
 
 @keyframes talisman-visit-arc {
   0% { opacity: 0; transform: translate(-50%, -38%) scale(1.3); }
-  14% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
-  70% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  7% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  88% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
   100% { opacity: 0; transform: translate(-50%, -66%) scale(0.96); }
 }
 
 /* 차분한 화면 — 자령은 제자리에 그냥 나타났다 사라진다(정보는 남는다). */
 .talisman-visit.is-calm {
-  animation: talisman-visit-calm 1.4s linear forwards;
+  animation: talisman-visit-calm 2.7s linear forwards;
 }
 
 @keyframes talisman-visit-calm {
   0% { opacity: 0; }
-  8% { opacity: 1; }
-  84% { opacity: 1; }
+  4% { opacity: 1; }
+  93% { opacity: 1; }
   100% { opacity: 0; }
 }
 
@@ -328,18 +331,21 @@
   pointer-events: none;
 }
 
+/* 트랙 C3: 무엇을 받았는지 읽혀야 하므로 꾸러미를 키운다 — 아이콘 24→30px,
+   글줄 14→17px. 정지 구간(GIFT_HOLD_MS)에 1.14배까지 더 커지므로 실효
+   글자 크기는 19px 을 넘는다. */
 .talisman-gift {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  padding: 4px 11px 4px 6px;
+  gap: 7px;
+  padding: 5px 14px 5px 7px;
   color: #fbf2dd;
   border-radius: 999px;
   background: linear-gradient(180deg, rgba(46, 34, 18, 0.96), rgba(20, 15, 9, 0.96));
   box-shadow:
-    0 0 0 1.5px color-mix(in srgb, var(--gift, #d9b463) 72%, transparent),
-    0 3px 12px rgba(0, 0, 0, 0.5);
-  font-size: 14px;
+    0 0 0 1.5px color-mix(in srgb, var(--gift, #d9b463) 78%, transparent),
+    0 4px 16px rgba(0, 0, 0, 0.55);
+  font-size: 17px;
   font-weight: 900;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
@@ -348,30 +354,35 @@
 
 .talisman-gift > i {
   display: grid;
-  width: 24px;
-  height: 24px;
+  width: 30px;
+  height: 30px;
   place-items: center;
   color: #2b1f0d;
   border-radius: 50%;
   background: radial-gradient(circle at 38% 30%, #ffe9a8, var(--gift, #d9b463) 74%);
   font-family: "Batang", "Malgun Gothic", serif;
-  font-size: 14px;
+  font-size: 17px;
   font-style: normal;
 }
 
+/* 이름 + 수량("엽전 +12")이 통째로 실리는 자리. 아이콘만으로는 무엇인지
+   전해지지 않는다는 사용자 실황의 반영이라, 여기를 줄이지 않는다. */
 .talisman-gift > em {
   font-style: normal;
+  letter-spacing: -0.01em;
 }
 
 /* ── ⑥ 자원칸 착탄 — 한 번 크게 튀고 반짝 ───────────────────── */
+/* 카운트업(GOLD_ROLL_MS 0.76초)과 나란히 읽히도록 반짝임도 함께 늘렸다. */
 .is-talisman-land {
-  animation: talisman-land 0.5s cubic-bezier(0.2, 1.5, 0.4, 1);
+  animation: talisman-land 0.64s cubic-bezier(0.2, 1.5, 0.4, 1);
   border-radius: 5px;
 }
 
 @keyframes talisman-land {
   0% { transform: scale(1); }
-  34% { color: #f6e2a4; text-shadow: 0 0 10px rgba(240, 213, 139, 0.85); transform: scale(1.28); }
+  30% { color: #f6e2a4; text-shadow: 0 0 10px rgba(240, 213, 139, 0.85); transform: scale(1.28); }
+  62% { color: #f6e2a4; text-shadow: 0 0 8px rgba(240, 213, 139, 0.6); }
   100% { transform: scale(1); }
 }
 
