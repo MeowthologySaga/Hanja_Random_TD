@@ -268,8 +268,12 @@ const REGION_ENEMY_HP_CURVE: Record<RegionCode, { base: number; chapterGrowth: n
  * 수렴하도록 이 계수만 조정한다 — 웨이브 구성·규칙은 그대로다.
  * (3.8 은 스킬 1차 세트·농축 중복 기본화가 얹힌 뒤의 재고정값. 수량 0.85 와
  * 짝이므로 웨이브 총 내구 기준으로는 ×3.23 상당이다.)
+ *
+ * 트랙 B 재고정: 성어 가중이 "부족 글자 합집합"으로 바뀌며 보유한 성어
+ * 글자가 소환 가중을 더는 빨아들이지 않는다 — 소환이 다양해져 캐주얼 실측
+ * 승률이 0.489→0.778 로 뛰었다(45런). 규칙이 좋아진 만큼 체력으로 되받는다.
  */
-const MODE_ENEMY_HP_SCALE: Record<GameMode, number> = { standard: 1, casual: 3.8 };
+const MODE_ENEMY_HP_SCALE: Record<GameMode, number> = { standard: 1, casual: 4.02 };
 
 /**
  * 모드별 적 수량 계수. 캐주얼은 웨이브당 몸수를 15% 줄이는 대신 체력 계수를
@@ -285,8 +289,11 @@ export const MODE_ENEMY_COUNT_SCALE: Record<GameMode, number> = { standard: 1, c
  * "중앙값 43~50분"을 동시에 만족하는 창이 비어 있었다(3.2 이하 = 승률 초과,
  * 3.35 이상 = 런 시간 초과). 보스만 트림해 보스전 길이(런 시간)와 일반
  * 웨이브 난이도(승률)를 분리한다. 규칙 변경이 아니라 체력 계수다.
+ *
+ * 트랙 B 재고정: 일반 체력 3.8→4.02 인상이 런 시간을 50분 경계까지 밀어,
+ * 트림을 0.78→0.76 으로 함께 내려 시간을 되샀다(45런 실측 0.556 / 49.3분).
  */
-export const CASUAL_BOSS_HP_TRIM = 0.78;
+export const CASUAL_BOSS_HP_TRIM = 0.76;
 
 // The center formation overlaps more of the loop than the east formation.
 // These small route-coverage coefficients make "which element appeared first"
