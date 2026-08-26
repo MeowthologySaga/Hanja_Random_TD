@@ -312,6 +312,15 @@ app.innerHTML = `
         </div>
 
         <section id="idiom-panel" class="idiom-panel panel-view" data-panel-view="idiom" aria-label="사자성어 진법" aria-live="polite">
+          <section class="idiom-rule-guide" aria-label="성어 발동 규칙">
+            <div class="idiom-rule-chain" aria-hidden="true">
+              <i style="--r:1;--c:1">①</i><b style="--r:1;--c:2">→</b>
+              <i style="--r:1;--c:3">②</i><b style="--r:1;--c:4">→</b>
+              <i style="--r:1;--c:5">③</i><b class="is-diagonal" style="--r:2;--c:6">↘</b>
+              <i style="--r:2;--c:7">④</i>
+            </div>
+            <p>순서대로 이웃(대각선 가능) · 역순도 인정 · 같은 진 안에서</p>
+          </section>
           <div id="idiom-hud" class="idiom-hud">
             <div class="idiom-heading"><span>四字成語 진법</span><b id="idiom-count">0 / 4</b></div>
             <div id="idiom-glyphs" class="idiom-glyphs"></div>
@@ -1188,6 +1197,19 @@ function showWaveBanner(): void {
       ], { duration: 1200, easing: "ease" });
 }
 
+/**
+ * 첫 봉인 축하 — 스펙 6라운드 E3.
+ *
+ * 첫 봉인은 "뭔가 터졌다"로만 남고 그 효과가 어디에 남는지는 알려 주지 않았다.
+ * 웨이브 배너를 한 번 빌려 전장 왼쪽 스택을 가리킨다. 런마다 처음 한 번뿐이다.
+ */
+function firstSealCelebration(reading: string): void {
+  bossBanner.textContent = `첫 봉인 ${reading}! 발동 중 성어는 전장 왼쪽에 표시됩니다`;
+  bossBanner.classList.remove("boss-banner--boss");
+  bossBanner.classList.add("boss-banner--idiom");
+  showWaveBanner();
+}
+
 function addCombatFeed(glyph: string, name: string, detail: string, color: string): void {
   const now = performance.now();
   const key = glyph + name;
@@ -1603,6 +1625,7 @@ function processEvent(event: GameEvent): void {
       showIdiomResult(event.reading, event.meaning, event.bonus, event.color);
       addCombatFeed("四", event.reading, event.bonus, event.color);
       idiomRenderKey = "";
+      if (engine.state.idiomSeals.length === 1) firstSealCelebration(event.reading);
       break;
     }
     case "wave":
@@ -1610,6 +1633,7 @@ function processEvent(event: GameEvent): void {
         ? "⚠ 우두머리 " + String(event.wave) + " · 약점 " + event.weakness + " ⚠"
         : "웨이브 " + String(event.wave) + " · 약점 " + event.weakness;
       bossBanner.classList.toggle("boss-banner--boss", event.boss);
+      bossBanner.classList.remove("boss-banner--idiom");
       showWaveBanner();
       break;
     case "phase":
@@ -2474,12 +2498,66 @@ function closeCompositionDrawer(): void {
 }
 
 
+/*
+ * 1회성 성어 코치 — 스펙 6라운드 E1.
+ *
+ * 발동 규칙은 지금까지 성어 탭 안 10px 한 줄에만 있었고, 재료가 손에 들어온
+ * 순간에는 아무 말도 없었다. 추적 중인 성어의 글자를 둘 이상 갖게 된 최초의
+ * 순간에 한 번만 규칙을 말하고, 자세한 건 성어 목표 탭에 있다고 가리킨다.
+ */
+const IDIOM_HINT_STORAGE_KEY = "hanja-td:idiom-hint-v1";
+let idiomHintHandled = false;
+
+function idiomHintAlreadySeen(): boolean {
+  try {
+    return window.localStorage.getItem(IDIOM_HINT_STORAGE_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function markIdiomHintSeen(): void {
+  try {
+    window.localStorage.setItem(IDIOM_HINT_STORAGE_KEY, "1");
+  } catch {
+    // 저장이 막혀 있어도 이번 판 안내는 정상 동작한다.
+  }
+}
+
+/**
+ * 성어 탭을 세 번 맥동시켜 "더 볼 곳"을 짚는다.
+ *
+ * 목표 탭 안의 성어 서브탭은 목표 패널을 열어 둔 사람에게만 보이므로, 항상
+ * 보이는 성어 패널 탭도 함께 맥동시킨다. 안내가 아무 데도 안 닿으면 무의미하다.
+ */
+function pulseIdiomGoalTab(): void {
+  const tabs = [idiomTab, document.querySelector<HTMLButtonElement>('[data-goal-mode="idiom"]')];
+  for (const tab of tabs) {
+    if (!tab) continue;
+    tab.classList.remove("is-hint-pulsing");
+    void tab.offsetWidth;
+    tab.classList.add("is-hint-pulsing");
+    window.setTimeout(() => tab.classList.remove("is-hint-pulsing"), 2600);
+  }
+}
+
+function maybeShowIdiomHint(target: IdiomDefinition | undefined): void {
+  if (idiomHintHandled || !target) return;
+  if (engine.idiomProgress(target.id).owned < 2) return;
+  idiomHintHandled = true;
+  if (idiomHintAlreadySeen()) return;
+  markIdiomHintSeen();
+  showToast(`${target.chars} 재료가 모이고 있어요 — 같은 진에서 ①→④ 순서로 이웃하게 놓으면 봉인 발동! (역순도 가능)`);
+  pulseIdiomGoalTab();
+}
+
 function renderIdiomHud(): void {
   const target = engine.currentIdiomTarget();
   const ownedSignature = engine.state.towers.map((tower) => tower.char).sort().join("");
   const key = engine.state.idiomSeals.map((seal) => seal.idiomId).join(",") + "|" + (target?.id ?? "done") + "|" + ownedSignature;
   if (key === idiomRenderKey) return;
   idiomRenderKey = key;
+  maybeShowIdiomHint(target);
   must<HTMLElement>("#idiom-count").textContent = String(engine.state.idiomSeals.length) + " / " + String(engine.idioms().length);
   must<HTMLElement>("#idiom-tab-count").textContent = String(engine.state.idiomSeals.length) + "/" + String(engine.idioms().length);
   const hud = must<HTMLElement>("#idiom-hud");

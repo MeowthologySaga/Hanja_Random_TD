@@ -6788,3 +6788,93 @@ dialog,
 @media (prefers-reduced-motion: reduce) {
   .active-idiom { animation: none; }
 }
+
+/*
+ * R6-2. 성어 탭 규칙 도식.
+ *
+ * "순서대로 이웃"이라는 말만으로는 대각선이 되는지, 역순이 되는지 알 수 없다.
+ * 네 칸 사슬을 실제로 그려 마지막 한 칸을 대각선으로 꺾어 보여 준다.
+ */
+.idiom-rule-guide {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 7px;
+  padding: 8px 9px 7px;
+  border: 1px solid rgba(255, 207, 118, 0.22);
+  border-radius: 9px;
+  background: linear-gradient(180deg, rgba(38, 27, 12, 0.62), rgba(6, 11, 18, 0.72));
+}
+
+.idiom-rule-chain {
+  display: grid;
+  grid-template-columns: 26px 16px 26px 16px 26px 18px 26px;
+  grid-template-rows: 26px 26px;
+  justify-content: center;
+  align-items: center;
+  gap: 2px;
+}
+
+.idiom-rule-chain i {
+  grid-row: var(--r);
+  grid-column: var(--c);
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  color: #ffe9b6;
+  font-size: 14px;
+  font-style: normal;
+  font-weight: 900;
+  border: 1px solid rgba(255, 207, 118, 0.42);
+  border-radius: 5px;
+  background: rgba(80, 56, 20, 0.42);
+}
+
+.idiom-rule-chain b {
+  grid-row: var(--r);
+  grid-column: var(--c);
+  color: rgba(255, 214, 137, 0.72);
+  font-size: 13px;
+  font-weight: 900;
+  text-align: center;
+}
+
+.idiom-rule-chain b.is-diagonal { color: #ffcf76; }
+
+.idiom-rule-guide p {
+  margin: 0;
+  color: #e6d5ac;
+  font-size: 11.5px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  text-align: center;
+}
+
+/*
+ * R6-3. 성어 재료가 둘 모인 순간의 1회성 안내와 첫 봉인 배너.
+ *
+ * 토스트만으로는 "그래서 어디를 보라는 건가"가 남아 성어 목표 서브탭을 세 번
+ * 맥동시킨다. 첫 봉인 배너는 우두머리 경고와 색을 갈라 놓는다.
+ */
+.is-hint-pulsing {
+  animation: idiom-tab-hint 0.82s ease-in-out 3;
+}
+
+@keyframes idiom-tab-hint {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255, 207, 118, 0); }
+  45% { box-shadow: 0 0 0 3px rgba(255, 207, 118, 0.42); }
+}
+
+.boss-banner--idiom {
+  color: #ffeec4 !important;
+  border-color: rgba(255, 207, 118, 0.55) !important;
+  background: rgba(72, 48, 14, 0.94) !important;
+  letter-spacing: 0.02em;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .is-hint-pulsing {
+    animation: none;
+    box-shadow: 0 0 0 2px rgba(255, 207, 118, 0.42);
+  }
+}
