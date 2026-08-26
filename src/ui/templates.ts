@@ -239,41 +239,47 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
         </section>
 
         <section id="idiom-panel" class="idiom-panel panel-view" data-panel-view="idiom" aria-label="사자성어 진법" aria-live="polite">
-          <section class="idiom-rule-guide" aria-label="성어 발동 규칙">
-            <div class="idiom-rule-figures" aria-hidden="true">
-              <figure class="idiom-rule-figure idiom-rule-figure--row">
-                <div class="idiom-rule-grid">
-                  <i style="--r:1;--c:1">①</i><i style="--r:1;--c:2">②</i><i style="--r:1;--c:3">③</i><i style="--r:1;--c:4">④</i>
-                </div>
-                <figcaption>가로 · 세로</figcaption>
-              </figure>
-              <figure class="idiom-rule-figure idiom-rule-figure--diagonal">
-                <div class="idiom-rule-grid">
-                  <i style="--r:1;--c:1">①</i><i style="--r:2;--c:2">②</i><i style="--r:3;--c:3">③</i><i style="--r:4;--c:4">④</i>
-                </div>
-                <figcaption>대각선</figcaption>
-              </figure>
+          <!-- 트랙 K 과업 1: 패널은 액자, 스크롤은 이 래퍼 한 곳. 발동 목록은
+               바깥 형제로 남아 탭바에 가리지 않는다(상점 2행 구조와 같은 문법). -->
+          <div id="idiom-scroll" class="idiom-scroll">
+            <!-- 지금 상태(추적 성어 · 최근 감지)가 먼저, 규칙 도식은 그 아래로.
+                 스크롤 한 화면에 남는 것이 45웨이브에 필요한 쪽이어야 한다. -->
+            <div id="idiom-hud" class="idiom-hud">
+              <div class="idiom-heading"><span>四字成語 진법</span><b id="idiom-count">0 / 4</b></div>
+              <div id="idiom-glyphs" class="idiom-glyphs"></div>
+              <strong id="idiom-name">이심전심</strong>
+              <p id="idiom-meaning">말하지 않아도 서로 마음이 통함</p>
+              <b id="idiom-bonus" class="idiom-bonus">모든 자령 사거리 +28</b>
+              <small id="idiom-hint">글자 순서가 맞으면 자동 발동</small>
             </div>
-            <p>한 줄로 — 가로·세로·대각선 · 순서대로(역순 인정) · 같은 진 안에서</p>
-            <!-- [SKILL-V1] 성어의 가호 한 줄 규칙 안내 -->
-            <p>성어의 가호 — 발동 중 성어와 같은 진의 자령 전원 공격 +10%, 같은 진의 추가 발동 성어당 +5%p. 줄이 흩어지면 즉시 사라집니다.</p>
-          </section>
-          <div id="idiom-hud" class="idiom-hud">
-            <div class="idiom-heading"><span>四字成語 진법</span><b id="idiom-count">0 / 4</b></div>
-            <div id="idiom-glyphs" class="idiom-glyphs"></div>
-            <strong id="idiom-name">이심전심</strong>
-            <p id="idiom-meaning">말하지 않아도 서로 마음이 통함</p>
-            <b id="idiom-bonus" class="idiom-bonus">모든 자령 사거리 +28</b>
-            <small id="idiom-hint">글자 순서가 맞으면 자동 발동</small>
-          </div>
-          <div id="idiom-result" class="idiom-result" aria-label="최근 자동 사자성어 발동">
-            <b id="idiom-result-glyph">四</b>
-            <span>
-              <small>최근 자동 감지</small>
-              <strong id="idiom-result-name">한 줄에 네 글자를 순서대로</strong>
-              <em id="idiom-result-meaning">배치된 자령을 자동으로 판정합니다.</em>
-            </span>
-            <mark id="idiom-result-bonus">자동 판정</mark>
+            <div id="idiom-result" class="idiom-result" aria-label="최근 자동 사자성어 발동">
+              <b id="idiom-result-glyph">四</b>
+              <span>
+                <small>최근 자동 감지</small>
+                <strong id="idiom-result-name">한 줄에 네 글자를 순서대로</strong>
+                <em id="idiom-result-meaning">배치된 자령을 자동으로 판정합니다.</em>
+              </span>
+              <mark id="idiom-result-bonus">자동 판정</mark>
+            </div>
+            <section class="idiom-rule-guide" aria-label="성어 발동 규칙">
+              <div class="idiom-rule-figures" aria-hidden="true">
+                <figure class="idiom-rule-figure idiom-rule-figure--row">
+                  <div class="idiom-rule-grid">
+                    <i style="--r:1;--c:1">①</i><i style="--r:1;--c:2">②</i><i style="--r:1;--c:3">③</i><i style="--r:1;--c:4">④</i>
+                  </div>
+                  <figcaption>가로 · 세로</figcaption>
+                </figure>
+                <figure class="idiom-rule-figure idiom-rule-figure--diagonal">
+                  <div class="idiom-rule-grid">
+                    <i style="--r:1;--c:1">①</i><i style="--r:2;--c:2">②</i><i style="--r:3;--c:3">③</i><i style="--r:4;--c:4">④</i>
+                  </div>
+                  <figcaption>대각선</figcaption>
+                </figure>
+              </div>
+              <p>한 줄로 — 가로·세로·대각선 · 순서대로(역순 인정) · 같은 진 안에서</p>
+              <!-- [SKILL-V1] 성어의 가호 한 줄 규칙 안내 -->
+              <p>성어의 가호 — 발동 중 성어와 같은 진의 자령 전원 공격 +10%, 같은 진의 추가 발동 성어당 +5%p. 줄이 흩어지면 즉시 사라집니다.</p>
+            </section>
           </div>
           <div id="idiom-seal-status" class="idiom-seal-status" aria-label="발동 상태" hidden></div>
         </section>
