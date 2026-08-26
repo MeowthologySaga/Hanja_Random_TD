@@ -581,4 +581,33 @@ describe("casual eight-star mode", () => {
     tower.casualStar = 8;
     expect(engine.towerPowerMultiplier(tower)).toBe(CASUAL_STAR_POWER[8]);
   });
+
+  it("grants the deployed 8-star polaris aura to its element only, without stacking", () => {
+    // FB7-8성 「극성 개안」: 전장의 8★ 자령이 같은 오행 전체 공격을 15% 올린다.
+    const engine = casualEngine("casual-polaris-aura");
+    const definitions = safeCasualDefinitions(engine, 2);
+    const wuxing = definitions[0]?.wuxing as Wuxing;
+    const other = WUXING_ORDER.find((candidate) => candidate !== wuxing) as Wuxing;
+    expect(engine.casualPolarisAuraActive(wuxing)).toBe(false);
+    expect(engine.casualPolarisDamageMultiplier(wuxing)).toBe(1);
+
+    // 인벤토리의 8★ 는 오라를 내지 않는다.
+    const stored = casualTower(definitions[0] as HanziDefinition, 1301, -1, 8);
+    engine.state.inventoryTowers = [stored];
+    expect(engine.casualPolarisAuraActive(wuxing)).toBe(false);
+
+    // 전장에 서면 그 오행만 켜지고, 두 기가 있어도 배율은 그대로다(중첩 불가).
+    const deployed = casualTower(definitions[0] as HanziDefinition, 1302, 0, 8);
+    engine.state.towers = [deployed];
+    expect(engine.casualPolarisAuraActive(wuxing)).toBe(true);
+    expect(engine.casualPolarisAuraActive(other)).toBe(false);
+    expect(engine.casualPolarisDamageMultiplier(wuxing)).toBeCloseTo(1.15, 5);
+    engine.state.towers.push(casualTower(definitions[1] as HanziDefinition, 1303, 1, 8));
+    expect(engine.casualPolarisDamageMultiplier(wuxing)).toBeCloseTo(1.15, 5);
+
+    // 표준 모드에는 이 오라가 없다.
+    const standard = new GameEngine("standard-no-polaris", "KR");
+    standard.begin();
+    expect(standard.casualPolarisDamageMultiplier(wuxing)).toBe(1);
+  });
 });

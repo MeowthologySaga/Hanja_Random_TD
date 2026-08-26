@@ -1,7 +1,7 @@
 /*
  * 선택 자령 카드와 구성식 서랍.
  */
-import { CASUAL_STAR_COLORS, CASUAL_STAR_NAMES, casualStrokeCount } from "../../core/casual";
+import { CASUAL_POLARIS_AURA, CASUAL_STAR_COLORS, CASUAL_STAR_NAMES, casualStrokeCount } from "../../core/casual";
 import {
   autoConcentrationPath,
   concentrationEssenceCost,
@@ -117,7 +117,8 @@ export function renderSelected(): void {
   const concentrationPath = tower?.concentrationPath ?? null;
   const duplicateCount = tower ? ctx.engine.state.inventoryTowers.filter((candidate) => candidate.id !== tower.id && candidate.char === tower.char && !candidate.locked).length : 0;
   const branchKey = branches.map((branch) => `${branch.recipeId}:${branch.ready ? "R" : branch.materials.map((material) => material.location).join(",")}`).join("|");
-  const key = tower ? tower.definitionId + "|" + String(tower.id) + "|" + String(tower.locked) + "|" + String(stored) + "|" + String(ctx.engine.isSynergyActive(tower.wuxing)) + "|" + branchKey + `|M${ctx.engine.state.mode}:S${tower.casualStar ?? 0}|C${concentration}:${concentrationPath ?? "none"}:D${duplicateCount}:E${ctx.engine.state.elementEssence[tower.wuxing]}` : "none";
+  const polarisActive = tower ? ctx.engine.casualPolarisAuraActive(tower.wuxing) : false;
+  const key = tower ? tower.definitionId + "|" + String(tower.id) + "|" + String(tower.locked) + "|" + String(stored) + "|" + String(ctx.engine.isSynergyActive(tower.wuxing)) + "|" + branchKey + `|M${ctx.engine.state.mode}:S${tower.casualStar ?? 0}|C${concentration}:${concentrationPath ?? "none"}:D${duplicateCount}:E${ctx.engine.state.elementEssence[tower.wuxing]}|P${polarisActive ? 1 : 0}` : "none";
   if (key === ctx.selectedRenderKey) {
     if (tower && definition) syncSelectedCharge(card, tower, definition, chargeStep);
     return;
@@ -130,7 +131,7 @@ export function renderSelected(): void {
   if (!definition) return;
   const style = ELEMENT_STYLES[tower.wuxing];
   const concentrationDamage = 1 + concentration * (concentrationPath === "potent" ? 0.12 : 0.055);
-  const damage = Math.round(definition.combat.baseDamage * ctx.engine.towerPowerMultiplier(tower) * definition.combat.budgetMultiplier * (1 + ctx.engine.idiomBonus("damage")) * (1 + ctx.engine.combinedUpgradeBonus(tower.wuxing, "damage")) * concentrationDamage);
+  const damage = Math.round(definition.combat.baseDamage * ctx.engine.towerPowerMultiplier(tower) * definition.combat.budgetMultiplier * (1 + ctx.engine.idiomBonus("damage")) * (1 + ctx.engine.combinedUpgradeBonus(tower.wuxing, "damage")) * concentrationDamage * ctx.engine.casualPolarisDamageMultiplier(tower.wuxing));
   const range = definition.combat.range + ctx.engine.towerRangeBonus(tower) + ctx.engine.idiomBonus("range") + concentration * 4 + ctx.engine.combinedUpgradeBonus(tower.wuxing, "range");
   const attacksPerSecond = 1 / ctx.engine.towerAttackCooldown(tower);
   const learning = learningInfo(ctx.engine.state.region, tower.char);
@@ -173,6 +174,11 @@ export function renderSelected(): void {
     </div>
     <div class="selected-chips">
       ${stored ? '<span class="selected-chip is-stored">배치 대기 · 찬 칸을 누르면 즉시 교체</span>' : ""}
+      ${ctx.engine.state.mode === "casual" && casualStar >= CASUAL_POLARIS_AURA.star
+        ? `<span class="selected-chip selected-chip--polaris" title="${escapeHtml(CASUAL_POLARIS_AURA.description)}">${CASUAL_POLARIS_AURA.name} · ${CASUAL_POLARIS_AURA.summary} · 오라 중첩 불가</span>`
+        : polarisActive && !stored
+          ? `<span class="selected-chip selected-chip--polaris" title="${escapeHtml(CASUAL_POLARIS_AURA.description)}">${CASUAL_POLARIS_AURA.name} 오라 적용 중 · 공격 +${Math.round(CASUAL_POLARIS_AURA.damageBonus * 100)}%</span>`
+          : ""}
       <span class="selected-chip cleanup-reason ${cleanup?.protected ? "is-protected" : "is-candidate"}">${escapeHtml(cleanupLabel)}</span>
       <span class="selected-chip selected-chip--essence">${escapeHtml(concentrationStatus)}</span>
     </div>

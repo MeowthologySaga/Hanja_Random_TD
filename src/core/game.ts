@@ -21,6 +21,7 @@ import {
 } from "./content";
 import { hasActiveSkills } from "./abilities";
 import {
+  CASUAL_POLARIS_AURA,
   CASUAL_STAR_POWER,
   casualNaturalStar,
   casualStrokeCount
@@ -483,6 +484,8 @@ export class GameEngine {
   private readonly combatSynergies = new Set<Wuxing>();
   private readonly combatFormationBonuses = [0, 0, 0, 0, 0];
   private combatDistinctElements = 0;
+  /** FB7-8성: 이번 틱에 극성 개안 오라가 살아 있는 오행. 오행당 최대 1개. */
+  private readonly combatPolarisElements = new Set<Wuxing>();
 
   constructor(seed: string, region: RegionCode = "KR", mode: GameMode = "standard") {
     this.catalog = getCatalog(region);
@@ -712,9 +715,13 @@ export class GameEngine {
     const elements = new Set<Wuxing>();
     const formationMatches = [0, 0, 0, 0, 0];
     this.combatCharCounts.clear();
+    this.combatPolarisElements.clear();
     for (const tower of this.state.towers) {
       elements.add(tower.wuxing);
       this.combatCharCounts.set(tower.char, (this.combatCharCounts.get(tower.char) ?? 0) + 1);
+      if (this.state.mode === "casual" && (tower.casualStar ?? tower.naturalStar) === CASUAL_POLARIS_AURA.star) {
+        this.combatPolarisElements.add(tower.wuxing);
+      }
       const formationIndex = Math.floor(tower.cell / CELLS_PER_FORMATION);
       if (BOARD_FORMATIONS[formationIndex]?.preferredWuxing === tower.wuxing) formationMatches[formationIndex] = (formationMatches[formationIndex] ?? 0) + 1;
     }
@@ -864,6 +871,9 @@ export class GameEngine {
     // the free starting formation's map position from deciding a run before
     // the player can buy a second formation, then disappears after wave 10.
     if (this.state.wave <= 10 && towerFormationIndex === this.state.startingFormationIndex) damage *= 1.15;
+    // FB7-8성 「극성 개안」: 8★ 자령이 서 있는 오행의 아군 전체 공격 +15%.
+    // Set 기반이라 같은 오행 오라는 몇 기가 있어도 최대 1개만 산다.
+    if (this.combatPolarisElements.has(tower.wuxing)) damage *= 1 + CASUAL_POLARIS_AURA.damageBonus;
     if (synergy) damage *= 1 + GAME_CONFIG.synergyBonus + (profile.role === "support" ? 0.08 : 0);
     if (weakness) damage *= GAME_CONFIG.weaknessMultiplier;
     if (tower.wuxing === "火" && (target.boss || target.hp / target.maxHp <= 0.3)) {
@@ -2237,6 +2247,20 @@ export class GameEngine {
     return this.state.mode === "casual"
       ? CASUAL_STAR_POWER[tower.casualStar ?? tower.naturalStar ?? 1]
       : STAGE_MULTIPLIERS[tower.stage];
+  }
+
+  /**
+   * FB7-8성 「극성 개안」: 이 오행에 8★ 오라가 살아 있는가. 전장(towers)에
+   * 8★ 자령이 서 있으면 참이다 — 인벤토리 자령은 오라를 내지 않는다.
+   */
+  casualPolarisAuraActive(wuxing: Wuxing): boolean {
+    return this.state.mode === "casual"
+      && this.state.towers.some((tower) => (tower.casualStar ?? tower.naturalStar) === CASUAL_POLARIS_AURA.star && tower.wuxing === wuxing);
+  }
+
+  /** 극성 개안이 이 오행의 공격에 곱하는 배율. 오라가 없으면 1이다. */
+  casualPolarisDamageMultiplier(wuxing: Wuxing): number {
+    return this.casualPolarisAuraActive(wuxing) ? 1 + CASUAL_POLARIS_AURA.damageBonus : 1;
   }
 
   towerRangeBonus(tower: Tower): number {

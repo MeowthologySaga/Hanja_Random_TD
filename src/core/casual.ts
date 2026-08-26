@@ -75,6 +75,21 @@ export const CASUAL_STAR_POWER: Record<CasualStar, number> = Object.freeze({
   8: 6.7
 });
 
+/**
+ * FB7-8성 「극성 개안」 — 8★ 자령의 전용 오라.
+ *
+ * 별당 배율은 갈수록 줄어(×1.38 → ×1.25) 8★ 승급이 밋밋하다는 피드백.
+ * 8★ 자령이 전장에 서 있으면 같은 오행 아군 전체(자신 포함)의 공격이
+ * 15% 오른다. 같은 오행 오라는 중첩되지 않는다 — 오행당 최대 1개다.
+ */
+export const CASUAL_POLARIS_AURA = Object.freeze({
+  star: 8 as CasualStar,
+  damageBonus: 0.15,
+  name: "극성 개안",
+  summary: "같은 오행 아군 공격 +15%",
+  description: "8★ 극성 자령이 전장에 있으면 같은 오행 아군 전체의 공격이 15% 증가합니다. 같은 오행의 오라는 중첩되지 않습니다."
+});
+
 export const CASUAL_STAR_NAMES: Record<CasualStar, string> = Object.freeze({
   1: "일반",
   2: "숙련",
