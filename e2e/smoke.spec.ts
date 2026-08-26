@@ -118,7 +118,7 @@ test("freezes the opening until the first summon opens its matching formation", 
   await page.screenshot({ path: "artifacts/formation-coin-unlock-1280x720.png", fullPage: true });
 });
 
-test("runs the casual eight-star entry and readable KEEP-USE fusion workshop", async ({ page }) => {
+test("runs the casual eight-star entry and readable one-click promotion workshop", async ({ page }) => {
   await page.goto("/?seed=CASUAL-EIGHT-STAR-E2E");
   await expect(page.getByRole("radio", { name: /전략 조합전/ })).toBeChecked();
   await page.getByRole("radio", { name: /캐주얼 8성전/ }).click();
@@ -143,15 +143,18 @@ test("runs the casual eight-star entry and readable KEEP-USE fusion workshop", a
   await expect(page.locator(".game-shell")).toHaveAttribute("data-panel-tab", "evolution");
   await expect(page.locator("#standard-evolution-modes")).toBeHidden();
   await expect(page.locator("#casual-fusion-toolbar")).toBeVisible();
+  // 기본 뷰는 [한 번에 승급] + 그룹 카드. 수동 3슬롯은 접힘 안으로 내려갔다.
+  await expect(page.locator("#casual-fuse-all")).toBeVisible();
+  await page.locator("#casual-manual-details > summary").click();
+  await expect(page.locator("#casual-manual-details")).toHaveAttribute("open", "");
   await expect(page.locator(".casual-rarity-rule > i")).toHaveCount(8);
   await expect(page.locator(".casual-fusion-slot")).toHaveCount(3);
-  await expect(page.locator("#casual-auto-buttons > button")).toHaveCount(5);
   await expect(page.locator(".casual-fusion-tower")).toHaveCount(4);
   const eligibleKeeper = page.locator(".casual-fusion-tower:not(:disabled)").first();
   await expect(eligibleKeeper).toBeEnabled();
   const keeperChar = await eligibleKeeper.locator("b").first().innerText();
   await eligibleKeeper.click();
-  await expect(page.locator(".casual-fusion-slot.is-core")).toContainText("KEEP");
+  await expect(page.locator(".casual-fusion-slot.is-core")).toContainText("남길 자령");
   await expect(page.locator(".casual-fusion-slot.is-core")).toContainText(keeperChar);
   await expect(page.locator(".casual-fusion-slot.is-core .casual-fusion-slot-sprite")).toHaveCSS("background-image", /assets\/jaryeongs\//u);
   await expect(page.locator(".casual-fusion-result")).toContainText(keeperChar);

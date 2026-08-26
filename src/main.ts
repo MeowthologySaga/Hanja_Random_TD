@@ -311,8 +311,10 @@ app.innerHTML = `
             </div>
           </div>
           <section id="casual-fusion-toolbar" class="casual-fusion-toolbar" hidden>
-            <div class="casual-rule-copy"><b>속성별 안전 자동조합</b><span>잠금·농축·목표 자령은 보호합니다. 실행 전 KEEP 1기와 USE 2기를 모두 공개합니다.</span></div>
-            <div id="casual-auto-buttons" class="casual-auto-buttons" aria-label="오행별 자동조합"></div>
+            <button id="casual-fuse-all" class="casual-fuse-all" type="button">
+              <b>한 번에 승급</b><span id="casual-fuse-all-count">0회 가능</span>
+            </button>
+            <p id="casual-fuse-all-note" class="casual-fuse-all-note">같은 오행·같은 별 자령 3체를 자동으로 묶습니다. 잠금·농축·목표·사자성어 자령은 재료에서 빠집니다.</p>
           </section>
           <div id="evolution-options" class="evolution-options">
             <div class="empty-evolution"><b>재료를 모으는 중</b><span>목표 재료는 소환 확률이 서서히 보정됩니다.</span></div>
@@ -818,9 +820,8 @@ let concentrationPayment: "essence" | number = "essence";
 let growthElement: Wuxing = "木";
 const dismantleSelection = new Set<number>();
 let casualFusionSelection: number[] = [];
-type PendingCasualFusion =
-  | { kind: "manual"; coreId: number; materialIds: [number, number]; quote: CasualFusionQuote }
-  | { kind: "auto"; wuxing: Wuxing; groups: CasualAutoFusionGroup[] };
+let casualManualOpen = false;
+type PendingCasualFusion = { kind: "manual"; coreId: number; materialIds: [number, number]; quote: CasualFusionQuote };
 let pendingCasualFusion: PendingCasualFusion | null = null;
 let projectileSpriteDrawTotal = 0;
 let abilityZoneSpriteDrawTotal = 0;
@@ -2108,28 +2109,28 @@ function casualFusionReadyCount(towers: readonly Tower[]): number {
   return totalGroups;
 }
 
-function casualFusionTowerMarkup(tower: Tower, role: "core" | "material" | "candidate", disabled: boolean): string {
+function casualFusionTowerMarkup(tower: Tower, role: "core" | "material" | "candidate", disabled: boolean, badge: string | null = null): string {
   const star = casualStarOf(tower);
   const natural = tower.naturalStar ?? casualNaturalStar(tower.char) ?? star;
   const strokes = casualStrokeCount(tower.char);
   const selectedIndex = casualFusionSelection.indexOf(tower.id);
-  const selectedRole = selectedIndex === 0 ? "본체" : selectedIndex > 0 ? `재료 ${selectedIndex}` : "";
+  const selectedRole = selectedIndex === 0 ? "남길 자령" : selectedIndex > 0 ? `재료 ${selectedIndex}` : "";
   const location = tower.cell < 0 ? "인벤" : BOARD_FORMATIONS[Math.floor(tower.cell / CELLS_PER_FORMATION)]?.label ?? "전장";
   const visual = jaryeongVisualFor(tower.char, tower.wuxing, engine.state.region);
-  return `<button type="button" class="casual-fusion-tower ${selectedIndex >= 0 ? "is-selected" : ""} ${role === "core" ? "is-core" : role === "material" ? "is-material" : ""}" data-casual-fusion-tower="${tower.id}" style="--element:${ELEMENT_STYLES[tower.wuxing].color};--star:${CASUAL_STAR_COLORS[star]}" aria-pressed="${String(selectedIndex >= 0)}" ${disabled ? "disabled" : ""}>
+  return `<button type="button" class="casual-fusion-tower ${selectedIndex >= 0 ? "is-selected" : ""} ${badge ? "is-short" : ""} ${role === "core" ? "is-core" : role === "material" ? "is-material" : ""}" data-casual-fusion-tower="${tower.id}" style="--element:${ELEMENT_STYLES[tower.wuxing].color};--star:${CASUAL_STAR_COLORS[star]}" aria-pressed="${String(selectedIndex >= 0)}" ${disabled ? "disabled" : ""}>
     <i class="casual-fusion-sprite" style="${visualBackgroundStyle(visual)}" aria-hidden="true"></i>
     <b>${escapeHtml(tower.char)}</b>
     <span><strong>${tower.wuxing}행 · ${star}★ ${CASUAL_STAR_NAMES[star]}</strong><small>${strokes ?? "?"}획 · 기본 ${natural}★ · ${location}${tower.locked ? " · 鎖 잠금" : ""}</small></span>
-    <em>${selectedRole || (star >= 8 ? "최고" : "선택")}</em>
+    <em>${badge ? escapeHtml(badge) : selectedRole || (star >= 8 ? "최고" : "선택")}</em>
   </button>`;
 }
 
 function casualFusionSlotMarkup(tower: Tower | undefined, index: number): string {
   const core = index === 0;
-  const roleLabel = core ? "① 남길 본체" : `${index === 1 ? "②" : "③"} 소모 재료`;
+  const roleLabel = core ? "① 남길 자령" : `${index === 1 ? "②" : "③"} 재료`;
   if (!tower) {
     return `<button type="button" class="casual-fusion-slot ${core ? "is-core" : "is-material"}" data-casual-fusion-slot="${index}" disabled style="--element:#526274;--star:#526274" aria-label="${roleLabel} 미선택">
-      <span>${roleLabel}</span><b>＋</b><strong>${core ? "KEEP" : "USE"}</strong><small>${core ? "먼저 남길 자령 선택" : "같은 오행·같은 별 선택"}</small>
+      <span>${roleLabel}</span><b>＋</b><strong>${core ? "이 자령만 남습니다" : "소모됩니다"}</strong><small>${core ? "먼저 남길 자령 선택" : "같은 오행·같은 별 선택"}</small>
     </button>`;
   }
   const star = casualStarOf(tower);
@@ -2138,11 +2139,83 @@ function casualFusionSlotMarkup(tower: Tower | undefined, index: number): string
   const location = tower.cell < 0 ? "인벤" : BOARD_FORMATIONS[Math.floor(tower.cell / CELLS_PER_FORMATION)]?.label ?? "전장";
   const visual = jaryeongVisualFor(tower.char, tower.wuxing, engine.state.region);
   return `<button type="button" class="casual-fusion-slot is-filled ${core ? "is-core" : "is-material"}" data-casual-fusion-slot="${index}" style="--element:${ELEMENT_STYLES[tower.wuxing].color};--star:${CASUAL_STAR_COLORS[star]}" aria-label="${roleLabel} ${tower.char} 선택 해제">
-    <span>${roleLabel} <em>${core ? "KEEP" : "USE"}</em></span>
+    <span>${roleLabel} <em>${core ? "유지" : "소모"}</em></span>
     <i class="casual-fusion-slot-sprite" style="${visualBackgroundStyle(visual)}" aria-hidden="true"></i>
     <b>${escapeHtml(tower.char)}</b>
     <div><strong>${tower.wuxing}행 · 현재 ${star}★</strong><small>자연 ${natural}★ · ${strokes ?? "?"}획</small><small>${location}${tower.locked ? " · 鎖 잠금" : ""}</small></div>
   </button>`;
+}
+
+interface CasualFusionBucket {
+  wuxing: Wuxing;
+  star: CasualStar;
+  owned: Tower[];
+  groups: CasualAutoFusionGroup[];
+  shortReason: string | null;
+}
+
+/**
+ * 같은 오행·같은 별로 3체 이상 모인 묶음만 카드로 만든다. 승급이 안 되는
+ * 묶음(보호 재료가 많아 3체 미달)도 사유와 함께 남겨야 "왜 안 되지"가 사라진다.
+ */
+function casualFusionBuckets(allTowers: readonly Tower[], plans: ReadonlyMap<Wuxing, CasualAutoFusionGroup[]>): CasualFusionBucket[] {
+  const owned = new Map<string, Tower[]>();
+  for (const tower of allTowers) {
+    const star = casualStarOf(tower);
+    if (star >= 8) continue;
+    const key = `${tower.wuxing}:${star}`;
+    const list = owned.get(key) ?? [];
+    list.push(tower);
+    owned.set(key, list);
+  }
+  const buckets: CasualFusionBucket[] = [];
+  for (const wuxing of WUXING_ORDER) {
+    for (let star = 1 as CasualStar; star <= 7; star = (star + 1) as CasualStar) {
+      const list = owned.get(`${wuxing}:${star}`) ?? [];
+      if (list.length < 3) continue;
+      const groups = (plans.get(wuxing) ?? []).filter((group) => group.fromStar === star);
+      let shortReason: string | null = null;
+      if (groups.length === 0) {
+        const protections = list.map((tower) => engine.casualMaterialProtection(tower.id)).filter((reason): reason is string => reason !== null);
+        const safe = list.length - protections.length;
+        const top = [...new Set(protections)].slice(0, 2).join(" · ");
+        shortReason = `${top || "보호"} 보호로 재료 ${safe}/2 부족 — 같은 별 1기를 더 모으세요`;
+      }
+      buckets.push({ wuxing, star, owned: list, groups, shortReason });
+    }
+  }
+  return buckets;
+}
+
+function casualGroupCardMarkup(bucket: CasualFusionBucket, allTowers: readonly Tower[], active: boolean): string {
+  const style = `--element:${ELEMENT_STYLES[bucket.wuxing].color};--star:${CASUAL_STAR_COLORS[bucket.star]}`;
+  const next = Math.min(8, bucket.star + 1) as CasualStar;
+  const headline = `${bucket.star}★ ×${bucket.owned.length} → ${next}★`;
+  if (bucket.shortReason) {
+    return `<article class="casual-group-card is-blocked" style="${style}">
+      <i class="casual-group-glyph" aria-hidden="true">${bucket.wuxing}</i>
+      <div class="casual-group-body"><b>${headline} 승급 불가</b><small>${escapeHtml(bucket.shortReason)}</small></div>
+      <span class="casual-group-run is-disabled">보호 중</span>
+    </article>`;
+  }
+  const first = bucket.groups[0];
+  const core = allTowers.find((tower) => tower.id === first?.coreId);
+  const materials = (first?.materialIds ?? []).map((id) => allTowers.find((tower) => tower.id === id)).filter((tower): tower is Tower => Boolean(tower));
+  const boardMaterials = bucket.groups.flatMap((group) => group.materialIds)
+    .map((id) => allTowers.find((tower) => tower.id === id))
+    .filter((tower): tower is Tower => tower !== undefined && tower.cell >= 0).length;
+  const keepLine = core ? `본체 ${escapeHtml(core.char)}ㆍ${core.cell >= 0 ? "전장 유지" : "인벤 보관"}` : "본체 확인 중";
+  const useLine = materials.length > 0 ? ` · 소모 ${materials.map((tower) => escapeHtml(tower.char)).join("·")}` : "";
+  const more = bucket.groups.length > 1 ? ` · 외 ${bucket.groups.length - 1}묶음` : "";
+  return `<article class="casual-group-card" style="${style}">
+    <i class="casual-group-glyph" aria-hidden="true">${bucket.wuxing}</i>
+    <div class="casual-group-body">
+      <b>${headline} 승급 ${bucket.groups.length}회</b>
+      <small>${keepLine}${useLine}${more}</small>
+      ${boardMaterials > 0 ? `<em class="casual-group-badge">전장 ${boardMaterials}기 소모</em>` : ""}
+    </div>
+    <button type="button" class="casual-group-run" data-casual-group="${bucket.wuxing}:${bucket.star}" ${active ? "" : "disabled"}>승급</button>
+  </article>`;
 }
 
 function renderCasualFusion(): void {
@@ -2175,10 +2248,16 @@ function renderCasualFusion(): void {
   evolveButton.classList.toggle("has-ready", readyCount > 0);
   const container = must<HTMLElement>("#evolution-options");
   container.classList.add("is-casual");
-  must<HTMLElement>("#casual-auto-buttons").innerHTML = WUXING_ORDER.map((wuxing) => {
-    const groups = plans.get(wuxing) ?? [];
-    return `<button type="button" data-casual-auto="${wuxing}" style="--element:${ELEMENT_STYLES[wuxing].color}" ${!active || groups.length === 0 ? "disabled" : ""}><b>${wuxing}</b><span>자동조합</span><em>${groups.length}회</em></button>`;
-  }).join("");
+  const buckets = casualFusionBuckets(allTowers, plans);
+  const totalGroups = [...plans.values()].reduce((sum, groups) => sum + groups.length, 0);
+  const fuseAllButton = must<HTMLButtonElement>("#casual-fuse-all");
+  fuseAllButton.disabled = !active || totalGroups === 0;
+  must<HTMLElement>("#casual-fuse-all-count").textContent = totalGroups > 0 ? `${totalGroups}회 가능` : "지금은 0회";
+  must<HTMLElement>("#casual-fuse-all-note").textContent = totalGroups > 0
+    ? "잠금·농축·목표·사자성어 자령은 재료에서 빠집니다. 인벤토리 자령을 먼저 씁니다."
+    : buckets.some((bucket) => bucket.shortReason !== null)
+      ? "3체는 모였지만 보호 자령이 많아 재료가 부족합니다. 아래 카드에서 사유를 확인하세요."
+      : "같은 오행·같은 별 자령이 3체 모이면 여기서 한 번에 승급합니다.";
   if (key === evolutionRenderKey) return;
   evolutionRenderKey = key;
 
@@ -2190,37 +2269,58 @@ function renderCasualFusion(): void {
       return tower.wuxing === core.wuxing && casualStarOf(tower) === casualStarOf(core);
     })
     .sort((left, right) => Number(selectedIds.has(right.id)) - Number(selectedIds.has(left.id)) || casualStarOf(right) - casualStarOf(left) || left.wuxing.localeCompare(right.wuxing) || left.id - right.id);
+  // 요구 1 해소: 같은 오행·별로 3체가 안 모인 자령은 고르기 전에 흐리게 표시한다.
+  const bucketSize = new Map<string, number>();
+  for (const tower of allTowers) {
+    const key = `${tower.wuxing}:${casualStarOf(tower)}`;
+    bucketSize.set(key, (bucketSize.get(key) ?? 0) + 1);
+  }
   const candidateMarkup = candidates.length > 0 ? candidates.map((tower) => {
     const selectionIndex = casualFusionSelection.indexOf(tower.id);
     const role = selectionIndex === 0 ? "core" : selectionIndex > 0 ? "material" : "candidate";
     const incompatible = Boolean(core) && selectionIndex < 0 && (tower.wuxing !== core?.wuxing || casualStarOf(tower) !== casualStarOf(core));
+    const star = casualStarOf(tower);
+    const tooFew = selectionIndex < 0 && star < 8 && (bucketSize.get(`${tower.wuxing}:${star}`) ?? 0) < 3;
+    // 요구 4-(라): 보호 자령은 재료 선택 단계에서 아예 못 고르게 하고 사유를 붙인다.
+    const protection = selectionIndex < 0 && casualFusionSelection.length > 0 ? engine.casualMaterialProtection(tower.id) : null;
+    const badge = selectionIndex >= 0 ? null : protection ?? (tooFew ? "3체 미달" : null);
     const disabled = !active
       || casualFusionSelection.length >= 3 && selectionIndex < 0
-      || selectionIndex < 0 && casualFusionSelection.length > 0 && tower.locked
+      || protection !== null
       || selectionIndex < 0 && incompatible
-      || !core && casualStarOf(tower) >= 8;
-    return casualFusionTowerMarkup(tower, role, disabled);
+      || !core && (star >= 8 || tooFew);
+    return casualFusionTowerMarkup(tower, role, disabled, badge);
   }).join("") : `<div class="empty-evolution"><b>소환한 자령이 없습니다</b><span>상점에서 첫 자령을 소환하면 획수에 따른 기본 별이 표시됩니다.</span></div>`;
   const status = quote?.blocked.length
     ? `<p class="casual-fusion-status is-blocked"><b>조합 불가</b><span>${quote.blocked.map((issue) => escapeHtml(issue.text)).join(" · ")}</span></p>`
     : quote
-      ? `<p class="casual-fusion-status ${quote.warnings.length > 0 ? "has-warning" : "is-ready"}"><b>${quote.fromStar}★ → ${quote.toStar}★ 준비</b><span>${quote.warnings.length > 0 ? `${quote.warnings.length}개 보호 경고를 확인하세요.` : "두 재료만 소모되고 본체·잠금·배치는 유지됩니다."}</span></p>`
-      : `<p class="casual-fusion-status"><b>${selectedTowers.length}/3 선택</b><span>${selectedTowers.length === 0 ? "남길 본체부터 선택하세요." : "같은 오행·같은 현재 별 재료를 고르세요."}</span></p>`;
+      ? `<p class="casual-fusion-status ${quote.warnings.length > 0 ? "has-warning" : "is-ready"}"><b>${quote.fromStar}★ → ${quote.toStar}★ 준비</b><span>${quote.warnings.length > 0 ? `${quote.warnings.length}개 보호 경고를 확인하세요.` : "두 재료만 소모되고 남길 자령의 잠금·배치는 유지됩니다."}</span></p>`
+      : `<p class="casual-fusion-status"><b>${selectedTowers.length}/3 선택</b><span>${selectedTowers.length === 0 ? "남길 자령부터 선택하세요." : "같은 오행·같은 현재 별 재료를 고르세요."}</span></p>`;
   const selectedStar = core ? casualStarOf(core) : null;
+  const groupCards = buckets.map((bucket) => casualGroupCardMarkup(bucket, allTowers, active)).join("");
+  const emptyState = `<div class="casual-group-empty">
+    <b>같은 오행·같은 별 자령이 3체 모이면 여기서 한 번에 승급합니다</b>
+    <span>상점에서 소환을 계속하세요.</span>
+    <button type="button" id="casual-goto-shop" class="casual-goto-shop">상점으로</button>
+  </div>`;
   container.innerHTML = `
-    <div class="casual-rarity-rule"><span><b>획수 기본 별</b><small>실제 Unicode kTotalStrokes</small></span>${([1, 2, 3, 4, 5, 6, 7, 8] as CasualStar[]).map((star) => `<i style="--star:${CASUAL_STAR_COLORS[star]}"><b>${star}★</b><small>${casualStarRangeLabel(star)}</small></i>`).join("")}</div>
-    <div class="casual-fusion-slots">${slotMarkup}<i aria-hidden="true">→</i><div class="casual-fusion-result" style="--star:${selectedStar ? CASUAL_STAR_COLORS[Math.min(8, selectedStar + 1) as CasualStar] : "#526274"}"><span>승급 결과</span><b>${core ? escapeHtml(core.char) : "?"}</b><strong${core ? "" : ` class="is-placeholder"`}>${core ? `${Math.min(8, selectedStar as number + 1)}★` : "별 미정 — 본체를 먼저 선택"}</strong><small>${core ? `피해 ×${CASUAL_STAR_POWER[Math.min(8, selectedStar as number + 1) as CasualStar].toFixed(2)} · 본체 유지` : "본체 선택 필요"}</small></div></div>
-    ${status}
-    <button id="casual-fusion-review" class="workbench-primary casual-fusion-review" type="button" ${!quote || quote.blocked.length > 0 ? "disabled" : ""}>소모 목록 확인 후 ${quote?.toStar ?? "?"}★ 조합</button>
-    <div class="casual-candidate-heading"><div><b>보유 자령</b><small>${core ? `${core.wuxing}행 ${casualStarOf(core)}★만 표시` : "본체를 고르면 맞는 재료만 남습니다"}</small></div><em>잠금: 본체 우선 · 재료 제외</em></div>
-    <div class="casual-fusion-candidates">${candidateMarkup}</div>`;
+    <div class="casual-group-list">${groupCards || emptyState}</div>
+    <details class="casual-manual" id="casual-manual-details"${casualManualOpen ? " open" : ""}>
+      <summary><b>직접 고르기</b><small>남길 자령 1기와 재료 2기를 손으로 지정합니다</small></summary>
+      <div class="casual-rarity-rule"><span><b>획수 기본 별</b><small>실제 Unicode kTotalStrokes</small></span>${([1, 2, 3, 4, 5, 6, 7, 8] as CasualStar[]).map((star) => `<i style="--star:${CASUAL_STAR_COLORS[star]}"><b>${star}★</b><small>${casualStarRangeLabel(star)}</small></i>`).join("")}</div>
+      <div class="casual-fusion-slots">${slotMarkup}<i aria-hidden="true">→</i><div class="casual-fusion-result" style="--star:${selectedStar ? CASUAL_STAR_COLORS[Math.min(8, selectedStar + 1) as CasualStar] : "#526274"}"><span>승급 결과</span><b>${core ? escapeHtml(core.char) : "?"}</b><strong${core ? "" : ` class="is-placeholder"`}>${core ? `${Math.min(8, selectedStar as number + 1)}★` : "별 미정 — 남길 자령을 먼저 선택"}</strong><small>${core ? `피해 ×${CASUAL_STAR_POWER[Math.min(8, selectedStar as number + 1) as CasualStar].toFixed(2)} · 본체 유지` : "남길 자령 선택 필요"}</small></div></div>
+      ${status}
+      <button id="casual-fusion-review" class="workbench-primary casual-fusion-review" type="button" ${!quote || quote.blocked.length > 0 ? "disabled" : ""}>소모 목록 확인 후 ${quote?.toStar ?? "?"}★ 조합</button>
+      <div class="casual-candidate-heading"><div><b>보유 자령</b><small>${core ? `${core.wuxing}행 ${casualStarOf(core)}★만 표시` : "3체가 모인 자령만 고를 수 있습니다"}</small></div><em>잠금·농축·목표·성어는 재료 제외</em></div>
+      <div class="casual-fusion-candidates">${candidateMarkup}</div>
+    </details>`;
 }
 
 function casualConfirmTowerRow(tower: Tower, role: "core" | "material"): string {
   const star = casualStarOf(tower);
   const strokes = casualStrokeCount(tower.char);
   const visual = jaryeongVisualFor(tower.char, tower.wuxing, engine.state.region);
-  return `<article class="casual-confirm-tower ${role === "core" ? "is-core" : "is-material"}" style="--element:${ELEMENT_STYLES[tower.wuxing].color};--star:${CASUAL_STAR_COLORS[star]}"><i class="casual-confirm-sprite" style="${visualBackgroundStyle(visual)}" aria-hidden="true"></i><b>${escapeHtml(tower.char)}</b><span><strong>${role === "core" ? "유지 · 승급 본체" : "소모 · 복구 불가"}</strong><small>${tower.wuxing}행 · ${star}★ · ${strokes ?? "?"}획 · ${tower.cell < 0 ? "인벤" : "전장"}${tower.locked ? " · 잠금" : ""}</small></span><em>${role === "core" ? "KEEP" : "USE"}</em></article>`;
+  return `<article class="casual-confirm-tower ${role === "core" ? "is-core" : "is-material"}" style="--element:${ELEMENT_STYLES[tower.wuxing].color};--star:${CASUAL_STAR_COLORS[star]}"><i class="casual-confirm-sprite" style="${visualBackgroundStyle(visual)}" aria-hidden="true"></i><b>${escapeHtml(tower.char)}</b><span><strong>${role === "core" ? "유지 · 승급 본체" : "소모 · 복구 불가"}</strong><small>${tower.wuxing}행 · ${star}★ · ${strokes ?? "?"}획 · ${tower.cell < 0 ? "인벤" : "전장"}${tower.locked ? " · 잠금" : ""}</small></span><em>${role === "core" ? "유지" : "소모"}</em></article>`;
 }
 
 function openCasualManualReview(): void {
@@ -2246,26 +2346,19 @@ function openCasualManualReview(): void {
   casualFusionConfirmDialog.showModal();
 }
 
-function openCasualAutoReview(wuxing: Wuxing): void {
-  const groups = engine.casualAutoFusionPlan(wuxing);
-  if (groups.length === 0) {
-    showToast(`${wuxing}행 인벤토리에 안전한 자동조합 묶음이 없습니다.`, true);
-    return;
-  }
-  pendingCasualFusion = { kind: "auto", wuxing, groups };
-  const all = [...engine.state.towers, ...engine.state.inventoryTowers];
-  const warningTexts = [...new Set(groups.flatMap((group) => group.warnings.map((warning) => warning.text)))];
-  must<HTMLElement>("#casual-fusion-confirm-title").textContent = `${wuxing}행 자동조합 ${groups.length}회`;
-  must<HTMLElement>("#casual-fusion-confirm-content").innerHTML = `
-    <section class="casual-confirm-summary"><b>전장·인벤토리에서 ${groups.length * 2}기를 소모합니다</b><span>잠금·농축·현재 목표·성어·즉시 일반 합성 재료는 자동 소모에서 제외했습니다. 인벤토리의 약한 재료를 먼저 쓰고, 전장 재료가 포함되면 아래에 경고합니다. 이번 미리보기는 연쇄 승급하지 않습니다.</span></section>
-    <div class="casual-auto-preview">${groups.map((group, index) => {
-      const core = all.find((tower) => tower.id === group.coreId);
-      const materials = group.materialIds.map((id) => all.find((tower) => tower.id === id)).filter((tower): tower is Tower => Boolean(tower));
-      return `<article><em>${index + 1}</em><b>${core ? escapeHtml(core.char) : "?"}</b><span>${materials.map((tower) => escapeHtml(tower.char)).join(" + ")} <i>소모</i></span><strong>${group.fromStar}★→${group.toStar}★</strong></article>`;
-    }).join("")}</div>
-    ${warningTexts.length > 0 ? `<section class="casual-confirm-warnings"><b>마지막 보유 등 확인 ${warningTexts.length}개</b><ul>${warningTexts.map((warning) => `<li>${escapeHtml(warning)}</li>`).join("")}</ul></section>` : `<p class="casual-confirm-safe">보호 충돌이 없습니다.</p>`}`;
-  must<HTMLButtonElement>("#casual-fusion-execute").textContent = `${groups.length * 2}기 소모 · ${groups.length}회 자동조합`;
-  casualFusionConfirmDialog.showModal();
+/**
+ * 그룹 카드·[한 번에 승급]의 원클릭 실행. 확인 모달을 거치지 않는 대신
+ * 결과(승급 횟수·소모 자령·건너뛴 묶음)를 토스트로 반드시 가시화한다.
+ */
+function runCasualAutoFusion(scope: Wuxing | "all", star: CasualStar | null): void {
+  sound.unlock();
+  // 카드 한 장은 사용자가 배지까지 보고 누른 것이므로 전장 재료도 실행한다.
+  // [한 번에 승급] 은 전 오행 일괄이라 전장 재료 묶음을 건너뛴다.
+  const report = engine.autoFuseCasual(scope, star !== null, star);
+  casualFusionSelection = [];
+  evolutionRenderKey = "";
+  handleAction(report);
+  if (report.ok) setPanelTab("evolution");
 }
 
 function closeCasualFusionReview(): void {
@@ -2863,7 +2956,7 @@ function renderCodexDetail(definition: HanziDefinition | undefined): void {
     ? `${naturalStar}★ · ${casualStrokeCount(definition.char) ?? "?"}획 · ${casualStarRangeLabel(naturalStar)}`
     : `${synthesisDepth}단 · ${STAGE_NAMES[definition.stage]}`;
   const recipeMain = engine.state.mode === "casual"
-    ? `<div class="recipe-guide-main"><span><b>${definition.wuxing}</b><small>${naturalStar}★ 본체</small></span><em>+</em><span><b>${definition.wuxing}</b><small>${naturalStar}★ 재료</small></span><em>+</em><span><b>${definition.wuxing}</b><small>${naturalStar}★ 재료</small></span><em>→</em><span class="is-result"><b>${Math.min(8, naturalStar + 1)}★</b><small>본체 유지</small></span></div><p><b>안전 규칙</b> 잠금 자령은 재료에서 제외되고, KEEP 1기와 USE 2기를 미리 확인한 뒤 합성합니다.</p>`
+    ? `<div class="recipe-guide-main"><span><b>${definition.wuxing}</b><small>${naturalStar}★ 본체</small></span><em>+</em><span><b>${definition.wuxing}</b><small>${naturalStar}★ 재료</small></span><em>+</em><span><b>${definition.wuxing}</b><small>${naturalStar}★ 재료</small></span><em>→</em><span class="is-result"><b>${Math.min(8, naturalStar + 1)}★</b><small>본체 유지</small></span></div><p><b>안전 규칙</b> 잠금·농축·목표·사자성어 자령은 재료에서 빠지고, 남길 자령 1기와 재료 2기를 카드에 미리 보여 준 뒤 승급합니다.</p>`
     : `<div class="recipe-guide-main">${definition.acquisition === "direct"
       ? `<span class="${independent ? "is-independent" : ""}"><b>${definition.char}</b><small>${independent ? "직접 소환 · 독립" : "직접 소환 · 상위 재료"}</small></span>`
       : `${definition.parents.map((parent) => `<span><b>${parent}</b><small>${escapeHtml(learningInfo(engine.state.region, parent).short)}</small></span>`).join("<em>+</em>")}<em>→</em><span class="is-result"><b>${definition.char}</b><small>${escapeHtml(learning.short)}</small></span>`}</div>
@@ -4926,12 +5019,16 @@ must<HTMLElement>("#evolution-options").addEventListener("click", (event) => {
       const tower = [...engine.state.towers, ...engine.state.inventoryTowers].find((candidate) => candidate.id === id);
       const core = [...engine.state.towers, ...engine.state.inventoryTowers].find((candidate) => candidate.id === casualFusionSelection[0]);
       if (!tower || casualFusionSelection.length >= 3) return;
-      if (casualFusionSelection.length > 0 && tower.locked) {
-        showToast("잠금 자령은 소모 재료가 될 수 없습니다. 본체로 먼저 선택하세요.", true);
-        return;
+      if (casualFusionSelection.length > 0) {
+        // 모달까지 가서야 알게 되는 일이 없도록 그 자리에서 사유를 말한다.
+        const protection = engine.casualMaterialProtection(tower.id);
+        if (protection) {
+          showToast(`${tower.char}은 재료로 쓸 수 없습니다 · ${protection}`, true);
+          return;
+        }
       }
       if (core && (tower.wuxing !== core.wuxing || casualStarOf(tower) !== casualStarOf(core))) {
-        showToast(`본체와 같은 ${core.wuxing}행 ${casualStarOf(core)}★ 자령을 선택하세요.`, true);
+        showToast(`남길 자령과 같은 ${core.wuxing}행 ${casualStarOf(core)}★ 자령을 선택하세요.`, true);
         return;
       }
       casualFusionSelection.push(id);
@@ -4952,13 +5049,24 @@ must<HTMLElement>("#evolution-options").addEventListener("click", (event) => {
     openCasualManualReview();
     return;
   }
+  const groupButton = target.closest<HTMLButtonElement>("[data-casual-group]");
+  if (groupButton?.dataset.casualGroup) {
+    const [wuxing, star] = groupButton.dataset.casualGroup.split(":");
+    if (wuxing) runCasualAutoFusion(wuxing as Wuxing, Number(star) as CasualStar);
+    return;
+  }
+  if (target.closest("#casual-goto-shop")) {
+    setPanelTab("shop");
+    return;
+  }
   const button = target.closest<HTMLButtonElement>("[data-recipe]");
   if (button?.dataset.recipe) handleAction(engine.evolve(button.dataset.recipe));
 });
-must<HTMLElement>("#casual-auto-buttons").addEventListener("click", (event) => {
-  const wuxing = (event.target as HTMLElement).closest<HTMLButtonElement>("[data-casual-auto]")?.dataset.casualAuto as Wuxing | undefined;
-  if (wuxing) openCasualAutoReview(wuxing);
-});
+must<HTMLElement>("#evolution-options").addEventListener("toggle", (event) => {
+  const details = event.target as HTMLElement;
+  if (details instanceof HTMLDetailsElement && details.id === "casual-manual-details") casualManualOpen = details.open;
+}, true);
+must<HTMLButtonElement>("#casual-fuse-all").addEventListener("click", () => runCasualAutoFusion("all", null));
 must<HTMLElement>("#evolution-options").addEventListener("pointerover", (event) => {
   hoveredRecipeId = (event.target as HTMLElement).closest<HTMLButtonElement>("[data-recipe]")?.dataset.recipe ?? null;
 });
@@ -4997,9 +5105,7 @@ must<HTMLButtonElement>("#casual-fusion-execute").addEventListener("click", () =
   const pending = pendingCasualFusion;
   if (!pending) return;
   sound.unlock();
-  const result = pending.kind === "manual"
-    ? engine.fuseCasual(pending.coreId, pending.materialIds, true)
-    : engine.autoFuseCasualElement(pending.wuxing, true);
+  const result = engine.fuseCasual(pending.coreId, pending.materialIds, true);
   if (result.ok) casualFusionSelection = [];
   closeCasualFusionReview();
   evolutionRenderKey = "";

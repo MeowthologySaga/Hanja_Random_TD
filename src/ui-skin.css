@@ -7739,3 +7739,253 @@ span.codex-jaryeong-category { color: #4a3f30 !important; }
 
 /* 3D 모드에서는 61절이 `.s00-env` 를 통째로 숨기지만, 새 묶음 상자도 함께 끈다. */
 .s00-stage.is-3d .s00-parallax { display: none; }
+
+/* ══════════════════════════════════════════════════════════════════
+   84. 캐주얼 3체 조합 v2 — 위계 뒤집기
+   "3개 고르다 보면 재료 부족인 애를 고르게 된다"는 지적에 따라
+   [한 번에 승급] · 그룹 카드가 기본이고 수동 3슬롯은 접힘으로 내려갔다.
+   ══════════════════════════════════════════════════════════════════ */
+
+/* ── 84-A. [한 번에 승급] 대형 금박 버튼 ────────────────────────── */
+.casual-fuse-all {
+  display: grid;
+  align-content: center;
+  gap: 1px;
+  min-height: 46px;
+  padding: 5px 10px;
+  color: #2b2009 !important;
+  text-align: left;
+  border: 0 !important;
+  border-radius: var(--r-sm, 6px);
+  background: var(--mat-brass) !important;
+  box-shadow: var(--bevel-up), var(--lift-1) !important;
+  cursor: pointer;
+}
+
+.casual-fuse-all b { color: #2b2009 !important; font-size: 15px !important; letter-spacing: -0.02em; }
+.casual-fuse-all span { color: #4a3411 !important; font-size: 11.5px !important; font-weight: 800; }
+.casual-fuse-all:hover:not(:disabled) { background: var(--mat-brass-hot) !important; }
+
+.casual-fuse-all:disabled {
+  color: #5f5341 !important;
+  background: linear-gradient(180deg, #d6c9a8 0%, #c4b491 100%) !important;
+  box-shadow: inset 0 0 0 1px rgba(122, 90, 42, 0.26) !important;
+  cursor: default;
+}
+
+.casual-fuse-all:disabled b,
+.casual-fuse-all:disabled span { color: #5f5341 !important; }
+
+.casual-fuse-all-note {
+  margin: 0;
+  color: #4a3f30 !important;
+  font-size: 11px !important;
+  line-height: 1.35;
+}
+
+/* ── 84-B. 승급 가능 그룹 카드 ───────────────────────────────────── */
+.casual-group-list { display: grid; gap: 5px; margin-bottom: 8px; }
+
+.casual-group-card {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  min-height: 52px;
+  padding: 5px 7px;
+  border: 0;
+  border-radius: var(--r-sm, 6px);
+  background: linear-gradient(180deg, #f2e8cd 0%, #e2d4b2 100%);
+  box-shadow: var(--bevel-up), 0 0 0 1px rgba(122, 90, 42, 0.3), inset 4px 0 0 var(--element, #b8934a);
+}
+
+.casual-group-glyph {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  color: color-mix(in srgb, var(--element, #b8934a) 55%, #241c0e);
+  border-radius: 4px;
+  background:
+    radial-gradient(circle at 50% 34%, color-mix(in srgb, var(--element, #b8934a) 24%, transparent), transparent 72%),
+    linear-gradient(180deg, #cdbb92 0%, #ded1b0 100%);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--element, #b8934a) 40%, rgba(122, 90, 42, 0.4));
+  font-size: 20px;
+  font-style: normal;
+  font-weight: 900;
+}
+
+.casual-group-body { display: grid; gap: 2px; min-width: 0; }
+.casual-group-body b { color: #2e2212; font-size: 13px; letter-spacing: -0.02em; }
+.casual-group-body small { overflow: hidden; color: #6d5a3c; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+
+.casual-group-badge {
+  justify-self: start;
+  margin-top: 1px;
+  padding: 1px 6px;
+  color: #7d4f0d;
+  border-radius: 999px;
+  background: rgba(169, 112, 28, 0.16);
+  box-shadow: inset 0 0 0 1px rgba(169, 112, 28, 0.42);
+  font-size: 10.5px;
+  font-style: normal;
+  font-weight: 900;
+}
+
+.casual-group-run {
+  min-width: 62px;
+  min-height: 34px;
+  padding: 4px 11px;
+  color: #2b2009;
+  border: 0;
+  border-radius: var(--r-sm, 6px);
+  background: var(--mat-brass);
+  box-shadow: var(--bevel-up), var(--lift-1);
+  font-size: 12.5px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.casual-group-run:hover:not(:disabled) { background: var(--mat-brass-hot); }
+
+.casual-group-run:disabled,
+.casual-group-run.is-disabled {
+  display: grid;
+  place-items: center;
+  color: #5f5341;
+  background: linear-gradient(180deg, #d6c9a8 0%, #c4b491 100%);
+  box-shadow: inset 0 0 0 1px rgba(122, 90, 42, 0.26);
+  cursor: default;
+}
+
+/* 보호로 3체가 안 되는 묶음은 인주 왼줄로 "지금은 못 한다"를 먼저 말한다 */
+.casual-group-card.is-blocked {
+  box-shadow: var(--bevel-up), 0 0 0 1px rgba(122, 90, 42, 0.3), inset 4px 0 0 var(--seal, #8e2a1e);
+}
+
+.casual-group-card.is-blocked .casual-group-body b { color: #8e2a1e; }
+.casual-group-card.is-blocked .casual-group-body small { white-space: normal; }
+
+/* ── 84-C. 빈 상태 ──────────────────────────────────────────────── */
+.casual-group-empty {
+  display: grid;
+  justify-items: start;
+  gap: 5px;
+  padding: 13px 12px;
+  border-radius: var(--r-sm, 6px);
+  background: linear-gradient(180deg, #f2e8cd 0%, #e2d4b2 100%);
+  box-shadow: var(--bevel-up), 0 0 0 1px rgba(122, 90, 42, 0.3);
+}
+
+.casual-group-empty b { color: #2e2212; font-size: 13px; line-height: 1.4; }
+.casual-group-empty span { color: #6d5a3c; font-size: 11.5px; }
+
+.casual-goto-shop {
+  min-height: 32px;
+  margin-top: 2px;
+  padding: 4px 14px;
+  color: #2b2009;
+  border: 0;
+  border-radius: var(--r-sm, 6px);
+  background: var(--mat-brass);
+  box-shadow: var(--bevel-up), var(--lift-1);
+  font-size: 12px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.casual-goto-shop:hover { background: var(--mat-brass-hot); }
+
+/* ── 84-D. [직접 고르기] 접힘 섹션 ──────────────────────────────── */
+.casual-manual {
+  border-radius: var(--r-sm, 6px);
+  background: linear-gradient(180deg, #efe4c6 0%, #e0d1ac 100%);
+  box-shadow: inset 0 0 0 1px rgba(122, 90, 42, 0.28);
+}
+
+.casual-manual > summary {
+  display: grid;
+  align-content: center;
+  gap: 1px;
+  min-height: 42px;
+  padding: 5px 10px 5px 26px;
+  border-radius: var(--r-sm, 6px);
+  cursor: pointer;
+  list-style: none;
+}
+
+.casual-manual > summary::-webkit-details-marker { display: none; }
+
+.casual-manual > summary::before {
+  position: absolute;
+  margin-left: -17px;
+  color: #7a5a2a;
+  font-size: 11px;
+  content: "▸";
+}
+
+.casual-manual[open] > summary::before { content: "▾"; }
+.casual-manual > summary b { color: #2e2212; font-size: 12.5px; }
+.casual-manual > summary small { color: #6d5a3c; font-size: 11px; }
+.casual-manual > summary:hover { background: linear-gradient(180deg, #f7edd3 0%, #e8dab6 100%); }
+.casual-manual[open] > summary { box-shadow: inset 0 -1px 0 rgba(122, 90, 42, 0.28); }
+.casual-manual > *:not(summary) { margin-left: 7px; margin-right: 7px; }
+.casual-manual > .casual-rarity-rule { margin-top: 7px; }
+.casual-manual > .casual-fusion-candidates { padding-bottom: 8px; }
+
+/* 3체 미달·보호 사유 뱃지 — 후보 카드 오른쪽 끝 */
+.evolution-options .casual-fusion-tower.is-short > em {
+  max-width: 76px;
+  padding: 1px 5px;
+  color: #8e2a1e !important;
+  border-radius: 999px;
+  background: rgba(142, 42, 30, 0.13);
+  box-shadow: inset 0 0 0 1px rgba(142, 42, 30, 0.35);
+  font-size: 10px !important;
+  line-height: 1.25;
+  text-align: center;
+  white-space: normal;
+}
+
+/* ── 84-E. 위계 교정 — styles.css 7901절이 툴바를 `order:3` 으로 맨 아래에
+   내려 두었다. v2 에서는 [한 번에 승급] 이 첫 화면 맨 위여야 한다. ────── */
+.game-shell[data-game-mode="casual"][data-panel-tab="evolution"] .casual-fusion-toolbar {
+  order: 0 !important;
+  flex: 0 0 auto !important;
+  grid-template-columns: minmax(206px, 0.85fr) minmax(0, 1.5fr) !important;
+  margin: 0 0 7px !important;
+  padding: 6px 8px !important;
+  border-radius: var(--r-sm, 6px) !important;
+}
+
+.game-shell[data-game-mode="casual"][data-panel-tab="evolution"] .evolution-options { order: 1; }
+
+/* 대형 버튼은 "여기를 누르면 된다"가 한눈에 보여야 한다 */
+.casual-fuse-all {
+  box-shadow: var(--bevel-up), var(--lift-1), 0 0 0 2px var(--gold-400, #d9b463) !important;
+}
+
+.casual-fuse-all:disabled {
+  box-shadow: inset 0 0 0 1px rgba(122, 90, 42, 0.26) !important;
+}
+
+.casual-group-run { box-shadow: var(--bevel-up), var(--lift-1), 0 0 0 1px rgba(122, 90, 42, 0.4); }
+
+/* 좁은 폭: 안내문은 접고 버튼만 남긴다(styles.css 가 .casual-rule-copy 에
+   대해 하던 처리를 새 요소에 옮긴 것). */
+@media (max-width: 1180px), (max-height: 700px) {
+  .game-shell[data-game-mode="casual"][data-panel-tab="evolution"] .casual-fusion-toolbar {
+    grid-template-columns: 1fr !important;
+  }
+
+  .casual-fuse-all-note { display: none; }
+}
+
+/* 7891절의 6행 grid 는 옛 6자식(눈금·슬롯·상태·버튼·머리말·후보) 전용이라
+   v2 의 2자식 구조에서는 빈 행이 남고 overflow:hidden 이 내용을 잘랐다. */
+.game-shell[data-game-mode="casual"][data-panel-tab="evolution"] .evolution-options.is-casual {
+  display: block !important;
+  grid-template-rows: none !important;
+  padding: 0 2px 0 0 !important;
+  overflow: auto !important;
+}

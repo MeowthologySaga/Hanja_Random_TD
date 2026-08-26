@@ -61,7 +61,8 @@ import {
   researchCost,
   researchUnlockWave,
   sellValue,
-  summonCost
+  summonCost,
+  WUXING_ORDER
 } from "./hanzi";
 import { SeededRng } from "./rng";
 import type {
@@ -197,9 +198,19 @@ export interface ConcentrationQuote {
   next: ConcentrationCombatSnapshot;
 }
 
+// 경고의 성격을 문자열이 아니라 종류로 남긴다. 자동 경로가 "무엇을 건너뛸지"를
+// 문안 매칭이 아니라 종류로 판정할 수 있어야 문구를 고쳐도 규칙이 흔들리지 않는다.
+export type CasualFusionIssueKind =
+  | "deployed"        // 전장에 세워 둔 자령 — 수비 공백이 생긴다
+  | "resonance"       // 오행진 공명 임계치가 깨진다
+  | "unique"          // 유일 보유 한자 — 3체 조합에서는 정상 동작이다
+  | "standard-recipe" // 일반 모드 합성식 재료
+  | "protected";      // 그 밖의 보호 사유
+
 export interface CasualFusionIssue {
   towerId: number | null;
   text: string;
+  kind?: CasualFusionIssueKind;
 }
 
 export interface CasualFusionQuote {
@@ -218,6 +229,36 @@ export interface CasualAutoFusionGroup {
   fromStar: CasualStar;
   toStar: CasualStar;
   warnings: CasualFusionIssue[];
+  /** 확인 없이 실행하는 원클릭 경로가 스스로 건너뛸 사유. null 이면 즉시 실행 대상. */
+  autoSkipReason: string | null;
+}
+
+export interface CasualAutoFusionReport extends ActionResult {
+  fused: number;
+  consumed: number;
+  skipped: number;
+  skipReason: string | null;
+  firstFusion: {
+    wuxing: Wuxing;
+    char: string;
+    fromStar: CasualStar;
+    toStar: CasualStar;
+    consumedChars: string[];
+  } | null;
+}
+
+// 캐주얼 3체 조합은 "서로 다른 한자 2기를 소모해 1기를 올린다"가 규칙 자체다.
+// 그래서 `유일 보유 한자` 경고는 이 모드에서 상시 발생하며 자동 실행을 막는
+// 근거가 될 수 없다. 잠금·농축·목표 계보·미완 성어·봉인 성어·일반 합성식은
+// 애초에 재료 후보에서 빠지므로(casualMaterialProtection) 남지 않는다.
+// `전장 배치` 역시 막지 않는다 — 뽑기 후 자동 배치가 기본이라 사실상 모든
+// 자령이 전장에 서 있고, 이것을 막으면 [한 번에 승급]이 아무 일도 못 한다.
+// 대신 소모 내역과 `전장 N기 소모` 배지로 무엇이 사라지는지 먼저 보여 준다.
+// 되돌릴 수 없는 판 손실은 오행진 공명 임계치가 깨지는 경우 하나뿐이다.
+const CASUAL_AUTO_SKIP_KINDS = new Set<CasualFusionIssueKind>(["resonance"]);
+
+function casualAutoSkipReason(warnings: readonly CasualFusionIssue[]): string | null {
+  return warnings.find((warning) => warning.kind !== undefined && CASUAL_AUTO_SKIP_KINDS.has(warning.kind))?.text ?? null;
 }
 
 const REGION_ENEMY_HP_CURVE: Record<RegionCode, { base: number; chapterGrowth: number }> = {
@@ -1199,20 +1240,80 @@ export class GameEngine {
         const key = `${material.id}:${reason}`;
         if (warningKeys.has(key)) continue;
         warningKeys.add(key);
-        quote.warnings.push({ towerId: material.id, text: `${material.char} · ${reason}` });
+        const kind: CasualFusionIssueKind = reason.endsWith("공명 임계치")
+          ? "resonance"
+          : reason === "유일 보유 한자" ? "unique" : "protected";
+        quote.warnings.push({ towerId: material.id, text: `${material.char} · ${reason}`, kind });
       }
       if (standardMaterialIds.has(material.id)) {
         const key = `${material.id}:standard-recipe`;
-        if (!warningKeys.has(key)) quote.warnings.push({ towerId: material.id, text: `${material.char} · 일반 모드 합성식에 바로 쓸 수 있는 재료` });
+        if (!warningKeys.has(key)) quote.warnings.push({ towerId: material.id, text: `${material.char} · 일반 모드 합성식에 바로 쓸 수 있는 재료`, kind: "standard-recipe" });
         warningKeys.add(key);
       }
       if (material.cell >= 0) {
         const key = `${material.id}:deployed`;
-        if (!warningKeys.has(key)) quote.warnings.push({ towerId: material.id, text: `${material.char} · 현재 전장에 배치됨` });
+        if (!warningKeys.has(key)) quote.warnings.push({ towerId: material.id, text: `${material.char} · 현재 전장에 배치됨`, kind: "deployed" });
         warningKeys.add(key);
       }
     }
     return quote;
+  }
+
+  /**
+   * 봉인이 끝난 사자성어에 참여 중인 전장 자령 id 집합.
+   * 봉인 성어의 글자를 재료로 태우면 이미 얻은 봉인이 깨지므로, 미완 성어와
+   * 똑같이 재료 후보에서 제외해야 한다(요구 4의 "생각 못한 사각").
+   */
+  private sealedIdiomTowerIds(): Set<number> {
+    const sealedCells = new Set(this.state.idiomSeals.flatMap((seal) => seal.cells));
+    if (sealedCells.size === 0) return new Set<number>();
+    return new Set(
+      this.state.towers.filter((tower) => tower.cell >= 0 && sealedCells.has(tower.cell)).map((tower) => tower.id)
+    );
+  }
+
+  /**
+   * 이 자령을 3체 조합 재료로 쓰면 안 되는 사유. null 이면 재료로 안전하다.
+   * 자동 경로의 안전 필터이자 수동 경로에서 "그 자리에서" 보여 줄 사유다.
+   */
+  casualMaterialProtection(towerId: number): string | null {
+    const tower = [...this.state.towers, ...this.state.inventoryTowers].find((candidate) => candidate.id === towerId);
+    if (!tower) return null;
+    return this.casualMaterialProtectionFor(tower, this.casualProtectionContext());
+  }
+
+  private casualProtectionContext(): {
+    targetPath: Set<string>;
+    unfinishedIdiomChars: Set<string>;
+    standardMaterialIds: Set<number>;
+    sealedTowerIds: Set<number>;
+  } {
+    const all = [...this.state.towers, ...this.state.inventoryTowers];
+    return {
+      targetPath: this.state.mode === "casual" ? new Set([this.state.targetChar]) : this.evolution.getTargetPath(this.state.targetChar),
+      unfinishedIdiomChars: new Set(
+        this.idioms()
+          .filter((idiom) => !this.state.idiomSeals.some((seal) => seal.idiomId === idiom.id))
+          .flatMap((idiom) => [...idiom.chars])
+      ),
+      standardMaterialIds: new Set(
+        this.evolution.getAvailableRecipes(all, this.state.targetChar, null, "semi").flatMap((option) => option.materialTowerIds)
+      ),
+      sealedTowerIds: this.sealedIdiomTowerIds()
+    };
+  }
+
+  private casualMaterialProtectionFor(
+    tower: Tower,
+    context: ReturnType<GameEngine["casualProtectionContext"]>
+  ): string | null {
+    if (tower.locked) return "잠금 자령";
+    if ((tower.concentration ?? 0) > 0) return `농축 ${tower.concentration}단계 투자`;
+    if (context.targetPath.has(tower.char)) return "현재 목표 합성 계보";
+    if (context.unfinishedIdiomChars.has(tower.char)) return "미완성 사자성어 재료";
+    if (context.sealedTowerIds.has(tower.id)) return "봉인 완료 사자성어 참여";
+    if (context.standardMaterialIds.has(tower.id)) return "일반 모드 합성식 재료";
+    return null;
   }
 
   fuseCasual(coreId: number, materialIds: readonly number[], allowWarnings = false): ActionResult {
@@ -1229,27 +1330,12 @@ export class GameEngine {
     if (this.state.mode !== "casual") return [];
     const owned = [...this.state.towers, ...this.state.inventoryTowers]
       .filter((tower) => tower.wuxing === wuxing && (tower.casualStar ?? 8) < 8);
-    const targetPath = this.state.mode === "casual" ? new Set([this.state.targetChar]) : this.evolution.getTargetPath(this.state.targetChar);
-    const unfinishedIdiomChars = new Set(
-      this.idioms()
-        .filter((idiom) => !this.state.idiomSeals.some((seal) => seal.idiomId === idiom.id))
-        .flatMap((idiom) => [...idiom.chars])
-    );
-    const standardMaterialIds = new Set(
-      this.evolution.getAvailableRecipes([...this.state.towers, ...this.state.inventoryTowers], this.state.targetChar, null, "semi")
-        .flatMap((option) => option.materialTowerIds)
-    );
-    const isPreferredCore = (tower: Tower): boolean => tower.locked
-      || (tower.concentration ?? 0) > 0
-      || targetPath.has(tower.char)
-      || unfinishedIdiomChars.has(tower.char)
-      || standardMaterialIds.has(tower.id)
-      || tower.cell >= 0;
-    const isSafeMaterial = (tower: Tower): boolean => !tower.locked
-      && (tower.concentration ?? 0) === 0
-      && !targetPath.has(tower.char)
-      && !unfinishedIdiomChars.has(tower.char)
-      && !standardMaterialIds.has(tower.id);
+    const context = this.casualProtectionContext();
+    const isSafeMaterial = (tower: Tower): boolean => this.casualMaterialProtectionFor(tower, context) === null;
+    // 본체는 "재료로 쓰면 안 되는 자령"부터 고른다. 보호 대상이 본체 자리에
+    // 앉아야 재료 후보가 최대로 남고, 보호 자령이 소모될 길도 함께 사라진다.
+    const coreRank = (tower: Tower): number =>
+      this.casualMaterialProtectionFor(tower, context) !== null ? 0 : tower.cell >= 0 ? 1 : 2;
     const value = (tower: Tower): number => {
       const definition = definitionForTower(this.catalog, tower.definitionId);
       return definition.combat.baseDamage * this.towerPowerMultiplier(tower) * definition.combat.budgetMultiplier / this.towerAttackCooldown(tower);
@@ -1262,8 +1348,8 @@ export class GameEngine {
       while (available.length >= 3) {
         const safeMaterials = available.filter(isSafeMaterial);
         if (safeMaterials.length < 2) break;
-        const preferredCore = available.filter(isPreferredCore)[0];
-        const core = preferredCore ?? available[0];
+        const core = [...available].sort((left, right) =>
+          coreRank(left) - coreRank(right) || value(right) - value(left) || left.id - right.id)[0];
         if (!core) break;
         const materialPool = available
           .filter((tower) => tower.id !== core.id && isSafeMaterial(tower))
@@ -1277,7 +1363,8 @@ export class GameEngine {
           materialIds: [materials[0]?.id ?? -1, materials[1]?.id ?? -1],
           fromStar: star,
           toStar: quote.toStar,
-          warnings: quote.warnings
+          warnings: quote.warnings,
+          autoSkipReason: casualAutoSkipReason(quote.warnings)
         });
         const usedIds = new Set([core.id, ...materials.map((tower) => tower.id)]);
         for (let index = available.length - 1; index >= 0; index -= 1) {
@@ -1289,23 +1376,73 @@ export class GameEngine {
   }
 
   autoFuseCasualElement(wuxing: Wuxing, allowWarnings = false): ActionResult {
-    if (!this.isRunActive()) return { ok: false, message: "진행 중인 수비전이 없습니다." };
-    const groups = this.casualAutoFusionPlan(wuxing);
-    if (groups.length === 0) return { ok: false, message: `${wuxing}행 보유 자령 중 안전하게 묶을 같은 별 자령 3기가 없습니다.` };
-    const firstWarning = groups.flatMap((group) => group.warnings)[0];
-    if (!allowWarnings && firstWarning) return { ok: false, message: `확인 필요 · ${firstWarning.text}` };
-    for (const group of groups) {
-      const quote = this.casualFusionQuote(group.coreId, group.materialIds);
-      if (quote.blocked.length > 0) return { ok: false, message: `자동조합 중단 · ${quote.blocked[0]?.text ?? "대상이 바뀌었습니다."}` };
-      if (!allowWarnings && quote.warnings.length > 0) return { ok: false, message: `확인 필요 · ${quote.warnings[0]?.text ?? "보호 대상이 포함되었습니다."}` };
+    return this.autoFuseCasual(wuxing, allowWarnings);
+  }
+
+  /**
+   * 원클릭 승급. `scope` 가 "all" 이면 오행 전체를 순서대로 처리한다.
+   * warning 이 있는 묶음은 예전처럼 전체를 중단시키지 않고 그 묶음만 건너뛰며,
+   * 건너뛴 수와 사유를 결과에 담아 화면이 반드시 알릴 수 있게 한다.
+   */
+  autoFuseCasual(scope: Wuxing | "all", allowWarnings = false, onlyStar: CasualStar | null = null): CasualAutoFusionReport {
+    const empty = { fused: 0, consumed: 0, skipped: 0, skipReason: null, firstFusion: null } as const;
+    if (!this.isRunActive()) return { ok: false, message: "진행 중인 수비전이 없습니다.", ...empty };
+    const scopes: Wuxing[] = scope === "all" ? [...WUXING_ORDER] : [scope];
+    const planned = scopes
+      .flatMap((wuxing) => this.casualAutoFusionPlan(wuxing))
+      .filter((group) => onlyStar === null || group.fromStar === onlyStar);
+    if (planned.length === 0) {
+      const label = scope === "all" ? "보유 자령" : `${scope}행 보유 자령`;
+      return { ok: false, message: `${label} 중 안전하게 묶을 같은 별 자령 3기가 없습니다.`, ...empty };
     }
-    for (const group of groups) {
+    const runnable = allowWarnings ? planned : planned.filter((group) => group.autoSkipReason === null);
+    const skipped = planned.length - runnable.length;
+    const skipReason = planned.find((group) => group.autoSkipReason !== null)?.autoSkipReason ?? null;
+    if (runnable.length === 0) {
+      return {
+        ok: false,
+        message: `보호로 ${skipped}묶음을 모두 건너뜀 · ${skipReason ?? "재료가 보호 대상입니다."}`,
+        ...empty,
+        skipped,
+        skipReason
+      };
+    }
+
+    const all = [...this.state.towers, ...this.state.inventoryTowers];
+    let fused = 0;
+    let fromBoard = 0;
+    let firstFusion: CasualAutoFusionReport["firstFusion"] = null;
+    for (const group of runnable) {
       const quote = this.casualFusionQuote(group.coreId, group.materialIds);
+      if (quote.blocked.length > 0) break;
+      const core = all.find((tower) => tower.id === group.coreId);
+      const consumedTowers = group.materialIds
+        .map((id) => all.find((tower) => tower.id === id))
+        .filter((tower): tower is Tower => tower !== undefined);
       const result = this.performCasualFusion(quote);
-      if (!result.ok) return result;
+      if (!result.ok) break;
+      fused += 1;
+      fromBoard += consumedTowers.filter((tower) => tower.cell >= 0).length;
+      if (!firstFusion && core) {
+        firstFusion = {
+          wuxing: core.wuxing,
+          char: core.char,
+          fromStar: group.fromStar,
+          toStar: group.toStar,
+          consumedChars: consumedTowers.map((tower) => tower.char)
+        };
+      }
     }
-    this.state.lastMessage = `${wuxing}행 자동조합 ${groups.length}회 완료 · 각 본체의 배치 위치는 유지됩니다.`;
-    return { ok: true, message: this.state.lastMessage };
+    if (fused === 0) return { ok: false, message: "조합 대상이 바뀌었습니다. 다시 확인하세요.", ...empty, skipped, skipReason };
+
+    const detail = firstFusion
+      ? `${firstFusion.wuxing} ${firstFusion.fromStar}★×3 → ${firstFusion.toStar}★ ${firstFusion.char} · 소모: ${firstFusion.consumedChars.join("·")}`
+      : "";
+    const head = fused > 1 ? `승급 ${fused}회 · 소모 ${fused * 2}기` : "승급 1회";
+    const board = fromBoard > 0 ? ` · 전장 ${fromBoard}기 포함` : "";
+    const tail = skipped > 0 ? ` · 보호로 ${skipped}그룹 건너뜀` : "";
+    this.state.lastMessage = `${head}${detail ? ` · ${detail}` : ""}${board}${tail}`;
+    return { ok: true, message: this.state.lastMessage, fused, consumed: fused * 2, skipped, skipReason, firstFusion };
   }
 
   private performCasualFusion(quote: CasualFusionQuote): ActionResult {
