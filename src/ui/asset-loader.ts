@@ -65,14 +65,14 @@ const P1_CONTROL_SKINS: readonly string[] = [
 
 /** S00 3D 서재. 한 장이라도 빠지면 그 면만 절차 재질로 남아 눈에 띈다. */
 const P1_S00_3D: readonly string[] = [
-  "assets/ui/s00-3d/book-page-left-v1.png",
-  "assets/ui/s00-3d/book-page-right-v1.png",
-  "assets/ui/s00-3d/book-cover-leather-v1.png",
-  "assets/ui/s00-3d/desk-wood-v1.png",
-  "assets/ui/s00-3d/study-backdrop-v1.png",
-  "assets/ui/s00-3d/book-spine-v1.png",
-  "assets/ui/s00-3d/book-page-edge-v1.png",
-  "assets/ui/s00-3d/desk-props-atlas-v1.png",
+  "assets/ui/s00-3d/book-page-left-v1.webp",
+  "assets/ui/s00-3d/book-page-right-v1.webp",
+  "assets/ui/s00-3d/book-cover-leather-v1.webp",
+  "assets/ui/s00-3d/desk-wood-v1.webp",
+  "assets/ui/s00-3d/study-backdrop-v1.webp",
+  "assets/ui/s00-3d/book-spine-v1.webp",
+  "assets/ui/s00-3d/book-page-edge-v1.webp",
+  "assets/ui/s00-3d/desk-props-atlas-v1.webp",
   "assets/ui/main-menu-b/rings/summon-ring-wood-v1.png",
   "assets/ui/main-menu-b/rings/summon-ring-earth-v1.png",
   "assets/ui/main-menu-b/rings/summon-ring-water-v1.png",
