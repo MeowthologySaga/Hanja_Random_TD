@@ -14,6 +14,10 @@ import { ctx, must } from "../app-context";
 import { casualStarOf, escapeHtml, spiritPortraitMarkup, towerProgressionLabel } from "../format";
 import { handleAction } from "../hud";
 
+// 사용자가 라디오로 지불을 직접 골랐는지. 안 골랐으면 렌더가 중복 우선으로
+// 기본값을 되정한다. 이 패널만 쓰는 상태라 ctx 로 올리지 않는다.
+let concentrationPaymentChosen = false;
+
 function concentrationStateSignature(): string {
   const towers = [...ctx.engine.state.towers, ...ctx.engine.state.inventoryTowers]
     .map((tower) => `${tower.id}:${tower.char}:${tower.cell}:${tower.locked ? 1 : 0}:${tower.concentration ?? 0}:${tower.concentrationPath ?? "-"}`)
@@ -77,7 +81,14 @@ export function renderConcentration(): void {
   // 방향은 사람이 고르지 않는다 — 역할이 정하고, 이미 박힌 자령은 그대로 간다.
   const path = autoConcentrationPath(target);
   const quote = ctx.engine.concentrationQuote(target.id, path);
-  if (quote && typeof ctx.concentrationPayment === "number" && !quote.duplicateIds.includes(ctx.concentrationPayment)) ctx.concentrationPayment = "essence";
+  // 중복 재료가 이 화면의 존재 이유다(중복 소환 카드가 여기로 흘러온다).
+  // 사용자가 문기를 직접 고르지 않았다면 언제나 중복이 기본 선택이고,
+  // 고른 중복이 사라졌을 때도 다음 중복으로 넘어간다.
+  if (quote) {
+    const chosenDuplicateGone = typeof ctx.concentrationPayment === "number" && !quote.duplicateIds.includes(ctx.concentrationPayment);
+    if (chosenDuplicateGone) concentrationPaymentChosen = false;
+    if (!concentrationPaymentChosen || chosenDuplicateGone) ctx.concentrationPayment = quote.duplicateIds[0] ?? "essence";
+  }
   const currentLevel = target.concentration ?? 0;
   if (!quote) {
     detail.innerHTML = `<article class="concentration-max-card" style="--element:${ELEMENT_STYLES[target.wuxing].color}"><b>${escapeHtml(target.char)}</b><div><span>${target.wuxing}행 · ${towerProgressionLabel(target)}</span><strong>濃 ${currentLevel}/3 · ${concentrationPathLabel(path)} 완성</strong><small>더 이상 재료를 소모하지 않습니다.</small></div></article>`;
@@ -89,7 +100,7 @@ export function renderConcentration(): void {
   const paymentRows = quote.duplicateIds.map((id) => {
     const duplicate = ctx.engine.state.inventoryTowers.find((tower) => tower.id === id);
     if (!duplicate) return "";
-    return `<label class="payment-option ${ctx.concentrationPayment === id ? "is-selected" : ""}"><input type="radio" name="concentration-payment" value="${id}" ${ctx.concentrationPayment === id ? "checked" : ""}><b>${escapeHtml(duplicate.char)}</b><span>인벤 중복 #${id}</span><small>잠금 없음 · 명시적 소모</small></label>`;
+    return `<label class="payment-option ${ctx.concentrationPayment === id ? "is-selected" : ""}"><input type="radio" name="concentration-payment" value="${id}" ${ctx.concentrationPayment === id ? "checked" : ""}><b>${escapeHtml(duplicate.char)}</b><span>같은 한자 중복 소모</span><small>기본 재료 · 중복 소환으로 수급</small></label>`;
   }).join("");
   detail.innerHTML = `
     <article class="concentration-focus" style="--element:${ELEMENT_STYLES[target.wuxing].color}">
@@ -101,9 +112,9 @@ export function renderConcentration(): void {
         <div><span>사거리</span><b>${Math.round(quote.current.range)}</b><i>→</i><strong>${Math.round(quote.next.range)}</strong></div>
         <div><span>기술 효과</span><b>${Math.round((quote.current.abilityEffect - 1) * 100)}%</b><i>→</i><strong>${Math.round((quote.next.abilityEffect - 1) * 100)}%</strong></div>
       </div>
-      <section class="concentration-payment"><div class="subheading"><b>② 재료 지불</b><small>전장 자령과 잠긴 자령은 후보에서 제외</small></div><div class="payment-grid">
+      <section class="concentration-payment"><div class="subheading"><b>② 재료 지불</b><small>같은 한자 중복이 기본 재료 — 문기는 비싼 대체</small></div><div class="payment-grid">
         ${paymentRows}
-        <label class="payment-option is-essence ${ctx.concentrationPayment === "essence" ? "is-selected" : ""} ${essenceAvailable ? "" : "is-unavailable"}"><input type="radio" name="concentration-payment" value="essence" ${ctx.concentrationPayment === "essence" ? "checked" : ""} ${essenceAvailable ? "" : "disabled"}><b>${target.wuxing}</b><span>${target.wuxing} 문기 ${quote.essenceCost}</span><small>보유 ${ctx.engine.state.elementEssence[target.wuxing]}</small></label>
+        <label class="payment-option is-essence ${ctx.concentrationPayment === "essence" ? "is-selected" : ""} ${essenceAvailable ? "" : "is-unavailable"}"><input type="radio" name="concentration-payment" value="essence" ${ctx.concentrationPayment === "essence" ? "checked" : ""} ${essenceAvailable ? "" : "disabled"}><b>${target.wuxing}</b><span>${target.wuxing} 문기 ${quote.essenceCost}</span><small>비싼 대체 지불 · 보유 ${ctx.engine.state.elementEssence[target.wuxing]}</small></label>
       </div></section>
       <button id="concentration-confirm-button" class="workbench-primary" type="button" ${paymentReady ? "" : "disabled"}>濃 ${quote.currentLevel} → ${quote.nextLevel} 농축 실행</button>
     </article>`;
@@ -117,7 +128,8 @@ export function wireConcentration1(): void {
     if (Number.isInteger(targetId)) {
       ctx.concentrationTargetId = targetId;
       ctx.engine.selectTower(targetId);
-      ctx.concentrationPayment = "essence";
+      // 기본 지불은 렌더가 중복 우선으로 다시 정한다.
+      concentrationPaymentChosen = false;
       ctx.concentrationRenderKey = "";
       renderConcentration();
       return;
@@ -136,6 +148,7 @@ export function wireConcentration1(): void {
     const input = (event.target as HTMLElement).closest<HTMLInputElement>('input[name="concentration-payment"]');
     if (!input) return;
     ctx.concentrationPayment = input.value === "essence" ? "essence" : Number(input.value);
+    concentrationPaymentChosen = true;
     ctx.concentrationRenderKey = "";
     renderConcentration();
   });

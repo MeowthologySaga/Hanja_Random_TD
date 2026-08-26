@@ -164,10 +164,21 @@ function sumElementValues(values: Record<Wuxing, number>): number {
 export const MAX_CONCENTRATION_LEVEL: ConcentrationLevel = 3;
 export const FIRST_PREP_SECONDS = 15;
 const SUMMON_STAGE_WEIGHTS: Record<Stage, number> = { 1: 1, 2: 0.22, 3: 0.075, 4: 0.025, 5: 0.008 };
-const CONCENTRATION_ESSENCE_COSTS = [4, 6, 8] as const;
+/*
+ * 문기 농축은 "비싼 대체 지불"이다. 원래 설계는 중복 자령을 재료로 쓰는
+ * 것인데(중복 소환 카드의 존재 이유), 문기가 4/6/8로 싸니 아무도 중복을
+ * 쓰지 않았다. 값을 올려 중복이 기본, 문기가 급할 때의 우회가 되게 한다.
+ */
+const CONCENTRATION_ESSENCE_COSTS = [10, 16, 24] as const;
+/*
+ * 분해 환급은 지불 방식과 무관하게 농축 단계만 보고 지급된다. 환급을
+ * 인상된 비용표로 계산하면 [중복으로 싸게 농축 → 분해] 가 문기 조폐가
+ * 되므로, 환급 기준표는 예전 값에 고정한다.
+ */
+const CONCENTRATION_ESSENCE_REFUND_BASE = [4, 6, 8] as const;
 
 export function concentrationEssenceCost(currentLevel: number): number {
-  return CONCENTRATION_ESSENCE_COSTS[Math.max(0, Math.min(2, currentLevel))] ?? 8;
+  return CONCENTRATION_ESSENCE_COSTS[Math.max(0, Math.min(2, currentLevel))] ?? 24;
 }
 
 /**
@@ -193,7 +204,7 @@ export function concentrationPathLabel(path: ConcentrationPath): string {
 }
 
 export function concentrationEssenceRefund(level: number): number {
-  return Math.floor(CONCENTRATION_ESSENCE_COSTS.slice(0, Math.max(0, Math.min(3, level))).reduce((sum, cost) => sum + cost, 0) * 0.7);
+  return Math.floor(CONCENTRATION_ESSENCE_REFUND_BASE.slice(0, Math.max(0, Math.min(3, level))).reduce((sum, cost) => sum + cost, 0) * 0.7);
 }
 
 export function dismantleEssenceValue(stage: Stage, concentration = 0): number {
