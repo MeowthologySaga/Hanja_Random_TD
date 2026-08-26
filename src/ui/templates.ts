@@ -945,7 +945,12 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
       </div>
       <div class="codex-toolbar">
         <div class="codex-mode-tabs" role="tablist" aria-label="도감 분류">
-          <button type="button" class="is-active" data-codex-mode="hanzi" role="tab" aria-selected="true">자령 도감 <small>${CHEONJAMUN_JARYEONG_DEX_META.total}+</small></button>
+          <!--
+            [S/P-23] 한 화면이 같은 수를 세 가지로 적었다 — 갈피 "1000+", 오행 거르개
+            "전체 1001", 요약 "1,001/1,001". 도감 안의 모든 개수는 이제 한 서식
+            (천 단위 쉼표)에 실제 실린 수를 적는다. 갈피 배지도 렌더가 채운다.
+          -->
+          <button type="button" class="is-active" data-codex-mode="hanzi" role="tab" aria-selected="true">자령 도감 <small id="codex-hanzi-count">${CHEONJAMUN_JARYEONG_DEX_META.total.toLocaleString("ko-KR")}</small></button>
           <button type="button" data-codex-mode="recipes" role="tab" aria-selected="false">조합표</button>
           <button type="button" data-codex-mode="idioms" role="tab" aria-selected="false">사자성어</button>
         </div>

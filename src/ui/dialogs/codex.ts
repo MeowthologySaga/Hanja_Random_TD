@@ -163,6 +163,17 @@ function directAcquisitionLabel(definition: HanziDefinition, independent: boolea
   return independent ? "직접 소환 · 독립" : "직접 소환 · 상위 조합 재료";
 }
 
+/**
+ * 도감 개수 한 서식.
+ *
+ * [S/P-23] 같은 화면이 `1000+` · `전체 1001` · `1,001/1,001` 셋으로 적었다.
+ * 세 수가 실은 같은 무리를 세는데 서식이 달라 서로 다른 수로 읽혔다.
+ * 도감 안에서 수를 적는 자리는 모두 이 함수를 지난다.
+ */
+function codexCount(value: number): string {
+  return value.toLocaleString("ko-KR");
+}
+
 function renderCodexSynthesisFilters(
   definitions: HanziDefinition[],
   depths: Map<string, number>,
@@ -180,8 +191,9 @@ function renderCodexSynthesisFilters(
   for (const definition of definitions) elementCounts.set(definition.wuxing, (elementCounts.get(definition.wuxing) ?? 0) + 1);
   const elementControls = ctx.codexMode === "hanzi" ? [
     '<span class="codex-filter-label">오행</span>',
-    `<button type="button" data-jaryeong-filter="all" class="${ctx.jaryeongDexFilter === "all" ? "is-active" : ""}" aria-pressed="${String(ctx.jaryeongDexFilter === "all")}">전체 <small>${definitions.length}</small></button>`,
-    ...WUXING_ORDER.map((wuxing) => `<button type="button" data-jaryeong-filter="${wuxing}" class="${ctx.jaryeongDexFilter === wuxing ? "is-active" : ""}" aria-pressed="${String(ctx.jaryeongDexFilter === wuxing)}" style="--filter-element:${ELEMENT_STYLES[wuxing].color}">${wuxing}<small>${elementCounts.get(wuxing) ?? 0}</small></button>`),
+    // [S/P-23] 도감 안의 개수는 전부 같은 서식(천 단위 쉼표)으로 적는다.
+    `<button type="button" data-jaryeong-filter="all" class="${ctx.jaryeongDexFilter === "all" ? "is-active" : ""}" aria-pressed="${String(ctx.jaryeongDexFilter === "all")}">전체 <small>${codexCount(definitions.length)}</small></button>`,
+    ...WUXING_ORDER.map((wuxing) => `<button type="button" data-jaryeong-filter="${wuxing}" class="${ctx.jaryeongDexFilter === wuxing ? "is-active" : ""}" aria-pressed="${String(ctx.jaryeongDexFilter === wuxing)}" style="--filter-element:${ELEMENT_STYLES[wuxing].color}">${wuxing}<small>${codexCount(elementCounts.get(wuxing) ?? 0)}</small></button>`),
     '<i class="codex-filter-divider" aria-hidden="true"></i>',
     '<span class="codex-filter-label">등급</span>'
   ] : [];
@@ -194,8 +206,8 @@ function renderCodexSynthesisFilters(
     }
     if (ctx.codexSynthesisDepth !== "all" && (typeof ctx.codexSynthesisDepth !== "number" || !counts.has(ctx.codexSynthesisDepth as CasualStar))) ctx.codexSynthesisDepth = "all";
     filters.innerHTML = [...elementControls,
-      `<button type="button" data-synthesis-depth="all" class="${ctx.codexSynthesisDepth === "all" ? "is-active" : ""}" aria-pressed="${String(ctx.codexSynthesisDepth === "all")}">모든 별 <small>${definitions.length}</small></button>`,
-      ...([...counts.entries()].sort(([left], [right]) => left - right).map(([star, count]) => `<button type="button" data-synthesis-depth="${star}" class="${ctx.codexSynthesisDepth === star ? "is-active" : ""}" aria-pressed="${String(ctx.codexSynthesisDepth === star)}" style="--codex-star:${CASUAL_STAR_COLORS[star]}">${star}★ <small>${count}</small></button>`))
+      `<button type="button" data-synthesis-depth="all" class="${ctx.codexSynthesisDepth === "all" ? "is-active" : ""}" aria-pressed="${String(ctx.codexSynthesisDepth === "all")}">모든 별 <small>${codexCount(definitions.length)}</small></button>`,
+      ...([...counts.entries()].sort(([left], [right]) => left - right).map(([star, count]) => `<button type="button" data-synthesis-depth="${star}" class="${ctx.codexSynthesisDepth === star ? "is-active" : ""}" aria-pressed="${String(ctx.codexSynthesisDepth === star)}" style="--codex-star:${CASUAL_STAR_COLORS[star]}">${star}★ <small>${codexCount(count)}</small></button>`))
     ].join("");
     return;
   }
@@ -212,9 +224,9 @@ function renderCodexSynthesisFilters(
   if (!validSelection) ctx.codexSynthesisDepth = "all";
   const options = [...counts.entries()].sort(([left], [right]) => left - right);
   filters.innerHTML = [...elementControls,
-    `<button type="button" data-synthesis-depth="all" class="${ctx.codexSynthesisDepth === "all" ? "is-active" : ""}" aria-pressed="${String(ctx.codexSynthesisDepth === "all")}">모든 별 <small>${definitions.length}</small></button>`,
-    ...options.map(([depth, count]) => `<button type="button" data-synthesis-depth="${depth}" class="${ctx.codexSynthesisDepth === depth ? "is-active" : ""}" aria-pressed="${String(ctx.codexSynthesisDepth === depth)}">${synthesisTierBadge(depth)} <small>${count}</small></button>`),
-    ...(independentCount > 0 ? [`<button type="button" data-synthesis-depth="${UNCOMBINABLE_STAGE_ONE}" class="${ctx.codexSynthesisDepth === UNCOMBINABLE_STAGE_ONE ? "is-active" : ""}" aria-pressed="${String(ctx.codexSynthesisDepth === UNCOMBINABLE_STAGE_ONE)}">${independentBadge(true)} <small>${independentCount}</small></button>`] : [])
+    `<button type="button" data-synthesis-depth="all" class="${ctx.codexSynthesisDepth === "all" ? "is-active" : ""}" aria-pressed="${String(ctx.codexSynthesisDepth === "all")}">모든 별 <small>${codexCount(definitions.length)}</small></button>`,
+    ...options.map(([depth, count]) => `<button type="button" data-synthesis-depth="${depth}" class="${ctx.codexSynthesisDepth === depth ? "is-active" : ""}" aria-pressed="${String(ctx.codexSynthesisDepth === depth)}">${synthesisTierBadge(depth)} <small>${codexCount(count)}</small></button>`),
+    ...(independentCount > 0 ? [`<button type="button" data-synthesis-depth="${UNCOMBINABLE_STAGE_ONE}" class="${ctx.codexSynthesisDepth === UNCOMBINABLE_STAGE_ONE ? "is-active" : ""}" aria-pressed="${String(ctx.codexSynthesisDepth === UNCOMBINABLE_STAGE_ONE)}">${independentBadge(true)} <small>${codexCount(independentCount)}</small></button>`] : [])
   ].join("");
 }
 
@@ -222,12 +234,14 @@ function renderCodex(query = ""): void {
   const normalized = query.trim();
   const list = must<HTMLElement>("#codex-list");
   must<HTMLElement>("#codex-region").textContent = ctx.engine.state.region === "KR" ? "한국" : REGION_META[ctx.engine.state.region].title;
+  // [S/P-23] 갈피 배지는 "1000+" 라는 어림수였다 — 요약이 세는 그 수를 그대로 적는다.
+  must<HTMLElement>("#codex-hanzi-count").textContent = codexCount(ctx.engine.catalog.definitions.size);
 
   if (ctx.codexMode === "idioms") {
     renderCodexSynthesisFilters([], new Map(), new Set());
     const activeIds = new Set(ctx.engine.idioms().map((idiom) => idiom.id));
     const idioms = ctx.engine.allIdioms().filter((idiom) => !normalized || [idiom.chars, idiom.reading, idiom.meaning, idiom.bonus.label].join(" ").includes(normalized));
-    must<HTMLElement>("#codex-summary").textContent = `성어 ${idioms.length}/${ctx.engine.allIdioms().length} · 이번 런 목표 ${ctx.engine.idioms().length}개`;
+    must<HTMLElement>("#codex-summary").textContent = `성어 ${codexCount(idioms.length)}/${codexCount(ctx.engine.allIdioms().length)} · 이번 런 목표 ${codexCount(ctx.engine.idioms().length)}개`;
     list.className = "codex-list codex-list--idioms";
     list.innerHTML = idioms.map((idiom) => {
       const sealed = ctx.engine.state.idiomSeals.some((seal) => seal.idiomId === idiom.id);
@@ -282,7 +296,7 @@ function renderCodex(query = ""): void {
       : ctx.codexSynthesisDepth === UNCOMBINABLE_STAGE_ONE
         ? "독립 자령"
         : synthesisTierFilterLabel(ctx.codexSynthesisDepth);
-    must<HTMLElement>("#codex-summary").textContent = `조합 ${definitions.length.toLocaleString("ko-KR")}/${ctx.engine.catalog.recipes.length.toLocaleString("ko-KR")}식 · 재료 → 결과 순서 · ${depthSummary}`;
+    must<HTMLElement>("#codex-summary").textContent = `조합 ${codexCount(definitions.length)}/${codexCount(ctx.engine.catalog.recipes.length)}식 · 재료 → 결과 순서 · ${depthSummary}`;
     list.innerHTML = definitions.map((definition) => {
       const depth = synthesisDepths.get(definition.char) ?? 1;
       const selected = definition.char === ctx.selectedCodexChar;
@@ -291,7 +305,7 @@ function renderCodex(query = ""): void {
   } else {
     const independentShown = definitions.filter((definition) => uncombinableStageOne.has(definition.char)).length;
     const discoveredThisRun = new Set(ctx.engine.state.discoveredChars);
-    must<HTMLElement>("#codex-summary").textContent = `자령 ${definitions.length.toLocaleString("ko-KR")}/${ctx.engine.catalog.definitions.size.toLocaleString("ko-KR")} · 독립 ${independentShown.toLocaleString("ko-KR")} · 이번 런 발견 ${discoveredThisRun.size.toLocaleString("ko-KR")}`;
+    must<HTMLElement>("#codex-summary").textContent = `자령 ${codexCount(definitions.length)}/${codexCount(ctx.engine.catalog.definitions.size)} · 독립 ${codexCount(independentShown)} · 이번 런 발견 ${codexCount(discoveredThisRun.size)}`;
     list.innerHTML = definitions.map((definition) => {
       const learning = learningInfoForNotation(ctx.engine.state.notation, definition.char);
       const entry = dexEntryForDefinition(definition);
