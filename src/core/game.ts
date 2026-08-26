@@ -805,14 +805,10 @@ export class GameEngine {
     const isBoss = plan.boss && this.state.spawned === plan.count - 1;
     const bossFactor = bossHpFactorForWave(plan.wave);
     const hpJitter = 0.94 + this.rng.next() * 0.12;
-<<<<<<< HEAD
-    const hp = plan.hp * (isBoss || !plan.boss ? 1 : 1 / bossFactor) * hpJitter
+    const casualBossTrim = isBoss && this.state.mode === "casual" ? CASUAL_BOSS_HP_TRIM : 1;
+    const hp = plan.hp * (isBoss || !plan.boss ? 1 : 1 / bossFactor) * hpJitter * casualBossTrim
       * regionEnemyHpMultiplier(this.state.region, this.state.wave, this.state.mode)
       * (this.tutorial ? TUTORIAL_ENEMY_HP_SCALE : 1);
-=======
-    const casualBossTrim = isBoss && this.state.mode === "casual" ? CASUAL_BOSS_HP_TRIM : 1;
-    const hp = plan.hp * (isBoss || !plan.boss ? 1 : 1 / bossFactor) * hpJitter * casualBossTrim * regionEnemyHpMultiplier(this.state.region, this.state.wave, this.state.mode);
->>>>>>> worktree-agent-a3aa1d27c30e5ed03
     const archetype = isBoss ? "boss" : plan.boss ? "normal" : plan.archetype;
     this.state.enemies.push({
       id: this.nextEnemyId++,
