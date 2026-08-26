@@ -291,6 +291,12 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
                 </figure>
               </div>
               <p>한 줄로 — 가로·세로·대각선 · 순서대로(역순 인정) · 같은 진 안에서</p>
+              <!--
+                트랙 N: ①②③④ 는 이 도식과 전장 명패에 같은 모양으로 뜨는데,
+                전장 쪽 인장이 무엇을 뜻하는지는 도움말에만 있었다. 도식 바로
+                아래에서 두 표시를 한 줄로 이어 준다.
+              -->
+              <p class="idiom-rule-legend"><i aria-hidden="true">③</i>전장 인장 = <b>성어의 몇 번째 글자</b> · 점선 칸이 다음 차례</p>
               <!-- [SKILL-V1] 성어의 가호 한 줄 규칙 안내 -->
               <p>성어의 가호 — 발동 중 성어와 같은 진의 자령 전원 공격 +10%, 같은 진의 추가 발동 성어당 +5%p. 줄이 흩어지면 즉시 사라집니다.</p>
             </section>

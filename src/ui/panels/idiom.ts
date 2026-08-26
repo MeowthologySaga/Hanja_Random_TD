@@ -1,7 +1,7 @@
 /*
  * 사자성어 패널과 발동 배지.
  */
-import { idiomById, type IdiomDefinition } from "../../core/idioms";
+import { idiomById, IDIOM_ORDER_SEALS, type IdiomDefinition } from "../../core/idioms";
 import { learningInfoForNotation } from "../../core/learning";
 import { idiomReadingForNotation } from "../../core/notation";
 import type { IdiomSeal } from "../../core/types";
@@ -133,7 +133,8 @@ export function renderIdiomHud(): void {
     const occurrence = (used.get(char) ?? 0) + 1;
     used.set(char, occurrence);
     const owned = (counts.get(char) ?? 0) >= occurrence;
-    return `<i class="${owned ? "is-owned" : ""}" style="--idiom:${target.color}" title="${index + 1}번째 글자">${char}</i>`;
+    // 트랙 N: "N번째 글자" 만으로는 전장 명패의 ①②③④ 인장과 이어지지 않았다.
+    return `<i class="${owned ? "is-owned" : ""}" style="--idiom:${target.color}" title="${IDIOM_ORDER_SEALS[index] ?? String(index + 1)} 성어의 ${index + 1}번째 글자 — 전장에서 이 글자를 가진 자령에 같은 인장이 붙습니다">${char}</i>`;
   }).join("");
   must<HTMLElement>("#idiom-glyphs").innerHTML = glyphs;
   must<HTMLElement>("#idiom-name").textContent = idiomReadingForNotation(target, ctx.engine.state.notation);
@@ -146,7 +147,8 @@ export function renderIdiomHud(): void {
   must<HTMLElement>("#idiom-hint").textContent = missingCraft
     ? "먼저 " + missingCraft.char + " = " + missingCraft.parents.join("+") + " 조합"
     // 한 줄에 담기는 길이라야 말줄임 없이 보인다. "배치"는 화살표가 대신한다.
-    : "한 줄에 1→2→3→4 → 자동 발동";
+    // 트랙 N: 숫자 대신 인장 글리프를 써 전장 표시와 같은 말로 가리킨다.
+    : `한 줄에 ${IDIOM_ORDER_SEALS[0]}→${IDIOM_ORDER_SEALS[3]} 순서 → 자동 발동`;
 }
 
 /**

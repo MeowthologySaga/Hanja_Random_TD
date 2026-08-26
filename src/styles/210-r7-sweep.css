@@ -245,7 +245,6 @@
    ══════════════════════════════════════════════════════════════════ */
 
 /* ── 22-A. 누를 수 있는데 화살표가 뜨던 4곳 ─────────────────────── */
-.goal-mode-tabs button,
 .codex-mode-tabs button,
 .codex-synthesis-filters button,
 .audio-mute-button {
@@ -313,12 +312,6 @@
   background: rgba(38, 34, 24, 0.95) !important;
 }
 
-/* ── 22-G. 목표 모드 탭 ─────────────────────────────────────────── */
-.goal-mode-tabs button:hover:not(.is-active) {
-  color: var(--text-100) !important;
-  background: var(--mat-brass-hot) !important;
-}
-
 /* ── 22-H. 종료 화면 버튼 — R7-1 이 세운 판을 그대로 밝힌다 ─────── */
 .end-actions .start-button:hover {
   background: linear-gradient(180deg, #fff8e2 0%, #f8dfa2 46%, #d6a851 100%);
@@ -352,20 +345,6 @@
   color: var(--text-100);
   font-style: normal;
   font-weight: 800;
-}
-
-/* 12. 목표 재료 카운터 — 11px·3.18:1 이던 자리 */
-.goal-materials span {
-  font-size: var(--fs-2xs) !important;
-  color: var(--text-100) !important;
-}
-
-.goal-materials span b {
-  color: var(--text-100) !important;
-}
-
-.goal-materials .goal-clue {
-  color: var(--text-200) !important;
 }
 
 /* 13. 코치 스텝 카운터·건너뛰기 — 한지 말풍선 위에서 옅어 잘 안 보였다 */

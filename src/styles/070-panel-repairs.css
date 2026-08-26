@@ -573,12 +573,6 @@
   line-height: 1.3;
 }
 
-/* 목표 카드: 고정 88px basis 가 내용을 뚫고 나갔다 */
-.goal-workbench .goal-card {
-  flex: 0 0 auto;
-  min-height: 88px;
-}
-
 /* 온보딩 스텝 문구: 확대분 회수 + 줄바꿈 허용 */
 .opening-guide > div span {
   font-size: 9px !important;
@@ -608,11 +602,6 @@
 .concentration-target-list > button strong {
   font-size: 8px !important;
   letter-spacing: -0.03em;
-}
-
-/* 목표 선택 카드 설명 */
-.goal-choice-copy :is(em, small) {
-  font-size: 9px !important;
 }
 
 /* 분해 확정 버튼이 다음 섹션 위로 올라탔다 */

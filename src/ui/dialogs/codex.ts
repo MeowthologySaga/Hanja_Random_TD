@@ -16,6 +16,7 @@ import {
 import { CHEONJAMUN_SUPPLEMENTAL_CHARACTERS } from "../../core/cheonjamun-roster";
 import { GameEngine } from "../../core/game";
 import { ELEMENT_STYLES, REGION_META, STAGE_MULTIPLIERS, STAGE_NAMES, WUXING_ORDER } from "../../core/hanzi";
+import { IDIOM_ORDER_SEALS } from "../../core/idioms";
 import { koreanMeaningExplanation } from "../../core/korean-meaning-explanations";
 import { LEARNING_DATA_META, learningInfoForNotation } from "../../core/learning";
 import { idiomReadingForNotation } from "../../core/notation";
@@ -290,6 +291,9 @@ function renderCodex(query = ""): void {
       const numberLabel = codexNumberLabel(definition, entry);
       const found = discoveredThisRun.has(definition.char);
       const progression = ctx.engine.state.mode === "casual" ? `<span class="codex-tier-stars">${"★".repeat(naturalStar)}</span>` : synthesisTierBadge(depth);
+      // 트랙 N: 요약은 두 줄까지 편다(절 550). 그래도 긴 21% 를 위해 전문을
+      // title 로 남긴다 — 상세 패널까지 가지 않고도 목록에서 확인할 수 있게.
+      const categoryLabel = `${entry?.category ?? `${ELEMENT_STYLES[definition.wuxing].name}행 자령`} · ${explanation.plainMeaning}`;
       return `<button type="button" data-codex-char="${definition.char}" class="codex-jaryeong-card ${selected ? "is-selected" : ""} ${found ? "is-found" : ""}" style="--codex:${ELEMENT_STYLES[definition.wuxing].color}" aria-current="${String(selected)}" aria-label="${escapeHtml(`${numberLabel} ${definition.char} ${learning.short} ${definition.wuxing}행${found ? " · 이번 런 발견" : ""}`)}">
         <span class="codex-jaryeong-number">${numberLabel}</span>
         ${found ? '<mark class="codex-found-mark">이번 런 발견</mark>' : ""}
@@ -297,7 +301,7 @@ function renderCodex(query = ""): void {
         <span class="codex-jaryeong-copy">
           <span class="codex-jaryeong-identity"><b>${definition.char}</b><strong>${escapeHtml(learning.short)}</strong><i>${definition.wuxing}</i></span>
           <span class="codex-jaryeong-badges">${progression}${ctx.engine.state.mode === "standard" ? independentBadge(independent) : ""}<em>${escapeHtml(definition.combat.roleLabel)}</em></span>
-          <span class="codex-jaryeong-category">${escapeHtml(entry?.category ?? `${ELEMENT_STYLES[definition.wuxing].name}행 자령`)} · ${escapeHtml(explanation.plainMeaning)}</span>
+          <span class="codex-jaryeong-category" title="${escapeHtml(categoryLabel)}">${escapeHtml(categoryLabel)}</span>
           <small class="codex-jaryeong-recipe">조합 · ${escapeHtml(directAcquisitionLabel(definition, independent))}</small>
         </span>
       </button>`;
@@ -464,7 +468,9 @@ function renderIdiomCodexDetail(idiom: ReturnType<GameEngine["idioms"]>[number] 
   const sourceLabel = idiom.source === "cheonjamun" ? `천자문 제${idiom.sourceOrder}구` : "상용 사자성어";
   const stateLabel = live ? "이번 런 발동 중" : sealed ? "발동 이력 · 지금은 흩어짐" : featured ? "이번 런 목표" : "도감 수록";
   detail.innerHTML = `
-    <div class="idiom-codex-glyphs" style="--codex:${idiom.color}">${[...idiom.chars].map((char, index) => `<span><b>${char}</b><small>${index + 1}</small></span>`).join("")}</div>
+    <div class="idiom-codex-glyphs" style="--codex:${idiom.color}">${[...idiom.chars].map((char, index) =>
+      // 트랙 N: 이 숫자가 곧 전장 명패의 순번 인장이라는 말을 호버에 붙인다.
+      `<span title="${IDIOM_ORDER_SEALS[index] ?? String(index + 1)} ${index + 1}번째 글자 — 전장에서 이 글자를 가진 자령에 같은 순번 인장이 붙습니다"><b>${char}</b><small>${index + 1}</small></span>`).join("")}</div>
     <p class="eyebrow">${sourceLabel} · ${stateLabel}</p>
     <h3>${idiomReadingForNotation(idiom, ctx.engine.state.notation)}</h3>
     <article class="idiom-strategy" style="--codex:${idiom.color}"><b>${idiom.bonus.label}</b><span>${idiom.meaning}</span><small>${featured ? "같은 진의 한 줄(가로·세로·대각선)에 네 글자를 1→2→3→4 순서로 놓으면 자동 발동하며, 효과는 네 자령이 그 줄을 유지하는 동안만 발동합니다. 줄이 흩어지면 달성 기록만 남고, 다시 세우면 재발동합니다. 역순으로 놓아도 인정합니다." : "이번 런 목표에는 포함되지 않았습니다. 다음 시드에서 목표 성구로 등장할 수 있습니다."}</small></article>

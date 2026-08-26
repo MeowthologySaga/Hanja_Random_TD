@@ -144,7 +144,6 @@ body {
 .growth-workbench,
 .run-inventory-panel,
 .idiom-panel,
-.combat-readout,
 .selected-card {
   background:
     var(--grain),
@@ -155,9 +154,7 @@ body {
 }
 
 .selected-card,
-.goal-card,
 .evolution-card,
-.idiom-target-card,
 .opening-guide,
 .formation-unlock-bar,
 .concentration-max-card,
@@ -184,7 +181,6 @@ body {
 .idiom-strategy,
 .idiom-material-guide,
 .selected-actions > *,
-.goal-choice-card,
 .payment-option,
 .concentration-target-list > button,
 .display-mode-option,
@@ -209,14 +205,12 @@ body {
 .concentration-target-list,
 .run-inventory-list,
 .evolution-options,
-.combat-feed,
 .ability-guide-list,
 .codex-mode-tabs,
 .concentration-layout > aside,
 .dismantle-workbench,
 .element-growth-workbench,
 .selected-glyph,
-.goal-glyph,
 .codex-jaryeong-portrait,
 .codex-jaryeong-card-portrait,
 .codex-jaryeong-detail-sprite,
@@ -236,7 +230,6 @@ body {
 .hotkey,
 .mode-tabs button,
 .summon-intent-tabs button,
-.goal-mode-tabs button,
 .codex-toolbar button,
 .codex-synthesis-filters button,
 .codex-jaryeong-tags span,
@@ -244,7 +237,6 @@ body {
 .codex-progression-badges span,
 .codex-review-badges span,
 .idiom-glyphs i,
-.idiom-target-glyphs i,
 .idiom-codex-glyphs i,
 .growth-element-tabs button,
 .canvas-tip i,
@@ -265,7 +257,6 @@ body {
   background: rgba(155, 113, 55, 0.2);
 }
 
-.combat-feed li,
 .codex-jaryeong-observation,
 .codex-jaryeong-trait,
 .codex-meaning-explanation,
@@ -280,7 +271,6 @@ body {
 .panel-tabs button[aria-selected="true"],
 .mode-tabs button.is-active,
 .summon-intent-tabs button.is-active,
-.goal-mode-tabs button.is-active,
 .codex-mode-tabs button.is-active,
 .codex-mode-tabs button[aria-selected="true"],
 .codex-toolbar button.is-active,
@@ -487,14 +477,12 @@ body {
     var(--lift-2);
 }
 
-.wave-progress,
-.goal-progress {
+.wave-progress {
   background: rgba(122, 90, 42, 0.22);
   box-shadow: inset 0 1px 3px rgba(90, 70, 36, 0.4);
 }
 
-.wave-progress i,
-.goal-progress i {
+.wave-progress i {
   background: linear-gradient(90deg, var(--gold-500), var(--gold-300));
   box-shadow: 0 0 8px rgba(155, 113, 55, 0.5);
 }
@@ -653,8 +641,7 @@ select option {
 .wave-card small,
 .panel-footer,
 .empty-selection span,
-.empty-evolution span,
-.combat-feed:empty::after {
+.empty-evolution span {
   color: var(--text-400);
 }
 
@@ -762,8 +749,7 @@ select option {
 .shop-help-strip,
 .shop-help-strip span,
 .canvas-tip,
-.title-note,
-.combat-feed:empty::after {
+.title-note {
   color: var(--text-400);
 }
 
@@ -851,13 +837,11 @@ select option {
 .opening-guide,
 .goal-selector-tools label,
 .mode-tabs,
-.goal-mode-tabs,
 .summon-intent-tabs,
 .codex-toolbar,
 .codex-search-row,
 .selected-ability-summary,
 .ability-charge,
-.combo-meter,
 .idiom-hud {
   background: rgba(201, 183, 143, 0.44) !important;
   box-shadow: inset 0 0 0 1px rgba(122, 90, 42, 0.26) !important;
@@ -865,7 +849,6 @@ select option {
 
 /* ── 29-5. 자령 초상·도감 초상 자리 ───────────────────────────── */
 .selected-glyph,
-.goal-glyph,
 .codex-jaryeong-portrait,
 .codex-jaryeong-card-portrait,
 .codex-jaryeong-detail-sprite,
@@ -876,8 +859,7 @@ select option {
     linear-gradient(180deg, #cdbb92 0%, #ded1b0 100%) !important;
 }
 
-.selected-glyph,
-.goal-glyph {
+.selected-glyph {
   color: var(--text-100);
 }
 
@@ -913,7 +895,6 @@ select option {
 .growth-workbench *,
 .run-inventory-panel *,
 .idiom-panel *,
-.combat-readout *,
 .selected-card *,
 .resource-grid *,
 .wave-card *,
@@ -942,7 +923,6 @@ select option {
 .run-inventory-panel strong,
 .idiom-panel b,
 .idiom-panel strong,
-.combat-readout b,
 .selected-card b,
 .selected-card strong,
 .resource-grid strong,
@@ -1119,7 +1099,6 @@ select option {
 .growth-workbench :is(b, strong, span, small, em, i, p, div),
 .run-inventory-panel :is(b, strong, span, small, em, i, p, div),
 .idiom-panel :is(b, strong, span, small, em, i, p, div),
-.combat-readout :is(b, strong, span, small, em, i, p, li),
 .selected-card :is(b, strong, span, small, em, i, p, div),
 .resource-grid :is(span, strong, em),
 .wave-card :is(span, small, strong, b),
@@ -1137,7 +1116,6 @@ select option {
 .growth-workbench :is(b, strong),
 .run-inventory-panel :is(b, strong),
 .idiom-panel :is(b, strong),
-.combat-readout b,
 .selected-card :is(b, strong),
 .resource-grid strong,
 .wave-card strong,

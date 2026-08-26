@@ -17,7 +17,6 @@
 .concentration-payment > *,
 .concentration-compare > *,
 .run-inventory-card,
-.idiom-target-card,
 .idiom-result,
 .idiom-strategy,
 .idiom-material-guide,
@@ -36,7 +35,6 @@
 .concentration-target-list,
 .run-inventory-list,
 .evolution-options,
-.combat-feed,
 .ability-guide-list {
   border-radius: var(--r-md);
   background: var(--mat-well);
@@ -56,22 +54,8 @@
   box-shadow: var(--bevel-up);
 }
 
-/* 전투 기록 */
-.combat-feed li {
-  border: 0;
-  border-left: 3px solid var(--gold-500);
-  border-radius: var(--r-sm);
-  background: rgba(0, 0, 0, 0.34);
-  font-size: var(--fs-2xs);
-}
-
-.combat-feed li > b {
-  color: var(--gold-100);
-}
-
 /* 성어 진법 */
 .idiom-glyphs i,
-.idiom-target-glyphs i,
 .idiom-codex-glyphs i {
   border: 0 !important;
   border-radius: var(--r-sm) !important;
@@ -80,8 +64,7 @@
   color: var(--text-300);
 }
 
-.idiom-glyphs i.is-owned,
-.idiom-target-glyphs i.is-owned {
+.idiom-glyphs i.is-owned {
   color: var(--gold-100);
   background: var(--mat-brass-hot) !important;
   box-shadow: var(--bevel-up), 0 0 12px rgba(155, 113, 55, 0.3);
@@ -301,7 +284,6 @@ select,
 .growth-workbench,
 .run-inventory-panel,
 .idiom-panel,
-.combat-readout,
 .selected-card {
   clip-path: var(--clip-cut);
   border: 0 !important;
@@ -452,9 +434,7 @@ select,
 .growth-element-tabs button,
 .trait-seal,
 .dismantle-toolbar button,
-.goal-choice-card,
 .goal-selector-tools label,
-.goal-mode-tabs,
 .concentration-target-list > button,
 .concentration-focus > header,
 .payment-option,
@@ -487,7 +467,6 @@ select,
   color: var(--gold-100) !important;
 }
 
-.goal-choice-card,
 .opening-guide > div,
 .payment-option,
 .concentration-target-list > button {
@@ -708,18 +687,6 @@ dialog img {
   .hanja-emphasis-control span {
     display: none;
   }
-}
-
-/* ── 26-E. 빈 탭이 검은 상자로 방치됐다 ────────────────────────
-   탭을 눌렀는데 340px 순수 검정이 나오면 "고장났나"로 읽힌다. */
-.combat-feed:empty::after {
-  content: "아직 기록이 없습니다. 전투가 시작되면 발동한 능력과 대상이 순서대로 쌓입니다.";
-  display: block;
-  padding: var(--sp-4) var(--sp-3);
-  color: var(--text-400);
-  font-size: var(--fs-xs);
-  line-height: 1.7;
-  text-align: center;
 }
 
 /* ── 26-G. 웨이브 브리핑 대비가 3:1 수준이라 획이 뭉갰다 ──────── */
