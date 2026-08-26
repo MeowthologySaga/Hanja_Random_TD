@@ -103,7 +103,7 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
         <div class="stage-chip stage-chip--chapter" title="10웨이브마다 우두머리가 오는 장(章) 진행"><span>장</span><strong id="stage-chapter">1 / 10</strong></div>
         <div class="stage-chip stage-chip--phase"><i id="phase-dot"></i><strong id="stage-phase">준비 전</strong></div>
         <button id="early-button" class="early-start" type="button" data-testid="early-wave">시작 보너스</button>
-        <div id="enemy-limit-chip" class="stage-chip"><span>적 한계</span><strong id="stage-enemies">0 / ${MAX_ENEMIES}</strong></div>
+        <div id="enemy-limit-chip" class="stage-chip" title="지금 전장에 남은 적 수 / 적 상한 ${MAX_ENEMIES}체 — 상한에 닿으면 수비 실패입니다"><span>적 한계</span><strong id="stage-enemies">0 / ${MAX_ENEMIES}</strong></div>
       </div>
       <div id="active-idioms" class="active-idioms" aria-label="발동 중 사자성어" aria-live="polite"></div>
       <div class="wave-progress" aria-hidden="true"><i id="wave-progress-fill"></i></div>
@@ -163,7 +163,12 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
 
       <section class="resource-grid" aria-label="현재 자원">
         <div><span>엽전 <em id="interest-preview">이자 +2</em></span><strong id="gold-value">${GAME_CONFIG.startingGold}</strong></div>
-        <div><span>적 한계</span><strong id="enemy-cap-value">${MAX_ENEMIES}체</strong></div>
+        <!--
+          [S/P-11] 여기와 전장 상단 칩이 둘 다 "적 한계"였다. 칩은 "5 / 80"(현재/상한),
+          이 칸은 "80체"(상한만) — 같은 낱말이 한 화면에서 두 뜻으로 읽혔다.
+          한 낱말 한 뜻으로 가른다: 칩이 「적 한계」(차오르는 눈금), 이 칸이 「적 상한」(그 눈금의 끝).
+        -->
+        <div title="이 판이 버티는 적 수의 끝 — 전장 상단 [적 한계] 눈금이 이 수에 닿으면 수비 실패입니다"><span>적 상한</span><strong id="enemy-cap-value">${MAX_ENEMIES}체</strong></div>
         <div title="전장에 배치된 자령 수 / 열린 진의 칸 수"><span>배치</span><strong id="tower-count-value">0 / 16</strong></div>
         <div title="이번 런에 발동한 성어 수 / 이번 런 성어 목표 수"><span>성어 발동</span><strong id="goal-count-value">0 / 5</strong></div>
       </section>
