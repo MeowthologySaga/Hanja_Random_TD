@@ -1,0 +1,52 @@
+/* ══════════════════════════════════════════════════════════════════
+   절 530. 트랙 K — 성어 표시 3건 (gripe-list-2026-08-27 #11)
+   45웨이브 실플레이 스크린샷 실측:
+     ① 성어 탭: #idiom-panel clientHeight 368 vs scrollHeight 576
+        → 208px 가 잘리고, 발동 목록 마지막 줄 bottom(766)이 탭바 top(570)
+        보다 196px 아래에 있었다. 패널이 overflow:hidden 한 장짜리라
+        내용이 넘치면 그대로 탭바 뒤로 사라졌다.
+     ② 좌상단 발동 칩이 한자 4자만 노출 — 한자 학습자가 읽을 수 없다.
+     ③ 같은 칩의 효과 문구가 "적 이동 속도 -…"로 수치째 잘렸다(실측 8px).
+   ══════════════════════════════════════════════════════════════════ */
+
+/* ── K-1. 성어 탭 2행 구조 ─────────────────────────────────────────
+   상점(절 100·420-fb1-overflow.css)이 쓴 문법 그대로: 패널은 액자,
+   스크롤은 전용 래퍼 한 곳, 늘 보여야 하는 것은 스크롤 바깥 형제.
+   여기서 "늘 보여야 하는 것"은 지금 발동 중인 성구 목록이다 — 규칙
+   도식·최근 감지 카드는 참고 자료라 위에서 스크롤로 물러난다. */
+
+#idiom-scroll {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+#idiom-scroll > * { flex: 0 0 auto; }
+
+/* 규칙 도식이 스크롤 맨 끝으로 내려왔다 — 아래 여백은 gap 이 대신한다. */
+#idiom-scroll > .idiom-rule-guide { margin-bottom: 0; }
+
+/* 발동 목록은 스크롤 바깥 형제 — 줄어들지 않고, 대신 스스로를 가둔다.
+   58% 는 1280x720 기준 368px 패널에서 213px(발동 5구 + 여백). */
+#idiom-panel > .idiom-seal-status {
+  flex: 0 0 auto;
+  max-height: 58%;
+  /* 위가 스크롤 영역이라는 것을 머리카락 선 하나로 말한다. */
+  margin-top: 0;
+  padding-top: 6px;
+  border-top: 1px solid rgba(122, 90, 42, 0.3);
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+/* 5구가 213px 안에 스크롤 없이 앉도록 줄 높이만 죈다(문구는 그대로). */
+#idiom-panel .idiom-seal-row {
+  padding: 3px 7px;
+  line-height: 1.15;
+}
+
+#idiom-panel .idiom-seal-row :is(b, span, em, mark) { line-height: 1.2; }
