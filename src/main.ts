@@ -22,6 +22,7 @@ import { wireSelected1, wireSelected2, wireSelected3 } from "./ui/panels/selecte
 import { wireShop1 } from "./ui/panels/shop";
 import { wireS00Menu1, wireS00Menu2, wireS00Menu3, wireS00Menu4 } from "./ui/s00-menu";
 import { wireSummonReveal1 } from "./ui/summon-reveal";
+import { wireTutorial1 } from "./ui/tutorial";
 
 wireBoot1();
 wireHud1();
@@ -62,5 +63,6 @@ wireHotkeys1();
 wireS00Menu4();
 wireBoot2();
 wireCoach1();
+wireTutorial1();
 wireBoot3();
 wireBoot4();
