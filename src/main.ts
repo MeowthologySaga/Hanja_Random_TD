@@ -76,6 +76,7 @@ import {
   researchCost,
   researchUnlockWave,
   summonStageUnlockWave,
+  SUMMON_SURCHARGE,
   summonCost
 } from "./core/hanzi";
 import { createRunSeed } from "./core/rng";
@@ -268,20 +269,7 @@ app.innerHTML = `
             <div id="formation-unlock-list" class="formation-unlock-list"></div>
           </section>
           <section class="action-row" aria-label="핵심 행동">
-            <div class="summon-action-group">
-              <div id="summon-intent-tabs" class="summon-intent-tabs" role="group" aria-label="소환 목적">
-                <button type="button" data-summon-intent="balanced" class="is-active" title="기본 확률">균형</button>
-                <button type="button" data-summon-intent="discovery" title="처음 보는 한자 가중">탐색</button>
-                <button type="button" data-summon-intent="lineage" title="목표 합성과 성어 재료 가중">계보</button>
-                <button type="button" data-summon-intent="concentration" title="보유 자령 중복 가중">중복 수집</button>
-              </div>
-              <button id="summon-button" class="action-button action-button--summon" type="button" data-testid="summon-button">
-                <span class="hotkey">1</span><b>자령 소환</b><small><em id="summon-cost">9</em> 엽전</small>
-              </button>
-              <button id="multi-summon-button" class="action-button action-button--multi-summon" type="button" data-testid="multi-summon-button">
-                <span class="hotkey">Q</span><b>10연 소환</b><small><em id="multi-summon-cost">10W 개방</em></small>
-              </button>
-            </div>
+            <div id="summon-shop" class="summon-shop" role="group" aria-label="소환 상품"></div>
             <button id="evolve-button" class="action-button action-button--evolve" type="button" data-testid="evolve-button">
               <span class="hotkey">2</span><b id="evolve-action-label">합성</b><small><em id="evolve-ready-count">0</em><span id="evolve-action-detail">개 조합 확인</span></small>
             </button>
@@ -1756,6 +1744,122 @@ function phaseLabel(phase: RunPhase): string {
   return "수비 실패";
 }
 
+/**
+ * 상점 소환 상품표.
+ *
+ * 목적 탭 + 단일 버튼은 "지금 어떤 목적인가"를 기억해야 하는 숨은 상태였다.
+ * 카드 한 장이 곧 상품 한 개이므로 가격·효과·아이콘이 클릭 지점에 함께 붙는다.
+ * 아이콘은 v4-rounds-assets-pack-v1 의 72×72 white-alpha 마스크를 24px 로 쓴다.
+ */
+interface SummonProductMeta {
+  readonly intent: SummonIntent;
+  readonly label: string;
+  readonly effect: string;
+  readonly tint: string;
+  readonly icon: string;
+}
+
+// 캐주얼 순서는 기본 → 중급 → 고급 → 탐색 → 중복, 자형연성은 기본 → 탐색 → 계보 → 중복.
+// 하나의 배열을 모드별로 걸러 두 순서를 동시에 만족시킨다.
+const SUMMON_PRODUCTS: readonly SummonProductMeta[] = Object.freeze([
+  { intent: "balanced", label: "기본 소환", effect: "전체 풀", tint: "#a8791f", icon: "shop-default-coin-v1" },
+  { intent: "midstar", label: "중급 소환", effect: "2★ 이상 확정", tint: "#3a5794", icon: "shop-high-star-v1" },
+  { intent: "highstar", label: "고급 소환", effect: "3★ 이상 확정", tint: "#9f2f23", icon: "shop-high-star-v1" },
+  { intent: "discovery", label: "탐색 소환", effect: "새 한자 ×3.4", tint: "#3f7d6e", icon: "shop-explore-compass-lantern-v1" },
+  { intent: "lineage", label: "계보 소환", effect: "목표·성어 재료 ×3.2", tint: "#3a5794", icon: "shop-lineage-scroll-v1" },
+  { intent: "concentration", label: "중복 소환", effect: "보유 중복 ↑ · 농축 재료", tint: "#9a6d16", icon: "shop-duplicate-cards-v1" }
+] as const);
+
+/** 세 티어 공통으로 걸리는 캐주얼 짝 맞추기 보정 안내. */
+const PAIR_BOOST_NOTE = "짝이 맞는 자령이 더 자주 나옵니다";
+
+const SUMMON_ICON_BASE = `${import.meta.env.BASE_URL}assets/ui/v4/shop/`;
+let summonShopRenderKey = "";
+
+function summonCardMarkup(options: {
+  key: string;
+  label: string;
+  effect: string;
+  tint: string;
+  icon: string;
+  price: string;
+  disabled: boolean;
+  affordable: boolean;
+  hotkey?: string;
+  wide?: boolean;
+  testId?: string;
+  title: string;
+}): string {
+  const classes = ["summon-card"];
+  if (options.wide) classes.push("summon-card--wide");
+  if (!options.affordable) classes.push("summon-card--short");
+  const testId = options.testId ? ` data-testid="${options.testId}"` : "";
+  const hotkey = options.hotkey ? `<span class="summon-card-key">${options.hotkey}</span>` : "";
+  return `<button type="button" class="${classes.join(" ")}" data-summon-product="${options.key}"${testId}`
+    + ` style="--product:${options.tint};--product-icon:url('${SUMMON_ICON_BASE}${options.icon}.png')"`
+    + ` title="${escapeHtml(options.title)}" aria-label="${escapeHtml(`${options.label} · ${options.effect} · ${options.price}`)}"`
+    + `${options.disabled ? " disabled" : ""}>`
+    + `<i class="summon-card-icon" aria-hidden="true"></i>`
+    + `<b>${escapeHtml(options.label)}</b><small>${escapeHtml(options.effect)}</small>`
+    + `<em>${escapeHtml(options.price)}</em>${hotkey}</button>`;
+}
+
+function renderSummonShop(): void {
+  const state = engine.state;
+  const active = state.phase === "prep" || state.phase === "combat";
+  const base = summonCost(state.summonCount);
+  const tenCost = multiSummonCost(state.summonCount, 10);
+  const multiUnlocked = state.wave >= 10;
+  const products = SUMMON_PRODUCTS
+    .filter((product) => engine.isSummonProductAvailable(product.intent))
+    .map((product) => {
+      // 좁은 지역 풀에서는 보장 별이 한 단계 내려간다. 카드 문구도 실효 값을 따른다.
+      const floor = engine.summonTierFloor(product.intent);
+      return floor === null ? product : { ...product, effect: `${floor}★ 이상 확정` };
+    });
+  const casualTier = state.mode === "casual";
+  const key = `${state.mode}|${base}|${tenCost}|${multiUnlocked ? "10" : "-"}|${state.gold}|${active ? "on" : "off"}`
+    + `|${products.map((product) => `${product.intent}:${product.effect}`).join(",")}`;
+  if (key === summonShopRenderKey) return;
+  summonShopRenderKey = key;
+  const cards = products.map((product) => {
+    const price = base + SUMMON_SURCHARGE[product.intent];
+    const affordable = state.gold >= price;
+    const tiered = casualTier && (product.intent === "balanced" || engine.summonTierFloor(product.intent) !== null);
+    const effect = tiered && product.intent === "balanced" ? "전체 풀 · 짝 맞춤 보정" : product.effect;
+    return summonCardMarkup({
+      key: product.intent,
+      label: product.label,
+      effect,
+      tint: product.tint,
+      icon: product.icon,
+      price: `${price} 엽전`,
+      disabled: !active || !affordable,
+      affordable: !active || affordable,
+      hotkey: product.intent === "balanced" ? "1" : undefined,
+      testId: product.intent === "balanced" ? "summon-button" : undefined,
+      title: `${product.label} · ${product.effect} · ${price}엽전`
+        + (product.intent === "balanced" ? "" : ` (기본 ${base} + 목적 ${SUMMON_SURCHARGE[product.intent]})`)
+        + (tiered ? ` · ${PAIR_BOOST_NOTE}` : "")
+    });
+  });
+  cards.push(summonCardMarkup({
+    key: "multi",
+    label: "10연 소환",
+    effect: multiUnlocked ? "기본 확률 10회" : "10웨이브에 개방",
+    tint: "#a8791f",
+    icon: "shop-ten-pull-coin-bundle-v1",
+    price: multiUnlocked ? `${tenCost} 엽전` : "10W 개방",
+    disabled: !active || !multiUnlocked || state.gold < tenCost,
+    affordable: !active || !multiUnlocked || state.gold >= tenCost,
+    hotkey: "Q",
+    wide: cards.length % 2 === 1,
+    testId: "multi-summon-button",
+    title: multiUnlocked ? `10연 소환 · ${tenCost}엽전 · 할증 없음` : "10웨이브를 지키면 열립니다"
+  }));
+  must<HTMLElement>("#summon-shop").innerHTML = cards.join("");
+}
+
 function renderFormationUnlocks(): void {
   const state = engine.state;
   const cost = engine.nextFormationUnlockCost();
@@ -1808,25 +1912,14 @@ function syncPanel(): void {
   must<HTMLElement>("#seed-value").textContent = state.seed;
   must<HTMLElement>("#message-value").textContent = state.lastMessage;
   renderFormationUnlocks();
-  must<HTMLElement>("#summon-cost").textContent = String(summonCost(state.summonCount));
-  const tenSummonCost = multiSummonCost(state.summonCount, 10);
-  const multiUnlocked = state.wave >= 10;
-  must<HTMLElement>("#multi-summon-cost").textContent = multiUnlocked ? `${tenSummonCost} 엽전` : "10W 개방";
+  renderSummonShop();
   must<HTMLElement>("#research-level").textContent = String(state.researchLevel);
   const nextResearchWave = researchUnlockWave(state.researchLevel);
   const researchUnlocked = state.researchLevel < 5 && state.wave >= nextResearchWave;
   must<HTMLElement>("#research-cost").textContent = state.researchLevel >= 5 ? "최고" : researchUnlocked ? `${researchCost(state.researchLevel)} 엽전` : `${nextResearchWave}W 개방`;
   must<HTMLElement>("#discover-count").textContent = String(state.discoveredChars.length);
   must<HTMLElement>("#essence-summary").textContent = "문기 " + WUXING_ORDER.map((wuxing) => `${wuxing}${state.elementEssence[wuxing]}`).join(" ");
-  document.querySelectorAll<HTMLButtonElement>("[data-summon-intent]").forEach((button) => {
-    const selected = button.dataset.summonIntent === state.summonIntent;
-    button.classList.toggle("is-active", selected);
-    button.setAttribute("aria-pressed", String(selected));
-  });
-
   const active = state.phase === "prep" || state.phase === "combat";
-  must<HTMLButtonElement>("#summon-button").disabled = !active || state.gold < summonCost(state.summonCount);
-  must<HTMLButtonElement>("#multi-summon-button").disabled = !active || !multiUnlocked || state.gold < tenSummonCost;
   must<HTMLButtonElement>("#research-button").disabled = !active || !researchUnlocked || state.gold < researchCost(state.researchLevel);
   must<HTMLButtonElement>("#auto-arrange-button").disabled = !active || state.towers.length === 0;
   must<HTMLButtonElement>("#element-upgrade-button").disabled = !active;
@@ -3748,6 +3841,7 @@ function drawBoard(): void {
       }
     }
   }
+
   context.restore();
 }
 
@@ -4733,9 +4827,9 @@ function focusMapOnSelectedTower(): void {
   syncMapZoomControl();
 }
 
-function summonAndFocus(amount = 1): void {
+function summonAndFocus(amount = 1, intent: SummonIntent = "balanced"): void {
   sound.unlock();
-  const result = amount === 1 ? engine.summon() : engine.summonMany(amount);
+  const result = amount === 1 ? engine.summonProduct(intent) : engine.summonMany(amount);
   handleAction(result);
   if (result.ok) focusMapOnSelectedTower();
 }
@@ -5158,11 +5252,14 @@ must<HTMLElement>("#evolution-options").addEventListener("pointerout", (event) =
 must<HTMLButtonElement>("#start-button").addEventListener("click", () => startRun(false));
 must<HTMLButtonElement>("#retry-button").addEventListener("click", () => startRun(false));
 must<HTMLButtonElement>("#new-seed-button").addEventListener("click", () => startRun(true));
-document.querySelectorAll<HTMLButtonElement>("[data-summon-intent]").forEach((button) => {
-  button.addEventListener("click", () => handleAction(engine.setSummonIntent(button.dataset.summonIntent as SummonIntent)));
+// 카드가 곧 상품이다. 목적 상태를 미리 고르는 단계 없이 누른 카드로 즉시 1회 소환한다.
+must<HTMLElement>("#summon-shop").addEventListener("click", (event) => {
+  const card = (event.target as HTMLElement).closest<HTMLButtonElement>("[data-summon-product]");
+  if (!card || card.disabled) return;
+  const product = card.dataset.summonProduct ?? "balanced";
+  if (product === "multi") summonAndFocus(10);
+  else summonAndFocus(1, product as SummonIntent);
 });
-must<HTMLButtonElement>("#summon-button").addEventListener("click", () => summonAndFocus());
-must<HTMLButtonElement>("#multi-summon-button").addEventListener("click", () => summonAndFocus(10));
 must<HTMLButtonElement>("#summon-reveal-close").addEventListener("click", hideSummonReveal);
 document.addEventListener("pointerdown", () => {
   if (summonReveal.classList.contains("is-active")) hideSummonReveal();
@@ -5650,7 +5747,7 @@ interface CoachStep {
 const COACH_STORAGE_KEY = "hanja-td:coach-seen-v1";
 const COACH_STEPS: readonly CoachStep[] = [
   {
-    target: "#summon-button",
+    target: '[data-summon-product="balanced"]',
     title: "먼저 자령을 소환하세요",
     body: "엽전을 써서 자령을 뽑습니다. 첫 자령의 오행에 맞는 4×4 진이 무료로 열립니다.",
     control: "click",

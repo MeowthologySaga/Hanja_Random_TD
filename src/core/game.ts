@@ -61,6 +61,11 @@ import {
   researchCost,
   researchUnlockWave,
   sellValue,
+  CASUAL_PAIR_WEIGHT,
+  MIN_TIER_POOL_SIZE,
+  SUMMON_INTENT_LABELS,
+  SUMMON_SURCHARGE,
+  SUMMON_TIER_FLOOR,
   summonCost,
   WUXING_ORDER
 } from "./hanzi";
@@ -113,6 +118,12 @@ const ELEMENT_ZONE_SPECS: Record<Wuxing, { kind: AbilityZone["kind"]; label: str
 export function elementZoneKind(wuxing: Wuxing): AbilityZone["kind"] {
   return ELEMENT_ZONE_SPECS[wuxing].kind;
 }
+
+/**
+ * 캐주얼 티어 소환 3종. 별 보장 여부만 다르고 나머지 규칙은 같으므로
+ * 짝 맞추기 가중은 이 셋에 공통으로 적용한다.
+ */
+const TIERED_SUMMON_INTENTS: ReadonlySet<SummonIntent> = new Set<SummonIntent>(["balanced", "midstar", "highstar"]);
 
 export function interestForGold(gold: number): number {
   return Math.min(20, Math.max(0, Math.floor(gold / 20)));
@@ -1000,14 +1011,22 @@ export class GameEngine {
     this.events.push({ type: "phase", phase: "combat" });
   }
 
-  summon(forceIntent = false): ActionResult {
+  /**
+   * `surcharge` 는 상점 상품 카드가 청구하는 목적 정찰료다. 자동 시뮬레이션과
+   * 10연 소환은 0을 그대로 써서 기존 기본가 곡선을 유지한다.
+   */
+  summon(forceIntent = false, surcharge = 0): ActionResult {
     if (!this.isRunActive()) return { ok: false, message: "진행 중인 수비전이 없습니다." };
-    const cost = summonCost(this.state.summonCount);
+    const cost = summonCost(this.state.summonCount) + Math.max(0, surcharge);
     if (this.state.gold < cost) return { ok: false, message: "엽전이 " + String(cost - this.state.gold) + " 부족합니다." };
     if (this.runSummonPool.length === 0) return { ok: false, message: "이 지역의 활성 소환 풀이 비어 있습니다." };
     const maxStage = this.state.mode === "casual" ? 5 : maxSummonStageForWave(this.state.wave);
+    // 티어 소환은 확률 가중이 아니라 후보 풀 자체를 잘라 "확정"을 만든다.
+    const tierFloor = this.summonTierFloor(this.state.summonIntent);
     const summonPool = this.state.mode === "casual"
-      ? [...this.runSummonPool]
+      ? (tierFloor === null
+        ? [...this.runSummonPool]
+        : this.runSummonPool.filter((definition) => (casualNaturalStar(definition.char) ?? 1) >= tierFloor))
       : this.runSummonPool.filter((definition) => definition.stage <= maxStage);
     if (summonPool.length === 0) return { ok: false, message: "현재 장에서 소환 가능한 자령이 없습니다." };
 
@@ -1030,6 +1049,19 @@ export class GameEngine {
     for (const tower of ownedTowers) ownedCounts.set(tower.char, (ownedCounts.get(tower.char) ?? 0) + 1);
     const discovered = new Set(this.state.discoveredChars);
     const deployedChars = new Set(this.state.towers.map((tower) => tower.char));
+    // 캐주얼 3체 조합은 같은 오행·같은 별 3기가 한 묶음이다. 이미 1~2기를 쥔
+    // 묶음의 글자를 더 자주 흘려 "모으는 중"이라는 감각을 만든다. 3기 이상은
+    // 이미 조합할 수 있으므로 보정하지 않는다(잠금 자령도 보유로 센다).
+    const pairBoost = this.state.mode === "casual" && TIERED_SUMMON_INTENTS.has(this.state.summonIntent);
+    const pairGroupCounts = new Map<string, number>();
+    if (pairBoost) {
+      for (const tower of ownedTowers) {
+        const star = tower.casualStar ?? tower.naturalStar;
+        if (star === undefined) continue;
+        const key = `${tower.wuxing}:${star}`;
+        pairGroupCounts.set(key, (pairGroupCounts.get(key) ?? 0) + 1);
+      }
+    }
     const weights = summonPool.map((definition) => {
       const pityMultiplier = 1 + this.state.softPity * GAME_CONFIG.softPityStep;
       const ownedCount = ownedCounts.get(definition.char) ?? 0;
@@ -1055,6 +1087,10 @@ export class GameEngine {
       else if (this.state.summonIntent === "concentration") {
         weight *= ownedCount > 0 ? 2.4 + Math.min(2.4, ownedCount * 0.55) + (deployedChars.has(definition.char) ? 1.4 : 0) : 0.48;
       }
+      if (pairBoost) {
+        const owned = pairGroupCounts.get(`${definition.wuxing}:${casualNaturalStar(definition.char) ?? 1}`) ?? 0;
+        if (owned >= 1 && owned <= 2) weight *= CASUAL_PAIR_WEIGHT;
+      }
       return weight * stageWeight;
     });
     const targetDefinition = this.catalog.definitions.get(this.state.targetChar);
@@ -1074,6 +1110,8 @@ export class GameEngine {
       ? weightedCandidates.filter(({ definition, weight }) => weight > 0 && (() => {
         if (this.state.summonIntent === "discovery") return !discovered.has(definition.char);
         if (this.state.summonIntent === "lineage") return helpfulChars.has(definition.char) || idiomHelpfulChars.has(definition.char);
+        // 티어 소환은 이미 후보 풀 자체가 잘려 있으므로 추가 필터가 없다.
+        if (TIERED_SUMMON_INTENTS.has(this.state.summonIntent)) return true;
         return (ownedCounts.get(definition.char) ?? 0) > 0;
       })())
       : [];
@@ -1170,9 +1208,59 @@ export class GameEngine {
 
   setSummonIntent(intent: SummonIntent): ActionResult {
     this.state.summonIntent = intent;
-    const labels: Record<SummonIntent, string> = { balanced: "균형", discovery: "탐색", lineage: "계보", concentration: "중복 수집" };
-    this.state.lastMessage = `${labels[intent]} 소환 선택 · 10연 마지막 결과에 목적 보정`;
+    this.state.lastMessage = `${SUMMON_INTENT_LABELS[intent]} 소환 선택 · 10연 마지막 결과에 목적 보정`;
     return { ok: true, message: this.state.lastMessage };
+  }
+
+  /**
+   * 상점 상품 카드 한 장 = 소환 1회. 목적은 이 호출 안에서만 유효하며
+   * 끝나면 원래 목적으로 되돌린다("탭을 눌러 상태를 바꾼다" 개념 제거).
+   */
+  summonProduct(intent: SummonIntent): ActionResult {
+    if (!this.isSummonProductAvailable(intent)) {
+      return {
+        ok: false,
+        message: TIERED_SUMMON_INTENTS.has(intent) && intent !== "balanced"
+          ? `${SUMMON_INTENT_LABELS[intent]} 소환은 이 지역·모드에서 열리지 않습니다.`
+          : "계보 소환은 자형연성 모드에서만 열립니다."
+      };
+    }
+    const previous = this.state.summonIntent;
+    this.state.summonIntent = intent;
+    try {
+      const result = this.summon(false, SUMMON_SURCHARGE[intent]);
+      if (result.ok && intent !== "balanced") {
+        this.state.lastMessage = `${SUMMON_INTENT_LABELS[intent]} 소환 · ${result.message}`;
+        return { ok: true, message: this.state.lastMessage };
+      }
+      return result;
+    } finally {
+      this.state.summonIntent = previous;
+    }
+  }
+
+  /**
+   * 티어 소환의 실효 보장 별.
+   *
+   * 요청 별을 그대로 걸면 활성 풀이 좁은 지역(JP·CN)에서 후보가 서너 글자로
+   * 줄어 같은 자령만 반복된다. 후보가 `MIN_TIER_POOL_SIZE` 미만이면 한 단계씩
+   * 낮추고, 2★ 에서도 모자라면 보장이 성립하지 않으므로 `null`(상품 미개방)이다.
+   */
+  summonTierFloor(intent: SummonIntent): number | null {
+    const requested = SUMMON_TIER_FLOOR[intent];
+    if (requested === undefined || this.state.mode !== "casual") return null;
+    for (let floor = requested; floor >= 2; floor -= 1) {
+      const count = this.runSummonPool.filter((definition) => (casualNaturalStar(definition.char) ?? 1) >= floor).length;
+      if (count >= MIN_TIER_POOL_SIZE) return floor;
+    }
+    return null;
+  }
+
+  /** 모드·지역별 상품 노출. 계보는 자형연성 전용, 티어는 캐주얼 + 충분한 풀 전용. */
+  isSummonProductAvailable(intent: SummonIntent): boolean {
+    if (SUMMON_TIER_FLOOR[intent] !== undefined) return this.summonTierFloor(intent) !== null;
+    if (intent === "lineage") return this.state.mode === "standard";
+    return true;
   }
 
   casualFusionQuote(coreId: number, materialIds: readonly number[]): CasualFusionQuote {

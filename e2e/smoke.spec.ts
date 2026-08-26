@@ -243,8 +243,7 @@ test("uses tabbed owned-aware goals and summons from all one thousand Cheonjamun
   await openShop(page);
   await expect(page.locator("#shop-pool-count")).toHaveText("1,000");
   await expect(page.locator("#summon-pool-summary")).toContainText("천자문 1,000종");
-  await page.locator('button[data-summon-intent="discovery"]').click();
-  await page.getByTestId("summon-button").click();
+  await page.locator('button[data-summon-product="discovery"]').click();
   await expect(page.locator(".summon-result-card > strong")).not.toHaveText("");
   await expect(page.locator(".summon-result-spirit")).toHaveCSS("background-image", /cheonjamun-runtime-v1\/kr-[0-9a-f]+\.png/u);
   await expect(page.locator(".summon-result-spirit")).toHaveCSS("background-size", "contain");
@@ -521,8 +520,7 @@ test("shows synthesis branches, highlights board materials, protects locked Jary
   await page.getByTestId("start-run").click();
   await expect(page.locator("#stage-enemies")).toHaveText("0 / 80");
   await openShop(page);
-  await page.locator('button[data-summon-intent="lineage"]').click();
-  for (let index = 0; index < 4; index += 1) await page.getByTestId("summon-button").click();
+  for (let index = 0; index < 4; index += 1) await page.locator('button[data-summon-product="lineage"]').click();
   await page.locator("#summon-reveal-close").click();
   await openUnit(page);
 
@@ -631,8 +629,7 @@ test("renders only QC-passed generated CN sprites at 1280x720", async ({ page })
   await page.locator("#goal-search").fill("一");
   await page.locator('[data-goal-char="一"]').click();
   await openShop(page);
-  await page.locator('button[data-summon-intent="lineage"]').click();
-  await page.getByTestId("summon-button").click();
+  await page.locator('button[data-summon-product="lineage"]').click();
 
   await expect(page.locator("#stage-region")).toHaveText("중국");
   await expect(page.locator(".summon-result-card > strong")).toHaveText("一");
@@ -672,11 +669,10 @@ test("automatically seals four correctly placed towers with readable feedback", 
   await expect(page.locator(".control-panel #idiom-panel")).toHaveCount(1);
   await expect(page.locator(".battle-stage #idiom-hud, .battle-stage #idiom-result")).toHaveCount(0);
   await openShop(page);
-  await page.locator('button[data-summon-intent="lineage"]').click();
-  for (let index = 0; index < 3; index += 1) await page.getByTestId("summon-button").click();
+  for (let index = 0; index < 3; index += 1) await page.locator('button[data-summon-product="lineage"]').click();
   await expect(page.locator("#idiom-count")).toHaveText("0 / 5");
   await expect(page.locator("#idiom-glyphs .is-owned")).toHaveCount(3);
-  await page.getByTestId("summon-button").click();
+  await page.locator('button[data-summon-product="lineage"]').click();
   await expect(page.locator("#idiom-count")).toHaveText("1 / 5");
   await expect(page.locator("#idiom-name")).not.toHaveText("이심전심");
   await expect(page.locator("#idiom-tab-count")).toHaveText("1/5");
