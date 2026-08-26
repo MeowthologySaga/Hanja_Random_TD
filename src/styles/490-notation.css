@@ -1,10 +1,11 @@
 /*
- * 490 — 표기(읽기) 축 준비 절. (gripe #6, 트랙 D)
+ * 490 — 표기(읽기) 축. (gripe #6, 트랙 D·Q)
  *
- * S13 맞춤 진법의 「읽기 표기법」 3버튼 그룹과 교차 조합용 「대체」 배지.
- * 그룹은 NOTATION_AXIS_READY=false 동안 hidden 이고, 배지는 통합 표기
- * 테이블(요청서 v8) 도착 전에는 도달 불가라 이 절은 현행 화면에 아무
- * 픽셀도 더하지 않는다 — 플래그를 켜는 순간부터 일한다.
+ * S13 맞춤 진법의 「읽기 표기법」 3버튼 그룹과, 읽기 값이 정통 훈음이 아닐 때
+ * 그렇다고 말하는 정직 배지 2종.
+ *
+ * 배지는 authentic 판정에서 마크업 자체가 나오지 않는다 — 자국 표기 3조합은
+ * 전부 authentic 이라 이 절은 아무것도 고르지 않은 화면에 픽셀을 더하지 않는다.
  */
 
 /* 절 52 의 `.s13-group { display: grid }` 가 UA 의 [hidden] display:none 을
@@ -18,21 +19,103 @@
   letter-spacing: 0.02em;
 }
 
+/* 표기 그룹 아래 한 줄 안내 — 무엇을 고르는 축인지 먼저 말한다. */
+.s13-group-note {
+  grid-column: 1 / -1;
+  margin: 4px 0 0;
+  font-size: 11px;
+  line-height: 1.5;
+  color: rgba(232, 220, 198, 0.62);
+}
+
+.s13-group-note b {
+  color: rgba(232, 220, 198, 0.82);
+  font-weight: 700;
+}
+
 /*
- * 표기 대체 배지 — notationSubstituteHtml(src/ui/notation-substitute.ts).
- * 선택한 표기가 그 글자를 커버하지 못해 자국 표기로 대신 보여 줄 때
- * 읽기 문자열 옆에 붙는다. 먹지 위 회갈 점선 테로, 본문보다 낮은 성량.
+ * ── 정직 배지 2종 ───────────────────────────────────────────────────────
+ * notation-substitute.ts 가 찍는다. 먹지 위 회갈 계열로 본문보다 낮은 성량 —
+ * 읽기를 가리지 않으면서 "이 값은 사전 그대로가 아니다"를 늘 곁에 둔다.
  */
-.notation-substitute {
-  display: inline-block;
+.notation-mark {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
   margin-left: 4px;
   padding: 0 4px;
   font-size: 9px;
   font-weight: 700;
   line-height: 14px;
   vertical-align: 1px;
-  color: #9d8f78;
-  border: 1px dashed rgba(157, 143, 120, 0.55);
   border-radius: 3px;
   white-space: nowrap;
+}
+
+/* 정자 파생 — 값 자체는 사전 독음이라 실선으로 조금 더 단단하게. */
+.notation-mark--derived {
+  color: #9fb08d;
+  border: 1px solid rgba(159, 176, 141, 0.5);
+  background: rgba(159, 176, 141, 0.08);
+}
+
+.notation-mark-glyph {
+  font-weight: 700;
+  font-size: 10px;
+  opacity: 0.9;
+}
+
+/* 대체 표기 — 회색 점선. 사전 독음이 아니라는 신호를 가장 약한 색으로. */
+.notation-mark--substitute {
+  color: #9d8f78;
+  border: 1px dashed rgba(157, 143, 120, 0.55);
+  background: rgba(157, 143, 120, 0.06);
+}
+
+.notation-mark-kind {
+  font-style: normal;
+  font-weight: 600;
+  opacity: 0.85;
+}
+
+.notation-mark-kind::before {
+  content: "·";
+  margin-right: 3px;
+  opacity: 0.7;
+}
+
+/*
+ * 원천 뜻 — 대체 표기의 뜻은 번역하지 않은 원문이다. 영어 원문은 이탤릭 +
+ * lang="en" 으로 훈음과 확실히 갈라 놓는다(같은 활자면 훈음으로 오인한다).
+ */
+.notation-gloss {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 6px;
+  margin-top: 4px;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.notation-gloss-caption {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: rgba(157, 143, 120, 0.85);
+}
+
+.notation-gloss-text {
+  color: rgba(232, 220, 198, 0.72);
+}
+
+i.notation-gloss-text {
+  font-style: italic;
+  font-family: Georgia, "Times New Roman", serif;
+  letter-spacing: 0.01em;
+}
+
+.notation-gloss-origin {
+  font-size: 9px;
+  color: rgba(157, 143, 120, 0.75);
 }
