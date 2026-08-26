@@ -17,6 +17,10 @@ import {
   HARVEST_KILLS_PER_ESSENCE,
   hasActiveSkills,
   idiomBlessingBonus,
+  MIRE_MIN_ENEMIES,
+  MIRE_SUPPRESS_GRACE,
+  MIRE_ZONE_RADIUS,
+  MIRE_ZONE_SECONDS,
   MOMENTUM_STACK_BONUS,
   momentumMaxStacks,
   REAPER_BOSS_CHIP_RATIO,
@@ -521,7 +525,10 @@ export class GameEngine {
   private updateEnemies(delta: number): void {
     for (const enemy of this.state.enemies) {
       enemy.flash = Math.max(0, enemy.flash - delta);
-      if (enemy.regenPerSecond > 0) enemy.hp = Math.min(enemy.maxHp, enemy.hp + enemy.regenPerSecond * delta);
+      // [SKILL-V3] 진흙밭을 밟는 동안에는 재생 특성이 무효다.
+      if (enemy.regenPerSecond > 0 && !this.enemyTraitsSuppressed(enemy)) {
+        enemy.hp = Math.min(enemy.maxHp, enemy.hp + enemy.regenPerSecond * delta);
+      }
       if (enemy.poisonUntil > this.state.elapsed && enemy.poisonDps > 0) {
         this.damageEnemy(enemy, enemy.poisonDps * delta, false, false);
         if (!this.state.enemies.includes(enemy)) continue;
@@ -610,6 +617,10 @@ export class GameEngine {
           // [SKILL-V1] 서리길: 총 감속 캡 60%(이동 배율 0.4 미만 금지)를 지킨다.
           enemy.slowFactor = Math.min(enemy.slowFactor, Math.max(0.4, zone.slowFactor ?? 1));
           enemy.slowUntil = Math.max(enemy.slowUntil, this.state.elapsed + 0.2);
+        } else if (zone.kind === "mire") {
+          // [SKILL-V3] 진흙밭: 장갑·재생만 무효로 만든다. slowFactor·stunnedUntil·
+          // progress 는 손대지 않는다 — 걸음은 조금도 달라지지 않는다.
+          enemy.traitsSuppressedUntil = Math.max(enemy.traitsSuppressedUntil ?? 0, this.state.elapsed + MIRE_SUPPRESS_GRACE);
         }
       }
     }
@@ -667,6 +678,37 @@ export class GameEngine {
     else this.state.abilityZones.push(zone);
     if (this.state.abilityZones.length > 20) this.state.abilityZones.shift();
     return { label: "서리길", duration: FROST_ZONE_DURATION, damagePerSecond: 0 };
+  }
+
+  /**
+   * [SKILL-V3] 진흙밭(mire) 지대 — 서리길과 같은 "피해 0" 장판 문법을 빌린다.
+   *
+   * 피해 0, 감속 0, 밀치기 0. 밟는 동안 장갑·재생 **특성만** 무효가 된다.
+   * 무효화 대상이 실제로 존재함은 웨이브 계획에서 확인했다 — 정예 철갑
+   * (armor 0.28~0.48)·회생 요괴(regen)·우두머리(둘 다)다.
+   */
+  private deployMireZone(tower: Tower, target: Enemy): { label: string; duration: number; damagePerSecond: number } {
+    const existing = this.state.abilityZones.find((zone) => zone.towerId === tower.id);
+    const zone: AbilityZone = {
+      id: existing?.id ?? this.nextAbilityZoneId++,
+      towerId: tower.id,
+      kind: "mire",
+      wuxing: tower.wuxing,
+      progress: target.progress,
+      radius: MIRE_ZONE_RADIUS * this.casualSplashRadiusScale(tower),
+      damagePerSecond: 0,
+      expiresAt: this.state.elapsed + MIRE_ZONE_SECONDS,
+      color: "#c2a06a"
+    };
+    if (existing) Object.assign(existing, zone);
+    else this.state.abilityZones.push(zone);
+    if (this.state.abilityZones.length > 20) this.state.abilityZones.shift();
+    return { label: "진흙밭", duration: MIRE_ZONE_SECONDS, damagePerSecond: 0 };
+  }
+
+  /** [SKILL-V3] 이 적의 장갑·재생 특성이 지금 무효인가(진흙밭을 밟는 중인가). */
+  enemyTraitsSuppressed(enemy: Enemy): boolean {
+    return (enemy.traitsSuppressedUntil ?? 0) > this.state.elapsed;
   }
 
   /**
@@ -872,7 +914,9 @@ export class GameEngine {
       && abilities.semanticFamily !== "chainseal"
       && abilities.semanticFamily !== "scorch"
       && abilities.semanticFamily !== "harvest"
-      && (abilities.semanticFamily !== "weather" || this.state.enemies.length >= 5);
+      && (abilities.semanticFamily !== "weather" || this.state.enemies.length >= 5)
+      // [SKILL-V3] 진흙밭은 길이 붐빌 때만 깐다 — 비구름 강하와 같은 충전 조건.
+      && (abilities.semanticFamily !== "mire" || this.state.enemies.length >= MIRE_MIN_ENEMIES);
     // At most one active skill may resolve from a tower on the same attack.
     const signature = activeSkills && !semanticTrigger && tower.shotCount % tuning.signatureEvery === 0;
     const lineageTrigger = activeSkills && !semanticTrigger && !signature
@@ -1078,9 +1122,12 @@ export class GameEngine {
     const abilityPower = 1 + this.combinedUpgradeBonus(tower.wuxing, "abilityPower");
     const statusPower = 1 + this.combinedUpgradeBonus(tower.wuxing, "statusPower");
     // [SKILL-V1] 서리길은 오행 장판 대신 전용 감속 지대를 깐다(비구름 문법 재사용).
+    // [SKILL-V3] 진흙밭도 같은 자리를 쓴다 — 피해 없는 전용 지대다.
     const zone = family === "frost"
       ? this.deployFrostZone(tower, target)
-      : this.deployElementZone(tower, target, damage, potency, abilityPower);
+      : family === "mire"
+        ? this.deployMireZone(tower, target)
+        : this.deployElementZone(tower, target, damage, potency, abilityPower);
     const activeZone = this.state.abilityZones.find((candidate) => candidate.towerId === tower.id);
     const zoneTargets = activeZone
       ? this.state.enemies.filter((enemy) => distance(this.enemyPoint(enemy), targetPoint) <= activeZone.radius).length
@@ -1202,12 +1249,17 @@ export class GameEngine {
       const slowRatio = frostSlowRatio(this.state.mode === "casual" ? tower.casualStar ?? tower.naturalStar ?? 1 : null);
       targets = Math.max(1, zoneTargets);
       effect = `서리길 ${zone.duration.toFixed(1)}초 · 밟는 적 ${Math.round(slowRatio * 100)}% 감속`;
+    } else if (family === "mire") {
+      // [SKILL-V3] 진흙밭: 밟는 동안 장갑·재생만 무효 — 걸음에는 손대지 않는다.
+      targets = Math.max(1, zoneTargets);
+      effect = `진흙밭 ${zone.duration.toFixed(1)}초 · 밟는 적 장갑·재생 무효 (이동 그대로)`;
     } else {
       effect = "뜻 구현 · 이번 공격 ×" + tuning.semanticMultiplier.toFixed(2);
     }
 
     // [SKILL-V1] frost 는 장판 자체가 본 효과라 꼬리 문구를 겹쳐 붙이지 않는다.
-    if (family !== "weather" && family !== "frost") effect += ` · ${zone.label} ${zone.duration.toFixed(1)}초`;
+    // [SKILL-V3] mire 도 같은 이유로 뺀다.
+    if (family !== "weather" && family !== "frost" && family !== "mire") effect += ` · ${zone.label} ${zone.duration.toFixed(1)}초`;
 
     this.emitAbility(tower, abilities.semantic, origin, targetPoint, targets, effect, persistent);
   }
@@ -1231,7 +1283,9 @@ export class GameEngine {
 
   private damageEnemy(enemy: Enemy, rawAmount: number, critical: boolean, weakness: boolean, armorPenetration = 0, source?: Tower): void {
     if (!this.state.enemies.includes(enemy)) return;
-    const effectiveArmor = enemy.armor * (1 - armorPenetration);
+    // [SKILL-V3] 진흙밭을 밟는 동안에는 장갑 특성이 무효다 — 관통 계산 이전에
+    // 장갑 자체가 0이 되므로 관통 수치와 곱해 이중으로 세지 않는다.
+    const effectiveArmor = this.enemyTraitsSuppressed(enemy) ? 0 : enemy.armor * (1 - armorPenetration);
     const amount = rawAmount * (1 - effectiveArmor);
     enemy.hp -= amount;
     enemy.flash = 0.09;

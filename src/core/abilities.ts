@@ -129,6 +129,7 @@ export const SEMANTIC_ABILITY_TABLE: Record<SemanticFamily, SemanticPattern> = {
   // [SKILL-V2] 끝.
   // [SKILL-V3] 스킬 3차 세트가 신설한 의미 계열.
   demise: semanticPattern("demise", "strongest", 6, 0.3, "유폭 낙인", "同", "blast", "6번째 공격", "낙인 유폭 전파", "적에게 동귀의 낙인을 새깁니다. 낙인이 남은 동안 그 적이 받은 피해의 일부가 낙인에 적립되고, 낙인을 진 채 쓰러지면 적립분이 주변 망령에게 한꺼번에 번집니다. 뒤로 밀지는 않습니다.", "#ff7f6e"),
+  mire: semanticPattern("mire", "armored", 6, 0, "진흙밭", "泥", "control", "적 3기 이상 · 충전 발동", "장갑·재생 무효화", "길목에 진흙 지대를 4초 깝니다. 밟는 동안 망령의 장갑과 재생이 무효가 되어, 철갑은 맨몸이 되고 회생은 멈춥니다. 걸음은 건드리지 않습니다 — 느려지지도, 밀리지도 않습니다.", "#c2a06a"),
   // [SKILL-V3] 끝.
   general: semanticPattern("general", "front", 6, 1.18, "자의 구현", "字", "solo", "6번째 공격", "뜻의 힘 증폭", "한자의 뜻을 기운으로 구현해 다음 일격을 강화합니다.", "#c7d0e0")
 };
@@ -163,7 +164,10 @@ const SEMANTIC_CHAR_GROUPS: Readonly<Record<Exclude<SemanticFamily, "general">, 
   // [SKILL-V3] 신설 글자군. 전부 지역 로스터(KR_1000·JP_2136·CN_3500) 실존
   // 글자이며 기존 글자군과 겹치지 않는다. 滅은 reaper 가 선점해 뺐고,
   // 散·破는 역할 기술 글자(산화진·축력파쇄)와 눈으로 헷갈려 뺐다.
-  demise: new Set([..."同歸亡消盡終傾覆毀崩裂爆碎"])
+  demise: new Set([..."同歸亡消盡終傾覆毀崩裂爆碎"]),
+  // 진흙·물웅덩이 계열. 土·地는 mountain 이 선점했으므로 진흙밭은 물기 있는
+  // 땅(泥沼池沙…)으로만 모았다.
+  mire: new Set([..."泥田沼沙池沃湖沈溺坑垢"])
 };
 
 export function semanticPatternFor(char: string, wuxing: Wuxing): SemanticPattern {
@@ -385,6 +389,9 @@ export function composeAbilityLoadout(input: AbilityComposeInput): AbilityLoadou
       ...semantic.ability,
       trigger: semantic.family === "weather"
         ? `적 5기 이상 · ${semanticEvery}번째 공격`
+        // [SKILL-V3] 진흙밭도 비구름 강하와 같은 "붐빌 때만" 충전 발동이다.
+        : semantic.family === "mire"
+        ? `적 ${MIRE_MIN_ENEMIES}기 이상 · ${semanticEvery}번째 공격`
         : PASSIVE_TRIGGER_FAMILIES.has(semantic.family)
           ? semantic.ability.trigger
           : `${semanticEvery}번째 공격`
@@ -624,6 +631,24 @@ export function strokeResonanceStacks(sameRankAllies: number): number {
 export function strokeResonanceCooldownScale(stacks: number): number {
   return 1 - strokeResonanceStacks(stacks) * STROKE_RESONANCE_HASTE_PER_STACK;
 }
+
+/**
+ * 진흙밭(mire): 지대 지속(초)·반경·발동 최소 적 수.
+ *
+ * 실사한 적 특성 가운데 무효화 대상은 장갑과 재생 둘뿐이다 — 정예 철갑
+ * (장갑 0.28~0.48)·회생 요괴(초당 최대 체력 2.6%)·우두머리(장갑 0.1~0.22 +
+ * 초당 0.4%)가 실제로 지닌다. 나머지 적 특성(속도·수량·체력 계수)은 이 지대의
+ * 사정이 아니다. **이동은 일절 건드리지 않는다** — 감속도, 정지도, 밀치기도 없다.
+ */
+export const MIRE_ZONE_SECONDS = 4;
+export const MIRE_ZONE_RADIUS = 110;
+/** 진흙밭은 "충전 발동" 계열이다 — 길이 붐빌 때만 깐다(비구름 강하와 같은 문법). */
+export const MIRE_MIN_ENEMIES = 3;
+/**
+ * 지대를 벗어난 뒤 무효화가 풀리기까지의 유예(초). 비·서리·유사 지대가 쓰는
+ * 0.2~0.25초 관례를 그대로 따른다 — 프레임 경계에서 특성이 깜빡이지 않게 한다.
+ */
+export const MIRE_SUPPRESS_GRACE = 0.25;
 
 /** 획수 공명 카드·칩용 스펙. 기존 fx(resonance)를 재사용한다. */
 export const STROKE_RESONANCE_ABILITY: AbilitySpec = {

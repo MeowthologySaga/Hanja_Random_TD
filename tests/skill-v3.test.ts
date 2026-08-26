@@ -3,6 +3,7 @@
  *
  *  1. 유폭 낙인(同歸) — 낙인 적립·전파 반경·전파 인원 상한·연쇄 유폭 차단
  *  2. 획수 공명(畫數共鳴) — 같은 진·같은 계급 중첩 상한·진 경계·자동배치 간섭
+ *  3. 진흙밭(泥田) — 무효화 대상(장갑·재생) 실재·무효 판정·이동 불간섭
  *
  * 공통 원칙: 어떤 스킬도 적을 뒤로 밀지 않는다(감속·제자리 정지·장판만).
  * 그래서 모든 통합 테스트는 효과가 걸린 뒤 `progress` 가 줄지 않았음을 함께 본다.
@@ -16,6 +17,9 @@ import {
   DEMISE_STORE_RATIO,
   demiseSpreadRadius,
   hasActiveSkills,
+  MIRE_MIN_ENEMIES,
+  MIRE_SUPPRESS_GRACE,
+  MIRE_ZONE_SECONDS,
   SEMANTIC_ABILITY_TABLE,
   semanticCharGroup,
   STROKE_RESONANCE_ABILITY,
@@ -25,7 +29,7 @@ import {
   strokeResonanceStacks,
   WARFARE_BRAND_DURATION
 } from "../src/core/abilities";
-import { BOARD_CELLS, CELLS_PER_FORMATION, positionOnPath } from "../src/core/content";
+import { BOARD_CELLS, CELLS_PER_FORMATION, positionOnPath, wavePlan } from "../src/core/content";
 import { GameEngine } from "../src/core/game";
 import { getCatalog } from "../src/core/hanzi";
 import type { Enemy, EnemyArchetype, GameEvent, HanziDefinition, SemanticFamily, Tower } from "../src/core/types";
@@ -150,26 +154,34 @@ function soloDemiseDefinition(region: (typeof REGIONS)[number]): HanziDefinition
 }
 
 describe("[SKILL-V3] 신설 글자군", () => {
-  it("demise 글자군은 실존 로스터 글자로만 이뤄지고 기존 글자군과 겹치지 않는다", () => {
+  it("3차 글자군은 실존 로스터 글자로만 이뤄지고 기존 글자군과 겹치지 않는다", () => {
     const families = Object.keys(SEMANTIC_ABILITY_TABLE) as SemanticFamily[];
-    expect(families).toContain("demise");
-    const others = families.filter((family): family is Exclude<SemanticFamily, "general"> => family !== "general" && family !== "demise");
-    const group = semanticCharGroup("demise");
-    expect(group.size).toBeGreaterThan(0);
-    for (const char of group) {
-      for (const other of others) {
-        expect(semanticCharGroup(other).has(char), `${char} 는 demise 와 ${other} 에 동시에 있으면 안 됩니다`).toBe(false);
+    const introduced = ["demise", "mire"] as const;
+    for (const family of introduced) expect(families).toContain(family);
+    const groupFamilies = families.filter((family): family is Exclude<SemanticFamily, "general"> => family !== "general");
+    for (const family of introduced) {
+      const group = semanticCharGroup(family);
+      expect(group.size).toBeGreaterThan(0);
+      for (const char of group) {
+        for (const other of groupFamilies) {
+          if (other === family) continue;
+          expect(semanticCharGroup(other).has(char), `${char} 는 ${family} 와 ${other} 에 동시에 있으면 안 됩니다`).toBe(false);
+        }
+        const rosters = REGIONS.filter((region) => getCatalog(region).definitions.has(char));
+        expect(rosters.length, `${char} 는 어느 지역 로스터에도 없습니다`).toBeGreaterThan(0);
       }
-      const rosters = REGIONS.filter((region) => getCatalog(region).definitions.has(char));
-      expect(rosters.length, `${char} 는 어느 지역 로스터에도 없습니다`).toBeGreaterThan(0);
     }
-    // 滅은 참명(reaper)이 선점한 글자다 — 유폭이 가져가지 않았다.
-    expect(semanticCharGroup("reaper").has("滅")).toBe(true);
-    expect(group.has("滅")).toBe(false);
+    // 滅은 참명(reaper), 土·地는 mountain 이 선점한 글자다 — 3차가 가져가지 않았다.
+    expect(semanticCharGroup("demise").has("滅")).toBe(false);
+    expect(semanticCharGroup("mire").has("土")).toBe(false);
+    expect(semanticCharGroup("mire").has("地")).toBe(false);
   });
 
-  it("세 지역 모두 유폭 낙인을 쓰는 활성 자령을 가진다", () => {
-    for (const region of REGIONS) expect(familyDefinition(region, "demise").char).toBeTruthy();
+  it("세 지역 모두 3차 계열을 쓰는 활성 자령을 가진다", () => {
+    for (const region of REGIONS) {
+      expect(familyDefinition(region, "demise").char).toBeTruthy();
+      expect(familyDefinition(region, "mire").char).toBeTruthy();
+    }
   });
 });
 
@@ -324,6 +336,172 @@ describe("[SKILL-V3] 유폭 낙인 (同歸)", () => {
     tower.cooldownLeft = 0;
     engine.update(0.02);
     expect(enemy.brandStored ?? 0).toBeCloseTo(storedAfterHit, 6);
+  });
+});
+
+describe("[SKILL-V3] 진흙밭 (泥田)", () => {
+  it("무효화 대상이 실제로 존재한다 — 정예 철갑의 장갑, 회생 요괴의 재생, 우두머리의 둘 다", () => {
+    // 스킬이 지울 수 있는 적 고유 방어 특성은 웨이브 계획에 실제로 실려 있다.
+    const armored = [...Array(100).keys()].map((index) => wavePlan(index + 1)).filter((plan) => plan.archetype === "armored");
+    const regenerators = [...Array(100).keys()].map((index) => wavePlan(index + 1)).filter((plan) => plan.archetype === "regenerator");
+    const bosses = [...Array(100).keys()].map((index) => wavePlan(index + 1)).filter((plan) => plan.boss);
+    expect(armored.length).toBeGreaterThan(0);
+    expect(regenerators.length).toBeGreaterThan(0);
+    expect(bosses.length).toBeGreaterThan(0);
+    for (const plan of armored) expect(plan.armor).toBeGreaterThan(0);
+    for (const plan of regenerators) expect(plan.regen).toBeGreaterThan(0);
+    for (const plan of bosses) {
+      expect(plan.armor).toBeGreaterThan(0);
+      expect(plan.regen).toBeGreaterThan(0);
+    }
+    // 반대로 일반·무리·질풍은 지울 특성이 없다 — 진흙밭이 이들에게는 아무 일도 안 한다.
+    const plain = [...Array(100).keys()].map((index) => wavePlan(index + 1))
+      .filter((plan) => !plan.boss && ["normal", "swarm", "swift"].includes(plan.archetype));
+    expect(plain.length).toBeGreaterThan(0);
+    for (const plan of plain) {
+      expect(plan.armor).toBe(0);
+      expect(plan.regen).toBe(0);
+    }
+  });
+
+  it("길목에 4초 지대를 깔고, 밟는 적의 장갑·재생을 무효로 만든다 — 이동은 그대로다", () => {
+    const definition = familyDefinition("KR", "mire");
+    const engine = new GameEngine("skill-mire-zone", "KR");
+    const { tower, enemy } = arrangeDuel(engine, definition, {
+      shotCount: definition.combat.abilities.tuning.semanticEvery - 1
+    });
+    // 충전 조건을 채운다 — 붐빌 때만 깔린다.
+    const crowd = Array.from({ length: MIRE_MIN_ENEMIES }, (_, index) =>
+      makeEnemy(-200 - index, "normal", { progress: (enemy.progress + 0.35 + index * 0.03) % 1, hp: 50000 })
+    );
+    // 철갑 + 회생을 한 몸에 지닌 적으로 두 특성을 한 번에 본다.
+    enemy.archetype = "armored";
+    enemy.armor = 0.4;
+    enemy.regenPerSecond = 500;
+    enemy.hp = enemy.maxHp * 0.5;
+    engine.state.enemies = [enemy, ...crowd];
+
+    engine.update(0.02);
+    const zone = engine.state.abilityZones.find((candidate) => candidate.towerId === tower.id);
+    expect(zone?.kind).toBe("mire");
+    expect(zone?.damagePerSecond).toBe(0);
+    expect((zone?.expiresAt ?? 0) - engine.state.elapsed).toBeCloseTo(MIRE_ZONE_SECONDS, 1);
+    // 지대는 자령이 쏜 뒤에 깔리므로 무효 판정은 다음 프레임의 장판 갱신에서 켜진다.
+    expect(engine.enemyTraitsSuppressed(enemy)).toBe(false);
+    tower.cooldownLeft = 999; // 직접 타격을 잠그고 지대 효과만 본다.
+    engine.update(0.02);
+    expect(engine.enemyTraitsSuppressed(enemy)).toBe(true);
+
+    // 재생 무효: 진흙 위에 선 회생 요괴는 체력이 회복되지 않는다.
+    const hpBefore = enemy.hp;
+    const progressBefore = enemy.progress;
+    const stunnedBefore = enemy.stunnedUntil;
+    for (let step = 0; step < 10; step += 1) engine.update(0.05);
+    expect(enemy.hp).toBeCloseTo(hpBefore, 6);
+    expect(engine.enemyTraitsSuppressed(enemy)).toBe(true);
+    // 절대 원칙: 진흙밭은 걸음을 건드리지 않는다 — 새로 묶거나 되돌리지 않는다.
+    expect(enemy.stunnedUntil).toBe(stunnedBefore);
+    expect(enemy.progress).toBeGreaterThanOrEqual(progressBefore);
+  });
+
+  it("지대 자체는 이동에 아무 손도 대지 않는다 — 감속·정지·후퇴 0 (절대 원칙)", () => {
+    const engine = new GameEngine("skill-mire-motion", "KR");
+    engine.begin();
+    engine.state.summonCount = 1;
+    engine.state.startingFormationIndex = 0;
+    engine.state.unlockedFormations = [0];
+    engine.startWaveEarly();
+    engine.state.towers = []; // 자령이 없는 판 — 오직 지대만 작동한다.
+    engine.state.spawned = 9999;
+    const walker = makeEnemy(-13, "armored", { armor: 0.45, regenPerSecond: 400, hp: 5000, progress: 0.42, speed: 0.02 });
+    const anchor = makeEnemy(-14, "normal", { progress: 0.9 });
+    engine.state.enemies = [walker, anchor];
+    engine.state.abilityZones = [{
+      id: 7001,
+      towerId: -1,
+      kind: "mire",
+      wuxing: "土",
+      progress: walker.progress,
+      radius: 400, // 걷는 내내 지대를 벗어나지 않게 넉넉히 잡는다.
+      damagePerSecond: 0,
+      expiresAt: engine.state.elapsed + 60,
+      color: "#c2a06a"
+    }];
+
+    // 첫 프레임은 적 갱신이 장판 갱신보다 앞서므로 재생이 한 번 들어간다.
+    // 무효 판정이 켜진 뒤부터를 잰다.
+    engine.update(0.05);
+    expect(engine.enemyTraitsSuppressed(walker)).toBe(true);
+    const hpBefore = walker.hp;
+    const speedBefore = walker.speed;
+    let previousProgress = walker.progress;
+    for (let step = 0; step < 20; step += 1) {
+      engine.update(0.05);
+      // 매 프레임 진행도가 앞으로만 간다 — 뒤로 미는 순간이 단 한 번도 없다.
+      expect(walker.progress).toBeGreaterThan(previousProgress);
+      previousProgress = walker.progress;
+      expect(walker.slowFactor).toBe(1);
+      expect(walker.stunnedUntil).toBe(0);
+    }
+    expect(walker.speed).toBe(speedBefore);
+    // 지대는 피해도 주지 않는다 — 재생만 멈춘 채 체력이 그대로다.
+    expect(engine.enemyTraitsSuppressed(walker)).toBe(true);
+    expect(walker.hp).toBeCloseTo(hpBefore, 6);
+  });
+
+  it("장갑 무효는 지대 위에서만이고, 벗어나면 유예 뒤 되살아난다 (판정 경계)", () => {
+    const engine = new GameEngine("skill-mire-armor", "KR");
+    engine.begin();
+    const armored = makeEnemy(-9, "armored", { armor: 0.5, hp: 10000, maxHp: 10000 });
+    engine.state.enemies = [armored];
+
+    // 무효 전: 장갑 50%가 그대로 산다.
+    expect(engine.enemyTraitsSuppressed(armored)).toBe(false);
+
+    // 진흙 위: 무효 판정이 켜진다.
+    armored.traitsSuppressedUntil = engine.state.elapsed + MIRE_SUPPRESS_GRACE;
+    expect(engine.enemyTraitsSuppressed(armored)).toBe(true);
+
+    // 유예가 지나면 다시 장갑이 산다 — 지대 밖에서는 원래대로다.
+    armored.traitsSuppressedUntil = engine.state.elapsed - 0.001;
+    expect(engine.enemyTraitsSuppressed(armored)).toBe(false);
+  });
+
+  it("무효화된 장갑은 관통과 이중으로 세지 않는다 — 같은 피해가 온전히 들어간다", () => {
+    const engine = new GameEngine("skill-mire-damage", "KR");
+    engine.begin();
+    const plain = makeEnemy(-10, "normal", { armor: 0, hp: 10000, maxHp: 10000 });
+    const armoured = makeEnemy(-11, "armored", { armor: 0.5, hp: 10000, maxHp: 10000 });
+    const mired = makeEnemy(-12, "armored", { armor: 0.5, hp: 10000, maxHp: 10000 });
+    mired.traitsSuppressedUntil = engine.state.elapsed + MIRE_SUPPRESS_GRACE;
+    engine.state.enemies = [plain, armoured, mired];
+    // 독 피해(장판·출처 없는 경로)로 같은 원피해를 세 적에게 흘린다.
+    for (const enemy of engine.state.enemies) {
+      enemy.poisonDps = 1000;
+      enemy.poisonUntil = engine.state.elapsed + 5;
+    }
+    engine.update(0.1);
+    const plainLoss = plain.maxHp - plain.hp;
+    const armouredLoss = armoured.maxHp - armoured.hp;
+    const miredLoss = mired.maxHp - mired.hp;
+    // 장갑이 살아 있으면 절반만 들어가고, 진흙 위에서는 맨몸과 같다.
+    expect(armouredLoss).toBeCloseTo(plainLoss * 0.5, 6);
+    expect(miredLoss).toBeCloseTo(plainLoss, 6);
+  });
+
+  it("적이 충전 조건보다 적으면 지대를 깔지 않는다 (판정 경계)", () => {
+    const definition = familyDefinition("KR", "mire");
+    const engine = new GameEngine("skill-mire-threshold", "KR");
+    const { tower, enemy } = arrangeDuel(engine, definition, {
+      shotCount: definition.combat.abilities.tuning.semanticEvery - 1
+    });
+    // 적 1기 — 충전 조건(3기) 미달이라 주기가 와도 아무 지대도 생기지 않는다.
+    engine.state.enemies = [enemy];
+    engine.update(0.02);
+    expect(tower.shotCount % definition.combat.abilities.tuning.semanticEvery).toBe(0);
+    expect(engine.state.abilityZones).toHaveLength(0);
+    expect(engine.enemyTraitsSuppressed(enemy)).toBe(false);
+    expect(definition.combat.abilities.semantic.trigger).toContain(`적 ${MIRE_MIN_ENEMIES}기 이상`);
   });
 });
 
