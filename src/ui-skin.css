@@ -10876,6 +10876,770 @@ span.codex-jaryeong-category { color: #4a3f30 !important; }
    열 수를 바꾸면 창 크기마다 다른 그림이 되므로 8열을 고정한다. */
 
 /* ══════════════════════════════════════════════════════════════════
+   ===== R17 도움말 =====
+
+   사용자 원문: "도움말 자세하고, 시각적으로 잘 친절하게. 여러 탭으로 나눠도 돼."
+
+   그동안 도움말은 한 두루마리에 21개 항목이 이어 붙은 벽글이었다. 78-B8 이
+   스크롤 막대를 보이게 만든 뒤로도 "아래에 더 있다"는 사실만 알려 줄 뿐,
+   찾는 규칙이 몇 번째 줄에 있는지는 여전히 읽어 내려가 봐야 알 수 있었다.
+
+   다섯 갈피로 가른다 — 시작하기 · 소환·상점 · 전투·배치 · 승급·강화 ·
+   사자성어. 갈피 띠는 도감의 `.codex-mode-tabs` 어휘를 그대로 빌려 쓰고
+   (같은 창 두 개가 서로 다른 탭처럼 보이면 그것부터 배워야 한다), 두루마리
+   맨 위에 붙여 두어 스크롤 중에도 지금 어느 갈피인지 잃지 않게 한다.
+
+   그리고 글로만 있던 규칙 넷을 그림으로 세운다.
+     · 처음 세 걸음 — 화살표로 이은 ①②③ 순서도
+     · 소환 별 구간 — 1~8 눈금 위에 상품별 구간을 칠한 막대
+     · 오행 공명 — 4·8·12·16 네 계단과 각 단계의 피해 증가
+     · 3합 승급 — 3★ 셋이 사라지고 4★ ? 한 기가 남는 도식
+   사자성어 도식은 성어 패널(R15)의 `.idiom-rule-*` 마크업을 그대로 다시
+   쓰되, 창 안에서는 자리가 넉넉하므로 칸을 16px → 22px 로 키우고 그에 맞춰
+   금색 줄의 길이를 다시 잰다(칸 22 + 사이 4 = 간격 26px).
+
+   글자는 12px 를 바닥선으로 둔다(R7-21·78 절과 같은 기준). 오행·별 색은
+   한지 위에서 그대로 쓰면 대비가 무너지므로 `.casual-group-glyph` 가 쓰던
+   color-mix 어휘로 먹을 섞어 앉히고, 색만으로 구분되는 자리는 두지 않는다
+   — 구간 막대에는 1~8 숫자가, 모드 배지에는 진법 이름이 함께 박힌다.
+   ══════════════════════════════════════════════════════════════════ */
+
+/* ── R17-1. 갈피 띠 — 두루마리 맨 위에 붙는다 ─────────────────
+   28-2 가 `.codex-mode-tabs` 의 판을 `!important` 로 파인 홈으로 고정해
+   두었다. 여기서는 스크롤 뒤로 글이 비쳐서는 안 되므로 불투명한 한지 띠로
+   덮어써야 한다 — 같은 무게(!important)로만 이길 수 있다. */
+#help-dialog .help-tabs {
+  position: sticky;
+  z-index: 3;
+  top: 0;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: var(--sp-1);
+  /* 아래 여백을 margin 이 아니라 padding 으로 두어 띠가 그 자리까지 칠한다.
+     margin 이면 스크롤한 글이 띠와 본문 사이 틈으로 비쳐 지나간다. */
+  margin: 0;
+  padding: 10px 4px 12px;
+  border-radius: 0;
+  background: linear-gradient(180deg, #f6eed9 0%, #f1e7cd 100%) !important;
+  box-shadow: 0 1px 0 rgba(122, 90, 42, 0.28), 0 8px 10px -9px rgba(58, 44, 22, 0.6) !important;
+}
+
+#help-dialog .help-tabs button {
+  min-height: 34px;
+  letter-spacing: -0.02em;
+}
+
+/* ── R17-2. 갈피 하나만 보인다 ────────────────────────────────── */
+#help-dialog .help-panel {
+  display: none;
+}
+
+#help-dialog .help-panel.is-active {
+  display: grid;
+  align-content: start;
+  gap: 10px;
+}
+
+/* ── R17-3. 갈피 안의 공통 활자 ───────────────────────────────── */
+#help-dialog .help-lead {
+  margin: 0;
+  color: #3b3226 !important;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.6;
+}
+
+#help-dialog .help-lead b {
+  color: var(--text-100) !important;
+  font-weight: 900;
+}
+
+/* 소제목 — 인주 막대 하나로 갈피 안의 마디를 끊는다 */
+#help-dialog .help-subhead {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 3px 0 0;
+  color: #2b1d07 !important;
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: 0.01em;
+}
+
+#help-dialog .help-subhead::before {
+  content: "";
+  flex: 0 0 auto;
+  width: 3px;
+  height: 13px;
+  border-radius: 2px;
+  background: var(--seal);
+}
+
+/* 진법 배지 — 별승급/자형연성 어느 쪽 규칙인지. 양쪽 다 노출하고 배지로
+   가른다(한쪽을 숨기면 다른 진법을 고를 때 배울 곳이 없어진다). */
+#help-dialog .help-mode-badge {
+  padding: 2px 8px;
+  color: #2e2212 !important;
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  border-radius: 999px;
+  background: rgba(214, 162, 58, 0.34);
+  box-shadow: inset 0 0 0 1px rgba(122, 90, 42, 0.44);
+}
+
+#help-dialog .help-mode-badge.is-synth {
+  background: rgba(58, 87, 148, 0.18);
+  box-shadow: inset 0 0 0 1px rgba(58, 87, 148, 0.55);
+}
+
+/* 도식 아래 한 줄 보충 — 파인 홈 위에 앉혀 카드와 구분한다 */
+#help-dialog .help-note {
+  margin: 0;
+  padding: 8px 11px;
+  color: #4a3f30 !important;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.55;
+  border-radius: var(--r-sm);
+  background: rgba(201, 183, 143, 0.44);
+  box-shadow: inset 0 0 0 1px rgba(122, 90, 42, 0.26);
+}
+
+#help-dialog .help-note b {
+  color: var(--text-100) !important;
+  font-weight: 900;
+}
+
+/* ── R17-4. 처음 세 걸음 순서도 ───────────────────────────────
+   전장 상단 `#opening-guide` 와 같은 낱말(자령 소환 → 첫 진 자동 개방 →
+   웨이브 시작)을 쓴다. 도움말에서 배운 말이 화면에 그대로 있어야 한다. */
+#help-dialog .help-flow {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  /* 화살표가 앉을 자리다. 8px 로는 글자가 카드에 눌려 보이지 않았다. */
+  gap: 18px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+#help-dialog .help-flow > li {
+  position: relative;
+  display: grid;
+  grid-template-columns: 26px minmax(0, 1fr);
+  gap: 2px 8px;
+  padding: 10px 11px;
+  border-radius: var(--r-md);
+  background: linear-gradient(180deg, #f7f0dd 0%, #e8dcbe 100%);
+  box-shadow: var(--bevel-up), 0 0 0 1px rgba(122, 90, 42, 0.3);
+}
+
+#help-dialog .help-flow > li i {
+  grid-row: 1 / span 2;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  color: #fff4e8 !important;
+  font-size: 14px;
+  font-style: normal;
+  font-weight: 900;
+  border-radius: 50%;
+  background: var(--seal);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+
+#help-dialog .help-flow > li b {
+  color: var(--text-100) !important;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+#help-dialog .help-flow > li span {
+  color: #4a3f30 !important;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+#help-dialog .help-flow > li em {
+  color: #5f4515 !important;
+  font-style: normal;
+  font-weight: 900;
+}
+
+/* 카드 사이 8px 틈의 한가운데에 화살표를 얹어 "다음"을 말한다 */
+#help-dialog .help-flow > li + li::before {
+  content: "→";
+  position: absolute;
+  top: 50%;
+  left: -9px;
+  color: #7a5a26;
+  font-size: 16px;
+  font-weight: 900;
+  text-shadow: 0 1px 0 rgba(255, 250, 236, 0.85);
+  transform: translate(-50%, -50%);
+}
+
+/* ── R17-5. 핵심 용어 여섯 장 — 옛 용어 대응표가 여기로 들어온다 ── */
+#help-dialog .help-term-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+#help-dialog .help-term {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr);
+  gap: 9px;
+  align-items: center;
+  padding: 9px 10px;
+  border-radius: var(--r-md);
+  background: linear-gradient(180deg, #f7f0dd 0%, #e8dcbe 100%);
+  box-shadow: var(--bevel-up), 0 0 0 1px rgba(122, 90, 42, 0.3);
+}
+
+/* 한자 인장 — 84-B 의 `.casual-group-glyph` 와 같은 어휘(오행색 + 먹) */
+#help-dialog .help-term > i {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  color: color-mix(in srgb, var(--element, #b8934a) 44%, #1b1409) !important;
+  font-size: 22px;
+  font-style: normal;
+  font-weight: 900;
+  border-radius: var(--r-sm);
+  background:
+    radial-gradient(circle at 50% 32%, color-mix(in srgb, var(--element, #b8934a) 26%, transparent), transparent 74%),
+    var(--mat-well);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--element, #b8934a) 42%, rgba(122, 90, 42, 0.4));
+}
+
+#help-dialog .help-term b {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 5px;
+  color: var(--text-100) !important;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+/* 옛 용어 대응표의 오른쪽 항(자령=타워)이다. 알약으로 감싸지 않으면
+   "자령 타워"가 한 낱말처럼 붙어 읽힌다. */
+#help-dialog .help-term b em {
+  padding: 1px 7px;
+  color: #4a3a15 !important;
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 800;
+  border-radius: 999px;
+  background: rgba(214, 162, 58, 0.26);
+  box-shadow: inset 0 0 0 1px rgba(122, 90, 42, 0.36);
+}
+
+#help-dialog .help-term span {
+  display: block;
+  margin-top: 2px;
+  color: #4a3f30 !important;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+/* ── R17-6. 카드 격자 — 갈피마다 같은 간격·같은 판 ─────────────── */
+#help-dialog .help-cards {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+#help-dialog .help-card {
+  display: grid;
+  align-content: start;
+  gap: 3px;
+  padding: 9px 11px;
+  border-radius: var(--r-md);
+  border-left: 3px solid rgba(122, 90, 42, 0.4);
+  background: linear-gradient(180deg, #f7f0dd 0%, #e8dcbe 100%);
+  box-shadow: var(--bevel-up), 0 0 0 1px rgba(122, 90, 42, 0.28);
+}
+
+#help-dialog .help-cards--tight .help-card {
+  padding: 8px 10px;
+}
+
+#help-dialog .help-card > b {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 5px;
+  color: var(--text-100) !important;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+#help-dialog .help-card > b > em {
+  color: #5f4515 !important;
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 800;
+}
+
+#help-dialog .help-card > span {
+  color: #4a3f30 !important;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+/* 카드 본문의 <em> 은 이름표다 — 기울임 대신 먹으로 굵게(78-11 과 같은 판단) */
+#help-dialog .help-card > span em {
+  color: var(--text-100) !important;
+  font-style: normal;
+  font-weight: 800;
+}
+
+/* 카드 제목 안에 들어가는 진법 배지만은 위 놋쇠색이 아니라 배지 자신의 먹을
+   쓴다 — 삼청 배지 위에서 놋쇠는 3.7:1 까지 떨어졌다. */
+#help-dialog .help-card > b > em.help-mode-badge {
+  color: #2e2212 !important;
+}
+
+/* ── R17-7. 소환 별 구간 막대 ─────────────────────────────────
+   "2~5★ 확정" 이라는 문구만으로는 세 상품이 서로 어떻게 겹치는지 보이지
+   않았다. 1~8 눈금을 깔고 상품마다 칠해진 구간을 나란히 세운다. 숫자가
+   칸 안에 박히므로 색을 못 봐도 구간을 읽을 수 있다. */
+#help-dialog .help-band {
+  display: grid;
+  gap: 6px;
+  padding: 10px 11px;
+  border-radius: var(--r-md);
+  background: var(--mat-well);
+  box-shadow: var(--bevel-in), 0 0 0 1px rgba(122, 90, 42, 0.26);
+}
+
+#help-dialog .help-band-row {
+  display: grid;
+  grid-template-columns: 116px minmax(0, 1fr) 44px;
+  gap: 9px;
+  align-items: center;
+}
+
+#help-dialog .help-band-row > b {
+  color: var(--text-100) !important;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+}
+
+#help-dialog .help-band-track {
+  display: grid;
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+  gap: 3px;
+}
+
+#help-dialog .help-band-track i {
+  display: grid;
+  place-items: center;
+  height: 17px;
+  /* 구간 밖 눈금도 읽혀야 한다 — 78 절 기준 4.5:1 을 넘기는 가장 옅은 먹 */
+  color: #4a3f28 !important;
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 800;
+  border-radius: 3px;
+  background: rgba(122, 90, 42, 0.1);
+  box-shadow: inset 0 0 0 1px rgba(122, 90, 42, 0.2);
+}
+
+#help-dialog .help-band-track i.is-on {
+  color: #241c0e !important;
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--star, #d6a23a) 74%, #fff8e8) 0%,
+    color-mix(in srgb, var(--star, #d6a23a) 60%, #8a682c) 100%
+  );
+  box-shadow: inset 0 0 0 1px rgba(70, 52, 20, 0.5);
+}
+
+#help-dialog .help-band-row > em {
+  color: #2b1d07 !important;
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 900;
+  text-align: right;
+}
+
+/* ── R17-8. 지도 조작 세 알 — 전장의 `.canvas-tip` 과 같은 낱말 ── */
+#help-dialog .help-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+#help-dialog .help-chips i {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 11px 3px 3px;
+  color: #4a3f30 !important;
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 700;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #f7f0dd 0%, #e8dcbe 100%);
+  box-shadow: var(--bevel-up), 0 0 0 1px rgba(122, 90, 42, 0.3);
+}
+
+#help-dialog .help-chips i em {
+  padding: 2px 9px;
+  color: #2e2212 !important;
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 900;
+  border-radius: 999px;
+  background: rgba(214, 162, 58, 0.36);
+  box-shadow: inset 0 0 0 1px rgba(122, 90, 42, 0.42);
+}
+
+/* ── R17-9. 오행 공명 네 계단 ─────────────────────────────────
+   임계치(4·8·12·16)와 그때 붙는 피해를 한 칸에 묶고, 칸 아래 채움 막대로
+   "16기에 가까울수록 찬다"를 그린다. 수치는 formationResonance() 그대로. */
+#help-dialog .help-gauge {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 7px;
+}
+
+#help-dialog .help-gauge-step {
+  position: relative;
+  display: grid;
+  gap: 1px;
+  overflow: hidden;
+  padding: 9px 10px 12px;
+  border-radius: var(--r-md);
+  background: linear-gradient(180deg, #f7f0dd 0%, #e8dcbe 100%);
+  box-shadow: var(--bevel-up), 0 0 0 1px rgba(122, 90, 42, 0.3);
+}
+
+#help-dialog .help-gauge-step::before {
+  content: "";
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 5px;
+  background: rgba(122, 90, 42, 0.18);
+}
+
+#help-dialog .help-gauge-step::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: var(--fill, 0%);
+  height: 5px;
+  background: linear-gradient(90deg, rgba(214, 162, 58, 0.72), var(--seal));
+}
+
+#help-dialog .help-gauge-step b {
+  color: var(--text-100) !important;
+  font-size: 15px;
+  font-weight: 900;
+}
+
+#help-dialog .help-gauge-step i {
+  color: #5f4515 !important;
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 900;
+}
+
+#help-dialog .help-gauge-step span {
+  color: #4a3f30 !important;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+/* ── R17-10. 3합 승급 도식 ────────────────────────────────────
+   승급 카드(`.casual-group-card`)가 쓰는 말 그대로다 — 같은 오행·같은 별
+   3기가 사라지고 다음 별 1기가 무작위로 남는다. 결과 칸의 ? 가 "무작위"다. */
+#help-dialog .help-fuse {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 7px;
+  padding: 11px;
+  border-radius: var(--r-md);
+  background: var(--mat-well);
+  box-shadow: var(--bevel-in), 0 0 0 1px rgba(122, 90, 42, 0.26);
+}
+
+#help-dialog .help-fuse-tile {
+  display: grid;
+  place-items: center;
+  gap: 2px;
+  width: 54px;
+  padding: 7px 0 6px;
+  border-radius: var(--r-sm);
+  background:
+    radial-gradient(circle at 50% 30%, color-mix(in srgb, var(--element, #b8934a) 22%, transparent), transparent 74%),
+    linear-gradient(180deg, #f7f0dd 0%, #e8dcbe 100%);
+  box-shadow: var(--bevel-up), 0 0 0 1px color-mix(in srgb, var(--element, #b8934a) 40%, rgba(122, 90, 42, 0.42));
+}
+
+#help-dialog .help-fuse-tile b {
+  color: color-mix(in srgb, var(--element, #b8934a) 44%, #1b1409) !important;
+  font-size: 22px;
+  font-weight: 900;
+  line-height: 1.05;
+}
+
+#help-dialog .help-fuse-tile i {
+  padding: 1px 7px;
+  color: #241c0e !important;
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 900;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--star, #d6a23a) 58%, #fff6e2);
+  box-shadow: inset 0 0 0 1px rgba(70, 52, 20, 0.44);
+}
+
+#help-dialog .help-fuse-tile.is-result {
+  box-shadow: var(--bevel-up), 0 0 0 2px var(--seal);
+}
+
+#help-dialog .help-fuse-tile.is-result b {
+  color: var(--seal) !important;
+}
+
+#help-dialog .help-fuse-op {
+  color: #5f4515 !important;
+  font-size: 14px;
+  font-weight: 900;
+}
+
+#help-dialog .help-fuse-op--to {
+  color: var(--seal) !important;
+  font-size: 19px;
+}
+
+/* ── R17-11. 소모에서 빠지는 자령 넷 ──────────────────────────── */
+#help-dialog .help-guard {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 9px 11px;
+  border-radius: var(--r-md);
+  border-left: 3px solid var(--seal);
+  background: linear-gradient(180deg, #f7f0dd 0%, #e8dcbe 100%);
+  box-shadow: var(--bevel-up), 0 0 0 1px rgba(122, 90, 42, 0.28);
+}
+
+#help-dialog .help-guard > b {
+  color: var(--text-100) !important;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+#help-dialog .help-guard > span {
+  padding: 2px 10px;
+  color: #2e2212 !important;
+  font-size: 12px;
+  font-weight: 800;
+  border-radius: 999px;
+  background: rgba(159, 47, 35, 0.15);
+  box-shadow: inset 0 0 0 1px rgba(159, 47, 35, 0.45);
+}
+
+#help-dialog .help-guard > small {
+  flex: 1 0 100%;
+  color: #4f3f26 !important;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+/* ── R17-12. 농축 방향은 역할이 정한다 ────────────────────────── */
+#help-dialog .help-role {
+  display: grid;
+  gap: 6px;
+  padding: 10px 11px;
+  border-radius: var(--r-md);
+  background: var(--mat-well);
+  box-shadow: var(--bevel-in), 0 0 0 1px rgba(122, 90, 42, 0.26);
+}
+
+#help-dialog .help-role-row {
+  display: grid;
+  grid-template-columns: 112px 16px minmax(0, 1fr);
+  gap: 7px;
+  align-items: center;
+}
+
+#help-dialog .help-role-row > b {
+  color: var(--text-100) !important;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+#help-dialog .help-role-row > i {
+  color: #5f4515 !important;
+  font-size: 13px;
+  font-style: normal;
+  font-weight: 900;
+  text-align: center;
+}
+
+#help-dialog .help-role-row > span {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #4a3f30 !important;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+#help-dialog .help-role-row > span em {
+  padding: 2px 9px;
+  color: #2e2212 !important;
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 900;
+  border-radius: 999px;
+  background: rgba(214, 162, 58, 0.34);
+  box-shadow: inset 0 0 0 1px rgba(122, 90, 42, 0.42);
+}
+
+/* ── R17-13. 사자성어 — R15 도식을 창 크기에 맞춰 키운다 ───────
+   칸 16px → 22px, 사이 3px → 4px 이므로 칸 중심 간격은 26px 다. 첫 칸 중심은
+   안여백 4 + 11 = 15px. 가로줄은 26×3 = 78px, 대각은 그 √2 배인 110.3px. */
+#help-dialog .help-idiom-guide {
+  gap: 8px;
+  margin-bottom: 0;
+  padding: 11px 12px 10px;
+}
+
+#help-dialog .help-idiom-guide p {
+  font-size: 12px;
+}
+
+/* 성어 패널은 자리가 없어 세로줄을 "가로를 90° 돌린 것"이라는 문구로 대신
+   했지만, 창 안에서는 세 도식을 나란히 세울 자리가 있다. 처음 배우는 사람에게
+   가로·세로·대각선을 눈으로 한 번에 보이는 편이 낫다. */
+#help-dialog .idiom-rule-figures {
+  gap: 36px;
+}
+
+#help-dialog .idiom-rule-figure--column .idiom-rule-grid::before {
+  width: 78px;
+  transform: rotate(90deg);
+}
+
+#help-dialog .idiom-rule-grid {
+  grid-template-columns: repeat(4, 22px);
+  grid-template-rows: repeat(4, 22px);
+  gap: 4px;
+  padding: 4px;
+}
+
+#help-dialog .idiom-rule-grid::before {
+  top: 14px;
+  left: 15px;
+}
+
+#help-dialog .idiom-rule-figure--row .idiom-rule-grid::before {
+  width: 78px;
+}
+
+#help-dialog .idiom-rule-figure--diagonal .idiom-rule-grid::before {
+  width: 110.3px;
+}
+
+/* 3052 절의 `#help-dialog *` 가 순번 인주색을 먹으로 덮는다 — 되돌린다 */
+#help-dialog .idiom-rule-grid i {
+  color: var(--seal) !important;
+  font-size: 13px;
+}
+
+#help-dialog .idiom-rule-figure figcaption {
+  color: var(--text-200) !important;
+  font-size: 12px;
+}
+
+/* 화면에 실제로 뜨는 두 표시(순번 인장 · 다음 칸 금색 점선)를 그대로 보인다 */
+#help-dialog .help-idiom-legend {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+#help-dialog .help-idiom-legend > div {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+  padding: 9px 11px;
+  border-radius: var(--r-md);
+  background: linear-gradient(180deg, #f7f0dd 0%, #e8dcbe 100%);
+  box-shadow: var(--bevel-up), 0 0 0 1px rgba(122, 90, 42, 0.3);
+}
+
+#help-dialog .help-cell {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  font-size: 15px;
+  font-weight: 900;
+  border-radius: 5px;
+}
+
+#help-dialog .help-cell.is-placed {
+  color: var(--seal) !important;
+  background: var(--hanji-100);
+  box-shadow: inset 0 0 0 1px rgba(122, 90, 42, 0.44);
+}
+
+#help-dialog .help-cell.is-next {
+  color: #4a3410 !important;
+  border: 2px dashed rgba(176, 138, 69, 0.95);
+  background: rgba(214, 162, 58, 0.13);
+}
+
+#help-dialog .help-idiom-legend b {
+  display: block;
+  color: var(--text-100) !important;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+#help-dialog .help-idiom-legend b + span {
+  display: block;
+  margin-top: 2px;
+  color: #4a3f30 !important;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+/* ── R17-14. 단축키 줄 — 78-B1 키캡을 그대로 쓰고 간격만 맞춘다 ── */
+#help-dialog .key-guide {
+  gap: 7px 9px;
+  padding: 2px 0 0;
+}
+
+/* ── R17-15. 12px 바닥선 — 창 안에 남은 마지막 11px 한 줄 ────────
+   `.eyebrow` 는 여러 창이 함께 쓰는 낱말이라 전역으로 올리지 않고 이 창
+   안에서만 바닥선에 맞춘다. */
+#help-dialog .eyebrow {
+  color: #4a3f30 !important;
+  font-size: 12px !important;
+}
+
+
+/* ══════════════════════════════════════════════════════════════════
    ===== R8 고정무대 =====
 
    1280x720 설계 해상도를 한 덩어리(#stage)로 묶어 균일 배율로만 키우고
