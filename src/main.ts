@@ -60,6 +60,7 @@ import {
   CHEONJAMUN_JARYEONG_DEX_META,
   type CheonjamunJaryeongDexEntry
 } from "./core/cheonjamun-jaryeong-dex";
+import { CHEONJAMUN_SUPPLEMENTAL_CHARACTERS } from "./core/cheonjamun-roster";
 import { koreanMeaningExplanation } from "./core/korean-meaning-explanations";
 import { type CompactReading, type MeasureText, compactReading } from "./ui/plaque-text";
 import {
@@ -216,7 +217,7 @@ app.innerHTML = `
       <div class="stage-topbar" aria-live="polite">
         <div class="stage-chip"><span>웨이브</span><strong id="stage-wave">0 / ${GAME_CONFIG.maxWaves}</strong></div>
         <div class="stage-chip stage-chip--region"><span>지역</span><strong id="stage-region">한국</strong></div>
-        <div class="stage-chip stage-chip--chapter" title="10웨이브마다 보스가 오는 장(章) 진행"><span>챕터</span><strong id="stage-chapter">1 / 10</strong></div>
+        <div class="stage-chip stage-chip--chapter" title="10웨이브마다 우두머리가 오는 장(章) 진행"><span>장</span><strong id="stage-chapter">1 / 10</strong></div>
         <div class="stage-chip stage-chip--phase"><i id="phase-dot"></i><strong id="stage-phase">준비 전</strong></div>
         <button id="early-button" class="early-start" type="button" data-testid="early-wave">시작 보너스</button>
         <div id="enemy-limit-chip" class="stage-chip"><span>적 한계</span><strong id="stage-enemies">0 / ${MAX_ENEMIES}</strong></div>
@@ -224,6 +225,7 @@ app.innerHTML = `
       <div id="active-idioms" class="active-idioms" aria-label="발동 중 사자성어" aria-live="polite"></div>
       <div class="wave-progress" aria-hidden="true"><i id="wave-progress-fill"></i></div>
       <div id="boss-banner" class="boss-banner" aria-live="assertive"></div>
+      <div id="pause-chip" class="pause-chip" role="status" aria-live="polite" hidden><b>⏸ 일시정지</b><span id="pause-reason">창을 닫으면 계속</span></div>
       <div id="toast" class="toast" role="status" aria-live="polite"></div>
       <section id="summon-reveal" class="summon-reveal" aria-hidden="true" aria-live="assertive">
         <header><div><span id="summon-reveal-kicker">소환 결과</span><strong id="summon-reveal-title">자령 소환</strong></div><button id="summon-reveal-close" type="button" aria-label="소환 결과 닫기">×</button></header>
@@ -257,7 +259,7 @@ app.innerHTML = `
           <button id="speed-button" class="speed-button" type="button" aria-label="게임 배속 1배" title="게임 배속 전환 (F)">1×</button>
           <button id="settings-button" class="icon-button" type="button" aria-label="화면 설정 열기" title="화면 설정">⚙</button>
           <button id="sound-button" class="icon-button" type="button" aria-label="소리 끄기" title="소리 켜기/끄기 (M)">♪</button>
-          <button id="codex-button" class="icon-button icon-button--codex" type="button" aria-label="통합 자령 도감 열기" title="자령 도감 (C)"><b>도감</b><small><em id="discover-count">0</em></small></button>
+          <button id="codex-button" class="icon-button icon-button--codex" type="button" aria-label="통합 자령 도감 열기" title="자령 도감 — 배지는 이번 런에서 처음 만난 한자 수입니다 (C)"><b>도감</b><small><em id="discover-count">0</em></small></button>
           <button id="help-button" class="icon-button" type="button" aria-label="도움말 열기">?</button>
         </div>
       </header>
@@ -265,8 +267,8 @@ app.innerHTML = `
       <section class="resource-grid" aria-label="현재 자원">
         <div><span>엽전 <em id="interest-preview">이자 +2</em></span><strong id="gold-value">${GAME_CONFIG.startingGold}</strong></div>
         <div><span>적 한계</span><strong id="enemy-cap-value">${MAX_ENEMIES}체</strong></div>
-        <div><span>진법</span><strong id="tower-count-value">0 / 16</strong></div>
-        <div><span>완성</span><strong id="goal-count-value">0</strong></div>
+        <div title="전장에 배치된 자령 수 / 열린 진의 칸 수"><span>배치</span><strong id="tower-count-value">0 / 16</strong></div>
+        <div title="이번 런에 완성한 목표 한자 수 / 목표 개수"><span>목표</span><strong id="goal-count-value">0</strong></div>
       </section>
 
       <section class="wave-card">
@@ -325,7 +327,8 @@ app.innerHTML = `
             <button id="evolve-button" class="action-button action-button--evolve" type="button" data-testid="evolve-button">
               <span class="hotkey">2</span><b id="evolve-action-label">합성</b><small><em id="evolve-ready-count">0</em><span id="evolve-action-detail">개 조합 확인</span></small>
             </button>
-            <button id="research-button" class="action-button action-button--research" type="button" data-testid="research-button">
+            <button id="research-button" class="action-button action-button--research" type="button" data-testid="research-button"
+              title="인연 연구 — 엽전을 들여 목표 재료가 나올 확률을 올립니다. 최고 5단계 (3키)">
               <span class="hotkey">3</span><b>인연 연구</b><small><em id="research-cost">10W 개방</em> · <i id="research-level">0</i>/5</small>
             </button>
             <button id="auto-arrange-button" class="action-button action-button--auto-arrange" type="button" data-testid="auto-arrange-button" title="발동 가능한 사자성어를 봉인하고 오행진 공명을 최적화합니다">
@@ -476,6 +479,7 @@ app.innerHTML = `
         <i class="tab-divider" aria-hidden="true"></i>
         <button id="goal-tab" type="button" data-panel-tab="goal" role="tab" aria-selected="false">목표 <small id="goal-tab-progress">0%</small></button>
         <button id="idiom-tab" type="button" data-panel-tab="idiom" role="tab" aria-selected="false">성어 <small id="idiom-tab-count">0/5</small></button>
+        <button id="record-tab" type="button" data-panel-tab="record" role="tab" aria-selected="false">기록</button>
       </nav>
 
 
@@ -539,25 +543,25 @@ app.innerHTML = `
         </div>
 
         <button id="custom-formation-button" class="s00-custom" type="button"
-          title="맞춤 진법 — 범위·표기·규칙 (설정 화면 준비 중)" aria-label="맞춤 진법. 범위·표기·규칙 설정. 아직 준비 중입니다">
+          title="맞춤 진법 — 한자 범위·읽기 표기·진법 규칙을 한 화면에서" aria-label="맞춤 진법. 한자 범위와 읽기 표기, 진법 규칙을 설정합니다">
           <i class="s00-skin" aria-hidden="true"></i><b>맞춤 진법</b><small>범위 · 표기 · 규칙</small><small class="s00-reason">설정 열기</small>
         </button>
 
         <div class="s00-regions" role="radiogroup" aria-label="지역 한자 체계">
           <button type="button" class="s00-region region-option is-selected" data-region="KR" role="radio" aria-checked="true">
-            <i class="s00-skin" aria-hidden="true"></i><b>한국</b><small class="s00-badge">심사 권장</small>
+            <i class="s00-skin" aria-hidden="true"></i><b>한국</b><small class="s00-badge">기본 추천</small>
           </button>
           <button type="button" class="s00-region region-option" data-region="JP" role="radio" aria-checked="false">
-            <i class="s00-skin" aria-hidden="true"></i><b>일본</b><small class="s00-badge s00-badge--ea">EARLY ACCESS</small>
+            <i class="s00-skin" aria-hidden="true"></i><b>일본</b><small class="s00-badge s00-badge--ea">미리 해보기</small>
           </button>
           <button type="button" class="s00-region region-option" data-region="CN" role="radio" aria-checked="false">
-            <i class="s00-skin" aria-hidden="true"></i><b>중국</b><small class="s00-badge s00-badge--ea">EARLY ACCESS</small>
+            <i class="s00-skin" aria-hidden="true"></i><b>중국</b><small class="s00-badge s00-badge--ea">미리 해보기</small>
           </button>
         </div>
 
         <div class="s00-summary" aria-live="polite">
           <strong id="s00-summary-main">한국 · 자형연성 진법</strong>
-          <span id="title-note">심사 권장 · 현재 제출 기준 콘텐츠</span>
+          <span id="title-note">가장 완성된 콘텐츠</span>
           <span id="title-lead" hidden></span>
         </div>
         <p class="s00-ea-note">일본·중국은 도감·현지화·밸런스 보강 중입니다.</p>
@@ -572,9 +576,9 @@ app.innerHTML = `
 
       <dialog id="p00-dialog" class="p00-dialog" data-popup-id="P00" aria-labelledby="p00-title">
         <div class="p00-frame">
-          <p class="s00-mode-label">얼리 액세스 안내</p>
+          <p class="s00-mode-label">미리 해보기 안내</p>
           <h3 id="p00-title">일본 한자 체계</h3>
-          <p id="p00-body">이 지역은 도감·현지화·밸런스를 보강하는 중입니다.<br />심사 권장 기준은 한국 천자문 1,000종입니다.</p>
+          <p id="p00-body">이 지역은 도감 설명과 읽기, 난이도를 아직 다듬는 중입니다.<br />가장 완성된 체계는 한국 천자문 1,000자입니다.</p>
           <div class="p00-actions">
             <button id="p00-return" type="button" autofocus>한국으로 돌아가기</button>
             <button id="p00-continue" type="button">일본으로 계속</button>
@@ -629,6 +633,7 @@ app.innerHTML = `
         <div class="end-actions">
           <button id="retry-button" class="start-button" type="button">같은 시드 재도전</button>
           <button id="new-seed-button" class="secondary-button" type="button">새 시드로 시작</button>
+          <button id="return-menu-button" class="secondary-button" type="button">메뉴로 돌아가기</button>
         </div>
       </div>
     </section>
@@ -636,13 +641,15 @@ app.innerHTML = `
     <dialog id="help-dialog" class="help-dialog">
       <form method="dialog">
         <div class="dialog-heading"><div><p class="eyebrow">놀이 방법</p><h2>봉인술 입문</h2></div><button aria-label="도움말 닫기">×</button></div>
-        <div class="help-quickstart"><b>처음이라면</b><span><i>①</i> 소환(1키)으로 자령 뽑기</span><span><i>②</i> 첫 오행진이 무료로 열림</span><span><i>③</i> 시작 버튼으로 웨이브 개시</span><small>자령=타워 · 봉인=처치 · 엽전=골드 · 문기=오행 재료 · 농축=중복 강화</small></div>
+        <div class="help-quickstart"><b>처음이라면</b><span><i>①</i> 소환(1키)으로 자령 뽑기</span><span><i>②</i> 첫 오행진이 무료로 열림</span><span><i>③</i> 시작 버튼으로 웨이브 개시</span><small class="help-glossary">자령=타워 · 엽전=골드 · 문기=오행 재료 · 濃=농축 단계(최고 3) · 봉인=적 처치, 또는 사자성어 발동</small></div>
         <ol>
-          <li><b>소환</b><span>지역별 1단계 한자를 품은 자령이 무작위로 나옵니다. 목표의 부족한 재료는 소프트 천장으로 조금씩 유리해집니다.</span></li>
-          <li><b>목적 소환</b><span>균형·탐색·계보·중복 수집 중 원하는 목적을 고릅니다. 중복 수집은 농축과 분해에 쓸 보유 한자를 다시 부릅니다.</span></li>
+          <li><b>소환</b><span>지역별 1단계 한자를 품은 자령이 무작위로 나옵니다. 목표에 모자란 재료는 뽑을수록 확률이 올라갑니다.</span></li>
+          <li><b>목적 소환</b><span>네 가지 중 하나를 고릅니다. <em>균형</em>은 목표와 성어 재료를 고루 섞고, <em>탐색</em>은 아직 못 본 한자를 우선하며, <em>계보</em>는 목표 계보의 재료만 노리고(12회마다 재료 1기 보장 · 30회 누적 시 확정 지급), <em>중복 수집</em>은 농축과 분해에 쓸 보유 한자를 다시 부릅니다.</span></li>
+          <li><b>오행 공명</b><span>같은 진에 그 진의 오행 자령을 4·8·12·16기 모으면 단계가 올라가고, 단계마다 그 진의 피해가 더해집니다. 자동배치가 알려 주는 "오행 공명 N→M단계"가 이 값입니다.</span></li>
+          <li><b>인연 연구</b><span>엽전을 들여 목표 재료가 나올 가중치를 올립니다. 최고 5단계이며 각 단계는 정해진 웨이브를 지나야 열립니다(3키).</span></li>
           <li><b>10연 소환</b><span>10웨이브를 지키면 개방됩니다. Q키 또는 10연 버튼으로 현재 소환 비용 10회를 한 번에 지불합니다.</span></li>
           <li><b>합성</b><span>실제 구성식의 재료를 모두 보유하면 조합 서책에 카드가 열립니다. 木+木처럼 같은 글자 두 개도 각각 필요합니다.</span></li>
-          <li><b>캐주얼 8성전</b><span>천자문 실제 획수로 기본 별이 정해집니다. 같은 오행·같은 현재 별 자령 3기를 고르면 3기가 모두 사라지고 같은 오행의 다음 별 자령 1기를 무작위로 얻으며 최고 8성입니다. 잠금·농축·목표·사자성어 자령은 소모 대상에서 빠집니다.</span></li>
+          <li><b>별승급 진법</b><span>천자문 실제 획수로 기본 별이 정해집니다. 같은 오행·같은 현재 별 자령 3기를 고르면 3기가 모두 사라지고 같은 오행의 다음 별 자령 1기를 무작위로 얻으며 최고 8성입니다. 잠금·농축·목표·사자성어 자령은 소모 대상에서 빠집니다.</span></li>
           <li><b>방식</b><span>반자동은 가능한 조합만 제안합니다. 목표 자동은 목표 경로의 조합만 자동 실행하며, 수동은 선택한 한자가 포함된 조합만 봅니다.</span></li>
           <li><b>사자성어</b><span>이웃한 네 칸에 글자를 올바른 순서로 배치하면 자동 봉인됩니다. 직접 선을 그을 필요가 없으며, 보너스는 그 런 동안 계속 유지됩니다.</span></li>
           <li><b>첫 오행진</b><span>열린 진 없이 상점에서 시작합니다. 첫 소환 자령과 같은 오행진이 무료로 열리고, 나머지는 원하는 순서로 18·32·52·78엽전에 개방합니다.</span></li>
@@ -658,10 +665,10 @@ app.innerHTML = `
           <li><b>농축 공방</b><span>같은 한자 중복 1기 또는 같은 오행 문기 4·6·8을 직접 고릅니다. 최초 연속·심화 분기는 영구 고정되며 실행 전 전후 전투 수치를 비교합니다.</span></li>
           <li><b>지도 배율</b><span>기존 260% 크기를 새 100% 기준으로 사용합니다. 휠로 약 28%~200% 확대·축소하고, 빈 칸·길에서 좌클릭 드래그하거나 휠 버튼을 누른 채 드래그하면 지도를 이동합니다. 왼쪽 아래 배율 버튼은 중앙 정렬된 100%로 돌아갑니다.</span></li>
           <li><b>게임 배속</b><span>오른쪽 위 배속 버튼이나 F키로 1×·2×·3×를 순환합니다.</span></li>
-          <li><b>게임오버</b><span>적은 경로 끝에서 사라지지 않고 계속 순환합니다. 전장에 ${MAX_ENEMIES}체가 쌓이거나 보스를 제한시간 안에 처치하지 못하면 즉시 실패합니다. 제어 능력은 적을 뒤로 밀지 않고 현재 공격권 안에서 감속·봉쇄합니다.</span></li>
+          <li><b>게임오버</b><span>적은 경로 끝에서 사라지지 않고 계속 순환합니다. 전장에 ${MAX_ENEMIES}체가 쌓이거나 우두머리를 제한시간 안에 처치하지 못하면 즉시 실패합니다. 제어 능력은 적을 뒤로 밀지 않고 현재 공격권 안에서 감속·봉쇄합니다.</span></li>
         </ol>
-        <div class="key-guide"><span><kbd>1</kbd> 소환</span><span><kbd>Q</kbd> 10연</span><span><kbd>2</kbd> 첫 합성</span><span><kbd>3</kbd> 연구</span><span><kbd>Space</kbd> 한자 강조</span><span><kbd>F</kbd> 배속</span><span><kbd>C</kbd> 도감</span><span><kbd>M</kbd> 음소거</span></div>
-        <p>장갑·질풍·군집·회생 적의 특성을 미리 확인하세요. 놓친 적도 사라지지 않고 다음 바퀴를 돌기 때문에 누적 수를 계속 관리해야 합니다.</p>
+        <div class="key-guide"><span><kbd>1</kbd> 소환</span><span><kbd>Q</kbd> 10연</span><span><kbd>2</kbd> 첫 합성</span><span><kbd>3</kbd> 연구</span><span><kbd>Space</kbd> 한자 강조</span><span><kbd>F</kbd> 배속</span><span><kbd>P</kbd> 일시정지</span><span><kbd>C</kbd> 도감</span><span><kbd>M</kbd> 음소거</span></div>
+        <p>정예 철갑 강시(방어 높음)·질풍 아귀(빠름)·백귀야행(다수)·회생 요괴(체력 회복)의 특성을 미리 확인하세요. 놓친 적도 사라지지 않고 다음 바퀴를 돌기 때문에 누적 수를 계속 관리해야 합니다.</p>
       </form>
     </dialog>
 
@@ -692,7 +699,7 @@ app.innerHTML = `
       <section class="audio-settings" aria-labelledby="audio-settings-title">
         <div class="audio-settings-heading"><b id="audio-settings-title">오디오 믹스</b><small>첫 조작 뒤 재생 · 선택은 브라우저에 저장</small></div>
         <div class="audio-setting-row">
-          <span><b>배경음악</b><small>웨이브 구간·보스 상태에 따라 3초 크로스페이드</small></span>
+          <span><b>배경음악</b><small>웨이브 구간·우두머리 상태에 따라 3초 크로스페이드</small></span>
           <label for="bgm-volume"><span>음량</span><input id="bgm-volume" type="range" min="0" max="100" step="1" aria-label="배경음악 음량" /><output id="bgm-volume-output" for="bgm-volume">60%</output></label>
           <button id="bgm-mute-button" class="audio-mute-button" type="button" role="switch" aria-checked="true">ON</button>
         </div>
@@ -702,6 +709,10 @@ app.innerHTML = `
           <button id="sfx-mute-button" class="audio-mute-button" type="button" role="switch" aria-checked="true">ON</button>
         </div>
       </section>
+      <button id="replay-coach-button" class="settings-toggle settings-toggle--action" type="button">
+        <span><b>처음 안내 다시 보기</b><small>소환·전장 조작·웨이브 시작을 짚어 주는 3단계 안내를 다시 띄웁니다.</small></span>
+        <i aria-hidden="true"><em>보기</em></i>
+      </button>
       <p class="settings-source">자령 머리 위에는 짧은 훈음을 표시하고, 자세한 부수 정보는 선택 카드와 도감에서 확인할 수 있습니다.</p>
     </dialog>
 
@@ -845,6 +856,19 @@ let selectedRegion: RegionCode = "KR";
 let pendingRegion: RegionCode | null = null;
 let formationUnlockHintShown = false;
 let selectedGameMode: GameMode = "standard";
+
+/*
+ * 진법 이름은 여기서만 만든다.
+ *
+ * 같은 모드가 화면마다 '전략 조합전'·'캐주얼 8성전'·'자형연성 진법'·
+ * '별승급 진법' 네 이름으로 불려서, 메뉴에서 고른 것과 시작 토스트·
+ * 종료 화면에 뜨는 것이 서로 다른 게임처럼 읽혔다. S00 메뉴가 쓰는
+ * 이름으로 통일한다.
+ */
+function gameModeLabel(mode: GameMode): string {
+  return mode === "casual" ? "별승급 진법" : "자형연성 진법";
+}
+
 let displayMode: DisplayMode = initialDisplayMode;
 let engine = new GameEngine(initialSeed, selectedRegion, selectedGameMode);
 let mapSynthesisDepths = buildSynthesisDepths(engine.catalog.definitions.values());
@@ -888,6 +912,8 @@ let codexMode: CodexMode = "hanzi";
 let codexSynthesisDepth: SynthesisTierFilter = "all";
 let jaryeongDexFilter: JaryeongDexFilter = "all";
 let selectedCodexChar = CHEONJAMUN_JARYEONG_DEX_ENTRIES[0]?.hanja ?? "";
+/** 성어 카드에도 한자 카드와 같은 선택 표시를 준다(항목 17). */
+let selectedCodexIdiomId = "";
 let goalPanelMode: GoalPanelMode = "hanzi";
 let goalSearchQuery = "";
 let activePanelTab: PanelTab = "shop";
@@ -1147,6 +1173,8 @@ function defaultMapOffset(): Point {
 }
 let mapZoom = DEFAULT_MAP_ZOOM;
 let mapOffset: Point = defaultMapOffset();
+/** 휠 확대·축소 1회 또는 팬 1회마다 오른다. 코치 2단계 자동 진행의 근거. */
+let mapCameraGestures = 0;
 type GameSpeed = 1 | 2 | 3;
 let gameSpeed: GameSpeed = 1;
 const hanjiPaperUrl = `${import.meta.env.BASE_URL}assets/map/hanji-ink-field/hanji-paper-base.png`;
@@ -1222,7 +1250,10 @@ function setPanelTab(tab: PanelTab): void {
   document.querySelectorAll<HTMLElement>("[data-panel-view]").forEach((view) => {
     view.classList.toggle("is-active", view.dataset.panelView === tab);
   });
-  document.querySelectorAll<HTMLButtonElement>("[data-panel-tab]").forEach((button) => {
+  // 셸에도 같은 이름의 data 속성을 심어 두기 때문에(테스트 계약) 전수
+  // 셀렉터로 훑으면 <main> 까지 탭으로 오인해 is-active·aria-selected 를
+  // 뒤집어썼다. 탭 줄 안으로 범위를 좁힌다.
+  document.querySelectorAll<HTMLButtonElement>(".panel-tabs [data-panel-tab]").forEach((button) => {
     const selected = button.dataset.panelTab === tab;
     button.classList.toggle("is-active", selected);
     button.setAttribute("aria-selected", String(selected));
@@ -1323,17 +1354,19 @@ function syncTitleModeSelection(): void {
     button.classList.toggle("is-selected", selected);
     button.setAttribute("aria-checked", String(selected));
   });
-  const modeName = selectedGameMode === "casual" ? "별승급 진법" : "자형연성 진법";
-  must<HTMLElement>("#s00-summary-main").textContent = `${REGION_MENU_INFO[selectedRegion].name} · ${modeName}`;
+  must<HTMLElement>("#s00-summary-main").textContent = `${REGION_MENU_INFO[selectedRegion].name} · ${gameModeLabel(selectedGameMode)}`;
   const s13 = document.querySelector<HTMLDialogElement>("#s13-dialog");
   if (s13?.open) syncS13();
   must<HTMLElement>("#s00-start-sub").textContent = REGION_MENU_INFO[selectedRegion].pool;
   must<HTMLElement>("#title-lead").innerHTML = selectedGameMode === "casual"
     ? "획수가 희귀도를 정하고, 같은 오행 세 자령을 모두 바쳐 다음 별을 부릅니다.<br />무엇이 나올지는 열어 봐야 압니다 — 8성 대봉인까지 성장시키세요."
     : "운으로 글자를 부르고, 실제 구성 원리로 합성하라.<br />열 개의 장과 백 번의 망령 행렬을 넘어 대봉인을 완성하세요.";
+  // 개발용 표현(심사·제출)은 dev 모드에서만 남긴다. 플레이어에게는
+  // "무엇이 가장 잘 갖춰져 있는가"만 말한다.
+  const devLabels = shell.dataset.devMode === "1";
   must<HTMLElement>("#title-note").textContent = selectedRegion === "KR"
-    ? "심사 권장 · 현재 제출 기준 콘텐츠"
-    : "EARLY ACCESS · 도감·현지화·밸런스 보강 중";
+    ? devLabels ? "심사 권장 · 현재 제출 기준 콘텐츠" : "가장 완성된 콘텐츠"
+    : "미리 해보기 · 도감·현지화·밸런스 보강 중";
 }
 
 function setSelectedGameMode(mode: GameMode): void {
@@ -1387,6 +1420,8 @@ function startRun(useNewSeed = false): void {
   engine.state.autoPlaceSummons = loadAutoPlaceSummons();
   engine.begin();
   previousPhase = "prep";
+  manualPause = false;
+  mapCameraGestures = 0;
   titleOverlay.classList.remove("modal-layer--visible");
   endOverlay.classList.remove("modal-layer--visible");
   sound.unlock();
@@ -1437,7 +1472,7 @@ function startRun(useNewSeed = false): void {
   towerDragTowerId = null;
   towerDragStart = null;
   towerDragMoved = false;
-  showToast(`${engine.catalog.title} · ${engine.state.mode === "casual" ? "캐주얼 8성전" : "전략 조합전"}을 시작합니다.`);
+  showToast(`${engine.catalog.title} · ${gameModeLabel(engine.state.mode)}을 시작합니다.`);
   syncPanel();
 }
 
@@ -1606,6 +1641,12 @@ function showCasualFusionReveal(events: Array<Extract<GameEvent, { type: "casual
 
 function showSummonReveal(events: Array<Extract<GameEvent, { type: "summon" }>>): void {
   if (events.length === 0) return;
+  // 코치가 전장 조작을 안내하는 동안에는 카드가 스포트라이트를 덮고
+  // wheel 을 삼키므로 아예 띄우지 않는다.
+  if (coachIsPointingAtBoard()) {
+    hideSummonReveal();
+    return;
+  }
   window.clearTimeout(summonRevealTimer);
   window.clearTimeout(fusionVortexTimer);
   fusionVortex.classList.remove("is-active");
@@ -1916,7 +1957,7 @@ function processEvent(event: GameEvent): void {
       break;
     case "interest":
       showToast("은행 이자 +" + String(event.amount) + "엽전");
-      addCombatFeed("財", "은행 이자", `보유 ${event.gold - event.amount}엽전 · 10엽전당 1엽전`, "#f3d47a");
+      addCombatFeed("財", "은행 이자", `보유 ${event.gold - event.amount}엽전 · 20엽전당 1엽전 · 최대 20`, "#f3d47a");
       break;
     case "summon":
       if (!event.stored) pushPooled(rings, ringPool, takeRing(event.at, ELEMENT_STYLES[event.tower.wuxing].color, 0.52), 32);
@@ -2024,13 +2065,18 @@ function processEvent(event: GameEvent): void {
 function showEndScreen(phase: "victory" | "defeat"): void {
   const state = engine.state;
   const victory = phase === "victory";
-  must<HTMLElement>("#end-kicker").textContent = victory ? "SEAL COMPLETE" : "DEFENSE FAILED";
+  // 최고 기록은 이번 판을 저장하기 "전"에 읽어야 갱신 여부를 알 수 있다.
+  const previousBest = loadBestWave();
+  const renewed = state.wave > previousBest;
+  const bestWave = Math.max(previousBest, state.wave);
+  must<HTMLElement>("#end-kicker").textContent = victory ? "봉인 완수" : "수비 실패";
   must<HTMLElement>("#end-heading").textContent = victory ? "천자문 대봉인 완성" : "수비에 실패했습니다";
   must<HTMLElement>("#end-message").textContent = state.lastMessage;
   must<HTMLElement>("#end-stats").innerHTML = `
-    <div><span>게임 모드</span><b>${state.mode === "casual" ? "캐주얼 8성전" : "전략 조합전"}</b></div>
+    <div><span>진법</span><b>${gameModeLabel(state.mode)}</b></div>
     <div><span>도달 웨이브</span><b>${state.wave} / ${state.maxWaves}</b></div>
-    <div><span>처치한 망령</span><b>${state.killCount}</b></div>
+    <div${renewed ? ' class="is-record"' : ""}><span>최고 기록</span><b>${bestWave}웨이브${renewed ? "<em>갱신!</em>" : ""}</b></div>
+    <div><span>처치한 적</span><b>${state.killCount}</b></div>
     <div><span>${state.mode === "casual" ? "3체 조합" : "한자 합성"}</span><b>${state.mode === "casual" ? state.casualFusionCount : state.evolutionCount}</b></div>
     <div><span>목표 완성</span><b>${state.goalsCompleted.length}</b></div>
     <div><span>사자성어 봉인</span><b>${state.idiomSeals.length} / ${engine.idioms().length}</b></div>
@@ -2043,9 +2089,22 @@ function showEndScreen(phase: "victory" | "defeat"): void {
   saveBestWave(state.wave);
 }
 
+function bestWaveKey(): string {
+  return `hanzi-random-defense-best-${engine.state.mode}-${engine.state.region}`;
+}
+
+/** 저장만 하고 아무도 읽지 않던 값을 종료 화면이 드디어 읽는다. */
+function loadBestWave(): number {
+  try {
+    return Number(window.localStorage.getItem(bestWaveKey()) ?? 0) || 0;
+  } catch {
+    return 0;
+  }
+}
+
 function saveBestWave(wave: number): void {
   try {
-    const key = `hanzi-random-defense-best-${engine.state.mode}-${engine.state.region}`;
+    const key = bestWaveKey();
     const previous = Number(window.localStorage.getItem(key) ?? 0);
     if (wave > previous) window.localStorage.setItem(key, String(wave));
   } catch {
@@ -2253,7 +2312,11 @@ function syncPanel(): void {
   const nextResearchWave = researchUnlockWave(state.researchLevel);
   const researchUnlocked = state.researchLevel < 5 && state.wave >= nextResearchWave;
   must<HTMLElement>("#research-cost").textContent = state.researchLevel >= 5 ? "최고" : researchUnlocked ? `${researchCost(state.researchLevel)} 엽전` : `${nextResearchWave}W 개방`;
-  must<HTMLElement>("#discover-count").textContent = String(state.discoveredChars.length);
+  // 발견 수는 런-로컬이다(항목 27). 새로고침하면 0 으로 돌아가는 것이
+  // 버그로 읽히지 않도록 배지가 무엇을 세는지 라벨로 못박는다.
+  const discovered = must<HTMLElement>("#discover-count");
+  discovered.textContent = String(state.discoveredChars.length);
+  discovered.setAttribute("aria-label", `이번 런 발견 ${state.discoveredChars.length}자`);
   must<HTMLElement>("#essence-summary").textContent = "문기 " + WUXING_ORDER.map((wuxing) => `${wuxing}${state.elementEssence[wuxing]}`).join(" ");
   const active = state.phase === "prep" || state.phase === "combat";
   must<HTMLButtonElement>("#research-button").disabled = !active || !researchUnlocked || state.gold < researchCost(state.researchLevel);
@@ -2282,9 +2345,9 @@ function syncPanel(): void {
   const previewBossLimit = preview?.boss ? bossTimeLimitForWave(preview.wave) : null;
   must<HTMLElement>(".wave-card").classList.toggle("is-boss", bossRemaining !== null || previewBossLimit !== null);
   must<HTMLElement>("#wave-kicker").textContent = state.phase === "prep"
-    ? state.summonCount === 0 ? "첫 소환 전 · 시간 정지" : previewBossLimit !== null ? "보스전 · 제한 " + String(previewBossLimit) + "초" : "준비 " + state.prepRemaining.toFixed(1) + "초"
+    ? state.summonCount === 0 ? "첫 소환 전 · 시간 정지" : previewBossLimit !== null ? "우두머리전 · 제한 " + String(previewBossLimit) + "초" : "준비 " + state.prepRemaining.toFixed(1) + "초"
     : bossRemaining !== null
-      ? "보스 제한 " + bossRemaining.toFixed(1) + "초"
+      ? "우두머리 제한 " + bossRemaining.toFixed(1) + "초"
       : nextWaveRemaining !== null
         ? "다음 웨이브 " + nextWaveRemaining.toFixed(1) + "초"
         : state.phase === "combat" ? formatTime(state.waveElapsed) + " 경과" : "봉인전 종료";
@@ -2295,8 +2358,8 @@ function syncPanel(): void {
     ? "첫 자령의 오행에 맞는 4×4 진이 무료로 열립니다. 소환 전에는 준비 시간과 런 시간이 흐르지 않습니다."
     : preview
     ? preview.briefing
-      + ` · 제${Math.ceil(preview.wave / 10)}장 · 다음 장 보스 ${Math.ceil(preview.wave / 10) * 10}웨이브`
-      + (previewBossLimit !== null ? " · 제한시간 내 보스 처치 필수" : "")
+      + ` · 제${Math.ceil(preview.wave / 10)}장 · 다음 장 우두머리 ${Math.ceil(preview.wave / 10) * 10}웨이브`
+      + (previewBossLimit !== null ? " · 제한시간 내 우두머리 처치 필수" : "")
       + (nextWaveRemaining !== null ? ` · 잔존 ${state.enemies.length}체와 함께 다음 웨이브가 합류합니다.` : "")
     : "적 " + String(MAX_ENEMIES) + "체 도달 시 즉시 게임오버";
   const weakness = preview?.weakness ?? "木";
@@ -2367,7 +2430,9 @@ function renderGoal(): void {
   const targetNaturalStar = casualNaturalStar(progress.target.char);
   must<HTMLElement>("#goal-stage").textContent = engine.state.mode === "casual"
     ? `${targetNaturalStar ?? 1}★ · ${casualStrokeCount(progress.target.char) ?? "?"}획 · 직접 소환 가능`
-    : STAGE_NAMES[progress.target.stage] + " · " + (targetDirectLocked ? `${targetUnlockWave}W 직접 소환 개방` : progress.target.acquisition === "direct" ? "직접 소환 가능" : progress.target.combat.abilities.role.name);
+    // STAGE_NAMES[2]='결합' 과 역할 이름이 맨몸으로 붙어 '결합 · 재화연성'
+    // 처럼 무엇과 무엇인지 알 수 없는 줄이 됐다. 각 조각에 이름표를 준다.
+    : `${progress.target.stage}단 ${STAGE_NAMES[progress.target.stage]} · ` + (targetDirectLocked ? `${targetUnlockWave}W 직접 소환 개방` : progress.target.acquisition === "direct" ? "직접 소환 가능" : `역할 ${progress.target.combat.abilities.role.name}`);
   must<HTMLElement>("#goal-recipe").textContent = engine.state.mode === "casual"
     ? `${progress.target.char} 자령을 한 번 소환하면 달성`
     : progress.target.acquisition === "direct"
@@ -2378,7 +2443,9 @@ function renderGoal(): void {
   must<HTMLElement>("#goal-materials").innerHTML = progress.directMaterials.map((material) => {
     const complete = material.owned >= material.needed;
     return `<span class="${complete ? "is-complete" : ""}"><b>${escapeHtml(material.char)}</b> ${material.owned}/${material.needed}</span>`;
-  }).join("") + `<span class="goal-clue"><b>단서</b> ${engine.state.lineageClueProgress}/12</span><span class="goal-clue"><b>확정</b> ${engine.state.lineageTargetProgress}/30</span>`;
+  }).join("")
+    + `<span class="goal-clue" title="계보 소환 12회마다 재료 1기 보장"><b>단서</b> ${engine.state.lineageClueProgress}/12</span>`
+    + `<span class="goal-clue" title="계보 소환 30회 누적 시 목표 한자 확정 지급"><b>확정</b> ${engine.state.lineageTargetProgress}/30</span>`;
   const goalPercent = Math.round(progress.progress * 100);
   must<HTMLElement>("#goal-progress-fill").style.width = String(goalPercent) + "%";
 
@@ -2459,7 +2526,7 @@ function renderHanziGoalChoices(definitions: readonly HanziDefinition[], ownedCo
               ? `재료 ${percent}%`
               : engine.state.mode === "casual"
                 ? `${casualNaturalStar(definition.char) ?? 1}★ 직접 소환`
-                : definition.acquisition === "direct" ? "직접 소환" : `${STAGE_NAMES[definition.stage]} 합성`;
+                : definition.acquisition === "direct" ? "직접 소환" : `${definition.stage}단 ${STAGE_NAMES[definition.stage]}`;
     const unlockWave = summonStageUnlockWave(definition.stage);
     const directLocked = engine.state.mode === "standard" && definition.acquisition === "direct" && engine.state.wave < unlockWave;
     const naturalStar = casualNaturalStar(definition.char);
@@ -2474,7 +2541,7 @@ function renderHanziGoalChoices(definitions: readonly HanziDefinition[], ownedCo
     return `<button type="button" class="goal-choice-card ${classes}" data-goal-char="${escapeHtml(definition.char)}" style="--goal-accent:${ELEMENT_STYLES[definition.wuxing].color}" aria-pressed="${String(selected)}">
       <span class="goal-choice-spirit" style="${spriteStyle(definition)}" aria-hidden="true"></span>
       <b class="goal-choice-glyph">${escapeHtml(definition.char)}</b>
-      <span class="goal-choice-copy"><strong>${escapeHtml(learning.readingLabel)}</strong><small>${escapeHtml(learning.short)}</small><em>${escapeHtml(materialLabel)}</em></span>
+      <span class="goal-choice-copy"><strong>${escapeHtml(learning.short)}</strong><small>${escapeHtml(learning.readingLabel)}</small><em>${escapeHtml(materialLabel)}</em></span>
       <mark>${escapeHtml(status)}</mark>
     </button>`;
   }).join("");
@@ -3230,7 +3297,7 @@ function focusMapOnCells(cells: readonly number[]): void {
 
 const ROLE_STRATEGY: Record<HanziDefinition["combat"]["role"], string> = {
   rapid: "공격 간격이 짧아 빠른 적과 단일 잔여 적을 정리하기 좋습니다.",
-  burst: "충전 뒤 큰 피해를 주므로 보스전과 고체력 적에게 집중 배치하세요.",
+  burst: "충전 뒤 큰 피해를 주므로 우두머리전과 고체력 적에게 집중 배치하세요.",
   splash: "군집을 빠르게 줄입니다. 길이 겹치는 모서리 구간에서 효율이 높습니다.",
   control: "이동 방해로 공격 시간을 벌어줍니다. 화력 자령 앞쪽에 배치하세요.",
   support: "주변 자령의 공격 흐름을 보조합니다. 여러 자령이 닿는 중앙이 유리합니다.",
@@ -3291,11 +3358,12 @@ function setCodexMode(mode: CodexMode): void {
     button.setAttribute("aria-selected", String(selected));
   });
   const search = must<HTMLInputElement>("#codex-search");
-  must<HTMLElement>("#codex-kicker").textContent = mode === "hanzi" ? "자령 기록" : mode === "recipes" ? "SYNTHESIS ROUTE ARCHIVE" : "FOUR-CHARACTER SEAL ARCHIVE";
+  // 영문 키커는 한국어 화면에서 혼자 읽히지 않는 장식이었다.
+  must<HTMLElement>("#codex-kicker").textContent = mode === "hanzi" ? "자령 기록" : mode === "recipes" ? "조합 경로 서고" : "사자성어 봉인 서고";
   must<HTMLElement>("#codex-title-label").textContent = mode === "hanzi" ? " 통합 자령 도감" : mode === "recipes" ? " 조합 도감" : " 사자성어 도감";
   search.placeholder = mode === "recipes" ? "결과·재료·훈음·능력 검색" : mode === "idioms" ? "사자성어·효과 검색" : "한자·훈음·쉬운 뜻·오행 검색";
   must<HTMLElement>("#codex-note").textContent = mode === "hanzi"
-    ? `한국 1,001자는 국립국어원 한국어기초사전과 글자별 교정표를 바탕으로 모두 쉬운 오늘말 풀이를 제공합니다. 훈음·독음 데이터 ${LEARNING_DATA_META.version}.`
+    ? `별은 합성 깊이를 뜻합니다 — 별이 많을수록 여러 번 합성해야 닿는 자령입니다. 한국 1,001자는 국립국어원 한국어기초사전과 글자별 교정표를 바탕으로 모두 쉬운 오늘말 풀이를 제공합니다. 훈음·독음 데이터 ${LEARNING_DATA_META.version}.`
     : mode === "recipes"
       ? "별은 합성 깊이를, 독립 표식은 상위 조합 재료로 쓰이지 않는 자령을 뜻합니다. 별과 독립 여부는 별개의 정보입니다."
       : "네 글자를 순서대로 이웃 배치하면 해당 사자성어의 봉인 효과가 발동합니다.";
@@ -3306,22 +3374,41 @@ function jaryeongDexImageUrl(entry: CheonjamunJaryeongDexEntry): string {
   return `${import.meta.env.BASE_URL}${entry.imagePath}`;
 }
 
+const CHEONJAMUN_SUPPLEMENTAL_CHARS = new Set(CHEONJAMUN_SUPPLEMENTAL_CHARACTERS.map((entry) => entry.c));
+
 function dexEntryForDefinition(definition: HanziDefinition): CheonjamunJaryeongDexEntry | undefined {
   return engine.state.region === "KR" ? CHEONJAMUN_JARYEONG_DEX_BY_HANJA.get(definition.char) : undefined;
 }
 
+/**
+ * 도감 카드·상세의 번호 라벨.
+ *
+ * 도감 항목이 없으면 무조건 'SYNTHESIS EXTRA' 를 찍고 있었는데, 실제로
+ * 걸리는 글자는 烈 하나뿐이고 이 글자는 합성 부산물이 아니라 천자문
+ * 글자다(cheonjamun-jaryeongs.json 이 "천자문 164번째 글자이나 기존 KR
+ * 런타임에 누락됨"으로 기록해 둔 보충 글자). 합성으로 얻는 글자와
+ * 직접 소환하는 글자를 사실대로 갈라 적는다.
+ */
+function codexNumberLabel(definition: HanziDefinition, entry: CheonjamunJaryeongDexEntry | undefined): string {
+  if (entry) return `천자문 제${entry.number}자`;
+  if (CHEONJAMUN_SUPPLEMENTAL_CHARS.has(definition.char)) return "천자문 보유 자령";
+  return definition.acquisition === "craft" ? "합성 전용 자령" : "추가 수록 자령";
+}
+
 function codexCardPortrait(definition: HanziDefinition, entry: CheonjamunJaryeongDexEntry | undefined): string {
   const accessible = escapeHtml(`${definition.char} ${learningInfo(engine.state.region, definition.char).short} 자령 초상화`);
+  // 스프라이트는 안쪽 칸에 그린다 — 바깥 칸의 "우물" 배경이 !important 라
+  // 같은 요소에 배경으로 얹으면 통째로 지워졌다(烈 빈 초상의 원인).
   return entry
     ? `<img src="${jaryeongDexImageUrl(entry)}" alt="${accessible}" width="104" height="104" loading="lazy">`
-    : `<i class="codex-jaryeong-card-portrait" style="${spriteStyle(definition)}" role="img" aria-label="${accessible}"></i>`;
+    : `<i class="codex-jaryeong-card-portrait" role="img" aria-label="${accessible}"><b class="codex-sprite-fill" style="${spriteStyle(definition)}"></b></i>`;
 }
 
 function codexDetailPortrait(definition: HanziDefinition, entry: CheonjamunJaryeongDexEntry | undefined): string {
   const accessible = escapeHtml(`${definition.char} ${learningInfo(engine.state.region, definition.char).short} 자령 초상화`);
   return entry
     ? `<img src="${jaryeongDexImageUrl(entry)}" alt="${accessible}" width="214" height="214">`
-    : `<i class="codex-jaryeong-detail-sprite" style="${spriteStyle(definition)}" role="img" aria-label="${accessible}"></i>`;
+    : `<i class="codex-jaryeong-detail-sprite" role="img" aria-label="${accessible}"><b class="codex-sprite-fill" style="${spriteStyle(definition)}"></b></i>`;
 }
 
 function directAcquisitionLabel(definition: HanziDefinition, independent: boolean): string {
@@ -3398,9 +3485,18 @@ function renderCodex(query = ""): void {
     list.innerHTML = idioms.map((idiom) => {
       const sealed = engine.state.idiomSeals.some((seal) => seal.idiomId === idiom.id);
       const active = activeIds.has(idiom.id);
-      return `<button type="button" data-codex-idiom="${idiom.id}" class="codex-idiom-card ${sealed ? "is-discovered" : ""} ${active ? "is-featured" : ""}" style="--codex:${idiom.color}"><b>${idiom.chars}</b><span>${idiom.reading}</span><small>${active ? "이번 런 · " : ""}${idiom.bonus.label}</small></button>`;
+      const selected = idiom.id === selectedCodexIdiomId;
+      return `<button type="button" data-codex-idiom="${idiom.id}" class="codex-idiom-card ${sealed ? "is-discovered" : ""} ${active ? "is-featured" : ""} ${selected ? "is-selected" : ""}" style="--codex:${idiom.color}" aria-current="${String(selected)}"><b>${idiom.chars}</b><span>${idiom.reading}</span><small>${active ? "이번 런 · " : ""}${idiom.bonus.label}</small></button>`;
     }).join("") || '<p class="codex-empty">검색 결과가 없습니다.</p>';
-    renderIdiomCodexDetail(idioms[0]);
+    // 상세에 뜬 성어와 목록의 선택 표시를 항상 같은 것으로 맞춘다.
+    const shown = idioms.find((idiom) => idiom.id === selectedCodexIdiomId) ?? idioms[0];
+    if (shown && shown.id !== selectedCodexIdiomId) {
+      selectedCodexIdiomId = shown.id;
+      const card = list.querySelector<HTMLButtonElement>(`[data-codex-idiom="${shown.id}"]`);
+      card?.classList.add("is-selected");
+      card?.setAttribute("aria-current", "true");
+    }
+    renderIdiomCodexDetail(shown);
     return;
   }
 
@@ -3447,7 +3543,8 @@ function renderCodex(query = ""): void {
     }).join("");
   } else {
     const independentShown = definitions.filter((definition) => uncombinableStageOne.has(definition.char)).length;
-    must<HTMLElement>("#codex-summary").textContent = `자령 ${definitions.length.toLocaleString("ko-KR")}/${engine.catalog.definitions.size.toLocaleString("ko-KR")} · 독립 ${independentShown.toLocaleString("ko-KR")} · 별/조합 정보 통합`;
+    const discoveredThisRun = new Set(engine.state.discoveredChars);
+    must<HTMLElement>("#codex-summary").textContent = `자령 ${definitions.length.toLocaleString("ko-KR")}/${engine.catalog.definitions.size.toLocaleString("ko-KR")} · 독립 ${independentShown.toLocaleString("ko-KR")} · 이번 런 발견 ${discoveredThisRun.size.toLocaleString("ko-KR")}`;
     list.innerHTML = definitions.map((definition) => {
       const learning = learningInfo(engine.state.region, definition.char);
       const entry = dexEntryForDefinition(definition);
@@ -3456,10 +3553,12 @@ function renderCodex(query = ""): void {
       const naturalStar = casualNaturalStar(definition.char) ?? 1;
       const selected = definition.char === selectedCodexChar;
       const explanation = koreanMeaningExplanation(definition.char, learning.short, learning.meaning);
-      const numberLabel = entry ? `CHEONJAMUN No.${String(entry.number).padStart(3, "0")}` : "SYNTHESIS EXTRA";
+      const numberLabel = codexNumberLabel(definition, entry);
+      const found = discoveredThisRun.has(definition.char);
       const progression = engine.state.mode === "casual" ? `<span class="codex-tier-stars">${"★".repeat(naturalStar)}</span>` : synthesisTierBadge(depth);
-      return `<button type="button" data-codex-char="${definition.char}" class="codex-jaryeong-card ${selected ? "is-selected" : ""}" style="--codex:${ELEMENT_STYLES[definition.wuxing].color}" aria-current="${String(selected)}" aria-label="${escapeHtml(`${numberLabel} ${definition.char} ${learning.short} ${definition.wuxing}행`)}">
+      return `<button type="button" data-codex-char="${definition.char}" class="codex-jaryeong-card ${selected ? "is-selected" : ""} ${found ? "is-found" : ""}" style="--codex:${ELEMENT_STYLES[definition.wuxing].color}" aria-current="${String(selected)}" aria-label="${escapeHtml(`${numberLabel} ${definition.char} ${learning.short} ${definition.wuxing}행${found ? " · 이번 런 발견" : ""}`)}">
         <span class="codex-jaryeong-number">${numberLabel}</span>
+        ${found ? '<mark class="codex-found-mark">이번 런 발견</mark>' : ""}
         ${codexCardPortrait(definition, entry)}
         <span class="codex-jaryeong-copy">
           <span class="codex-jaryeong-identity"><b>${definition.char}</b><strong>${escapeHtml(learning.short)}</strong><i>${definition.wuxing}</i></span>
@@ -3520,7 +3619,7 @@ function renderCodexDetail(definition: HanziDefinition | undefined): void {
   const progression = engine.state.mode === "casual"
     ? `<span class="codex-tier-stars" aria-label="${naturalStar}별">${"★".repeat(naturalStar)}</span>`
     : synthesisTierBadge(synthesisTier);
-  const numberLabel = entry ? `CHEONJAMUN No.${String(entry.number).padStart(3, "0")}` : "SYNTHESIS EXTRA";
+  const numberLabel = codexNumberLabel(definition, entry);
   const acquisitionLabel = engine.state.mode === "casual"
     ? "전 자령 직접 소환 · 같은 오행/별 3체 조합"
     : directAcquisitionLabel(definition, independent);
@@ -3580,7 +3679,10 @@ function renderCodexDetail(definition: HanziDefinition | undefined): void {
       </article>
 
       <div class="codex-jaryeong-facts">
-        <div><span>훈음</span><b>${escapeHtml(learning.short)}</b></div>
+        <!-- R7-26: 라벨과 값을 둘 다 상수·요약으로 박아 둬서 JP 훈독(き·こ)이
+             도감에서 통째로 사라지고 JP/CN 라벨까지 전부 '훈음'으로 찍혔다.
+             learning.ts 가 지역별로 만들어 주는 값을 그대로 쓴다. -->
+        <div><span>${escapeHtml(learning.readingLabel)}</span><b>${escapeHtml(learning.reading)}</b></div>
         <div><span>부수</span><b>${radicalLearningLabel(definition.char)}</b></div>
         <div><span>별 등급</span><b>${progression} · ${escapeHtml(progressionDetail)}</b></div>
         <div><span>조합 성격</span><b>${escapeHtml(acquisitionLabel)}</b></div>
@@ -5466,18 +5568,20 @@ function drawHoveredTowerCard(): void {
   context.fillStyle = "rgba(218, 229, 241, 0.16)";
   context.fillRect(x + 10, y + 98, width - 20, 1);
   context.fillStyle = style.color;
-  context.font = '950 10px "Malgun Gothic", sans-serif';
+  context.font = '950 11px "Malgun Gothic", sans-serif';
   context.fillText("쉬운 뜻", x + 12, y + 114);
   context.fillStyle = "#d8e2ed";
-  context.font = '800 11px "Malgun Gothic", sans-serif';
+  // R7-25: 뜻 11 → 12px, 아래 조작 힌트 9 → 11px. 카드 안에서 가장 오래
+  // 읽는 두 줄인데 바닥선 아래에 있었다.
+  context.font = '800 12px "Malgun Gothic", sans-serif';
   const meaningLines = canvasWrappedLines(explanation.short, width - 24, 2);
   meaningLines.forEach((line, index) => context.fillText(line, x + 12, y + 131 + index * 14, width - 24));
 
   context.fillStyle = "rgba(218, 229, 241, 0.13)";
   context.fillRect(x + 10, y + 154, width - 20, 1);
-  context.fillStyle = "#8ea1b8";
-  context.font = '800 9px "Malgun Gothic", sans-serif';
-  context.fillText("클릭: 선택 · 끌기: 교환 · 자세한 뜻은 자령 도감", x + 12, y + 168, width - 24);
+  context.fillStyle = "#a8bcd2";
+  context.font = '800 11px "Malgun Gothic", sans-serif';
+  context.fillText("클릭: 선택 · 끌기: 교환 · 자세한 뜻은 자령 도감", x + 12, y + 169, width - 24);
   context.restore();
 }
 function drawEnemy(enemy: Enemy, point = positionOnPath(enemy.progress)): void {
@@ -5949,6 +6053,7 @@ canvas.addEventListener("pointermove", (event) => {
     const distance = Math.hypot(point.x - mapPanStartScreen.x, point.y - mapPanStartScreen.y);
     if (!mapPanMoved && distance >= 7) {
       mapPanMoved = true;
+      mapCameraGestures += 1;
       canvas.classList.add("is-panning");
     }
     if (!mapPanMoved) return;
@@ -6066,7 +6171,9 @@ canvas.addEventListener("auxclick", (event) => {
 canvas.addEventListener("wheel", (event) => {
   event.preventDefault();
   const anchor = canvasScreenPoint(event);
+  const before = mapZoom;
   setMapZoom(mapZoom * Math.exp(-event.deltaY * 0.0012), anchor);
+  if (mapZoom !== before) mapCameraGestures += 1;
 }, { passive: false });
 must<HTMLButtonElement>("#map-zoom-reset").addEventListener("click", resetMapCamera);
 must<HTMLButtonElement>("#hanja-emphasis-toggle").addEventListener("click", toggleHanjaEmphasis);
@@ -6238,7 +6345,7 @@ s13Dialog.addEventListener("click", (event) => {
       selectedRegion = "KR";
       syncTitleModeSelection();
     } else {
-      // 얼리 액세스 확인(P00)을 우회하지 않는다.
+      // 미리 해보기 확인(P00)을 우회하지 않는다.
       s13Dialog.close();
       openP00(region);
     }
@@ -6362,6 +6469,27 @@ must<HTMLElement>("#evolution-options").addEventListener("pointerout", (event) =
 must<HTMLButtonElement>("#start-button").addEventListener("click", () => startRun(false));
 must<HTMLButtonElement>("#retry-button").addEventListener("click", () => startRun(false));
 must<HTMLButtonElement>("#new-seed-button").addEventListener("click", () => startRun(true));
+/*
+ * 종료 화면 막다른 길.
+ *
+ * 재도전·새 시드뿐이라 지역·진법을 바꾸러 메뉴로 갈 길이 없었고 Esc 도
+ * 먹지 않았다. 3D 리그·엔진·카메라·패널이 한 판 분량의 상태를 물고 있어
+ * 오버레이만 되돌리면 남은 찌꺼기가 다음 판까지 따라온다. 새로고침이
+ * 가장 견고하다 — 최고 기록·안내 본 여부·오디오 설정은 전부
+ * localStorage 라 그대로 살아남는다.
+ */
+function returnToMenu(): void {
+  window.location.reload();
+}
+
+must<HTMLButtonElement>("#return-menu-button").addEventListener("click", returnToMenu);
+window.addEventListener("keydown", (event) => {
+  if (event.code !== "Escape") return;
+  if (!endOverlay.classList.contains("modal-layer--visible")) return;
+  if (document.querySelector("dialog[open]")) return;
+  event.preventDefault();
+  returnToMenu();
+});
 // 카드가 곧 상품이다. 목적 상태를 미리 고르는 단계 없이 누른 카드로 즉시 1회 소환한다.
 must<HTMLElement>("#summon-shop").addEventListener("click", (event) => {
   const card = (event.target as HTMLElement).closest<HTMLButtonElement>("[data-summon-product]");
@@ -6504,6 +6632,11 @@ must<HTMLButtonElement>("#hover-glyph-toggle").addEventListener("click", () => {
   sound.playUiConfirm();
 });
 must<HTMLButtonElement>("#settings-close").addEventListener("click", () => settingsDialog.close());
+must<HTMLButtonElement>("#replay-coach-button").addEventListener("click", () => {
+  // 한 번 본 뒤에는 다시 볼 길이 없었다. 설정에서 강제로 되돌린다.
+  settingsDialog.close();
+  startCoach(true);
+});
 document.querySelectorAll<HTMLButtonElement>("[data-display-mode-option]").forEach((button) => {
   button.addEventListener("click", () => {
     setDisplayMode(button.dataset.displayModeOption as DisplayMode);
@@ -6549,10 +6682,28 @@ must<HTMLButtonElement>("#codex-button").addEventListener("click", () => {
   search.value = "";
   renderCodex("");
   codexDialog.showModal();
-  search.focus();
+  // 포커스를 한 프레임 늦춘다. 단축키로 열었을 때 그 키의 문자가
+  // 검색창에 새어 들어가지 않게 하는 두 번째 방어선이다.
+  window.requestAnimationFrame(() => {
+    search.value = "";
+    search.focus();
+  });
 });
 must<HTMLButtonElement>("#codex-close").addEventListener("click", () => codexDialog.close());
-document.querySelectorAll<HTMLButtonElement>("[data-panel-tab]").forEach((button) => {
+
+/*
+ * 바깥 클릭으로 닫기.
+ *
+ * P00·S13 은 진작 되는데 도감·설정·도움말만 안 돼서, 창을 닫으려고
+ * 바깥을 눌렀다가 아무 반응이 없으면 갇힌 것처럼 읽혔다. 같은 규칙으로
+ * 맞춘다 — 배경(백드롭)을 누르면 event.target 이 dialog 자신이 된다.
+ */
+for (const dialog of [codexDialog, settingsDialog, helpDialog]) {
+  dialog.addEventListener("click", (event) => {
+    if (event.target === dialog) dialog.close();
+  });
+}
+document.querySelectorAll<HTMLButtonElement>(".panel-tabs [data-panel-tab]").forEach((button) => {
   button.addEventListener("click", () => setPanelTab(button.dataset.panelTab as PanelTab));
 });
 document.querySelectorAll<HTMLButtonElement>("[data-goal-mode]").forEach((button) => {
@@ -6744,7 +6895,17 @@ must<HTMLElement>("#codex-list").addEventListener("click", (event) => {
     });
     renderCodexDetail(engine.catalog.definitions.get(char));
   }
-  else if (idiomId) renderIdiomCodexDetail(engine.allIdioms().find((idiom) => idiom.id === idiomId));
+  else if (idiomId) {
+    // 한자 카드와 같은 패턴으로 선택 표시를 준다 — 누른 카드가 어느
+    // 것인지 상세만 보고 되짚어야 했다.
+    selectedCodexIdiomId = idiomId;
+    document.querySelectorAll<HTMLButtonElement>("[data-codex-idiom]").forEach((button) => {
+      const selected = button.dataset.codexIdiom === idiomId;
+      button.classList.toggle("is-selected", selected);
+      button.setAttribute("aria-current", String(selected));
+    });
+    renderIdiomCodexDetail(engine.allIdioms().find((idiom) => idiom.id === idiomId));
+  }
 });
 must<HTMLElement>("#codex-detail").addEventListener("click", (event) => {
   const target = event.target as HTMLElement;
@@ -6820,17 +6981,57 @@ window.addEventListener("keydown", (event) => {
   else if (event.code === "Space") {
     event.preventDefault();
     toggleHanjaEmphasis();
-  } else if (event.code === "KeyC") must<HTMLButtonElement>("#codex-button").click();
+  } else if (event.code === "KeyC") {
+    // 도감은 열자마자 검색창에 포커스를 준다. 기본 동작을 막지 않으면
+    // 방금 누른 'c' 가 그대로 검색어로 들어가 빈 목록(0/1,001)으로 열렸다.
+    event.preventDefault();
+    must<HTMLButtonElement>("#codex-button").click();
+  }
   else if (event.code === "KeyM") must<HTMLButtonElement>("#sound-button").click();
   else if (event.code === "KeyF") cycleGameSpeed();
+  else if (event.code === "KeyP") toggleManualPause();
 });
+
+/*
+ * 일시정지.
+ *
+ * 도감·도움말·설정·S13 을 열어 두고 규칙을 읽는 동안에도 전투가 계속
+ * 굴러가서, 창을 닫으면 진법이 이미 무너져 있었다. 모달이 열려 있으면
+ * `engine.update` 만 건너뛰고 렌더 루프는 그대로 돌린다 — 화면이 얼어붙는
+ * 대신 "멈춰 있다"가 그대로 보인다. P 키는 수동 토글이며 같은 칩을 쓴다.
+ * 종료 화면은 이미 정지 상태라 무관하다.
+ */
+let manualPause = false;
+
+/** 열려 있는 모달 다이얼로그가 하나라도 있으면 전투를 세운다. */
+function modalPauseActive(): boolean {
+  return document.querySelector("dialog[open]") !== null;
+}
+
+function syncPauseChip(paused: boolean, manual: boolean): void {
+  const chip = must<HTMLElement>("#pause-chip");
+  if (chip.hidden !== !paused) chip.hidden = !paused;
+  if (!paused) return;
+  const reason = manual ? "P 키로 계속" : "창을 닫으면 계속";
+  const label = must<HTMLElement>("#pause-reason");
+  if (label.textContent !== reason) label.textContent = reason;
+}
+
+function toggleManualPause(): void {
+  if (engine.state.phase !== "prep" && engine.state.phase !== "combat") return;
+  manualPause = !manualPause;
+  showToast(manualPause ? "일시정지 — P 키로 계속합니다." : "다시 진행합니다.");
+}
 
 function frame(now: number): void {
   const frameWorkStartedAt = performance.now();
   const delta = Math.min(0.1, Math.max(0, (now - lastFrame) / 1000));
-  const simulationDelta = delta * gameSpeed;
+  const running = engine.state.phase === "prep" || engine.state.phase === "combat";
+  const paused = running && (manualPause || modalPauseActive());
+  const simulationDelta = paused ? 0 : delta * gameSpeed;
   lastFrame = now;
-  engine.update(simulationDelta);
+  syncPauseChip(paused, manualPause);
+  if (!paused) engine.update(simulationDelta);
   const audioPlan = engine.getCurrentPlan();
   sound.syncBgm({
     phase: engine.state.phase,
@@ -6853,7 +7054,8 @@ function frame(now: number): void {
   // Simulation respects the selected speed, while visual feedback keeps a
   // stable real-time duration so 2x/3x does not make projectiles and skill
   // labels flash for only a few frames.
-  drawWorld(delta);
+  // 일시정지 중에는 이펙트도 0 으로 굴려 "적은 멈췄는데 탄만 난다"를 막는다.
+  drawWorld(paused ? 0 : delta);
   syncPanel();
   syncCoachProgress();
   if (waveStartedThisFrame) canvas.dataset.waveStartWorkMs = (performance.now() - frameWorkStartedAt).toFixed(2);
@@ -6874,13 +7076,24 @@ interface CoachStep {
   /** 조작 픽토그램(p0-ui-components-pack-v1). 글보다 먼저 읽히는 그림 한 장. */
   readonly control?: "wheel" | "click" | "drag";
   readonly satisfied: () => boolean;
+  /**
+   * 대상이 아직 화면에 없을 때 대신 짚을 곳과 문구.
+   * 예: 소환 전에는 웨이브 시작 버튼이 display:none 이라 스포트라이트가
+   * (-6,-6) 12px 점으로 붕괴하고 말풍선만 고아로 남았다.
+   */
+  readonly fallback?: {
+    readonly target: string;
+    readonly title: string;
+    readonly body: string;
+    readonly control?: "wheel" | "click" | "drag";
+  };
 }
 
 const COACH_STORAGE_KEY = "hanja-td:coach-seen-v1";
 const COACH_STEPS: readonly CoachStep[] = [
   {
     target: '[data-summon-product="balanced"]',
-    title: "먼저 자령을 소환하세요",
+    title: "먼저 자령(=타워)을 소환하세요",
     body: "엽전을 써서 자령을 뽑습니다. 첫 자령의 오행에 맞는 4×4 진이 무료로 열립니다.",
     control: "click",
     satisfied: () => engine.state.summonCount >= 1
@@ -6890,18 +7103,49 @@ const COACH_STEPS: readonly CoachStep[] = [
     title: "전장을 살펴보세요",
     body: "휠을 굴려 확대·축소하고, 빈 곳을 끌어 화면을 옮깁니다. 자령을 끌면 자리를 맞바꿉니다.",
     control: "wheel",
-    satisfied: () => false
+    // 설계 의도대로 "실제로 해내면 넘어간다" — 확대·축소 1회 또는 팬 1회.
+    satisfied: () => mapCameraGestures > coachGestureBaseline
   },
   {
     target: "#early-button",
     title: "준비되면 웨이브를 시작합니다",
     body: "즉시 시작하면 남은 준비 시간만큼 엽전을 더 받습니다.",
     control: "click",
-    satisfied: () => engine.state.wave >= 1
+    satisfied: () => engine.state.wave >= 1,
+    fallback: {
+      target: '[data-summon-product="balanced"]',
+      title: "먼저 소환부터",
+      body: "상점의 소환으로 자령을 뽑으세요. 한 기라도 서면 전장 위에 웨이브 시작 버튼이 나타납니다.",
+      control: "click"
+    }
   }
 ];
 
 let coachIndex = -1;
+/** 지금 실제로 짚고 있는 셀렉터. 대체 대상으로 넘어간 것을 알아채는 데 쓴다. */
+let coachResolvedTarget = "";
+/** 단계에 들어선 순간의 카메라 조작 횟수. 이보다 늘면 그 단계를 해낸 것이다. */
+let coachGestureBaseline = 0;
+
+/**
+ * 대상이 화면에 없거나 크기가 0 이면 대체 대상으로 돌린다.
+ * 둘 다 없으면 target 을 null 로 돌려 말풍선을 화면 아래 가운데로 보낸다.
+ */
+function resolveCoachStep(step: CoachStep): { step: CoachStep; target: HTMLElement | null } {
+  const laidOut = (selector: string): HTMLElement | null => {
+    const element = document.querySelector<HTMLElement>(selector);
+    if (!element) return null;
+    const rect = element.getBoundingClientRect();
+    return rect.width >= 1 && rect.height >= 1 ? element : null;
+  };
+  const direct = laidOut(step.target);
+  if (direct) return { step, target: direct };
+  if (step.fallback) {
+    const alternate = laidOut(step.fallback.target);
+    if (alternate) return { step: { ...step, ...step.fallback }, target: alternate };
+  }
+  return { step, target: null };
+}
 
 function coachAlreadySeen(): boolean {
   try {
@@ -6920,14 +7164,20 @@ function markCoachSeen(): void {
 }
 
 function layoutCoach(): void {
-  const step = COACH_STEPS[coachIndex];
-  if (!step) return;
-  const target = document.querySelector<HTMLElement>(step.target);
-  const layer = must<HTMLElement>("#coach-layer");
+  const base = COACH_STEPS[coachIndex];
+  if (!base) return;
+  const { step, target } = resolveCoachStep(base);
+  const ring = must<HTMLElement>("#coach-ring");
+  const bubble = must<HTMLElement>("#coach-bubble");
   if (!target) {
-    layer.hidden = true;
+    // 짚을 것이 아무것도 없으면 링을 걷고 말풍선만 화면 아래 가운데에 세운다.
+    // 예전에는 레이어를 통째로 숨겨서 안내가 소리 없이 사라졌다.
+    ring.hidden = true;
+    bubble.style.top = `${Math.max(8, shell.offsetHeight - 172)}px`;
+    bubble.style.left = `${Math.max(8, (shell.offsetWidth - 258) / 2)}px`;
     return;
   }
+  ring.hidden = false;
   // 셸이 transform: scale 로 확대되므로 화면 좌표를 셸 좌표계로 되돌린다.
   const shellRect = shell.getBoundingClientRect();
   const scaleX = shellRect.width / Math.max(1, shell.offsetWidth);
@@ -6944,13 +7194,11 @@ function layoutCoach(): void {
   const focusLeft = left + (width - focusWidth) / 2;
   const focusTop = top + (height - focusHeight) / 2;
 
-  const ring = must<HTMLElement>("#coach-ring");
   ring.style.left = `${focusLeft - 6}px`;
   ring.style.top = `${focusTop - 6}px`;
   ring.style.width = `${focusWidth + 12}px`;
   ring.style.height = `${focusHeight + 12}px`;
 
-  const bubble = must<HTMLElement>("#coach-bubble");
   const bubbleWidth = 258;
   const bubbleHeight = bubble.offsetHeight || 132;
   const below = focusTop + focusHeight + 14;
@@ -6967,11 +7215,13 @@ function layoutCoach(): void {
 
 function renderCoach(): void {
   const layer = must<HTMLElement>("#coach-layer");
-  const step = COACH_STEPS[coachIndex];
-  if (!step) {
+  const base = COACH_STEPS[coachIndex];
+  if (!base) {
     layer.hidden = true;
     return;
   }
+  // 대상이 아직 없으면 문구도 대체 문구로 바꿔 읽는다.
+  const { step } = resolveCoachStep(base);
   layer.hidden = false;
   must<HTMLElement>("#coach-index").textContent = String(coachIndex + 1);
   must<HTMLElement>("#coach-total").textContent = String(COACH_STEPS.length);
@@ -6985,6 +7235,23 @@ function renderCoach(): void {
   layoutCoach();
 }
 
+/**
+ * 코치가 전장을 짚는 동안에는 소환 결과 카드(660×314)가 링 한가운데를
+ * 그대로 덮어 wheel 을 삼킨다 — 안내대로 휠을 굴려도 줌이 변하지 않았다.
+ * 해당 단계에 들어서면 카드를 곧바로 접는다.
+ */
+function coachIsPointingAtBoard(): boolean {
+  return coachIndex >= 0 && COACH_STEPS[coachIndex]?.target === "#battle-canvas";
+}
+
+/** 단계에 들어설 때 카메라 조작 기준선을 다시 잡고, 방해물을 치운다. */
+function enterCoachStep(): void {
+  coachGestureBaseline = mapCameraGestures;
+  coachResolvedTarget = COACH_STEPS[coachIndex] ? resolveCoachStep(COACH_STEPS[coachIndex]).step.target : "";
+  if (coachIsPointingAtBoard()) hideSummonReveal();
+  renderCoach();
+}
+
 function advanceCoach(): void {
   if (coachIndex < 0) return;
   if (coachIndex >= COACH_STEPS.length - 1) {
@@ -6992,7 +7259,7 @@ function advanceCoach(): void {
     return;
   }
   coachIndex += 1;
-  renderCoach();
+  enterCoachStep();
 }
 
 function endCoach(): void {
@@ -7004,14 +7271,22 @@ function endCoach(): void {
 function startCoach(force = false): void {
   if (!force && coachAlreadySeen()) return;
   coachIndex = 0;
-  renderCoach();
+  enterCoachStep();
 }
 
 /** 해당 조작을 실제로 해내면 안내가 저절로 넘어간다. */
 function syncCoachProgress(): void {
   if (coachIndex < 0) return;
-  const step = COACH_STEPS[coachIndex];
-  if (step && step.satisfied()) advanceCoach();
+  const base = COACH_STEPS[coachIndex];
+  if (!base) return;
+  // 대상이 나타나거나 사라지면(소환 직후의 웨이브 시작 버튼) 문구와
+  // 스포트라이트를 그 자리에서 갈아 끼운다.
+  const resolved = resolveCoachStep(base).step.target;
+  if (resolved !== coachResolvedTarget) {
+    coachResolvedTarget = resolved;
+    renderCoach();
+  }
+  if (base.satisfied()) advanceCoach();
 }
 
 /*
@@ -7133,6 +7408,19 @@ window.addEventListener("resize", () => {
   fitShell();
   layoutCoach();
 });
+/*
+ * 첫 오픈에만 늦게 오는 그림 미리 받기.
+ *
+ * P00·S13 의 두루마리 프레임은 그 창을 처음 열 때에야 요청이 나가서,
+ * 도착 전까지 먹 글자와 버튼만 메뉴 위에 둥둥 떠 보였다. CSS 가 쓰는
+ * 것과 같은 경로로 미리 받아 둔다(R7-30 의 한지 바탕과 짝).
+ */
+for (const path of ["/assets/ui/main-menu-b/ui/p00-scroll-frame-v1.png"]) {
+  const warm = new Image();
+  warm.decoding = "async";
+  warm.src = path;
+}
+
 syncMapZoomControl();
 setGameSpeed(1);
 setDisplayMode(initialDisplayMode, false);
