@@ -1,7 +1,8 @@
 /*
  * 지역 선택(P00)과 맞춤 진법(S13) 창.
  */
-import { type GameMode, type RegionCode } from "../../core/types";
+import { defaultNotationForRegion, NOTATION_AXIS_READY } from "../../core/notation";
+import { type GameMode, type NotationCode, type RegionCode } from "../../core/types";
 import { type DisplayMode } from "../display-mode";
 import { saveAutoPlaceSummons } from "../summon-placement";
 import { ctx, must, sound } from "../app-context";
@@ -70,6 +71,17 @@ export function syncS13(): void {
     button.setAttribute("aria-checked", String(region === ctx.selectedRegion));
     button.title = REGION_MENU_INFO[region].pool;
   });
+  // gripe #6 표기 축. 그룹 노출은 플래그가 정하고(테이블 도착 전 hidden),
+  // 선택 표시는 실효 표기(명시 선택 ?? 로스터 자국 표기)를 따른다.
+  const notationGroup = s13Dialog.querySelector<HTMLElement>(".s13-notation-group");
+  if (notationGroup) notationGroup.hidden = !NOTATION_AXIS_READY;
+  const effectiveNotation = ctx.selectedNotation ?? defaultNotationForRegion(ctx.selectedRegion);
+  s13Dialog.querySelectorAll<HTMLButtonElement>("[data-s13-notation]").forEach((button) => {
+    const notation = button.dataset.s13Notation as NotationCode;
+    const selected = notation === effectiveNotation;
+    button.classList.toggle("is-selected", selected);
+    button.setAttribute("aria-checked", String(selected));
+  });
   s13Dialog.querySelectorAll<HTMLButtonElement>("[data-s13-display]").forEach((button) => {
     const selected = button.dataset.s13Display === ctx.displayMode;
     button.classList.toggle("is-selected", selected);
@@ -119,6 +131,17 @@ export function wireS132(): void {
         s13Dialog.close();
         openP00(region);
       }
+      return;
+    }
+    const notationButton = target.closest<HTMLButtonElement>("[data-s13-notation]");
+    if (notationButton) {
+      // 플래그가 꺼져 있으면 그룹이 hidden 이라 정상 경로로는 오지 못한다.
+      // 방어적으로 한 번 더 막아 테이블 도착 전 표기 이탈을 봉한다.
+      if (!NOTATION_AXIS_READY) return;
+      sound.unlock();
+      ctx.selectedNotation = notationButton.dataset.s13Notation as NotationCode;
+      sound.playUiConfirm();
+      syncS13();
       return;
     }
     const displayButton = target.closest<HTMLButtonElement>("[data-s13-display]");

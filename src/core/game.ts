@@ -141,6 +141,7 @@ import {
   idiomDirectPoolChars,
   idiomsForRegion
 } from "./idioms";
+import { defaultNotationForRegion } from "./notation";
 import { SeededRng } from "./rng";
 import {
   type AbilitySpec,
@@ -248,6 +249,8 @@ export class GameEngine {
     this.state = {
       seed,
       region,
+      // 표기 축(gripe #6). 옵션이 없으면 로스터의 자국 표기 — 현행과 동일 동작.
+      notation: options.notation ?? defaultNotationForRegion(region),
       mode,
       phase: "title",
       defeatCause: null,

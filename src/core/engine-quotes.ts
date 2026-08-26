@@ -10,6 +10,7 @@ import {
   type ConcentrationLevel,
   type ConcentrationPath,
   type HanziDefinition,
+  type NotationCode,
   type Wuxing
 } from "./types";
 
@@ -156,7 +157,14 @@ export interface CasualAutoFusionReport extends ActionResult {
   } | null;
 }
 
-/** 엔진 생성 옵션. 지금은 수련장 완화·각본 지급 허용 스위치 하나뿐이다. */
+/** 엔진 생성 옵션. */
 export interface GameEngineOptions {
+  /** 수련장 완화·각본 지급 허용 스위치. */
   readonly tutorial?: boolean;
+  /**
+   * 읽기 표기 축(gripe #6). 생략하면 로스터의 자국 표기
+   * (defaultNotationForRegion)라 현행과 동작이 같다. 교차 조합은
+   * NOTATION_AXIS_READY 가 켜진 뒤에만 S13 이 이 값을 넘긴다.
+   */
+  readonly notation?: NotationCode;
 }

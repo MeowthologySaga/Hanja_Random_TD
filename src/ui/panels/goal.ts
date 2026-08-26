@@ -4,7 +4,8 @@
 import { casualNaturalStar, casualStrokeCount } from "../../core/casual";
 import { ELEMENT_STYLES, maxSummonStageForWave, STAGE_NAMES, summonStageUnlockWave } from "../../core/hanzi";
 import { type IdiomDefinition } from "../../core/idioms";
-import { learningInfo } from "../../core/learning";
+import { learningInfoForNotation } from "../../core/learning";
+import { idiomReadingForNotation } from "../../core/notation";
 import { type HanziDefinition } from "../../core/types";
 import { ctx, type GoalPanelMode, must } from "../app-context";
 import { escapeHtml, spriteStyle } from "../format";
@@ -63,7 +64,7 @@ export function renderGoal(): void {
     : progress.target.acquisition === "direct"
     ? `${progress.target.char} 자령을 소환하면 달성`
     : progress.target.parents.join(" + ") + " → " + progress.target.char;
-  const learning = learningInfo(ctx.engine.state.region, progress.target.char);
+  const learning = learningInfoForNotation(ctx.engine.state.notation, progress.target.char);
   must<HTMLElement>("#goal-reading").textContent = learning.readingLabel + " · " + learning.short;
   must<HTMLElement>("#goal-materials").innerHTML = progress.directMaterials.map((material) => {
     const complete = material.owned >= material.needed;
@@ -82,7 +83,7 @@ export function renderGoal(): void {
     idiomCard.style.setProperty("--idiom-accent", idiom.color);
     idiomCard.innerHTML = `
       <div class="idiom-target-glyphs">${glyphs}</div>
-      <div class="idiom-target-copy"><span>현재 성어 목표 · ${idiomProgress.owned}/${idiomProgress.total}자 보유</span><strong>${escapeHtml(idiom.reading)}</strong><small>${escapeHtml(idiom.meaning)}</small><em>${escapeHtml(idiom.bonus.label)}</em></div>
+      <div class="idiom-target-copy"><span>현재 성어 목표 · ${idiomProgress.owned}/${idiomProgress.total}자 보유</span><strong>${escapeHtml(idiomReadingForNotation(idiom, ctx.engine.state.notation))}</strong><small>${escapeHtml(idiom.meaning)}</small><em>${escapeHtml(idiom.bonus.label)}</em></div>
       <div class="idiom-target-status"><b>${Math.round(idiomProgress.readiness * 100)}%</b><span>${idiomProgress.missingChars.length > 0 ? `부족 ${idiomProgress.missingChars.map(escapeHtml).join("·")}` : "배치 준비"}</span></div>`;
   } else {
     idiomCard.removeAttribute("style");
@@ -116,7 +117,7 @@ function renderHanziGoalChoices(definitions: readonly HanziDefinition[], ownedCo
   const query = ctx.goalSearchQuery.trim().toLowerCase();
   const rows = definitions
     .map((definition, order) => {
-      const learning = learningInfo(ctx.engine.state.region, definition.char);
+      const learning = learningInfoForNotation(ctx.engine.state.notation, definition.char);
       const progress = ctx.engine.goalProgressFor(definition.char);
       const owned = ownedCounts.get(definition.char) ?? 0;
       const selected = definition.char === ctx.engine.state.targetChar;
@@ -196,7 +197,7 @@ function renderIdiomGoalChoices(idioms: readonly IdiomDefinition[], ownedCounts:
     const status = selected ? "추적 중" : sealed ? "봉인 완료" : progress.owned === progress.total ? "배치 준비" : `${progress.owned}/${progress.total}자`;
     return `<button type="button" class="goal-choice-card goal-choice-card--idiom ${classes}" data-goal-idiom="${escapeHtml(idiom.id)}" style="--goal-accent:${idiom.color}" aria-pressed="${String(selected)}" ${sealed ? "disabled" : ""}>
       <span class="goal-choice-idiom-glyphs">${glyphs}</span>
-      <span class="goal-choice-copy"><strong>${escapeHtml(idiom.reading)}</strong><small>${escapeHtml(idiom.meaning)}</small><em>${escapeHtml(idiom.bonus.label)} · ${progress.missingChars.length > 0 ? `부족 ${progress.missingChars.map(escapeHtml).join("·")}` : "네 글자 보유"}</em></span>
+      <span class="goal-choice-copy"><strong>${escapeHtml(idiomReadingForNotation(idiom, ctx.engine.state.notation))}</strong><small>${escapeHtml(idiom.meaning)}</small><em>${escapeHtml(idiom.bonus.label)} · ${progress.missingChars.length > 0 ? `부족 ${progress.missingChars.map(escapeHtml).join("·")}` : "네 글자 보유"}</em></span>
       <mark>${escapeHtml(status)}</mark>
     </button>`;
   }).join("");

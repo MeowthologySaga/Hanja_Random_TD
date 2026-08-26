@@ -14,7 +14,7 @@ import {
 import { definitionForTower, ELEMENT_STYLES } from "../../core/hanzi";
 import { idiomById, partialIdiomChain } from "../../core/idioms";
 import { enemyJaryeongVisualFor } from "../../core/jaryeongs";
-import { learningInfo } from "../../core/learning";
+import { learningInfoForNotation } from "../../core/learning";
 import { type Enemy, type Point, type Tower } from "../../core/types";
 import { abilityZoneSpriteLayout, deterministicZoneRotation } from "../combat-fx-layout";
 import { elementZoneImage } from "../combat-fx-sprites";
@@ -56,7 +56,7 @@ export function drawWorld(delta: number): void {
   const selectedTower = ctx.engine.selectedTower();
   canvas.dataset.selectedTowerId = selectedTower ? String(selectedTower.id) : "";
   // compact 명패가 훈음을 줄여 적어도 전체값은 접근성 이름과 상세 팝오버에 남는다.
-  const selectedReading = selectedTower ? learningInfo(state.region, selectedTower.char).short : "";
+  const selectedReading = selectedTower ? learningInfoForNotation(state.notation, selectedTower.char).short : "";
   if (canvas.dataset.selectedTowerReading !== selectedReading) {
     canvas.dataset.selectedTowerReading = selectedReading;
     canvas.setAttribute(

@@ -2,6 +2,7 @@
  * 사자성어 패널과 발동 배지.
  */
 import { idiomById, type IdiomDefinition } from "../../core/idioms";
+import { idiomReadingForNotation } from "../../core/notation";
 import { ctx, idiomResult, idiomTab, must, toast } from "../app-context";
 import { escapeHtml } from "../format";
 import { showToast } from "../hud";
@@ -133,7 +134,7 @@ export function renderIdiomHud(): void {
     return `<i class="${owned ? "is-owned" : ""}" style="--idiom:${target.color}" title="${index + 1}번째 글자">${char}</i>`;
   }).join("");
   must<HTMLElement>("#idiom-glyphs").innerHTML = glyphs;
-  must<HTMLElement>("#idiom-name").textContent = target.reading;
+  must<HTMLElement>("#idiom-name").textContent = idiomReadingForNotation(target, ctx.engine.state.notation);
   must<HTMLElement>("#idiom-meaning").textContent = target.meaning;
   must<HTMLElement>("#idiom-bonus").textContent = target.bonus.label;
   must<HTMLElement>("#idiom-bonus").style.setProperty("--idiom", target.color);
@@ -166,7 +167,7 @@ function renderIdiomSealStatus(): void {
       const idiom = idiomById(ctx.engine.state.region, seal.idiomId);
       if (!idiom) return "";
       const label = seal.active ? "발동 중" : "봉인 이력 · 지금은 흩어짐";
-      return `<div class="idiom-seal-row ${seal.active ? "is-live" : "is-scattered"}" style="--idiom:${idiom.color}"><b>${escapeHtml(idiom.chars)}</b><span>${escapeHtml(idiom.reading)}</span><em>${escapeHtml(shortIdiomBonusLabel(idiom.bonus.label))}</em><mark>${label}</mark></div>`;
+      return `<div class="idiom-seal-row ${seal.active ? "is-live" : "is-scattered"}" style="--idiom:${idiom.color}"><b>${escapeHtml(idiom.chars)}</b><span>${escapeHtml(idiomReadingForNotation(idiom, ctx.engine.state.notation))}</span><em>${escapeHtml(shortIdiomBonusLabel(idiom.bonus.label))}</em><mark>${label}</mark></div>`;
     })
     .join("");
 }
@@ -190,7 +191,8 @@ export function renderActiveIdioms(): void {
       const idiom = idiomById(ctx.engine.state.region, seal.idiomId);
       if (!idiom) return "";
       const bonus = shortIdiomBonusLabel(idiom.bonus.label);
-      return `<button type="button" class="active-idiom" data-active-idiom="${escapeHtml(seal.idiomId)}" style="--idiom:${idiom.color}" title="${escapeHtml(idiom.reading)} · ${escapeHtml(idiom.bonus.label)} — 눌러서 봉인 칸으로 이동" aria-label="${escapeHtml(idiom.reading)} 봉인 · ${escapeHtml(idiom.bonus.label)} · 눌러서 해당 네 칸으로 이동"><b>${escapeHtml(idiom.chars)}</b><span>${escapeHtml(bonus)}</span></button>`;
+      const reading = idiomReadingForNotation(idiom, ctx.engine.state.notation);
+      return `<button type="button" class="active-idiom" data-active-idiom="${escapeHtml(seal.idiomId)}" style="--idiom:${idiom.color}" title="${escapeHtml(reading)} · ${escapeHtml(idiom.bonus.label)} — 눌러서 봉인 칸으로 이동" aria-label="${escapeHtml(reading)} 봉인 · ${escapeHtml(idiom.bonus.label)} · 눌러서 해당 네 칸으로 이동"><b>${escapeHtml(idiom.chars)}</b><span>${escapeHtml(bonus)}</span></button>`;
     })
     .join("");
   stack.classList.toggle("is-empty", visible.length === 0);

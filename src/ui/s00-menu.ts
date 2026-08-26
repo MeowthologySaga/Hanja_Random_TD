@@ -144,7 +144,9 @@ export function startRun(useNewSeed = false, options: StartRunOptions = {}): voi
   const seed = useNewSeed ? createRunSeed() : seedInput.value.trim() || createRunSeed();
   ctx.engine = options.createEngine
     ? options.createEngine()
-    : new GameEngine(seed, ctx.selectedRegion, ctx.selectedGameMode);
+    // 표기 축(gripe #6): 명시 선택이 없으면(null — 플래그 꺼짐 동안 항상)
+    // 엔진 기본값인 로스터 자국 표기라 현행과 같다.
+    : new GameEngine(seed, ctx.selectedRegion, ctx.selectedGameMode, ctx.selectedNotation ? { notation: ctx.selectedNotation } : {});
   seedInput.value = ctx.engine.state.seed;
   shell.dataset.gameMode = ctx.engine.state.mode;
   ctx.mapSynthesisDepths = buildSynthesisDepths(ctx.engine.catalog.definitions.values());

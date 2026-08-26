@@ -5,7 +5,7 @@ import { CASUAL_STAR_COLORS, CASUAL_STAR_NAMES } from "../../core/casual";
 import { GameEngine } from "../../core/game";
 import { definitionForTower, ELEMENT_STYLES, STAGE_COLORS, STAGE_NAMES, WUXING_ORDER } from "../../core/hanzi";
 import { jaryeongVisualFor } from "../../core/jaryeongs";
-import { learningInfo } from "../../core/learning";
+import { learningInfoForNotation } from "../../core/learning";
 import { type Tower, type Wuxing } from "../../core/types";
 import {
   ctx,
@@ -41,7 +41,7 @@ function runInventoryGradeBandOf(tower: Tower): RunInventoryGradeBandId | null {
 
 /** 자령 한 기를 한 줄로 요약한다 — 카드 title · 행동 바 안내가 같은 문장을 쓴다. */
 function runInventoryTowerSummary(tower: Tower): string {
-  const learning = learningInfo(ctx.engine.state.region, tower.char);
+  const learning = learningInfoForNotation(ctx.engine.state.notation, tower.char);
   const star = casualStarOf(tower);
   const progression = ctx.engine.state.mode === "casual" ? `${star}★ ${CASUAL_STAR_NAMES[star]}` : STAGE_NAMES[tower.stage];
   return `${tower.char} ${learning.short} · ${tower.wuxing}행 · ${progression}`;
@@ -87,7 +87,7 @@ function renderRunInventoryDetail(selected: Tower | undefined, stackSize: number
     return;
   }
   const visual = jaryeongVisualFor(selected.char, selected.wuxing, ctx.engine.state.region);
-  const learning = learningInfo(ctx.engine.state.region, selected.char);
+  const learning = learningInfoForNotation(ctx.engine.state.notation, selected.char);
   const star = casualStarOf(selected);
   const progression = ctx.engine.state.mode === "casual" ? `${star}★ ${CASUAL_STAR_NAMES[star]}` : `${selected.stage}단계 ${STAGE_NAMES[selected.stage]}`;
   const concentration = selected.concentration ?? 0;
@@ -257,7 +257,7 @@ export function renderRunInventory(): void {
   }).map((stack) => {
     const tower = selectedTower && stack.some((candidate) => candidate.id === selectedTower.id) ? selectedTower : stack.find((candidate) => !candidate.locked) ?? stack[0]!;
     const visual = jaryeongVisualFor(tower.char, tower.wuxing, ctx.engine.state.region);
-    const learning = learningInfo(ctx.engine.state.region, tower.char);
+    const learning = learningInfoForNotation(ctx.engine.state.notation, tower.char);
     const selected = tower.id === selectedId && !ctx.runInventoryBulkMode;
     const eligible = stack.filter((candidate) => cleanupAssessments.get(candidate.id)?.protected === false);
     const checked = eligible.filter((candidate) => runInventoryBulkSelection.has(candidate.id)).length;
