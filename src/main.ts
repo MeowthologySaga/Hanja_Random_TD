@@ -673,8 +673,8 @@ app.innerHTML = `
         <p id="end-message"></p>
         <div id="end-stats" class="end-stats"></div>
         <div class="end-actions">
-          <button id="retry-button" class="start-button" type="button">같은 시드 재도전</button>
-          <button id="new-seed-button" class="secondary-button" type="button">새 시드로 시작</button>
+          <button id="new-seed-button" class="start-button" type="button">다시 도전</button>
+          <button id="retry-button" class="secondary-button" type="button" hidden>같은 시드 재도전</button>
           <button id="return-menu-button" class="secondary-button" type="button">메뉴로 돌아가기</button>
         </div>
       </div>
@@ -7620,6 +7620,8 @@ let devKeyTimer = 0;
 
 function setDevMode(enabled: boolean): void {
   shell.dataset.devMode = enabled ? "1" : "0";
+  // 같은 시드 재도전은 재현·디버그용 — 일반 플레이어에겐 시드 개념을 노출하지 않는다.
+  must<HTMLButtonElement>("#retry-button").hidden = !enabled;
   if (enabled) {
     seedInput.focus();
     seedInput.select();

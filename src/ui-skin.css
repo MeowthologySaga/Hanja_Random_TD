@@ -3829,8 +3829,9 @@ select option {
 
 .panel-tabs {
   padding: 4px 6px;
+  /* v1 스트립은 우측에 인장이 구워져 있어 검은 조각으로 보였다 — 무지 v2 레일로 */
   background:
-    url("/assets/ui/frames/status-strip-v1.png") center / 100% 100% no-repeat !important;
+    url("/assets/ui/p0-v1/rails/nav-rail-empty-381x89-v2.png") center / 100% 100% no-repeat !important;
 }
 
 .panel-tabs button {
@@ -11195,3 +11196,13 @@ dialog {
 /* ── 96-3. 1번 판 글줄이 왼쪽 걸쇠 장식 위에 얹혀 첫 글자 대비가 죽는다
    — 걸쇠를 지나 시작하도록 들여쓰기 46→58px (상자 154 유지, 우측 여유 실측 내) */
 .s00-stage.is-3d .s00-modes .s00-mode:nth-of-type(1) { padding-left: 58px; }
+
+/* ── 97. 바닥 줄 오른끝 얼룩 — 스트립 PNG 의 투명한 끝단으로 아래
+   액자 모서리가 비쳐 찢긴 종잇조각처럼 보였다. 불투명 한지 받침을 깔고
+   인주 인장은 유지한다. */
+.panel-footer { background-color: #efe3c4; }
+
+/* 인주 인장 장식(seal-cinnabar)이 이 크기에선 찢긴 조각처럼 보인다 — 제거.
+   확보됐던 우측 여백도 본문에 돌려준다. */
+.panel-footer::after { content: none; }
+.panel-footer { padding-right: 11px; }
