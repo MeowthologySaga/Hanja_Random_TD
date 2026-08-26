@@ -17,13 +17,32 @@
  *
  * 스타일은 src/styles/490-notation.css.
  */
-import type { LearningInfo } from "../core/learning";
 import { NOTATION_LABELS, SUBSTITUTE_KIND_LABELS } from "../core/notation";
+import type { ReadingProvenance, SubstituteKind } from "../core/notation";
 import type { NotationCode } from "../core/types";
 import { escapeHtml } from "./format";
 
+/**
+ * 배지가 읽는 최소 모양. LearningInfo(글자 하나)가 구조적으로 이걸 만족하고,
+ * 성어처럼 글자 여럿을 합친 읽기는 합산 판정으로 직접 만들어 넘긴다.
+ */
+export interface NotationMarked {
+  provenance: ReadingProvenance;
+  derivedFrom?: string;
+  substituteKind?: SubstituteKind;
+  sourceMeaning?: string;
+  sourceMeaningLanguage?: string;
+  sourceMeaningDerivedFrom?: string;
+}
+
+/** 읽기 문자열까지 함께 가진 모양 — 짧은/긴 조판 함수가 받는다. */
+export interface NotationMarkedReading extends NotationMarked {
+  short: string;
+  reading: string;
+}
+
 /** 배지 곁말 — 캔버스·aria-label 처럼 마크업을 못 쓰는 자리가 함께 쓴다. */
-export function notationBadgeText(info: LearningInfo): string {
+export function notationBadgeText(info: NotationMarked): string {
   if (info.provenance === "derived") {
     return info.derivedFrom ? `정자 기준 ${info.derivedFrom}` : "정자 기준";
   }
@@ -34,16 +53,28 @@ export function notationBadgeText(info: LearningInfo): string {
   return "";
 }
 
-/** 배지가 왜 붙었는지 한 문장 — title·aria-label 이 함께 쓴다. */
-export function notationBadgeTitle(info: LearningInfo, notation: NotationCode): string {
+/**
+ * 배지가 왜 붙었는지 한 문장 — title·aria-label 이 함께 쓴다.
+ *
+ * scope="idiom" 은 네 글자를 이어 붙인 성어 읽기라 "이 글자"라고 말하면
+ * 어느 글자인지 알 수 없다 — 문장을 구(句) 층위로 바꾼다.
+ */
+export function notationBadgeTitle(
+  info: NotationMarked,
+  notation: NotationCode,
+  scope: "char" | "idiom" = "char"
+): string {
   const notationName = NOTATION_LABELS[notation].name;
+  const idiom = scope === "idiom";
   if (info.provenance === "derived") {
+    if (idiom) return `${notationName} 사전에 없는 자형이 섞여 있어 그 글자는 정자의 읽기를 씁니다`;
     return info.derivedFrom
       ? `${notationName} 사전에 이 자형이 없어 정자 ${info.derivedFrom} 의 읽기를 씁니다`
       : `${notationName} 사전에 이 자형이 없어 정자의 읽기를 씁니다`;
   }
   if (info.provenance === "substitute") {
     const kind = info.substituteKind ? SUBSTITUTE_KIND_LABELS[info.substituteKind] : "타 문자권";
+    if (idiom) return `${notationName}에 읽기가 없는 글자가 섞여 있어 그 자리는 원천 표기를 그대로 씁니다`;
     const gloss = info.sourceMeaningLanguage === "en"
       ? " 뜻은 원천 영어 그대로라 훈음이 아닙니다."
       : "";
@@ -56,9 +87,13 @@ export function notationBadgeTitle(info: LearningInfo, notation: NotationCode): 
  * 읽기 값 옆에 붙는 배지 마크업. authentic 이면 빈 문자열이라 기존 화면에
  * 아무것도 더하지 않는다(자국 표기 3조합은 전부 authentic).
  */
-export function notationBadgeHtml(info: LearningInfo, notation: NotationCode): string {
+export function notationBadgeHtml(
+  info: NotationMarked,
+  notation: NotationCode,
+  scope: "char" | "idiom" = "char"
+): string {
   if (info.provenance === "authentic") return "";
-  const title = escapeHtml(notationBadgeTitle(info, notation));
+  const title = escapeHtml(notationBadgeTitle(info, notation, scope));
   if (info.provenance === "derived") {
     const origin = info.derivedFrom
       ? `<b class="notation-mark-glyph">${escapeHtml(info.derivedFrom)}</b>`
@@ -76,7 +111,7 @@ export function notationBadgeHtml(info: LearningInfo, notation: NotationCode): s
  * sourceMeaningLanguage="en" 이면 번역하지 않은 영어 원문이라 이탤릭 + lang
  * 로 훈음과 확실히 갈라 놓는다. 훈음 자리에 영어가 그냥 놓이면 오인한다.
  */
-export function notationGlossHtml(info: LearningInfo): string {
+export function notationGlossHtml(info: NotationMarked): string {
   if (info.provenance !== "substitute" || !info.sourceMeaning) return "";
   const english = info.sourceMeaningLanguage === "en";
   const inherited = info.sourceMeaningDerivedFrom
@@ -94,11 +129,19 @@ export function notationGlossHtml(info: LearningInfo): string {
  * 짧은 읽기 + 배지 — 카드·목록처럼 좁은 자리의 표준 조판.
  * 값 이스케이프까지 여기서 끝내므로 호출부는 그대로 끼워 넣으면 된다.
  */
-export function notationShortHtml(info: LearningInfo, notation: NotationCode): string {
-  return `${escapeHtml(info.short)}${notationBadgeHtml(info, notation)}`;
+export function notationShortHtml(
+  info: NotationMarkedReading,
+  notation: NotationCode,
+  scope: "char" | "idiom" = "char"
+): string {
+  return `${escapeHtml(info.short)}${notationBadgeHtml(info, notation, scope)}`;
 }
 
 /** 긴 읽기 + 배지 + 원천 뜻 — 도감 상세처럼 넉넉한 자리의 표준 조판. */
-export function notationReadingHtml(info: LearningInfo, notation: NotationCode): string {
-  return `${escapeHtml(info.reading)}${notationBadgeHtml(info, notation)}${notationGlossHtml(info)}`;
+export function notationReadingHtml(
+  info: NotationMarkedReading,
+  notation: NotationCode,
+  scope: "char" | "idiom" = "char"
+): string {
+  return `${escapeHtml(info.reading)}${notationBadgeHtml(info, notation, scope)}${notationGlossHtml(info)}`;
 }

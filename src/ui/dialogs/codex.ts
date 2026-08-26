@@ -1,4 +1,4 @@
-/*
+﻿/*
  * 도감 창.
  */
 import { hasActiveSkills } from "../../core/abilities";
@@ -16,9 +16,11 @@ import {
 import { CHEONJAMUN_SUPPLEMENTAL_CHARACTERS } from "../../core/cheonjamun-roster";
 import { GameEngine } from "../../core/game";
 import { ELEMENT_STYLES, REGION_META, STAGE_MULTIPLIERS, STAGE_NAMES, WUXING_ORDER } from "../../core/hanzi";
+import type { IdiomDefinition } from "../../core/idioms";
 import { koreanMeaningExplanation } from "../../core/korean-meaning-explanations";
 import { LEARNING_DATA_META, learningInfoForNotation } from "../../core/learning";
-import { idiomReadingForNotation } from "../../core/notation";
+import { idiomReadingInfoForNotation } from "../../core/notation";
+import { notationBadgeText, notationReadingHtml, notationShortHtml } from "../notation-substitute";
 import { radicalLearningLabel } from "../../core/radicals";
 import { type AbilitySpec, type CasualStar, type HanziDefinition, type Wuxing } from "../../core/types";
 import {
@@ -42,6 +44,12 @@ const ROLE_STRATEGY: Record<HanziDefinition["combat"]["role"], string> = {
   support: "주변 자령의 공격 흐름을 보조합니다. 여러 자령이 닿는 중앙이 유리합니다.",
   economy: "전투 중 엽전을 보충해 소환·연구를 앞당깁니다. 초중반 가치가 높습니다."
 };
+
+/** 성어 읽기 + 합산 판정 — 도감의 성어 표기 자리가 함께 쓴다. */
+function codexIdiomReading(idiom: IdiomDefinition): { short: string; reading: string } & ReturnType<typeof idiomReadingInfoForNotation> {
+  const info = idiomReadingInfoForNotation(idiom, ctx.engine.state.notation, ctx.engine.state.region);
+  return { ...info, short: info.reading };
+}
 
 function definitionMatches(definition: HanziDefinition, normalized: string): boolean {
   if (!normalized) return true;
@@ -130,7 +138,9 @@ function codexNumberLabel(definition: HanziDefinition, entry: CheonjamunJaryeong
 }
 
 function codexCardPortrait(definition: HanziDefinition, entry: CheonjamunJaryeongDexEntry | undefined): string {
-  const accessible = escapeHtml(`${definition.char} ${learningInfoForNotation(ctx.engine.state.notation, definition.char).short} 자령 초상화`);
+  const portraitLearning = learningInfoForNotation(ctx.engine.state.notation, definition.char);
+  const portraitMark = notationBadgeText(portraitLearning);
+  const accessible = escapeHtml(`${definition.char} ${portraitLearning.short}${portraitMark ? ` (${portraitMark})` : ""} 자령 초상화`);
   // 스프라이트는 안쪽 칸에 그린다 — 바깥 칸의 "우물" 배경이 !important 라
   // 같은 요소에 배경으로 얹으면 통째로 지워졌다(烈 빈 초상의 원인).
   return entry
@@ -139,7 +149,9 @@ function codexCardPortrait(definition: HanziDefinition, entry: CheonjamunJaryeon
 }
 
 function codexDetailPortrait(definition: HanziDefinition, entry: CheonjamunJaryeongDexEntry | undefined): string {
-  const accessible = escapeHtml(`${definition.char} ${learningInfoForNotation(ctx.engine.state.notation, definition.char).short} 자령 초상화`);
+  const portraitLearning = learningInfoForNotation(ctx.engine.state.notation, definition.char);
+  const portraitMark = notationBadgeText(portraitLearning);
+  const accessible = escapeHtml(`${definition.char} ${portraitLearning.short}${portraitMark ? ` (${portraitMark})` : ""} 자령 초상화`);
   return entry
     ? `<img src="${jaryeongDexImageUrl(entry)}" alt="${accessible}" width="214" height="214">`
     : `<i class="codex-jaryeong-detail-sprite" role="img" aria-label="${accessible}"><b class="codex-sprite-fill" style="${spriteStyle(definition)}"></b></i>`;
@@ -220,7 +232,7 @@ function renderCodex(query = ""): void {
       const sealed = ctx.engine.state.idiomSeals.some((seal) => seal.idiomId === idiom.id);
       const active = activeIds.has(idiom.id);
       const selected = idiom.id === ctx.selectedCodexIdiomId;
-      return `<button type="button" data-codex-idiom="${idiom.id}" class="codex-idiom-card ${sealed ? "is-discovered" : ""} ${active ? "is-featured" : ""} ${selected ? "is-selected" : ""}" style="--codex:${idiom.color}" aria-current="${String(selected)}"><b>${idiom.chars}</b><span>${idiomReadingForNotation(idiom, ctx.engine.state.notation)}</span><small>${active ? "이번 런 · " : ""}${idiom.bonus.label}</small></button>`;
+      return `<button type="button" data-codex-idiom="${idiom.id}" class="codex-idiom-card ${sealed ? "is-discovered" : ""} ${active ? "is-featured" : ""} ${selected ? "is-selected" : ""}" style="--codex:${idiom.color}" aria-current="${String(selected)}"><b>${idiom.chars}</b><span>${notationShortHtml(codexIdiomReading(idiom), ctx.engine.state.notation, "idiom")}</span><small>${active ? "이번 런 · " : ""}${idiom.bonus.label}</small></button>`;
     }).join("") || '<p class="codex-empty">검색 결과가 없습니다.</p>';
     // 상세에 뜬 성어와 목록의 선택 표시를 항상 같은 것으로 맞춘다.
     const shown = idioms.find((idiom) => idiom.id === ctx.selectedCodexIdiomId) ?? idioms[0];
@@ -273,7 +285,7 @@ function renderCodex(query = ""): void {
     list.innerHTML = definitions.map((definition) => {
       const depth = synthesisDepths.get(definition.char) ?? 1;
       const selected = definition.char === ctx.selectedCodexChar;
-      return `<button type="button" data-codex-recipe="${definition.char}" class="codex-recipe-card ${selected ? "is-selected" : ""}" style="--codex:${ELEMENT_STYLES[definition.wuxing].color}" aria-current="${String(selected)}"><span class="codex-recipe-formula">${definition.parents.map((parent) => `<i>${parent}</i>`).join("<em>+</em>")}<em>→</em><b>${definition.char}</b></span><span>${escapeHtml(learningInfoForNotation(ctx.engine.state.notation, definition.char).short)}</span><small>${synthesisTierBadge(depth)} · ${STAGE_NAMES[definition.stage]} · ${hasActiveSkills(definition) ? definition.combat.abilities.role.name : "기본 공격"}</small></button>`;
+      return `<button type="button" data-codex-recipe="${definition.char}" class="codex-recipe-card ${selected ? "is-selected" : ""}" style="--codex:${ELEMENT_STYLES[definition.wuxing].color}" aria-current="${String(selected)}"><span class="codex-recipe-formula">${definition.parents.map((parent) => `<i>${parent}</i>`).join("<em>+</em>")}<em>→</em><b>${definition.char}</b></span><span>${notationShortHtml(learningInfoForNotation(ctx.engine.state.notation, definition.char), ctx.engine.state.notation)}</span><small>${synthesisTierBadge(depth)} · ${STAGE_NAMES[definition.stage]} · ${hasActiveSkills(definition) ? definition.combat.abilities.role.name : "기본 공격"}</small></button>`;
     }).join("");
   } else {
     const independentShown = definitions.filter((definition) => uncombinableStageOne.has(definition.char)).length;
@@ -290,12 +302,12 @@ function renderCodex(query = ""): void {
       const numberLabel = codexNumberLabel(definition, entry);
       const found = discoveredThisRun.has(definition.char);
       const progression = ctx.engine.state.mode === "casual" ? `<span class="codex-tier-stars">${"★".repeat(naturalStar)}</span>` : synthesisTierBadge(depth);
-      return `<button type="button" data-codex-char="${definition.char}" class="codex-jaryeong-card ${selected ? "is-selected" : ""} ${found ? "is-found" : ""}" style="--codex:${ELEMENT_STYLES[definition.wuxing].color}" aria-current="${String(selected)}" aria-label="${escapeHtml(`${numberLabel} ${definition.char} ${learning.short} ${definition.wuxing}행${found ? " · 이번 런 발견" : ""}`)}">
+      return `<button type="button" data-codex-char="${definition.char}" class="codex-jaryeong-card ${selected ? "is-selected" : ""} ${found ? "is-found" : ""}" style="--codex:${ELEMENT_STYLES[definition.wuxing].color}" aria-current="${String(selected)}" aria-label="${escapeHtml(`${numberLabel} ${definition.char} ${learning.short}${notationBadgeText(learning) ? ` (${notationBadgeText(learning)})` : ""} ${definition.wuxing}행${found ? " · 이번 런 발견" : ""}`)}">
         <span class="codex-jaryeong-number">${numberLabel}</span>
         ${found ? '<mark class="codex-found-mark">이번 런 발견</mark>' : ""}
         ${codexCardPortrait(definition, entry)}
         <span class="codex-jaryeong-copy">
-          <span class="codex-jaryeong-identity"><b>${definition.char}</b><strong>${escapeHtml(learning.short)}</strong><i>${definition.wuxing}</i></span>
+          <span class="codex-jaryeong-identity"><b>${definition.char}</b><strong>${notationShortHtml(learning, ctx.engine.state.notation)}</strong><i>${definition.wuxing}</i></span>
           <span class="codex-jaryeong-badges">${progression}${ctx.engine.state.mode === "standard" ? independentBadge(independent) : ""}<em>${escapeHtml(definition.combat.roleLabel)}</em></span>
           <span class="codex-jaryeong-category">${escapeHtml(entry?.category ?? `${ELEMENT_STYLES[definition.wuxing].name}행 자령`)} · ${escapeHtml(explanation.plainMeaning)}</span>
           <small class="codex-jaryeong-recipe">조합 · ${escapeHtml(directAcquisitionLabel(definition, independent))}</small>
@@ -367,9 +379,9 @@ function renderCodexDetail(definition: HanziDefinition | undefined): void {
     ? `<div class="recipe-guide-main"><span><b>${definition.wuxing}</b><small>${naturalStar}★ 소모</small></span><em>+</em><span><b>${definition.wuxing}</b><small>${naturalStar}★ 소모</small></span><em>+</em><span><b>${definition.wuxing}</b><small>${naturalStar}★ 소모</small></span><em>→</em><span class="is-result"><b>${Math.min(8, naturalStar + 1)}★</b><small>무작위 1기</small></span></div><p><b>안전 규칙</b> 3기가 모두 사라지고 같은 오행의 다음 별 글자 하나를 무작위로 얻습니다. 잠금·농축·목표·사자성어 자령은 소모 대상에서 빠지고, 소모할 3기를 카드에 미리 보여 준 뒤 실행합니다.</p>`
     : `<div class="recipe-guide-main">${definition.acquisition === "direct"
       ? `<span class="${independent ? "is-independent" : ""}"><b>${definition.char}</b><small>${independent ? "직접 소환 · 독립" : "직접 소환 · 상위 재료"}</small></span>`
-      : `${definition.parents.map((parent) => `<span><b>${parent}</b><small>${escapeHtml(learningInfoForNotation(ctx.engine.state.notation, parent).short)}</small></span>`).join("<em>+</em>")}<em>→</em><span class="is-result"><b>${definition.char}</b><small>${escapeHtml(learning.short)}</small></span>`}</div>
+      : `${definition.parents.map((parent) => `<span><b>${parent}</b><small>${notationShortHtml(learningInfoForNotation(ctx.engine.state.notation, parent), ctx.engine.state.notation)}</small></span>`).join("<em>+</em>")}<em>→</em><span class="is-result"><b>${definition.char}</b><small>${notationShortHtml(learning, ctx.engine.state.notation)}</small></span>`}</div>
       ${recipeSteps.length ? `<ol>${recipeSteps.map((step, index) => `<li><b>${index + 1}</b><span>${step.parents.join(" + ")} → <strong>${step.char}</strong></span></li>`).join("")}</ol>` : ""}
-      <p><b>이 글자로 이어지는 조합</b> ${children.length ? children.map((child) => `<button type="button" data-codex-char="${child.char}">${definition.char} → ${child.char} · ${escapeHtml(learningInfoForNotation(ctx.engine.state.notation, child.char).short)}</button>`).join("") : independent ? "독립 자령이라 상위 조합에 쓰이지 않습니다." : "현재 직접 하위 조합이 없습니다."}</p>`;
+      <p><b>이 글자로 이어지는 조합</b> ${children.length ? children.map((child) => `<button type="button" data-codex-char="${child.char}">${definition.char} → ${child.char} · ${notationShortHtml(learningInfoForNotation(ctx.engine.state.notation, child.char), ctx.engine.state.notation)}</button>`).join("") : independent ? "독립 자령이라 상위 조합에 쓰이지 않습니다." : "현재 직접 하위 조합이 없습니다."}</p>`;
 
   detail.innerHTML = `
     <div class="codex-jaryeong-detail" style="--codex:${ELEMENT_STYLES[definition.wuxing].color}">
@@ -383,7 +395,7 @@ function renderCodexDetail(definition: HanziDefinition | undefined): void {
           <div class="codex-jaryeong-name">
             <strong>${definition.char}</strong>
             <div>
-              <h3>${escapeHtml(learning.short)}</h3>
+              <h3>${notationShortHtml(learning, ctx.engine.state.notation)}</h3>
               <p>${escapeHtml(categoryLabel)} · ${escapeHtml(definition.combat.roleLabel)}</p>
             </div>
           </div>
@@ -416,7 +428,7 @@ function renderCodexDetail(definition: HanziDefinition | undefined): void {
         <!-- R7-26: 라벨과 값을 둘 다 상수·요약으로 박아 둬서 JP 훈독(き·こ)이
              도감에서 통째로 사라지고 JP/CN 라벨까지 전부 '훈음'으로 찍혔다.
              learning.ts 가 지역별로 만들어 주는 값을 그대로 쓴다. -->
-        <div><span>${escapeHtml(learning.readingLabel)}</span><b>${escapeHtml(learning.reading)}</b></div>
+        <div><span>${escapeHtml(learning.readingLabel)}</span><b>${notationReadingHtml(learning, ctx.engine.state.notation)}</b></div>
         <div><span>부수</span><b>${radicalLearningLabel(definition.char)}</b></div>
         <div><span>별 등급</span><b>${progression} · ${escapeHtml(progressionDetail)}</b></div>
         <div><span>조합 성격</span><b>${escapeHtml(acquisitionLabel)}</b></div>
@@ -466,13 +478,13 @@ function renderIdiomCodexDetail(idiom: ReturnType<GameEngine["idioms"]>[number] 
   detail.innerHTML = `
     <div class="idiom-codex-glyphs" style="--codex:${idiom.color}">${[...idiom.chars].map((char, index) => `<span><b>${char}</b><small>${index + 1}</small></span>`).join("")}</div>
     <p class="eyebrow">${sourceLabel} · ${stateLabel}</p>
-    <h3>${idiomReadingForNotation(idiom, ctx.engine.state.notation)}</h3>
+    <h3>${notationShortHtml(codexIdiomReading(idiom), ctx.engine.state.notation, "idiom")}</h3>
     <article class="idiom-strategy" style="--codex:${idiom.color}"><b>${idiom.bonus.label}</b><span>${idiom.meaning}</span><small>${featured ? "같은 진의 한 줄(가로·세로·대각선)에 네 글자를 1→2→3→4 순서로 놓으면 자동 발동하며, 효과는 네 자령이 그 줄을 유지하는 동안만 발동합니다. 줄이 흩어지면 달성 기록만 남고, 다시 세우면 재발동합니다. 역순으로 놓아도 인정합니다." : "이번 런 목표에는 포함되지 않았습니다. 다음 시드에서 목표 성구로 등장할 수 있습니다."}</small></article>
     <section class="idiom-material-guide"><h4>필요 한자와 획득법</h4>${[...idiom.chars].map((char) => {
       const definition = ctx.engine.catalog.definitions.get(char);
       const learning = learningInfoForNotation(ctx.engine.state.notation, char);
       if (!definition) return "";
-      return `<button type="button" data-codex-char="${char}" style="--codex:${ELEMENT_STYLES[definition.wuxing].color}"><b>${char}</b><span>${escapeHtml(learning.short)}</span><small>${definition.acquisition === "direct" ? "직접 소환" : definition.parents.join(" + ") + " → " + char}</small></button>`;
+      return `<button type="button" data-codex-char="${char}" style="--codex:${ELEMENT_STYLES[definition.wuxing].color}"><b>${char}</b><span>${notationShortHtml(learning, ctx.engine.state.notation)}</span><small>${definition.acquisition === "direct" ? "직접 소환" : definition.parents.join(" + ") + " → " + char}</small></button>`;
     }).join("")}</section>
   `;
 }

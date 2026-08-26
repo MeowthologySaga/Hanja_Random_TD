@@ -282,11 +282,58 @@ export function crossNotationReading(notation: NotationCode, char: string): stri
  * 테이블이 물리면 교차 표기는 글자별 읽기를 이어 붙인다 — 구(句) 층위
  * 독음이 따로 오면 그때 이 함수만 바꾸면 된다.
  */
-export function idiomReadingForNotation(idiom: IdiomDefinition, notation: NotationCode): string {
-  if (notation === "kr-hunum") return idiom.reading;
-  const parts = [...idiom.chars].map((char) => crossNotationReading(notation, char));
-  if (parts.every((part): part is string => part !== null)) {
-    return parts.join(notation === "cn-pinyin" ? " " : "·");
+export function idiomReadingForNotation(
+  idiom: IdiomDefinition,
+  notation: NotationCode,
+  region?: RegionCode
+): string {
+  return idiomReadingInfoForNotation(idiom, notation, region).reading;
+}
+
+/** 성어 읽기 + 네 글자를 합산한 판정. 배지는 이 합산 판정을 읽는다. */
+export interface IdiomReadingInfo {
+  reading: string;
+  provenance: ReadingProvenance;
+  /** 합산이 substitute 일 때, 대체된 글자 중 첫 근거 종류. */
+  substituteKind?: SubstituteKind;
+}
+
+/**
+ * 성어 읽기의 표기 스위치 + 판정 합산.
+ *
+ * ── 테이블은 빈칸만 메운다, 있는 값을 덮지 않는다 ────────────────────────
+ * idiom.reading 은 구(句) 층위로 손질된 독음이고, 글자별 읽기를 이어 붙인
+ * 것보다 언제나 낫다. 그래서 자국 표기 조합(region 의 기본 표기)에서는
+ * 테이블이 붙어 있든 말든 손질된 값을 그대로 쓴다 — region 을 받는 이유가
+ * 이것이다. 표기를 한 번 바꿨다 되돌린 사람의 화면이 처음과 달라지는 일이
+ * 없도록, 무변경을 적재 시점의 우연이 아니라 구조로 못 박는다.
+ *
+ * 교차 표기에서만 글자별 읽기를 이어 붙인다. 네 글자 중 하나라도 대체 표기면
+ * 이어 붙인 구 전체가 대체 표기 취급이다(가장 약한 고리를 따른다) —
+ * 한 글자만 빌려 왔는데 구 전체를 정통 독음으로 보이면 그게 오인이다.
+ */
+export function idiomReadingInfoForNotation(
+  idiom: IdiomDefinition,
+  notation: NotationCode,
+  region?: RegionCode
+): IdiomReadingInfo {
+  if (notation === "kr-hunum") return { reading: idiom.reading, provenance: "authentic" };
+  if (region && notation === defaultNotationForRegion(region)) {
+    return { reading: idiom.reading, provenance: "authentic" };
   }
-  return idiom.reading;
+  const parts = [...idiom.chars].map((char) => unifiedReadingFor(notation, char));
+  if (!parts.every((part): part is UnifiedReadingLookup => part !== null)) {
+    return { reading: idiom.reading, provenance: "authentic" };
+  }
+  const reading = parts.map((part) => part.short).join(notation === "cn-pinyin" ? " " : "·");
+  const substituted = parts.find((part) => part.provenance === "substitute");
+  if (substituted) {
+    return {
+      reading,
+      provenance: "substitute",
+      ...(substituted.substituteKind ? { substituteKind: substituted.substituteKind } : {})
+    };
+  }
+  if (parts.some((part) => part.provenance === "derived")) return { reading, provenance: "derived" };
+  return { reading, provenance: "authentic" };
 }

@@ -1,4 +1,4 @@
-/*
+﻿/*
  * 판 보관고 패널.
  */
 import { CASUAL_STAR_COLORS, CASUAL_STAR_NAMES } from "../../core/casual";
@@ -6,6 +6,7 @@ import { GameEngine } from "../../core/game";
 import { definitionForTower, ELEMENT_STYLES, STAGE_COLORS, STAGE_NAMES, WUXING_ORDER } from "../../core/hanzi";
 import { jaryeongVisualFor } from "../../core/jaryeongs";
 import { learningInfoForNotation } from "../../core/learning";
+import { notationBadgeText, notationShortHtml } from "../notation-substitute";
 import { type Tower, type Wuxing } from "../../core/types";
 import {
   ctx,
@@ -53,7 +54,8 @@ function runInventoryTowerSummary(tower: Tower): string {
   const learning = learningInfoForNotation(ctx.engine.state.notation, tower.char);
   const star = casualStarOf(tower);
   const progression = ctx.engine.state.mode === "casual" ? `${star}★ ${CASUAL_STAR_NAMES[star]}` : STAGE_NAMES[tower.stage];
-  return `${tower.char} ${learning.short} · ${tower.wuxing}행 · ${progression}`;
+  const mark = notationBadgeText(learning);
+  return `${tower.char} ${learning.short}${mark ? ` (${mark})` : ""} · ${tower.wuxing}행 · ${progression}`;
 }
 
 function runInventoryAbilityLine(tower: Tower): string {
@@ -105,7 +107,7 @@ function renderRunInventoryDetail(
   detail.innerHTML = `<div class="run-inventory-detail-card" style="--inventory-element:${ELEMENT_STYLES[selected.wuxing].color};--inventory-star:${ctx.engine.state.mode === "casual" ? CASUAL_STAR_COLORS[star] : STAGE_COLORS[selected.stage]}">
     <span class="run-inventory-detail-spirit" style="${visualBackgroundStyle(visual)}" aria-hidden="true"></span>
     <b>${escapeHtml(selected.char)}</b>
-    <strong>${escapeHtml(learning.short)}</strong>
+    <strong>${notationShortHtml(learning, ctx.engine.state.notation)}</strong>
     <p><i>${selected.wuxing}행</i><u>${escapeHtml(progression)}</u></p>
     <small>${escapeHtml(runInventoryAbilityLine(selected))}</small>
     <em>보관 ${stackSize}기${concentration > 0 ? ` · 농축 ${concentration}단계` : ""}${selected.locked ? " · 鎖 잠금" : ""}</em>
@@ -310,7 +312,8 @@ export function renderRunInventory(): void {
     // [J-2] 보호 사유를 92px 카드가 감당할 두 글자로 줄여 꼬리표에 싣는다.
     const stackReasons = stack.flatMap((candidate) => cleanupAssessments.get(candidate.id)?.protectedReasons ?? []);
     const protectionTag = protectionShortLabel(stackReasons);
-    const detail = `${tower.char} ${learning.short} · ${tower.wuxing}행 · ${progression} · ${skill}${concentration > 0 ? ` · 농축 ${concentration}` : ""} · 보관 ${stack.length}기${lockedCount > 0 ? ` · 鎖 잠금 ${lockedCount}기` : ""}`;
+    const readingMark = notationBadgeText(learning);
+    const detail = `${tower.char} ${learning.short}${readingMark ? ` (${readingMark})` : ""} · ${tower.wuxing}행 · ${progression} · ${skill}${concentration > 0 ? ` · 농축 ${concentration}` : ""} · 보관 ${stack.length}기${lockedCount > 0 ? ` · 鎖 잠금 ${lockedCount}기` : ""}`;
     const hint = ctx.runInventoryBulkMode
       ? eligible.length === 0 ? `보호 중(${protectionTag}) — 담을 수 없습니다` : checked > 0 ? `담김 ${checked}기 · 눌러 빼기` : `눌러 ${eligible.length}기 담기`
       : eligible.length === 0 ? `${dismantleBlockNote(stackReasons)} · 클릭 = 고르기` : "클릭 = 고르기 · 더블클릭 = 바로 배치";
@@ -320,7 +323,7 @@ export function renderRunInventory(): void {
     return `<button class="run-inventory-card ${stateClass}" type="button" data-run-inventory-id="${tower.id}" data-run-inventory-eligible="${eligible.map((candidate) => candidate.id).join(",")}" ${ctx.runInventoryBulkMode ? `aria-pressed="${String(checked > 0)}"` : ""} title="${escapeHtml(`${detail} · ${hint}`)}" aria-label="${escapeHtml(`${detail} · ${hint}`)}" style="--inventory-element:${ELEMENT_STYLES[tower.wuxing].color};--inventory-star:${ctx.engine.state.mode === "casual" ? CASUAL_STAR_COLORS[star] : STAGE_COLORS[tower.stage]}">
       <span class="run-inventory-spirit" style="${visualBackgroundStyle(visual)}" aria-hidden="true"></span>
       <b>${tower.char}</b>
-      <span><strong>${escapeHtml(learning.short)}</strong><small>${ctx.engine.state.mode === "casual" ? CASUAL_STAR_NAMES[star] : progression}</small></span>
+      <span><strong>${notationShortHtml(learning, ctx.engine.state.notation)}</strong><small>${ctx.engine.state.mode === "casual" ? CASUAL_STAR_NAMES[star] : progression}</small></span>
       <i class="run-inventory-dot" aria-hidden="true">${tower.wuxing}</i>
       ${stack.length > 1 ? `<mark class="run-inventory-stack">×${stack.length}</mark>` : ""}
       ${ctx.engine.state.mode === "casual" ? `<u class="run-inventory-star">${star}★</u>` : ""}

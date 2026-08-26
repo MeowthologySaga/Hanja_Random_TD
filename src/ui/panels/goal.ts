@@ -1,4 +1,4 @@
-/*
+﻿/*
  * 목표 서책 — "성어가 곧 목표" (트랙 B, gripe #3).
  *
  * 한자 목표 사다리 UI 는 은퇴했다 — 내부 보상 사다리(completeGoal)는 엔진에
@@ -15,7 +15,8 @@ import { casualNaturalStar, casualStrokeCount } from "../../core/casual";
 import { MAX_TRACKED_IDIOMS } from "../../core/game";
 import { ELEMENT_STYLES, maxSummonStageForWave, STAGE_NAMES, summonStageUnlockWave } from "../../core/hanzi";
 import { type IdiomDefinition } from "../../core/idioms";
-import { learningInfo } from "../../core/learning";
+import { learningInfoForNotation } from "../../core/learning";
+import { notationShortHtml } from "../notation-substitute";
 import { ctx, must } from "../app-context";
 import { escapeHtml } from "../format";
 import { handleAction, setFocusFrame } from "../hud";
@@ -173,9 +174,10 @@ function renderMissingSection(idiom: IdiomDefinition, ownedCounts: ReadonlyMap<s
 function renderMissingChar(char: string, ownedCounts: ReadonlyMap<string, number>): string {
   const engine = ctx.engine;
   const definition = engine.catalog.definitions.get(char);
-  const learning = learningInfo(engine.state.region, char);
+  // 표기 축을 따른다 — 로스터 밖 글자도 고른 표기로 읽고 판정 배지를 함께 단다.
+  const learning = learningInfoForNotation(engine.state.notation, char);
   if (!definition) {
-    return `<div class="goal-missing-item"><b class="goal-missing-glyph">${escapeHtml(char)}</b><span class="goal-missing-copy"><strong>${escapeHtml(learning.short)}</strong><small>${escapeHtml(learning.readingLabel)}</small><em>이 지역 로스터 밖의 글자입니다</em></span></div>`;
+    return `<div class="goal-missing-item"><b class="goal-missing-glyph">${escapeHtml(char)}</b><span class="goal-missing-copy"><strong>${notationShortHtml(learning, engine.state.notation)}</strong><small>${escapeHtml(learning.readingLabel)}</small><em>이 지역 로스터 밖의 글자입니다</em></span></div>`;
   }
   const accent = ELEMENT_STYLES[definition.wuxing].color;
   let acquisition: string;
@@ -193,7 +195,7 @@ function renderMissingChar(char: string, ownedCounts: ReadonlyMap<string, number
   }
   return `<div class="goal-missing-item" style="--goal-accent:${accent}">
     <b class="goal-missing-glyph">${escapeHtml(char)}</b>
-    <span class="goal-missing-copy"><strong>${escapeHtml(learning.short)}</strong><small>${escapeHtml(learning.readingLabel)}</small><em>${escapeHtml(acquisition)}</em></span>
+    <span class="goal-missing-copy"><strong>${notationShortHtml(learning, engine.state.notation)}</strong><small>${escapeHtml(learning.readingLabel)}</small><em>${escapeHtml(acquisition)}</em></span>
     ${tree}
   </div>`;
 }

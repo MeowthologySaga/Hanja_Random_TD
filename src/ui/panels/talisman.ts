@@ -1,4 +1,4 @@
-/*
+﻿/*
  * 부적 만들기 패널 — 트랙 C (gripe #5 + 세계관 보강).
  *
  * 부적(符籍)은 이 세계의 봉인구다(GAME_DESIGN.md 「세계관 — 부적과 자령」).
@@ -30,7 +30,8 @@
 import { TALISMAN_MODE_ENEMY_HP_SCALE } from "../../core/engine-tuning";
 import { type GameEngine } from "../../core/game";
 import { summonCost, WUXING_ORDER } from "../../core/hanzi";
-import { learningInfo } from "../../core/learning";
+import { learningInfoForNotation } from "../../core/learning";
+import { notationBadgeText } from "../notation-substitute";
 import { type HanziDefinition, type Wuxing } from "../../core/types";
 import { calmBattlefield, ctx, must, TALISMAN_MODE_STORAGE_KEY, sound } from "../app-context";
 import { summonAndFocus } from "../battle/camera";
@@ -273,8 +274,10 @@ function presentDefinition(definition: HanziDefinition): void {
   clearInk();
   must<HTMLCanvasElement>("#talisman-ink").classList.remove("is-sealed");
   hideSeal();
-  const info = learningInfo(definition.region, definition.char);
-  must<HTMLElement>("#talisman-reading").textContent = `${info.readingLabel} · ${info.reading}`;
+  // 글자의 출신 지역이 아니라 사용자가 고른 표기로 읽는다 — 읽는 사람은 사용자다.
+  const info = learningInfoForNotation(ctx.engine.state.notation, definition.char);
+  const infoMark = notationBadgeText(info);
+  must<HTMLElement>("#talisman-reading").textContent = `${info.readingLabel} · ${info.reading}${infoMark ? ` (${infoMark})` : ""}`;
   setStatus("반투명 글자를 따라 쓰고 [부적 봉인]");
   must<HTMLButtonElement>("#talisman-redraw").textContent = "다시 뽑기";
   syncSubmitButton(false);
