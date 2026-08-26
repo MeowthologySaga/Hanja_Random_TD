@@ -8711,3 +8711,52 @@ span.codex-jaryeong-category { color: #4a3f30 !important; }
 .shop-workbench .formation-unlock-list button:disabled:not(.is-unlocked) b { color: #6d6558 !important; }
 .shop-workbench .formation-unlock-list button:disabled:not(.is-unlocked) span { color: #4a4438 !important; }
 .shop-workbench .formation-unlock-list button:disabled:not(.is-unlocked) small { color: #6b6355 !important; }
+
+/* ── R5-3. 상점 버튼 색 체계 ─────────────────────────────────
+   같은 상점 안에서 인연 연구는 뇌록 테, 자동배치는 중립에 인주선, 강화는
+   또 다른 재질이라 "색이 무엇을 뜻하는가"를 배울 수 없었다. 바탕은 전부 종이로
+   두고 왼쪽 4px 띠 하나만 기능을 가리키게 통일한다. 난색으로 카드를 채우면
+   상품 카드(오행·등급색)와 경쟁하므로 바탕은 건드리지 않는다.
+   ──────────────────────────────────────────────────────────── */
+
+.shop-workbench .action-row > .action-button {
+  border-left: 4px solid var(--fn, #6d5a3c) !important;
+  border-radius: 8px !important;
+}
+
+.shop-workbench .action-button--evolve { --fn: #a8791f; }
+.shop-workbench .action-button--research { --fn: #3f7d6e; }
+.shop-workbench .action-button--auto-arrange { --fn: #6d5a3c; }
+.shop-workbench .action-button--element-upgrade { --fn: #8a5a2a; }
+
+/* 띠 하나로는 좁은 폭에서 놓치기 쉬우므로 값·상태 글자에 같은 색을 한 번 더 준다.
+   본문 라벨은 종이 위 흑단으로 두어 대비를 잃지 않는다. */
+.shop-workbench .action-row > .action-button:not(:disabled) :is(em, i) {
+  color: var(--fn) !important;
+  font-weight: 900;
+}
+
+.shop-workbench .action-row > .action-button .hotkey {
+  color: var(--fn) !important;
+  background: color-mix(in srgb, var(--fn) 14%, transparent) !important;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--fn) 40%, transparent) !important;
+}
+
+/* 비활성은 띠까지 회갈로 눕혀 "지금은 못 쓴다"가 먼저 읽히게 한다. */
+.shop-workbench .action-row > .action-button:disabled {
+  border-left-color: rgba(114, 107, 97, 0.55) !important;
+}
+
+.shop-workbench .action-row > .action-button:disabled .hotkey {
+  color: #8a7c64 !important;
+  background: rgba(122, 90, 42, 0.12) !important;
+  box-shadow: inset 0 0 0 1px rgba(122, 90, 42, 0.25) !important;
+}
+
+/* 10연은 상품군의 맏이라 금박 테 2px 로만 격을 올린다(바탕은 그대로 종이). */
+.summon-card[data-summon-product="multi"]:not(:disabled) {
+  border-width: 2px;
+  border-left-width: 4px;
+  border-color: #c9963e;
+  border-left-color: var(--product);
+}
