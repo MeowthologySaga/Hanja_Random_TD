@@ -179,6 +179,9 @@ app.innerHTML = `
       <button id="hanja-emphasis-toggle" class="hanja-emphasis-control is-on" type="button" aria-pressed="true" title="전장 한자 표찰 강조 전환 (Space)">
         <span>한자 강조</span><strong>ON</strong>
       </button>
+      <span class="canvas-tip" aria-label="지도 조작 안내">
+        <i title="휠: 지도 확대·축소"><em>휠</em>휠 확대·축소</i><i title="빈 곳 끌기: 화면 이동"><em>끌기</em>끌어 화면 이동</i><i title="클릭: 선택·이동"><em>클릭</em>클릭 선택</i><i title="자령 끌기: 자리 교환"><em>자령 끌기</em>자령 끌어 교환</i>
+      </span>
       <div class="stage-topbar" aria-live="polite">
         <div class="stage-chip"><span>웨이브</span><strong id="stage-wave">0 / ${GAME_CONFIG.maxWaves}</strong></div>
         <div class="stage-chip stage-chip--region"><span>지역</span><strong id="stage-region">한국</strong></div>
@@ -448,9 +451,6 @@ app.innerHTML = `
 
 
       <footer class="panel-footer">
-        <span class="canvas-tip">
-          <i title="휠: 지도 확대·축소"><em>휠</em>확대·축소</i><i title="빈 곳 끌기: 화면 이동"><em>끌기</em>화면 이동</i><i title="클릭: 선택·이동"><em>클릭</em>선택·이동</i><i title="자령 끌기: 자리 교환"><em>자령 끌기</em>자리 교환</i>
-        </span>
         <span><b id="message-value">지역과 목표 한자를 선택하세요.</b><span id="footer-seed" class="footer-seed"> · 시드 <b id="seed-value">-</b></span></span>
       </footer>
     </aside>
