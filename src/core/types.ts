@@ -256,10 +256,20 @@ export interface GoalProgress {
   progress: number;
 }
 
+/**
+ * 한 번이라도 봉인한 성어의 자취. 기록과 활성은 나뉘어 있다.
+ *
+ * - 배열에 남아 있다는 것 자체가 "이 런에서 봉인해 본 적이 있다"는 달성 기록이다.
+ *   도감·목표 진행·게임오버 통계는 이 기록을 센다.
+ * - `active` 는 지금 이 순간 네 자령이 그 줄을 지키고 있느냐다. 전투 보너스는
+ *   오직 활성 봉인만 낸다. 줄이 흩어지면 기록은 남고 보너스만 꺼진다.
+ * - `cells` 는 활성일 때의 네 칸이고, 흩어지면 비운다(발광·명패 표식 기준).
+ */
 export interface IdiomSeal {
   idiomId: string;
   cells: number[];
   completedAt: number;
+  active: boolean;
 }
 
 export interface GameState {
@@ -326,7 +336,9 @@ export type GameEvent =
   | { type: "casualFuse"; at: Point; tower: Tower; consumed: Tower[]; fromStar: CasualStar; toStar: CasualStar; newDiscovery: boolean; starFallback: boolean; rosterFallback: boolean }
   | { type: "ability"; at: Point; source: Point; towerId: number; name: string; glyph: string; color: string; kind: AbilityFxKind; targets: number; effect: string; persistent?: boolean }
   | { type: "goal"; char: string; reward: number }
-  | { type: "idiom"; idiomId: string; chars: string; reading: string; meaning: string; bonus: string; color: string; cells: number[] }
+  // rejoined 는 흩어졌던 줄을 다시 세운 재발동이다. 첫 발동보다 가벼운 연출을 쓴다.
+  | { type: "idiom"; idiomId: string; chars: string; reading: string; meaning: string; bonus: string; color: string; cells: number[]; rejoined: boolean }
+  | { type: "idiomBroken"; idiomId: string; chars: string; reading: string; bonus: string; color: string; cells: number[] }
   | { type: "wave"; wave: number; boss: boolean; archetype: EnemyArchetype; weakness: Wuxing }
   | { type: "phase"; phase: RunPhase };
 

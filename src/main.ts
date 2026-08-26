@@ -428,6 +428,7 @@ app.innerHTML = `
             </span>
             <mark id="idiom-result-bonus">자동 판정</mark>
           </div>
+          <div id="idiom-seal-status" class="idiom-seal-status" aria-label="봉인 상태" hidden></div>
         </section>
 
         <section id="run-inventory-panel" class="run-inventory-panel panel-view" data-panel-view="inventory" aria-label="이번 판 자령 인벤토리">
@@ -834,7 +835,8 @@ app.innerHTML = `
               <div><span class="help-cell is-placed" aria-hidden="true">③</span><div><b>순번 인장</b><span>추적 중인 성어의 글자를 가진 자령에 몇 번째 글자인지 인장이 붙습니다.</span></div></div>
               <div><span class="help-cell is-next" aria-hidden="true">④</span><div><b>다음 칸 점선</b><span>다음 글자를 놓을 수 있는 빈 칸을 금색 점선 테와 순번으로 표시합니다.</span></div></div>
             </div>
-            <p class="help-note">직접 선을 그을 필요는 없습니다. 순서가 맞는 순간 자동으로 발동하고, <b>보너스는 그 런 동안 계속 유지</b>됩니다. 역순으로 읽어도 인정합니다.</p>
+            <p class="help-note">직접 선을 그을 필요는 없습니다. 순서가 맞는 순간 자동으로 발동하고, <b>보너스는 네 자령이 그 줄을 지키는 동안만</b> 발동합니다. 한 기라도 자리를 뜨면 봉인이 풀리고, 줄을 다시 세우면 재발동합니다. 역순으로 읽어도 인정합니다.</p>
+            <p class="help-note">발동 중인 네 자령은 명패에 <b>금색 鎖</b> 표식이 붙고 자동배치가 건드리지 않습니다. 손으로 옮기는 것은 언제든 가능합니다.</p>
             <h3 class="help-subhead">글자 익히기</h3>
             <div class="help-cards help-cards--tight">
               <article class="help-card"><b>자령 도감<em><kbd>C</kbd></em></b><span>전체 한자와 천자문 자령을 한 화면에서 봅니다. 별·독립 여부·조합표·쉬운 훈 풀이와 자령 초상화를 함께 확인합니다.</span></article>
@@ -1637,10 +1639,10 @@ function resetIdiomResult(): void {
   must<HTMLElement>("#idiom-result-bonus").textContent = "자동 판정";
 }
 
-function showIdiomResult(reading: string, meaning: string, bonus: string, color: string): void {
+function showIdiomResult(reading: string, meaning: string, bonus: string, color: string, rejoined = false): void {
   idiomResult.style.setProperty("--idiom-result-color", color);
   must<HTMLElement>("#idiom-result-glyph").textContent = "四";
-  must<HTMLElement>("#idiom-result-name").textContent = reading + " 자동 봉인";
+  must<HTMLElement>("#idiom-result-name").textContent = reading + (rejoined ? " 재봉인" : " 자동 봉인");
   must<HTMLElement>("#idiom-result-meaning").textContent = meaning;
   must<HTMLElement>("#idiom-result-bonus").textContent = bonus;
   idiomResult.classList.remove("is-active");
@@ -1649,6 +1651,18 @@ function showIdiomResult(reading: string, meaning: string, bonus: string, color:
   idiomTab.classList.remove("has-update");
   void idiomTab.offsetWidth;
   idiomTab.classList.add("has-update");
+}
+
+/** 줄이 흩어졌을 때의 성어 카드 — 금박을 걷고 회갈로 내린다. */
+function showIdiomBrokenResult(reading: string, bonus: string): void {
+  idiomResult.style.setProperty("--idiom-result-color", "#9d8f78");
+  must<HTMLElement>("#idiom-result-glyph").textContent = "四";
+  must<HTMLElement>("#idiom-result-name").textContent = reading + " 봉인 해제";
+  must<HTMLElement>("#idiom-result-meaning").textContent = "네 자령이 줄을 벗어났습니다. 다시 세우면 재발동합니다.";
+  must<HTMLElement>("#idiom-result-bonus").textContent = bonus + " 중단";
+  idiomResult.classList.remove("is-active");
+  void idiomResult.offsetWidth;
+  idiomResult.classList.add("is-active");
 }
 
 function startRun(useNewSeed = false): void {
@@ -2306,6 +2320,14 @@ function processEvent(event: GameEvent): void {
     case "idiom": {
       const points = event.cells.map((cell) => BOARD_CELLS[cell] as Point);
       const center = points.reduce((total, point) => ({ x: total.x + point.x / points.length, y: total.y + point.y / points.length }), { x: 0, y: 0 });
+      if (event.rejoined) {
+        // 재발동은 첫 봉인보다 가볍게 — 파문·인장·대형 플래시 없이 발광과 스택 복귀만.
+        idiomRenderKey = "";
+        showIdiomResult(event.reading, event.meaning, event.bonus, event.color, true);
+        addCombatFeed("四", event.reading + " 재봉인", event.bonus, event.color);
+        showToast(`『${event.reading}』 봉인 재발동 — 줄이 다시 섰습니다`);
+        break;
+      }
       for (const point of points) pushPooled(rings, ringPool, takeRing(point, event.color, 1.05), 32);
       // 코덱스 봉인 인장(래스터) + 네 칸 파문 + 4자 플래시를 함께 띄운다.
       pushRasterBurst(idiomCompletionSealImage(), center, IDIOM_SEAL_SIZE);
@@ -2329,6 +2351,15 @@ function processEvent(event: GameEvent): void {
       addCombatFeed("四", event.reading, event.bonus, event.color);
       idiomRenderKey = "";
       if (engine.state.idiomSeals.length === 1) firstSealCelebration(event.reading);
+      break;
+    }
+    case "idiomBroken": {
+      // 유지형 규칙의 반대편. 발광·스택은 활성 목록을 보고 알아서 꺼지므로
+      // 여기서는 "왜 꺼졌는지"만 말한다.
+      showToast(`『${event.reading}』 봉인 해제 — 줄이 흩어졌습니다`);
+      showIdiomBrokenResult(event.reading, event.bonus);
+      addCombatFeed("四", event.reading + " 해제", "줄이 흩어졌습니다", "#9d8f78");
+      idiomRenderKey = "";
       break;
     }
     case "wave":
@@ -3599,20 +3630,25 @@ function maybeShowIdiomHint(target: IdiomDefinition | undefined): void {
 function renderIdiomHud(): void {
   const target = engine.currentIdiomTarget();
   const ownedSignature = engine.state.towers.map((tower) => tower.char).sort().join("");
-  const key = engine.state.idiomSeals.map((seal) => seal.idiomId).join(",") + "|" + (target?.id ?? "done") + "|" + ownedSignature;
+  // R18: 기록(id)과 활성 여부가 함께 열쇠에 들어가야 해제·재발동이 즉시 반영된다.
+  const sealSignature = engine.state.idiomSeals.map((seal) => `${seal.idiomId}:${seal.active ? "on" : "off"}`).join(",");
+  const key = sealSignature + "|" + (target?.id ?? "done") + "|" + ownedSignature;
   if (key === idiomRenderKey) return;
   idiomRenderKey = key;
   maybeShowIdiomHint(target);
+  // 카운트는 "이 런에서 봉인해 본" 달성 기록이다. 지금 몇 구가 살아 있는지는 상태 줄이 말한다.
   must<HTMLElement>("#idiom-count").textContent = String(engine.state.idiomSeals.length) + " / " + String(engine.idioms().length);
   must<HTMLElement>("#idiom-tab-count").textContent = String(engine.state.idiomSeals.length) + "/" + String(engine.idioms().length);
+  renderIdiomSealStatus();
   const hud = must<HTMLElement>("#idiom-hud");
   if (!target) {
+    const activeCount = engine.activeIdiomSeals().length;
     hud.classList.add("idiom-hud--complete");
-    must<HTMLElement>("#idiom-glyphs").innerHTML = engine.idioms().map((idiom) => `<i class="is-owned" style="--idiom:${idiom.color}">四</i>`).join("");
+    must<HTMLElement>("#idiom-glyphs").innerHTML = engine.idioms().map((idiom) => `<i class="${engine.isIdiomSealActive(idiom.id) ? "is-owned" : ""}" style="--idiom:${idiom.color}">四</i>`).join("");
     must<HTMLElement>("#idiom-name").textContent = "사자성어 전서 완성";
-    must<HTMLElement>("#idiom-meaning").textContent = "이번 런의 다섯 성구 보너스가 모두 유지됩니다.";
-    must<HTMLElement>("#idiom-bonus").textContent = "사거리·피해·합성 보상·감속 활성";
-    must<HTMLElement>("#idiom-hint").textContent = "四句成陣 · 모든 봉인 활성";
+    must<HTMLElement>("#idiom-meaning").textContent = "각 성구의 보너스는 네 자령이 그 줄을 지키는 동안만 발동합니다.";
+    must<HTMLElement>("#idiom-bonus").textContent = `발동 중 ${activeCount} / ${engine.idioms().length}구`;
+    must<HTMLElement>("#idiom-hint").textContent = activeCount === engine.idioms().length ? "四句成陣 · 모든 봉인 발동 중" : "흩어진 줄을 다시 세우면 재발동합니다";
     return;
   }
   hud.classList.remove("idiom-hud--complete");
@@ -3640,6 +3676,31 @@ function renderIdiomHud(): void {
 }
 
 /**
+ * 성어 탭 봉인 상태 줄 — R18.
+ *
+ * 유지형 규칙에서는 "봉인했다"와 "지금 효과가 산다"가 다른 말이 됐다. 탭 위쪽
+ * 카운트는 달성 기록을 세므로, 한 번이라도 봉인한 성구마다 지금 상태를 한 줄로
+ * 덧붙인다. 금박은 발동 중, 회갈은 기록만 남고 줄이 흩어진 상태다.
+ */
+function renderIdiomSealStatus(): void {
+  const status = must<HTMLElement>("#idiom-seal-status");
+  const seals = engine.state.idiomSeals;
+  status.hidden = seals.length === 0;
+  if (seals.length === 0) {
+    status.innerHTML = "";
+    return;
+  }
+  status.innerHTML = seals
+    .map((seal) => {
+      const idiom = idiomById(engine.state.region, seal.idiomId);
+      if (!idiom) return "";
+      const label = seal.active ? "발동 중" : "봉인 이력 · 지금은 흩어짐";
+      return `<div class="idiom-seal-row ${seal.active ? "is-live" : "is-scattered"}" style="--idiom:${idiom.color}"><b>${escapeHtml(idiom.chars)}</b><span>${escapeHtml(idiom.reading)}</span><em>${escapeHtml(shortIdiomBonusLabel(idiom.bonus.label))}</em><mark>${label}</mark></div>`;
+    })
+    .join("");
+}
+
+/**
  * 발동 중 성어 스택 — 스펙 6라운드 D.
  *
  * 봉인한 성어의 효과는 런 내내 남는데, 지금까지 그 사실은 성어 탭을 열어야만
@@ -3654,7 +3715,8 @@ function shortIdiomBonusLabel(label: string): string {
 }
 
 function renderActiveIdioms(): void {
-  const seals = engine.state.idiomSeals;
+  // R18: 스택은 "지금 발동 중"만 센다. 흩어진 봉인은 기록으로만 남아 성어 탭에 보인다.
+  const seals = engine.activeIdiomSeals();
   const key = seals.map((seal) => seal.idiomId).join(",");
   if (key === activeIdiomsRenderKey) return;
   activeIdiomsRenderKey = key;
@@ -4198,13 +4260,15 @@ function renderIdiomCodexDetail(idiom: ReturnType<GameEngine["idioms"]>[number] 
     return;
   }
   const sealed = engine.state.idiomSeals.some((seal) => seal.idiomId === idiom.id);
+  const live = engine.isIdiomSealActive(idiom.id);
   const featured = engine.idioms().some((candidate) => candidate.id === idiom.id);
   const sourceLabel = idiom.source === "cheonjamun" ? `천자문 제${idiom.sourceOrder}구` : "상용 사자성어";
+  const stateLabel = live ? "이번 런 발동 중" : sealed ? "봉인 이력 · 지금은 흩어짐" : featured ? "이번 런 목표" : "도감 수록";
   detail.innerHTML = `
     <div class="idiom-codex-glyphs" style="--codex:${idiom.color}">${[...idiom.chars].map((char, index) => `<span><b>${char}</b><small>${index + 1}</small></span>`).join("")}</div>
-    <p class="eyebrow">${sourceLabel} · ${sealed ? "이번 런 발동 완료" : featured ? "이번 런 목표" : "도감 수록"}</p>
+    <p class="eyebrow">${sourceLabel} · ${stateLabel}</p>
     <h3>${idiom.reading}</h3>
-    <article class="idiom-strategy" style="--codex:${idiom.color}"><b>${idiom.bonus.label}</b><span>${idiom.meaning}</span><small>${featured ? "같은 진의 한 줄(가로·세로·대각선)에 네 글자를 1→2→3→4 순서로 놓으면 자동 발동하며, 효과는 해당 런 동안 유지됩니다. 역순으로 놓아도 인정합니다." : "이번 런 목표에는 포함되지 않았습니다. 다음 시드에서 목표 성구로 등장할 수 있습니다."}</small></article>
+    <article class="idiom-strategy" style="--codex:${idiom.color}"><b>${idiom.bonus.label}</b><span>${idiom.meaning}</span><small>${featured ? "같은 진의 한 줄(가로·세로·대각선)에 네 글자를 1→2→3→4 순서로 놓으면 자동 발동하며, 효과는 네 자령이 그 줄을 유지하는 동안만 발동합니다. 줄이 흩어지면 달성 기록만 남고, 다시 세우면 재발동합니다. 역순으로 놓아도 인정합니다." : "이번 런 목표에는 포함되지 않았습니다. 다음 시드에서 목표 성구로 등장할 수 있습니다."}</small></article>
     <section class="idiom-material-guide"><h4>필요 한자와 획득법</h4>${[...idiom.chars].map((char) => {
       const definition = engine.catalog.definitions.get(char);
       const learning = learningInfo(engine.state.region, char);
@@ -4240,6 +4304,7 @@ function drawWorld(delta: number): void {
   context.scale(mapZoom, mapZoom);
   drawTrack();
   drawBoard();
+  refreshSealedIdiomTowerMarks();
   refreshIdiomPlacementGuide();
   drawIdiomPlacementCells();
   drawAbilityZones();
@@ -4929,6 +4994,30 @@ interface IdiomPlacementGuide {
 let idiomPlacementGuide: IdiomPlacementGuide | null = null;
 let idiomPlacementGuideKey = "";
 
+/**
+ * 발동 중인 봉인에 참여한 자령 id → 그 성어의 색 — R18 자리 고정 표식용.
+ * 명패는 자령 수만큼 그려지므로 프레임마다 한 번만 계산해 두고 나눠 읽는다.
+ */
+let sealedIdiomTowerMarks: ReadonlyMap<number, string> = new Map<number, string>();
+
+function refreshSealedIdiomTowerMarks(): void {
+  const marks = new Map<number, string>();
+  const signatures: string[] = [];
+  for (const seal of engine.activeIdiomSeals()) {
+    const idiom = idiomById(engine.state.region, seal.idiomId);
+    if (!idiom) continue;
+    signatures.push(seal.cells.join("-"));
+    for (const cell of seal.cells) {
+      const tower = engine.state.towers.find((candidate) => candidate.cell === cell);
+      if (tower) marks.set(tower.id, idiom.color);
+    }
+  }
+  sealedIdiomTowerMarks = marks;
+  // 발동 중인 봉인이 지금 어느 칸을 잡고 있는지 — 진단·e2e 가 읽는 갈피.
+  const signature = signatures.join(" ");
+  if (canvas.dataset.idiomSealCells !== signature) canvas.dataset.idiomSealCells = signature;
+}
+
 function refreshIdiomPlacementGuide(): void {
   const idiom = engine.currentIdiomTarget();
   const key = idiom
@@ -5072,7 +5161,8 @@ function pointAlongPolyline(points: readonly Point[], t: number): Point | null {
  * 칸마다 순번 인장이 박힌다. 모션 감소에서는 펄스 없이 정적 60% 밝기만 쓴다.
  */
 function drawIdiomSeals(): void {
-  for (const seal of engine.state.idiomSeals) {
+  // R18: 줄이 흩어진 봉인은 지킬 칸이 없다. 발광은 발동 중인 봉인만 낸다.
+  for (const seal of engine.activeIdiomSeals()) {
     const idiom = idiomById(engine.state.region, seal.idiomId);
     if (!idiom) continue;
     const points = seal.cells.map((cell) => BOARD_CELLS[cell] as Point);
@@ -5455,6 +5545,31 @@ function drawSpiritTowerLabel(tower: Tower, cell: Point, selected: boolean, mate
     const badgeSize = glyphOnly ? 14 : 18;
     drawIdiomOrderBadge(left + badgeSize / 2 - 1, top + 1, badgeSize, order);
   }
+  // R18: 발동 중인 봉인의 네 자령은 자동배치가 건드리지 못한다. 명패 오른쪽 위에
+  // 기존 잠금 어휘(鎖)를 성어색으로 얹어 "이 자리는 묶여 있다"를 한 글자로 말한다.
+  const sealColor = sealedIdiomTowerMarks.get(tower.id);
+  if (sealColor) drawIdiomSealLockMark(width / 2 - (glyphOnly ? 5 : 6), top + (glyphOnly ? 5 : 6), glyphOnly ? 4.5 : 5.5, sealColor);
+  context.restore();
+}
+
+/** 명패 위 금쇄 표식 — 잠금 배지와 같은 어휘, 색만 그 성어의 색이다. */
+function drawIdiomSealLockMark(centerX: number, centerY: number, radius: number, color: string): void {
+  context.save();
+  context.fillStyle = "rgba(12, 9, 5, 0.9)";
+  context.strokeStyle = color;
+  context.lineWidth = 1;
+  context.shadowColor = color;
+  context.shadowBlur = 5;
+  context.beginPath();
+  context.arc(centerX, centerY, radius, 0, Math.PI * 2);
+  context.fill();
+  context.stroke();
+  context.shadowBlur = 0;
+  context.fillStyle = color;
+  context.textAlign = "center";
+  context.textBaseline = "middle";
+  context.font = `900 ${Math.round(radius * 1.3)}px "Malgun Gothic", serif`;
+  context.fillText("鎖", centerX, centerY + 0.5);
   context.restore();
 }
 
