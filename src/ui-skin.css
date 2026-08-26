@@ -3344,6 +3344,10 @@ select option {
   color: #7a7264 !important;
   filter: none;
   opacity: 1;
+}
+
+/* 판·테두리는 버튼 본체에만. `*` 로 주면 b/small/em 마다 1px 사각형이 그려진다 */
+.action-button:disabled {
   background: linear-gradient(180deg, #d6c9a8 0%, #c4b491 100%);
   box-shadow: inset 0 0 0 1px rgba(122, 90, 42, 0.28);
 }
@@ -6851,3 +6855,17 @@ dialog,
   line-height: 1.45;
   white-space: normal;
 }
+
+/* ══════════════════════════════════════════════════════════════════
+   76. 행동 버튼 글자색 — 옛 "어두운 옻칠 판" 규칙이 종이 카드를 이겼다
+   ══════════════════════════════════════════════════════════════════ */
+
+/* 실측: `강화 탭` b 가 #fff4dc / 바탕 #e9dcbd → 대비 1.15:1, 사실상 안 보임.
+   `자령 소환` 도 #ffeec4 / 금박 #e2c079 → 1.5:1. 30-2절의 .shop-workbench
+   접두 !important 가 74절 종이 카드 규칙을 눌러온 탓이라 같은 접두로 되돌린다.
+   (오행진 해금·강화 오행 탭은 여전히 어두운 판이므로 건드리지 않는다) */
+.shop-workbench .action-button:not(:disabled) b { color: #2e2212 !important; }
+.shop-workbench .action-button:not(:disabled) :is(strong, small, em, i) { color: #6d5a3c !important; }
+.shop-workbench .action-button:not(:disabled) .hotkey { color: #7a5a26 !important; }
+.shop-workbench .action-button--summon:not(:disabled) b { color: #2b2009 !important; }
+.shop-workbench .action-button--summon:not(:disabled) :is(small, em) { color: #5c4312 !important; }
