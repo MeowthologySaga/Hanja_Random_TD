@@ -1,0 +1,582 @@
+/* ══════════════════════════════════════════════════════════════════
+   480. 목표 서책 — "성어가 곧 목표" (트랙 B, gripe #3)
+   근거: .claude/uiux/gripe-list-2026-08-27.md #3 · GAME_DESIGN.md 세계관 장
+
+   한자 목표/성어 목표 이중 탭과 376px 밀집 목록을 걷어내고, 성어 카드
+   격자(좌) + 선택 성어 상세(우)를 보관고(R14, 230절) 선례의 절차 한지
+   집중 프레임으로 세운다. #goal-codex-layout 은 부팅 때 프레임 본문으로
+   옮겨지므로 이 절의 규칙은 프레임 안 좌표를 기준으로 한다.
+   ══════════════════════════════════════════════════════════════════ */
+
+/* ── 480-1. 서책 액자 — 보관고의 절차 한지 문법 재사용 ────────────── */
+.focus-frame--codex-goal {
+  top: 54px;
+  right: 16px;
+  display: flex;
+  width: 848px;
+  height: 650px;
+  flex-direction: column;
+  padding: 14px 24px 16px;
+  border-radius: 10px;
+  background-color: #efe3c6;
+  background-image:
+    linear-gradient(180deg, rgba(255, 252, 240, 0.72) 0%, rgba(221, 205, 170, 0.5) 100%),
+    repeating-linear-gradient(90deg, rgba(122, 90, 42, 0.05) 0 1px, transparent 1px 7px),
+    repeating-linear-gradient(0deg, rgba(122, 90, 42, 0.05) 0 1px, transparent 1px 7px);
+  background-size: 100% 100%, auto, auto;
+  box-shadow:
+    0 0 0 2px #2b2118,
+    0 0 0 8px #a8926a,
+    0 0 0 10px #2b2118,
+    0 22px 46px rgba(8, 5, 3, 0.52);
+}
+
+.focus-frame--codex-goal .focus-frame-head {
+  position: static;
+  height: 40px;
+  padding: 0 4px 8px;
+  border-bottom: 1px solid rgba(122, 90, 42, 0.34);
+}
+
+.focus-frame--codex-goal .focus-frame-body {
+  position: static;
+  flex: 1;
+  min-height: 0;
+  margin-top: 10px;
+}
+
+/* 프레임이 열려 있는 동안 패널 요약(열기 버튼)은 숨는다 — 감사 M2 규칙. */
+.game-shell[data-focus-frame="goal"] #goal-panel .focus-panel-summary {
+  display: none;
+}
+
+/* ── 480-2. 2단 배치 — 좌 격자 가변 · 우 상세 292px ──────────────── */
+#goal-codex-layout {
+  display: grid;
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+  grid-template-columns: minmax(0, 1fr) 292px;
+  gap: 12px;
+}
+
+.goal-codex-browse {
+  display: grid;
+  min-width: 0;
+  min-height: 0;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 8px;
+}
+
+/* 프레임 한지 위에서는 어두운 패널용 도구줄 스킨을 밝은 판으로 뒤집는다. */
+#goal-codex-layout .goal-selector-tools {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+#goal-codex-layout .goal-selector-tools label {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 9px;
+  border: 0;
+  border-radius: var(--r-sm);
+  background: linear-gradient(180deg, #f6eed9 0%, #e2d5b4 100%);
+  box-shadow: inset 0 0 0 1px rgba(122, 90, 42, 0.3);
+}
+
+#goal-codex-layout .goal-selector-tools label > span {
+  color: #8a6a3c;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+#goal-codex-layout .goal-selector-tools input {
+  min-width: 0;
+  flex: 1;
+  padding: 0;
+  color: #201709;
+  font-size: 12.5px;
+  font-weight: 700;
+  border: 0;
+  background: none;
+  outline: none;
+}
+
+#goal-codex-layout .goal-owned-summary {
+  display: grid;
+  flex: 0 0 auto;
+  gap: 1px;
+  text-align: right;
+}
+
+#goal-codex-layout .goal-owned-summary b {
+  color: #4a3f2a;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+#goal-codex-layout .goal-owned-summary span {
+  color: #7b6a4c;
+  font-size: 10.5px;
+  font-weight: 800;
+}
+
+/* ── 480-3. 성어 카드 격자 — 2열, 스크롤은 격자 안에서만 ─────────── */
+#goal-codex-layout #goal-selector-list {
+  display: grid;
+  align-content: start;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  padding: 2px 6px 2px 2px;
+  overflow-y: auto;
+  scrollbar-color: #a8926a #e5d8ba;
+}
+
+.goal-idiom-card {
+  --goal-accent: #d8c58c;
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-rows: auto auto auto;
+  gap: 4px 8px;
+  padding: 8px 10px 9px;
+  cursor: pointer;
+  border-radius: var(--r-sm);
+  background: linear-gradient(180deg, #f8f1de 0%, #eadcbc 100%);
+  box-shadow: inset 0 0 0 1px rgba(122, 90, 42, 0.28), inset 3px 0 0 var(--goal-accent);
+}
+
+.goal-idiom-card:hover {
+  box-shadow: inset 0 0 0 1px rgba(122, 90, 42, 0.5), inset 3px 0 0 var(--goal-accent);
+}
+
+.goal-idiom-card.is-selected {
+  background: linear-gradient(180deg, #fff8e6 0%, #f0e3c0 100%);
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--goal-accent) 65%, #6d5433), inset 3px 0 0 var(--goal-accent);
+}
+
+.goal-idiom-card.is-sealed {
+  opacity: 0.62;
+}
+
+.goal-idiom-glyphs {
+  display: flex;
+  grid-column: 1;
+  grid-row: 1;
+  gap: 3px;
+}
+
+.goal-idiom-glyphs i {
+  display: grid;
+  width: 24px;
+  height: 24px;
+  place-items: center;
+  color: #9b8a68;
+  font-family: "Batang", "Malgun Gothic", serif;
+  font-size: 16px;
+  font-style: normal;
+  font-weight: 900;
+  border-radius: 4px;
+  background: rgba(122, 90, 42, 0.1);
+  box-shadow: inset 0 0 0 1px rgba(122, 90, 42, 0.22);
+}
+
+.goal-idiom-glyphs i.is-owned {
+  color: #201709;
+  background: color-mix(in srgb, var(--goal-accent) 34%, #fdf6e0);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--goal-accent) 60%, #7a5a2a);
+}
+
+.goal-idiom-card > mark {
+  grid-column: 2;
+  grid-row: 1;
+  align-self: start;
+  padding: 2px 6px;
+  color: #5c4a28;
+  font-size: 9.5px;
+  font-weight: 900;
+  white-space: nowrap;
+  border-radius: 999px;
+  background: rgba(122, 90, 42, 0.14);
+}
+
+.goal-idiom-card.is-tracked > mark {
+  color: #fff6e2;
+  background: color-mix(in srgb, var(--goal-accent) 70%, #4a3413);
+}
+
+.goal-idiom-copy {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-row: 2;
+  min-width: 0;
+  gap: 1px;
+}
+
+.goal-idiom-copy strong {
+  overflow: hidden;
+  color: #201709;
+  font-size: 13px;
+  font-weight: 900;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.goal-idiom-copy small {
+  overflow: hidden;
+  color: #6d5433;
+  font-size: 10.5px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.goal-idiom-progress {
+  position: relative;
+  display: block;
+  grid-column: 1;
+  grid-row: 3;
+  align-self: center;
+  height: 12px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(122, 90, 42, 0.16);
+  box-shadow: inset 0 0 0 1px rgba(122, 90, 42, 0.22);
+}
+
+.goal-idiom-progress i {
+  position: absolute;
+  inset: 0 auto 0 0;
+  display: block;
+  border-radius: 999px;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--goal-accent) 55%, #caa84f), var(--goal-accent));
+}
+
+.goal-idiom-progress em {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: #38290f;
+  font-size: 8.5px;
+  font-style: normal;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+}
+
+.goal-idiom-track {
+  grid-column: 2;
+  grid-row: 3;
+  min-height: 22px;
+  padding: 0 9px;
+  color: #4a3f2a;
+  font-size: 10.5px;
+  font-weight: 900;
+  cursor: pointer;
+  border: 0;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #f6eed9 0%, #ddceab 100%);
+  box-shadow: inset 0 0 0 1px rgba(122, 90, 42, 0.4);
+}
+
+.goal-idiom-track[aria-pressed="true"] {
+  color: #fff6e2;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--goal-accent) 78%, #2c2318) 0%, color-mix(in srgb, var(--goal-accent) 52%, #1d160f) 100%);
+  box-shadow: inset 0 0 0 1px rgba(20, 14, 8, 0.45);
+}
+
+.goal-idiom-track:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+
+/* ── 480-4. 우측 상세 — 선택 성어 서지 ───────────────────────────── */
+#goal-codex-detail {
+  min-width: 0;
+  min-height: 0;
+  padding: 10px 12px;
+  overflow-y: auto;
+  border-radius: var(--r-sm);
+  background: linear-gradient(180deg, #fbf5e4 0%, #efe2c2 100%);
+  box-shadow: inset 0 0 0 1px rgba(122, 90, 42, 0.3);
+  scrollbar-color: #a8926a #e5d8ba;
+}
+
+.goal-detail {
+  display: grid;
+  gap: 7px;
+}
+
+.goal-detail-glyphs {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+}
+
+.goal-detail-glyphs i {
+  display: grid;
+  width: 46px;
+  height: 46px;
+  place-items: center;
+  color: #9b8a68;
+  font-family: "Batang", "Malgun Gothic", serif;
+  font-size: 30px;
+  font-style: normal;
+  font-weight: 900;
+  border-radius: 8px;
+  background: rgba(122, 90, 42, 0.1);
+  box-shadow: inset 0 0 0 1px rgba(122, 90, 42, 0.24);
+}
+
+.goal-detail-glyphs i.is-owned {
+  color: #201709;
+  background: color-mix(in srgb, var(--goal-accent) 30%, #fdf6e0);
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--goal-accent) 62%, #7a5a2a);
+}
+
+.goal-detail-kicker {
+  margin: 0;
+  color: #8a6a3c;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-align: center;
+}
+
+.goal-detail-reading {
+  margin: 0;
+  color: #201709;
+  font-family: "Batang", "Malgun Gothic", serif;
+  font-size: 19px;
+  font-weight: 900;
+  text-align: center;
+}
+
+.goal-detail-meaning {
+  margin: 0;
+  color: #6d5433;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.4;
+  text-align: center;
+}
+
+.goal-detail-bonus {
+  display: grid;
+  gap: 3px;
+  padding: 8px 10px;
+  border-radius: var(--r-sm);
+  background: color-mix(in srgb, var(--goal-accent) 14%, #f6ecd2);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--goal-accent) 45%, rgba(122, 90, 42, 0.3));
+}
+
+.goal-detail-bonus b {
+  color: #38290f;
+  font-size: 12.5px;
+  font-weight: 900;
+}
+
+.goal-detail-bonus span {
+  color: #6d5433;
+  font-size: 10.5px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.goal-detail-track {
+  min-height: 32px;
+  padding: 0 12px;
+  color: #4a3f2a;
+  font-size: 12.5px;
+  font-weight: 900;
+  cursor: pointer;
+  border: 0;
+  border-radius: var(--r-sm);
+  background: linear-gradient(180deg, #f6eed9 0%, #ddceab 100%);
+  box-shadow: inset 0 0 0 1px rgba(122, 90, 42, 0.45), var(--bevel-up);
+}
+
+.goal-detail-track.is-on {
+  color: #fff6e2;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--goal-accent) 78%, #2c2318) 0%, color-mix(in srgb, var(--goal-accent) 52%, #1d160f) 100%);
+}
+
+.goal-detail-track:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+/* ── 480-5. 부족 글자와 (표준) 합성 트리 ─────────────────────────── */
+.goal-detail-missing {
+  display: grid;
+  gap: 6px;
+}
+
+.goal-detail-missing h4 {
+  margin: 2px 0 0;
+  padding-top: 7px;
+  color: #4a3f2a;
+  font-size: 11.5px;
+  font-weight: 900;
+  border-top: 1px solid rgba(122, 90, 42, 0.3);
+}
+
+.goal-missing-note,
+.goal-missing-done {
+  margin: 0;
+  color: #7b6a4c;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.goal-missing-list {
+  display: grid;
+  gap: 6px;
+}
+
+.goal-missing-item {
+  --goal-accent: #d8c58c;
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr);
+  gap: 2px 8px;
+  padding: 7px 8px;
+  border-radius: var(--r-sm);
+  background: #f8f1de;
+  box-shadow: inset 0 0 0 1px rgba(122, 90, 42, 0.24), inset 3px 0 0 var(--goal-accent);
+}
+
+.goal-missing-glyph {
+  display: grid;
+  grid-row: 1 / span 2;
+  width: 38px;
+  height: 38px;
+  place-items: center;
+  align-self: start;
+  color: #201709;
+  font-family: "Batang", "Malgun Gothic", serif;
+  font-size: 25px;
+  font-weight: 900;
+  border-radius: 6px;
+  background: rgba(122, 90, 42, 0.1);
+  box-shadow: inset 0 0 0 1px rgba(122, 90, 42, 0.24);
+}
+
+.goal-missing-copy {
+  display: grid;
+  min-width: 0;
+  gap: 1px;
+}
+
+.goal-missing-copy strong {
+  color: #201709;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.goal-missing-copy small {
+  color: #8a6a3c;
+  font-size: 9.5px;
+  font-weight: 800;
+}
+
+.goal-missing-copy em {
+  color: #6d5433;
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 700;
+}
+
+/* 표준 모드 합성 하위 트리 — "이 글자는 이 부품들로" */
+.goal-tree {
+  display: grid;
+  grid-column: 2;
+  gap: 3px;
+  margin-top: 3px;
+  padding-top: 4px;
+  border-top: 1px dashed rgba(122, 90, 42, 0.3);
+}
+
+.goal-tree-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 3px;
+  font-size: 11px;
+}
+
+.goal-tree-row b {
+  color: #201709;
+  font-family: "Batang", "Malgun Gothic", serif;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.goal-tree-row i {
+  color: #8a6a3c;
+  font-style: normal;
+  font-weight: 900;
+}
+
+.goal-tree-row em {
+  color: #8a6a3c;
+  font-style: normal;
+  font-weight: 900;
+}
+
+.goal-tree-row span {
+  display: inline-grid;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 3px;
+  place-items: center;
+  color: #6d5433;
+  font-family: "Batang", "Malgun Gothic", serif;
+  font-size: 13px;
+  font-weight: 900;
+  border-radius: 4px;
+  background: rgba(122, 90, 42, 0.1);
+  box-shadow: inset 0 0 0 1px rgba(122, 90, 42, 0.24);
+}
+
+.goal-tree-row span.is-owned {
+  color: #201709;
+  background: color-mix(in srgb, var(--goal-accent) 30%, #fdf6e0);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--goal-accent) 58%, #7a5a2a);
+}
+
+/* 검색 결과 없음 — 밝은 한지 위 버전 */
+#goal-codex-layout .goal-selector-empty,
+#goal-codex-detail .goal-selector-empty {
+  display: grid;
+  gap: 3px;
+  padding: 16px 12px;
+  text-align: center;
+}
+
+#goal-codex-layout .goal-selector-empty b,
+#goal-codex-detail .goal-selector-empty b {
+  color: #4a3f2a;
+  font-size: 12.5px;
+  font-weight: 900;
+}
+
+#goal-codex-layout .goal-selector-empty span,
+#goal-codex-detail .goal-selector-empty span {
+  color: #7b6a4c;
+  font-size: 10.5px;
+  font-weight: 700;
+}
+
+/* ── 480-6. 패널 쪽 — 요약만 남는다 ──────────────────────────────── */
+#goal-panel .focus-panel-summary {
+  margin-top: auto;
+}
+
+#goal-panel .focus-panel-summary p b {
+  color: #ffe7a7;
+}

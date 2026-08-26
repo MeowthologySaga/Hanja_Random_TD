@@ -139,8 +139,6 @@ export const lastAbilityFxByTower = new Map<number, number>();
    (showTowerAbilityPopup)이, 상시 메시지는 패널 푸터가 대신한다. 탭은 8개다. */
 export type PanelTab = "shop" | "unit" | "inventory" | "evolution" | "concentration" | "growth" | "goal" | "idiom";
 
-export type GoalPanelMode = "hanzi" | "idiom";
-
 export type CodexMode = "hanzi" | "recipes" | "idioms";
 
 export type JaryeongDexFilter = "all" | Wuxing;
@@ -210,8 +208,10 @@ export type GameSpeed = 1 | 2 | 3;
  * **옮긴다**(복제가 아니다 — 기존 id·리스너·렌더러가 그대로 동작한다).
  * 패널에는 요약 몇 줄과 [열기] 버튼만 남는다.
  * 엔진은 계속 돌기 때문에 aria-modal 은 false 다.
+ * 트랙 B: 목표 서책(goal)도 같은 문법으로 승격됐다 — 성어 카드 격자와
+ * 상세를 376px 패널에 밀어 넣는 대신 전장 위 대형 프레임으로 편다.
  */
-export type FocusFrameId = "growth" | "concentration" | "inventory";
+export type FocusFrameId = "growth" | "concentration" | "inventory" | "goal";
 
 /**
  * 추적 중 성어의 배치 안내 — 스펙 6라운드 B.
@@ -277,7 +277,8 @@ class AppContext {
   selectedCodexChar = CHEONJAMUN_JARYEONG_DEX_ENTRIES[0]?.hanja ?? "";
   /** 성어 카드에도 한자 카드와 같은 선택 표시를 준다(항목 17). */
   selectedCodexIdiomId = "";
-  goalPanelMode: GoalPanelMode = "hanzi";
+  /** 목표 서책에서 상세로 펼친 성어. 비면 1순위 추적 성어를 따른다. */
+  goalSelectedIdiomId = "";
   goalSearchQuery = "";
   activePanelTab: PanelTab = "shop";
   concentrationTargetId: number | null = null;

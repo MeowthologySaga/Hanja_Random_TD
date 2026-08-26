@@ -166,7 +166,9 @@ const FOCUS_FRAME_MOUNTS: ReadonlyArray<{ id: FocusFrameId; source: string; targ
   { id: "concentration", source: "#concentration-layout", target: "#concentration-frame-body" },
   // R14: 보관고. 많이 뽑는 구조라 376px 패널의 1열 목록으로는 스크롤이 끝없이
   // 길어졌다. 목록 DOM 을 통째로 전장 위 격자 프레임으로 옮긴다.
-  { id: "inventory", source: "#run-inventory-layout", target: "#inventory-frame-body" }
+  { id: "inventory", source: "#run-inventory-layout", target: "#inventory-frame-body" },
+  // 트랙 B: 목표 서책. 성어 카드 격자 + 상세 2단은 376px 에 들어가지 않는다.
+  { id: "goal", source: "#goal-codex-layout", target: "#goal-frame-body" }
 ];
 
 function mountFocusFrames(): void {
@@ -198,6 +200,9 @@ export function setFocusFrame(id: FocusFrameId | null): void {
   } else if (id === "inventory") {
     ctx.runInventoryRenderKey = "";
     renderRunInventory();
+  } else if (id === "goal") {
+    ctx.goalRenderKey = "";
+    renderGoal();
   }
 }
 
@@ -326,7 +331,8 @@ export function syncPanel(): void {
   must<HTMLElement>("#interest-preview").textContent = "이자 +" + String(interestForGold(state.gold));
   must<HTMLElement>("#enemy-cap-value").textContent = String(MAX_ENEMIES) + "체";
   must<HTMLElement>("#tower-count-value").textContent = String(state.towers.length) + " / " + String(ctx.engine.deployedTowerCapacity());
-  must<HTMLElement>("#goal-count-value").textContent = String(state.goalsCompleted.length) + " / " + String(ctx.engine.goalOrder.length);
+  // 트랙 B: 자원칸 목표 카운터는 한자 사다리(내부 보상은 유지) 대신 성어 봉인 수를 센다.
+  must<HTMLElement>("#goal-count-value").textContent = String(state.idiomSeals.length) + " / " + String(ctx.engine.idioms().length);
   must<HTMLElement>("#seed-value").textContent = state.seed;
   must<HTMLElement>("#message-value").textContent = state.lastMessage;
   renderFormationUnlocks();
