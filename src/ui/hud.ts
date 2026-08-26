@@ -11,7 +11,7 @@ import {
   researchUnlockWave,
   WUXING_ORDER
 } from "../core/hanzi";
-import { type ActionResult } from "../core/types";
+import { type ActionResult, type Wuxing } from "../core/types";
 import {
   abilityGuideDialog,
   bossBanner,
@@ -253,8 +253,46 @@ export function handleAction(result: ActionResult, options: { invalidatePanels?:
   syncPanel();
 }
 
+/**
+ * 트랙 A #2-3: 토스트 문장 속 문기 증감 조각을 분리 강조한다.
+ *
+ * 엔진 문장(lastMessage)은 " · " 로 조각을 잇는다. 그 조각이 문기 환급·획득
+ * 표기(`木 문기 2 환급` · 분해의 `木+3` · 합성의 `농축 문기 木2 환급`)면
+ * 굵은 오행색 칩으로 갈라 세워 "문장 끝 덧붙임"으로 흘려보내지 않는다.
+ * game.ts 는 손대지 않으므로 표기 인식은 전부 UI 쪽 책임이다.
+ */
+function toastEssenceChip(segment: string): HTMLElement | null {
+  const refund = /^([木火土金水]) 문기 \+?(\d+) 환급$/u.exec(segment);
+  const gain = refund === null ? /^([木火土金水])\+(\d+)$/u.exec(segment) : null;
+  const concentration = refund === null && gain === null ? /^농축 문기 .+ 환급$/u.exec(segment) : null;
+  if (refund === null && gain === null && concentration === null) return null;
+  const chip = document.createElement("b");
+  chip.className = "toast-essence";
+  const wuxing = /[木火土金水]/u.exec(segment)?.[0] as Wuxing | undefined;
+  chip.style.setProperty("--element", wuxing ? ELEMENT_STYLES[wuxing].color : "#b8934a");
+  chip.textContent = refund
+    ? `${refund[1]} 문기 +${refund[2]} 환급`
+    : gain
+      ? `${gain[1]} 문기 +${gain[2]}`
+      : segment;
+  return chip;
+}
+
+function renderToastMessage(message: string): void {
+  toast.textContent = "";
+  message.split(" · ").forEach((segment, index) => {
+    if (index > 0) {
+      const separator = document.createElement("span");
+      separator.className = "toast-sep";
+      separator.textContent = " · ";
+      toast.append(separator);
+    }
+    toast.append(toastEssenceChip(segment) ?? document.createTextNode(segment));
+  });
+}
+
 export function showToast(message: string, warning = false): void {
-  toast.textContent = message;
+  renderToastMessage(message);
   toast.classList.toggle("toast--warning", warning);
   toast.classList.remove("toast--visible");
   ctx.toastAnimation?.cancel();

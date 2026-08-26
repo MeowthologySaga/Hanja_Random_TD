@@ -15,6 +15,7 @@ import { ELEMENT_STYLES, WUXING_ORDER } from "../../core/hanzi";
 import { jaryeongVisualFor } from "../../core/jaryeongs";
 import { type CasualStar, type Tower, type Wuxing } from "../../core/types";
 import { casualFusionConfirmDialog, ctx, must, sound } from "../app-context";
+import { essenceRefundSuffix, essenceSnapshot } from "../essence-feedback";
 import { casualStarOf, escapeHtml, spiritPortraitMarkup, visualBackgroundStyle } from "../format";
 import { handleAction, setPanelTab, showToast } from "../hud";
 
@@ -304,9 +305,10 @@ export function renderCasualFusion(): void {
   const previewPool = anchor && casualStarOf(anchor) < 8 ? ctx.engine.casualResultPool(anchor.wuxing, casualStarOf(anchor)) : null;
   const resultStar = quote?.toStar ?? previewPool?.star ?? null;
   const groupCards = buckets.map((bucket) => casualGroupCardMarkup(bucket, allTowers, active)).join("");
+  // 트랙 A #1: 빈 상태는 콤팩트 카드 1장 — 안내 1문장 + [상점으로].
+  // "상점에서 소환을 계속하세요" 부제는 버튼이 같은 말을 하므로 문장에 합쳤다.
   const emptyState = `<div class="casual-group-empty">
-    <b>같은 오행·같은 별 자령이 3체 모이면 여기서 한 번에 승급합니다</b>
-    <span>상점에서 소환을 계속하세요.</span>
+    <b>같은 오행·같은 별 자령이 3체 모이면 여기서 한 번에 승급합니다 — 상점에서 소환을 계속하세요.</b>
     <button type="button" id="casual-goto-shop" class="casual-goto-shop">상점으로</button>
   </div>`;
   container.innerHTML = `
@@ -368,7 +370,11 @@ export function runCasualAutoFusion(scope: Wuxing | "all", star: CasualStar | nu
   sound.unlock();
   // 카드 한 장은 사용자가 배지까지 보고 누른 것이므로 전장 재료도 실행한다.
   // [한 번에 승급] 은 전 오행 일괄이라 전장 재료 묶음을 건너뛴다.
+  const essenceBefore = essenceSnapshot();
   const report = ctx.engine.autoFuseCasual(scope, star !== null, star);
+  // 트랙 A #2-3: 승급 토스트에는 삼체일득 환급이 빠져 있다(엔진 문장 무수정
+  // 원칙). 실측 증가분으로 UI 가 덧붙이고, showToast 가 오행색 칩으로 세운다.
+  if (report.ok) report.message += essenceRefundSuffix(essenceBefore);
   ctx.casualFusionSelection = [];
   ctx.evolutionRenderKey = "";
   handleAction(report);
@@ -388,7 +394,9 @@ export function wireCasualFusion1(): void {
     const pending = ctx.pendingCasualFusion;
     if (!pending) return;
     sound.unlock();
+    const essenceBefore = essenceSnapshot();
     const result = ctx.engine.fuseCasual(pending.materialIds, true);
+    if (result.ok) result.message += essenceRefundSuffix(essenceBefore);
     if (result.ok) ctx.casualFusionSelection = [];
     closeCasualFusionReview();
     ctx.evolutionRenderKey = "";
