@@ -9024,11 +9024,11 @@ span.codex-jaryeong-category { color: #4a3f30 !important; }
 .battle-stage > .canvas-tip i {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  min-height: 42px;
+  gap: 4px;
+  min-height: 22px;
   width: auto;
   overflow: visible;
-  padding: 6px 10px;
+  padding: 2px 7px;
   clip-path: var(--clip-cut-sm);
   border-radius: 0;
   /* 28절 가독성 패스(2587)가 베이지 배경을 !important 로 강제한다.
@@ -9039,16 +9039,16 @@ span.codex-jaryeong-category { color: #4a3f30 !important; }
     inset 0 1px 0 rgba(255, 244, 214, 0.16),
     inset 0 -6px 12px rgba(0, 0, 0, 0.5) !important;
   color: #d8ccae;
-  font-size: 11.5px;
-  font-weight: 800;
+  font-size: 10.5px;
+  font-weight: 700;
   white-space: nowrap;
 }
 
 /* 픽토그램(em)은 81절 규칙(15px 그림·글자 숨김)을 물려받되,
    먹선 그림이 어두운 칩에서 안 보이므로 밝게 반전한다. */
 .battle-stage > .canvas-tip i em {
-  width: 16px;
-  height: 16px;
+  width: 12px;
+  height: 12px;
   filter: invert(0.92) sepia(0.2) saturate(0.5) brightness(1.15);
 }
 
