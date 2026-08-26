@@ -7,6 +7,7 @@ import { saveAutoPlaceSummons } from "../summon-placement";
 import { CALM_SCREEN_STORAGE_KEY, ctx, HOVER_GLYPH_STORAGE_KEY, must, reducedMotion, settingsDialog, shell, sound } from "../app-context";
 import { startCoach } from "../coach";
 import { handleAction, showToast } from "../hud";
+import { openStandardModeNotice } from "./s13";
 import { setSelectedGameMode } from "../s00-menu";
 
 function syncDisplayModeControls(): void {
@@ -168,7 +169,12 @@ export function wireSettings2(): void {
     });
   });
   document.querySelectorAll<HTMLButtonElement>("[data-game-mode-option]").forEach((button) => {
-    button.addEventListener("click", () => setSelectedGameMode(button.dataset.gameModeOption as GameMode));
+    button.addEventListener("click", () => {
+      const mode = button.dataset.gameModeOption as GameMode;
+      // 자형연성은 얼리 액세스 — 고르는 순간 무엇이 덜 여물었는지 먼저 말한다.
+      if (mode === "standard" && ctx.selectedGameMode !== "standard") openStandardModeNotice();
+      else setSelectedGameMode(mode);
+    });
   });
   must<HTMLButtonElement>("#auto-place-toggle").addEventListener("click", () => {
     sound.unlock();

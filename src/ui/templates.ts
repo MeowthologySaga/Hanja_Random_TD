@@ -486,7 +486,7 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
           </button>
           <button type="button" class="s00-mode game-mode-option" data-game-mode-option="standard" role="radio" aria-checked="false"
             aria-label="자형연성 진법. 실제 한자의 설계도대로 부수를 부품 삼아 글자를 조립하는 학습 진법">
-            <i class="s00-skin" aria-hidden="true"></i><b>자형연성 진법</b><small aria-hidden="true"><span class="s00-mode-sub s00-mode-sub--full">부수를 부품 삼아 조립 · 학습 특화</span><span class="s00-mode-sub s00-mode-sub--compact">부수 조립 · 한자 학습</span></small><em>선택됨</em>
+            <i class="s00-skin" aria-hidden="true"></i><b>자형연성 진법<mark class="s00-badge s00-badge--ea s00-badge--inline">미리 해보기</mark></b><small aria-hidden="true"><span class="s00-mode-sub s00-mode-sub--full">부수를 부품 삼아 조립 · 학습 특화</span><span class="s00-mode-sub s00-mode-sub--compact">부수 조립 · 한자 학습</span></small><em>선택됨</em>
           </button>
         </div>
 
@@ -537,7 +537,7 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
 
       <dialog id="p00-dialog" class="p00-dialog" data-popup-id="P00" aria-labelledby="p00-title">
         <div class="p00-frame">
-          <p class="s00-mode-label">미리 해보기 안내</p>
+          <p class="s00-mode-label" id="p00-kicker">미리 해보기 안내</p>
           <h3 id="p00-title">일본 한자 체계</h3>
           <p id="p00-body">이 지역은 도감 설명과 읽기, 난이도를 아직 다듬는 중입니다.<br />가장 완성된 체계는 한국 천자문 1,000자입니다.</p>
           <div class="p00-actions">
@@ -586,7 +586,7 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
             <span class="s13-group-label">진법 규칙</span>
             <div class="s13-options">
               <button type="button" data-s13-mode="casual" role="radio"><b>별승급</b><small>3합 승급 · 무작위 획득</small></button>
-              <button type="button" data-s13-mode="standard" role="radio"><b>자형연성</b><small>부수 조립 · 학습 특화</small></button>
+              <button type="button" data-s13-mode="standard" role="radio"><b>자형연성<mark class="s00-badge s00-badge--ea s00-badge--inline">미리 해보기</mark></b><small>부수 조립 · 학습 특화</small></button>
               <button type="button" id="s13-autoplace" aria-pressed="true"><b>소환 자동 배치</b><small class="s13-state">ON</small></button>
             </div>
           </div>

@@ -1,0 +1,12 @@
+/* 자형연성 「미리 해보기」 배지.
+
+   지역 배지(.s00-badge--ea)와 같은 옷을 입히되, 그 원본은 목패 모서리에
+   절대 위치로 앉는다 — 진법 목패에서는 제목 줄 안에 들어가야 하므로
+   위치를 흐름으로 되돌린다(안 그러면 제목 글자 위에 겹친다). */
+.s00-mode .s00-badge--inline {
+  position: static;
+  display: inline-block;
+  margin-left: 7px;
+  vertical-align: middle;
+  transform: translateY(-1px);
+}
