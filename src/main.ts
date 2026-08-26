@@ -378,7 +378,7 @@ app.innerHTML = `
           </div>
           <section id="casual-fusion-toolbar" class="casual-fusion-toolbar" hidden>
             <button id="casual-fuse-all" class="casual-fuse-all" type="button">
-              <b>한 번에 승급</b><span id="casual-fuse-all-count">0회 가능</span>
+              <b>한 번에 승급</b><span id="casual-fuse-all-count" class="casual-fuse-all-count">(0회)</span>
             </button>
             <p id="casual-fuse-all-note" class="casual-fuse-all-note">같은 오행·같은 별 자령 3체를 자동으로 묶습니다. 3기가 모두 사라지고 다음 별 자령 1기를 무작위로 얻습니다.</p>
           </section>
@@ -2749,6 +2749,7 @@ function renderEvolutions(): void {
   const options = engine.availableEvolutions();
   const key = engine.state.automationMode + "|" + String(engine.state.selectedTowerId) + "|" + options.map((option) => option.recipeId + ":" + option.materialTowerIds.join(",")).join("|");
   must<HTMLElement>("#evolution-count").textContent = String(options.length);
+  must<HTMLElement>("#evolution-count").hidden = false;
   must<HTMLElement>("#evolve-ready-count").textContent = String(options.length);
   const evolveButton = must<HTMLButtonElement>("#evolve-button");
   must<HTMLElement>("#evolve-action-label").textContent = "합성";
@@ -2793,7 +2794,7 @@ function casualFusionTowerMarkup(tower: Tower, selected: boolean, disabled: bool
   return `<button type="button" class="casual-fusion-tower ${selected ? "is-selected is-material" : ""} ${badge ? "is-short" : ""}" data-casual-fusion-tower="${tower.id}" style="--element:${ELEMENT_STYLES[tower.wuxing].color};--star:${CASUAL_STAR_COLORS[star]}" aria-pressed="${String(selected)}" ${disabled ? "disabled" : ""}>
     <i class="casual-fusion-sprite" style="${visualBackgroundStyle(visual)}" aria-hidden="true"></i>
     <b>${escapeHtml(tower.char)}</b>
-    <span><strong>${tower.wuxing}행 · ${star}★ ${CASUAL_STAR_NAMES[star]}</strong><small>${strokes ?? "?"}획 · 기본 ${natural}★ · ${location}${tower.locked ? " · 鎖 잠금" : ""}</small></span>
+    <span><strong>${casualStarTagMarkup(star)} ${tower.wuxing}행 · ${CASUAL_STAR_NAMES[star]}</strong><small>${strokes ?? "?"}획 · 기본 ${natural}★ · ${location}${tower.locked ? " · 鎖 잠금" : ""}</small></span>
     <em>${badge ? escapeHtml(badge) : selectedRole || (star >= 8 ? "최고" : "선택")}</em>
   </button>`;
 }
@@ -2814,7 +2815,7 @@ function casualFusionSlotMarkup(tower: Tower | undefined, index: number): string
     <span>${roleLabel} <em>소모</em></span>
     <i class="casual-fusion-slot-sprite" style="${visualBackgroundStyle(visual)}" aria-hidden="true"></i>
     <b>${escapeHtml(tower.char)}</b>
-    <div><strong>${tower.wuxing}행 · 현재 ${star}★</strong><small>자연 ${natural}★ · ${strokes ?? "?"}획</small><small>${location}${tower.locked ? " · 鎖 잠금" : ""}</small></div>
+    <div><strong>${casualStarTagMarkup(star)} ${tower.wuxing}행</strong><small>자연 ${natural}★ · ${strokes ?? "?"}획</small><small>${location}${tower.locked ? " · 鎖 잠금" : ""}</small></div>
   </button>`;
 }
 
@@ -2824,6 +2825,12 @@ interface CasualFusionBucket {
   owned: Tower[];
   groups: CasualAutoFusionGroup[];
   shortReason: string | null;
+  /** 막힌 이유의 종류 — 카드가 빈 칸을 그릴지 결과 칸을 지울지 가른다. */
+  blockedKind: "no-pool" | "protected" | null;
+  /** 보호를 뺀, 지금 실제로 소모할 수 있는 자령(최대 3기까지 초상으로 세운다). */
+  usableSamples: Tower[];
+  /** 막힌 카드의 툴팁 — 화면에서 덜어낸 수치를 여기 보존한다. */
+  blockedTip: string;
 }
 
 /**
@@ -2852,58 +2859,122 @@ function casualFusionBuckets(
       if (list.length < 3) continue;
       const groups = (plans.get(wuxing) ?? []).filter((group) => group.fromStar === star);
       let shortReason: string | null = null;
+      let blockedKind: CasualFusionBucket["blockedKind"] = null;
+      let usableSamples: Tower[] = [];
+      let blockedTip = "";
       if (groups.length === 0) {
         if (engine.casualResultPool(wuxing, star) === null) {
-          shortReason = `이 오행은 ${star}★ 위 글자가 없습니다`;
+          // 재료는 멀쩡한데 위 별 글자가 없다 — 빈 칸이 아니라 결과 칸이 없는 경우다.
+          blockedKind = "no-pool";
+          usableSamples = list.slice(0, 3);
+          shortReason = "이 오행에는 다음 별 글자가 없습니다";
+          blockedTip = `${wuxing}행 ${star}★ 보유 ${list.length}기 · ${star + 1}★ 이상 후보 글자가 없어 승급할 수 없습니다`;
         } else {
+          const usable = list.filter((tower) => !protections.has(tower.id));
           const reasons = list.map((tower) => protections.get(tower.id)).filter((reason): reason is string => reason !== undefined);
-          const safe = list.length - reasons.length;
           const top = [...new Set(reasons)].slice(0, 2).join(" · ");
-          shortReason = `${top || "보호"} 보호로 소모 후보 ${safe}/3 부족 — 같은 별 ${Math.max(1, 3 - safe)}기를 더 모으세요`;
+          const need = Math.max(1, 3 - usable.length);
+          // 몇 기가 모자란지는 빈 초상 칸이 말한다. 글줄은 사유와 다음 행동만 남긴다.
+          blockedKind = "protected";
+          usableSamples = usable.slice(0, 3);
+          shortReason = `${top || "보호"} 보호 — 같은 별 ${need}기를 더 모으세요`;
+          blockedTip = `보유 ${list.length}기 중 소모 가능 ${usable.length}기 · ${top || "보호"} 보호로 ${need}기 부족`;
         }
       }
-      buckets.push({ wuxing, star, owned: list, groups, shortReason });
+      buckets.push({ wuxing, star, owned: list, groups, shortReason, blockedKind, usableSamples, blockedTip });
     }
   }
   return buckets;
 }
 
+/** `★n` 은 본문과 다른 서체 등록부(금박·굵기·tabular-nums)로 분리한 배지다. */
+function casualStarTagMarkup(star: number, variant = ""): string {
+  return `<i class="casual-star-tag${variant}">★${star}</i>`;
+}
+
+function casualGroupMaterialMarkup(tower: Tower, star: CasualStar): string {
+  return `<span class="casual-group-material">`
+    + spiritPortraitMarkup(tower.char, tower.wuxing, "workbench-spirit--group")
+    + casualStarTagMarkup(star)
+    + `</span>`;
+}
+
+/**
+ * 그룹 카드는 "읽는 표"가 아니라 "보는 문장"이다.
+ *
+ * `[오행 인장] [초상 3연속(+여분)] → [? 결과 칸]` 가로 한 줄이 곧 규칙이고,
+ * 글자는 제목 한 줄 + 필요할 때만 경고 한 줄로 줄인다. 소모 글자 목록·후보
+ * 글자 수·보유 수 같은 수치는 지우지 않고 카드 툴팁으로 내린다.
+ *
+ * 보유 수 `×N` 표기는 폐지했다 — `1★ ×4 → 2★` 를 보고 "왜 4개를 합치냐"고
+ * 읽는 오독이 실제로 나왔다. 소모 수는 초상 3개만으로 말하고, 남는 자령은
+ * 초상 뒤 흐린 `+N` 스택 칩으로 "쓰이지 않고 남는다"를 그림으로 보여 준다.
+ */
 function casualGroupCardMarkup(bucket: CasualFusionBucket, allTowers: readonly Tower[], active: boolean): string {
-  const style = `--element:${ELEMENT_STYLES[bucket.wuxing].color};--star:${CASUAL_STAR_COLORS[bucket.star]}`;
+  const next = Math.min(8, bucket.star + 1) as CasualStar;
+  const first = bucket.groups[0];
+  const toStar = first?.toStar ?? next;
+  const style = `--element:${ELEMENT_STYLES[bucket.wuxing].color};--star:${CASUAL_STAR_COLORS[bucket.star]};--result-star:${CASUAL_STAR_COLORS[toStar]}`;
   if (bucket.shortReason) {
-    const next = Math.min(8, bucket.star + 1) as CasualStar;
-    return `<article class="casual-group-card is-blocked" style="${style}">
+    const noPool = bucket.blockedKind === "no-pool";
+    // 모자란 만큼을 빈 초상 실루엣으로 세운다 — "2/3" 을 읽지 않아도 보인다.
+    const slots = [0, 1, 2].map((index) => {
+      const tower = bucket.usableSamples[index];
+      return tower
+        ? casualGroupMaterialMarkup(tower, bucket.star)
+        : `<span class="casual-group-material is-empty"><i>＋</i></span>`;
+    }).join("");
+    return `<article class="casual-group-card is-blocked" style="${style}" title="${escapeHtml(bucket.blockedTip)}">
       <i class="casual-group-glyph" aria-hidden="true">${bucket.wuxing}</i>
-      <div class="casual-group-body"><b>${bucket.star}★ ×${bucket.owned.length} → ${next}★ 승급 불가</b><small>${escapeHtml(bucket.shortReason)}</small></div>
-      <span class="casual-group-run is-disabled">보호 중</span>
+      <div class="casual-group-scene" aria-hidden="true">
+        <span class="casual-group-materials">${slots}</span>
+        <i class="casual-group-arrow">→</i>
+        <span class="casual-group-result is-blocked"><b>${noPool ? "✕" : "?"}</b>${noPool ? "" : casualStarTagMarkup(next, " is-result")}</span>
+      </div>
+      <div class="casual-group-body"><b class="casual-group-title">${escapeHtml(bucket.shortReason)}</b></div>
+      <span class="casual-group-run is-disabled">${noPool ? "상위 없음" : "보호 중"}</span>
     </article>`;
   }
-  const first = bucket.groups[0];
-  const toStar = first?.toStar ?? Math.min(8, bucket.star + 1) as CasualStar;
-  const headline = `${bucket.star}★ ×${bucket.owned.length} → ${toStar}★ 무작위 ${bucket.groups.length}기`;
   const materials = (first?.materialIds ?? []).map((id) => allTowers.find((tower) => tower.id === id)).filter((tower): tower is Tower => Boolean(tower));
-  const boardMaterials = bucket.groups.flatMap((group) => group.materialIds)
+  const usedIds = new Set(bucket.groups.flatMap((group) => group.materialIds));
+  const spares = bucket.owned.filter((tower) => !usedIds.has(tower.id));
+  const boardMaterials = [...usedIds]
     .map((id) => allTowers.find((tower) => tower.id === id))
     .filter((tower): tower is Tower => tower !== undefined && tower.cell >= 0).length;
-  const useLine = materials.length > 0 ? `소모 ${materials.map((tower) => escapeHtml(tower.char)).join("·")}` : "소모 자령 확인 중";
-  const poolLine = first ? ` · ${toStar}★ 후보 ${first.poolSize}자` : "";
-  const more = bucket.groups.length > 1 ? ` · 외 ${bucket.groups.length - 1}묶음` : "";
-  const fallback = first?.starFallback ? `<em class="casual-group-badge is-fallback">${bucket.star + 1}★ 없음 → ${toStar}★</em>` : "";
-  const roster = first?.rosterFallback ? `<em class="casual-group-badge is-fallback">지역 로스터 보충</em>` : "";
-  // 사라질 3기가 누구인지는 글자 목록보다 얼굴이 빠르다. 실제 소모 예정
-  // 묶음(first.materialIds)의 초상만 세운다 — 4기 이상 보유해도 3기 기준.
-  const materialStrip = materials.length > 0
-    ? `<span class="casual-group-materials" aria-hidden="true">${materials.map((tower) => spiritPortraitMarkup(tower.char, tower.wuxing, "workbench-spirit--group")).join("")}</span>`
+  const results = bucket.groups.length;
+  const consumed = results * 3;
+  const materialStrip = materials.map((tower) => casualGroupMaterialMarkup(tower, bucket.star)).join("");
+  const spare = spares[0];
+  const spareChip = spare
+    ? `<span class="casual-group-spare">${spiritPortraitMarkup(spare.char, spare.wuxing, "workbench-spirit--group")}<i>+${spares.length}</i></span>`
     : "";
-  return `<article class="casual-group-card" style="${style}">
+  const notes = [
+    boardMaterials > 0 ? `<em class="casual-group-badge is-board">전장 ${boardMaterials}기 소모</em>` : "",
+    results > 1 ? `<em class="casual-group-badge">3기씩 ${results}묶음 한 번에</em>` : "",
+    first?.starFallback ? `<em class="casual-group-badge is-fallback">상위 별 건너뜀</em>` : "",
+    first?.rosterFallback ? `<em class="casual-group-badge is-fallback">지역 로스터 보충</em>` : ""
+  ].filter((note) => note !== "").join("");
+  const tip = [
+    `보유 ${bucket.owned.length}기 중 ${consumed}기 소모${results > 1 ? ` (3기씩 ${results}묶음)` : ""} · 여분 ${spares.length}기 유지`,
+    materials.length > 0 ? `소모 ${materials.map((tower) => tower.char).join("·")}` : "",
+    first ? `${toStar}★ 후보 ${first.poolSize}자 중 하나가 무작위로 나옵니다` : "",
+    boardMaterials > 0 ? `전장 ${boardMaterials}기가 빠집니다` : "",
+    first?.starFallback ? `${bucket.star + 1}★ 글자가 없어 ${toStar}★ 에서 뽑습니다` : "",
+    first?.rosterFallback ? "이번 런 소환 풀에 후보가 없어 지역 로스터에서 보충합니다" : ""
+  ].filter((line) => line !== "").join(" · ");
+  const runLabel = `${bucket.wuxing}행 ${bucket.star}★ ${consumed}기를 소모해 ${toStar}★ 자령 ${results}기를 무작위로 얻습니다`;
+  return `<article class="casual-group-card" style="${style}" title="${escapeHtml(tip)}">
     <i class="casual-group-glyph" aria-hidden="true">${bucket.wuxing}</i>
-    <div class="casual-group-body">
-      <b>${headline}</b>
-      ${materialStrip}
-      <small>${useLine}${poolLine}${more}</small>
-      ${boardMaterials > 0 ? `<em class="casual-group-badge">전장 ${boardMaterials}기 소모</em>` : ""}${fallback}${roster}
+    <div class="casual-group-scene" aria-hidden="true">
+      <span class="casual-group-materials">${materialStrip}${spareChip}</span>
+      <i class="casual-group-arrow">→</i>
+      <span class="casual-group-result"><b>?</b>${casualStarTagMarkup(toStar, " is-result")}</span>
     </div>
-    <button type="button" class="casual-group-run" data-casual-group="${bucket.wuxing}:${bucket.star}" ${active ? "" : "disabled"}>승급</button>
+    <div class="casual-group-body">
+      <b class="casual-group-title">다음 별 자령 ${results}기 — 무작위</b>
+      ${notes === "" ? "" : `<span class="casual-group-notes">${notes}</span>`}
+    </div>
+    <button type="button" class="casual-group-run" data-casual-group="${bucket.wuxing}:${bucket.star}" aria-label="${escapeHtml(runLabel)}" ${active ? "" : "disabled"}>승급</button>
   </article>`;
 }
 
@@ -2923,12 +2994,15 @@ function renderCasualFusion(): void {
   const key = `${inventorySignature}|S${casualFusionSelection.join(",")}|R${readyCount}`;
 
   must<HTMLElement>("#evolution-count").textContent = String(readyCount);
+  // 같은 수를 헤더 배지·버튼 칩·버튼 라벨이 셋이 나눠 세던 것을 [한 번에 승급 (N회)]
+  // 하나로 모은다. 헤더 배지는 숨기고 설명문은 그대로 둔다.
+  must<HTMLElement>("#evolution-count").hidden = true;
   must<HTMLElement>("#evolve-ready-count").textContent = String(readyCount);
   must<HTMLElement>("#evolve-action-label").textContent = "3체 조합";
   must<HTMLElement>("#evolve-action-detail").textContent = "회 가능";
   must<HTMLElement>("#evolution-tab-label").textContent = "3체 조합";
   must<HTMLElement>("#evolution-kicker").textContent = "3체 조합 · 팔성 승급";
-  must<HTMLElement>("#evolution-heading-label").textContent = "현재 가능한 조합";
+  must<HTMLElement>("#evolution-heading-label").textContent = "승급 대기 묶음";
   must<HTMLElement>("#standard-evolution-modes").hidden = true;
   must<HTMLElement>("#casual-fusion-toolbar").hidden = false;
   const evolveButton = must<HTMLButtonElement>("#evolve-button");
@@ -2939,7 +3013,7 @@ function renderCasualFusion(): void {
   const buckets = casualFusionBuckets(allTowers, plans, protections);
   const fuseAllButton = must<HTMLButtonElement>("#casual-fuse-all");
   fuseAllButton.disabled = !active || readyCount === 0;
-  must<HTMLElement>("#casual-fuse-all-count").textContent = readyCount > 0 ? `${readyCount}회 가능` : "지금은 0회";
+  must<HTMLElement>("#casual-fuse-all-count").textContent = `(${readyCount}회)`;
   must<HTMLElement>("#casual-fuse-all-note").textContent = readyCount > 0
     ? "3기가 모두 사라지고 같은 오행의 다음 별 자령 1기를 무작위로 얻습니다. 인벤토리 자령을 먼저 씁니다."
     : buckets.some((bucket) => bucket.shortReason !== null)
@@ -2982,7 +3056,7 @@ function renderCasualFusion(): void {
   const status = quote?.blocked.length
     ? `<p class="casual-fusion-status is-blocked"><b>조합 불가</b><span>${quote.blocked.map((issue) => escapeHtml(issue.text)).join(" · ")}</span></p>`
     : quote
-      ? `<p class="casual-fusion-status ${quote.warnings.length > 0 ? "has-warning" : "is-ready"}"><b>${quote.fromStar}★×3 → ${quote.toStar}★ 무작위 1기</b><span>${quote.warnings.length > 0 ? `${quote.warnings.length}개 확인 사항 · 3기가 모두 사라집니다.` : `3기가 모두 사라지고 ${quote.wuxing}행 ${quote.toStar}★ 후보 ${quote.poolSize}자 중 하나를 얻습니다.`}</span></p>`
+      ? `<p class="casual-fusion-status ${quote.warnings.length > 0 ? "has-warning" : "is-ready"}"><b>${casualStarTagMarkup(quote.fromStar ?? 1)} 3기 → 다음 별 자령 1기 · 무작위</b><span>${quote.warnings.length > 0 ? `${quote.warnings.length}개 확인 사항 · 3기가 모두 사라집니다.` : `3기가 모두 사라지고 ${quote.wuxing}행 ${quote.toStar}★ 후보 ${quote.poolSize}자 중 하나를 얻습니다.`}</span></p>`
       : `<p class="casual-fusion-status"><b>${selectedTowers.length}/3 선택</b><span>${selectedTowers.length === 0 ? "소모할 자령부터 선택하세요 — 3기 모두 사라집니다." : "같은 오행·같은 현재 별 자령을 마저 고르세요."}</span></p>`;
   const previewPool = anchor && casualStarOf(anchor) < 8 ? engine.casualResultPool(anchor.wuxing, casualStarOf(anchor)) : null;
   const resultStar = quote?.toStar ?? previewPool?.star ?? null;
@@ -2996,11 +3070,11 @@ function renderCasualFusion(): void {
     <div class="casual-group-list">${groupCards || emptyState}</div>
     <details class="casual-manual" id="casual-manual-details"${casualManualOpen ? " open" : ""}>
       <summary><b>직접 고르기</b><small>소모할 같은 오행·같은 별 자령 3기를 손으로 지정합니다</small></summary>
-      <div class="casual-rarity-rule"><span><b>획수 기본 별</b><small>실제 Unicode kTotalStrokes</small></span>${([1, 2, 3, 4, 5, 6, 7, 8] as CasualStar[]).map((star) => `<i style="--star:${CASUAL_STAR_COLORS[star]}"><b>${star}★</b><small>${casualStarRangeLabel(star)}</small></i>`).join("")}</div>
-      <div class="casual-fusion-slots">${slotMarkup}<i aria-hidden="true">→</i><div class="casual-fusion-result is-random" style="--star:${resultStar ? CASUAL_STAR_COLORS[resultStar] : "#526274"}"><span>무작위 획득</span><b>?</b><strong${resultStar ? "" : ` class="is-placeholder"`}>${resultStar ? `${resultStar}★ 무작위 1기` : "별 미정 — 자령을 먼저 선택"}</strong><small>${resultStar ? `피해 ×${CASUAL_STAR_POWER[resultStar].toFixed(2)} · 후보 ${quote?.poolSize ?? previewPool?.candidates.length ?? 0}자` : "소모할 자령 선택 필요"}</small></div></div>
+      <div class="casual-rarity-rule"><span><b>획수 기본 별</b><small>실제 Unicode kTotalStrokes</small></span>${([1, 2, 3, 4, 5, 6, 7, 8] as CasualStar[]).map((star) => `<i style="--star:${CASUAL_STAR_COLORS[star]}"><b>★${star}</b><small>${casualStarRangeLabel(star)}</small></i>`).join("")}</div>
+      <div class="casual-fusion-slots">${slotMarkup}<i aria-hidden="true">→</i><div class="casual-fusion-result is-random" style="--star:${resultStar ? CASUAL_STAR_COLORS[resultStar] : "#526274"}"><span>무작위 획득</span><b>?</b><strong${resultStar ? "" : ` class="is-placeholder"`}>${resultStar ? `${casualStarTagMarkup(resultStar, " is-result")} 무작위 1기` : "별 미정 — 자령을 먼저 선택"}</strong><small>${resultStar ? `피해 ×${CASUAL_STAR_POWER[resultStar].toFixed(2)} · 후보 ${quote?.poolSize ?? previewPool?.candidates.length ?? 0}자` : "소모할 자령 선택 필요"}</small></div></div>
       ${status}
-      <button id="casual-fusion-review" class="workbench-primary casual-fusion-review" type="button" ${!quote || quote.blocked.length > 0 ? "disabled" : ""}>소모 목록 확인 후 ${resultStar ?? "?"}★ 무작위 획득</button>
-      <div class="casual-candidate-heading"><div><b>보유 자령</b><small>${anchor ? `${anchor.wuxing}행 ${casualStarOf(anchor)}★만 표시` : "3체가 모인 자령만 고를 수 있습니다"}</small></div><em>잠금·농축·목표·성어는 소모 불가</em></div>
+      <button id="casual-fusion-review" class="workbench-primary casual-fusion-review" type="button" ${!quote || quote.blocked.length > 0 ? "disabled" : ""}>소모 목록 확인 후 ${resultStar ? `★${resultStar}` : "?"} 무작위 획득</button>
+      <div class="casual-candidate-heading"><div><b>보유 자령</b><small>${anchor ? `${anchor.wuxing}행 ★${casualStarOf(anchor)}만 표시` : "3체가 모인 자령만 고를 수 있습니다"}</small></div><em>잠금·농축·목표·성어는 소모 불가</em></div>
       <div class="casual-fusion-candidates">${candidateMarkup}</div>
     </details>`;
 }
