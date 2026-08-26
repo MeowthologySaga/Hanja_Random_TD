@@ -267,7 +267,14 @@ export function partialIdiomChain(towers: readonly Tower[], idiom: IdiomDefiniti
       bestCells = sequence.slice(0, matched);
       nextCells.length = 0;
     }
-    if (matched === bestLength && !nextCells.includes(nextCell)) nextCells.push(nextCell);
+    // 동률이라도 1번 글자 칸이 다르면 시각적으로 무관한 딴 사슬이다
+    // (다른 진 등) — 점선이 그리로 새면 안내가 흩어진다. 같은 앵커에서
+    // 여러 방향으로 자라는 갈림길(가로/세로/대각)은 시작 칸이 같아 통과.
+    if (
+      matched === bestLength
+      && sequence[0] === bestCells[0]
+      && !nextCells.includes(nextCell)
+    ) nextCells.push(nextCell);
   }
   if (bestLength === 0) return EMPTY_CHAIN;
   return {

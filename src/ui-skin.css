@@ -12312,3 +12312,46 @@ dialog {
    확보됐던 우측 여백도 본문에 돌려준다. */
 .panel-footer::after { content: none; }
 .panel-footer { padding-right: 11px; }
+
+/* ══════════════════════════════════════════════════════════════════
+   98. 최종 감사 수술 묶음 (final-audit H1·M2·M3·L2·L5)
+   ══════════════════════════════════════════════════════════════════ */
+
+/* H1. 상점: 고정 바 밑에 카드가 "반쯤 잘린 채" 스크롤 단서가 없었다.
+   바 위에 위로 향한 옅은 그림자 띠(스크롤 힌트) + 마지막 내용이 바를
+   지나 올라올 여백. */
+#shop-panel .action-row { padding-bottom: 6px; }
+
+.shop-pinned::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: -14px;
+  height: 14px;
+  pointer-events: none;
+  background: linear-gradient(180deg, rgba(46, 32, 14, 0) 0%, rgba(46, 32, 14, 0.16) 100%);
+}
+
+/* M2. 집중 프레임이 열려 있는 동안, 그 프레임을 여는 패널 요약(열기 버튼·
+   ①② 안내)은 중복 조작이다 — 프레임과 일치할 때 숨긴다. */
+.game-shell[data-focus-frame="growth"] #growth-panel .focus-panel-summary,
+.game-shell[data-focus-frame="concentration"] #concentration-panel .focus-panel-summary,
+.game-shell[data-focus-frame="inventory"] #run-inventory-panel .focus-panel-summary { display: none; }
+
+/* M3. 강화 '선택 분해'가 그 줄의 유일한 행동인데 9px 투명 배경이었다. */
+#dismantle-confirm-button {
+  font-size: 12.5px !important;
+  font-weight: 900;
+  padding: 6px 12px;
+  color: #2e2212;
+  background: linear-gradient(180deg, #e9d9b2, #d9c592);
+  box-shadow: inset 0 0 0 1px rgba(122, 90, 42, 0.5);
+}
+
+/* L2. 타이틀 잔글씨 반 단계 상향(서갈피 판 폭 실측 내). */
+.s00-stage.is-3d .s00-mode-sub--compact { font-size: 9.5px; }
+#title-note { font-size: 10.5px; }
+
+/* L5. 푸터 메시지가 뷰포트 오른쪽을 3.3px 넘던 것 — 안쪽에서 끝낸다. */
+.panel-footer > span { max-width: 100%; overflow: hidden; }
