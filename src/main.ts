@@ -107,6 +107,7 @@ import {
   preloadP1,
   registerServiceWorker,
   startP2,
+  takeOverBootScreen,
   updateBootProgress,
   whenBattleAssetsReady,
   type S00Mode
@@ -6040,8 +6041,10 @@ async function mountS00(): Promise<void> {
     const { startMenu3d } = await import("./ui/menu3d");
     const handle = startMenu3d(stage);
     must<HTMLButtonElement>("#start-button").addEventListener("click", () => handle.dispose(), { once: true });
-  } catch {
+  } catch (error) {
     // WebGL 이 없으면 2D 배경으로 되돌린다. 이때 비로소 레이어를 내려받는다.
+    // 조용히 삼키면 3D 가 왜 안 뜨는지 알 길이 없어 이유는 남긴다.
+    console.warn("[menu3d] 3D 서재 초기화 실패, 2D 배경으로 되돌린다:", error instanceof Error ? error.message : error);
     stage.classList.remove("is-3d");
     enableS00LayeredBackground();
   }
@@ -6156,6 +6159,8 @@ syncPanel();
  *      `whenBattleAssetsReady()` 가 잠깐만 붙잡는다.
  */
 async function bootGame(): Promise<void> {
+  // 번들이 살아 있음이 증명됐다. 인라인 안전장치를 거두고 막의 수명을 넘겨받는다.
+  takeOverBootScreen();
   // 첫 방문에도 워커가 곧바로 페이지를 물어 P1·P2 응답을 캐시에 담게 한다.
   registerServiceWorker();
   await preloadP1(s00Mode, updateBootProgress);

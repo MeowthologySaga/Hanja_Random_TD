@@ -21,8 +21,16 @@
 /** 동시 요청 상한. 우선순위 목록의 앞쪽이 실제로 먼저 도착하게 묶어 둔다. */
 const CONCURRENCY = 6;
 
-/** P1 이 아무리 느려도 이 시간이 지나면 막을 걷는다(무한 로딩 방지). */
-export const BOOT_GATE_CAP_MS = 15_000;
+/**
+ * 부팅 막을 강제로 걷는 조건.
+ *
+ * 벽시계 상한을 쓰면 느리기만 한 회선(3Mbps 실측)에서 막이 절반쯤 받은 채로
+ * 걷혀, 없애려던 "덜 그려진 메뉴"가 그대로 나온다. 그래서 **막힘**만 본다.
+ * 바이트가 계속 들어오는 한 기다리고, 그 흐름이 끊긴 지 오래면 포기한다.
+ */
+export const BOOT_GATE_STALL_MS = 12_000;
+/** 그래도 영원히 붙잡지는 않는다. 최후의 벽. */
+export const BOOT_GATE_CEILING_MS = 120_000;
 /** 출정 클릭이 P2 핵심분보다 빨랐을 때 기다려 주는 상한. */
 export const BATTLE_GATE_CAP_MS = 1_500;
 
@@ -310,16 +318,36 @@ export function p1Manifest(mode: S00Mode): readonly string[] {
 
 /**
  * 부팅 게이트. 글꼴(FOUT)과 P1 이미지를 함께 기다린다.
- * `BOOT_GATE_CAP_MS` 를 넘으면 그대로 진행한다 — 느린 회선에서 영원히
- * 막이 걸려 있는 것보다 팝인이 낫다.
+ *
+ * 포기 조건은 "느림"이 아니라 "막힘"이다. 진행이 `BOOT_GATE_STALL_MS` 동안
+ * 한 톨도 없으면(끊긴 회선·죽은 서버) 막을 걷고 그때부터는 예전처럼 도착하는
+ * 대로 교체한다. 진행이 있는 한 `BOOT_GATE_CEILING_MS` 까지 기다린다.
  */
 export function preloadP1(mode: S00Mode, onProgress?: (progress: PreloadProgress) => void): Promise<void> {
   const fonts = document.fonts?.ready ?? Promise.resolve();
-  const work = Promise.all([run(p1Manifest(mode), onProgress), fonts.catch(() => undefined)]).then(() => undefined);
-  const capped = new Promise<void>((resolve) => {
-    window.setTimeout(resolve, BOOT_GATE_CAP_MS);
+  let lastProgressAt = Date.now();
+  const work = Promise.all([
+    run(p1Manifest(mode), (progress) => {
+      lastProgressAt = Date.now();
+      onProgress?.(progress);
+    }),
+    fonts.catch(() => undefined)
+  ]).then(() => undefined);
+
+  const startedAt = Date.now();
+  const watchdog = new Promise<void>((resolve) => {
+    const timer = window.setInterval(() => {
+      const stalled = Date.now() - lastProgressAt > BOOT_GATE_STALL_MS;
+      const expired = Date.now() - startedAt > BOOT_GATE_CEILING_MS;
+      if (!stalled && !expired) return;
+      window.clearInterval(timer);
+      console.warn(`[asset-loader] 1차 프리로드를 중단하고 진행한다 (${stalled ? "진행 정지" : "상한 초과"}).`);
+      resolve();
+    }, 1_000);
+    void work.then(() => window.clearInterval(timer));
   });
-  return Promise.race([work, capped]);
+
+  return Promise.race([work, watchdog]);
 }
 
 // ── P2 배경 프리로드 ──────────────────────────────────────────────
@@ -370,6 +398,25 @@ export function battleAssetCount(): number {
 // ── 부팅 로딩 막 ──────────────────────────────────────────────────
 // 마크업과 스타일은 `index.html` 인라인이다(번들보다 먼저 떠야 한다).
 // 여기서는 진행률을 채우고 막을 걷는 일만 한다.
+
+declare global {
+  interface Window {
+    /** `index.html` 인라인 안전장치의 타이머. 번들이 붙으면 여기서 거둔다. */
+    __hanjaBootSafety?: number;
+  }
+}
+
+/**
+ * 인라인 안전장치를 넘겨받는다.
+ *
+ * 그 타이머는 "번들이 아예 안 왔다"를 위한 것이지 "느리다"를 위한 것이 아니다.
+ * 번들이 실행된 시점부터는 프리로더가 막의 수명을 책임진다.
+ */
+export function takeOverBootScreen(): void {
+  if (window.__hanjaBootSafety === undefined) return;
+  window.clearTimeout(window.__hanjaBootSafety);
+  window.__hanjaBootSafety = undefined;
+}
 
 export function updateBootProgress({ done, total }: PreloadProgress): void {
   const bar = document.getElementById("boot-bar");

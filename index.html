@@ -123,8 +123,11 @@
       <p class="boot-progress"><i><b id="boot-bar"></b></i><em id="boot-percent">0%</em></p>
     </div>
     <script>
-      // 번들이 아예 실패해도 막이 영원히 남지 않게 하는 최후 안전장치.
-      setTimeout(function () {
+      // 번들이 아예 오지 않는 경우(스크립트 404·구문 오류)에만 막을 걷는 최후
+      // 안전장치. 번들이 붙는 즉시 asset-loader 가 이 타이머를 거둬 간다 —
+      // 느린 회선에서 아직 받는 중인 막을 시계만 보고 걷어 버리면, 없애려던
+      // "덜 그려진 메뉴"가 그대로 나온다.
+      window.__hanjaBootSafety = setTimeout(function () {
         var layer = document.getElementById("boot-loader");
         if (layer) layer.remove();
       }, 30000);
