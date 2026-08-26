@@ -1,6 +1,8 @@
 import { runAutoplay } from "../src/core/game";
 import type { GameMode, RegionCode, SimulationCheckpoint, SimulationResult, Wuxing } from "../src/core/types";
 import { writeFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { isAbsolute, resolve } from "node:path";
 import { Worker, isMainThread, parentPort, workerData } from "node:worker_threads";
 
 const REGIONS: readonly RegionCode[] = ["KR", "JP", "CN"];
@@ -10,12 +12,34 @@ interface SimulationWorkerData {
   start: number;
   count: number;
   mode: GameMode;
+  regions: readonly RegionCode[];
 }
 
 function readMode(): GameMode {
   const raw = process.argv.find((argument) => argument.startsWith("--mode="))?.split("=")[1] ?? "standard";
   if (raw !== "standard" && raw !== "casual") throw new Error("--mode must be standard or casual");
   return raw;
+}
+
+/**
+ * 조사용 지역 고정. 기본값은 기존 동작 그대로 — 표준은 KR/JP/CN 순환,
+ * 캐주얼은 KR 단독이다. `--region=JP` 처럼 하나만 주면 그 지역만 돌린다.
+ */
+function readRegions(mode: GameMode): readonly RegionCode[] {
+  const raw = process.argv.find((argument) => argument.startsWith("--region="))?.split("=")[1];
+  if (raw === undefined || raw === "default") return mode === "casual" ? ["KR"] : REGIONS;
+  if (raw === "all") return REGIONS;
+  const requested = raw.split(",").map((token) => token.trim().toUpperCase());
+  for (const token of requested) {
+    if (!REGIONS.includes(token as RegionCode)) throw new Error(`--region must be KR, JP, CN, all, or default (got ${token})`);
+  }
+  return requested as RegionCode[];
+}
+
+/** 조사 매트릭스가 기본 보고서를 덮어쓰지 않도록 출력 경로를 열어 둔다. */
+function readOutPath(mode: GameMode): string {
+  const raw = process.argv.find((argument) => argument.startsWith("--out="))?.split("=")[1];
+  return raw ?? (mode === "casual" ? "SIMULATION_REPORT_CASUAL.json" : "SIMULATION_REPORT.json");
 }
 
 function readRuns(): number {
@@ -108,8 +132,7 @@ function readWorkers(runs: number): number {
   return Math.min(parsed, runs);
 }
 
-function runRange(start: number, count: number, mode: GameMode): SimulationResult[] {
-  const regions: readonly RegionCode[] = mode === "casual" ? ["KR"] : REGIONS;
+function runRange(start: number, count: number, mode: GameMode, regions: readonly RegionCode[]): SimulationResult[] {
   return Array.from({ length: count }, (_, offset) => {
     const index = start + offset;
     const region = regions[index % regions.length] as RegionCode;
@@ -117,7 +140,7 @@ function runRange(start: number, count: number, mode: GameMode): SimulationResul
   });
 }
 
-async function runParallel(runs: number, workers: number, mode: GameMode): Promise<SimulationResult[]> {
+async function runParallel(runs: number, workers: number, mode: GameMode, regions: readonly RegionCode[]): Promise<SimulationResult[]> {
   const base = Math.floor(runs / workers);
   let remainder = runs % workers;
   let start = 0;
@@ -125,7 +148,7 @@ async function runParallel(runs: number, workers: number, mode: GameMode): Promi
   for (let index = 0; index < workers; index += 1) {
     const count = base + (remainder > 0 ? 1 : 0);
     remainder = Math.max(0, remainder - 1);
-    const payload: SimulationWorkerData = { start, count, mode };
+    const payload: SimulationWorkerData = { start, count, mode, regions };
     start += count;
     jobs.push(new Promise((resolve, reject) => {
       const worker = new Worker(new URL(import.meta.url), { workerData: payload });
@@ -141,8 +164,8 @@ async function main(): Promise<void> {
   const runs = readRuns();
   const workers = readWorkers(runs);
   const mode = readMode();
-  const activeRegions: readonly RegionCode[] = mode === "casual" ? ["KR"] : REGIONS;
-  const results = workers === 1 ? runRange(0, runs, mode) : await runParallel(runs, workers, mode);
+  const activeRegions = readRegions(mode);
+  const results = workers === 1 ? runRange(0, runs, mode, activeRegions) : await runParallel(runs, workers, mode, activeRegions);
   const byRegion = Object.fromEntries(activeRegions.map((region) => [region, summarize(results.filter((result) => result.region === region))]));
   const byStartingElement = Object.fromEntries(ELEMENTS.map((wuxing) => [wuxing, summarize(results.filter((result) => result.startingWuxing === wuxing))]));
   const byRegionAndStartingElement = Object.fromEntries(activeRegions.map((region) => [region, Object.fromEntries(
@@ -171,6 +194,7 @@ async function main(): Promise<void> {
   const victoryEssenceSpendRateMedian = percentile(results.filter((result) => result.result === "victory").map((result) => result.essenceSpendRate), 0.5);
   const report = {
     mode,
+    regions: [...activeRegions],
     totalRuns: runs,
     workers,
     byRegion,
@@ -205,7 +229,9 @@ async function main(): Promise<void> {
   };
 
   const serialized = JSON.stringify(report, null, 2) + "\n";
-  writeFileSync(new URL(mode === "casual" ? "../SIMULATION_REPORT_CASUAL.json" : "../SIMULATION_REPORT.json", import.meta.url), serialized, "utf8");
+  const outArgument = readOutPath(mode);
+  const repositoryRoot = fileURLToPath(new URL("../", import.meta.url));
+  writeFileSync(isAbsolute(outArgument) ? outArgument : resolve(repositoryRoot, outArgument), serialized, "utf8");
   process.stdout.write(serialized);
   if (!report.pass) process.exitCode = 1;
 }
@@ -214,5 +240,5 @@ if (isMainThread) {
   await main();
 } else {
   const payload = workerData as SimulationWorkerData;
-  parentPort?.postMessage(runRange(payload.start, payload.count, payload.mode));
+  parentPort?.postMessage(runRange(payload.start, payload.count, payload.mode, payload.regions));
 }
