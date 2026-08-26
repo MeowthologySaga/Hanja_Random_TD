@@ -330,9 +330,11 @@ export function casualGoalOrder(catalog: HanziCatalog): readonly string[] {
  * 본편 그대로 두고 적의 체력·수량만 눌러, 자령 한둘로도 첫 웨이브를
  * 확실히 넘기게 한다. 계수는 엔진 생성 옵션(tutorial)이 켜졌을 때만 쓴다.
  */
-export const TUTORIAL_ENEMY_HP_SCALE = 0.4;
+// 3단계 첫 웨이브의 ~29초 대기가 건너뛰기를 유도했다(사용자 실증).
+// 응급 완화: 더 무르고 더 적게 — 후속 트랙이 미니 과업·가속으로 마저 채운다.
+export const TUTORIAL_ENEMY_HP_SCALE = 0.25;
 
-export const TUTORIAL_ENEMY_COUNT_SCALE = 0.5;
+export const TUTORIAL_ENEMY_COUNT_SCALE = 0.4;
 
 export function weightedPick(rng: SeededRng, entries: readonly HanziDefinition[], weights: readonly number[]): HanziDefinition {
   const total = weights.reduce((sum, weight) => sum + weight, 0);
