@@ -1033,6 +1033,39 @@ test("automatically seals four correctly placed towers with readable feedback", 
   await expect(page.locator("#active-idioms .active-idiom")).toHaveCount(1);
   await expect(page.locator("#idiom-seal-status .idiom-seal-row.is-live")).toHaveCount(1);
   await expect(page.locator("#idiom-seal-status")).toContainText("발동 중");
+
+  // 트랙 K (gripe #11) — 발동 칩은 한자만 두지 않는다.
+  //  ② 독음 병기, ③ 효과 수치는 어떤 폭에서도 잘리지 않는다, 그리고 호버
+  //  팝오버(한자·독음·뜻풀이·효과·참여 자령 4자)가 전문을 맡는다.
+  const activeChip = page.locator("#active-idioms .active-idiom").first();
+  await expect(activeChip.locator(".active-idiom-reading")).toHaveText("이심전심");
+  await expect(activeChip.locator(".active-idiom-value")).toHaveText("+28");
+  await expect(activeChip).toHaveAttribute("title", /이심전심.*참여 자령/u);
+  const valueClipped = await activeChip.locator(".active-idiom-value").evaluate((node) => node.scrollWidth - node.clientWidth);
+  expect(valueClipped).toBe(0);
+  await activeChip.hover();
+  const idiomPop = activeChip.locator(".active-idiom-pop");
+  await expect(idiomPop).toBeVisible();
+  await expect(idiomPop).toContainText("마음이 통함");
+  await expect(idiomPop).toContainText("모든 자령 사거리 +28");
+  await expect(idiomPop.locator(".aip-jar")).toHaveCount(4);
+  // 성어 탭 하단 잘림 0 — 패널 액자는 넘치지 않고, 마지막 발동 줄은 탭바 위에 선다.
+  const idiomFit = await page.evaluate(() => {
+    const panel = document.querySelector("#idiom-panel") as HTMLElement;
+    const tabs = document.querySelector(".panel-tabs") as HTMLElement;
+    const rows = document.querySelectorAll("#idiom-seal-status .idiom-seal-row");
+    const last = rows[rows.length - 1] as HTMLElement | undefined;
+    return {
+      panelClipped: panel.scrollHeight - panel.clientHeight,
+      lastRowBelowTabBar: last ? last.getBoundingClientRect().bottom - tabs.getBoundingClientRect().top : -1
+    };
+  });
+  expect(idiomFit.panelClipped).toBe(0);
+  expect(idiomFit.lastRowBelowTabBar).toBeLessThanOrEqual(0);
+  // 팝오버는 호버가 풀리면 사라진다 — 아래 스크린샷·클릭이 이 카드를 물지 않게 비운다.
+  await page.mouse.move(640, 700);
+  await expect(idiomPop).toBeHidden();
+
   const sealedCells = (await page.locator("#battle-canvas").getAttribute("data-idiom-seal-cells") ?? "")
     .split("-")
     .map((value) => Number(value));
