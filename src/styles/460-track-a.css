@@ -1,0 +1,259 @@
+/* 트랙 A — 지적 물결 2026-08-27 #1·#2·#7.
+   A-1: 3체 조합(승급 대기 묶음) 창을 우측 패널 폭 안 인라인으로 복귀.
+   A-2: 문기 획득 피드백 — +N 플로팅 · 자원칸 반짝 · 토스트 환급 칩.
+   A-3: 선택 카드 즉석 분해 버튼(기존 [id*="dismantle"] 계열 스킨 재사용).
+   순서 근거: 240(R16)·280(R8)의 같은 선택자 !important 를 같은 무게로 되짚어야
+   하므로 이 파일은 그 뒤(450~899 빈 구간)에 선다. 900 자극 완화보다는 앞이다. */
+
+/* ══════════════════════════════════════════════════════════════════
+   A-1. 3체 조합 창 — 좌측 돌출 오버레이 제거, 패널 안 인라인
+   7797·7801절이 오버레이를 위해 열어 둔 overflow 를 패널 규칙으로 되돌리고,
+   7806(-26vw 돌출) → 280절(-333px) → 240절(-110px !important) 로 이어진
+   확장 이력을 전부 walk back 한다. 전투 중 자주 여는 기능이라 전장을 가리지
+   않는 것이 언제나 옳다 — 다른 패널 뷰와 같은 자리, context-deck 전체다.
+   ══════════════════════════════════════════════════════════════════ */
+.game-shell[data-game-mode="casual"][data-panel-tab="evolution"] .control-panel {
+  overflow: hidden;
+}
+
+.game-shell[data-game-mode="casual"][data-panel-tab="evolution"] .context-deck {
+  z-index: 2;
+  overflow: hidden;
+}
+
+.game-shell[data-game-mode="casual"][data-panel-tab="evolution"] .evolution-workbench.is-active {
+  position: relative;
+  z-index: auto;
+  top: auto;
+  right: auto;
+  bottom: auto;
+  left: auto !important;
+  width: 100%;
+  height: 100%;
+  padding: 8px 8px 6px;
+  overflow: hidden;
+  border: 1px solid rgba(218, 184, 108, 0.28);
+  border-radius: 11px;
+  background:
+    repeating-linear-gradient(90deg, rgba(77, 58, 30, 0.035) 0, rgba(77, 58, 30, 0.035) 1px, transparent 1px, transparent 5px),
+    linear-gradient(160deg, #30291c, #1c1a16);
+  box-shadow: none;
+}
+
+/* 오버레이 시절의 금테 모서리 브래킷 — 패널 안에서는 소음이다 */
+.game-shell[data-game-mode="casual"][data-panel-tab="evolution"] .evolution-workbench::before,
+.game-shell[data-game-mode="casual"][data-panel-tab="evolution"] .evolution-workbench::after {
+  content: none;
+}
+
+/* 넓은 작업대용 큰 현판 글씨를 패널 크기로 되돌린다 */
+.game-shell[data-game-mode="casual"][data-panel-tab="evolution"] #evolution-kicker {
+  font-size: 13px;
+  letter-spacing: 0.05em;
+}
+
+.game-shell[data-game-mode="casual"][data-panel-tab="evolution"] .evolution-heading {
+  padding: 0 2px 6px;
+}
+
+/* [한 번에 승급] 툴바 — 84-E 의 2열 !important 를 같은 무게로 1열 세로로 */
+.game-shell[data-game-mode="casual"][data-panel-tab="evolution"] .casual-fusion-toolbar {
+  grid-template-columns: 1fr !important;
+  gap: 4px;
+}
+
+/* ── A-1a. 그룹 카드 세로 스택 재배열 ─────────────────────────────
+   R16 의 [인장|장면+제목|버튼] 3열 한 줄은 실측 400px 대 전제였다.
+   376px 패널에서는 버튼을 전폭 셋째 행으로 내리고 초상을 34px 로 줄여
+   장면 한 줄(인장 30 + 초상 34×3 + 여분 + 화살 + 결과 44)을 320px 안에
+   세운다. 정보 삭제 없음 — 모든 요소가 자리만 바꾼다. */
+.casual-group-card {
+  grid-template-columns: 30px minmax(0, 1fr);
+  grid-template-areas:
+    "glyph scene"
+    "glyph body"
+    "run   run";
+  gap: 4px 8px;
+  min-height: 0;
+  padding: 6px 7px;
+}
+
+.casual-group-card > .casual-group-run {
+  justify-self: stretch;
+  min-width: 0;
+  min-height: 30px;
+  padding: 4px 10px;
+  font-size: 12.5px;
+}
+
+.casual-group-glyph {
+  width: 30px;
+  height: 30px;
+  font-size: 17px;
+}
+
+.casual-group-scene { gap: 7px; }
+.casual-group-materials { gap: 4px; }
+
+.casual-group-material,
+.casual-group-spare,
+.casual-group-materials .workbench-spirit--group,
+.casual-group-spare .workbench-spirit--group {
+  width: 34px;
+  height: 34px;
+}
+
+.casual-group-materials .workbench-spirit--group .workbench-spirit-fallback,
+.casual-group-spare .workbench-spirit--group .workbench-spirit-fallback {
+  font-size: 18px;
+}
+
+.casual-group-result {
+  width: 44px;
+  height: 44px;
+  padding: 1px 0 3px;
+}
+
+.casual-group-result > b { font-size: 22px !important; }
+.casual-group-result > .casual-star-tag { font-size: 11px; }
+
+/* ── A-1b. 빈 상태(0회)는 콤팩트 카드 1장 — 안내 1문장 + [상점으로] ── */
+.casual-group-empty {
+  gap: 7px;
+  padding: 11px 12px;
+}
+
+.casual-group-empty b {
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+
+/* ── A-1c. 직접 고르기 접이도 패널 폭 문법으로 ────────────────────
+   후보 3열(8159절)은 카드 한 장이 120px 로 접혀 글줄이 흐른다 — 1열.
+   획수 눈금(7948절 108px+8열)은 머리말 전폭 + 4열 2행으로 되편다. */
+.game-shell[data-game-mode="casual"][data-panel-tab="evolution"] .casual-fusion-candidates {
+  grid-template-columns: 1fr;
+  padding: 0 6px 4px 0;
+}
+
+.game-shell[data-game-mode="casual"][data-panel-tab="evolution"] .casual-rarity-rule {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.game-shell[data-game-mode="casual"][data-panel-tab="evolution"] .casual-rarity-rule > span {
+  grid-column: 1 / -1;
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   A-2. 문기 획득 피드백
+   ══════════════════════════════════════════════════════════════════ */
+
+/* ── A-2a. +N 문기 플로팅 — 셸 좌표계 절대 배치, 위치는 JS 가 잡는다 ── */
+.essence-floater {
+  position: absolute;
+  z-index: 46;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  padding: 3px 10px;
+  color: color-mix(in srgb, var(--element, #d9b463) 60%, #f8f0da);
+  border-radius: 999px;
+  background: rgba(20, 15, 9, 0.9);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--element, #d9b463) 55%, transparent),
+    0 2px 8px rgba(0, 0, 0, 0.45);
+  font-size: 13px;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  pointer-events: none;
+  animation: essence-float 1.5s ease-out forwards;
+}
+
+.essence-floater > i {
+  font-size: 12px;
+  font-style: normal;
+}
+
+@keyframes essence-float {
+  0% { opacity: 0; transform: translate(-50%, 8px); }
+  14% { opacity: 1; transform: translate(-50%, 0); }
+  68% { opacity: 1; }
+  100% { opacity: 0; transform: translate(-50%, -30px); }
+}
+
+/* 차분한 화면·모션 최소화 — 떠오르지 않고 제자리에서 나타났다 사라진다
+   (reducedMotion 토스트의 opacity 전용 키프레임과 같은 문법). */
+.essence-floater.is-calm {
+  animation: essence-float-calm 1.5s linear forwards;
+}
+
+@keyframes essence-float-calm {
+  0% { opacity: 0; }
+  10% { opacity: 1; }
+  80% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+/* ── A-2b. 자원칸 요약 반짝 — 증가 순간에만 1회 ─────────────────── */
+#essence-summary.is-essence-flash,
+#growth-resource-summary.is-essence-flash {
+  animation: essence-summary-flash 0.9s ease-out;
+  border-radius: 4px;
+}
+
+@keyframes essence-summary-flash {
+  0% {
+    color: #2e2212;
+    background: rgba(240, 213, 139, 0.88);
+    box-shadow: 0 0 0 3px rgba(240, 213, 139, 0.42);
+  }
+
+  100% {
+    background: transparent;
+    box-shadow: 0 0 0 3px transparent;
+  }
+}
+
+/* 차분한 화면 게이트(FB6 문법: .game-shell[data-calm-screen="1"]) —
+   애니메이션 없이 색 변화만 남긴다. OS 모션 최소화도 같은 처방. */
+.game-shell[data-calm-screen="1"] #essence-summary.is-essence-flash,
+.game-shell[data-calm-screen="1"] #growth-resource-summary.is-essence-flash {
+  animation: none;
+  color: #f0d58b;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #essence-summary.is-essence-flash,
+  #growth-resource-summary.is-essence-flash {
+    animation: none;
+    color: #f0d58b;
+  }
+}
+
+/* ── A-2c. 토스트 환급 칩 — 문장 끝 덧붙임이 아니라 분리 강조 ────────
+   토스트 바탕은 060절의 밝은 한지이므로 먹 쪽으로 섞은 오행색 글자 +
+   옅은 오행 배경 알약으로 세운다. */
+.toast .toast-essence {
+  display: inline-block;
+  margin: 0 2px;
+  padding: 0 7px;
+  color: color-mix(in srgb, var(--element, #b8934a) 52%, #241c0e);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--element, #b8934a) 20%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--element, #b8934a) 45%, rgba(122, 90, 42, 0.4));
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.toast .toast-sep { opacity: 0.55; }
+
+/* ══════════════════════════════════════════════════════════════════
+   A-3. 선택 카드 즉석 분해 — 기존 [id*="dismantle"] 스킨(050·060절)이
+   판매 계열 색을 이미 입힌다. 비활성 사유는 title 로 남으므로 여기서는
+   보호 상태의 시각 구분만 더한다.
+   ══════════════════════════════════════════════════════════════════ */
+.selected-actions #dismantle-button:disabled {
+  opacity: 0.62;
+}

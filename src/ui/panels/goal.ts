@@ -1,233 +1,270 @@
 /*
- * 목표 선택 패널.
+ * 목표 서책 — "성어가 곧 목표" (트랙 B, gripe #3).
+ *
+ * 한자 목표 사다리 UI 는 은퇴했다 — 내부 보상 사다리(completeGoal)는 엔진에
+ * 그대로 남아 숨은 지급으로 동작하고, 화면의 목표 축은 성어 하나다.
+ * 서책은 성어 카드 격자(좌) + 선택 성어 상세(우) 2단이며, 보관고(R14/R19)
+ * 선례대로 #goal-codex-layout 을 통째로 전장 위 집중 프레임에 옮긴다.
+ * 패널에는 요약과 [서책 열기]만 남는다.
+ *
+ * 추적은 최대 3구(체크 토글) — 부족 글자 합집합이 소환·연구 가중을 받는다.
+ * 획득 방법 칸은 모드별로 갈린다: 캐주얼 = 소환·연구, 표준 = 합성 하위 트리
+ * 자동 전개("이 글자는 이 부품들로").
  */
 import { casualNaturalStar, casualStrokeCount } from "../../core/casual";
+import { MAX_TRACKED_IDIOMS } from "../../core/game";
 import { ELEMENT_STYLES, maxSummonStageForWave, STAGE_NAMES, summonStageUnlockWave } from "../../core/hanzi";
 import { type IdiomDefinition } from "../../core/idioms";
 import { learningInfo } from "../../core/learning";
-import { type HanziDefinition } from "../../core/types";
-import { ctx, type GoalPanelMode, must } from "../app-context";
-import { escapeHtml, spriteStyle } from "../format";
-import { handleAction, setPanelTab } from "../hud";
+import { ctx, must } from "../app-context";
+import { escapeHtml } from "../format";
+import { handleAction, setFocusFrame } from "../hud";
 
 export function renderGoal(): void {
-  const progress = ctx.engine.goalProgress();
-  const maxSummonStage = maxSummonStageForWave(ctx.engine.state.wave);
-  const ownedTowers = [...ctx.engine.state.towers, ...ctx.engine.state.inventoryTowers];
+  const engine = ctx.engine;
+  const pool = engine.summonDefinitions();
+  must<HTMLElement>("#shop-pool-count").textContent = pool.length.toLocaleString("ko-KR");
+  const maxSummonStage = maxSummonStageForWave(engine.state.wave);
+  const nextStage = maxSummonStage < 5 ? (maxSummonStage + 1) as 2 | 3 | 4 | 5 : null;
+  must<HTMLElement>("#summon-pool-summary").innerHTML = engine.state.mode === "casual"
+    ? `<b>천자문 ${pool.length.toLocaleString("ko-KR")}종</b><span>전 자령 직접 등장 · 획수별 1★–8★</span>`
+    : `<b>천자문 ${pool.length.toLocaleString("ko-KR")}종</b><span>${STAGE_NAMES[maxSummonStage]}까지 등장${nextStage ? ` · ${summonStageUnlockWave(nextStage)}W 다음 단계` : " · 전 단계 개방"}</span>`;
+
+  const ownedTowers = [...engine.state.towers, ...engine.state.inventoryTowers];
   const ownedCounts = new Map<string, number>();
   for (const tower of ownedTowers) ownedCounts.set(tower.char, (ownedCounts.get(tower.char) ?? 0) + 1);
   const ownedSignature = [...ownedCounts.entries()].sort(([left], [right]) => left.localeCompare(right, "ko")).map(([char, count]) => `${char}:${count}`).join(",");
+
+  const tracked = engine.trackedIdioms();
+  const trackedIds = tracked.map((idiom) => idiom.id);
+  const sealSignature = engine.state.idiomSeals.map((seal) => `${seal.idiomId}:${seal.active ? "on" : "off"}`).join(",");
+  const selectedId = resolveSelectedIdiomId(trackedIds);
   const key = [
-    ctx.goalPanelMode,
     ctx.goalSearchQuery,
-    ctx.engine.state.targetChar,
-    progress.directMaterials.map((item) => item.char + ":" + String(item.owned) + "/" + String(item.needed)).join(","),
-    ctx.engine.state.goalsCompleted.join(""),
-    ctx.engine.state.featuredIdiomIds.join(","),
-    ctx.engine.state.idiomSeals.map((seal) => seal.idiomId).join(","),
+    selectedId,
+    trackedIds.join(","),
+    sealSignature,
     maxSummonStage,
-    ctx.engine.state.lineageClueProgress,
-    ctx.engine.state.lineageTargetProgress,
     ownedSignature
   ].join("|");
   if (key === ctx.goalRenderKey) return;
   ctx.goalRenderKey = key;
 
-  const pool = ctx.engine.summonDefinitions();
-  must<HTMLElement>("#shop-pool-count").textContent = pool.length.toLocaleString("ko-KR");
-  const nextStage = maxSummonStage < 5 ? (maxSummonStage + 1) as 2 | 3 | 4 | 5 : null;
-  must<HTMLElement>("#summon-pool-summary").innerHTML = ctx.engine.state.mode === "casual"
-    ? `<b>천자문 ${pool.length.toLocaleString("ko-KR")}종</b><span>전 자령 직접 등장 · 획수별 1★–8★</span>`
-    : `<b>천자문 ${pool.length.toLocaleString("ko-KR")}종</b><span>${STAGE_NAMES[maxSummonStage]}까지 등장${nextStage ? ` · ${summonStageUnlockWave(nextStage)}W 다음 단계` : " · 전 단계 개방"}</span>`;
+  const seals = engine.state.idiomSeals.length;
+  const bestReadiness = tracked.reduce((best, idiom) => Math.max(best, engine.idiomProgress(idiom.id).readiness), 0);
+  must<HTMLElement>("#goal-tab-progress").textContent = `${Math.round(bestReadiness * 100)}%`;
+  must<HTMLElement>("#goal-owned-summary").innerHTML = `<b>추적 ${tracked.length}/${MAX_TRACKED_IDIOMS}구</b><span>발동 ${seals}/${engine.idioms().length}</span>`;
+  must<HTMLElement>("#goal-panel-summary").innerHTML = `추적 중 성어 <b>${tracked.length}구</b> · 최고 진행 <b>${Math.round(bestReadiness * 100)}%</b>`;
 
-  const goalPanel = must<HTMLElement>("#goal-panel");
-  goalPanel.dataset.currentGoalMode = ctx.goalPanelMode;
-  document.querySelectorAll<HTMLButtonElement>("[data-goal-mode]").forEach((button) => {
-    const selected = button.dataset.goalMode === ctx.goalPanelMode;
-    button.classList.toggle("is-active", selected);
-    button.setAttribute("aria-selected", String(selected));
-  });
-
-  must<HTMLElement>("#goal-glyph").textContent = progress.target.char;
-  must<HTMLElement>("#goal-glyph").style.setProperty("--goal-color", ELEMENT_STYLES[progress.target.wuxing].color);
-  const targetUnlockWave = summonStageUnlockWave(progress.target.stage);
-  const targetDirectLocked = ctx.engine.state.mode === "standard" && progress.target.acquisition === "direct" && ctx.engine.state.wave < targetUnlockWave;
-  const targetNaturalStar = casualNaturalStar(progress.target.char);
-  must<HTMLElement>("#goal-stage").textContent = ctx.engine.state.mode === "casual"
-    ? `${targetNaturalStar ?? 1}★ · ${casualStrokeCount(progress.target.char) ?? "?"}획 · 직접 소환 가능`
-    // STAGE_NAMES[2]='결합' 과 역할 이름이 맨몸으로 붙어 '결합 · 재화연성'
-    // 처럼 무엇과 무엇인지 알 수 없는 줄이 됐다. 각 조각에 이름표를 준다.
-    : `${progress.target.stage}단 ${STAGE_NAMES[progress.target.stage]} · ` + (targetDirectLocked ? `${targetUnlockWave}W 직접 소환 개방` : progress.target.acquisition === "direct" ? "직접 소환 가능" : `역할 ${progress.target.combat.abilities.role.name}`);
-  must<HTMLElement>("#goal-recipe").textContent = ctx.engine.state.mode === "casual"
-    ? `${progress.target.char} 자령을 한 번 소환하면 달성`
-    : progress.target.acquisition === "direct"
-    ? `${progress.target.char} 자령을 소환하면 달성`
-    : progress.target.parents.join(" + ") + " → " + progress.target.char;
-  const learning = learningInfo(ctx.engine.state.region, progress.target.char);
-  must<HTMLElement>("#goal-reading").textContent = learning.readingLabel + " · " + learning.short;
-  must<HTMLElement>("#goal-materials").innerHTML = progress.directMaterials.map((material) => {
-    const complete = material.owned >= material.needed;
-    return `<span class="${complete ? "is-complete" : ""}"><b>${escapeHtml(material.char)}</b> ${material.owned}/${material.needed}</span>`;
-  }).join("")
-    + `<span class="goal-clue" title="계보 소환 12회마다 재료 1기 보장"><b>단서</b> ${ctx.engine.state.lineageClueProgress}/12</span>`
-    + `<span class="goal-clue" title="계보 소환 30회 누적 시 목표 한자 확정 지급"><b>확정</b> ${ctx.engine.state.lineageTargetProgress}/30</span>`;
-  const goalPercent = Math.round(progress.progress * 100);
-  must<HTMLElement>("#goal-progress-fill").style.width = String(goalPercent) + "%";
-
-  const idiom = ctx.engine.currentIdiomTarget();
-  const idiomProgress = idiom ? ctx.engine.idiomProgress(idiom.id) : null;
-  const idiomCard = must<HTMLElement>("#idiom-target-card");
-  if (idiom && idiomProgress) {
-    const glyphs = ownedIdiomGlyphMarkup(idiom.chars, ownedCounts);
-    idiomCard.style.setProperty("--idiom-accent", idiom.color);
-    idiomCard.innerHTML = `
-      <div class="idiom-target-glyphs">${glyphs}</div>
-      <div class="idiom-target-copy"><span>현재 성어 목표 · ${idiomProgress.owned}/${idiomProgress.total}자 보유</span><strong>${escapeHtml(idiom.reading)}</strong><small>${escapeHtml(idiom.meaning)}</small><em>${escapeHtml(idiom.bonus.label)}</em></div>
-      <div class="idiom-target-status"><b>${Math.round(idiomProgress.readiness * 100)}%</b><span>${idiomProgress.missingChars.length > 0 ? `부족 ${idiomProgress.missingChars.map(escapeHtml).join("·")}` : "배치 준비"}</span></div>`;
-  } else {
-    idiomCard.removeAttribute("style");
-    idiomCard.innerHTML = `<div class="goal-selector-empty"><b>이번 판 성어 목표를 모두 봉인했습니다</b><span>성어 목록에서 다음 목표를 선택할 수 있습니다.</span></div>`;
-  }
-
-  const modePercent = ctx.goalPanelMode === "idiom" && idiomProgress ? Math.round(idiomProgress.readiness * 100) : goalPercent;
-  must<HTMLElement>("#goal-tab-progress").textContent = `${modePercent}%`;
-  const boardUnique = new Set(ctx.engine.state.towers.map((tower) => tower.char)).size;
-  const storedUnique = new Set(ctx.engine.state.inventoryTowers.map((tower) => tower.char)).size;
-  must<HTMLElement>("#goal-owned-summary").innerHTML = `<b>${ownedCounts.size}자 · ${ownedTowers.length}기 보유</b><span>전장 ${boardUnique}자 · 인벤 ${storedUnique}자</span>`;
-
-  const search = must<HTMLInputElement>("#goal-search");
-  search.placeholder = ctx.goalPanelMode === "hanzi" ? "원하는 한자·훈음·뜻 검색" : "원하는 성어·읽기·뜻 검색";
-  const selector = must<HTMLElement>("#goal-selector-list");
-  selector.innerHTML = ctx.goalPanelMode === "hanzi"
-    ? renderHanziGoalChoices(pool, ownedCounts)
-    : renderIdiomGoalChoices(ctx.engine.allIdioms(), ownedCounts);
+  must<HTMLElement>("#goal-selector-list").innerHTML = renderIdiomCards(ownedCounts, trackedIds, selectedId);
+  must<HTMLElement>("#goal-codex-detail").innerHTML = renderIdiomDetail(selectedId, ownedCounts, trackedIds);
 }
 
+/** 상세로 펼칠 성어 — 직접 고른 것이 없으면 1순위 추적 성어를 따른다. */
+function resolveSelectedIdiomId(trackedIds: readonly string[]): string {
+  const all = ctx.engine.allIdioms();
+  if (ctx.goalSelectedIdiomId && all.some((idiom) => idiom.id === ctx.goalSelectedIdiomId)) return ctx.goalSelectedIdiomId;
+  return trackedIds[0] ?? all[0]?.id ?? "";
+}
+
+/** 성어 4자를 보유 표시와 함께 — 같은 글자 두 번이면 보유분도 두 번 세지 않는다. */
 function ownedIdiomGlyphMarkup(chars: string, ownedCounts: ReadonlyMap<string, number>): string {
   const available = new Map(ownedCounts);
-  return [...chars].map((char) => {
+  return [...chars].map((char, index) => {
     const count = available.get(char) ?? 0;
     if (count > 0) available.set(char, count - 1);
-    return `<i class="${count > 0 ? "is-owned" : ""}">${escapeHtml(char)}</i>`;
+    return `<i class="${count > 0 ? "is-owned" : ""}" title="${index + 1}번째 글자">${escapeHtml(char)}</i>`;
   }).join("");
 }
 
-function renderHanziGoalChoices(definitions: readonly HanziDefinition[], ownedCounts: ReadonlyMap<string, number>): string {
+function renderIdiomCards(ownedCounts: ReadonlyMap<string, number>, trackedIds: readonly string[], selectedId: string): string {
+  const engine = ctx.engine;
   const query = ctx.goalSearchQuery.trim().toLowerCase();
-  const rows = definitions
-    .map((definition, order) => {
-      const learning = learningInfo(ctx.engine.state.region, definition.char);
-      const progress = ctx.engine.goalProgressFor(definition.char);
-      const owned = ownedCounts.get(definition.char) ?? 0;
-      const selected = definition.char === ctx.engine.state.targetChar;
-      const completed = ctx.engine.state.goalsCompleted.includes(definition.char);
-      const searchText = `${definition.char} ${learning.readingLabel} ${learning.short} ${definition.parents.join(" ")}`.toLowerCase();
-      const score = (selected ? 100_000 : 0)
-        + (completed ? -10_000 : 0)
-        + (owned > 0 ? -1_000 : 0)
-        + (definition.acquisition === "craft" && progress.progress >= 1 ? 2_000 : 0)
-        + progress.progress * 1_000
-        + (6 - definition.stage) * 12
-        - order / 10_000;
-      return { definition, learning, progress, owned, selected, completed, searchText, score };
-    })
-    .filter((row) => !query || row.searchText.includes(query))
-    .sort((left, right) => right.score - left.score)
-    .slice(0, query ? 72 : 28);
-
-  if (rows.length === 0) return `<div class="goal-selector-empty"><b>검색 결과가 없습니다</b><span>한자 한 글자나 훈음을 다시 입력해 보세요.</span></div>`;
-  return rows.map(({ definition, learning, progress, owned, selected, completed }) => {
-    const percent = Math.round(progress.progress * 100);
-    const missing = progress.directMaterials.filter((material) => material.owned < material.needed);
-    const status = selected
-      ? "추적 중"
-      : completed
-        ? "달성 기록"
-        : owned > 0
-          ? `보유 ${owned}기`
-          : definition.acquisition === "craft" && percent >= 100
-            ? "재료 완성"
-            : percent > 0
-              ? `재료 ${percent}%`
-              : ctx.engine.state.mode === "casual"
-                ? `${casualNaturalStar(definition.char) ?? 1}★ 직접 소환`
-                : definition.acquisition === "direct" ? "직접 소환" : `${definition.stage}단 ${STAGE_NAMES[definition.stage]}`;
-    const unlockWave = summonStageUnlockWave(definition.stage);
-    const directLocked = ctx.engine.state.mode === "standard" && definition.acquisition === "direct" && ctx.engine.state.wave < unlockWave;
-    const naturalStar = casualNaturalStar(definition.char);
-    const materialLabel = ctx.engine.state.mode === "casual"
-      ? `직접 등장 · ${naturalStar ?? 1}★ · ${casualStrokeCount(definition.char) ?? "?"}획`
-      : definition.acquisition === "direct"
-      ? directLocked ? `${unlockWave}웨이브부터 직접 등장` : "현재 소환 풀에서 직접 등장"
-      : missing.length === 0
-        ? "필요 재료를 모두 보유"
-        : `부족 ${missing.slice(0, 5).map((material) => `${material.char}${material.needed - material.owned}`).join(" · ")}`;
-    const classes = [selected ? "is-current" : "", owned > 0 ? "is-owned" : "", completed ? "is-complete" : "", percent >= 100 ? "is-ready" : ""].filter(Boolean).join(" ");
-    return `<button type="button" class="goal-choice-card ${classes}" data-goal-char="${escapeHtml(definition.char)}" style="--goal-accent:${ELEMENT_STYLES[definition.wuxing].color}" aria-pressed="${String(selected)}">
-      <span class="goal-choice-spirit" style="${spriteStyle(definition)}" aria-hidden="true"></span>
-      <b class="goal-choice-glyph">${escapeHtml(definition.char)}</b>
-      <span class="goal-choice-copy"><strong>${escapeHtml(learning.short)}</strong><small>${escapeHtml(learning.readingLabel)}</small><em>${escapeHtml(materialLabel)}</em></span>
-      <mark>${escapeHtml(status)}</mark>
-    </button>`;
-  }).join("");
-}
-
-function renderIdiomGoalChoices(idioms: readonly IdiomDefinition[], ownedCounts: ReadonlyMap<string, number>): string {
-  const query = ctx.goalSearchQuery.trim().toLowerCase();
-  const currentId = ctx.engine.currentIdiomTarget()?.id;
-  const sealedIds = new Set(ctx.engine.state.idiomSeals.map((seal) => seal.idiomId));
-  const rows = idioms
+  const sealedIds = new Set(engine.state.idiomSeals.map((seal) => seal.idiomId));
+  const rows = engine.allIdioms()
     .map((idiom, order) => {
-      const progress = ctx.engine.idiomProgress(idiom.id);
-      const selected = idiom.id === currentId;
+      const progress = engine.idiomProgress(idiom.id);
+      const trackedIndex = trackedIds.indexOf(idiom.id);
       const sealed = sealedIds.has(idiom.id);
+      const live = engine.isIdiomSealActive(idiom.id);
       const searchText = `${idiom.chars} ${idiom.name} ${idiom.reading} ${idiom.meaning}`.toLowerCase();
-      const score = (selected ? 100_000 : 0) + (sealed ? -10_000 : 0) + progress.owned * 2_000 + progress.readiness * 1_000 - order / 10_000;
-      return { idiom, progress, selected, sealed, searchText, score };
+      const score = (trackedIndex >= 0 ? 100_000 - trackedIndex : 0)
+        + (sealed ? -10_000 : 0)
+        + progress.owned * 2_000
+        + progress.readiness * 1_000
+        - order / 10_000;
+      return { idiom, progress, trackedIndex, sealed, live, searchText, score };
     })
     .filter((row) => !query || row.searchText.includes(query))
     .sort((left, right) => right.score - left.score)
     .slice(0, query ? 72 : 28);
 
   if (rows.length === 0) return `<div class="goal-selector-empty"><b>검색 결과가 없습니다</b><span>네 글자나 성어 읽기를 다시 입력해 보세요.</span></div>`;
-  return rows.map(({ idiom, progress, selected, sealed }) => {
-    const classes = [selected ? "is-current" : "", sealed ? "is-complete" : "", progress.owned === progress.total ? "is-ready" : ""].filter(Boolean).join(" ");
-    const glyphs = ownedIdiomGlyphMarkup(idiom.chars, ownedCounts);
-    const status = selected ? "추적 중" : sealed ? "봉인 완료" : progress.owned === progress.total ? "배치 준비" : `${progress.owned}/${progress.total}자`;
-    return `<button type="button" class="goal-choice-card goal-choice-card--idiom ${classes}" data-goal-idiom="${escapeHtml(idiom.id)}" style="--goal-accent:${idiom.color}" aria-pressed="${String(selected)}" ${sealed ? "disabled" : ""}>
-      <span class="goal-choice-idiom-glyphs">${glyphs}</span>
-      <span class="goal-choice-copy"><strong>${escapeHtml(idiom.reading)}</strong><small>${escapeHtml(idiom.meaning)}</small><em>${escapeHtml(idiom.bonus.label)} · ${progress.missingChars.length > 0 ? `부족 ${progress.missingChars.map(escapeHtml).join("·")}` : "네 글자 보유"}</em></span>
+  return rows.map(({ idiom, progress, trackedIndex, sealed, live }) => {
+    const isTracked = trackedIndex >= 0;
+    const selected = idiom.id === selectedId;
+    const percent = Math.round(progress.owned / Math.max(1, progress.total) * 100);
+    const status = sealed
+      ? live ? "발동 중" : "발동 이력 · 흩어짐"
+      : isTracked
+        ? `추적 ${trackedIndex + 1}순위`
+        : progress.owned === progress.total ? "배치 준비" : `${progress.owned}/${progress.total}자`;
+    const classes = [
+      "goal-idiom-card",
+      selected ? "is-selected" : "",
+      isTracked ? "is-tracked" : "",
+      sealed ? "is-sealed" : "",
+      !sealed && progress.owned === progress.total ? "is-ready" : ""
+    ].filter(Boolean).join(" ");
+    return `<div class="${classes}" data-goal-idiom="${escapeHtml(idiom.id)}" role="button" tabindex="0" aria-pressed="${String(selected)}" style="--goal-accent:${idiom.color}">
+      <span class="goal-idiom-glyphs">${ownedIdiomGlyphMarkup(idiom.chars, ownedCounts)}</span>
+      <span class="goal-idiom-copy"><strong>${escapeHtml(idiom.reading)}</strong><small>${escapeHtml(idiom.meaning)}</small></span>
+      <span class="goal-idiom-progress" aria-label="보유 ${progress.owned}/${progress.total}자"><i style="width:${percent}%"></i><em>${progress.owned}/${progress.total}</em></span>
+      <button type="button" class="goal-idiom-track" data-goal-track="${escapeHtml(idiom.id)}" aria-pressed="${String(isTracked)}" ${sealed ? "disabled" : ""}>${sealed ? "발동 완료" : isTracked ? "추적 중 ✓" : "추적"}</button>
       <mark>${escapeHtml(status)}</mark>
-    </button>`;
+    </div>`;
   }).join("");
+}
+
+function renderIdiomDetail(selectedId: string, ownedCounts: ReadonlyMap<string, number>, trackedIds: readonly string[]): string {
+  const engine = ctx.engine;
+  const idiom = engine.allIdioms().find((candidate) => candidate.id === selectedId);
+  if (!idiom) return `<div class="goal-selector-empty"><b>성어를 선택하세요</b><span>왼쪽 카드에서 목표로 삼을 성어를 고릅니다.</span></div>`;
+  const sealed = engine.state.idiomSeals.some((seal) => seal.idiomId === idiom.id);
+  const live = engine.isIdiomSealActive(idiom.id);
+  const trackedIndex = trackedIds.indexOf(idiom.id);
+  const sourceLabel = idiom.source === "cheonjamun" ? `천자문 제${idiom.sourceOrder}구` : "상용 사자성어";
+  const stateLabel = live ? "발동 중" : sealed ? "발동 이력 · 지금은 흩어짐" : trackedIndex >= 0 ? `추적 ${trackedIndex + 1}순위` : "서책 수록";
+  const trackButton = sealed
+    ? `<button type="button" class="goal-detail-track is-sealed" disabled>발동 완료 — 목표에서 은퇴</button>`
+    : trackedIndex >= 0
+      ? `<button type="button" class="goal-detail-track is-on" data-goal-track="${escapeHtml(idiom.id)}" aria-pressed="true">추적 해제</button>`
+      : `<button type="button" class="goal-detail-track" data-goal-track="${escapeHtml(idiom.id)}" aria-pressed="false">이 성어 추적 (${trackedIds.length}/${MAX_TRACKED_IDIOMS})</button>`;
+
+  return `<div class="goal-detail" style="--goal-accent:${idiom.color}">
+    <div class="goal-detail-glyphs">${ownedIdiomGlyphMarkup(idiom.chars, ownedCounts)}</div>
+    <p class="goal-detail-kicker">${escapeHtml(sourceLabel)} · ${escapeHtml(stateLabel)}</p>
+    <h3 class="goal-detail-reading">${escapeHtml(idiom.reading)}</h3>
+    <p class="goal-detail-meaning">${escapeHtml(idiom.meaning)}</p>
+    <article class="goal-detail-bonus"><b>${escapeHtml(idiom.bonus.label)}</b><span>같은 진의 한 줄(가로·세로·대각선)에 ①→④ 순서로 놓으면 자동 발동 — 효과는 줄을 지키는 동안만 삽니다.</span></article>
+    ${trackButton}
+    ${renderMissingSection(idiom, ownedCounts)}
+  </div>`;
+}
+
+/** 부족 글자 칸 — 캐주얼은 소환·연구 안내, 표준은 합성 하위 트리 전개. */
+function renderMissingSection(idiom: IdiomDefinition, ownedCounts: ReadonlyMap<string, number>): string {
+  const engine = ctx.engine;
+  const missing = engine.idiomProgress(idiom.id).missingChars;
+  if (missing.length === 0) {
+    return `<section class="goal-detail-missing"><h4>부족 글자 없음</h4><p class="goal-missing-done">네 글자를 모두 보유했습니다 — 한 줄로 세우기만 하면 됩니다. 자동배치가 가능한 줄을 찾아 줍니다.</p></section>`;
+  }
+  const casual = engine.state.mode === "casual";
+  const heading = casual
+    ? `부족 ${missing.length}자 · 소환·연구로 모읍니다`
+    : `부족 ${missing.length}자 · 부품을 모아 합성합니다`;
+  const note = casual
+    ? `<p class="goal-missing-note">추적 중이면 이 글자들이 더 자주 나오고, 인연 연구가 그 가중을 키웁니다.</p>`
+    : `<p class="goal-missing-note">직접 소환 부품은 추적·연구 가중을 받고, 합성 글자는 아래 부품 트리로 만듭니다.</p>`;
+  const items = [...new Set(missing)].map((char) => renderMissingChar(char, ownedCounts)).join("");
+  return `<section class="goal-detail-missing"><h4>${escapeHtml(heading)}</h4>${note}<div class="goal-missing-list">${items}</div></section>`;
+}
+
+function renderMissingChar(char: string, ownedCounts: ReadonlyMap<string, number>): string {
+  const engine = ctx.engine;
+  const definition = engine.catalog.definitions.get(char);
+  const learning = learningInfo(engine.state.region, char);
+  if (!definition) {
+    return `<div class="goal-missing-item"><b class="goal-missing-glyph">${escapeHtml(char)}</b><span class="goal-missing-copy"><strong>${escapeHtml(learning.short)}</strong><small>${escapeHtml(learning.readingLabel)}</small><em>이 지역 로스터 밖의 글자입니다</em></span></div>`;
+  }
+  const accent = ELEMENT_STYLES[definition.wuxing].color;
+  let acquisition: string;
+  let tree = "";
+  if (engine.state.mode === "casual") {
+    const star = casualNaturalStar(char) ?? 1;
+    acquisition = `${star}★ · ${casualStrokeCount(char) ?? "?"}획 · 소환으로 직접 등장`;
+  } else if (definition.acquisition === "direct") {
+    const unlockWave = summonStageUnlockWave(definition.stage);
+    const locked = engine.state.wave < unlockWave;
+    acquisition = locked ? `직접 소환 · ${unlockWave}W 개방` : "직접 소환 가능";
+  } else {
+    acquisition = `${definition.stage}단 ${STAGE_NAMES[definition.stage]} · ${definition.parents.join(" + ")} → ${char}`;
+    tree = synthesisTreeMarkup(char, ownedCounts);
+  }
+  return `<div class="goal-missing-item" style="--goal-accent:${accent}">
+    <b class="goal-missing-glyph">${escapeHtml(char)}</b>
+    <span class="goal-missing-copy"><strong>${escapeHtml(learning.short)}</strong><small>${escapeHtml(learning.readingLabel)}</small><em>${escapeHtml(acquisition)}</em></span>
+    ${tree}
+  </div>`;
+}
+
+/**
+ * 표준 모드 합성 하위 트리 — "이 글자는 이 부품들로" (evolution.getTargetPath
+ * 와 같은 부모 재귀·같은 방문 집합 규칙, 화면용 행 전개판).
+ * 보유한 부품은 더 쪼개지 않는다 — 이미 손에 있으니 만들 필요가 없다.
+ */
+function synthesisTreeMarkup(char: string, ownedCounts: ReadonlyMap<string, number>): string {
+  const engine = ctx.engine;
+  const rows: string[] = [];
+  const visited = new Set<string>();
+  const expand = (target: string): void => {
+    if (visited.has(target) || rows.length >= 8) return;
+    visited.add(target);
+    const definition = engine.catalog.definitions.get(target);
+    if (!definition || definition.acquisition === "direct" || definition.parents.length === 0) return;
+    const parts = definition.parents.map((parent) => {
+      const owned = (ownedCounts.get(parent) ?? 0) > 0;
+      const parentDefinition = engine.catalog.definitions.get(parent);
+      const direct = !parentDefinition || parentDefinition.acquisition === "direct" || parentDefinition.parents.length === 0;
+      return `<span class="${[owned ? "is-owned" : "", direct ? "is-direct" : ""].filter(Boolean).join(" ")}">${escapeHtml(parent)}</span>`;
+    }).join("<em>+</em>");
+    rows.push(`<div class="goal-tree-row"><b>${escapeHtml(target)}</b><i>←</i>${parts}</div>`);
+    for (const parent of definition.parents) {
+      if ((ownedCounts.get(parent) ?? 0) > 0) continue;
+      expand(parent);
+    }
+  };
+  expand(char);
+  if (rows.length === 0) return "";
+  return `<div class="goal-tree" aria-label="${escapeHtml(char)} 합성 부품 트리">${rows.join("")}</div>`;
+}
+
+function handleCodexClick(event: Event): void {
+  const target = event.target as HTMLElement;
+  const trackId = target.closest<HTMLButtonElement>("[data-goal-track]")?.dataset.goalTrack;
+  if (trackId) {
+    const tracked = ctx.engine.trackedIdioms().some((idiom) => idiom.id === trackId);
+    ctx.goalSelectedIdiomId = trackId;
+    handleAction(ctx.engine.setIdiomTracking(trackId, !tracked));
+    return;
+  }
+  const idiomId = target.closest<HTMLElement>("[data-goal-idiom]")?.dataset.goalIdiom;
+  if (idiomId) {
+    ctx.goalSelectedIdiomId = idiomId;
+    ctx.goalRenderKey = "";
+    renderGoal();
+  }
 }
 
 /** main.ts 가 원래 순서대로 부르는 배선 묶음. */
 export function wireGoal1(): void {
-  document.querySelectorAll<HTMLButtonElement>("[data-goal-mode]").forEach((button) => {
-    button.addEventListener("click", () => {
-      ctx.goalPanelMode = button.dataset.goalMode as GoalPanelMode;
-      ctx.goalSearchQuery = "";
-      must<HTMLInputElement>("#goal-search").value = "";
-      ctx.goalRenderKey = "";
-      renderGoal();
-    });
-  });
   must<HTMLInputElement>("#goal-search").addEventListener("input", (event) => {
     ctx.goalSearchQuery = (event.target as HTMLInputElement).value;
     ctx.goalRenderKey = "";
     renderGoal();
   });
-  must<HTMLElement>("#goal-selector-list").addEventListener("click", (event) => {
-    const target = event.target as HTMLElement;
-    const char = target.closest<HTMLButtonElement>("[data-goal-char]")?.dataset.goalChar;
-    const idiomId = target.closest<HTMLButtonElement>("[data-goal-idiom]")?.dataset.goalIdiom;
-    if (char) {
-      handleAction(ctx.engine.setTarget(char));
-      setPanelTab("goal");
-    } else if (idiomId) {
-      handleAction(ctx.engine.setIdiomTarget(idiomId));
-      setPanelTab("goal");
-    }
+  const list = must<HTMLElement>("#goal-selector-list");
+  list.addEventListener("click", handleCodexClick);
+  // 카드가 div[role=button]이라 키보드 선택을 직접 잇는다.
+  list.addEventListener("keydown", (event) => {
+    if (event.key !== "Enter" && event.key !== " ") return;
+    const card = (event.target as HTMLElement).closest<HTMLElement>("[data-goal-idiom]");
+    if (!card) return;
+    event.preventDefault();
+    ctx.goalSelectedIdiomId = card.dataset.goalIdiom ?? "";
+    ctx.goalRenderKey = "";
+    renderGoal();
   });
+  must<HTMLElement>("#goal-codex-detail").addEventListener("click", handleCodexClick);
+  must<HTMLButtonElement>("#goal-frame-open").addEventListener("click", () => setFocusFrame("goal"));
 }

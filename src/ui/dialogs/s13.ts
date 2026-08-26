@@ -1,7 +1,8 @@
 /*
  * 지역 선택(P00)과 맞춤 진법(S13) 창.
  */
-import { type GameMode, type RegionCode } from "../../core/types";
+import { defaultNotationForRegion, NOTATION_AXIS_READY } from "../../core/notation";
+import { type GameMode, type NotationCode, type RegionCode } from "../../core/types";
 import { type DisplayMode } from "../display-mode";
 import { saveAutoPlaceSummons } from "../summon-placement";
 import { ctx, must, sound } from "../app-context";
@@ -18,16 +19,46 @@ export const REGION_MENU_INFO: Record<RegionCode, { name: string; pool: string }
 
 const p00Dialog = must<HTMLDialogElement>("#p00-dialog");
 
+/*
+ * 미리 해보기 안내(자형연성).
+ *
+ * 부수 조립 진법은 합성표·난이도가 아직 다듬는 중이라, 지역 미리 해보기
+ * 안내(P00)와 같은 확인 창을 태워 "무엇이 덜 여물었는지"를 먼저 말한다.
+ * 창 하나를 두 용도로 쓰므로 여는 쪽이 문구를 매번 제자리로 돌려놓는다.
+ */
+let pendingModeNotice = false;
+
+export function openStandardModeNotice(): void {
+  pendingModeNotice = true;
+  must<HTMLElement>("#p00-kicker").textContent = "미리 해보기 안내";
+  must<HTMLElement>("#p00-title").textContent = "자형연성 진법";
+  must<HTMLElement>("#p00-body").innerHTML = "부수를 부품 삼아 글자를 조립하는 학습 진법입니다.<br />합성표와 난이도를 아직 다듬는 중이라 목표가 막히거나 균형이 기울 수 있습니다.<br />가장 완성된 진법은 별승급입니다.";
+  must<HTMLButtonElement>("#p00-return").textContent = "별승급으로 돌아가기";
+  must<HTMLButtonElement>("#p00-continue").textContent = "자형연성으로 계속";
+  p00Dialog.showModal();
+  must<HTMLButtonElement>("#p00-return").focus();
+}
+
 function openP00(region: RegionCode): void {
   ctx.pendingRegion = region;
+  pendingModeNotice = false;
   const info = REGION_MENU_INFO[region];
+  must<HTMLElement>("#p00-kicker").textContent = "미리 해보기 안내";
   must<HTMLElement>("#p00-title").textContent = `${info.name} 한자 체계`;
+  must<HTMLElement>("#p00-body").innerHTML = "이 지역은 도감 설명과 읽기, 난이도를 아직 다듬는 중입니다.<br />가장 완성된 체계는 한국 천자문 1,000자입니다.";
+  must<HTMLButtonElement>("#p00-return").textContent = "한국으로 돌아가기";
   must<HTMLButtonElement>("#p00-continue").textContent = `${info.name}으로 계속`;
   p00Dialog.showModal();
   must<HTMLButtonElement>("#p00-return").focus();
 }
 
 function closeP00(confirm: boolean): void {
+  if (pendingModeNotice) {
+    pendingModeNotice = false;
+    if (p00Dialog.open) p00Dialog.close();
+    setSelectedGameMode(confirm ? "standard" : "casual");
+    return;
+  }
   if (confirm && ctx.pendingRegion) ctx.selectedRegion = ctx.pendingRegion;
   ctx.pendingRegion = null;
   if (p00Dialog.open) p00Dialog.close();
@@ -69,6 +100,17 @@ export function syncS13(): void {
     button.classList.toggle("is-selected", region === ctx.selectedRegion);
     button.setAttribute("aria-checked", String(region === ctx.selectedRegion));
     button.title = REGION_MENU_INFO[region].pool;
+  });
+  // gripe #6 표기 축. 그룹 노출은 플래그가 정하고(테이블 도착 전 hidden),
+  // 선택 표시는 실효 표기(명시 선택 ?? 로스터 자국 표기)를 따른다.
+  const notationGroup = s13Dialog.querySelector<HTMLElement>(".s13-notation-group");
+  if (notationGroup) notationGroup.hidden = !NOTATION_AXIS_READY;
+  const effectiveNotation = ctx.selectedNotation ?? defaultNotationForRegion(ctx.selectedRegion);
+  s13Dialog.querySelectorAll<HTMLButtonElement>("[data-s13-notation]").forEach((button) => {
+    const notation = button.dataset.s13Notation as NotationCode;
+    const selected = notation === effectiveNotation;
+    button.classList.toggle("is-selected", selected);
+    button.setAttribute("aria-checked", String(selected));
   });
   s13Dialog.querySelectorAll<HTMLButtonElement>("[data-s13-display]").forEach((button) => {
     const selected = button.dataset.s13Display === ctx.displayMode;
@@ -119,6 +161,17 @@ export function wireS132(): void {
         s13Dialog.close();
         openP00(region);
       }
+      return;
+    }
+    const notationButton = target.closest<HTMLButtonElement>("[data-s13-notation]");
+    if (notationButton) {
+      // 플래그가 꺼져 있으면 그룹이 hidden 이라 정상 경로로는 오지 못한다.
+      // 방어적으로 한 번 더 막아 테이블 도착 전 표기 이탈을 봉한다.
+      if (!NOTATION_AXIS_READY) return;
+      sound.unlock();
+      ctx.selectedNotation = notationButton.dataset.s13Notation as NotationCode;
+      sound.playUiConfirm();
+      syncS13();
       return;
     }
     const displayButton = target.closest<HTMLButtonElement>("[data-s13-display]");

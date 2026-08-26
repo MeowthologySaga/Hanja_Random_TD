@@ -360,6 +360,25 @@ export class SoundManager {
   }
 
   /**
+   * Track A #2: Munki gained from any path (dismantle, three-fuse refund, sell
+   * refund). Reuses the shipped dismantle chime — the essence signature sound —
+   * and the per-id retrigger gap already dedupes it against the dismantle
+   * event's own one-shot in the same frame. No new audio asset.
+   */
+  playEssenceGain(): void {
+    this.playSfx("dismantle");
+  }
+
+  /**
+   * Track C2: a talisman passes its submission and the seal slams down. Reuses the
+   * shipped idiom-seal one-shot — the heaviest sealing sound already in the pack —
+   * so the stamp lands with weight without a new audio asset.
+   */
+  playTalismanSeal(): void {
+    this.playSfx("fx-idiom-seal");
+  }
+
+  /**
    * Arms the next successful action so it stamps with a placement or unlock sound
    * instead of the generic seal. Consumed by the very next playActionOutcome call.
    */

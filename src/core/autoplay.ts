@@ -26,7 +26,16 @@ import {
   type Wuxing
 } from "./types";
 
-export function runAutoplay(seed: string, region: RegionCode = "KR", maxSeconds = 5_400, mode: GameMode = "standard"): SimulationResult {
+/**
+ * [실험 · 트랙 F] 봇 정책 스위치. 기본은 전부 끔 — 게이트 시뮬(--runs=135/45)은
+ * 옵션 없이 돌므로 시드 결정성과 기존 수치가 그대로 재현된다.
+ */
+export interface AutoplayOptions {
+  /** 성어 기원 상품을 봇이 사게 한다(승률 비영향 계측용 실험 정책). */
+  idiomWish?: boolean;
+}
+
+export function runAutoplay(seed: string, region: RegionCode = "KR", maxSeconds = 5_400, mode: GameMode = "standard", options: AutoplayOptions = {}): SimulationResult {
   const engine = new GameEngine(seed, region, mode);
   engine.begin();
   engine.setAutomationMode("semi");
@@ -114,6 +123,18 @@ export function runAutoplay(seed: string, region: RegionCode = "KR", maxSeconds 
       const option = engine.state.mode === "standard" ? autoplayEvolutionOption(engine) : undefined;
       if (option) {
         engine.evolve(option.recipeId);
+        arrangeAvailableAutoplayIdioms(engine);
+      }
+    }
+
+    // [실험 · 트랙 F] 성어 기원 구매 정책: 부족 글자가 있고 기본 소환 2회분의
+    // 예산 여유가 남을 때만 산다. 틱당 최대 2장 — 소환·강화 예산 잠식을 막는
+    // 단순 상한이다. 산 뒤에는 기존 성어 정렬 루틴이 줄 세우기를 이어받는다.
+    if (options.idiomWish) {
+      for (let wishGuard = 0; wishGuard < 2; wishGuard += 1) {
+        const wish = engine.idiomWishQuote();
+        if (wish.reason !== null || engine.state.gold < wish.cost + summonCost(engine.state.summonCount) * 2) break;
+        if (!engine.summonIdiomWish().ok) break;
         arrangeAvailableAutoplayIdioms(engine);
       }
     }
@@ -252,11 +273,13 @@ function autoplayPurchaseUpgrades(engine: GameEngine): void {
 
 function autoplayProtectedChars(engine: GameEngine): Set<string> {
   const protectedChars = engine.evolution.getTargetPath(engine.state.targetChar);
-  const idiom = engine.currentIdiomTarget();
-  if (!idiom) return protectedChars;
-  for (const char of idiom.chars) {
-    protectedChars.add(char);
-    for (const pathChar of engine.evolution.getTargetPath(char)) protectedChars.add(pathChar);
+  // 추적 성어(기본 1구 — 봇은 추적을 넓히지 않으므로 기존 동작과 같다)의
+  // 글자와 그 합성 계보를 소모 후보에서 지킨다.
+  for (const idiom of engine.trackedIdioms()) {
+    for (const char of idiom.chars) {
+      protectedChars.add(char);
+      for (const pathChar of engine.evolution.getTargetPath(char)) protectedChars.add(pathChar);
+    }
   }
   return protectedChars;
 }
@@ -271,11 +294,12 @@ function autoplayEvolutionOption(engine: GameEngine): EvolutionOption | undefine
     .filter((option) => !option.materialTowerIds.some((id) => sealedIds.has(id)));
   // 아직 줄이 없는(혹은 흩어진) 성어의 글자도 지킨다 — 재봉인 재료다.
   const pendingIdioms = engine.idioms().filter((candidate) => !engine.isIdiomSealActive(candidate.id));
-  const idiom = engine.currentIdiomTarget();
   if (pendingIdioms.length === 0) return options.find((candidate) => candidate.onTargetPath) ?? options[0];
   const exactChars = new Set(pendingIdioms.flatMap((candidate) => [...candidate.chars]));
   const idiomPath = new Set<string>();
-  for (const char of idiom?.chars ?? "") for (const pathChar of engine.evolution.getTargetPath(char)) idiomPath.add(pathChar);
+  for (const tracked of engine.trackedIdioms()) {
+    for (const char of tracked.chars) for (const pathChar of engine.evolution.getTargetPath(char)) idiomPath.add(pathChar);
+  }
   const required = new Map<string, number>();
   for (const candidate of pendingIdioms) {
     for (const char of candidate.chars) required.set(char, (required.get(char) ?? 0) + 1);

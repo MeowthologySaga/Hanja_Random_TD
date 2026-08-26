@@ -31,7 +31,7 @@ export function showEndScreen(phase: "victory" | "defeat"): void {
     <div><span>처치한 적</span><b>${state.killCount}</b></div>
     <div><span>${state.mode === "casual" ? "3체 조합" : "한자 합성"}</span><b>${state.mode === "casual" ? state.casualFusionCount : state.evolutionCount}</b></div>
     <div><span>목표 완성</span><b>${state.goalsCompleted.length}</b></div>
-    <div><span>사자성어 봉인</span><b>${state.idiomSeals.length} / ${ctx.engine.idioms().length}</b></div>
+    <div><span>사자성어 발동</span><b>${state.idiomSeals.length} / ${ctx.engine.idioms().length}</b></div>
     <div><span>은행 이자</span><b>${state.interestEarned}엽전</b></div>
     <div><span>능력 강화</span><b>${totalGlobalUpgradeLevels() + totalElementUpgradeLevels()}단계</b></div>
     <div><span>발견 한자</span><b>${state.discoveredChars.length}</b></div>

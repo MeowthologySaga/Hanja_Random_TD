@@ -6,6 +6,7 @@ import { canvas, ctx, must, shell, sound } from "./app-context";
 import { drawWorld } from "./battle/draw";
 import { syncCoachProgress } from "./coach";
 import { showEndScreen } from "./dialogs/end";
+import { syncEssenceFeedback } from "./essence-feedback";
 import { processEvent } from "./events";
 import { syncOneShotHints } from "./hint";
 import { showToast, syncPanel } from "./hud";
@@ -55,6 +56,8 @@ export function frame(now: number): void {
   const summonEvents = frameEvents.filter((event): event is Extract<GameEvent, { type: "summon" }> => event.type === "summon");
   if (summonEvents.length > 0) showSummonReveal(summonEvents);
   else showCasualFusionReveal(frameEvents.filter((event): event is Extract<GameEvent, { type: "casualFuse" }> => event.type === "casualFuse"));
+  // 문기 증가 감시 — 이벤트 처리 직후여야 같은 프레임의 분해 SFX 와 겹침이 걸러진다.
+  syncEssenceFeedback();
   if (ctx.engine.state.phase !== ctx.previousPhase) {
     ctx.previousPhase = ctx.engine.state.phase;
     if (ctx.previousPhase === "victory" || ctx.previousPhase === "defeat") showEndScreen(ctx.previousPhase);

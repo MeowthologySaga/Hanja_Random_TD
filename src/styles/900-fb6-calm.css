@@ -220,3 +220,10 @@
 .game-shell[data-calm-screen="1"] .battle-stage--shake {
   animation: none;
 }
+
+/* gripe #10 — 잭팟(상한 돌파) 카드 맥동도 멈춘다. 별색 링·광채는 남아
+   "드문 별이 나왔다"는 정보 자체는 잃지 않는다(rise 는 가시성 담당이라 유지).
+   기본 규칙(110, casual 스코프 0,4,0)과 같은 무게 — 이 파일이 뒤라 이긴다. */
+.game-shell[data-game-mode="casual"][data-calm-screen="1"] .summon-result-card.is-jackpot {
+  animation: summon-card-rise 0.38s ease var(--summon-delay, 0ms) forwards;
+}

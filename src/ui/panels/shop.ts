@@ -2,12 +2,14 @@
  * 소환 상점 패널.
  */
 import { BOARD_FORMATIONS } from "../../core/content";
+import { IDIOM_WISH_COST_MULTIPLIER } from "../../core/engine-tuning";
 import { multiSummonCost, SUMMON_SURCHARGE, summonCost } from "../../core/hanzi";
 import { type SummonIntent } from "../../core/types";
 import { ctx, must } from "../app-context";
-import { summonAndFocus } from "../battle/camera";
-import { escapeHtml } from "../format";
+import { summonAndFocus, summonIdiomWishAndFocus } from "../battle/camera";
+import { escapeHtml, summonOddsSummary } from "../format";
 import { showToast } from "../hud";
+import { summonWithTalismanToken } from "./talisman";
 
 /**
  * 상점 소환 상품표.
@@ -30,8 +32,8 @@ interface SummonProductMeta {
 // 두 티어가 같은 별 아이콘을 쓰면 색만이 유일한 구분이 되어 색각 차이에서 무너진다.
 const SUMMON_PRODUCTS: readonly SummonProductMeta[] = Object.freeze([
   { intent: "balanced", label: "기본 소환", effect: "전체 풀", tint: "#a8791f", icon: "v4/shop/shop-default-coin-v1" },
-  { intent: "midstar", label: "중급 소환", effect: "2~5★ 확정", tint: "#306f89", icon: "v5/shop/shop-tier-mid-v1" },
-  { intent: "highstar", label: "고급 소환", effect: "3~8★ 확정", tint: "#af3629", icon: "v5/shop/shop-tier-high-v1" },
+  { intent: "midstar", label: "중급 소환", effect: "2★ 확정 · 주로 2~5★", tint: "#306f89", icon: "v5/shop/shop-tier-mid-v1" },
+  { intent: "highstar", label: "고급 소환", effect: "3★ 확정 · 3~8★", tint: "#af3629", icon: "v5/shop/shop-tier-high-v1" },
   { intent: "discovery", label: "탐색 소환", effect: "새 한자 ×3.4", tint: "#3f7d6e", icon: "v4/shop/shop-explore-compass-lantern-v1" },
   { intent: "lineage", label: "계보 소환", effect: "목표·성어 재료 ×3.2", tint: "#3a5794", icon: "v4/shop/shop-lineage-scroll-v1" },
   { intent: "concentration", label: "중복 소환", effect: "보유 중복 ↑ · 농축 재료", tint: "#9a6d16", icon: "v4/shop/shop-duplicate-cards-v1" }
@@ -62,19 +64,22 @@ function summonCardMarkup(options: {
   wide?: boolean;
   testId?: string;
   title: string;
+  /** 부적 무료권 등 카드 우상단 배지. */
+  badge?: string;
 }): string {
   const classes = ["summon-card"];
   if (options.wide) classes.push("summon-card--wide");
   if (!options.affordable) classes.push("summon-card--short");
   const testId = options.testId ? ` data-testid="${options.testId}"` : "";
   const hotkey = options.hotkey ? `<span class="summon-card-key">${options.hotkey}</span>` : "";
+  const badge = options.badge ? `<mark class="summon-card-badge">${escapeHtml(options.badge)}</mark>` : "";
   return `<button type="button" class="${classes.join(" ")}" data-summon-product="${options.key}"${testId}`
     + ` style="--product:${options.tint};--product-icon:url('${SUMMON_ICON_BASE}${options.icon}.png')"`
     + ` title="${escapeHtml(options.title)}" aria-label="${escapeHtml(`${options.label} · ${options.effect} · ${options.price}`)}"`
     + `${options.disabled ? " disabled" : ""}>`
     + `<i class="summon-card-icon" aria-hidden="true"></i>`
     + `<b>${escapeHtml(options.label)}</b><small>${escapeHtml(options.effect)}</small>`
-    + `<em>${escapeHtml(options.price)}</em>${hotkey}</button>`;
+    + `<em>${escapeHtml(options.price)}</em>${hotkey}${badge}</button>`;
 }
 
 export function renderSummonShop(): void {
@@ -88,23 +93,36 @@ export function renderSummonShop(): void {
     .map((product) => {
       // 좁은 지역 풀에서는 밴드 하한이 한 단계 내려간다. 카드 문구도 실효 밴드를 따른다.
       const band = ctx.engine.summonStarBand(product.intent);
-      if (band === null) return { ...product, band: null, bandLabel: "" };
-      const bandLabel = `${band.min}~${band.max}★${band.min > 1 ? " 확정" : ""}`;
+      if (band === null) return { ...product, band: null, bandLabel: "", odds: "" };
+      // 하한은 하드("N★ 확정"), 상한은 소프트 — 밴드가 8★에 못 닿으면 "주로"다.
+      const bandLabel = (band.min > 1 ? `${band.min}★ 확정 · ` : "")
+        + (band.max < 8 ? `주로 ${band.min}~${band.max}★` : `${band.min}~${band.max}★`);
+      // 확률은 문구 하드코딩이 아니라 엔진 분포에서 렌더한다 — 상수를 바꾸면 따라온다.
+      const distribution = ctx.engine.summonStarDistribution(product.intent);
+      const odds = distribution === null ? "" : summonOddsSummary(distribution, band.max);
       // 탐색·중복은 밴드가 아니라 가중이 정체성이므로 효과 문구를 그대로 두고
       // 밴드는 툴팁으로만 알린다. 기본·티어는 밴드 자체가 상품 설명이다.
       const showsBand = product.intent === "balanced" || band.min > 1;
-      return { ...product, band, bandLabel, effect: showsBand ? bandLabel : product.effect };
+      return { ...product, band, bandLabel, odds, effect: showsBand ? bandLabel : product.effect };
     });
   // 10연은 균형 밴드를 그대로 쓰므로 보장선도 그 상한(기본 3★)이다.
   const multiBand = ctx.engine.summonStarBand("balanced");
+  // 성어 기원(트랙 F) — 추적 성어의 부족 글자만 부르는 전투력 비연동 상품.
+  const wish = ctx.engine.idiomWishQuote();
+  const wishChars = wish.pool.map((definition) => definition.char);
+  // 부적 무료권(트랙 C)은 기본 소환 카드에서만 쓴다 — 있으면 가격 대신
+  // "무료"가 서고, 엽전이 모자라도 카드가 눌린다(래퍼가 소환가를 먼저 얹는다).
+  const talismanTokens = ctx.talismanFreeSummonTokens;
   const key = `${state.mode}|${base}|${tenCost}|${multiUnlocked ? "10" : "-"}|${state.gold}|${active ? "on" : "off"}`
-    + `|${multiBand === null ? "-" : multiBand.max}`
+    + `|${multiBand === null ? "-" : multiBand.max}|tt:${talismanTokens}`
+    + `|wish:${wish.cost}:${wish.reason ?? wishChars.join("")}`
     + `|${products.map((product) => `${product.intent}:${product.effect}`).join(",")}`;
   if (key === summonShopRenderKey) return;
   summonShopRenderKey = key;
   const cards = products.map((product) => {
     const price = base + SUMMON_SURCHARGE[product.intent];
-    const affordable = state.gold >= price;
+    const freeToken = product.intent === "balanced" && talismanTokens > 0;
+    const affordable = freeToken || state.gold >= price;
     const banded = product.band !== null;
     return summonCardMarkup({
       key: product.intent,
@@ -112,18 +130,42 @@ export function renderSummonShop(): void {
       effect: product.effect,
       tint: product.tint,
       icon: product.icon,
-      price: `${price} 엽전`,
+      price: freeToken ? "무료 1회" : `${price} 엽전`,
       disabled: !active || !affordable,
       affordable: !active || affordable,
       hotkey: product.intent === "balanced" ? "1" : undefined,
       testId: product.intent === "balanced" ? "summon-button" : undefined,
+      badge: freeToken ? `부적 ×${talismanTokens}` : undefined,
       title: `${product.label} · ${product.effect} · ${price}엽전`
+        + (freeToken ? ` · 부적 무료권 ${talismanTokens}장 — 다음 1회 무료` : "")
         + (product.intent === "balanced" ? "" : ` (기본 ${base} + 목적 ${SUMMON_SURCHARGE[product.intent]})`)
         + (banded && product.effect !== product.bandLabel ? ` · ${product.bandLabel}` : "")
+        + (banded && product.odds !== "" ? ` · 확률 ${product.odds}` : "")
         + (banded ? ` · 낮은 별이 더 흔합니다 · ${PAIR_BOOST_NOTE}` : "")
         + (product.band !== null && product.band.min > 1 ? ` · ${STROKE_STAR_NOTE}` : "")
     });
   });
+  // 성어 기원 — 부족 글자가 없으면(추적 없음/완성) 비활성 + 사유를 효과 줄에 적는다.
+  // 결과는 항상 1★라 전투력이 아니라 성어 완성을 사는 상품이다. 별승급(캐주얼)
+  // 전용 — 자형연성은 부족 글자가 곧 합성 재료라 승률로 새는 것이 실측돼
+  // (짝시드 90런 0.556→0.733) 계보 소환에 남긴다. 티어 카드와 같은 노출 규칙.
+  if (state.mode === "casual") cards.push(summonCardMarkup({
+    key: "idiom-wish",
+    label: "성어 기원",
+    effect: wish.reason === null
+      ? `부족 ${wishChars.slice(0, 4).join("·")}${wishChars.length > 4 ? "…" : ""} · 1★`
+      : wish.reason,
+    tint: "#96324a",
+    icon: "v4/shop/shop-lineage-scroll-v1",
+    price: `${wish.cost} 엽전`,
+    disabled: !active || wish.reason !== null || state.gold < wish.cost,
+    affordable: !active || wish.reason !== null || state.gold >= wish.cost,
+    testId: "idiom-wish-button",
+    title: "성어 기원 · 추적 성어의 부족 글자를 부릅니다(1★)"
+      + ` · ${wish.cost}엽전 (기본 ${base} × ${IDIOM_WISH_COST_MULTIPLIER})`
+      + " · 부적에 기원을 적어 올리는 소환 — 전투력이 아니라 성어 완성을 삽니다"
+      + (wish.reason === null ? ` · 부족 ${wishChars.join("·")}` : ` · ${wish.reason}`)
+  }));
   cards.push(summonCardMarkup({
     key: "multi",
     label: "10연 소환",
@@ -142,7 +184,7 @@ export function renderSummonShop(): void {
     testId: "multi-summon-button",
     title: multiUnlocked
       ? `10연 소환 · ${tenCost}엽전 · 할증 없음`
-        + (multiBand === null ? "" : ` · 기본 밴드 ${multiBand.min}~${multiBand.max}★ · ${multiBand.max}★ 1기 보장`)
+        + (multiBand === null ? "" : ` · 주로 ${multiBand.min}~${multiBand.max}★ · ${multiBand.max}★ 1기 보장`)
       : "10웨이브를 지키면 열립니다"
   }));
   must<HTMLElement>("#summon-shop").innerHTML = cards.join("");
@@ -172,6 +214,9 @@ export function wireShop1(): void {
     if (!card || card.disabled) return;
     const product = card.dataset.summonProduct ?? "balanced";
     if (product === "multi") summonAndFocus(10);
+    else if (product === "idiom-wish") summonIdiomWishAndFocus();
+    // 부적 무료권이 있으면 기본 소환은 무료 래퍼를 거친다(트랙 C).
+    else if (product === "balanced" && ctx.talismanFreeSummonTokens > 0) summonWithTalismanToken();
     else summonAndFocus(1, product as SummonIntent);
   });
 }

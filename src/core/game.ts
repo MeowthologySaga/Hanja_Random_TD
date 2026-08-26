@@ -1,4 +1,9 @@
 import {
+  CHAINSEAL_SEAL_SECONDS,
+  CHAINSEAL_STACK_WINDOW,
+  CHAINSEAL_STORE_RATIO,
+  chainsealMaxStacks,
+  commandRallySeconds,
   FROST_ZONE_DURATION,
   FROST_ZONE_RADIUS,
   frostSlowRatio,
@@ -6,10 +11,17 @@ import {
   GWICHEON_MIN_STAR,
   GWICHEON_RUSH_THRESHOLD,
   gwicheonChargeSeconds,
+  HARVEST_KILLS_PER_ESSENCE,
   hasActiveSkills,
   idiomBlessingBonus,
   MOMENTUM_STACK_BONUS,
   momentumMaxStacks,
+  REAPER_BOSS_CHIP_RATIO,
+  REAPER_EXECUTE_COOLDOWN_SECONDS,
+  reaperExecuteThreshold,
+  SCORCH_DPS_RATIO,
+  SCORCH_ZONE_RADIUS,
+  scorchZoneSeconds,
   WARFARE_BRAND_DURATION,
   warfareBrandPower
 } from "./abilities";
@@ -19,9 +31,18 @@ import {
   CASUAL_STAR_HASTE_PER_STAR,
   CASUAL_STAR_POWER,
   CASUAL_STAR_RANGE,
-  casualNaturalStar,
-  casualStrokeCount
+  casualNaturalStar
 } from "./casual";
+import {
+  autoFuseCasual as runAutoFuseCasual,
+  casualAutoFusionPlan as buildCasualAutoFusionPlan,
+  casualFusionQuote as buildCasualFusionQuote,
+  casualMaterialProtection as findCasualMaterialProtection,
+  casualMaterialProtections as listCasualMaterialProtections,
+  casualResultPool as findCasualResultPool,
+  fuseCasual as runFuseCasual,
+  type CasualFusionContext
+} from "./casual-fusion";
 import {
   BOARD_CELLS,
   BOARD_FORMATIONS,
@@ -47,7 +68,6 @@ import {
 import {
   type CasualAutoFusionGroup,
   type CasualAutoFusionReport,
-  type CasualFusionGain,
   type CasualFusionQuote,
   type CasualFusionResult,
   type CasualResultPool,
@@ -62,14 +82,11 @@ import {
 import {
   autoConcentrationPath,
   CASUAL_BOSS_HP_TRIM,
-  casualAutoSkipReason,
   casualDismantleEssence,
   casualDismantleScore,
-  casualFusionDismantleScore,
-  casualFusionEssenceRefund,
-  casualFusionHeadline,
   casualGoalOrder,
-  casualStarIndexFor,
+  casualStarBandShare,
+  casualSummonStarDistribution,
   concentrationEssenceCost,
   concentrationEssenceRefund,
   concentrationPathLabel,
@@ -82,12 +99,15 @@ import {
   FIRST_PREP_SECONDS,
   FORMATION_ROUTE_COVERAGE_MULTIPLIER,
   GATE_OPENING_WARD,
+  IDIOM_RESEARCH_CONNECTION_SCALE,
+  idiomWishCost,
   interestForGold,
   MAX_CONCENTRATION_LEVEL,
   MODE_ENEMY_COUNT_SCALE,
   regionEnemyHpMultiplier,
   SUMMON_STAGE_WEIGHTS,
   type SummonStarBand,
+  TALISMAN_MODE_ENEMY_HP_SCALE,
   TIERED_SUMMON_INTENTS,
   TUTORIAL_ENEMY_COUNT_SCALE,
   TUTORIAL_ENEMY_HP_SCALE,
@@ -105,7 +125,6 @@ import {
 import {
   activePoolBaseWeight,
   CASUAL_PAIR_WEIGHT,
-  CASUAL_STAR_DECAY,
   definitionForTower,
   ELEMENT_STYLES,
   elementUpgradeCost,
@@ -129,8 +148,7 @@ import {
   SUMMON_SURCHARGE,
   summonCost,
   UPGRADE_STAT_META,
-  upgradeEffectiveLevels,
-  WUXING_ORDER
+  upgradeEffectiveLevels
 } from "./hanzi";
 import {
   featuredIdiomsForRun,
@@ -139,8 +157,10 @@ import {
   idiomById,
   type IdiomDefinition,
   idiomDirectPoolChars,
-  idiomsForRegion
+  idiomsForRegion,
+  idiomWishChars
 } from "./idioms";
+import { defaultNotationForRegion } from "./notation";
 import { SeededRng } from "./rng";
 import {
   type AbilitySpec,
@@ -198,10 +218,13 @@ export {
   MAX_CONCENTRATION_LEVEL,
   FIRST_PREP_SECONDS,
   GATE_OPENING_WARD,
+  IDIOM_RESEARCH_CONNECTION_SCALE,
   concentrationEssenceCost,
   autoConcentrationPath,
   concentrationPathLabel,
   concentrationEssenceRefund,
+  IDIOM_WISH_COST_MULTIPLIER,
+  idiomWishCost,
   dismantleEssenceValue,
   casualDismantleEssence,
   casualDismantleScore,
@@ -211,6 +234,13 @@ export {
   TUTORIAL_ENEMY_COUNT_SCALE
 } from "./engine-tuning";
 
+/**
+ * 목표 서책의 성어 동시 추적 상한 — gripe #3 합의값. 부족 글자 합집합이
+ * 소환 가중을 나눠 갖는 구조라, 셋을 넘기면 가중이 묽어져 "고르는 재미"가
+ * 사라진다.
+ */
+export const MAX_TRACKED_IDIOMS = 3;
+
 export class GameEngine {
   readonly state: GameState;
   readonly catalog: HanziCatalog;
@@ -219,6 +249,13 @@ export class GameEngine {
   readonly goalOrder: readonly string[];
   /** 수련장 여부. 켜져 있을 때만 완화 계수와 tutorialGrant* 지급 훅이 산다. */
   readonly tutorial: boolean;
+  /**
+   * 부적 만들기를 켠 런인가(트랙 C2 ③). 참이면 적 체력에만
+   * TALISMAN_MODE_ENEMY_HP_SCALE 이 곱해진다 — 부적 보상의 대가를 수입 회수가
+   * 아니라 난이도로 받는다. 시뮬 봇은 옵션을 넘기지 않으므로 언제나 거짓이고,
+   * 따라서 게이트 수치는 이 변경 전과 완전히 같다.
+   */
+  readonly talismanMode: boolean;
   private rng: SeededRng;
   private events: GameEvent[] = [];
   private nextTowerId = 1;
@@ -234,20 +271,26 @@ export class GameEngine {
   private readonly combatFormationBonuses = [0, 0, 0, 0, 0];
   // [SKILL-V1] 성어의 가호: 진별 가호 배율 캐시(발동 중 봉인 기준).
   private readonly combatIdiomBlessings = [0, 0, 0, 0, 0];
+  // [SKILL-V2] 호령: 진별 집중 명령(대상 공유). 4초 남짓의 일시 상태라 세이브 밖이다.
+  private readonly commandRallies: Array<{ targetId: number; until: number } | null> = [null, null, null, null, null];
   private combatDistinctElements = 0;
   /** FB7-8성: 이번 틱에 극성 개안 오라가 살아 있는 오행. 오행당 최대 1개. */
   private readonly combatPolarisElements = new Set<Wuxing>();
 
   constructor(seed: string, region: RegionCode = "KR", mode: GameMode = "standard", options: GameEngineOptions = {}) {
     this.tutorial = options.tutorial === true;
+    this.talismanMode = options.talismanMode === true;
     this.catalog = getCatalog(region);
     this.evolution = new EvolutionService(this.catalog);
     this.rng = new SeededRng(seed);
     this.goalOrder = mode === "casual" ? casualGoalOrder(this.catalog) : this.catalog.goalOrder;
     const targetChar = this.goalOrder[0] ?? this.catalog.activePool[0]?.char ?? "";
+    const featuredIdiomIds = featuredIdiomsForRun(region, seed).map((idiom) => idiom.id);
     this.state = {
       seed,
       region,
+      // 표기 축(gripe #6). 옵션이 없으면 로스터의 자국 표기 — 현행과 동일 동작.
+      notation: options.notation ?? defaultNotationForRegion(region),
       mode,
       phase: "title",
       defeatCause: null,
@@ -280,7 +323,9 @@ export class GameEngine {
       targetChar,
       goalsCompleted: [],
       idiomSeals: [],
-      featuredIdiomIds: featuredIdiomsForRun(region, seed).map((idiom) => idiom.id),
+      featuredIdiomIds,
+      // 기존의 "현재 성어 목표" 를 그대로 승계 — 첫 목표 성어 1개 추적으로 시작한다.
+      trackedIdiomIds: featuredIdiomIds.slice(0, 1),
       discoveredChars: [],
       softPity: 0,
       lineageClueProgress: 0,
@@ -305,6 +350,8 @@ export class GameEngine {
     this.nextAbilityZoneId = 1;
     this.currentPlan = null;
     this.autoEvolutionCooldown = 0;
+    // [SKILL-V2] 호령 집중 명령은 런을 넘기지 않는다.
+    this.commandRallies.fill(null);
     const targetChar = this.goalOrder[0] ?? this.catalog.activePool[0]?.char ?? "";
     Object.assign(this.state, {
       phase: "prep",
@@ -338,6 +385,7 @@ export class GameEngine {
       goalsCompleted: [],
       idiomSeals: [],
       featuredIdiomIds: [...this.state.featuredIdiomIds],
+      trackedIdiomIds: this.state.featuredIdiomIds.slice(0, 1),
       discoveredChars: [],
       softPity: 0,
       lineageClueProgress: 0,
@@ -429,7 +477,9 @@ export class GameEngine {
     const casualBossTrim = isBoss && this.state.mode === "casual" ? CASUAL_BOSS_HP_TRIM : 1;
     const hp = plan.hp * (isBoss || !plan.boss ? 1 : 1 / bossFactor) * hpJitter * casualBossTrim
       * regionEnemyHpMultiplier(this.state.region, this.state.wave, this.state.mode)
-      * (this.tutorial ? TUTORIAL_ENEMY_HP_SCALE : 1);
+      * (this.tutorial ? TUTORIAL_ENEMY_HP_SCALE : 1)
+      // 부적 모드의 대가는 여기 하나뿐이다 — 수량·속도·보스 트림은 그대로다.
+      * (this.talismanMode ? TALISMAN_MODE_ENEMY_HP_SCALE : 1);
     const archetype = isBoss ? "boss" : plan.boss ? "normal" : plan.archetype;
     this.state.enemies.push({
       id: this.nextEnemyId++,
@@ -610,6 +660,77 @@ export class GameEngine {
     return { label: "서리길", duration: FROST_ZONE_DURATION, damagePerSecond: 0 };
   }
 
+  /**
+   * [SKILL-V2] 소흔(scorch) 잔불 — 잔화 지대 문법을 빌린 처치 지점 지속 피해 지대.
+   * 트리거만 처치일 뿐 판정·연출은 기존 장판과 같다. 자령당 1개(최근 처치 자리).
+   */
+  private deployEmberZone(tower: Tower, victim: Enemy): void {
+    const definition = definitionForTower(this.catalog, tower.definitionId);
+    const star = this.state.mode === "casual" ? tower.casualStar ?? tower.naturalStar ?? 1 : null;
+    const duration = scorchZoneSeconds(star);
+    const abilityPower = 1 + this.combinedUpgradeBonus(tower.wuxing, "abilityPower");
+    const damagePerSecond = definition.combat.baseDamage * this.towerPowerMultiplier(tower)
+      * definition.combat.budgetMultiplier * SCORCH_DPS_RATIO * abilityPower;
+    const existing = this.state.abilityZones.find((zone) => zone.towerId === tower.id);
+    const zone: AbilityZone = {
+      id: existing?.id ?? this.nextAbilityZoneId++,
+      towerId: tower.id,
+      kind: "ember",
+      wuxing: tower.wuxing,
+      progress: victim.progress,
+      radius: SCORCH_ZONE_RADIUS * this.casualSplashRadiusScale(tower),
+      damagePerSecond,
+      expiresAt: this.state.elapsed + duration,
+      color: "#ff9a52"
+    };
+    if (existing) Object.assign(existing, zone);
+    else this.state.abilityZones.push(zone);
+    if (this.state.abilityZones.length > 20) this.state.abilityZones.shift();
+    const origin = BOARD_CELLS[tower.cell] as Point;
+    this.emitAbility(
+      tower,
+      definition.combat.abilities.semantic,
+      origin,
+      positionOnPath(victim.progress),
+      1,
+      `잔불 ${duration.toFixed(1)}초 · 초당 ${Math.round(damagePerSecond)} 피해`,
+      true
+    );
+  }
+
+  /**
+   * [SKILL-V2] 채기(harvest) — N번째 처치마다 자기 오행 문기 +1.
+   * 문기 인플레 방지를 위해 주기는 상수 하나로 관리하고 시뮬 게이트로 검증한다.
+   */
+  private harvestEssence(tower: Tower, at: Point): void {
+    tower.harvestKills = (tower.harvestKills ?? 0) + 1;
+    if (tower.harvestKills % HARVEST_KILLS_PER_ESSENCE !== 0) return;
+    this.state.elementEssence[tower.wuxing] += 1;
+    this.state.elementEssenceGenerated[tower.wuxing] += 1;
+    const definition = definitionForTower(this.catalog, tower.definitionId);
+    const origin = BOARD_CELLS[tower.cell] as Point;
+    this.emitAbility(tower, definition.combat.abilities.semantic, origin, at, 1, `${tower.wuxing} 문기 +1 · ${HARVEST_KILLS_PER_ESSENCE}처치 수확`);
+  }
+
+  /**
+   * [SKILL-V2] 소흔·채기의 처치 훅. 직접 타격 계열(기본 공격·확산·연쇄·기술
+   * 추가타)에만 출처 자령이 붙는다 — 독·장판 틱 처치는 출처 없이 그대로 둔다
+   * (보수적 선택: 간접 처치까지 세면 수확·잔불이 눈덩이처럼 커진다).
+   */
+  private handleTowerKill(tower: Tower, victim: Enemy, at: Point): void {
+    if (!this.towerHasActiveSkills(tower)) return;
+    const family = definitionForTower(this.catalog, tower.definitionId).combat.abilities.semanticFamily;
+    if (family === "scorch") this.deployEmberZone(tower, victim);
+    else if (family === "harvest") this.harvestEssence(tower, at);
+  }
+
+  /** [SKILL-V2] 호령 — 이 진에 살아 있는 집중 명령. 없거나 끝났으면 null. */
+  commandRallyAt(formationIndex: number): { targetId: number; until: number } | null {
+    const rally = this.commandRallies[formationIndex];
+    if (!rally || rally.until <= this.state.elapsed) return null;
+    return rally;
+  }
+
   private updateTowers(delta: number): void {
     for (const tower of this.state.towers) {
       tower.pulse = Math.max(0, tower.pulse - delta * 3);
@@ -663,7 +784,7 @@ export class GameEngine {
     const origin = BOARD_CELLS[tower.cell] as Point;
     const at = this.enemyPoint(target);
     // 장갑 완전 관통 + 잔여 체력 이상의 피해 = 확정 정화. 보상은 damageEnemy 가 지급한다.
-    this.damageEnemy(target, target.hp + 10, false, false, 1);
+    this.damageEnemy(target, target.hp + 10, false, false, 1, tower);
     this.emitAbility(tower, GWICHEON_ABILITY, origin, at, 1, "가장 오래 버틴 일반 망령 정화 · 보상 지급");
     return true;
   }
@@ -687,6 +808,13 @@ export class GameEngine {
     candidates.length = 0;
     for (const enemy of this.state.enemies) if (distance(origin, this.enemyPoint(enemy)) <= range) candidates.push(enemy);
     if (candidates.length === 0) return undefined;
+    // [SKILL-V2] 호령: 집중 명령이 살아 있으면 같은 진의 자령은 그 대상을 우선한다.
+    // 사거리 밖이면 따르지 않고(candidates 에 없음) 평소 우선순위로 돌아간다.
+    const rally = this.commandRallyAt(Math.floor(tower.cell / CELLS_PER_FORMATION));
+    if (rally) {
+      const focus = candidates.find((enemy) => enemy.id === rally.targetId);
+      if (focus) return focus;
+    }
     const priority = definition.combat.abilities.targetPriority;
     let best = candidates[0] as Enemy;
     let bestValue = -Infinity;
@@ -730,6 +858,11 @@ export class GameEngine {
     const semanticTrigger = activeSkills && tower.shotCount % semanticEvery === 0
       // [SKILL-V1] 파죽(momentum)은 별도 발동 주기가 없는 패시브라 주기 기술에서 뺀다.
       && abilities.semanticFamily !== "momentum"
+      // [SKILL-V2] 연환 인장(공격마다)·소흔(처치)·채기(처치)도 주기 기술이 아니다.
+      // 참명·호령은 주기 발동이 남는다(참명 주기는 우두머리 참격 전용).
+      && abilities.semanticFamily !== "chainseal"
+      && abilities.semanticFamily !== "scorch"
+      && abilities.semanticFamily !== "harvest"
       && (abilities.semanticFamily !== "weather" || this.state.enemies.length >= 5);
     // At most one active skill may resolve from a tower on the same attack.
     const signature = activeSkills && !semanticTrigger && tower.shotCount % tuning.signatureEvery === 0;
@@ -804,7 +937,45 @@ export class GameEngine {
     }
 
     this.events.push({ type: "shot", from: origin, to: targetPoint, color: style.color, critical, wuxing: tower.wuxing });
-    this.damageEnemy(target, damage, critical, weakness, armorPenetration);
+    this.damageEnemy(target, damage, critical, weakness, armorPenetration, tower);
+
+    // [SKILL-V2] 연환 인장: 공격마다 인장을 겹치고 상한에서 누적 피해 폭발 +
+    // 1.2초 제자리 봉인. 스택·적립은 적에게 남으므로 여러 연환 자령이 나눠 쌓는다.
+    if (activeSkills && abilities.semanticFamily === "chainseal" && this.state.enemies.includes(target)) {
+      if ((target.sealUntil ?? 0) <= this.state.elapsed) {
+        target.sealStacks = 0;
+        target.sealStored = 0;
+      }
+      const sealCap = chainsealMaxStacks(this.state.mode === "casual" ? tower.casualStar ?? tower.naturalStar ?? 1 : tower.stage);
+      target.sealStacks = (target.sealStacks ?? 0) + 1;
+      target.sealStored = (target.sealStored ?? 0) + damage * CHAINSEAL_STORE_RATIO;
+      target.sealUntil = this.state.elapsed + CHAINSEAL_STACK_WINDOW;
+      if (target.sealStacks >= sealCap) {
+        const burst = target.sealStored;
+        target.sealStacks = 0;
+        target.sealStored = 0;
+        target.sealUntil = 0;
+        // 절대 원칙: 봉인은 제자리 정지다 — 진행도를 되돌리지 않는다.
+        target.stunnedUntil = Math.max(target.stunnedUntil, this.state.elapsed + CHAINSEAL_SEAL_SECONDS);
+        this.emitAbility(tower, abilities.semantic, origin, targetPoint, 1, `연환 폭발 ${Math.round(burst)} 피해 · ${CHAINSEAL_SEAL_SECONDS}초 제자리 봉인`);
+        this.damageEnemy(target, burst, false, weakness, 0.2, tower);
+      }
+    }
+
+    // [SKILL-V2] 참명: 체력 문턱 이하의 일반 적은 즉시 소멸(보상 정상 지급).
+    // 우두머리·정예(철갑)는 면역 — 대신 주기 발동이 현재 체력 3%를 벤다.
+    // 참격 후에는 숨 고르기(자령당 최소 간격)가 붙는다 — 문턱은 기획 고정이라
+    // 빈도로만 세기를 조절한다.
+    if (activeSkills && abilities.semanticFamily === "reaper" && this.state.enemies.includes(target)
+      && !target.boss && target.archetype !== "armored"
+      && (tower.reaperReadyAt ?? 0) <= this.state.elapsed) {
+      const threshold = reaperExecuteThreshold(this.state.mode === "casual" ? tower.casualStar ?? tower.naturalStar ?? 1 : null);
+      if (target.hp / target.maxHp <= threshold) {
+        tower.reaperReadyAt = this.state.elapsed + REAPER_EXECUTE_COOLDOWN_SECONDS;
+        this.emitAbility(tower, abilities.semantic, origin, targetPoint, 1, `참명 · 체력 ${Math.round(threshold * 100)}% 이하 즉시 소멸`);
+        this.damageEnemy(target, target.hp + 10, false, false, 1, tower);
+      }
+    }
 
     if (activeSkills && tower.wuxing === "火") {
       // 수술 5: 캐주얼에서는 별이 곧 광역의 크기다(표준은 배율 1).
@@ -813,7 +984,7 @@ export class GameEngine {
       for (const enemy of this.state.enemies
         .filter((candidate) => candidate.id !== target.id && distance(this.enemyPoint(candidate), targetPoint) <= splashRadius)
         .slice(0, 5)) {
-        this.damageEnemy(enemy, damage * splashRatio * abilityPower, false, enemy.weakness === tower.wuxing);
+        this.damageEnemy(enemy, damage * splashRatio * abilityPower, false, enemy.weakness === tower.wuxing, 0, tower);
       }
     } else if (activeSkills && tower.wuxing === "水" && this.state.enemies.includes(target)) {
       target.slowFactor = Math.min(target.slowFactor, Math.max(0.38, tuning.slowFactor - signatureControlBonus));
@@ -825,7 +996,7 @@ export class GameEngine {
         .sort((a, b) => b.progress - a.progress)
         .slice(0, tuning.chainCount + elementTraitExtraChainTargets(conductionLevel));
       for (const enemy of chained) {
-        this.damageEnemy(enemy, damage * tuning.chainRatio * abilityPower * (1 + conductionLevel * 0.02), false, enemy.weakness === tower.wuxing);
+        this.damageEnemy(enemy, damage * tuning.chainRatio * abilityPower * (1 + conductionLevel * 0.02), false, enemy.weakness === tower.wuxing, 0, tower);
       }
     } else if (activeSkills && tower.wuxing === "木" && this.state.enemies.includes(target)) {
       target.poisonDps = Math.max(target.poisonDps, damage * (tuning.poisonRatio + signatureControlBonus * 0.35) * abilityPower);
@@ -844,7 +1015,7 @@ export class GameEngine {
       let roleTargets = 1;
       let roleEffect = "이번 공격 피해 ×" + tuning.signatureMultiplier.toFixed(2);
       if (profile.role === "rapid" && this.state.enemies.includes(target)) {
-        this.damageEnemy(target, damage * 0.58 * tuning.signatureMultiplier * abilityPower, false, weakness, armorPenetration * 0.5);
+        this.damageEnemy(target, damage * 0.58 * tuning.signatureMultiplier * abilityPower, false, weakness, armorPenetration * 0.5, tower);
         roleEffect = "같은 적에게 " + String(Math.round(58 * tuning.signatureMultiplier)) + "% 추가타";
       } else if (profile.role === "splash") {
         // 수술 5: 역할 확산도 캐주얼 별 스케일을 함께 탄다.
@@ -853,7 +1024,7 @@ export class GameEngine {
         const spreadTargets = this.state.enemies
           .filter((candidate) => candidate.id !== target.id && distance(this.enemyPoint(candidate), targetPoint) <= spreadRadius)
           .slice(0, 5);
-        for (const enemy of spreadTargets) this.damageEnemy(enemy, damage * spreadRatio * abilityPower, false, enemy.weakness === tower.wuxing);
+        for (const enemy of spreadTargets) this.damageEnemy(enemy, damage * spreadRatio * abilityPower, false, enemy.weakness === tower.wuxing, 0, tower);
         roleTargets += spreadTargets.length;
         roleEffect = "주변 " + String(spreadTargets.length) + "체에 " + String(Math.round(spreadRatio * 100)) + "% 확산";
       } else if (profile.role === "control") {
@@ -872,7 +1043,7 @@ export class GameEngine {
 
     if (lineageTrigger && abilities.lineage && abilities.lineageWuxing) {
       const lineageWeakness = target.weakness === abilities.lineageWuxing;
-      if (this.state.enemies.includes(target)) this.damageEnemy(target, damage * tuning.lineageRatio * abilityPower, false, lineageWeakness, 0.15);
+      if (this.state.enemies.includes(target)) this.damageEnemy(target, damage * tuning.lineageRatio * abilityPower, false, lineageWeakness, 0.15, tower);
       this.events.push({ type: "shot", from: origin, to: targetPoint, color: abilities.lineage.color, critical: false, wuxing: abilities.lineageWuxing });
       this.emitAbility(
         tower,
@@ -923,7 +1094,7 @@ export class GameEngine {
       if (relay) {
         const relayPoint = this.enemyPoint(relay);
         this.events.push({ type: "shot", from: targetPoint, to: relayPoint, color: abilities.semantic.color, critical: false, wuxing: tower.wuxing });
-        this.damageEnemy(relay, damage * tuning.semanticMultiplier * potency * abilityPower, false, relay.weakness === tower.wuxing, 0.12);
+        this.damageEnemy(relay, damage * tuning.semanticMultiplier * potency * abilityPower, false, relay.weakness === tower.wuxing, 0.12, tower);
         targets = 2;
         effect = "길 반대편 1체에 " + String(Math.round(tuning.semanticMultiplier * potency * 100)) + "% 전이";
       }
@@ -936,7 +1107,7 @@ export class GameEngine {
       const victims = this.state.enemies
         .filter((candidate) => candidate.id !== target.id && distance(this.enemyPoint(candidate), targetPoint) <= radius)
         .slice(0, 5);
-      for (const victim of victims) this.damageEnemy(victim, damage * tuning.semanticMultiplier * potency * abilityPower, false, victim.weakness === tower.wuxing);
+      for (const victim of victims) this.damageEnemy(victim, damage * tuning.semanticMultiplier * potency * abilityPower, false, victim.weakness === tower.wuxing, 0, tower);
       targets += victims.length;
       effect = "밀집 구간 " + String(targets) + "체에 " + String(Math.round(tuning.semanticMultiplier * potency * 100)) + "% 피해";
     } else if (family === "mountain" && this.state.enemies.includes(target)) {
@@ -976,6 +1147,24 @@ export class GameEngine {
       effect = "최고 체력 적 간파 · 이번 공격 ×" + tuning.semanticMultiplier.toFixed(2);
     } else if (family === "metalwork") {
       effect = "최고 장갑 적 우선 · 추가 관통 22%";
+    } else if (family === "command") {
+      // [SKILL-V2] 호령: 같은 진 전원이 시전자의 대상을 집중 공격(대상 공유만, AI 단순).
+      const rallySeconds = commandRallySeconds(this.state.mode === "casual" ? tower.casualStar ?? tower.naturalStar ?? 1 : null);
+      const formation = Math.floor(tower.cell / CELLS_PER_FORMATION);
+      this.commandRallies[formation] = { targetId: target.id, until: this.state.elapsed + rallySeconds };
+      const allies = this.state.towers.filter((candidate) => candidate.id !== tower.id && Math.floor(candidate.cell / CELLS_PER_FORMATION) === formation);
+      targets = Math.max(1, allies.length);
+      effect = `같은 진 ${allies.length}기 집중 호령 · ${rallySeconds.toFixed(1)}초 · 사거리 밖 제외`;
+    } else if (family === "reaper") {
+      // [SKILL-V2] 참명 주기: 우두머리·정예 한정 현재 체력 3% 참격(즉시 소멸 면역 보상).
+      const threshold = reaperExecuteThreshold(this.state.mode === "casual" ? tower.casualStar ?? tower.naturalStar ?? 1 : null);
+      if ((target.boss || target.archetype === "armored") && this.state.enemies.includes(target)) {
+        const chip = Math.max(1, target.hp * REAPER_BOSS_CHIP_RATIO);
+        this.damageEnemy(target, chip, false, false, 1, tower);
+        effect = `우두머리·정예 참격 · 현재 체력 ${Math.round(REAPER_BOSS_CHIP_RATIO * 100)}% 고정 피해`;
+      } else {
+        effect = `참명 대기 · 체력 ${Math.round(threshold * 100)}% 이하 즉시 소멸`;
+      }
     } else if (family === "warfare" && this.state.enemies.includes(target)) {
       // [SKILL-V1] 상극 각인: 대상에게 자기 오행의 상극 낙인(4초). 밀거나 되돌리지 않는다.
       const brandPower = warfareBrandPower(this.state.mode === "casual" ? tower.casualStar ?? tower.naturalStar ?? 1 : null);
@@ -1015,7 +1204,7 @@ export class GameEngine {
     });
   }
 
-  private damageEnemy(enemy: Enemy, rawAmount: number, critical: boolean, weakness: boolean, armorPenetration = 0): void {
+  private damageEnemy(enemy: Enemy, rawAmount: number, critical: boolean, weakness: boolean, armorPenetration = 0, source?: Tower): void {
     if (!this.state.enemies.includes(enemy)) return;
     const effectiveArmor = enemy.armor * (1 - armorPenetration);
     const amount = rawAmount * (1 - effectiveArmor);
@@ -1029,6 +1218,8 @@ export class GameEngine {
     this.state.gold += enemy.reward;
     this.state.killCount += 1;
     this.events.push({ type: "kill", at, reward: enemy.reward });
+    // [SKILL-V2] 소흔·채기 처치 훅 — 출처 자령이 있는 직접 처치만 센다.
+    if (source) this.handleTowerKill(source, enemy, at);
   }
 
   private finishWave(): void {
@@ -1115,10 +1306,12 @@ export class GameEngine {
     if (this.state.gold < cost) return { ok: false, message: "엽전이 " + String(cost - this.state.gold) + " 부족합니다." };
     if (this.runSummonPool.length === 0) return { ok: false, message: "이 지역의 활성 소환 풀이 비어 있습니다." };
     const maxStage = this.state.mode === "casual" ? 5 : maxSummonStageForWave(this.state.wave);
-    // 캐주얼 소환은 확률 가중이 아니라 후보 풀 자체를 밴드로 잘라 상·하한을 만든다.
+    // 캐주얼 소환의 밴드 하한은 후보 풀 하드 컷("N★ 확정" 보장)이고, 상한은
+    // 컷이 아니다 — 후보는 8★까지 열어 두고 applyStarBandDecay 의 꼬리 감쇠가
+    // 상한 위 별을 잭팟 확률로 누른다(원 기획 #10).
     const band = this.summonStarBand(this.state.summonIntent);
     const casualPool = (): HanziDefinition[] => {
-      const banded = band === null ? [...this.runSummonPool] : this.starBandCandidates(band.min, band.max);
+      const banded = band === null ? [...this.runSummonPool] : this.starBandCandidates(band.min, 8);
       if (guaranteedStar === null) return banded;
       const guaranteed = banded.filter((definition) => (casualNaturalStar(definition.char) ?? 1) === guaranteedStar);
       return guaranteed.length > 0 ? guaranteed : banded;
@@ -1132,13 +1325,12 @@ export class GameEngine {
     const helpfulChars = this.state.mode === "casual"
       ? new Set([this.state.targetChar])
       : this.evolution.getHelpfulDirectCharacters(ownedTowers, this.state.targetChar);
-    const idiomTarget = this.currentIdiomTarget();
-    const idiomHelpfulChars = idiomTarget
-      ? this.state.mode === "casual"
-        ? new Set([...idiomTarget.chars])
-        : helpfulDirectCharsForIdiom(this.catalog, ownedTowers, idiomTarget)
-      : new Set<string>();
+    // gripe #3 전면 통합: 성어 가중은 추적 성어(최대 3)들의 부족 글자 합집합.
+    const idiomHelpfulChars = this.trackedIdiomMissingChars(ownedTowers);
     const connectionBonus = researchConnectionBonus(this.state.researchLevel);
+    // 연구를 실제로 산 만큼만 성어 부족 글자에 얹는다(0단계 기저 0.12 는 제외)
+    // — 연구 전 소환 분포가 통합 이전과 동일하게 유지된다.
+    const idiomConnectionBonus = connectionBonus - researchConnectionBonus(0);
     // The Korean playable-preview pool is much wider than the original
     // prototype pool. Scale focused additions with pool breadth so choosing a
     // Hanja or idiom remains a meaningful player decision among 1,000 entries.
@@ -1179,7 +1371,8 @@ export class GameEngine {
       let weight = baseWeight * exposureWeight;
       if (helpfulChars.has(definition.char)) weight += (GAME_CONFIG.targetWeightBase + connectionBonus * 3.2) * pityMultiplier * focusPoolScale * 0.65;
       if (definition.char === this.state.targetChar) weight += GAME_CONFIG.targetWeightBase * 1.4 * pityMultiplier * focusPoolScale;
-      if (idiomHelpfulChars.has(definition.char)) weight += GAME_CONFIG.idiomWeightBase * pityMultiplier * focusPoolScale * 0.7;
+      // 인연 연구가 성어 부족 글자에도 향한다 — "성어가 곧 목표"의 가중 절반.
+      if (idiomHelpfulChars.has(definition.char)) weight += (GAME_CONFIG.idiomWeightBase + idiomConnectionBonus * IDIOM_RESEARCH_CONNECTION_SCALE) * pityMultiplier * focusPoolScale * 0.7;
       if (this.state.summonIntent === "discovery") weight *= discovered.has(definition.char) ? 0.42 : 3.4;
       else if (this.state.summonIntent === "lineage") weight *= helpfulChars.has(definition.char) || idiomHelpfulChars.has(definition.char) ? 3.2 : 0.72;
       else if (this.state.summonIntent === "concentration") {
@@ -1193,7 +1386,7 @@ export class GameEngine {
     });
     // 짝 맞추기·목적 가중까지 끝난 뒤에 별 단위 목표 분포로 다시 눌러 준다.
     // 순서가 바뀌면 글자 수가 많은 낮은 별이 밴드 분포를 통째로 삼킨다.
-    if (band !== null) this.applyStarBandDecay(summonPool, weights);
+    if (band !== null) this.applyStarBandDecay(summonPool, weights, band);
     const targetDefinition = this.catalog.definitions.get(this.state.targetChar);
     const targetGuaranteeReady = this.state.summonIntent === "lineage"
       && this.state.lineageTargetProgress >= 29
@@ -1264,12 +1457,16 @@ export class GameEngine {
           ? "concentration"
           : "replacement";
     const helpfulLabel = helpfulReason === "both" ? " · 목표·사자성어 재료!" : helpfulReason === "goal" ? " · 목표 재료!" : helpfulReason === "idiom" ? " · 사자성어 재료!" : "";
-    const placementMessage = definition.char + " · " + definition.combat.roleLabel + (stored ? " 인벤토리 보관" : " 소환") + helpfulLabel;
+    // 잭팟 = 소프트 상한 위 별. 하한 보장과 달리 광고하지 않는 행운이므로 따로 외친다.
+    const drawnStar = casualNaturalStar(definition.char) ?? 1;
+    const jackpot = band !== null && drawnStar > band.max;
+    const jackpotLabel = jackpot ? ` · 상한 돌파 ${drawnStar}★!` : "";
+    const placementMessage = definition.char + " · " + definition.combat.roleLabel + (stored ? " 가방 보관" : " 소환") + helpfulLabel + jackpotLabel;
     this.state.lastMessage = isFirstSummon && startingFormation
       ? `${definition.wuxing} 자령 출현 → ${startingFormation.label} 무료 개방 · ${placementMessage} · 추가 소환 2기를 권장합니다.`
       : placementMessage;
     const eventAt = stored ? (startingFormation?.center ?? { x: 400, y: 300 }) : BOARD_CELLS[cell] as Point;
-    this.events.push({ type: "summon", at: eventAt, tower: { ...tower }, stored, helpful, helpfulReason, newDiscovery, utility });
+    this.events.push({ type: "summon", at: eventAt, tower: { ...tower }, stored, helpful, helpfulReason, newDiscovery, utility, jackpot });
     if (definition.char === this.state.targetChar) this.completeGoal(definition.char);
     if (!stored) this.resolveIdiomFormations();
     return { ok: true, message: this.state.lastMessage };
@@ -1284,7 +1481,7 @@ export class GameEngine {
     if (this.runSummonPool.length === 0) return { ok: false, message: "이 지역의 활성 소환 풀이 비어 있습니다." };
 
     const eventStart = this.events.length;
-    // 캐주얼 10연은 밴드 상한(기본 1~3★ → 3★) 1기를 보장한다. 열 장을 뽑고도
+    // 캐주얼 10연은 밴드 상한 이상(기본 밴드면 3★+, 잭팟 포함) 1기를 보장한다. 열 장을 뽑고도
     // 상한이 한 번도 안 나왔으면 마지막 한 장의 후보를 상한 별로 좁힌다.
     const band = this.summonStarBand(this.state.summonIntent);
     let bandTopSeen = false;
@@ -1306,15 +1503,15 @@ export class GameEngine {
     const placement = storedCount === 0
       ? "전장 자동 배치"
       : storedCount === amount
-        ? "인벤토리 보관"
-        : `전장 ${amount - storedCount}체 · 인벤토리 ${storedCount}체`;
+        ? "가방 보관"
+        : `전장 ${amount - storedCount}체 · 가방 ${storedCount}체`;
     this.state.lastMessage = `${amount}연 소환 완료 · 새 한자 ${discovered}종 · 목표·성어 재료 ${helpful}체 · ${placement}`;
     return { ok: true, message: this.state.lastMessage };
   }
 
   setAutoPlaceSummons(enabled: boolean): ActionResult {
     this.state.autoPlaceSummons = enabled;
-    this.state.lastMessage = enabled ? "뽑기 후 자동 배치 켜짐" : "뽑기 후 런 인벤토리 보관";
+    this.state.lastMessage = enabled ? "뽑기 후 자동 배치 켜짐" : "뽑기 후 가방 보관";
     return { ok: true, message: this.state.lastMessage };
   }
 
@@ -1366,7 +1563,7 @@ export class GameEngine {
     const at = (this.state.startingFormationIndex !== null
       ? BOARD_FORMATIONS[this.state.startingFormationIndex]?.center
       : undefined) ?? { x: 400, y: 300 };
-    this.state.lastMessage = `수련 지원 · ${char} 자령 지급 (인벤토리 보관)`;
+    this.state.lastMessage = `수련 지원 · ${char} 자령 지급 (가방 보관)`;
     this.events.push({
       type: "summon",
       at,
@@ -1375,7 +1572,8 @@ export class GameEngine {
       helpful: false,
       helpfulReason: null,
       newDiscovery,
-      utility: newDiscovery ? "new" : "concentration"
+      utility: newDiscovery ? "new" : "concentration",
+      jackpot: false
     });
     return { ok: true, message: this.state.lastMessage };
   }
@@ -1450,16 +1648,20 @@ export class GameEngine {
   }
 
   /**
-   * 밴드 안 별 분포를 `CASUAL_STAR_DECAY^(별 - 밴드하한)` 으로 눌러 낮은 별을 흔하게 만든다.
+   * 별 분포를 `casualStarBandShare` 의 목표 몫으로 눌러 낮은 별을 흔하게 만든다 —
+   * 밴드 안은 `CASUAL_STAR_DECAY^(별-하한)`, 상한 위는 `CASUAL_STAR_TAIL_DECAY`
+   * 의 가파른 잭팟 꼬리다.
    *
    * 별 단위로 먼저 목표 몫을 정하고 같은 별의 글자들이 그 몫을 나눠 갖는다.
    * 글자를 하나씩 곱하기만 하면 1★ 332자와 8★ 18자처럼 칸 크기가 다른 구간에서
-   * 감쇠가 글자 수 차이에 묻혀 버린다.
+   * 감쇠가 글자 수 차이에 묻혀 버린다. 하한은 요청 밴드가 아니라 실제 풀의
+   * 최저 별을 쓴다 — 소형 풀에서 starBandCandidates 가 하한을 넓혔을 수 있다.
    */
-  private applyStarBandDecay(pool: readonly HanziDefinition[], weights: number[]): void {
+  private applyStarBandDecay(pool: readonly HanziDefinition[], weights: number[], band: SummonStarBand): void {
     const starOf = (definition: HanziDefinition) => casualNaturalStar(definition.char) ?? 1;
     let bandMin = 8;
     for (const definition of pool) bandMin = Math.min(bandMin, starOf(definition));
+    const effectiveBand: SummonStarBand = { min: bandMin, max: band.max };
     const totals = new Map<number, number>();
     pool.forEach((definition, index) => {
       const weight = weights[index] ?? 0;
@@ -1473,8 +1675,27 @@ export class GameEngine {
       const star = starOf(definition);
       const total = totals.get(star) ?? 0;
       if (total <= 0) return;
-      weights[index] = (weight / total) * Math.pow(CASUAL_STAR_DECAY, star - bandMin);
+      weights[index] = (weight / total) * casualStarBandShare(star, effectiveBand);
     });
+  }
+
+  /**
+   * 확률 공개 UI 용 — 이 지역·모드에서 해당 소환 카드가 실제로 쓰는 별 분포
+   * (1~8★, 합 1). `applyStarBandDecay` 와 같은 실효 밴드·후보 별만 쓰므로
+   * 화면의 표가 곧 실측 분포다. 밴드가 없는 소환(자형연성·계보)은 null.
+   */
+  summonStarDistribution(intent: SummonIntent): ReadonlyArray<{ star: CasualStar; share: number }> | null {
+    const band = this.summonStarBand(intent);
+    if (band === null) return null;
+    const pool = this.starBandCandidates(band.min, 8);
+    let bandMin = 8;
+    const present = new Set<number>();
+    for (const definition of pool) {
+      const star = casualNaturalStar(definition.char) ?? 1;
+      present.add(star);
+      bandMin = Math.min(bandMin, star);
+    }
+    return casualSummonStarDistribution({ min: bandMin, max: band.max }, present);
   }
 
   /** 모드·지역별 상품 노출. 계보는 자형연성 전용, 티어는 캐주얼 + 충분한 풀 전용. */
@@ -1485,134 +1706,42 @@ export class GameEngine {
   }
 
   /**
-   * 같은 오행·같은 별 3기를 소모했을 때 무엇을 뽑게 되는지.
-   *
-   * 1순위는 이번 런의 소환 풀이다 — "내가 뽑을 수 있는 글자"가 결과로 나와야
-   * 규칙이 설명 가능하다. 그 오행에 상위 별 글자가 하나도 없으면(JP/CN 미리보기
-   * 풀은 30·32자뿐이라 흔히 그렇다) 지역 로스터 전체로 넓혀 승급 경로를 살린다.
-   * 두 단계 모두 star+1 → star+2 → … 순으로 가장 가까운 상위 별을 고른다.
+   * 캐주얼 승급 구현은 별도 모듈에 두되 GameEngine 공개 표면은 유지한다.
+   * private 상태를 통째로 노출하지 않고 필요한 동작만 콜백으로 전달한다.
    */
+  private casualFusionContext(): CasualFusionContext {
+    return {
+      state: this.state,
+      catalog: this.catalog,
+      runSummonPool: () => this.runSummonPool,
+      random: () => this.rng.next(),
+      getTargetPath: (targetChar) => this.evolution.getTargetPath(targetChar),
+      standardMaterialIds: (towers, targetChar) =>
+        this.evolution.getAvailableRecipes(towers, targetChar, null, "semi").flatMap((option) => option.materialTowerIds),
+      trackedIdioms: () => this.trackedIdioms(),
+      idioms: () => this.idioms(),
+      sealedIdiomTowerIds: () => this.sealedIdiomTowerIds(),
+      cleanupAssessments: () => this.cleanupAssessments(),
+      towerPowerMultiplier: (tower) => this.towerPowerMultiplier(tower),
+      towerAttackCooldown: (tower) => this.towerAttackCooldown(tower),
+      createTower: (definition, cell) => this.createTower(definition, cell),
+      discover: (char) => this.discover(char),
+      completeGoal: (char) => this.completeGoal(char),
+      resolveIdiomFormations: () => { this.resolveIdiomFormations(); },
+      isRunActive: () => this.isRunActive(),
+      emit: (event) => { this.events.push(event); }
+    };
+  }
+
   casualResultPool(wuxing: Wuxing, fromStar: CasualStar): CasualResultPool | null {
-    if (fromStar >= 8) return null;
-    const sources: Array<{ index: Map<string, HanziDefinition[]>; rosterFallback: boolean }> = [
-      { index: casualStarIndexFor(this.runSummonPool, this.runSummonPool), rosterFallback: false },
-      { index: casualStarIndexFor(this.catalog.definitions, this.catalog.definitions.values()), rosterFallback: true }
-    ];
-    for (const source of sources) {
-      for (let star = (fromStar + 1) as CasualStar; star <= 8; star = (star + 1) as CasualStar) {
-        const candidates = source.index.get(`${wuxing}:${star}`);
-        if (!candidates || candidates.length === 0) continue;
-        return {
-          star,
-          candidates,
-          starFallback: star !== fromStar + 1,
-          rosterFallback: source.rosterFallback
-        };
-      }
-    }
-    return null;
+    return findCasualResultPool(this.casualFusionContext(), wuxing, fromStar);
   }
 
   casualFusionQuote(materialIds: readonly number[]): CasualFusionQuote {
-    const quote: CasualFusionQuote = {
-      materialIds: [...materialIds],
-      fromStar: null,
-      toStar: null,
-      wuxing: null,
-      poolSize: 0,
-      starFallback: false,
-      rosterFallback: false,
-      blocked: [],
-      warnings: []
-    };
-    if (this.state.mode !== "casual") {
-      quote.blocked.push({ towerId: null, text: "별승급 진법에서만 같은 오행 3체 조합을 사용할 수 있습니다." });
-      return quote;
-    }
-    if (materialIds.length !== 3) {
-      quote.blocked.push({ towerId: null, text: "같은 오행·같은 별 자령 3기를 정확히 선택하세요." });
-      return quote;
-    }
-    if (new Set(materialIds).size !== 3) {
-      quote.blocked.push({ towerId: null, text: "서로 다른 자령 3기를 선택해야 합니다." });
-      return quote;
-    }
-    const all = [...this.state.towers, ...this.state.inventoryTowers];
-    const materials = materialIds
-      .map((id) => all.find((tower) => tower.id === id))
-      .filter((tower): tower is Tower => Boolean(tower));
-    for (const id of materialIds) {
-      if (!materials.some((tower) => tower.id === id)) quote.blocked.push({ towerId: id, text: `자령 #${id}이 이동했거나 사라졌습니다.` });
-    }
-    if (materials.length !== 3) return quote;
-
-    const first = materials[0] as Tower;
-    const fromStar = first.casualStar ?? first.naturalStar ?? null;
-    quote.fromStar = fromStar;
-    quote.wuxing = first.wuxing;
-    if (fromStar === null || materials.some((tower) => (tower.casualStar ?? tower.naturalStar) === undefined)) {
-      quote.blocked.push({ towerId: null, text: "선택한 자령의 별 정보를 확인할 수 없습니다." });
-      return quote;
-    }
-    if (fromStar >= 8) {
-      quote.blocked.push({ towerId: first.id, text: "8★ 자령은 더 승급할 수 없습니다." });
-      return quote;
-    }
-    for (const material of materials) {
-      if (material.wuxing !== first.wuxing) quote.blocked.push({ towerId: material.id, text: `${material.char}은 ${first.wuxing}행이 아닙니다.` });
-      if ((material.casualStar ?? material.naturalStar) !== fromStar) {
-        quote.blocked.push({ towerId: material.id, text: `${material.char}의 현재 별이 ${fromStar}★가 아닙니다.` });
-      }
-    }
-    // v3 규칙 2: 보호 자령은 본체 자리가 없어졌으므로 3기 어디에도 못 들어간다.
-    const context = this.casualProtectionContext();
-    for (const material of materials) {
-      const protection = this.casualMaterialProtectionFor(material, context);
-      if (protection) {
-        quote.blocked.push({ towerId: material.id, text: `${material.char} · ${protection} — 소모할 수 없습니다.`, kind: "protected" });
-      }
-    }
-    if (quote.blocked.length > 0) return quote;
-
-    const pool = this.casualResultPool(first.wuxing, fromStar);
-    if (!pool) {
-      quote.blocked.push({ towerId: null, text: `이 오행은 ${fromStar}★ 위 글자가 없습니다`, kind: "pool" });
-      return quote;
-    }
-    quote.toStar = pool.star;
-    quote.poolSize = pool.candidates.length;
-    quote.starFallback = pool.starFallback;
-    quote.rosterFallback = pool.rosterFallback;
-
-    const assessmentById = new Map(this.cleanupAssessments().map((assessment) => [assessment.towerId, assessment]));
-    const warningKeys = new Set<string>();
-    for (const material of materials) {
-      const assessment = assessmentById.get(material.id);
-      for (const reason of assessment?.protectedReasons ?? []) {
-        if (!reason.endsWith("공명 임계치")) continue;
-        const key = `${material.id}:${reason}`;
-        if (warningKeys.has(key)) continue;
-        warningKeys.add(key);
-        quote.warnings.push({ towerId: material.id, text: `${material.char} · ${reason}`, kind: "resonance" });
-      }
-      if (material.cell >= 0) {
-        const key = `${material.id}:deployed`;
-        if (!warningKeys.has(key)) quote.warnings.push({ towerId: material.id, text: `${material.char} · 현재 전장에 배치됨`, kind: "deployed" });
-        warningKeys.add(key);
-      }
-    }
-    return quote;
+    return buildCasualFusionQuote(this.casualFusionContext(), materialIds);
   }
 
-  /**
-   * 지금 발동 중인 사자성어에 참여하고 있는 전장 자령 id 집합.
-   *
-   * 두 곳이 이 집합을 쓴다.
-   *  - 캐주얼 3합·정리 보호: 봉인 성어의 글자를 재료로 태우면 발동이 꺼진다.
-   *  - 자동배치 자리 고정: 유지형 규칙에서는 자동배치가 이 넷을 흩뜨리면
-   *    제 손으로 보너스를 끄는 셈이라 이동 후보에서 통째로 뺀다.
-   * 흩어진 기록(비활성)은 지킬 줄이 없으므로 포함하지 않는다.
-   */
+  /** 지금 발동 중인 사자성어에 참여하는 전장 자령 id 집합. */
   sealedIdiomTowerIds(): Set<number> {
     const sealedCells = new Set(this.activeIdiomSeals().flatMap((seal) => seal.cells));
     if (sealedCells.size === 0) return new Set<number>();
@@ -1621,306 +1750,28 @@ export class GameEngine {
     );
   }
 
-  /**
-   * 이 자령을 3체 조합 재료로 쓰면 안 되는 사유. null 이면 재료로 안전하다.
-   * 자동 경로의 안전 필터이자 수동 경로에서 "그 자리에서" 보여 줄 사유다.
-   */
   casualMaterialProtection(towerId: number): string | null {
-    const tower = [...this.state.towers, ...this.state.inventoryTowers].find((candidate) => candidate.id === towerId);
-    if (!tower) return null;
-    return this.casualMaterialProtectionFor(tower, this.casualProtectionContext());
+    return findCasualMaterialProtection(this.casualFusionContext(), towerId);
   }
 
-  /**
-   * 보유 자령 전체의 보호 사유를 한 번에. 화면은 매 프레임 목록 전체를 훑으므로
-   * 자령마다 casualMaterialProtection 을 부르면 합성식 조회가 그만큼 반복된다.
-   * 문맥을 한 번만 만들고 재사용한다.
-   */
   casualMaterialProtections(): Map<number, string> {
-    const context = this.casualProtectionContext();
-    const protections = new Map<number, string>();
-    for (const tower of [...this.state.towers, ...this.state.inventoryTowers]) {
-      const reason = this.casualMaterialProtectionFor(tower, context);
-      if (reason !== null) protections.set(tower.id, reason);
-    }
-    return protections;
-  }
-
-  /*
-   * v3 는 3기 전부를 보호 대상에서 빼므로 보호 범위가 곧 "승급이 되느냐"다.
-   * v2 범위를 그대로 쓰면 JP/CN 미리보기 소환 풀(30·32자)은 성어 글자와 일반
-   * 합성식 부모가 풀 전체를 덮어 한 묶음도 만들 수 없다(실측 0자 여유).
-   * 그래서 캐주얼에서는 두 가지를 좁힌다.
-   *  - 일반 모드 합성식: 캐주얼에는 합성 자체가 없다(availableEvolutions()=[]).
-   *    쓰지도 못할 조합을 이유로 소모를 막는 것은 규칙이 아니라 사고다.
-   *  - 미완성 사자성어: 지금 노리는 한 성어(currentIdiomTarget)만 지킨다.
-   *    아직 순서가 오지 않은 성어까지 글자 단위로 잠글 이유가 없다.
-   * 잠금·농축·목표 글자·봉인 완료 성어는 기획 문서가 못 박은 대로 그대로 둔다.
-   */
-  private casualProtectionContext(): {
-    targetPath: Set<string>;
-    unfinishedIdiomChars: Set<string>;
-    standardMaterialIds: Set<number>;
-    sealedTowerIds: Set<number>;
-  } {
-    const casual = this.state.mode === "casual";
-    const all = [...this.state.towers, ...this.state.inventoryTowers];
-    return {
-      targetPath: casual ? new Set([this.state.targetChar]) : this.evolution.getTargetPath(this.state.targetChar),
-      unfinishedIdiomChars: new Set(
-        casual
-          ? [...(this.currentIdiomTarget()?.chars ?? "")]
-          : this.idioms()
-            .filter((idiom) => !this.state.idiomSeals.some((seal) => seal.idiomId === idiom.id))
-            .flatMap((idiom) => [...idiom.chars])
-      ),
-      standardMaterialIds: casual
-        ? new Set<number>()
-        : new Set(this.evolution.getAvailableRecipes(all, this.state.targetChar, null, "semi").flatMap((option) => option.materialTowerIds)),
-      sealedTowerIds: this.sealedIdiomTowerIds()
-    };
-  }
-
-  private casualMaterialProtectionFor(
-    tower: Tower,
-    context: ReturnType<GameEngine["casualProtectionContext"]>
-  ): string | null {
-    if (tower.locked) return "잠금 자령";
-    if ((tower.concentration ?? 0) > 0) return `농축 ${tower.concentration}단계 투자`;
-    if (context.targetPath.has(tower.char)) return "현재 목표 합성 계보";
-    if (context.unfinishedIdiomChars.has(tower.char)) return "미완성 사자성어 재료";
-    if (context.sealedTowerIds.has(tower.id)) return "발동 중 사자성어 참여";
-    if (context.standardMaterialIds.has(tower.id)) return "일반 모드 합성식 재료";
-    return null;
+    return listCasualMaterialProtections(this.casualFusionContext());
   }
 
   fuseCasual(materialIds: readonly number[], allowWarnings = false): CasualFusionResult {
-    const fail = (message: string): CasualFusionResult =>
-      ({ ok: false, message, gained: null, consumedChars: [], fromStar: null, starFallback: false, rosterFallback: false });
-    if (!this.isRunActive()) return fail("진행 중인 수비전이 없습니다.");
-    const quote = this.casualFusionQuote(materialIds);
-    if (quote.blocked.length > 0) return fail(`조합 중단 · ${quote.blocked[0]?.text ?? "조건을 다시 확인하세요."}`);
-    if (!allowWarnings && quote.warnings.length > 0) {
-      return fail(`확인 필요 · ${quote.warnings[0]?.text ?? "전장 자령이 포함되어 있습니다."}`);
-    }
-    return this.performCasualFusion(quote);
+    return runFuseCasual(this.casualFusionContext(), materialIds, allowWarnings);
   }
 
   casualAutoFusionPlan(wuxing: Wuxing): CasualAutoFusionGroup[] {
-    if (this.state.mode !== "casual") return [];
-    const context = this.casualProtectionContext();
-    // v3: 남는 본체가 없으므로 보호 자령은 후보 목록 자체에서 빠진다.
-    const owned = [...this.state.towers, ...this.state.inventoryTowers]
-      .filter((tower) => tower.wuxing === wuxing
-        && (tower.casualStar ?? tower.naturalStar ?? 8) < 8
-        && this.casualMaterialProtectionFor(tower, context) === null);
-    const value = (tower: Tower): number => {
-      const definition = definitionForTower(this.catalog, tower.definitionId);
-      return definition.combat.baseDamage * this.towerPowerMultiplier(tower) * definition.combat.budgetMultiplier / this.towerAttackCooldown(tower);
-    };
-    const groups: CasualAutoFusionGroup[] = [];
-    for (let star = 1 as CasualStar; star <= 7; star = (star + 1) as CasualStar) {
-      // 인벤토리 먼저, 그다음 약한 순. 전장의 주력을 마지막까지 남긴다.
-      const available = owned
-        .filter((tower) => (tower.casualStar ?? tower.naturalStar) === star)
-        .sort((left, right) =>
-          Number(left.cell >= 0) - Number(right.cell >= 0) || value(left) - value(right) || left.id - right.id);
-      while (available.length >= 3) {
-        const materials = available.splice(0, 3);
-        const ids = materials.map((tower) => tower.id);
-        const quote = this.casualFusionQuote(ids);
-        if (quote.blocked.length > 0 || quote.toStar === null) break;
-        groups.push({
-          wuxing,
-          materialIds: [ids[0] ?? -1, ids[1] ?? -1, ids[2] ?? -1],
-          fromStar: star,
-          toStar: quote.toStar,
-          poolSize: quote.poolSize,
-          starFallback: quote.starFallback,
-          rosterFallback: quote.rosterFallback,
-          warnings: quote.warnings,
-          autoSkipReason: casualAutoSkipReason(quote.warnings)
-        });
-      }
-    }
-    return groups;
+    return buildCasualAutoFusionPlan(this.casualFusionContext(), wuxing);
   }
 
   autoFuseCasualElement(wuxing: Wuxing, allowWarnings = false): CasualAutoFusionReport {
     return this.autoFuseCasual(wuxing, allowWarnings);
   }
 
-  /**
-   * 원클릭 승급. `scope` 가 "all" 이면 오행 전체를 순서대로 처리한다.
-   * warning 이 있는 묶음은 예전처럼 전체를 중단시키지 않고 그 묶음만 건너뛰며,
-   * 건너뛴 수와 사유를 결과에 담아 화면이 반드시 알릴 수 있게 한다.
-   */
   autoFuseCasual(scope: Wuxing | "all", allowWarnings = false, onlyStar: CasualStar | null = null): CasualAutoFusionReport {
-    const empty = { fused: 0, consumed: 0, skipped: 0, skipReason: null, gained: [], firstFusion: null } as const;
-    if (!this.isRunActive()) return { ok: false, message: "진행 중인 수비전이 없습니다.", ...empty, gained: [] };
-    const scopes: Wuxing[] = scope === "all" ? [...WUXING_ORDER] : [scope];
-    const planned = scopes
-      .flatMap((wuxing) => this.casualAutoFusionPlan(wuxing))
-      .filter((group) => onlyStar === null || group.fromStar === onlyStar);
-    if (planned.length === 0) {
-      const label = scope === "all" ? "보유 자령" : `${scope}행 보유 자령`;
-      return { ok: false, message: `${label} 중 소모할 수 있는 같은 별 자령 3기가 없습니다.`, ...empty, gained: [] };
-    }
-    const runnable = allowWarnings ? planned : planned.filter((group) => group.autoSkipReason === null);
-    let skipped = planned.length - runnable.length;
-    const skipReason = planned.find((group) => group.autoSkipReason !== null)?.autoSkipReason ?? null;
-    if (runnable.length === 0) {
-      return {
-        ok: false,
-        message: `보호로 ${skipped}묶음을 모두 건너뜀 · ${skipReason ?? "소모 후보가 보호 대상입니다."}`,
-        ...empty,
-        gained: [],
-        skipped,
-        skipReason
-      };
-    }
-
-    let fused = 0;
-    let fromBoard = 0;
-    const gained: CasualFusionGain[] = [];
-    let firstFusion: CasualAutoFusionReport["firstFusion"] = null;
-    for (const group of runnable) {
-      const quote = this.casualFusionQuote(group.materialIds);
-      // 앞선 승급이 성어 봉인을 새로 만들면 뒤 묶음이 보호로 막힐 수 있다.
-      // 전체를 중단하지 않고 그 묶음만 건너뛴다.
-      if (quote.blocked.length > 0) {
-        skipped += 1;
-        continue;
-      }
-      const all = [...this.state.towers, ...this.state.inventoryTowers];
-      const consumedTowers = group.materialIds
-        .map((id) => all.find((tower) => tower.id === id))
-        .filter((tower): tower is Tower => tower !== undefined);
-      const boardCount = consumedTowers.filter((tower) => tower.cell >= 0).length;
-      const result = this.performCasualFusion(quote);
-      if (!result.ok || !result.gained) {
-        skipped += 1;
-        continue;
-      }
-      fused += 1;
-      fromBoard += boardCount;
-      gained.push(result.gained);
-      if (!firstFusion) {
-        firstFusion = {
-          wuxing: result.gained.wuxing,
-          char: result.gained.char,
-          fromStar: group.fromStar,
-          toStar: result.gained.star,
-          consumedChars: result.consumedChars,
-          newDiscovery: result.gained.newDiscovery,
-          starFallback: result.starFallback,
-          rosterFallback: result.rosterFallback
-        };
-      }
-    }
-    if (fused === 0) return { ok: false, message: "조합 대상이 바뀌었습니다. 다시 확인하세요.", ...empty, gained: [], skipped, skipReason };
-
-    const tail = skipped > 0 ? ` · 보호로 ${skipped}그룹 건너뜀` : "";
-    if (fused === 1 && firstFusion) {
-      this.state.lastMessage = `${casualFusionHeadline(firstFusion)} · 소모: ${firstFusion.consumedChars.join("·")}${tail}`;
-    } else {
-      const chars = gained.map((entry) => entry.char).join("·");
-      const newCount = gained.filter((entry) => entry.newDiscovery).length;
-      const detail = firstFusion ? ` · 첫 결과 ${casualFusionHeadline(firstFusion)}` : "";
-      const board = fromBoard > 0 ? ` · 전장 ${fromBoard}기 포함` : "";
-      this.state.lastMessage = `승급 ${fused}회 · 소모 ${fused * 3}기 · 획득: ${chars}${newCount > 0 ? ` · 첫 발견 ${newCount}` : ""}${detail}${board}${tail}`;
-    }
-    return { ok: true, message: this.state.lastMessage, fused, consumed: fused * 3, skipped, skipReason, gained, firstFusion };
-  }
-
-  private performCasualFusion(quote: CasualFusionQuote): CasualFusionResult {
-    const fail = (message: string): CasualFusionResult =>
-      ({ ok: false, message, gained: null, consumedChars: [], fromStar: quote.fromStar, starFallback: false, rosterFallback: false });
-    if (quote.fromStar === null || quote.toStar === null || quote.wuxing === null) return fail("조합 별 정보를 다시 확인하세요.");
-    const all = [...this.state.towers, ...this.state.inventoryTowers];
-    const consumed = quote.materialIds
-      .map((id) => all.find((tower) => tower.id === id))
-      .filter((tower): tower is Tower => Boolean(tower));
-    if (consumed.length !== 3) return fail("조합 대상이 바뀌었습니다. 다시 선택하세요.");
-    const pool = this.casualResultPool(quote.wuxing, quote.fromStar);
-    if (!pool) return fail(`이 오행은 ${quote.fromStar}★ 위 글자가 없습니다`);
-    const definition = pool.candidates[Math.floor(this.rng.next() * pool.candidates.length)] ?? pool.candidates[0] as HanziDefinition;
-
-    // 규칙 3: 소모분 중 전장에 서 있던 첫 자령의 자리를 새 자령이 이어받는다.
-    const inheritedCell = consumed.find((tower) => tower.cell >= 0)?.cell ?? -1;
-    const consumedChars = consumed.map((tower) => tower.char);
-    const consumedSnapshots = consumed.map((tower) => ({ ...tower }));
-    const consumedIds = new Set(consumed.map((tower) => tower.id));
-    const refunds = emptyElementEssence();
-    for (const tower of consumed) refunds[tower.wuxing] += concentrationEssenceRefund(tower.concentration ?? 0);
-    this.state.towers = this.state.towers.filter((tower) => !consumedIds.has(tower.id));
-    this.state.inventoryTowers = this.state.inventoryTowers.filter((tower) => !consumedIds.has(tower.id));
-    for (const wuxing of Object.keys(refunds) as Wuxing[]) this.state.elementEssence[wuxing] += refunds[wuxing];
-
-    // 삼체일득 문기. 승급이 분해 대기열을 통째로 먹는 구조라 승급 자체를 문기
-    // 입구로 삼는다. 농축 환급과 달리 이것은 새로 생기는 문기이므로 생성량에도
-    // 함께 적는다(분해 점수도 같이 올라야 오행 특성이 열린다).
-    const fusionEssence = casualFusionEssenceRefund(quote.fromStar);
-    if (fusionEssence > 0) {
-      this.state.elementEssence[quote.wuxing] += fusionEssence;
-      this.state.elementEssenceGenerated[quote.wuxing] += fusionEssence;
-      this.state.elementDismantleScore[quote.wuxing] += casualFusionDismantleScore(quote.fromStar);
-    }
-
-    const newDiscovery = !this.state.discoveredChars.includes(definition.char);
-    const tower = this.createTower(definition, inheritedCell);
-    tower.pulse = 1;
-    tower.abilityFlash = 1;
-    if (inheritedCell >= 0) this.state.towers.push(tower);
-    else this.state.inventoryTowers.push(tower);
-    this.state.selectedTowerId = tower.id;
-    this.state.casualFusionCount += 1;
-    this.discover(definition.char);
-
-    const gained: CasualFusionGain = {
-      wuxing: tower.wuxing,
-      char: tower.char,
-      star: pool.star,
-      cell: inheritedCell,
-      newDiscovery
-    };
-    const stroke = casualStrokeCount(tower.char);
-    const headline = casualFusionHeadline({
-      wuxing: quote.wuxing,
-      char: tower.char,
-      fromStar: quote.fromStar,
-      toStar: pool.star,
-      newDiscovery,
-      starFallback: pool.starFallback,
-      rosterFallback: pool.rosterFallback
-    });
-    this.state.lastMessage = `${headline} · 소모: ${consumedChars.join("·")}${stroke === null ? "" : ` · ${stroke}획`}`;
-    this.events.push({
-      type: "casualFuse",
-      at: inheritedCell >= 0 ? BOARD_CELLS[inheritedCell] as Point : { x: 440, y: 360 },
-      tower: { ...tower },
-      consumed: consumedSnapshots,
-      fromStar: quote.fromStar,
-      toStar: pool.star,
-      newDiscovery,
-      starFallback: pool.starFallback,
-      rosterFallback: pool.rosterFallback
-    });
-    // F2: 별승급의 목표 사다리는 소환만이 아니라 승급으로도 오른다. 목표 글자가
-    // 승급 결과로 나왔는데 달성 처리가 안 되면 상위 별 목표는 원리적으로 못 깬다.
-    if (definition.char === this.state.targetChar) this.completeGoal(definition.char);
-    // 유지형 규칙에서는 소모된 재료가 판을 떠난 것만으로도 봉인이 흩어질 수 있다.
-    // 승급 결과가 보관고로 갔더라도(inheritedCell < 0) 판정은 다시 해야 한다.
-    if (this.isRunActive()) this.resolveIdiomFormations();
-    return {
-      ok: true,
-      message: this.state.lastMessage,
-      gained,
-      consumedChars,
-      fromStar: quote.fromStar,
-      starFallback: pool.starFallback,
-      rosterFallback: pool.rosterFallback
-    };
+    return runAutoFuseCasual(this.casualFusionContext(), scope, allowWarnings, onlyStar);
   }
 
   availableEvolutions(): EvolutionOption[] {
@@ -2047,18 +1898,97 @@ export class GameEngine {
     return { ok: true, message: this.state.lastMessage };
   }
 
+  /**
+   * 성어를 이번 런 목표 다섯 구에 편입시킨다. 추적(발동 판정·자동배치 후보)의
+   * 전제 조건이라 setIdiomTarget/setIdiomTracking 이 함께 쓴다. 봉인 이력과
+   * 추적 중인 구는 다섯 자리 정리에서 살아남는다.
+   */
+  private ensureFeaturedIdiom(id: string): void {
+    const rest = this.state.featuredIdiomIds.filter((candidate) => candidate !== id);
+    const sealedIds = rest.filter((candidate) => this.state.idiomSeals.some((seal) => seal.idiomId === candidate));
+    const trackedIds = rest.filter((candidate) => !sealedIds.includes(candidate) && this.state.trackedIdiomIds.includes(candidate));
+    const pendingIds = rest.filter((candidate) => !sealedIds.includes(candidate) && !trackedIds.includes(candidate));
+    // 다섯 자리 정리 우선순위: 새 추적 > 기존 추적 > 봉인 이력 > 나머지.
+    // 봉인 이력이 다섯 자리에서 밀려도 발동·해제 판정은 idiomSeals 목록이
+    // 따로 지키므로(resolveIdiomFormations) 효과는 끊기지 않는다 — 반대로
+    // 추적 중인 구가 밀리면 봉인 자체가 성립하지 않으니 추적이 앞선다.
+    this.state.featuredIdiomIds = [id, ...trackedIds, ...sealedIds, ...pendingIds].slice(0, 5);
+  }
+
+  /** 이 성어를 1순위 추적 목표로 세운다(수련장·"목표로 지정" 경로). */
   setIdiomTarget(id: string): ActionResult {
     const idiom = idiomById(this.state.region, id);
     if (!idiom) return { ok: false, message: "이 지역에서 사용할 수 없는 성어입니다." };
-    if (this.state.idiomSeals.some((seal) => seal.idiomId === id)) return { ok: false, message: `${idiom.reading}은 이미 봉인했습니다.` };
-    const currentIds = this.state.featuredIdiomIds.filter((candidate) => candidate !== id);
-    const sealedIds = currentIds.filter((candidate) => this.state.idiomSeals.some((seal) => seal.idiomId === candidate));
-    const pendingIds = currentIds.filter((candidate) => !sealedIds.includes(candidate));
-    this.state.featuredIdiomIds = [id, ...sealedIds, ...pendingIds].slice(0, 5);
+    if (this.state.idiomSeals.some((seal) => seal.idiomId === id)) return { ok: false, message: `${idiom.reading}은 이미 발동했습니다.` };
+    const current = this.trackedIdioms().map((entry) => entry.id).filter((candidate) => candidate !== id);
+    this.state.trackedIdiomIds = [id, ...current].slice(0, MAX_TRACKED_IDIOMS);
+    this.ensureFeaturedIdiom(id);
     this.state.lineageClueProgress = Math.floor(this.state.lineageClueProgress / 2);
     this.runSummonPool = this.buildRunSummonPool();
     this.state.lastMessage = `성어 목표를 ${idiom.chars} · ${idiom.reading}으로 변경했습니다.`;
     return { ok: true, message: this.state.lastMessage };
+  }
+
+  /**
+   * 목표 서책의 추적 체크 토글. 최대 3개·최소 1개 — "성어가 곧 목표"라
+   * 추적이 완전히 비는 상태는 두지 않는다(비면 어차피 첫 미봉인 목표 성어가
+   * 승계된다). 승계로만 존재하던 기본 추적도 토글 순간 상태로 굳힌다.
+   */
+  setIdiomTracking(id: string, tracked: boolean): ActionResult {
+    const idiom = idiomById(this.state.region, id);
+    if (!idiom) return { ok: false, message: "이 지역에서 사용할 수 없는 성어입니다." };
+    if (this.state.idiomSeals.some((seal) => seal.idiomId === id)) return { ok: false, message: `${idiom.reading}은 이미 봉인했습니다.` };
+    const current = this.trackedIdioms().map((entry) => entry.id);
+    if (tracked) {
+      if (current.includes(id)) return { ok: true, message: `${idiom.reading}은 이미 추적 중입니다.` };
+      if (current.length >= MAX_TRACKED_IDIOMS) {
+        return { ok: false, message: `추적은 최대 ${MAX_TRACKED_IDIOMS}개까지입니다. 다른 성어의 추적을 먼저 해제하세요.` };
+      }
+      this.state.trackedIdiomIds = [...current, id];
+      this.ensureFeaturedIdiom(id);
+      this.runSummonPool = this.buildRunSummonPool();
+      this.state.lastMessage = `${idiom.chars} · ${idiom.reading} 추적 시작 — 부족 글자에 소환·연구 가중이 붙습니다.`;
+      return { ok: true, message: this.state.lastMessage };
+    }
+    if (!current.includes(id)) return { ok: true, message: `${idiom.reading}은 추적 중이 아닙니다.` };
+    if (current.length <= 1) return { ok: false, message: "성어 목표는 최소 1개를 추적해야 합니다. 다른 성어를 먼저 추적하세요." };
+    this.state.trackedIdiomIds = current.filter((candidate) => candidate !== id);
+    this.runSummonPool = this.buildRunSummonPool();
+    this.state.lastMessage = `${idiom.chars} · ${idiom.reading} 추적 해제`;
+    return { ok: true, message: this.state.lastMessage };
+  }
+
+  /**
+   * 추적 중 성어 정의 목록. 봉인 완료·미존재 id 는 걸러 내고, 목록이 비면
+   * 예전 currentIdiomTarget 규칙 그대로 첫 미봉인 목표 성어 하나를 승계한다
+   * — 봇과 기존 화면이 이 승계에 기대므로 기본 동작이 바뀌지 않는다.
+   */
+  trackedIdioms(): readonly IdiomDefinition[] {
+    const sealedIds = new Set(this.state.idiomSeals.map((seal) => seal.idiomId));
+    const resolved = this.state.trackedIdiomIds
+      .map((id) => idiomById(this.state.region, id))
+      .filter((idiom): idiom is IdiomDefinition => idiom !== undefined && !sealedIds.has(idiom.id));
+    if (resolved.length > 0) return resolved;
+    const inherited = this.idioms().find((idiom) => !sealedIds.has(idiom.id));
+    return inherited ? [inherited] : [];
+  }
+
+  /**
+   * 추적 성어들의 부족 글자 합집합 — 소환 가중과 인연 연구 가중이 함께 향하는
+   * 곳이다. 캐주얼은 아직 보유하지 못한 글자 그 자체, 표준은 그 글자의 합성
+   * 계보에서 지금 부족한 직접 소환 재료를 센다.
+   */
+  trackedIdiomMissingChars(owned?: readonly Tower[]): Set<string> {
+    const towers = owned ?? [...this.state.towers, ...this.state.inventoryTowers];
+    const chars = new Set<string>();
+    for (const idiom of this.trackedIdioms()) {
+      if (this.state.mode === "casual") {
+        for (const char of this.idiomProgress(idiom.id).missingChars) chars.add(char);
+      } else {
+        for (const char of helpfulDirectCharsForIdiom(this.catalog, towers, idiom)) chars.add(char);
+      }
+    }
+    return chars;
   }
 
   idiomProgress(id: string): { owned: number; total: number; readiness: number; missingChars: string[] } {
@@ -2320,8 +2250,8 @@ export class GameEngine {
       selected.cell = cell;
       this.state.towers.push(selected);
       this.state.lastMessage = occupant
-        ? `${selected.char} 배치 · ${occupant.char} 인벤토리로 원자 교체`
-        : selected.char + " 인벤토리 → " + String(cell + 1) + "번 칸 배치";
+        ? `${selected.char} 배치 · ${occupant.char} 가방으로 원자 교체`
+        : selected.char + " 가방 → " + String(cell + 1) + "번 칸 배치";
       this.resolveIdiomFormations();
       return { ok: true, message: this.state.lastMessage };
     }
@@ -2398,8 +2328,8 @@ export class GameEngine {
       this.state.lastMessage = "자동배치 · 이미 최적입니다. 다음 성어 재료를 모아 보세요.";
       return { ok: true, message: this.state.lastMessage };
     }
-    const idiomLabel = sealed > 0 ? `성어 ${sealed}개 봉인 · ` : "";
-    const inventoryLabel = deployed.length > 0 ? `인벤토리 ${deployed.length}기 투입 · ` : "";
+    const idiomLabel = sealed > 0 ? `성어 ${sealed}개 발동 · ` : "";
+    const inventoryLabel = deployed.length > 0 ? `가방 ${deployed.length}기 투입 · ` : "";
     this.state.lastMessage = `자동배치 · ${inventoryLabel}${idiomLabel}오행 공명 ${resonanceBefore}→${resonanceAfter}단계 · ${moved}기 이동`;
     return { ok: true, message: this.state.lastMessage };
   }
@@ -2545,7 +2475,7 @@ export class GameEngine {
       }
 
       if (count > 1) reasons.push(`동일 한자 ${count}기`);
-      if (stored) reasons.push("인벤토리 대기");
+      if (stored) reasons.push("가방 대기");
       if (tower.stage === 1) reasons.push("직접 소환 초형");
       if (!targetPath.has(tower.char) && !unfinishedIdiomChars.has(tower.char)) reasons.push("현재 목표·성어 비연결");
       if (!stored) {
@@ -2583,7 +2513,7 @@ export class GameEngine {
     for (const towerId of uniqueIds) {
       const tower = this.state.inventoryTowers.find((candidate) => candidate.id === towerId);
       if (!tower) {
-        blocked.push({ towerId, reason: "인벤토리 자령만 일괄 분해할 수 있습니다." });
+        blocked.push({ towerId, reason: "가방 자령만 일괄 분해할 수 있습니다." });
         continue;
       }
       const assessment = assessments.get(towerId);
@@ -2615,7 +2545,7 @@ export class GameEngine {
     // protected material can never be consumed from a stale UI selection.
     const quote = this.quoteDismantle(ids, options);
     if (quote.blocked.length > 0) return { ok: false, message: `분해 중단 · ${quote.blocked[0]?.reason ?? "보호 자령이 포함되었습니다."}` };
-    if (quote.ids.length === 0) return { ok: false, message: "분해할 인벤토리 자령을 선택하세요." };
+    if (quote.ids.length === 0) return { ok: false, message: "분해할 가방 자령을 선택하세요." };
     const selectedIds = new Set(quote.ids);
     const removed = this.state.inventoryTowers.filter((tower) => selectedIds.has(tower.id));
     if (removed.length !== quote.ids.length) return { ok: false, message: "분해 대상 위치가 바뀌었습니다. 다시 선택하세요." };
@@ -2647,7 +2577,7 @@ export class GameEngine {
 
   dismantleRecommended(limit = 8, options: CleanupOptions = {}): ActionResult {
     const ids = this.cleanupCandidates(limit, true, options).map((candidate) => candidate.towerId);
-    if (ids.length === 0) return { ok: false, message: "보호 규칙을 통과한 인벤토리 정리 후보가 없습니다." };
+    if (ids.length === 0) return { ok: false, message: "보호 규칙을 통과한 가방 정리 후보가 없습니다." };
     return this.dismantleTowers(ids, options);
   }
 
@@ -2772,11 +2702,11 @@ export class GameEngine {
   storeSelectedTower(): ActionResult {
     const selected = this.selectedTower();
     if (!selected) return { ok: false, message: "보관할 자령을 선택하세요." };
-    if (this.selectedTowerIsStored()) return { ok: false, message: "이미 런 인벤토리에 있는 자령입니다." };
+    if (this.selectedTowerIsStored()) return { ok: false, message: "이미 가방에 있는 자령입니다." };
     this.state.towers = this.state.towers.filter((tower) => tower.id !== selected.id);
     selected.cell = -1;
     this.state.inventoryTowers.push(selected);
-    this.state.lastMessage = selected.char + " 런 인벤토리에 보관";
+    this.state.lastMessage = selected.char + " 가방에 보관";
     this.resolveIdiomFormations();
     return { ok: true, message: this.state.lastMessage };
   }
@@ -2809,8 +2739,9 @@ export class GameEngine {
     return this.runSummonPool;
   }
 
+  /** 1순위 추적 성어. 배치 안내·성어 HUD·계보 소환 표시가 이 한 구를 본다. */
   currentIdiomTarget(): IdiomDefinition | undefined {
-    return this.idioms().find((idiom) => !this.state.idiomSeals.some((seal) => seal.idiomId === idiom.id));
+    return this.trackedIdioms()[0];
   }
 
   /**
@@ -2837,8 +2768,7 @@ export class GameEngine {
   }
 
   private buildRunSummonPool(): readonly HanziDefinition[] {
-    const target = this.currentIdiomTarget();
-    const directChars = idiomDirectPoolChars(this.catalog, target ? [target] : []);
+    const directChars = idiomDirectPoolChars(this.catalog, this.trackedIdioms());
     const definitions = [...this.catalog.activePool];
     const included = new Set(definitions.map((definition) => definition.char));
     for (const char of directChars) {
@@ -2848,6 +2778,119 @@ export class GameEngine {
       included.add(char);
     }
     return definitions;
+  }
+
+  /**
+   * [병합 지점] 성어 기원 소환이 살피는 "추적 성어" 목록.
+   *
+   * 지금은 단일 추적(currentIdiomTarget) 하나다. 목표 체계가 "성어=목표,
+   * 복수 추적 3"으로 개편되면 이 메서드가 추적 배열을 돌려주도록만 바꾸면 된다 —
+   * 부족 글자 합집합(idiomWishChars)·상점 카드·소환 본체는 그대로 붙는다.
+   */
+  idiomWishTargets(): readonly IdiomDefinition[] {
+    // 목표 서책 개편: 추적 성어(최대 3)의 합집합이 기원 풀이다.
+    const tracked = this.trackedIdioms();
+    if (tracked.length > 0) return tracked;
+    const target = this.currentIdiomTarget();
+    return target ? [target] : [];
+  }
+
+  /** 성어 기원 소환 후보 — 추적 성어들의 부족 글자 정의. 비어 있으면 상품 비활성. */
+  idiomWishPool(): readonly HanziDefinition[] {
+    const chars = idiomWishChars(
+      this.catalog,
+      [...this.state.towers, ...this.state.inventoryTowers],
+      this.idiomWishTargets(),
+      this.state.mode
+    );
+    const pool: HanziDefinition[] = [];
+    for (const char of chars) {
+      const definition = this.catalog.definitions.get(char);
+      if (!definition) continue;
+      // 캐주얼은 별 데이터가 없는 글자로 자령을 만들 수 없다(createTower 방어와 짝).
+      if (this.state.mode === "casual" && casualNaturalStar(char) === null) continue;
+      pool.push(definition);
+    }
+    return pool;
+  }
+
+  /**
+   * 성어 기원 카드 한 장이 필요로 하는 전부 — 후보·가격·비활성 사유.
+   *
+   * 별승급(캐주얼) 전용이다. 자형연성에서는 부족 글자가 곧 합성 재료라
+   * "반드시 유용한 소환"이 진화 루프(전투력)로 직결된다 — 45런 짝시드 실험
+   * 2회에서 승률 +24.5pp/+11.1pp(합산 0.556→0.733)가 재현됐고 성어 봉인은
+   * 오히려 줄었다(0.16→0.13, 0.27→0.16). 성어 가중 3배 기각과 같은 결이라
+   * 자형연성은 기존 계보 소환(확률 가중)에 남긴다.
+   */
+  idiomWishQuote(): { pool: readonly HanziDefinition[]; cost: number; reason: string | null } {
+    const pool = this.idiomWishPool();
+    const cost = idiomWishCost(summonCost(this.state.summonCount));
+    const reason = this.state.mode !== "casual"
+      ? "별승급 진법 전용 — 자형연성은 계보 소환이 성어 재료를 맡습니다"
+      : this.state.summonCount === 0
+        ? "첫 소환으로 오행진을 먼저 여세요"
+        : this.idiomWishTargets().length === 0
+          ? "추적 성어가 없습니다"
+          : pool.length === 0
+            ? "부족 글자가 없습니다 — 성어 재료 완성"
+            : null;
+    return { pool, cost, reason };
+  }
+
+  /**
+   * 성어 기원 소환 — 부적에 기원을 적어 올려 추적 성어의 부족 글자를 부른다.
+   *
+   * 일반 소환(summon)과 완전히 분리된 구매 경로다: 확률 가중·별 밴드·소프트
+   * 연민·계보 진행도를 전혀 건드리지 않고 RNG 도 구매한 순간에만 쓴다 —
+   * 상품을 사지 않는 런(자동 시뮬 포함)의 시드 결정성은 그대로다. 결과 자령은
+   * 캐주얼에서 항상 1★로 태어나 전투력 유입을 최소화한다. "성어 가중"을
+   * 올리면 승률까지 오르던 과거 기각안과 달리, 이 경로는 성어 완성만 판다.
+   */
+  summonIdiomWish(): ActionResult {
+    if (!this.isRunActive()) return { ok: false, message: "진행 중인 수비전이 없습니다." };
+    const { pool, cost, reason } = this.idiomWishQuote();
+    if (reason !== null) return { ok: false, message: `성어 기원 · ${reason}` };
+    if (this.state.gold < cost) return { ok: false, message: "엽전이 " + String(cost - this.state.gold) + " 부족합니다." };
+    const emptyCell = this.state.autoPlaceSummons ? this.firstEmptyCell() : null;
+    const stored = !this.state.autoPlaceSummons || emptyCell === null;
+    const cell = stored ? -1 : emptyCell;
+    if (cell === null) return { ok: false, message: "소환 위치를 찾지 못했습니다." };
+    const definition = this.rng.pick(pool);
+    this.state.gold -= cost;
+    const tower = this.createTower(definition, cell);
+    if (this.state.mode === "casual") {
+      // 기원으로 태어난 자령은 언제나 1★ 그릇이다 — 성어 줄을 채우는 것이
+      // 목적이지 전투력이 목적이 아니다(획수 별과 무관하게 고정).
+      tower.naturalStar = 1;
+      tower.casualStar = 1;
+    }
+    if (stored) this.state.inventoryTowers.push(tower);
+    else this.state.towers.push(tower);
+    this.state.summonCount += 1;
+    this.state.selectedTowerId = tower.id;
+    const newDiscovery = !this.state.discoveredChars.includes(definition.char);
+    this.discover(definition.char);
+    this.state.lastMessage = `성어 기원 · ${definition.char} · ${definition.combat.roleLabel}`
+      + `${this.state.mode === "casual" ? " · 1★" : ""}${stored ? " 인벤토리 보관" : " 소환"} · 사자성어 재료!`;
+    const eventAt = stored
+      ? ((this.state.startingFormationIndex !== null ? BOARD_FORMATIONS[this.state.startingFormationIndex]?.center : undefined) ?? { x: 400, y: 300 })
+      : BOARD_CELLS[cell] as Point;
+    this.events.push({
+      type: "summon",
+      at: eventAt,
+      tower: { ...tower },
+      stored,
+      helpful: true,
+      helpfulReason: "idiom",
+      newDiscovery,
+      utility: newDiscovery ? "new" : "synthesis",
+      // 기원 소환은 결과가 항상 1★이라 잭팟 꼬리가 없다.
+      jackpot: false
+    });
+    if (definition.char === this.state.targetChar) this.completeGoal(definition.char);
+    if (!stored) this.resolveIdiomFormations();
+    return { ok: true, message: this.state.lastMessage };
   }
 
   /**
@@ -2908,12 +2951,15 @@ export class GameEngine {
 
   private activateIdiom(idiom: IdiomDefinition, cells: readonly number[]): void {
     this.state.idiomSeals.push({ idiomId: idiom.id, cells: [...cells], completedAt: this.state.elapsed, active: true });
+    // 봉인한 성어는 목표에서 은퇴한다. 목록이 비면 trackedIdioms() 가
+    // 다음 미봉인 목표 성어를 승계하므로 진행이 끊기지 않는다.
+    this.state.trackedIdiomIds = this.state.trackedIdiomIds.filter((id) => id !== idiom.id);
     this.announceIdiom(idiom, cells, false);
     this.runSummonPool = this.buildRunSummonPool();
   }
 
   private announceIdiom(idiom: IdiomDefinition, cells: readonly number[], rejoined: boolean): void {
-    this.state.lastMessage = idiom.name + " · " + idiom.reading + (rejoined ? " 재봉인 · " : " 자동 봉인 · ") + idiom.bonus.label;
+    this.state.lastMessage = idiom.name + " · " + idiom.reading + (rejoined ? " 재발동 · " : " 자동 발동 · ") + idiom.bonus.label;
     this.events.push({
       type: "idiom",
       idiomId: idiom.id,
@@ -2932,7 +2978,7 @@ export class GameEngine {
     const cells = [...seal.cells];
     seal.active = false;
     seal.cells = [];
-    this.state.lastMessage = idiom.name + " · " + idiom.reading + " 봉인 해제 · 줄이 흩어졌습니다";
+    this.state.lastMessage = idiom.name + " · " + idiom.reading + " 발동 해제 · 줄이 흩어졌습니다";
     this.events.push({
       type: "idiomBroken",
       idiomId: idiom.id,

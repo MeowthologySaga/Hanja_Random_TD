@@ -35,6 +35,25 @@ export function escapeHtml(value: string): string {
   return value.replace(/[&<>"']/gu, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[character] ?? character);
 }
 
+/**
+ * 확률 공개 압축형 한 줄 — 예: "1★ 53% · 2★ 29% · 3★ 16% · 4★+ 2.2%".
+ * 수치는 engine 의 summonStarDistribution 에서 온다(문구 하드코딩 금지).
+ * 상한 위 잭팟 꼬리는 "N★+" 한 항으로 묶고, 0.1% 미만이면 그대로 말한다.
+ */
+export function summonOddsSummary(
+  distribution: ReadonlyArray<{ star: number; share: number }>,
+  bandMax: number
+): string {
+  const parts = distribution
+    .filter((row) => row.share > 0 && row.star <= bandMax)
+    .map((row) => `${row.star}★ ${Math.round(row.share * 100)}%`);
+  const tail = distribution
+    .filter((row) => row.star > bandMax)
+    .reduce((sum, row) => sum + row.share, 0);
+  if (tail > 0) parts.push(`${bandMax + 1}★+ ${tail >= 0.001 ? `${(tail * 100).toFixed(1)}%` : "0.1% 미만"}`);
+  return parts.join(" · ");
+}
+
 export function visualBackgroundStyle(visual: JaryeongVisual): string {
   const framing = jaryeongFrameLayout(visual) === "single"
     ? "background-size:contain;background-position:center"
@@ -81,4 +100,84 @@ export function towerProgressionLabel(tower: Tower): string {
 export function spriteStyle(definition: HanziDefinition): string {
   const visual = jaryeongVisualFor(definition.char, definition.wuxing, ctx.engine.state.region);
   return visualBackgroundStyle(visual);
+}
+
+/*
+ * [트랙 J-1] 화폐 표기 — 숫자만 적힌 버튼을 없앤다.
+ *
+ * 사용자 원문: "분해랑 판매 버튼에 숫자에 표시가 없어서 문기인지 엽전인지
+ * 헷갈린다." 이 게임의 화폐는 둘이다 — 판 전체가 쓰는 엽전과 오행마다 따로
+ * 쌓이는 문기. `+7` 만 적힌 버튼은 어느 쪽인지 말해 주지 않는다.
+ * 표기는 여기서만 만든다. 새 자리를 만들 때도 직접 문자열을 짜지 말고
+ * 이 함수를 불러라.
+ */
+export function goldAmountLabel(amount: number, signed = false): string {
+  return `${signed && amount > 0 ? "+" : ""}${amount} 엽전`;
+}
+
+/** 문기는 오행 글자를 반드시 데리고 다닌다 — "木 문기 +3". */
+export function essenceAmountLabel(wuxing: Wuxing, amount: number, signed = true): string {
+  return `${wuxing} 문기 ${signed ? "+" : ""}${amount}`;
+}
+
+/** 오행색을 살린 문기 조각. 버튼 안에서도 그 오행의 색으로 읽힌다. */
+export function essenceAmountChip(wuxing: Wuxing, amount: number): string {
+  return `<i class="unit-essence" style="--unit-element:${ELEMENT_STYLES[wuxing].color}">${essenceAmountLabel(wuxing, amount)}</i>`;
+}
+
+/** 오행별 회수량 묶음 — 일괄 분해 견적이 쓰는 한 줄. */
+export function essenceGainsLabel(gains: Partial<Record<Wuxing, number>>): string {
+  return (Object.entries(gains) as Array<[Wuxing, number]>)
+    .filter(([, amount]) => amount > 0)
+    .map(([wuxing, amount]) => essenceAmountLabel(wuxing, amount))
+    .join(" · ");
+}
+
+/*
+ * [트랙 J-2] 분해가 막힌 이유를 화면에 올린다.
+ *
+ * 사용자 원문: "잠금 안 했는데 분해 안 되는 애가 있는데 이건 뭐지?"
+ * 엔진의 보호 사유(`cleanupAssessments().protectedReasons`)는 지금까지
+ * title 툴팁에만 실렸다 — 마우스를 얹고 기다려야 나오는 곳이라 사실상
+ * 없는 정보였다. 아래 두 함수가 그 사유를 라벨로 승격시킨다.
+ */
+const DISMANTLE_UNIQUE_TOGGLE_LABEL = "유일 자령 보호";
+
+const PROTECTION_SHORT_LABELS: ReadonlyArray<readonly [RegExp, string]> = [
+  [/잠금/u, "잠금"],
+  [/농축/u, "농축"],
+  [/유일/u, "유일"],
+  [/목표/u, "목표"],
+  [/사자성어/u, "성어"],
+  [/재료/u, "재료"],
+  [/공명/u, "공명"]
+];
+
+/** 92px 카드 꼬리표에 들어갈 두 글자. 사유 7종을 한 눈에 가른다. */
+export function protectionShortLabel(reasons: readonly string[]): string {
+  const first = reasons[0];
+  if (!first) return "보호";
+  return PROTECTION_SHORT_LABELS.find(([pattern]) => pattern.test(first))?.[1] ?? "보호";
+}
+
+/** 유일 보유는 사유 7종 중 유일하게 토글 하나로 풀린다 — 푸는 법을 함께 말할 수 있다. */
+export function dismantleUnlockable(reasons: readonly string[]): boolean {
+  return reasons.some((reason) => reason.includes("유일 보유"));
+}
+
+/** 분해 불가 한 줄. 토글로 풀리는 사유(유일 보유)면 푸는 법까지 붙인다. */
+export function dismantleBlockNote(reasons: readonly string[]): string {
+  const listed = reasons.length > 0 ? reasons.join(" · ") : "보호 상태를 확인할 수 없습니다";
+  return `분해 불가 — ${listed}${dismantleUnlockable(reasons) ? ` · 강화 제련소에서 [${DISMANTLE_UNIQUE_TOGGLE_LABEL}]를 끄면 분해할 수 있어요` : ""}`;
+}
+
+/**
+ * 자령 카드(376px) 전용 짧은 사유.
+ *
+ * 그 카드는 이미 내용 580px 를 368px 칸에 담아 스크롤이 난다 — 한 줄만
+ * 늘어도 [판매] 가 첫 화면 밖으로 밀린다. 그래서 여기서는 푸는 법을 떼고
+ * 사유만 남기고, 푸는 법은 [분해 불가] 버튼의 아랫줄이 대신 맡는다.
+ */
+export function dismantleBlockChip(reasons: readonly string[]): string {
+  return `분해 불가 · ${reasons.length > 0 ? reasons.join(" · ") : "보호 상태 확인 필요"}`;
 }

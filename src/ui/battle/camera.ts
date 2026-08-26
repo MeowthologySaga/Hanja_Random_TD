@@ -116,6 +116,14 @@ export function summonAndFocus(amount = 1, intent: SummonIntent = "balanced"): v
   if (result.ok) focusMapOnSelectedTower();
 }
 
+/** 성어 기원 카드 전용 — 추적 성어의 부족 글자만 부르는 소환(트랙 F). */
+export function summonIdiomWishAndFocus(): void {
+  sound.unlock();
+  const result = ctx.engine.summonIdiomWish();
+  handleAction(result);
+  if (result.ok) focusMapOnSelectedTower();
+}
+
 export function setGameSpeed(speed: GameSpeed): void {
   ctx.gameSpeed = speed;
   const button = must<HTMLButtonElement>("#speed-button");

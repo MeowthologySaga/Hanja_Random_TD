@@ -47,10 +47,69 @@ export function elementZoneKind(wuxing: Wuxing): AbilityZone["kind"] {
  */
 export const TIERED_SUMMON_INTENTS: ReadonlySet<SummonIntent> = new Set<SummonIntent>(["balanced", "midstar", "highstar"]);
 
+/**
+ * 인연 연구가 성어 부족 글자에 얹는 가중 배율(트랙 B — "성어가 곧 목표").
+ *
+ * 목표 한자 경로는 connectionBonus×3.2 를 받는데, 성어 경로는 연구와 무관했다.
+ * 목표 서책이 성어 축으로 통합되면서 연구의 절반은 성어 부족 글자를 향해야
+ * 한다. 곱해지는 값은 0단계 기저(0.12)를 뺀 "실제로 산 연구"만이라 연구 전
+ * 분포는 통합 이전과 동일하다. 같은 3.2 에서 시작하되 성어 줄 전체에 ×0.7 이
+ * 곱해지므로 실효는 목표 경로의 약 2.24 다. 시뮬 게이트(--runs=135 표준 /
+ * 45 캐주얼)를 벗어나면 이 값부터 줄인다.
+ */
+export const IDIOM_RESEARCH_CONNECTION_SCALE = 3.2;
+
 /** 캐주얼 소환의 실효 별 밴드. 상·하한 모두 포함하는 닫힌 구간이다. */
 export interface SummonStarBand {
   readonly min: number;
   readonly max: number;
+}
+
+/**
+ * 밴드 안에서 별이 하나 오를 때마다 곱해지는 감쇠. 밴드 하한이 가장 흔하고
+ * 상한이 가장 귀하다. 글자 수(1★ 332자 · 8★ 18자)에 눌리지 않도록 별 단위
+ * 목표 분포로 먼저 나눈 뒤 같은 별의 글자들이 그 몫을 나눠 갖는다.
+ */
+export const CASUAL_STAR_DECAY = 0.55;
+
+/**
+ * 밴드 상한 위 "잭팟 꼬리" 감쇠 — 원 기획 복원(gripe #10).
+ *
+ * 하한은 하드다("2★ 확정"의 확정은 하한 보장). 상한만 소프트여서, 기본
+ * 소환도 아주 낮은 확률로 상한 위 별이 나온다 — 별이 오를수록 확률이 확
+ * 떨어진다. 상한 초과 별은 [상한 몫 × 이 값^(초과 칸수)]를 받는다.
+ * 0.12 기준 기본 소환(1~3★ 밴드): 4★ 1.9% · 5★ 0.23% · 8★ 0.0004%(로또).
+ */
+export const CASUAL_STAR_TAIL_DECAY = 0.12;
+
+/**
+ * 별 하나가 받는 목표 분포 몫(정규화 전). 하한 밑은 0(하드), 밴드 안은
+ * `CASUAL_STAR_DECAY^(별-하한)`, 상한 위는 상한 몫에 꼬리 감쇠를 곱해 8★까지 잇는다.
+ */
+export function casualStarBandShare(star: number, band: SummonStarBand): number {
+  const min = band.min;
+  const max = Math.max(band.min, band.max);
+  if (star < min) return 0;
+  if (star <= max) return Math.pow(CASUAL_STAR_DECAY, star - min);
+  return Math.pow(CASUAL_STAR_DECAY, max - min) * Math.pow(CASUAL_STAR_TAIL_DECAY, star - max);
+}
+
+/**
+ * 소환 별 분포표(1~8★, 합 1). 확률 공개 UI·보고의 단일 원천 — 수치를 문구에
+ * 하드코딩하지 말고 반드시 여기서 계산해 렌더한다(상수를 바꾸면 표가 따라온다).
+ * `presentStars` 를 주면 실제 후보가 있는 별만 남겨 재정규화하므로
+ * `GameEngine.applyStarBandDecay` 가 만드는 실측 분포와 정확히 일치한다.
+ */
+export function casualSummonStarDistribution(
+  band: SummonStarBand,
+  presentStars?: ReadonlySet<number>
+): ReadonlyArray<{ star: CasualStar; share: number }> {
+  const rows = ([1, 2, 3, 4, 5, 6, 7, 8] as CasualStar[]).map((star) => ({
+    star,
+    share: presentStars !== undefined && !presentStars.has(star) ? 0 : casualStarBandShare(star, band)
+  }));
+  const total = rows.reduce((sum, row) => sum + row.share, 0);
+  return rows.map((row) => ({ star: row.star, share: total > 0 ? row.share / total : 0 }));
 }
 
 export function interestForGold(gold: number): number {
@@ -256,8 +315,12 @@ const REGION_ENEMY_HP_CURVE: Record<RegionCode, { base: number; chapterGrowth: n
  * 수렴하도록 이 계수만 조정한다 — 웨이브 구성·규칙은 그대로다.
  * (3.8 은 스킬 1차 세트·농축 중복 기본화가 얹힌 뒤의 재고정값. 수량 0.85 와
  * 짝이므로 웨이브 총 내구 기준으로는 ×3.23 상당이다.)
+ *
+ * 트랙 B 재고정: 성어 가중이 "부족 글자 합집합"으로 바뀌며 보유한 성어
+ * 글자가 소환 가중을 더는 빨아들이지 않는다 — 소환이 다양해져 캐주얼 실측
+ * 승률이 0.489→0.778 로 뛰었다(45런). 규칙이 좋아진 만큼 체력으로 되받는다.
  */
-const MODE_ENEMY_HP_SCALE: Record<GameMode, number> = { standard: 1, casual: 3.8 };
+const MODE_ENEMY_HP_SCALE: Record<GameMode, number> = { standard: 1, casual: 4.02 };
 
 /**
  * 모드별 적 수량 계수. 캐주얼은 웨이브당 몸수를 15% 줄이는 대신 체력 계수를
@@ -273,8 +336,11 @@ export const MODE_ENEMY_COUNT_SCALE: Record<GameMode, number> = { standard: 1, c
  * "중앙값 43~50분"을 동시에 만족하는 창이 비어 있었다(3.2 이하 = 승률 초과,
  * 3.35 이상 = 런 시간 초과). 보스만 트림해 보스전 길이(런 시간)와 일반
  * 웨이브 난이도(승률)를 분리한다. 규칙 변경이 아니라 체력 계수다.
+ *
+ * 트랙 B 재고정: 일반 체력 3.8→4.02 인상이 런 시간을 50분 경계까지 밀어,
+ * 트림을 0.78→0.76 으로 함께 내려 시간을 되샀다(45런 실측 0.556 / 49.3분).
  */
-export const CASUAL_BOSS_HP_TRIM = 0.78;
+export const CASUAL_BOSS_HP_TRIM = 0.76;
 
 // The center formation overlaps more of the loop than the east formation.
 // These small route-coverage coefficients make "which element appeared first"
@@ -324,6 +390,21 @@ export function casualGoalOrder(catalog: HanziCatalog): readonly string[] {
 }
 
 /*
+ * 성어 기원 소환 — 부적에 기원을 적어 추적 성어의 부족 글자만 부르는 상점 상품.
+ *
+ * 밸런스 전수조사에서 KR 성어 획득률이 0.8%에 그쳐 헤드라인 기능이 사실상
+ * 보이지 않았다. 과거 "성어 가중 3배"안은 승률(전투력)까지 끌어올려 기각됐으므로
+ * 이번 경로는 전투력과 분리한다 — 결과는 캐주얼에서 항상 1★로 태어나고,
+ * 자형연성에서는 저단계 직접 재료만 나온다. 가격은 기본 소환가의 배수로
+ * "성어 완성에 지불하는 값"이며 2.5~3배 사이에서 조율한다.
+ */
+export const IDIOM_WISH_COST_MULTIPLIER = 2.75;
+
+export function idiomWishCost(baseCost: number): number {
+  return Math.round(baseCost * IDIOM_WISH_COST_MULTIPLIER);
+}
+
+/*
  * 수련장(튜토리얼) 완화 계수.
  *
  * 수련장은 각본이 정한 여덟 걸음을 "반드시 이기며" 밟는 판이다. 규칙은
@@ -335,6 +416,43 @@ export function casualGoalOrder(catalog: HanziCatalog): readonly string[] {
 export const TUTORIAL_ENEMY_HP_SCALE = 0.25;
 
 export const TUTORIAL_ENEMY_COUNT_SCALE = 0.4;
+
+/*
+ * 부적 모드 경제 — 「적이 5% 강해진다」 (트랙 C2 ③, 최종안).
+ *
+ * 부적 만들기는 사람만 쓰는 수입원이라 시뮬 게이트 밖에 있다. 사용자 지적은
+ * 정확했다 — "부적 모드 킨 상태에서는 보상 들어오다 보니까 밸런스 조절해야
+ * 돼. 일반보다 돈 더 받는 거니."
+ *
+ * 실측(runAutoplay 계측 · 캐주얼 KR 10런, 웨이브당 엽전 수입):
+ *   웨이브대   총수입   웨이브보상   이자   처치
+ *    1-10       24.3      9.0        0.5   14.8
+ *   11-20       37.8     13.0        0.9   23.9
+ *   21-30       57.1     17.0        2.3   37.9
+ *   51-60      142.2     29.0        4.3  108.9
+ *   91-100     221.1     45.0        7.1  169.0
+ * 부적 기대 수입(상한 3장/웨이브 · 성공률 100% 가정):
+ *   엽전 60% × 평균 10 = 6.0/장 · 문기 30% × 1 · 무료권 10% × 1
+ *   → 웨이브당 18 엽전 + 0.9 문기 + 0.3 소환권.
+ *
+ * 먼저 시도한 「웨이브 정산에서 되갚기」는 폐기했다 — 번 것을 도로 걷어 가면
+ * 보상이 가짜가 된다(사용자: "정산에서 상환이라니 이게 뭐야"). 보상은 준 대로
+ * 남고, 대가는 **난이도**로 받는다: 부적 모드를 켠 런에서만 적 체력을 5%
+ * 올린다. 수량·속도·보스 트림은 건드리지 않는다.
+ *
+ * 5% 인 근거: 웨이브 수입의 대부분은 처치 보상이고(위 표의 처치 열 — 초반
+ * 61%, 후반 76%), 체력이 5% 오르면 같은 화력으로 처치하는 속도가 그만큼
+ * 느려져 웨이브당 실효 수입·여유가 함께 눌린다. 부적 수입(초반 18엽전 ≈
+ * 총수입의 74%, 후반 ≈ 8%)을 완전히 상쇄하는 값은 아니다 — 손으로 쓴 대가는
+ * 남겨 두라는 사용자 판단이며, 남는 이득이 "티 안 나는 수준"이 되도록 잡은
+ * 최소 계수다.
+ */
+
+/**
+ * 부적 모드를 켠 런의 적 체력 계수. 끈 런과 시뮬(봇은 부적 미사용, 옵션을
+ * 넘기지 않는다)은 1.0 이므로 게이트 수치가 흔들리지 않는다.
+ */
+export const TALISMAN_MODE_ENEMY_HP_SCALE = 1.05;
 
 export function weightedPick(rng: SeededRng, entries: readonly HanziDefinition[], weights: readonly number[]): HanziDefinition {
   const total = weights.reduce((sum, weight) => sum + weight, 0);

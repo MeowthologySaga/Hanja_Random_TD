@@ -11,7 +11,7 @@ import { WORLD_HEIGHT, WORLD_WIDTH } from "../core/content";
 import { type CasualFusionQuote, GameEngine } from "../core/game";
 import { type IdiomDefinition, type PartialIdiomChain } from "../core/idioms";
 import { createRunSeed } from "../core/rng";
-import { type GameMode, type Point, type RegionCode, type RunPhase, type Wuxing } from "../core/types";
+import { type GameMode, type NotationCode, type Point, type RegionCode, type RunPhase, type Wuxing } from "../core/types";
 import { type S00Mode } from "./asset-loader";
 import { SoundManager } from "./audio";
 import { buildSynthesisDepths, buildUncombinableStageOneChars, type SynthesisTierFilter } from "./codex-synthesis";
@@ -67,10 +67,6 @@ export const endOverlay = must<HTMLElement>("#end-overlay");
 export const toast = must<HTMLElement>("#toast");
 
 export const bossBanner = must<HTMLElement>("#boss-banner");
-
-export const combatFeed = must<HTMLOListElement>("#combat-feed");
-
-export const comboMeter = must<HTMLElement>("#combo-meter");
 
 export const idiomResult = must<HTMLElement>("#idiom-result");
 
@@ -137,13 +133,12 @@ export const RUN_INVENTORY_GRADE_BANDS: ReadonlyArray<{ id: RunInventoryGradeBan
 
 export const runInventoryBulkSelection = new Set<number>();
 
-export const feedCooldowns = new Map<string, number>();
-
 export const lastAbilityFxByTower = new Map<number, number>();
 
-export type PanelTab = "shop" | "unit" | "inventory" | "evolution" | "concentration" | "growth" | "goal" | "idiom" | "record";
-
-export type GoalPanelMode = "hanzi" | "idiom";
+/* 기록 탭은 gripe #4 확정으로 완전히 걷어냈다 — 능력 발동은 전장 말풍선
+   (showTowerAbilityPopup)이, 상시 메시지는 패널 푸터가 대신한다. 기본 8탭이고
+   부적 탭(학습 모드 설정)이 켜지면 동적으로 9번째가 선다. */
+export type PanelTab = "shop" | "unit" | "inventory" | "evolution" | "concentration" | "growth" | "goal" | "idiom" | "talisman";
 
 export type CodexMode = "hanzi" | "recipes" | "idioms";
 
@@ -187,6 +182,17 @@ export const CALM_SCREEN_STORAGE_KEY = "hanja-td:calm-screen";
  */
 export const DISMANTLE_UNIQUE_STORAGE_KEY = "hanja-td:dismantle-protect-unique";
 
+/*
+ * 학습 모드 · 부적 만들기 (트랙 C).
+ *
+ * 기본 켜짐이고 설정에서 끌 수 있다(트랙 C2 — 사용자 결정). 저장된 값이
+ * "false" 일 때만 꺼진다. 켬/끔은 브라우저에
+ * 저장하고, 무료 소환권은 코어 무수정 원칙에 따라 UI 층(ctx)에만 든다 —
+ * 상점 기본 소환 카드가 배지로 읽고, 사용 시 소환가만큼 엽전을 먼저 얹은 뒤
+ * 즉시 소환하는 래퍼(panels/talisman.ts)가 소비한다.
+ */
+export const TALISMAN_MODE_STORAGE_KEY = "hanja-td:talisman-mode";
+
 export const MIN_MAP_ZOOM = 0.72;
 
 export const BASE_MAP_ZOOM = 2.6;
@@ -214,8 +220,10 @@ export type GameSpeed = 1 | 2 | 3;
  * **옮긴다**(복제가 아니다 — 기존 id·리스너·렌더러가 그대로 동작한다).
  * 패널에는 요약 몇 줄과 [열기] 버튼만 남는다.
  * 엔진은 계속 돌기 때문에 aria-modal 은 false 다.
+ * 트랙 B: 목표 서책(goal)도 같은 문법으로 승격됐다 — 성어 카드 격자와
+ * 상세를 376px 패널에 밀어 넣는 대신 전장 위 대형 프레임으로 편다.
  */
-export type FocusFrameId = "growth" | "concentration" | "inventory";
+export type FocusFrameId = "growth" | "concentration" | "inventory" | "goal";
 
 /**
  * 추적 중 성어의 배치 안내 — 스펙 6라운드 B.
@@ -242,6 +250,12 @@ interface IdiomPlacementGuide {
 class AppContext {
   selectedRegion: RegionCode = "KR";
   pendingRegion: RegionCode | null = null;
+  /**
+   * 읽기 표기 축의 명시적 선택(gripe #6). null = 자동(로스터의 자국 표기).
+   * NOTATION_AXIS_READY=false 동안 S13 표기 그룹이 숨어 있어 null 에서
+   * 벗어날 수 없다 — 그래서 현행 동작이 보장된다.
+   */
+  selectedNotation: NotationCode | null = null;
   formationUnlockHintShown = false;
   selectedGameMode: GameMode = modeParam === "standard" ? "standard" : modeParam === "casual" ? "casual" : "casual";
   displayMode: DisplayMode = initialDisplayMode;
@@ -274,9 +288,6 @@ class AppContext {
   formationRenderKey = "";
   concentrationRenderKey = "";
   growthRenderKey = "";
-  comboTimer = 0;
-  comboCount = 0;
-  lastKillAt = 0;
   lastGlobalAbilityFxAt = -10;
   codexMode: CodexMode = "hanzi";
   codexSynthesisDepth: SynthesisTierFilter = "all";
@@ -284,7 +295,8 @@ class AppContext {
   selectedCodexChar = CHEONJAMUN_JARYEONG_DEX_ENTRIES[0]?.hanja ?? "";
   /** 성어 카드에도 한자 카드와 같은 선택 표시를 준다(항목 17). */
   selectedCodexIdiomId = "";
-  goalPanelMode: GoalPanelMode = "hanzi";
+  /** 목표 서책에서 상세로 펼친 성어. 비면 1순위 추적 성어를 따른다. */
+  goalSelectedIdiomId = "";
   goalSearchQuery = "";
   activePanelTab: PanelTab = "shop";
   concentrationTargetId: number | null = null;
@@ -330,6 +342,22 @@ class AppContext {
   })();
   /** FB6: 실효값(설정 > OS). settings.ts 의 applyCalmScreen 이 갱신한다. */
   calmScreen = this.calmScreenChoice ?? reducedMotion;
+  /**
+   * 부적 만들기 토글(설정 저장). 켜져 있으면 「부적」 탭이 탭바에 선다.
+   *
+   * 기본 켜짐이다 — "보상 재밌는 것 같아서 기본으로 켜져 있게 하자"(사용자
+   * 결정). 균형은 보상을 도로 걷는 상환이 아니라 **적 체력 +5%**(켠 런에만)로
+   * 잡는다. 끈 런은 계수 1.0 이라 예전 밸런스와 완전히 같다.
+   */
+  talismanMode = ((): boolean => {
+    try {
+      return window.localStorage.getItem(TALISMAN_MODE_STORAGE_KEY) !== "false";
+    } catch {
+      return true;
+    }
+  })();
+  /** 부적 보상으로 얻은 기본 소환 무료권. 코어 무수정 — UI 층에서만 산다. */
+  talismanFreeSummonTokens = 0;
   mapZoom = DEFAULT_MAP_ZOOM;
   mapOffset: Point = defaultMapOffset();
   /** 휠 확대·축소 1회 또는 팬 1회마다 오른다. 코치 2단계 자동 진행의 근거. */

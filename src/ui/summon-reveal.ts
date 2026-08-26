@@ -5,7 +5,7 @@ import { CASUAL_STAR_COLORS, CASUAL_STAR_NAMES, casualStrokeCount } from "../cor
 import { BOARD_FORMATIONS } from "../core/content";
 import { definitionForTower, ELEMENT_STYLES } from "../core/hanzi";
 import { jaryeongVisualFor } from "../core/jaryeongs";
-import { learningInfo } from "../core/learning";
+import { learningInfoForNotation } from "../core/learning";
 import { type GameEvent, type Wuxing } from "../core/types";
 import { ctx, fusionVortex, must, summonReveal } from "./app-context";
 import { coachIsPointingAtBoard } from "./coach";
@@ -44,10 +44,10 @@ export function showCasualFusionReveal(events: Array<Extract<GameEvent, { type: 
   const newCount = events.filter((event) => event.newDiscovery).length;
   const boardCount = events.filter((event) => event.tower.cell >= 0).length;
   const placementLabel = boardCount === 0
-    ? "런 인벤토리 보관"
+    ? "가방 보관"
     : boardCount === events.length
       ? "소모 자리 자동 배치"
-      : `전장 ${boardCount} · 인벤 ${events.length - boardCount}`;
+      : `전장 ${boardCount} · 가방 ${events.length - boardCount}`;
   must<HTMLElement>("#summon-reveal-kicker").textContent = "3합 승급 결과";
   must<HTMLElement>("#summon-reveal-title").textContent = events.length > 1
     ? `${events.length}회 승급 결과`
@@ -62,7 +62,7 @@ export function showCasualFusionReveal(events: Array<Extract<GameEvent, { type: 
     const tower = event.tower;
     const style = ELEMENT_STYLES[tower.wuxing];
     const visual = jaryeongVisualFor(tower.char, tower.wuxing, ctx.engine.state.region);
-    const learning = learningInfo(ctx.engine.state.region, tower.char);
+    const learning = learningInfoForNotation(ctx.engine.state.notation, tower.char);
     const star = casualStarOf(tower);
     return `<article class="summon-result-card is-fusion ${event.newDiscovery ? "is-new" : "is-helpful"}" style="--summon:${style.color};--summon-star:${CASUAL_STAR_COLORS[star]};--summon-delay:${index * 45}ms">
       <span class="summon-result-spirit" style="${visualBackgroundStyle(visual)}" aria-hidden="true"></span>
@@ -102,8 +102,8 @@ export function showSummonReveal(events: Array<Extract<GameEvent, { type: "summo
   const placementLabel = storedCount === 0
     ? "전장 자동 배치"
     : storedCount === events.length
-      ? "런 인벤토리 보관"
-      : `전장 ${events.length - storedCount} · 인벤 ${storedCount}`;
+      ? "가방 보관"
+      : `전장 ${events.length - storedCount} · 가방 ${storedCount}`;
   must<HTMLElement>("#summon-reveal-title").textContent = events.length > 1 ? `${events.length}연 소환 결과` : `${events[0]?.tower.char ?? "?"} 자령 출현`;
   const firstSummon = ctx.engine.state.summonCount === events.length && ctx.engine.state.startingFormationIndex !== null;
   const startingFormation = firstSummon ? BOARD_FORMATIONS[ctx.engine.state.startingFormationIndex ?? -1] : undefined;
@@ -116,16 +116,17 @@ export function showSummonReveal(events: Array<Extract<GameEvent, { type: "summo
     const definition = definitionForTower(ctx.engine.catalog, tower.definitionId);
     const style = ELEMENT_STYLES[tower.wuxing];
     const visual = jaryeongVisualFor(tower.char, tower.wuxing, ctx.engine.state.region);
-    const learning = learningInfo(ctx.engine.state.region, tower.char);
+    const learning = learningInfoForNotation(ctx.engine.state.notation, tower.char);
     const helpfulLabel = event.helpfulReason === "both" ? "목표·성어" : event.helpfulReason === "goal" ? "목표 재료" : event.helpfulReason === "idiom" ? "성어 재료" : "";
     const utilityLabel = event.utility === "new" ? "NEW" : event.utility === "synthesis" ? ctx.engine.state.mode === "casual" ? "목표" : "합성" : event.utility === "concentration" ? "중복" : "교체 후보";
     const star = casualStarOf(tower);
-    return `<article class="summon-result-card ${event.newDiscovery ? "is-new" : ""} ${event.helpful ? "is-helpful" : ""}" style="--summon:${style.color};--summon-star:${CASUAL_STAR_COLORS[star]};--summon-delay:${index * 45}ms">
+    // 잭팟(소프트 상한 위 별)은 카드 한 장에 별색 강조 1개만 얹는다 — calm-screen 존중.
+    return `<article class="summon-result-card ${event.newDiscovery ? "is-new" : ""} ${event.helpful ? "is-helpful" : ""} ${event.jackpot ? "is-jackpot" : ""}" style="--summon:${style.color};--summon-star:${CASUAL_STAR_COLORS[star]};--summon-delay:${index * 45}ms">
       <span class="summon-result-spirit" style="${visualBackgroundStyle(visual)}" aria-hidden="true"></span>
       <strong>${tower.char}</strong>
       <b>${escapeHtml(learning.short)}</b>
       <small>${style.name}행 · ${ctx.engine.state.mode === "casual" ? `${star}★ ${CASUAL_STAR_NAMES[star]} · ${casualStrokeCount(tower.char) ?? "?"}획` : escapeHtml(definition.combat.roleLabel)}</small>
-      <div><em>${utilityLabel}</em>${helpfulLabel ? `<mark>${helpfulLabel}</mark>` : ""}</div>
+      <div><em>${utilityLabel}</em>${event.jackpot ? `<mark class="summon-jackpot">상한 돌파</mark>` : ""}${helpfulLabel ? `<mark>${helpfulLabel}</mark>` : ""}</div>
     </article>`;
   }).join("");
   summonReveal.classList.toggle("is-batch", events.length > 1);

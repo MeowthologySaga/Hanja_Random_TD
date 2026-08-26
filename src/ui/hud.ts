@@ -1,5 +1,5 @@
 /*
- * 상단 띠·패널 탭·집중 프레임·토스트·전투 기록 등 상시 HUD.
+ * 상단 띠·패널 탭·집중 프레임·토스트 등 상시 HUD.
  */
 import { bossTimeLimitForWave, MAX_ENEMIES, WAVE_REINFORCEMENT_DELAY, wavePlan } from "../core/content";
 import { FIRST_PREP_SECONDS, type GameEngine, interestForGold } from "../core/game";
@@ -11,17 +11,14 @@ import {
   researchUnlockWave,
   WUXING_ORDER
 } from "../core/hanzi";
-import { type ActionResult } from "../core/types";
+import { type ActionResult, type Wuxing } from "../core/types";
 import {
   abilityGuideDialog,
   bossBanner,
   casualFusionConfirmDialog,
   codexDialog,
-  combatFeed,
-  comboMeter,
   ctx,
   elementUpgradeDialog,
-  feedCooldowns,
   type FocusFrameId,
   helpDialog,
   must,
@@ -48,6 +45,8 @@ import { renderActiveIdioms, renderIdiomHud } from "./panels/idiom";
 import { renderRunInventory, setRunInventoryBulkMode } from "./panels/inventory";
 import { closeCompositionDrawer, renderCompositionDrawer, renderSelected } from "./panels/selected";
 import { renderFormationUnlocks, renderSummonShop } from "./panels/shop";
+import { syncTalismanPanel } from "./panels/talisman";
+import { talismanGoldRoll } from "./talisman-reward";
 
 /*
  * 시작 보너스 버튼 주목성.
@@ -169,7 +168,9 @@ const FOCUS_FRAME_MOUNTS: ReadonlyArray<{ id: FocusFrameId; source: string; targ
   { id: "concentration", source: "#concentration-layout", target: "#concentration-frame-body" },
   // R14: 보관고. 많이 뽑는 구조라 376px 패널의 1열 목록으로는 스크롤이 끝없이
   // 길어졌다. 목록 DOM 을 통째로 전장 위 격자 프레임으로 옮긴다.
-  { id: "inventory", source: "#run-inventory-layout", target: "#inventory-frame-body" }
+  { id: "inventory", source: "#run-inventory-layout", target: "#inventory-frame-body" },
+  // 트랙 B: 목표 서책. 성어 카드 격자 + 상세 2단은 376px 에 들어가지 않는다.
+  { id: "goal", source: "#goal-codex-layout", target: "#goal-frame-body" }
 ];
 
 function mountFocusFrames(): void {
@@ -201,6 +202,9 @@ export function setFocusFrame(id: FocusFrameId | null): void {
   } else if (id === "inventory") {
     ctx.runInventoryRenderKey = "";
     renderRunInventory();
+  } else if (id === "goal") {
+    ctx.goalRenderKey = "";
+    renderGoal();
   }
 }
 
@@ -241,7 +245,7 @@ export function wireHud1(): void {
 
 export function handleAction(result: ActionResult, options: { invalidatePanels?: boolean } = {}): void {
   sound.playActionOutcome(result.ok);
-  if (!result.ok || !result.message.includes("자동 봉인")) showToast(result.message, !result.ok);
+  if (!result.ok || !result.message.includes("자동 발동")) showToast(result.message, !result.ok);
   if (options.invalidatePanels !== false) {
     ctx.evolutionRenderKey = "";
     ctx.goalRenderKey = "";
@@ -253,8 +257,46 @@ export function handleAction(result: ActionResult, options: { invalidatePanels?:
   syncPanel();
 }
 
+/**
+ * 트랙 A #2-3: 토스트 문장 속 문기 증감 조각을 분리 강조한다.
+ *
+ * 엔진 문장(lastMessage)은 " · " 로 조각을 잇는다. 그 조각이 문기 환급·획득
+ * 표기(`木 문기 2 환급` · 분해의 `木+3` · 합성의 `농축 문기 木2 환급`)면
+ * 굵은 오행색 칩으로 갈라 세워 "문장 끝 덧붙임"으로 흘려보내지 않는다.
+ * game.ts 는 손대지 않으므로 표기 인식은 전부 UI 쪽 책임이다.
+ */
+function toastEssenceChip(segment: string): HTMLElement | null {
+  const refund = /^([木火土金水]) 문기 \+?(\d+) 환급$/u.exec(segment);
+  const gain = refund === null ? /^([木火土金水])\+(\d+)$/u.exec(segment) : null;
+  const concentration = refund === null && gain === null ? /^농축 문기 .+ 환급$/u.exec(segment) : null;
+  if (refund === null && gain === null && concentration === null) return null;
+  const chip = document.createElement("b");
+  chip.className = "toast-essence";
+  const wuxing = /[木火土金水]/u.exec(segment)?.[0] as Wuxing | undefined;
+  chip.style.setProperty("--element", wuxing ? ELEMENT_STYLES[wuxing].color : "#b8934a");
+  chip.textContent = refund
+    ? `${refund[1]} 문기 +${refund[2]} 환급`
+    : gain
+      ? `${gain[1]} 문기 +${gain[2]}`
+      : segment;
+  return chip;
+}
+
+function renderToastMessage(message: string): void {
+  toast.textContent = "";
+  message.split(" · ").forEach((segment, index) => {
+    if (index > 0) {
+      const separator = document.createElement("span");
+      separator.className = "toast-sep";
+      separator.textContent = " · ";
+      toast.append(separator);
+    }
+    toast.append(toastEssenceChip(segment) ?? document.createTextNode(segment));
+  });
+}
+
 export function showToast(message: string, warning = false): void {
-  toast.textContent = message;
+  renderToastMessage(message);
   toast.classList.toggle("toast--warning", warning);
   toast.classList.remove("toast--visible");
   ctx.toastAnimation?.cancel();
@@ -298,30 +340,10 @@ export function showWaveBanner(): void {
  * 웨이브 배너를 한 번 빌려 전장 왼쪽 스택을 가리킨다. 런마다 처음 한 번뿐이다.
  */
 export function firstSealCelebration(reading: string): void {
-  bossBanner.textContent = `첫 봉인 ${reading}! 발동 중 성어는 전장 왼쪽에 표시됩니다`;
+  bossBanner.textContent = `첫 발동 ${reading}! 발동 중 성어는 전장 왼쪽에 표시됩니다`;
   bossBanner.classList.remove("boss-banner--boss");
   bossBanner.classList.add("boss-banner--idiom");
   showWaveBanner();
-}
-
-export function addCombatFeed(glyph: string, name: string, detail: string, color: string): void {
-  const now = performance.now();
-  const key = glyph + name;
-  if (now - (feedCooldowns.get(key) ?? -10_000) < 1100) return;
-  feedCooldowns.set(key, now);
-  const item = document.createElement("li");
-  item.style.setProperty("--feed-color", color);
-  const seal = document.createElement("b");
-  seal.textContent = glyph;
-  const copy = document.createElement("span");
-  const title = document.createElement("strong");
-  title.textContent = name;
-  const description = document.createElement("small");
-  description.textContent = detail;
-  copy.append(title, description);
-  item.append(seal, copy);
-  combatFeed.prepend(item);
-  while (combatFeed.children.length > 4) combatFeed.lastElementChild?.remove();
 }
 
 export function showTowerAbilityPopup(towerId: number, glyph: string, name: string, color: string): void {
@@ -329,23 +351,6 @@ export function showTowerAbilityPopup(towerId: number, glyph: string, name: stri
   // Frequent procs still happen mechanically, but the same tower cannot flood the screen.
   if (current && current.age < 0.8) return;
   towerAbilityPopups.set(towerId, { text: glyph + " " + name, color, age: 0, duration: 0.82 });
-}
-
-export function registerKillCombo(): void {
-  const now = performance.now();
-  ctx.comboCount = now - ctx.lastKillAt <= 1450 ? ctx.comboCount + 1 : 1;
-  ctx.lastKillAt = now;
-  window.clearTimeout(ctx.comboTimer);
-  if (ctx.comboCount >= 3) {
-    must<HTMLElement>("#combo-count").textContent = "× " + String(ctx.comboCount);
-    comboMeter.classList.remove("combo-meter--visible");
-    void comboMeter.offsetWidth;
-    comboMeter.classList.add("combo-meter--visible");
-  }
-  ctx.comboTimer = window.setTimeout(() => {
-    ctx.comboCount = 0;
-    comboMeter.classList.remove("combo-meter--visible");
-  }, 1750);
 }
 
 export function syncPanel(): void {
@@ -362,11 +367,14 @@ export function syncPanel(): void {
   must<HTMLElement>("#stage-phase").textContent = phaseLabel(state.phase);
   must<HTMLElement>("#stage-enemies").textContent = String(state.enemies.length) + " / " + String(MAX_ENEMIES);
   syncEnemyLimitWarning(state.enemies.length);
-  must<HTMLElement>("#gold-value").textContent = String(state.gold);
+  // 트랙 C2: 부적 보상이 자원칸에 꽂히는 순간에만 숫자가 굴러간다. 굴리는 중이
+  // 아니거나 다른 수입·지출이 끼어들면 즉시 실제 보유량으로 돌아온다.
+  must<HTMLElement>("#gold-value").textContent = String(talismanGoldRoll(state.gold) ?? state.gold);
   must<HTMLElement>("#interest-preview").textContent = "이자 +" + String(interestForGold(state.gold));
   must<HTMLElement>("#enemy-cap-value").textContent = String(MAX_ENEMIES) + "체";
   must<HTMLElement>("#tower-count-value").textContent = String(state.towers.length) + " / " + String(ctx.engine.deployedTowerCapacity());
-  must<HTMLElement>("#goal-count-value").textContent = String(state.goalsCompleted.length) + " / " + String(ctx.engine.goalOrder.length);
+  // 트랙 B: 자원칸 목표 카운터는 한자 사다리(내부 보상은 유지) 대신 성어 봉인 수를 센다.
+  must<HTMLElement>("#goal-count-value").textContent = String(state.idiomSeals.length) + " / " + String(ctx.engine.idioms().length);
   must<HTMLElement>("#seed-value").textContent = state.seed;
   must<HTMLElement>("#message-value").textContent = state.lastMessage;
   renderFormationUnlocks();
@@ -446,6 +454,7 @@ export function syncPanel(): void {
   renderRunInventory();
   if (ctx.activePanelTab === "concentration") renderConcentration();
   if (ctx.activePanelTab === "growth") renderGrowth();
+  if (ctx.activePanelTab === "talisman") syncTalismanPanel();
   renderIdiomHud();
   renderActiveIdioms();
 }

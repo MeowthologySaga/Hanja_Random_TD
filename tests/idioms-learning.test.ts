@@ -114,7 +114,7 @@ describe("four-character idiom formation", () => {
     engine.selectTower(4);
     expect(engine.moveSelectedToCell(3)).toMatchObject({ ok: true });
     expect(engine.state.idiomSeals).toHaveLength(1);
-    expect(engine.state.lastMessage).toContain("자동 봉인");
+    expect(engine.state.lastMessage).toContain("자동 발동");
   });
 
   it("rechecks automatically after swapping two occupied cells", () => {
@@ -127,7 +127,7 @@ describe("four-character idiom formation", () => {
     expect(engine.relocateSelectedToCell(0)).toMatchObject({ ok: true });
     expect(engine.state.towers.find((tower) => tower.id === 2)?.cell).toBe(0);
     expect(engine.state.idiomSeals).toHaveLength(1);
-    expect(engine.state.lastMessage).toContain("자동 봉인");
+    expect(engine.state.lastMessage).toContain("자동 발동");
   });
 
   it("seals a line laid out in reverse order and stores cells in character order", () => {
@@ -243,7 +243,7 @@ describe("four-character idiom formation", () => {
     expect(engine.resolveIdiomFormations()).toBe(0);
     expect(engine.autoArrangeTowers()).toMatchObject({ ok: true });
     expect(engine.state.idiomSeals.some((seal) => seal.idiomId === "heart")).toBe(true);
-    expect(engine.state.lastMessage).toContain("성어 1개 봉인");
+    expect(engine.state.lastMessage).toContain("성어 1개 발동");
   });
 
   it("pulls a missing idiom character out of the run inventory during auto-arrange", () => {
@@ -257,7 +257,7 @@ describe("four-character idiom formation", () => {
     expect(engine.autoArrangeTowers()).toMatchObject({ ok: true });
     expect(engine.state.idiomSeals.some((seal) => seal.idiomId === "heart")).toBe(true);
     expect(engine.state.inventoryTowers).toHaveLength(0);
-    expect(engine.state.lastMessage).toContain("인벤토리 1기 투입");
+    expect(engine.state.lastMessage).toContain("가방 1기 투입");
   });
 });
 
@@ -294,7 +294,7 @@ describe("sustained idiom seals", () => {
     expect(engine.activeIdiomSeals()).toHaveLength(0);
     expect(engine.isIdiomSealActive("heart")).toBe(false);
     expect(engine.idiomBonus("range")).toBe(0);
-    expect(engine.state.lastMessage).toContain("봉인 해제");
+    expect(engine.state.lastMessage).toContain("발동 해제");
 
     const broken = brokenEvent(engine);
     expect(broken).toBeDefined();
@@ -323,7 +323,7 @@ describe("sustained idiom seals", () => {
       expect(rejoin.rejoined).toBe(true);
       expect(rejoin.cells).toEqual([0, 1, 2, 3]);
     }
-    expect(engine.state.lastMessage).toContain("재봉인");
+    expect(engine.state.lastMessage).toContain("재발동");
   });
 
   it("breaks the seal when a sealed spirit is stored, and keeps it broken after dismantling it", () => {

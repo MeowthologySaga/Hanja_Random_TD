@@ -262,6 +262,60 @@ describe("regional recipe defense run", () => {
     expect(engine.idiomProgress(desired!.id)).toMatchObject({ total: 4 });
   });
 
+  // 트랙 B(gripe #3): 목표 서책 전면 통합 — 성어 복수 추적.
+  it("tracks up to three idioms at once and refuses to drop the last one (Track B)", () => {
+    const engine = new GameEngine("idiom-multi-tracking", "KR");
+    engine.begin();
+    // 승계: 시작 추적은 기존 "현재 성어 목표"였던 첫 목표 성어 1구다.
+    expect(engine.trackedIdioms().map((idiom) => idiom.id)).toEqual([engine.state.featuredIdiomIds[0]]);
+    const first = engine.state.featuredIdiomIds[0] as string;
+    const extras = engine.allIdioms().filter((idiom) => idiom.id !== first).slice(0, 3);
+    expect(engine.setIdiomTracking(extras[0]!.id, true)).toMatchObject({ ok: true });
+    expect(engine.setIdiomTracking(extras[1]!.id, true)).toMatchObject({ ok: true });
+    expect(engine.trackedIdioms()).toHaveLength(3);
+    expect(engine.setIdiomTracking(extras[2]!.id, true)).toMatchObject({ ok: false, message: expect.stringContaining("최대 3") });
+    // 추적한 성어는 발동 판정 대상인 이번 런 목표 다섯 구에도 편입된다.
+    expect(engine.state.featuredIdiomIds).toContain(extras[0]!.id);
+    expect(engine.state.featuredIdiomIds).toContain(extras[1]!.id);
+    // 최소 1개 유지 — 마지막 한 구는 해제할 수 없다.
+    expect(engine.setIdiomTracking(extras[1]!.id, false)).toMatchObject({ ok: true });
+    expect(engine.setIdiomTracking(extras[0]!.id, false)).toMatchObject({ ok: true });
+    expect(engine.trackedIdioms().map((idiom) => idiom.id)).toEqual([first]);
+    expect(engine.setIdiomTracking(first, false)).toMatchObject({ ok: false, message: expect.stringContaining("최소 1개") });
+  });
+
+  it("retires sealed idioms from tracking and inherits the next featured goal (Track B)", () => {
+    const engine = new GameEngine("idiom-tracking-inherit", "KR");
+    engine.begin();
+    const [first, second] = engine.state.featuredIdiomIds;
+    engine.state.idiomSeals.push({ idiomId: first as string, cells: [0, 1, 2, 3], completedAt: 0, active: true });
+    // 추적 목록의 봉인 구는 걸러지고, 비면 다음 미봉인 목표 성어가 승계된다.
+    expect(engine.trackedIdioms().map((idiom) => idiom.id)).toEqual([second]);
+    expect(engine.currentIdiomTarget()?.id).toBe(second);
+    // 봉인한 성어는 다시 추적할 수 없다.
+    expect(engine.setIdiomTracking(first as string, true)).toMatchObject({ ok: false, message: expect.stringContaining("봉인") });
+  });
+
+  it("feeds the union of tracked idioms' missing characters into forced lineage summons (Track B)", () => {
+    const engine = new GameEngine("idiom-union-weighting", "KR", "casual");
+    engine.setAutoPlaceSummons(false);
+    engine.begin();
+    const heaven = engine.allIdioms().find((idiom) => idiom.chars === "天地玄黃");
+    expect(heaven).toBeDefined();
+    expect(engine.setIdiomTracking(heaven!.id, true)).toMatchObject({ ok: true });
+    const missing = engine.trackedIdiomMissingChars();
+    for (const char of "天地玄黃") expect(missing.has(char)).toBe(true);
+    // 보유하면 부족 글자에서 빠진다 — 연구·소환 가중은 아직 없는 글자로만 향한다.
+    engine.state.inventoryTowers.push(tower("KR", "天", 9_101, -1));
+    expect(engine.trackedIdiomMissingChars().has("天")).toBe(false);
+    // 강제 계보 소환은 목표 한자와 추적 성어 부족 글자의 합집합 안에서만 낸다.
+    const union = new Set([...engine.trackedIdiomMissingChars(), engine.state.targetChar]);
+    engine.state.gold = 1_000;
+    expect(engine.setSummonIntent("lineage")).toMatchObject({ ok: true });
+    expect(engine.summon(true)).toMatchObject({ ok: true });
+    expect(union.has(engine.state.inventoryTowers.at(-1)?.char ?? "")).toBe(true);
+  });
+
   it("makes a chosen Hanja materially more likely in the thousand-character pool", () => {
     let balancedHeaven = 0;
     let focusedHeaven = 0;
@@ -578,7 +632,7 @@ describe("regional recipe defense run", () => {
     expect(engine.state.inventoryTowers).toHaveLength(0);
     expect(engine.state.towers.every((unit) => unit.cell >= 0)).toBe(true);
     expect(new Set(engine.state.towers.map((unit) => unit.cell)).size).toBe(4);
-    expect(engine.state.lastMessage).toContain("인벤토리 3기 투입");
+    expect(engine.state.lastMessage).toContain("가방 3기 투입");
   });
 
   it("can auto-arrange directly from an inventory-only board state", () => {

@@ -2,6 +2,9 @@
  * 사자성어 패널과 발동 배지.
  */
 import { idiomById, type IdiomDefinition } from "../../core/idioms";
+import { learningInfoForNotation } from "../../core/learning";
+import { idiomReadingForNotation } from "../../core/notation";
+import type { IdiomSeal } from "../../core/types";
 import { ctx, idiomResult, idiomTab, must, toast } from "../app-context";
 import { escapeHtml } from "../format";
 import { showToast } from "../hud";
@@ -18,7 +21,7 @@ export function resetIdiomResult(): void {
 export function showIdiomResult(reading: string, meaning: string, bonus: string, color: string, rejoined = false): void {
   idiomResult.style.setProperty("--idiom-result-color", color);
   must<HTMLElement>("#idiom-result-glyph").textContent = "四";
-  must<HTMLElement>("#idiom-result-name").textContent = reading + (rejoined ? " 재봉인" : " 자동 봉인");
+  must<HTMLElement>("#idiom-result-name").textContent = reading + (rejoined ? " 재발동" : " 자동 발동");
   must<HTMLElement>("#idiom-result-meaning").textContent = meaning;
   must<HTMLElement>("#idiom-result-bonus").textContent = bonus;
   idiomResult.classList.remove("is-active");
@@ -33,7 +36,7 @@ export function showIdiomResult(reading: string, meaning: string, bonus: string,
 export function showIdiomBrokenResult(reading: string, bonus: string): void {
   idiomResult.style.setProperty("--idiom-result-color", "#9d8f78");
   must<HTMLElement>("#idiom-result-glyph").textContent = "四";
-  must<HTMLElement>("#idiom-result-name").textContent = reading + " 봉인 해제";
+  must<HTMLElement>("#idiom-result-name").textContent = reading + " 발동 해제";
   must<HTMLElement>("#idiom-result-meaning").textContent = "네 자령이 줄을 벗어났습니다. 다시 세우면 재발동합니다.";
   must<HTMLElement>("#idiom-result-bonus").textContent = bonus + " 중단";
   idiomResult.classList.remove("is-active");
@@ -69,13 +72,13 @@ function markIdiomHintSeen(): void {
 }
 
 /**
- * 성어 탭을 세 번 맥동시켜 "더 볼 곳"을 짚는다.
+ * 성어·목표 탭을 세 번 맥동시켜 "더 볼 곳"을 짚는다.
  *
- * 목표 탭 안의 성어 서브탭은 목표 패널을 열어 둔 사람에게만 보이므로, 항상
- * 보이는 성어 패널 탭도 함께 맥동시킨다. 안내가 아무 데도 안 닿으면 무의미하다.
+ * 트랙 B 통합 후 성어 목표는 목표 서책(#goal-tab)이 담당한다 — 상태를 보는
+ * 성어 탭과 목표를 고르는 서책 탭을 함께 맥동시킨다.
  */
 function pulseIdiomGoalTab(): void {
-  const tabs = [idiomTab, document.querySelector<HTMLButtonElement>('[data-goal-mode="idiom"]')];
+  const tabs = [idiomTab, document.querySelector<HTMLButtonElement>("#goal-tab")];
   for (const tab of tabs) {
     if (!tab) continue;
     tab.classList.remove("is-hint-pulsing");
@@ -91,7 +94,7 @@ function maybeShowIdiomHint(target: IdiomDefinition | undefined): void {
   idiomHintHandled = true;
   if (idiomHintAlreadySeen()) return;
   markIdiomHintSeen();
-  showToast(`${target.chars} 재료가 모이고 있어요 — 같은 진의 한 줄(가로·세로·대각선)에 ①→④ 순서로 놓으면 봉인 발동! (역순도 가능)`);
+  showToast(`${target.chars} 재료가 모이고 있어요 — 같은 진의 한 줄(가로·세로·대각선)에 ①→④ 순서로 놓으면 발동! (역순도 가능)`);
   // 두 줄짜리 안내라 평소 자리(bottom 45px)에서는 지도·강조 버튼과 겹친다.
   toast.classList.add("toast--idiom-hint");
   window.setTimeout(() => toast.classList.remove("toast--idiom-hint"), 2000);
@@ -119,7 +122,7 @@ export function renderIdiomHud(): void {
     must<HTMLElement>("#idiom-name").textContent = "사자성어 전서 완성";
     must<HTMLElement>("#idiom-meaning").textContent = "각 성구의 보너스는 네 자령이 그 줄을 지키는 동안만 발동합니다.";
     must<HTMLElement>("#idiom-bonus").textContent = `발동 중 ${activeCount} / ${ctx.engine.idioms().length}구`;
-    must<HTMLElement>("#idiom-hint").textContent = activeCount === ctx.engine.idioms().length ? "四句成陣 · 모든 봉인 발동 중" : "흩어진 줄을 다시 세우면 재발동합니다";
+    must<HTMLElement>("#idiom-hint").textContent = activeCount === ctx.engine.idioms().length ? "四句成陣 · 모든 성어 발동 중" : "흩어진 줄을 다시 세우면 재발동합니다";
     return;
   }
   hud.classList.remove("idiom-hud--complete");
@@ -133,7 +136,7 @@ export function renderIdiomHud(): void {
     return `<i class="${owned ? "is-owned" : ""}" style="--idiom:${target.color}" title="${index + 1}번째 글자">${char}</i>`;
   }).join("");
   must<HTMLElement>("#idiom-glyphs").innerHTML = glyphs;
-  must<HTMLElement>("#idiom-name").textContent = target.reading;
+  must<HTMLElement>("#idiom-name").textContent = idiomReadingForNotation(target, ctx.engine.state.notation);
   must<HTMLElement>("#idiom-meaning").textContent = target.meaning;
   must<HTMLElement>("#idiom-bonus").textContent = target.bonus.label;
   must<HTMLElement>("#idiom-bonus").style.setProperty("--idiom", target.color);
@@ -165,8 +168,8 @@ function renderIdiomSealStatus(): void {
     .map((seal) => {
       const idiom = idiomById(ctx.engine.state.region, seal.idiomId);
       if (!idiom) return "";
-      const label = seal.active ? "발동 중" : "봉인 이력 · 지금은 흩어짐";
-      return `<div class="idiom-seal-row ${seal.active ? "is-live" : "is-scattered"}" style="--idiom:${idiom.color}"><b>${escapeHtml(idiom.chars)}</b><span>${escapeHtml(idiom.reading)}</span><em>${escapeHtml(shortIdiomBonusLabel(idiom.bonus.label))}</em><mark>${label}</mark></div>`;
+      const label = seal.active ? "발동 중" : "발동 이력 · 지금은 흩어짐";
+      return `<div class="idiom-seal-row ${seal.active ? "is-live" : "is-scattered"}" style="--idiom:${idiom.color}"><b>${escapeHtml(idiom.chars)}</b><span>${escapeHtml(idiomReadingForNotation(idiom, ctx.engine.state.notation))}</span><em>${escapeHtml(shortIdiomBonusLabel(idiom.bonus.label))}</em><mark>${label}</mark></div>`;
     })
     .join("");
 }
@@ -176,10 +179,62 @@ function shortIdiomBonusLabel(label: string): string {
   return label.replace(/^모든 자령 /, "").replace(/^모든 적 /, "적 ").replace(/^합성할 때마다 /, "합성 ");
 }
 
+/*
+ * ── 트랙 K (gripe #11-2·3) ────────────────────────────────────────────
+ *
+ * 좌상단 발동 칩은 한자 4자만 보여 줬다. 한자 학습자가 읽을 수 없는 표찰이라
+ * 독음을 병기하고, 효과 문구는 "景行維賢 적 이동 속도 -…" 처럼 수치가 잘렸다.
+ * 요약은 허용하되 수치는 절대 자르지 않는다 — 설명부와 수치를 따로 조판해
+ * 수치 토막에만 flex-shrink: 0 을 준다(줄이 모자라면 수치가 다음 줄로 내려간다).
+ * 전문(뜻풀이·참여 자령 4자)은 호버 팝오버가 맡는다 — 전장 자령 학습 카드와
+ * 같은 시각 언어다.
+ */
+
+/** `적 이동 속도 -10%` → { text: "적 이동 속도", value: "-10%" }. 수치가 없으면 value 는 빈 문자열. */
+function splitIdiomBonus(label: string): { text: string; value: string } {
+  const match = /^(.*?)\s*([+-]?\d+(?:\.\d+)?\s*%?)$/u.exec(label);
+  if (!match) return { text: label, value: "" };
+  return { text: (match[1] ?? "").trim(), value: (match[2] ?? "").replace(/\s+/gu, "") };
+}
+
+/** 봉인된 네 칸에 실제로 선 자령 — 없으면 성어 글자로 대신 채운다(해제 직전 한 프레임). */
+function sealParticipants(idiom: IdiomDefinition, seal: IdiomSeal): Array<{ char: string; reading: string }> {
+  const chars = [...idiom.chars];
+  const notation = ctx.engine.state.notation;
+  const placed = seal.cells
+    .map((cell) => ctx.engine.state.towers.find((tower) => tower.cell === cell)?.char)
+    .filter((char): char is string => Boolean(char));
+  const source = placed.length === chars.length ? placed : chars;
+  return source.map((char) => ({ char, reading: learningInfoForNotation(notation, char).short }));
+}
+
+/** 터치·키보드용 축약본 — 팝오버와 같은 내용을 한 줄로 접는다. */
+function activeIdiomTitle(idiom: IdiomDefinition, seal: IdiomSeal, reading: string): string {
+  const parts = sealParticipants(idiom, seal).map((part) => `${part.char}(${part.reading})`).join(" · ");
+  return `${idiom.chars} ${reading} — ${idiom.meaning} · 발동 효과 ${idiom.bonus.label} · 참여 자령 ${parts} — 눌러서 발동 칸으로 이동`;
+}
+
+/** 호버 팝오버 — 한자 4자 · 독음 · 뜻풀이 · 발동 효과 · 참여 자령 4자. */
+function activeIdiomPopHtml(idiom: IdiomDefinition, seal: IdiomSeal, reading: string): string {
+  const participants = sealParticipants(idiom, seal)
+    .map((part) => `<span class="aip-jar"><b>${escapeHtml(part.char)}</b><em>${escapeHtml(part.reading)}</em></span>`)
+    .join("");
+  return `<span class="active-idiom-pop" aria-hidden="true">`
+    + `<span class="aip-head"><b class="aip-chars">${escapeHtml(idiom.chars)}</b><strong class="aip-reading">${escapeHtml(reading)}</strong></span>`
+    + `<em class="aip-meaning">${escapeHtml(idiom.meaning)}</em>`
+    + `<span class="aip-line"></span>`
+    + `<span class="aip-row"><i>발동 효과</i><b>${escapeHtml(idiom.bonus.label)}</b></span>`
+    + `<span class="aip-row aip-row--jars"><i>참여 자령</i><span class="aip-jars">${participants}</span></span>`
+    + `<span class="aip-line"></span>`
+    + `<span class="aip-foot">눌러서 발동 칸으로 이동 · 줄이 흩어지면 해제</span>`
+    + `</span>`;
+}
+
 export function renderActiveIdioms(): void {
   // R18: 스택은 "지금 발동 중"만 센다. 흩어진 봉인은 기록으로만 남아 성어 탭에 보인다.
   const seals = ctx.engine.activeIdiomSeals();
-  const key = seals.map((seal) => seal.idiomId).join(",");
+  // 팝오버가 참여 자령 4자를 읽으므로 칸·표기가 바뀌면 다시 그려야 한다.
+  const key = seals.map((seal) => `${seal.idiomId}@${seal.cells.join("-")}`).join(",") + "|" + ctx.engine.state.notation;
   if (key === ctx.activeIdiomsRenderKey) return;
   ctx.activeIdiomsRenderKey = key;
   const stack = must<HTMLElement>("#active-idioms");
@@ -189,8 +244,15 @@ export function renderActiveIdioms(): void {
     .map((seal) => {
       const idiom = idiomById(ctx.engine.state.region, seal.idiomId);
       if (!idiom) return "";
-      const bonus = shortIdiomBonusLabel(idiom.bonus.label);
-      return `<button type="button" class="active-idiom" data-active-idiom="${escapeHtml(seal.idiomId)}" style="--idiom:${idiom.color}" title="${escapeHtml(idiom.reading)} · ${escapeHtml(idiom.bonus.label)} — 눌러서 봉인 칸으로 이동" aria-label="${escapeHtml(idiom.reading)} 봉인 · ${escapeHtml(idiom.bonus.label)} · 눌러서 해당 네 칸으로 이동"><b>${escapeHtml(idiom.chars)}</b><span>${escapeHtml(bonus)}</span></button>`;
+      const bonus = splitIdiomBonus(shortIdiomBonusLabel(idiom.bonus.label));
+      const reading = idiomReadingForNotation(idiom, ctx.engine.state.notation);
+      const value = bonus.value ? `<strong class="active-idiom-value">${escapeHtml(bonus.value)}</strong>` : "";
+      return `<button type="button" class="active-idiom" data-active-idiom="${escapeHtml(seal.idiomId)}" style="--idiom:${idiom.color}" title="${escapeHtml(activeIdiomTitle(idiom, seal, reading))}" aria-label="${escapeHtml(reading)} 발동 · ${escapeHtml(idiom.meaning)} · ${escapeHtml(idiom.bonus.label)} · 눌러서 해당 네 칸으로 이동">`
+        + `<b class="active-idiom-chars">${escapeHtml(idiom.chars)}</b>`
+        + `<i class="active-idiom-reading">${escapeHtml(reading)}</i>`
+        + `<span class="active-idiom-effect"><em>${escapeHtml(bonus.text)}</em>${value}</span>`
+        + activeIdiomPopHtml(idiom, seal, reading)
+        + `</button>`;
     })
     .join("");
   stack.classList.toggle("is-empty", visible.length === 0);

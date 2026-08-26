@@ -10,12 +10,9 @@ import { loadAutoPlaceSummons } from "./summon-placement";
 import {
   canvas,
   casualFusionConfirmDialog,
-  combatFeed,
-  comboMeter,
   ctx,
   dismantleSelection,
   endOverlay,
-  feedCooldowns,
   lastAbilityFxByTower,
   must,
   runInventoryBulkSelection,
@@ -144,7 +141,14 @@ export function startRun(useNewSeed = false, options: StartRunOptions = {}): voi
   const seed = useNewSeed ? createRunSeed() : seedInput.value.trim() || createRunSeed();
   ctx.engine = options.createEngine
     ? options.createEngine()
-    : new GameEngine(seed, ctx.selectedRegion, ctx.selectedGameMode);
+    // 표기 축(gripe #6): 명시 선택이 없으면(null — 플래그 꺼짐 동안 항상)
+    // 엔진 기본값인 로스터 자국 표기라 현행과 같다.
+    // 부적 모드(트랙 C2)는 런이 시작될 때의 설정을 그대로 굳힌다 — 한 판
+    // 도중에 토글을 만져도 그 런의 적 체력이 흔들리지 않는다.
+    : new GameEngine(seed, ctx.selectedRegion, ctx.selectedGameMode, {
+      ...(ctx.selectedNotation ? { notation: ctx.selectedNotation } : {}),
+      talismanMode: ctx.talismanMode
+    });
   seedInput.value = ctx.engine.state.seed;
   shell.dataset.gameMode = ctx.engine.state.mode;
   ctx.mapSynthesisDepths = buildSynthesisDepths(ctx.engine.catalog.definitions.values());
@@ -173,10 +177,6 @@ export function startRun(useNewSeed = false, options: StartRunOptions = {}): voi
   towerAbilityPopups.clear();
   lastAbilityFxByTower.clear();
   ctx.lastGlobalAbilityFxAt = -10;
-  combatFeed.replaceChildren();
-  feedCooldowns.clear();
-  ctx.comboCount = 0;
-  comboMeter.classList.remove("combo-meter--visible");
   resetIdiomResult();
   hideSummonReveal();
   closeCompositionDrawer();
@@ -195,7 +195,6 @@ export function startRun(useNewSeed = false, options: StartRunOptions = {}): voi
   setPanelTab("shop");
   ctx.formationUnlockHintShown = false;
   if (!options.skipCoach) startCoach();
-  window.clearTimeout(ctx.comboTimer);
   ctx.evolutionRenderKey = "";
   ctx.goalRenderKey = "";
   ctx.selectedRenderKey = "";

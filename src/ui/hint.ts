@@ -78,8 +78,8 @@ const ONE_SHOT_HINTS: readonly OneShotHint[] = [
     title: () => "별 확률이 다른 소환이 열렸습니다",
     body: () => {
       const band = ctx.engine.summonStarBand("midstar");
-      const label = band === null ? "2~5★" : `${band.min}~${band.max}★`;
-      return `중급 소환은 ${label} 확정입니다. 기본 소환보다 비싼 대신 낮은 별 구간을 건너뜁니다.`;
+      const [min, max] = band === null ? [2, 5] : [band.min, band.max];
+      return `중급 소환은 ${min}★부터 확정, 주로 ${min}~${max}★입니다. 기본 소환보다 비싼 대신 낮은 별 구간을 건너뜁니다. 확률은 카드에 마우스를 올리면 보입니다.`;
     },
     when: () => ctx.engine.isSummonProductAvailable("midstar")
   },
@@ -107,8 +107,17 @@ const ONE_SHOT_HINTS: readonly OneShotHint[] = [
     id: "essence",
     target: "#growth-tab",
     title: () => "문기를 얻었습니다",
-    body: () => "문기는 강화 제련소에서 오행별로 씁니다. [강화] 탭에서 분해·오행 강화·고유 특성에 투자하세요.",
+    body: () => "문기는 자령 분해와 3체 승급이 남깁니다. 강화 제련소에서 오행별로 씁니다 — [강화] 탭에서 분해·오행 강화·고유 특성에 투자하세요.",
     when: () => WUXING_ORDER.some((wuxing) => ctx.engine.state.elementEssence[wuxing] > 0)
+  },
+  {
+    id: "talisman",
+    target: "#talisman-tab",
+    title: () => "부적 만들기가 켜져 있습니다",
+    body: () => "한자를 따라 쓰고 [부적 봉인]을 누르면 그 글자의 자령이 보상을 두고 갑니다. 그 대신 이 모드에서는 적이 5% 강해져요 — 원치 않으면 설정에서 끌 수 있습니다.",
+    // 기본 켜짐(트랙 C2)이라 대부분의 사람은 이 탭을 처음 본다. 탭이 실제로
+    // 서 있는 순간 딱 한 번만 짚는다. 수련장은 자체 각본이 화면을 이끌므로 비킨다.
+    when: () => ctx.talismanMode && shell.dataset.tutorial !== "1"
   }
 ];
 

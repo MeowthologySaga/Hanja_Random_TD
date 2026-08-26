@@ -2,11 +2,17 @@
  * 수련장(튜토리얼 모드).
  *
  * 별승급 규칙 그대로의 "각본 있는 짧은 런"이다. 고정 시드(TUTORIAL) 위에서
- * 소환 → 배치 → 첫 웨이브 → 3합 승급 → 티어 소환 → 강화 → 사자성어 봉인 →
+ * 소환 → 배치 → 첫 웨이브 → 3합 승급 → 티어 소환 → 강화 → 사자성어 발동 →
  * 수료의 여덟 걸음을 밟는다. 각 걸음은 [말풍선 + 스포트라이트 + 나머지
  * 상호작용 잠금(soft-lock)]으로 이루어지고, 해당 조작을 실제로 해내면
  * 저절로 다음으로 넘어간다. 코치(coach.ts)의 시각 언어를 빌리되 구현은
  * 이 모듈 안에서 자기완결한다 — coach.ts 는 건드리지 않는다.
+ *
+ * 진행 원칙: 걸음 전환의 무행동 대기는 2초를 넘기지 않는다. 예외는 관전형
+ * 안내 네 곳(3걸음 교전 관전·4걸음 문기 스포트라이트·6걸음 맺음·8걸음
+ * 수료막 지연)으로, 모두 GUIDANCE_MS(6초) 자동 진행에 그 전에라도 화면
+ * 아무 곳 클릭이면 즉시 다음이다(GUIDANCE_MS 절).
+ * 첫 웨이브 전멸은 어느 걸음의 조건도 아니다 — 전투는 배경에서 자연히 끝난다.
  */
 import { WORLD_HEIGHT, WORLD_WIDTH } from "../core/content";
 import { GameEngine } from "../core/game";
@@ -15,6 +21,7 @@ import { type Wuxing } from "../core/types";
 import { isBattleAssetsReady, whenBattleAssetsReady } from "./asset-loader";
 import { canvas, ctx, must, shell, sound } from "./app-context";
 import { focusMapOnCells } from "./battle/camera";
+import { cellAtPointerEvent } from "./battle/input";
 import { setPanelTab, showToast } from "./hud";
 import { startRun } from "./s00-menu";
 import { hideSummonReveal } from "./summon-reveal";
@@ -44,6 +51,12 @@ interface TutorialView {
   readonly world?: { x: number; y: number; width: number; height: number } | null;
   readonly title: string;
   readonly body: string;
+  /**
+   * 본문 아래에 금박 괘선으로 세우는 결론 한 줄. 설명문에 묻히면 안 되는
+   * 핵심 문장(예: 6걸음 "낮은 별 자령을 배치해도 불리하지 않아요")만 쓴다.
+   * 별도 요소에 textContent 로 넣으므로 각본 문자열은 언제나 그대로 안전하다.
+   */
+  readonly emphasis?: string;
   readonly control?: "click" | "wheel" | "drag";
 }
 
@@ -57,11 +70,92 @@ interface TutorialStep {
   readonly view: () => TutorialView;
   /** 이 단계에서 클릭을 허용하는 영역. 말풍선·소환 결과 카드는 항상 허용. */
   readonly allow: () => readonly string[];
+  /** 전장 클릭을 칸 단위로 더 좁힌다. 없으면 전장 어디든 허용. */
+  readonly allowCell?: () => readonly number[];
   readonly satisfied: () => boolean;
 }
 
-/** 어느 단계에서든 막지 않는 영역 — 자체 UI·결과 카드·진 해금 확인 창. */
-const GLOBAL_ALLOW: readonly string[] = ["#tutorial-layer", "#summon-reveal", "#formation-unlock-dialog"];
+/** 어느 단계에서든 막지 않는 영역 — 자체 UI·결과 카드·진 해금·그만두기 확인 창. */
+const GLOBAL_ALLOW: readonly string[] = ["#tutorial-layer", "#summon-reveal", "#formation-unlock-dialog", "#tutorial-quit-dialog"];
+
+/**
+ * 패널 갈피 셀렉터 — 반드시 `.panel-tabs` 안으로 좁힌다.
+ *
+ * `[data-panel-tab="shop"]` 만 쓰면 셸(.game-shell)도 걸린다. hud.setPanelTab 이
+ * 현재 갈피를 `shell.dataset.panelTab` 에 적어 두기 때문이다. 그러면
+ * `target.closest(...)` 가 전장 캔버스에서도 셸까지 올라가 참이 되고,
+ * soft-lock 이 그 걸음 내내 화면 전체를 열어 준다(실증: 4걸음에서 상단 띠를
+ * 눌러 진행하면 그 클릭이 전장의 잠긴 칸에 닿아 진 해금 창이 떠 5걸음의
+ * 갈피 클릭을 삼켰다). 링 대상도 같은 이유로 갈피 버튼만 짚어야 한다.
+ */
+function panelTab(tab: string): string {
+  return `.panel-tabs [data-panel-tab="${tab}"]`;
+}
+
+/**
+ * 6걸음에서 링이 감싸고 사용자가 실제로 눌러야 하는 단 하나의 버튼 —
+ * 오행 강화 구획의 [1회]. `scope="element"` 만으로 좁히면 [5회]·[최대]까지
+ * 걸려 문구("[1회] 강화를 눌러 보세요")와 링이 어긋난다.
+ */
+const GROWTH_UPGRADE_TARGET = '#growth-upgrade-list [data-growth-upgrade-scope="element"][data-growth-amount="1"]:not([disabled])';
+
+/**
+ * 링 대상이 목록의 보이는 자리 안에 있게 지킨다.
+ *
+ * 제련소 목록은 공용 강화가 먼저라 오행 강화 구획이 스크롤 아래에 있고,
+ * renderGrowth 가 innerHTML 을 통째로 갈아 끼울 때마다(교전 중 엽전·문기가
+ * 바뀌면 매번이다) 스크롤이 맨 위로 되돌아간다. 진입 시 한 번만 굴려서는
+ * 곧 링만 남고 대상은 화면 밖으로 밀린다 — 그래서 매 프레임 "지금 보이나"를
+ * 확인하고 어긋났을 때만 다시 굴린다(이미 보이면 아무 것도 하지 않아 스크롤이
+ * 요동하지 않는다).
+ */
+function keepGrowthTargetInView(): void {
+  if (ctx.activePanelTab !== "growth") return;
+  const button = laidOut(GROWTH_UPGRADE_TARGET);
+  const list = document.querySelector<HTMLElement>("#growth-upgrade-list");
+  if (!button || !list) return;
+  const listRect = list.getBoundingClientRect();
+  const buttonRect = button.getBoundingClientRect();
+  if (buttonRect.top >= listRect.top + 2 && buttonRect.bottom <= listRect.bottom - 2) return;
+  button.scrollIntoView({ block: "center" });
+}
+
+/**
+ * 관전형 안내(조작 대기가 없는 말풍선)의 진행 규칙 — 자동 진행 시간이되,
+ * 그 전에라도 화면 아무 곳 클릭(soft-lock 이 삼킨 클릭 포함)이면 즉시
+ * 다음이다. 문구 끝의 "(아무 곳이나 눌러 계속)"이 이 규칙을 말해 준다.
+ * 별도 [다음] 버튼은 두지 않는다 — 클릭 진행이 곧 다음 버튼이다.
+ * 사용처 넷: 3걸음 교전 관전 · 4걸음 문기 스포트라이트 · 6걸음 맺음 메시지 ·
+ * 8걸음 수료막 지연. 넷 모두 이 상수 하나를 쓴다 — 읽는 속도가 걸음마다
+ * 달라지면 "언제 넘어가는지"를 다시 배워야 한다(사용자 지시: 6초 통일).
+ * [수련 그만두기]와 그 확인 창 조작은 진행 클릭으로 세지 않는다.
+ */
+const GUIDANCE_MS = 6000;
+
+let guidanceKey = "";
+
+let guidanceArmedAt = 0;
+
+let guidanceClicked = false;
+
+/**
+ * 관전 시계 판정. 처음 불린 프레임에 무장(armed)되고, 이후 GUIDANCE_MS(6초)
+ * 경과 또는 무장 뒤의 아무 곳 클릭이면 통과다. 키가 바뀌면 시계는 새로 선다.
+ */
+function guidancePassed(key: string): boolean {
+  if (guidanceKey !== key) {
+    guidanceKey = key;
+    guidanceArmedAt = performance.now();
+    guidanceClicked = false;
+    return false;
+  }
+  return guidanceClicked || performance.now() - guidanceArmedAt >= GUIDANCE_MS;
+}
+
+function resetGuidance(): void {
+  guidanceKey = "";
+  guidanceClicked = false;
+}
 
 /** 각본 밖 단축키(소환·배속·일시정지·도감 등)는 수련 중에 전부 잠근다. */
 const BLOCKED_KEYS = new Set(["Digit1", "Digit2", "Digit3", "KeyQ", "KeyC", "KeyM", "KeyF", "KeyP", "Space", "Escape"]);
@@ -76,14 +170,12 @@ let renderKey = "";
 
 let nudgeTimer = 0;
 
-let completeTimer = 0;
-
 interface TutorialRuntime {
   summonBaseline: number;
   essenceBaseline: number;
   growthWuxing: Wuxing;
-  /** 강화 걸음에서 오행 강화 구획을 한 번 화면 안으로 굴렸는가. */
-  growthScrolled: boolean;
+  /** 4걸음 3합 재료의 오행 — 완료 연출("○ 문기가 들어왔어요")이 쓴다. */
+  fusionWuxing: Wuxing;
   idiomGrantIds: number[];
   idiomLine: number[];
 }
@@ -91,7 +183,7 @@ interface TutorialRuntime {
 let runtime: TutorialRuntime = freshRuntime();
 
 function freshRuntime(): TutorialRuntime {
-  return { summonBaseline: 0, essenceBaseline: 0, growthWuxing: "木", growthScrolled: false, idiomGrantIds: [], idiomLine: [] };
+  return { summonBaseline: 0, essenceBaseline: 0, growthWuxing: "木", fusionWuxing: "木", idiomGrantIds: [], idiomLine: [] };
 }
 
 function tutorialCompleted(): boolean {
@@ -110,6 +202,21 @@ function markTutorialCompleted(): void {
   }
 }
 
+/**
+ * 7걸음에서 지금 눌러야 하는 칸 — 각본 줄에서 아직 안 채워진 첫 칸 하나.
+ *
+ * 성어 발동은 줄 위 글자 순서를 그대로 요구한다(core/idioms 의 findIdiomPath
+ * 는 정·역방향 시퀀스를 index 순으로 대조한다). 순서가 규칙이므로 안내도
+ * 규칙과 같아야 한다 — 허용 칸과 금색 점선(draw.ts)이 함께 이 한 칸만
+ * 가리킨다. 네 글자를 다 놓았으면 빈 배열이다.
+ */
+function nextIdiomCells(): number[] {
+  const pending = nextPendingGrantId(ctx.engine, runtime.idiomGrantIds);
+  if (pending === null) return [];
+  const cell = runtime.idiomLine[runtime.idiomGrantIds.indexOf(pending)];
+  return cell === undefined ? [] : [cell];
+}
+
 /* ── 여덟 걸음 각본 ─────────────────────────────────────────────── */
 
 const STEPS: readonly TutorialStep[] = [
@@ -118,7 +225,7 @@ const STEPS: readonly TutorialStep[] = [
     view: () => ({
       target: '[data-summon-product="balanced"]',
       title: "첫 자령을 뽑아 보세요",
-      body: "[기본 소환]을 누르면 한자를 품은 자령이 나와요. 획이 많은 한자일수록 별이 높고, 기본 소환은 1~3★에서 나와요.",
+      body: "[기본 소환]을 누르면 한자를 품은 자령이 나와요. 획이 많은 한자일수록 별이 높고, 기본 소환은 주로 1~3★이 나와요.",
       control: "click"
     }),
     allow: () => ['[data-summon-product="balanced"]'],
@@ -154,11 +261,13 @@ const STEPS: readonly TutorialStep[] = [
       showToast("수련 지원 — 자령 2기를 함께 세웠어요");
     },
     tick: () => hideSummonReveal(),
-    view: () => ctx.engine.state.phase === "combat"
+    // 웨이브 시작 뒤에는 페이즈가 아니라 "웨이브를 열었는가"로 갈래를 정한다 —
+    // 완화 스케일 웨이브가 관전 시간 안에 끝나도 말풍선이 되돌아가지 않는다.
+    view: () => ctx.engine.state.wave >= 1
       ? {
         target: "#enemy-limit-chip",
-        title: "봉인 중이에요",
-        body: "자령은 사거리 안의 적을 알아서 공격해요. 이 [적 한계] 숫자가 가득 차기 전에 모두 잡으면 돼요. 수련의 적은 아주 약해요."
+        title: "봉인은 자령에게 맡겨요",
+        body: "자령은 사거리 안의 적을 알아서 공격해요. 이 [적 한계] 숫자가 가득 차기 전에 잡히면 되고, 수련의 적은 아주 약해요. 전투는 자령에게 맡겨요. (아무 곳이나 눌러 계속)"
       }
       : {
         target: "#early-button",
@@ -166,31 +275,47 @@ const STEPS: readonly TutorialStep[] = [
         body: "[시작 보너스]를 누르면 적이 나와요. 적은 길을 돌며 계속 쌓이고, [적 한계]가 가득 차면 져요. 오른쪽 [약점] 표식의 오행은 피해가 더 들어가요.",
         control: "click"
       },
-    allow: () => ctx.engine.state.phase === "combat" ? ["#battle-canvas"] : ["#early-button", "#battle-canvas"],
-    satisfied: () => ctx.engine.state.wave >= 1 && ctx.engine.state.phase === "prep"
+    allow: () => ctx.engine.state.wave >= 1 ? ["#battle-canvas"] : ["#early-button", "#battle-canvas"],
+    // 관전 6초(또는 클릭)가 지났거나 그 전에 웨이브가 끝났으면 다음 걸음.
+    // 전투는 배경에서 계속되고, 전멸은 조건이 아니다.
+    satisfied: () => ctx.engine.state.wave >= 1
+      && (guidancePassed("wave-watch") || ctx.engine.state.phase === "prep")
   },
   {
     id: "fusion",
     enter: () => {
       const pick = pickFusionGrantChars(ctx.engine);
+      runtime.fusionWuxing = pick?.wuxing ?? startingWuxing(ctx.engine);
       if (pick) for (const char of pick.chars) ctx.engine.tutorialGrantTower(char);
       showToast("수련 지원 — 같은 별 자령 3기를 드렸어요");
     },
-    view: () => ctx.activePanelTab === "evolution"
-      ? {
-        target: "#casual-fuse-all",
-        title: "3기를 하나로 승급해요",
-        body: "[한 번에 승급]을 누르면 같은 오행·같은 별 3기가 사라지고 다음 별 자령 1기가 나와요. 무엇이 나올지는 열어 봐야 알아요.",
-        control: "click"
+    view: () => {
+      // 완료 연출 — 승급이 문기를 남긴 순간, 자원칸(+N 플로팅 자리)을 짚는다.
+      // 새 걸음이 아니라 이 걸음의 마무리 한 박자다(걸음 수 유지, 관전 규칙).
+      if (ctx.engine.state.casualFusionCount >= 1) {
+        return {
+          target: "#essence-summary",
+          title: "승급이 문기를 남겼어요",
+          body: `방금 승급으로 ${runtime.fusionWuxing} 문기가 들어왔어요! 문기는 잠시 뒤 강화에서 쓸 거예요. (아무 곳이나 눌러 계속)`
+        };
       }
-      : {
-        target: '[data-panel-tab="evolution"]',
-        title: "승급 서책을 열어요",
-        body: "같은 오행·같은 별 3기가 모이면 승급할 수 있어요. 방금 3기를 드렸어요 — [합성] 갈피를 눌러 주세요.",
-        control: "click"
-      },
-    allow: () => ['[data-panel-tab="evolution"]', "#evolve-button", ".evolution-workbench", "#casual-fusion-confirm-dialog"],
-    satisfied: () => ctx.engine.state.casualFusionCount >= 1
+      return ctx.activePanelTab === "evolution"
+        ? {
+          target: "#casual-fuse-all",
+          title: "3기를 하나로 승급해요",
+          body: "[한 번에 승급]을 누르면 같은 오행·같은 별 3기가 사라지고 다음 별 자령 1기가 나와요. 무엇이 나올지는 열어 봐야 알아요.",
+          control: "click"
+        }
+        : {
+          target: panelTab("evolution"),
+          title: "승급 서책을 열어요",
+          body: "같은 오행·같은 별 3기가 모이면 승급할 수 있어요. 방금 3기를 드렸어요 — [합성] 갈피를 눌러 주세요.",
+          control: "click"
+        };
+    },
+    allow: () => [panelTab("evolution"), "#evolve-button", ".evolution-workbench", "#casual-fusion-confirm-dialog"],
+    // 승급 1회 + 문기 획득 연출 관전(6초 또는 아무 곳 클릭)까지가 이 걸음이다.
+    satisfied: () => ctx.engine.state.casualFusionCount >= 1 && guidancePassed("fusion-essence")
   },
   {
     id: "tier-summon",
@@ -205,16 +330,16 @@ const STEPS: readonly TutorialStep[] = [
       ? {
         target: '[data-summon-product="midstar"]',
         title: "더 높은 별을 노려 보세요",
-        body: "소환마다 별 구간이 달라요 — 기본 1~3★ · 중급 2~5★ · 고급 3~8★. 중급 소환 값은 드렸으니 한 번 뽑아 보세요.",
+        body: "소환마다 별 확률이 달라요 — 기본 주로 1~3★ · 중급 2★ 확정 · 고급 3★ 확정. 아주 가끔은 구간 위 별도 터져요. 중급 소환 값은 드렸으니 한 번 뽑아 보세요.",
         control: "click"
       }
       : {
-        target: '[data-panel-tab="shop"]',
+        target: panelTab("shop"),
         title: "상점으로 돌아가요",
         body: "[상점] 갈피를 눌러 주세요.",
         control: "click"
       },
-    allow: () => ['[data-panel-tab="shop"]', '[data-summon-product="midstar"]'],
+    allow: () => [panelTab("shop"), '[data-summon-product="midstar"]'],
     satisfied: () => ctx.engine.state.summonCount > runtime.summonBaseline
   },
   {
@@ -226,34 +351,37 @@ const STEPS: readonly TutorialStep[] = [
       // 제련소가 열리면 바로 그 오행 갈피가 보이게 맞춰 둔다.
       ctx.growthElement = runtime.growthWuxing;
       ctx.growthRenderKey = "";
-      runtime.growthScrolled = false;
       showToast(`수련 지원 — ${runtime.growthWuxing} 문기 12를 드렸어요`);
     },
-    tick: () => {
-      // 제련소 목록은 공용 강화가 먼저라 오행 강화 구획이 접힌 아래에 있다.
-      // 프레임이 열리면 한 번만 그 구획을 화면 안으로 굴려 스포트라이트가
-      // 실제로 보이는 자리를 짚게 한다.
-      if (runtime.growthScrolled || ctx.activePanelTab !== "growth") return;
-      const section = document.querySelector<HTMLElement>(`#growth-upgrade-list [data-growth-section="${runtime.growthWuxing}"]`);
-      if (!section) return;
-      section.scrollIntoView({ block: "start" });
-      runtime.growthScrolled = true;
-    },
-    view: () => ctx.activePanelTab === "growth"
-      ? {
-        target: '#growth-upgrade-list [data-growth-upgrade-scope="element"]:not([disabled])',
-        title: "문기로 오행을 키워요",
-        body: `받은 ${runtime.growthWuxing} 문기로 [1회] 강화를 눌러 보세요. 같은 오행 자령 전원이 함께 강해져요.`,
-        control: "click"
+    tick: keepGrowthTargetInView,
+    view: () => {
+      // 맺음(핵심 메시지) — 강화 1회를 마친 뒤, 성어 걸음(7) 진입 직전에 선다.
+      // 결론 한 줄은 금박 괘선으로 따로 세운다 — 설명문과 같은 글씨로 흘리면
+      // 정작 이 걸음이 남기려는 말이 묻힌다(사용자 실증).
+      if (totalEssenceSpent(ctx.engine) > runtime.essenceBaseline) {
+        return {
+          title: "낮은 별이어도 괜찮아요",
+          body: "강화는 그 오행의 모든 자령을 한꺼번에 올려 줘요. 별이 낮아도 오행이 맞으면 같이 세져요. (아무 곳이나 눌러 계속)",
+          emphasis: "그래서 사자성어를 위해 낮은 별 자령을 배치해도 불리하지 않아요 — 강화와 농축이 받쳐 줍니다."
+        };
       }
-      : {
-        target: '[data-panel-tab="growth"]',
-        title: "강화 제련소를 열어요",
-        body: "안 쓰는 자령을 분해하면 '문기'라는 재료가 나와요. 지금은 미리 드렸어요 — [강화] 갈피를 눌러 주세요.",
-        control: "click"
-      },
-    allow: () => ['[data-panel-tab="growth"]', "#growth-panel", "#growth-frame"],
-    satisfied: () => totalEssenceSpent(ctx.engine) > runtime.essenceBaseline
+      return ctx.activePanelTab === "growth"
+        ? {
+          target: GROWTH_UPGRADE_TARGET,
+          title: "문기로 오행을 키워요",
+          body: `문기로 각 오행 속성을 강화할 수 있어요 — 받은 ${runtime.growthWuxing} 문기로 금테가 감싼 [1회] 강화를 눌러 보세요. [농축]에서는 같은 자령(중복)이나 많은 문기로 자령 하나를 직접 키울 수도 있어요.`,
+          control: "click"
+        }
+        : {
+          target: panelTab("growth"),
+          title: "문기는 어디서 오나요",
+          body: "문기는 3체 승급과 자령 분해가 남겨요 — 방금 승급 때도 들어왔죠. 조금 더 얹어 드렸으니 [강화] 갈피를 눌러 주세요.",
+          control: "click"
+        };
+    },
+    allow: () => [panelTab("growth"), "#growth-panel", "#growth-frame"],
+    // 강화 1회 + 맺음 메시지 관전(6초 또는 아무 곳 클릭)까지가 이 걸음이다.
+    satisfied: () => totalEssenceSpent(ctx.engine) > runtime.essenceBaseline && guidancePassed("growth-close")
   },
   {
     id: "idiom",
@@ -292,12 +420,19 @@ const STEPS: readonly TutorialStep[] = [
       }
     },
     view: () => ({
+      // 링은 줄 전체를 밝혀 "여기가 작업대"를 보이고, 그 안에서 지금 누를 칸
+      // 하나는 금색 점선이 짚는다(허용 칸 allowCell 과 언제나 같은 칸이다).
+      // 링을 한 칸으로 줄이면 말풍선이 아래 남은 칸들을 덮어 버린다.
       world: cellsWorldBounds(runtime.idiomLine),
-      title: "사자성어를 봉인해 보세요",
-      body: "네 글자 성어를 드렸고 1번째 글자는 미리 놓았어요. 금색 점선 칸을 눌러 ②→③→④ 순서로 이어 주세요. 완성한 보너스는 네 자령이 그 줄을 지키는 동안만 살아 있어요.",
+      title: "사자성어를 발동해 보세요",
+      body: "네 글자 성어를 드렸고 1번째 글자는 미리 놓았어요. ①부터 ④까지 순번대로 놓아야 발동해요 — 금색 점선이 다음 칸을 짚어 주니 그대로 따라가면 됩니다. 발동한 보너스는 네 자령이 그 줄을 지키는 동안만 살아 있어요.",
       control: "click"
     }),
     allow: () => ["#battle-canvas"],
+    // 성어 발동은 줄 위 글자 순서를 그대로 요구한다(core/idioms findIdiomPath).
+    // 그래서 허용 칸은 "줄 전체"가 아니라 지금 차례인 한 칸뿐이다 — 그 밖의
+    // 칸은 줄 안이라도 배치가 아니라 말풍선 흔들림으로 답한다.
+    allowCell: nextIdiomCells,
     satisfied: () => ctx.engine.isIdiomSealActive(TUTORIAL_IDIOM_ID)
   },
   {
@@ -306,15 +441,17 @@ const STEPS: readonly TutorialStep[] = [
       markTutorialCompleted();
       shell.dataset.tutorialComplete = "1";
       must<HTMLButtonElement>("#tutorial-button").classList.remove("is-fresh");
-      // 봉인 발동 연출(파문·4자 플래시)을 가리지 않게 잠시 뒤에 수료막을 올린다.
-      window.clearTimeout(completeTimer);
-      completeTimer = window.setTimeout(() => {
-        if (active && STEPS[stepIndex]?.id === "finish") must<HTMLElement>("#tutorial-complete").hidden = false;
-      }, 2600);
+    },
+    tick: () => {
+      // 발동 연출(파문·4자 플래시)을 가리지 않게 6초(또는 아무 곳 클릭) 뒤에
+      // 수료막을 올린다 — 관전형 안내와 같은 진행 규칙이다.
+      if (!guidancePassed("finish-reveal")) return;
+      const complete = must<HTMLElement>("#tutorial-complete");
+      if (complete.hidden) complete.hidden = false;
     },
     view: () => ({
-      title: "봉인 발동 — 수련 완수!",
-      body: "줄이 완성되어 봉인이 터졌어요. 네 자령이 이 줄을 지키는 동안 보너스가 계속돼요."
+      title: "네 글자가 한 줄로 — 발동!",
+      body: "발동한 보너스는 네 자령이 이 줄을 지키는 동안 계속돼요. (아무 곳이나 눌러 계속)"
     }),
     allow: () => ["#tutorial-complete"],
     satisfied: () => false
@@ -393,8 +530,10 @@ function layoutView(view: TutorialView): void {
   }
   if (!focus) {
     // 짚을 곳이 없으면 링을 걷고 말풍선만 화면 아래 가운데에 세운다.
+    // 높이는 실측한다 — 결론 줄(emphasis)이 붙는 걸음은 말풍선이 더 길어서
+    // 고정값으로 잡으면 아래가 화면 밖으로 잘린다.
     if (!ring.hidden) ring.hidden = true;
-    setStyle(bubble, "top", `${Math.max(8, shell.offsetHeight - 178)}px`);
+    setStyle(bubble, "top", `${Math.max(8, shell.offsetHeight - (bubble.offsetHeight || 140) - 38)}px`);
     setStyle(bubble, "left", `${Math.max(8, (shell.offsetWidth - BUBBLE_WIDTH) / 2)}px`);
     return;
   }
@@ -434,6 +573,11 @@ function renderView(): void {
     must<HTMLElement>("#tutorial-step-total").textContent = String(STEPS.length);
     must<HTMLElement>("#tutorial-title").textContent = view.title;
     must<HTMLElement>("#tutorial-body").textContent = view.body;
+    // 결론 한 줄은 별도 요소에 textContent 로 넣는다 — 각본 문구가 그대로
+    // 글자로만 들어가므로 인라인 마크업을 열어 줄 필요가 없다.
+    const emphasis = must<HTMLElement>("#tutorial-emphasis");
+    emphasis.textContent = view.emphasis ?? "";
+    emphasis.hidden = view.emphasis === undefined;
     const bubble = must<HTMLElement>("#tutorial-bubble");
     if (view.control) bubble.dataset.tutorialControl = view.control;
     else delete bubble.dataset.tutorialControl;
@@ -447,6 +591,8 @@ function renderView(): void {
 
 function advance(): void {
   stepIndex += 1;
+  // 걸음이 바뀌면 관전 시계를 접는다 — 이전 걸음의 클릭·경과가 새지 않는다.
+  resetGuidance();
   const step = STEPS[stepIndex];
   if (!step) return;
   shell.dataset.tutorialStep = String(stepIndex + 1);
@@ -473,7 +619,8 @@ function tutorialFrame(): void {
   const step = STEPS[stepIndex];
   if (step) {
     // 각본 밖에서 웨이브가 저절로 시작되지 않게 준비 시간을 세워 둔다.
-    // 웨이브 걸음도 [시작 보너스] 버튼만이 유일한 출구가 된다.
+    // 웨이브 걸음의 개시는 [시작 보너스] 버튼만이 유일한 출구고, 배경의
+    // 첫 웨이브가 끝난 뒤에도 이 고정이 웨이브 2 자동 개시를 막아 준다.
     // 13초에 고정하는 이유: 한 프레임 사이 12.9~13.0 사이를 오가도
     // 버튼의 보너스 표기(floor(prep/2)=6)가 흔들리지 않는 값이라서다.
     if (state.phase === "prep" && state.summonCount > 0) {
@@ -497,6 +644,7 @@ function startTutorial(): void {
   // 배치 걸음(2)을 위해 첫 소환은 손에 쥔 채 시작한다. 5걸음에서 되돌린다.
   ctx.engine.state.autoPlaceSummons = false;
   runtime = freshRuntime();
+  resetGuidance();
   stepIndex = -1;
   renderKey = "";
   active = true;
@@ -522,6 +670,16 @@ function startTutorial(): void {
  */
 function leaveTutorial(): void {
   window.location.reload();
+}
+
+/**
+ * [수련 그만두기]는 확인 1회를 거친다 — "다음 버튼인 줄 알고 끝내기를
+ * 누른다"(사용자 실증)는 오인 사고를 막는 마지막 방어선이다. 창이 열리면
+ * 모달 규칙(game-loop)이 전투도 같이 세워 준다.
+ */
+function openQuitDialog(): void {
+  const dialog = must<HTMLDialogElement>("#tutorial-quit-dialog");
+  if (!dialog.open) dialog.showModal();
 }
 
 let enteringTraining = false;
@@ -555,11 +713,26 @@ function interceptPointer(event: Event): void {
   if (!active) return;
   const target = event.target as HTMLElement | null;
   if (!target || typeof target.closest !== "function") return;
-  const allowed = [...GLOBAL_ALLOW, ...(STEPS[stepIndex]?.allow() ?? [])];
-  if (allowed.some((selector) => target.closest(selector) !== null)) return;
+  // 관전형 안내가 무장된 동안의 아무 곳 pointerdown 은 진행 클릭이다 —
+  // soft-lock 이 삼키는 클릭도 포함한다. [수련 그만두기]·확인 창만 예외.
+  const advancing = event.type === "pointerdown"
+    && guidanceKey !== ""
+    && !guidanceClicked
+    && target.closest("#tutorial-exit, #tutorial-quit-dialog") === null;
+  if (advancing) guidanceClicked = true;
+  const step = STEPS[stepIndex];
+  const allowed = [...GLOBAL_ALLOW, ...(step?.allow() ?? [])];
+  if (allowed.some((selector) => target.closest(selector) !== null)) {
+    const cellGate = step?.allowCell?.();
+    // 전장은 요소 하나라 셀렉터로는 칸을 가릴 수 없다 — 좌표로 판정한다.
+    if (!cellGate || target.closest("#battle-canvas") === null) return;
+    const cell = cellAtPointerEvent(event as PointerEvent);
+    if (cellGate.includes(cell)) return;
+  } 
   event.preventDefault();
   event.stopPropagation();
-  if (event.type === "pointerdown") nudgeBubble();
+  // 진행 클릭이면 "여기 아니야" 흔들림 대신 다음 걸음이 답한다.
+  if (event.type === "pointerdown" && !advancing) nudgeBubble();
 }
 
 function interceptKeys(event: KeyboardEvent): void {
@@ -575,7 +748,9 @@ export function wireTutorial1(): void {
   // 첫 방문(수료 기록 없음)에는 은은한 맥동으로 "여기부터"를 짚는다.
   if (!tutorialCompleted()) button.classList.add("is-fresh");
   button.addEventListener("click", () => void enterTraining(button));
-  must<HTMLButtonElement>("#tutorial-exit").addEventListener("click", leaveTutorial);
+  must<HTMLButtonElement>("#tutorial-exit").addEventListener("click", openQuitDialog);
+  must<HTMLButtonElement>("#tutorial-quit-cancel").addEventListener("click", () => must<HTMLDialogElement>("#tutorial-quit-dialog").close());
+  must<HTMLButtonElement>("#tutorial-quit-confirm").addEventListener("click", leaveTutorial);
   must<HTMLButtonElement>("#tutorial-finish").addEventListener("click", leaveTutorial);
   document.addEventListener("pointerdown", interceptPointer, true);
   document.addEventListener("click", interceptPointer, true);

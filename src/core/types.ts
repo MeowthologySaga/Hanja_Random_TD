@@ -1,4 +1,14 @@
 export type RegionCode = "KR" | "JP" | "CN";
+/**
+ * 표기(읽기) 축 — gripe #6 범위×표기 2축 분리.
+ *
+ * RegionCode 는 이제 로스터 범위·자형만 맡고, 화면에 어떤 읽기를 쓸지는
+ * 이 축이 정한다. 기본값은 로스터의 자국 표기(KR→kr-hunum, JP→jp-onkun,
+ * CN→cn-pinyin)라 현행 동작과 같고, 교차 조합은 통합 표기 테이블
+ * (`handoff/to-codex/asset-request-v8-reading-table.md` → `src/data/unified-readings.json`)
+ * 도착 뒤 NOTATION_AXIS_READY 플래그로 연다.
+ */
+export type NotationCode = "kr-hunum" | "jp-onkun" | "cn-pinyin";
 export type Wuxing = "木" | "火" | "土" | "金" | "水";
 export type ElementKind = "wood" | "fire" | "earth" | "metal" | "water";
 export type Stage = 1 | 2 | 3 | 4 | 5;
@@ -10,7 +20,8 @@ export type RunPhase = "title" | "prep" | "combat" | "victory" | "defeat";
 export type DefeatCause = "enemy-limit" | "boss-timeout";
 export type AutomationMode = "manual" | "semi" | "goal";
 // 상점 소환 상품. `midstar`·`highstar` 는 획수=별 규칙이 있는 캐주얼 8성전 전용
-// 티어 소환이며, 가중이 아니라 후보 풀 필터(확정 보장)로 동작한다.
+// 티어 소환이다. 밴드 하한은 후보 풀 하드 필터("N★ 확정" 보장), 상한은
+// 소프트 — 그 위 별도 가파른 꼬리 확률로 나온다(engine-tuning.CASUAL_STAR_TAIL_DECAY).
 export type SummonIntent = "balanced" | "discovery" | "lineage" | "concentration" | "midstar" | "highstar";
 export type ConcentrationPath = "swift" | "potent";
 export type ConcentrationLevel = 0 | 1 | 2 | 3;
@@ -38,6 +49,12 @@ export type SemanticFamily =
   | "warfare"
   | "momentum"
   | "frost"
+  // [SKILL-V2] 스킬 2차 세트가 신설한 의미 계열.
+  | "chainseal"
+  | "reaper"
+  | "command"
+  | "scorch"
+  | "harvest"
   | "general";
 export type TargetPriority = "front" | "strongest" | "fastest" | "armored" | "cluster" | "valuable";
 export type EnemyArchetype = "normal" | "swarm" | "swift" | "armored" | "regenerator" | "boss";
@@ -185,6 +202,10 @@ export interface Tower {
   momentumStacks?: number;
   // [SKILL-V1] 귀천: 6★ 이상 자령의 충전 스킬 게이지(초).
   ascendCharge?: number;
+  // [SKILL-V2] 채기(harvest): 이 자령의 누적 처치 수 — N번째마다 문기 +1.
+  harvestKills?: number;
+  // [SKILL-V2] 참명(reaper): 다음 참격이 가능해지는 시각(숨 고르기).
+  reaperReadyAt?: number;
 }
 
 export interface Enemy {
@@ -211,13 +232,19 @@ export interface Enemy {
   brandWuxing?: Wuxing;
   brandUntil?: number;
   brandPower?: number;
+  // [SKILL-V2] 연환 인장(chainseal): 공격마다 쌓이는 인장 스택과 누적 피해.
+  // 상한 도달 시 폭발 + 1.2초 제자리 봉인 — 절대 뒤로 밀지 않는다.
+  sealStacks?: number;
+  sealStored?: number;
+  sealUntil?: number;
 }
 
 export interface AbilityZone {
   id: number;
   towerId: number;
   // [SKILL-V1] "frost" 는 서리길(피해 없는 감속 장판)이다.
-  kind: "roots" | "lava" | "quicksand" | "caltrops" | "rain" | "frost";
+  // [SKILL-V2] "ember" 는 소흔의 잔불(처치 지점 지속 피해 지대)이다.
+  kind: "roots" | "lava" | "quicksand" | "caltrops" | "rain" | "frost" | "ember";
   wuxing: Wuxing;
   progress: number;
   radius: number;
@@ -295,6 +322,8 @@ export interface IdiomSeal {
 export interface GameState {
   seed: string;
   region: RegionCode;
+  /** 읽기 표기 축. 기본은 로스터의 자국 표기 — defaultNotationForRegion(region). */
+  notation: NotationCode;
   mode: GameMode;
   phase: RunPhase;
   /** phase 가 "defeat" 일 때만 채워진다. 그 외에는 null. */
@@ -329,6 +358,12 @@ export interface GameState {
   goalsCompleted: string[];
   idiomSeals: IdiomSeal[];
   featuredIdiomIds: string[];
+  /**
+   * 목표 서책에서 추적 중인 성어(최대 3, 최소 1 — "성어가 곧 목표").
+   * 소환 가중·인연 연구 가중·소모 보호가 이 목록의 부족 글자 합집합을 본다.
+   * 봉인에 성공한 성어는 목록에서 빠지고, 비면 다음 미봉인 목표 성어를 승계한다.
+   */
+  trackedIdiomIds: string[];
   discoveredChars: string[];
   softPity: number;
   lineageClueProgress: number;
@@ -349,7 +384,8 @@ export type GameEvent =
   | { type: "damage"; at: Point; amount: number; critical: boolean; weakness: boolean }
   | { type: "kill"; at: Point; reward: number }
   | { type: "interest"; amount: number; gold: number }
-  | { type: "summon"; at: Point; tower: Tower; stored: boolean; helpful: boolean; helpfulReason: "goal" | "idiom" | "both" | null; newDiscovery: boolean; utility: "new" | "synthesis" | "concentration" | "replacement" }
+  // jackpot = 캐주얼 밴드의 소프트 상한 위 별이 꼬리 확률로 나온 순간(공개 카드가 강조한다).
+  | { type: "summon"; at: Point; tower: Tower; stored: boolean; helpful: boolean; helpfulReason: "goal" | "idiom" | "both" | null; newDiscovery: boolean; utility: "new" | "synthesis" | "concentration" | "replacement"; jackpot: boolean }
   | { type: "dismantle"; tower: Tower; wuxing: Wuxing; essence: number }
   | { type: "concentrate"; tower: Tower; level: ConcentrationLevel; path: ConcentrationPath; usedDuplicate: boolean; essenceCost: number }
   | { type: "statUpgrade"; scope: "global" | "element"; wuxing: Wuxing | null; stat: UpgradeStat; level: number; cost: number; bonus: number }

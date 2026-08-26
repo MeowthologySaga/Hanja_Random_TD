@@ -7,7 +7,10 @@
 import { CASUAL_STAR_BINS, CASUAL_STAR_COLORS } from "../core/casual";
 import { MAX_ENEMIES, WORLD_HEIGHT, WORLD_WIDTH } from "../core/content";
 import { CHEONJAMUN_JARYEONG_DEX_META } from "../core/cheonjamun-jaryeong-dex";
-import { GAME_CONFIG } from "../core/hanzi";
+import { casualSummonStarDistribution, type SummonStarBand } from "../core/engine-tuning";
+import { GAME_CONFIG, SUMMON_STAR_BANDS } from "../core/hanzi";
+import { NOTATION_AXIS_READY, NOTATION_LABELS } from "../core/notation";
+import type { CasualStar } from "../core/types";
 import type { DisplayMode } from "./display-mode";
 
 /**
@@ -21,6 +24,48 @@ function helpStrokeBinsHtml(): string {
   return CASUAL_STAR_BINS
     .map((bin) => `<i style="--star:${CASUAL_STAR_COLORS[bin.star]}"><b>★${bin.star}</b><span>${bin.minStrokes}~${bin.maxStrokes}획</span><small>${bin.count}자</small></i>`)
     .join("");
+}
+
+/** 확률표 칸 하나. 값이 작아질수록 자릿수를 늘려 "확 떨어짐"이 눈에 보이게 한다. */
+function helpOddsPercent(share: number): string {
+  if (share <= 0) return "—";
+  const percent = share * 100;
+  if (percent >= 10) return `${Math.round(percent)}%`;
+  if (percent >= 1) return `${percent.toFixed(1)}%`;
+  if (percent >= 0.01) return `${percent.toFixed(2)}%`;
+  return `${percent.toFixed(4)}%`;
+}
+
+/**
+ * 도움말 소환 갈피의 티어별 1~8★ 확률표 — gripe #10 확률 공개.
+ *
+ * 수치는 문구에 하드코딩하지 않는다. 밴드·감쇠 상수에서
+ * `casualSummonStarDistribution` 이 계산한 값을 그대로 렌더하므로
+ * 상수를 조정하면 표가 따라온다(획수→별 구간표와 같은 원칙).
+ * 소형 풀 지역의 실효 밴드 보정은 상점 카드 툴팁이 맡고, 여기는 정규 밴드다.
+ */
+function helpSummonOddsHtml(): string {
+  const tiers: ReadonlyArray<[string, readonly [number, number] | null]> = [
+    ["기본 · 탐색 · 중복", SUMMON_STAR_BANDS.balanced],
+    ["중급 소환", SUMMON_STAR_BANDS.midstar],
+    ["고급 소환", SUMMON_STAR_BANDS.highstar]
+  ];
+  const stars = [1, 2, 3, 4, 5, 6, 7, 8] as CasualStar[];
+  const head = `<div class="help-odds-row is-head"><b></b>${stars
+    .map((star) => `<span style="--star:${CASUAL_STAR_COLORS[star]}">${star}★</span>`)
+    .join("")}</div>`;
+  const rows = tiers.map(([label, bandTuple]) => {
+    if (bandTuple === null) return "";
+    const band: SummonStarBand = { min: bandTuple[0], max: bandTuple[1] };
+    const cells = casualSummonStarDistribution(band)
+      .map((row) => {
+        const kind = row.share <= 0 ? "" : row.star > band.max ? " class=\"is-tail\"" : " class=\"is-on\"";
+        return `<span${kind} style="--star:${CASUAL_STAR_COLORS[row.star]}">${helpOddsPercent(row.share)}</span>`;
+      })
+      .join("");
+    return `<div class="help-odds-row"><b>${label}</b>${cells}</div>`;
+  });
+  return head + rows.join("");
 }
 
 /** `#app` 에 넣을 게임 셸 전체 마크업. */
@@ -76,10 +121,17 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
       </section>
       <section id="inventory-frame" class="focus-frame focus-frame--vault" role="dialog" aria-modal="false" aria-labelledby="inventory-frame-title" hidden>
         <header class="focus-frame-head">
-          <div><strong id="inventory-frame-title">자령 보관고</strong><span>고르고 · 배치 · 분해까지 여기서</span></div>
-          <button id="inventory-frame-close" class="focus-frame-close" type="button" data-focus-close="inventory" aria-label="자령 보관고 닫기">닫기 ✕</button>
+          <div><strong id="inventory-frame-title">자령 가방</strong><span>고르고 · 배치 · 분해까지 여기서</span></div>
+          <button id="inventory-frame-close" class="focus-frame-close" type="button" data-focus-close="inventory" aria-label="자령 가방 닫기">닫기 ✕</button>
         </header>
         <div id="inventory-frame-body" class="focus-frame-body run-inventory-vault"></div>
+      </section>
+      <section id="goal-frame" class="focus-frame focus-frame--codex-goal" role="dialog" aria-modal="false" aria-labelledby="goal-frame-title" hidden>
+        <header class="focus-frame-head">
+          <div><strong id="goal-frame-title">목표 서책</strong><span>성어를 고르면 부족한 글자가 목표가 됩니다 · 추적 최대 3구</span></div>
+          <button id="goal-frame-close" class="focus-frame-close" type="button" data-focus-close="goal" aria-label="목표 서책 닫기">닫기 ✕</button>
+        </header>
+        <div id="goal-frame-body" class="focus-frame-body goal-codex-workbench"></div>
       </section>
     </section>
 
@@ -99,7 +151,7 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
         <div><span>엽전 <em id="interest-preview">이자 +2</em></span><strong id="gold-value">${GAME_CONFIG.startingGold}</strong></div>
         <div><span>적 한계</span><strong id="enemy-cap-value">${MAX_ENEMIES}체</strong></div>
         <div title="전장에 배치된 자령 수 / 열린 진의 칸 수"><span>배치</span><strong id="tower-count-value">0 / 16</strong></div>
-        <div title="이번 런에 완성한 목표 한자 수 / 목표 개수"><span>목표</span><strong id="goal-count-value">0</strong></div>
+        <div title="이번 런에 발동한 성어 수 / 이번 런 성어 목표 수"><span>성어 발동</span><strong id="goal-count-value">0 / 5</strong></div>
       </section>
 
       <section class="wave-card">
@@ -108,33 +160,24 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
       </section>
 
       <div class="context-deck">
-        <section id="goal-panel" class="goal-workbench panel-view" data-panel-view="goal" aria-label="목표 선택 서책">
+        <section id="goal-panel" class="goal-workbench panel-view" data-panel-view="goal" aria-label="목표 서책">
           <header class="goal-workbench-heading">
-            <div><span>보유 기준 목표</span><strong>목표 서책</strong></div>
-            <div class="goal-mode-tabs" role="tablist" aria-label="목표 종류">
-              <button type="button" class="is-active" data-goal-mode="hanzi" role="tab" aria-selected="true">한자 목표</button>
-              <button type="button" data-goal-mode="idiom" role="tab" aria-selected="false">성어 목표</button>
-            </div>
+            <div><span>성어가 곧 목표</span><strong>목표 서책</strong></div>
           </header>
-
-          <section class="goal-card" aria-label="현재 목표 한자">
-            <div class="goal-glyph" id="goal-glyph">相</div>
-            <div class="goal-copy">
-              <div class="section-heading"><span>현재 한자 목표</span><b id="goal-stage">2단계</b></div>
-              <strong id="goal-recipe">木 + 目 → 相</strong>
-              <span id="goal-reading" class="goal-reading">훈음 · 서로 상</span>
-              <div id="goal-materials" class="goal-materials"></div>
-              <div class="goal-progress"><i id="goal-progress-fill"></i></div>
+          <div id="goal-codex-layout" class="goal-codex-layout">
+            <div class="goal-codex-browse">
+              <div class="goal-selector-tools">
+                <label><span>四</span><input id="goal-search" type="search" placeholder="원하는 성어·읽기·뜻 검색" autocomplete="off" /></label>
+                <div id="goal-owned-summary" class="goal-owned-summary"></div>
+              </div>
+              <div id="goal-selector-list" class="goal-selector-list" aria-live="polite"></div>
             </div>
-          </section>
-
-          <section id="idiom-target-card" class="idiom-target-card" aria-label="현재 성어 목표"></section>
-
-          <div class="goal-selector-tools">
-            <label><span>目</span><input id="goal-search" type="search" placeholder="원하는 한자·훈음·성어를 검색" autocomplete="off" /></label>
-            <div id="goal-owned-summary" class="goal-owned-summary"></div>
+            <aside id="goal-codex-detail" class="goal-codex-detail" aria-label="선택한 성어 상세"></aside>
           </div>
-          <div id="goal-selector-list" class="goal-selector-list" aria-live="polite"></div>
+          <div class="focus-panel-summary">
+            <p id="goal-panel-summary">추적 중 성어 <b>1구</b></p>
+            <button id="goal-frame-open" class="focus-open-button" type="button">서책 열기</button>
+          </div>
         </section>
 
         <section id="shop-panel" class="shop-workbench panel-view is-active" data-panel-view="shop" aria-label="자령 상점과 운영 행동">
@@ -165,7 +208,7 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
             </section>
           </div>
           <div id="shop-pinned" class="shop-pinned">
-            <button id="auto-arrange-button" class="action-button action-button--auto-arrange" type="button" data-testid="auto-arrange-button" title="발동 가능한 사자성어를 봉인하고 오행진 공명을 최적화합니다">
+            <button id="auto-arrange-button" class="action-button action-button--auto-arrange" type="button" data-testid="auto-arrange-button" title="완성 가능한 사자성어를 발동하고 오행진 공명을 최적화합니다">
               <b>자동배치</b><small>성어·오행 최적화</small>
             </button>
           </div>
@@ -195,55 +238,55 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
           </div>
         </section>
 
-        <div class="combat-readout panel-view" data-panel-view="record" aria-label="전투 발동 기록">
-          <div class="record-heading"><span>최근 능력 기록</span><small>무엇이 왜 발동했는지 표시됩니다.</small></div>
-          <div id="combo-meter" class="combo-meter"><span>연쇄 봉인</span><b id="combo-count">× 3</b></div>
-          <ol id="combat-feed" class="combat-feed"></ol>
-        </div>
-
         <section id="idiom-panel" class="idiom-panel panel-view" data-panel-view="idiom" aria-label="사자성어 진법" aria-live="polite">
-          <section class="idiom-rule-guide" aria-label="성어 발동 규칙">
-            <div class="idiom-rule-figures" aria-hidden="true">
-              <figure class="idiom-rule-figure idiom-rule-figure--row">
-                <div class="idiom-rule-grid">
-                  <i style="--r:1;--c:1">①</i><i style="--r:1;--c:2">②</i><i style="--r:1;--c:3">③</i><i style="--r:1;--c:4">④</i>
-                </div>
-                <figcaption>가로 · 세로</figcaption>
-              </figure>
-              <figure class="idiom-rule-figure idiom-rule-figure--diagonal">
-                <div class="idiom-rule-grid">
-                  <i style="--r:1;--c:1">①</i><i style="--r:2;--c:2">②</i><i style="--r:3;--c:3">③</i><i style="--r:4;--c:4">④</i>
-                </div>
-                <figcaption>대각선</figcaption>
-              </figure>
+          <!-- 트랙 K 과업 1: 패널은 액자, 스크롤은 이 래퍼 한 곳. 발동 목록은
+               바깥 형제로 남아 탭바에 가리지 않는다(상점 2행 구조와 같은 문법). -->
+          <div id="idiom-scroll" class="idiom-scroll">
+            <!-- 지금 상태(추적 성어 · 최근 감지)가 먼저, 규칙 도식은 그 아래로.
+                 스크롤 한 화면에 남는 것이 45웨이브에 필요한 쪽이어야 한다. -->
+            <div id="idiom-hud" class="idiom-hud">
+              <div class="idiom-heading"><span>四字成語 진법</span><b id="idiom-count">0 / 4</b></div>
+              <div id="idiom-glyphs" class="idiom-glyphs"></div>
+              <strong id="idiom-name">이심전심</strong>
+              <p id="idiom-meaning">말하지 않아도 서로 마음이 통함</p>
+              <b id="idiom-bonus" class="idiom-bonus">모든 자령 사거리 +28</b>
+              <small id="idiom-hint">글자 순서가 맞으면 자동 발동</small>
             </div>
-            <p>한 줄로 — 가로·세로·대각선 · 순서대로(역순 인정) · 같은 진 안에서</p>
-            <!-- [SKILL-V1] 성어의 가호 한 줄 규칙 안내 -->
-            <p>성어의 가호 — 발동 중 성어와 같은 진의 자령 전원 공격 +10%, 같은 진의 추가 발동 성어당 +5%p. 줄이 흩어지면 즉시 사라집니다.</p>
-          </section>
-          <div id="idiom-hud" class="idiom-hud">
-            <div class="idiom-heading"><span>四字成語 진법</span><b id="idiom-count">0 / 4</b></div>
-            <div id="idiom-glyphs" class="idiom-glyphs"></div>
-            <strong id="idiom-name">이심전심</strong>
-            <p id="idiom-meaning">말하지 않아도 서로 마음이 통함</p>
-            <b id="idiom-bonus" class="idiom-bonus">모든 자령 사거리 +28</b>
-            <small id="idiom-hint">글자 순서가 맞으면 자동 봉인</small>
+            <div id="idiom-result" class="idiom-result" aria-label="최근 자동 사자성어 발동">
+              <b id="idiom-result-glyph">四</b>
+              <span>
+                <small>최근 자동 감지</small>
+                <strong id="idiom-result-name">한 줄에 네 글자를 순서대로</strong>
+                <em id="idiom-result-meaning">배치된 자령을 자동으로 판정합니다.</em>
+              </span>
+              <mark id="idiom-result-bonus">자동 판정</mark>
+            </div>
+            <section class="idiom-rule-guide" aria-label="성어 발동 규칙">
+              <div class="idiom-rule-figures" aria-hidden="true">
+                <figure class="idiom-rule-figure idiom-rule-figure--row">
+                  <div class="idiom-rule-grid">
+                    <i style="--r:1;--c:1">①</i><i style="--r:1;--c:2">②</i><i style="--r:1;--c:3">③</i><i style="--r:1;--c:4">④</i>
+                  </div>
+                  <figcaption>가로 · 세로</figcaption>
+                </figure>
+                <figure class="idiom-rule-figure idiom-rule-figure--diagonal">
+                  <div class="idiom-rule-grid">
+                    <i style="--r:1;--c:1">①</i><i style="--r:2;--c:2">②</i><i style="--r:3;--c:3">③</i><i style="--r:4;--c:4">④</i>
+                  </div>
+                  <figcaption>대각선</figcaption>
+                </figure>
+              </div>
+              <p>한 줄로 — 가로·세로·대각선 · 순서대로(역순 인정) · 같은 진 안에서</p>
+              <!-- [SKILL-V1] 성어의 가호 한 줄 규칙 안내 -->
+              <p>성어의 가호 — 발동 중 성어와 같은 진의 자령 전원 공격 +10%, 같은 진의 추가 발동 성어당 +5%p. 줄이 흩어지면 즉시 사라집니다.</p>
+            </section>
           </div>
-          <div id="idiom-result" class="idiom-result" aria-label="최근 자동 사자성어 발동">
-            <b id="idiom-result-glyph">四</b>
-            <span>
-              <small>최근 자동 감지</small>
-              <strong id="idiom-result-name">한 줄에 네 글자를 순서대로</strong>
-              <em id="idiom-result-meaning">배치된 자령을 자동으로 판정합니다.</em>
-            </span>
-            <mark id="idiom-result-bonus">자동 판정</mark>
-          </div>
-          <div id="idiom-seal-status" class="idiom-seal-status" aria-label="봉인 상태" hidden></div>
+          <div id="idiom-seal-status" class="idiom-seal-status" aria-label="발동 상태" hidden></div>
         </section>
 
-        <section id="run-inventory-panel" class="run-inventory-panel panel-view" data-panel-view="inventory" aria-label="이번 판 자령 인벤토리">
+        <section id="run-inventory-panel" class="run-inventory-panel panel-view" data-panel-view="inventory" aria-label="이번 판 자령 가방">
           <div class="run-inventory-heading">
-            <div><span>이번 판에 뽑은 자령</span><strong>자령 보관고</strong></div>
+            <div><span>이번 판에 뽑은 자령</span><strong>자령 가방</strong></div>
             <div class="run-inventory-tools">
               <small id="essence-summary">문기 木0 火0 土0 金0 水0</small>
               <button id="cleanup-recommended-button" type="button">정리 후보 분해</button>
@@ -253,7 +296,7 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
             <div class="run-inventory-toolbar">
               <div id="run-inventory-element-filters" class="run-inventory-chips" role="group" aria-label="오행 필터"></div>
               <div id="run-inventory-grade-filters" class="run-inventory-chips run-inventory-chips--grade" role="group" aria-label="별 등급 필터"></div>
-              <button id="run-inventory-sort" type="button" aria-label="보관고 정렬 전환">획득순</button>
+              <button id="run-inventory-sort" type="button" aria-label="가방 정렬 전환">획득순</button>
             </div>
             <div class="run-inventory-main">
               <div id="run-inventory-list" class="run-inventory-list">
@@ -269,6 +312,7 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
                 <button id="run-inventory-dismantle" class="run-inventory-action run-inventory-action--dismantle" type="button" data-testid="inventory-dismantle" disabled>분해</button>
                 <button id="run-inventory-lock" class="run-inventory-action" type="button" data-testid="inventory-lock" disabled>잠금</button>
                 <button id="run-inventory-concentrate" class="run-inventory-action" type="button" data-testid="inventory-concentrate" disabled>농축으로</button>
+                <p id="run-inventory-dismantle-note" class="dismantle-block-note" data-testid="inventory-dismantle-note" hidden></p>
               </div>
               <div id="run-inventory-action-bulk" class="run-inventory-action-set" hidden>
                 <span id="run-inventory-bulk-hint" class="run-inventory-action-hint">카드를 눌러 담으세요</span>
@@ -279,7 +323,7 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
           </div>
           <div class="focus-panel-summary">
             <p id="run-inventory-panel-summary">보관 <b id="run-inventory-heading-count">0기 · 0종</b></p>
-            <button id="run-inventory-frame-open" class="focus-open-button" type="button">보관고 열기</button>
+            <button id="run-inventory-frame-open" class="focus-open-button" type="button">가방 열기</button>
           </div>
         </section>
 
@@ -305,7 +349,7 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
           </header>
           <div class="growth-layout">
             <section class="dismantle-workbench">
-              <div class="subheading"><b>① 분해</b><small>안 쓰는 인벤 자령을 문기(재료)로 바꿉니다</small></div>
+              <div class="subheading"><b>① 분해</b><small>안 쓰는 가방 자령을 문기(재료)로 바꿉니다</small></div>
               <div class="growth-filters">
                 <select id="dismantle-element-filter" aria-label="분해 오행 필터"><option value="all">모든 오행</option><option>木</option><option>火</option><option>土</option><option>金</option><option>水</option></select>
                 <select id="dismantle-stage-filter" aria-label="분해 단계 필터"><option value="all">모든 단계</option><option value="1">1성</option><option value="2">2성</option><option value="3">3성</option><option value="4">4성</option><option value="5">5성</option><option value="6">6성</option><option value="7">7성</option><option value="8">8성</option></select>
@@ -337,13 +381,13 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
         </header>
         <div id="composition-source" class="composition-source"></div>
         <div id="composition-branches" class="composition-branches"></div>
-        <footer><b>컬러</b>: 합성 가능 · <i>회색</i>: 재료 부족 · 전장/인벤 모두 계산</footer>
+        <footer><b>컬러</b>: 합성 가능 · <i>회색</i>: 재료 부족 · 전장/가방 모두 계산</footer>
       </section>
 
       <nav class="panel-tabs" role="tablist" aria-label="상세 정보">
         <button id="shop-tab" type="button" class="is-active" data-panel-tab="shop" role="tab" aria-selected="true">상점 <small id="shop-pool-count">0</small></button>
         <button type="button" data-panel-tab="unit" role="tab" aria-selected="false">자령</button>
-        <button id="run-inventory-tab" type="button" data-panel-tab="inventory" role="tab" aria-selected="false">인벤 <small id="run-inventory-count">0</small></button>
+        <button id="run-inventory-tab" type="button" data-panel-tab="inventory" role="tab" aria-selected="false">가방 <small id="run-inventory-count">0</small></button>
         <i class="tab-divider" aria-hidden="true"></i>
         <button type="button" data-panel-tab="evolution" role="tab" aria-selected="false"><span id="evolution-tab-label">합성</span></button>
         <button id="concentration-tab" type="button" data-panel-tab="concentration" role="tab" aria-selected="false">농축</button>
@@ -351,7 +395,6 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
         <i class="tab-divider" aria-hidden="true"></i>
         <button id="goal-tab" type="button" data-panel-tab="goal" role="tab" aria-selected="false">목표 <small id="goal-tab-progress">0%</small></button>
         <button id="idiom-tab" type="button" data-panel-tab="idiom" role="tab" aria-selected="false">성어 <small id="idiom-tab-count">0/5</small></button>
-        <button id="record-tab" type="button" data-panel-tab="record" role="tab" aria-selected="false">기록</button>
       </nav>
 
 
@@ -391,22 +434,35 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
         <p class="tutorial-step-count">수련 <span id="tutorial-step-index">1</span> / <span id="tutorial-step-total">8</span></p>
         <b id="tutorial-title"></b>
         <p id="tutorial-body"></p>
+        <p id="tutorial-emphasis" class="tutorial-emphasis" hidden></p>
       </div>
-      <button id="tutorial-exit" class="tutorial-exit" type="button" data-testid="tutorial-exit">수련 건너뛰기</button>
+      <button id="tutorial-exit" class="tutorial-exit" type="button" data-testid="tutorial-exit">수련 그만두기</button>
       <section id="tutorial-complete" class="tutorial-complete" aria-labelledby="tutorial-complete-title" hidden>
         <div class="tutorial-complete-card">
           <p class="eyebrow">수련 완수</p>
           <h2 id="tutorial-complete-title">여덟 걸음을 모두 배웠습니다</h2>
           <ul id="tutorial-summary" class="tutorial-summary">
-            <li><b>소환</b><span>획이 많은 한자일수록 별이 높아요 · 기본 1~3★ / 중급 2~5★ / 고급 3~8★</span></li>
+            <li><b>소환</b><span>획이 많은 한자일수록 별이 높아요 · 기본 주로 1~3★ / 중급 2★ 확정 / 고급 3★ 확정</span></li>
             <li><b>승급</b><span>같은 오행·같은 별 3기 → 다음 별 자령 1기, 무엇이 나올지는 무작위</span></li>
             <li><b>강화</b><span>안 쓰는 자령을 분해해 문기를 얻고, 그 오행 전원을 키워요</span></li>
-            <li><b>사자성어</b><span>한 줄에 4자 순서대로 — 줄을 지키는 동안만 보너스가 살아 있어요</span></li>
+            <li><b>사자성어</b><span>한 줄에 4자 순서대로 — 발동! 보너스는 줄을 지키는 동안만 살아 있어요</span></li>
           </ul>
           <button id="tutorial-finish" class="tutorial-finish" type="button" data-testid="tutorial-finish">본편 출정</button>
         </div>
       </section>
     </div>
+
+    <dialog id="tutorial-quit-dialog" class="p00-dialog tutorial-quit-dialog" aria-labelledby="tutorial-quit-title">
+      <div class="p00-frame tutorial-quit-frame">
+        <p class="s00-mode-label">수련장</p>
+        <h3 id="tutorial-quit-title">수련을 그만두고 나갈까요?</h3>
+        <p>배운 내용은 저장되지 않아요.<br>서재의 [수련장] 목패로 언제든 다시 시작할 수 있어요.</p>
+        <div class="p00-actions">
+          <button id="tutorial-quit-cancel" type="button" data-testid="tutorial-quit-cancel">계속 수련하기</button>
+          <button id="tutorial-quit-confirm" type="button" data-testid="tutorial-quit-confirm">그만두기</button>
+        </div>
+      </div>
+    </dialog>
 
     <section id="title-overlay" class="modal-layer modal-layer--visible" aria-labelledby="title-heading">
       <div class="s00-stage" data-screen-id="S00">
@@ -437,12 +493,12 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
           </button>
           <button type="button" class="s00-mode game-mode-option" data-game-mode-option="standard" role="radio" aria-checked="false"
             aria-label="자형연성 진법. 실제 한자의 설계도대로 부수를 부품 삼아 글자를 조립하는 학습 진법">
-            <i class="s00-skin" aria-hidden="true"></i><b>자형연성 진법</b><small aria-hidden="true"><span class="s00-mode-sub s00-mode-sub--full">부수를 부품 삼아 조립 · 학습 특화</span><span class="s00-mode-sub s00-mode-sub--compact">부수 조립 · 한자 학습</span></small><em>선택됨</em>
+            <i class="s00-skin" aria-hidden="true"></i><b>자형연성 진법<mark class="s00-badge s00-badge--ea s00-badge--inline">미리 해보기</mark></b><small aria-hidden="true"><span class="s00-mode-sub s00-mode-sub--full">부수를 부품 삼아 조립 · 학습 특화</span><span class="s00-mode-sub s00-mode-sub--compact">부수 조립 · 한자 학습</span></small><em>선택됨</em>
           </button>
         </div>
 
         <button id="tutorial-button" class="s00-training" type="button" data-testid="tutorial-button"
-          aria-label="수련장. 소환부터 사자성어 봉인까지 여덟 걸음으로 배우는 연습 판. 처음이라면 여기부터">
+          aria-label="수련장. 소환부터 사자성어 발동까지 여덟 걸음으로 배우는 연습 판. 처음이라면 여기부터">
           <b>수련장</b><small>처음이라면 여기부터</small><em>八</em>
         </button>
 
@@ -488,7 +544,7 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
 
       <dialog id="p00-dialog" class="p00-dialog" data-popup-id="P00" aria-labelledby="p00-title">
         <div class="p00-frame">
-          <p class="s00-mode-label">미리 해보기 안내</p>
+          <p class="s00-mode-label" id="p00-kicker">미리 해보기 안내</p>
           <h3 id="p00-title">일본 한자 체계</h3>
           <p id="p00-body">이 지역은 도감 설명과 읽기, 난이도를 아직 다듬는 중입니다.<br />가장 완성된 체계는 한국 천자문 1,000자입니다.</p>
           <div class="p00-actions">
@@ -512,6 +568,17 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
             </div>
           </div>
 
+          <!-- gripe #6: 범위와 독립인 읽기 표기 축. 통합 표기 테이블(요청서 v8)
+               도착 전에는 NOTATION_AXIS_READY=false 로 숨긴다 — 플래그만 켜면 열린다. -->
+          <div class="s13-group s13-notation-group" role="radiogroup" aria-label="읽기 표기법" ${NOTATION_AXIS_READY ? "" : "hidden"}>
+            <span class="s13-group-label">읽기 표기법</span>
+            <div class="s13-options">
+              <button type="button" data-s13-notation="kr-hunum" role="radio"><b>${NOTATION_LABELS["kr-hunum"].name}</b><small>${NOTATION_LABELS["kr-hunum"].sample}</small></button>
+              <button type="button" data-s13-notation="jp-onkun" role="radio"><b>${NOTATION_LABELS["jp-onkun"].name}</b><small>${NOTATION_LABELS["jp-onkun"].sample}</small></button>
+              <button type="button" data-s13-notation="cn-pinyin" role="radio"><b>${NOTATION_LABELS["cn-pinyin"].name}</b><small>${NOTATION_LABELS["cn-pinyin"].sample}</small></button>
+            </div>
+          </div>
+
           <div class="s13-group" aria-label="읽기 표기">
             <span class="s13-group-label">읽기 · 표기</span>
             <div class="s13-options">
@@ -526,7 +593,7 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
             <span class="s13-group-label">진법 규칙</span>
             <div class="s13-options">
               <button type="button" data-s13-mode="casual" role="radio"><b>별승급</b><small>3합 승급 · 무작위 획득</small></button>
-              <button type="button" data-s13-mode="standard" role="radio"><b>자형연성</b><small>부수 조립 · 학습 특화</small></button>
+              <button type="button" data-s13-mode="standard" role="radio"><b>자형연성<mark class="s00-badge s00-badge--ea s00-badge--inline">미리 해보기</mark></b><small>부수 조립 · 학습 특화</small></button>
               <button type="button" id="s13-autoplace" aria-pressed="true"><b>소환 자동 배치</b><small class="s13-state">ON</small></button>
             </div>
           </div>
@@ -571,7 +638,7 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
             <h3 class="help-subhead">꼭 알아 둘 여섯 낱말</h3>
             <div class="help-term-grid">
               <article class="help-term" style="--element:#73df8d"><i aria-hidden="true">靈</i><div><b>자령<em>타워</em></b><span>글자에 깃든 타워. 오행진 한 칸에 한 기가 섭니다.</span></div></article>
-              <article class="help-term" style="--element:#ff755a"><i aria-hidden="true">封</i><div><b>봉인<em>처치</em></b><span>적을 쓰러뜨리는 일, 그리고 사자성어가 완성되는 일.</span></div></article>
+              <article class="help-term" style="--element:#ff755a"><i aria-hidden="true">封</i><div><b>봉인<em>처치</em></b><span>적을 쓰러뜨리는 일. 사자성어가 한 줄로 완성되는 일은 '발동'이라고 해요.</span></div></article>
               <article class="help-term" style="--element:#f5c65b"><i aria-hidden="true">錢</i><div><b>엽전<em>골드</em></b><span>이 게임의 돈. 소환·진 해금·공용 강화에 씁니다.</span></div></article>
               <article class="help-term" style="--element:#61c8ff"><i aria-hidden="true">文</i><div><b>문기<em>오행 재료</em></b><span>자령을 분해해 얻습니다. 오행 강화와 농축에 씁니다.</span></div></article>
               <article class="help-term" style="--element:#a98cff"><i aria-hidden="true">濃</i><div><b>농축<em>최고 3</em></b><span>같은 글자를 겹쳐 한 기를 키우는 단계입니다.</span></div></article>
@@ -585,11 +652,13 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
             <p class="help-lead">자령은 오직 뽑기로 얻습니다. 상점 상품마다 <b>무엇이 잘 나오는지</b>가 다릅니다.</p>
             <h3 class="help-subhead">별 구간<em class="help-mode-badge is-casual">별승급 진법</em></h3>
             <div class="help-band" aria-label="소환 상품별 별 구간">
-              <div class="help-band-row"><b>기본 · 탐색 · 중복</b><span class="help-band-track" aria-hidden="true"><i class="is-on" style="--star:#aeb9cc">1</i><i class="is-on" style="--star:#72d8a0">2</i><i class="is-on" style="--star:#61c8ff">3</i><i>4</i><i>5</i><i>6</i><i>7</i><i>8</i></span><em>1~3★</em></div>
-              <div class="help-band-row"><b>중급 소환</b><span class="help-band-track" aria-hidden="true"><i>1</i><i class="is-on" style="--star:#72d8a0">2</i><i class="is-on" style="--star:#61c8ff">3</i><i class="is-on" style="--star:#a98cff">4</i><i class="is-on" style="--star:#f5c65b">5</i><i>6</i><i>7</i><i>8</i></span><em>2~5★</em></div>
-              <div class="help-band-row"><b>고급 소환</b><span class="help-band-track" aria-hidden="true"><i>1</i><i>2</i><i class="is-on" style="--star:#61c8ff">3</i><i class="is-on" style="--star:#a98cff">4</i><i class="is-on" style="--star:#f5c65b">5</i><i class="is-on" style="--star:#ff8a56">6</i><i class="is-on" style="--star:#ff5f91">7</i><i class="is-on" style="--star:#fff1ad">8</i></span><em>3~8★</em></div>
+              <div class="help-band-row"><b>기본 · 탐색 · 중복</b><span class="help-band-track" aria-hidden="true"><i class="is-on" style="--star:#aeb9cc">1</i><i class="is-on" style="--star:#72d8a0">2</i><i class="is-on" style="--star:#61c8ff">3</i><i class="is-tail" style="--star:#a98cff">4</i><i class="is-tail" style="--star:#f5c65b">5</i><i class="is-tail" style="--star:#ff8a56">6</i><i class="is-tail" style="--star:#ff5f91">7</i><i class="is-tail" style="--star:#fff1ad">8</i></span><em>주로 1~3★</em></div>
+              <div class="help-band-row"><b>중급 소환</b><span class="help-band-track" aria-hidden="true"><i>1</i><i class="is-on" style="--star:#72d8a0">2</i><i class="is-on" style="--star:#61c8ff">3</i><i class="is-on" style="--star:#a98cff">4</i><i class="is-on" style="--star:#f5c65b">5</i><i class="is-tail" style="--star:#ff8a56">6</i><i class="is-tail" style="--star:#ff5f91">7</i><i class="is-tail" style="--star:#fff1ad">8</i></span><em>2★ 확정 · 주로 2~5★</em></div>
+              <div class="help-band-row"><b>고급 소환</b><span class="help-band-track" aria-hidden="true"><i>1</i><i>2</i><i class="is-on" style="--star:#61c8ff">3</i><i class="is-on" style="--star:#a98cff">4</i><i class="is-on" style="--star:#f5c65b">5</i><i class="is-on" style="--star:#ff8a56">6</i><i class="is-on" style="--star:#ff5f91">7</i><i class="is-on" style="--star:#fff1ad">8</i></span><em>3★ 확정 · 3~8★</em></div>
             </div>
-            <p class="help-note">구간 안에서도 <b>낮은 별이 더 흔합니다</b>. 상위 별은 뽑기가 아니라 3기 조합으로 올립니다.</p>
+            <p class="help-note">하한 밑 별은 나오지 않습니다("N★ 확정"). 구간 안에서는 <b>낮은 별이 더 흔하고</b>, 상한 위 별도 <b>아주 낮은 확률</b>로 등장합니다 — 별이 오를수록 확률이 확 떨어집니다. 상위 별의 정공법은 3기 조합입니다.</p>
+            <h3 class="help-subhead">별 확률표<em class="help-mode-badge is-casual">별승급 진법</em></h3>
+            <div class="help-odds" aria-label="소환 상품별 별 확률표">${helpSummonOddsHtml()}</div>
             <h3 class="help-subhead">획수 → 기본 별 구간<em class="help-mode-badge is-casual">별승급 진법</em></h3>
             <div class="help-stroke-bins" aria-label="획수에 따른 기본 별 구간표">${helpStrokeBinsHtml()}</div>
             <p class="help-note"><b>획이 많은 한자일수록 별이 높습니다</b> — 기본 별은 뽑기 운이 아니라 실제 획수(Unicode kTotalStrokes)로 정해집니다.</p>
@@ -603,10 +672,10 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
             <h3 class="help-subhead">더 얻는 길</h3>
             <div class="help-cards">
               <article class="help-card"><b>소환<em><kbd>1</kbd></em></b><span>지역별 1단계 한자를 품은 자령이 무작위로 나옵니다. 목표에 모자란 재료는 뽑을수록 확률이 올라갑니다.</span></article>
-              <article class="help-card"><b>10연 소환<em><kbd>Q</kbd></em></b><span>10웨이브를 지키면 열립니다. 현재 소환 비용 10회를 한 번에 지불하며, 별승급 진법에서는 열 장 안에 기본 밴드 상단인 3★ 1기가 보장됩니다.</span></article>
+              <article class="help-card"><b>10연 소환<em><kbd>Q</kbd></em></b><span>10웨이브를 지키면 열립니다. 현재 소환 비용 10회를 한 번에 지불하며, 별승급 진법에서는 열 장 안에 기본 밴드 상단인 3★ 이상 1기가 보장됩니다.</span></article>
               <article class="help-card"><b>인연 연구<em><kbd>3</kbd></em></b><span>엽전을 들여 목표 재료가 나올 가중치를 올립니다. 최고 5단계이며 각 단계는 정해진 웨이브를 지나야 열립니다.</span></article>
               <article class="help-card"><b>첫 오행진과 해금</b><span>열린 진 없이 상점에서 시작합니다. 첫 소환 자령과 같은 오행진이 무료로 열리고, 나머지는 원하는 순서로 18·32·52·78엽전에 개방합니다.</span></article>
-              <article class="help-card"><b>자동배치</b><span>런 인벤토리 자령을 현재 개방된 오행진에 투입하고, 완성 가능한 사자성어와 오행 공명을 함께 정리합니다.</span></article>
+              <article class="help-card"><b>자동배치</b><span>가방 자령을 현재 개방된 오행진에 투입하고, 완성 가능한 사자성어와 오행 공명을 함께 정리합니다.</span></article>
             </div>
           </section>
 
@@ -633,7 +702,7 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
               <article class="help-card"><b>적 특성</b><span>정예 철갑 강시(방어 높음) · 질풍 아귀(빠름) · 백귀야행(다수) · 회생 요괴(체력 회복)를 미리 확인하세요.</span></article>
               <article class="help-card"><b>은행 이자</b><span>웨이브 종료 시 보유 엽전 20개당 1엽전을 지급하며, 한 번에 최대 20엽전까지만 받을 수 있습니다.</span></article>
               <article class="help-card"><b>일시정지<em><kbd>P</kbd></em></b><span>직접 멈출 수 있고, 도감·도움말·설정 창이 열려 있는 동안에도 전투가 저절로 멈춥니다. 창을 닫으면 이어집니다.</span></article>
-              <article class="help-card"><b>런 인벤토리</b><span>같은 한자는 한 스택으로 묶입니다. 인벤토리 자령을 고른 뒤 빈 칸을 누르면 배치하고, 찬 칸을 누르면 기존 자령을 인벤토리로 보내며 즉시 교체합니다.</span></article>
+              <article class="help-card"><b>자령 가방</b><span>같은 한자는 한 스택으로 묶입니다. 가방 자령을 고른 뒤 빈 칸을 누르면 배치하고, 찬 칸을 누르면 기존 자령을 가방으로 보내며 즉시 교체합니다.</span></article>
               <article class="help-card"><b>훈·독 표시<em><kbd>Space</kbd></em></b><span>기본 자령 모드는 머리 위에 한자·훈음을 얹습니다. 한자 강조를 끄면 표찰을 숨기고 별만 남기며, 설정의 공부 모드는 전장에 큰 한자와 짧은 읽기를 표시합니다.</span></article>
             </div>
           </section>
@@ -668,8 +737,9 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
             </div>
             <p class="help-note">같은 한자 중복 1기 또는 같은 오행 문기 4·6·8을 재료로 직접 고릅니다. 실행 전에 전후 전투 수치를 나란히 비교해 보여 줍니다.</p>
             <h3 class="help-subhead">강화 제련소</h3>
+            <p class="help-note"><b>문기는 자령 분해와 3체 승급이 남깁니다.</b> 판매도 농축에 투자한 문기를 돌려줍니다.</p>
             <div class="help-cards">
-              <article class="help-card"><b>① 분해</b><span>안 쓰는 인벤토리 자령을 보호 규칙 아래 일괄 분해해 오행 문기로 바꿉니다.</span></article>
+              <article class="help-card"><b>① 분해</b><span>안 쓰는 가방 자령을 보호 규칙 아래 일괄 분해해 오행 문기로 바꿉니다.</span></article>
               <article class="help-card"><b>② 오행 강화</b><span>공용·오행 5능력치를 각 99단계까지, 오행별 고유 특성 3종을 각 10단계까지 한 화면에서 투자합니다.</span></article>
               <article class="help-card"><b>유일 자령 보호</b><span>스위치를 끄면 이 한자를 1기만 가진 자령도 후보에 들어오며 목록에 <em>유일</em> 배지가 남습니다. 잠금·농축·목표·성어 보호는 그대로입니다.</span></article>
               <article class="help-card"><b>잠금</b><span>잠근 자령은 공격·이동은 유지되지만 합성 재료와 판매 대상에서는 제외됩니다.</span></article>
@@ -678,7 +748,7 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
           </section>
 
           <section class="help-panel" id="help-panel-idiom" role="tabpanel" aria-labelledby="help-tab-idiom" data-help-panel="idiom">
-            <p class="help-lead">같은 진 안 <b>한 직선</b> 네 칸에 글자를 순서대로 놓으면 사자성어가 자동으로 봉인됩니다.</p>
+            <p class="help-lead">같은 진 안 <b>한 직선</b> 네 칸에 글자를 순서대로 놓으면 사자성어가 자동으로 발동합니다.</p>
             <section class="idiom-rule-guide help-idiom-guide" aria-label="성어 발동 규칙">
               <div class="idiom-rule-figures" aria-hidden="true">
                 <figure class="idiom-rule-figure idiom-rule-figure--row">
@@ -707,7 +777,7 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
               <div><span class="help-cell is-placed" aria-hidden="true">③</span><div><b>순번 인장</b><span>추적 중인 성어의 글자를 가진 자령에 몇 번째 글자인지 인장이 붙습니다.</span></div></div>
               <div><span class="help-cell is-next" aria-hidden="true">④</span><div><b>다음 칸 점선</b><span>다음 글자를 놓을 수 있는 빈 칸을 금색 점선 테와 순번으로 표시합니다.</span></div></div>
             </div>
-            <p class="help-note">직접 선을 그을 필요는 없습니다. 순서가 맞는 순간 자동으로 발동하고, <b>보너스는 네 자령이 그 줄을 지키는 동안만</b> 발동합니다. 한 기라도 자리를 뜨면 봉인이 풀리고, 줄을 다시 세우면 재발동합니다. 역순으로 읽어도 인정합니다.</p>
+            <p class="help-note">직접 선을 그을 필요는 없습니다. 순서가 맞는 순간 자동으로 발동하고, <b>보너스는 네 자령이 그 줄을 지키는 동안만</b> 발동합니다. 한 기라도 자리를 뜨면 발동이 풀리고, 줄을 다시 세우면 재발동합니다. 역순으로 읽어도 인정합니다.</p>
             <!-- [SKILL-V1] 성어의 가호 안내 -->
             <p class="help-note"><b>성어의 가호</b> — 발동 중인 성어와 같은 진에 배치된 자령 전원의 공격이 +10% 강해지고, 같은 진에 성어가 하나 더 발동할 때마다 +5%p 씩 더해집니다. 성어가 흩어지면 가호도 즉시 사라집니다.</p>
             <p class="help-note">발동 중인 네 자령은 명패에 <b>금색 鎖</b> 표식이 붙고 자동배치가 건드리지 않습니다. 손으로 옮기는 것은 언제든 가능합니다.</p>
@@ -738,7 +808,7 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
         </button>
       </div>
       <button id="auto-place-toggle" class="settings-toggle" type="button" role="switch" aria-checked="true" data-testid="auto-place-toggle">
-        <span><b>뽑기 후 자동 배치</b><small>켜면 현재처럼 빈 오행진 칸에 즉시 배치합니다. 끄면 런 인벤토리에서 원하는 칸을 고릅니다.</small></span>
+        <span><b>뽑기 후 자동 배치</b><small>켜면 현재처럼 빈 오행진 칸에 즉시 배치합니다. 끄면 가방에서 원하는 칸을 고릅니다.</small></span>
         <i aria-hidden="true"><em>ON</em></i>
       </button>
       <button id="hover-glyph-toggle" class="settings-toggle" type="button" role="switch" aria-checked="true" data-testid="hover-glyph-toggle">
@@ -747,6 +817,10 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
       </button>
       <button id="calm-screen-toggle" class="settings-toggle" type="button" role="switch" aria-checked="false" data-testid="calm-screen-toggle">
         <span><b>차분한 화면</b><small>맥동·플래시·먹물 흐름 애니메이션을 멈추고 배경 결 무늬를 옅게 합니다. OS 동작 줄이기 설정이면 자동 적용됩니다.</small></span>
+        <i aria-hidden="true"><em>OFF</em></i>
+      </button>
+      <button id="talisman-mode-toggle" class="settings-toggle" type="button" role="switch" aria-checked="false" data-testid="talisman-mode-toggle">
+        <span><b>학습 모드 · 부적 만들기</b><small>패널에 「부적」 탭이 섭니다. 부적지의 한자를 따라 쓰고 [부적 봉인]을 누르면 그 글자의 자령이 보상을 두고 갑니다 — 웨이브마다 3장 한 세트입니다. 부적 모드에서는 적이 5% 강해집니다. 그 대신 부적 보상을 얻습니다.</small></span>
         <i aria-hidden="true"><em>OFF</em></i>
       </button>
       <section class="audio-settings" aria-labelledby="audio-settings-title">

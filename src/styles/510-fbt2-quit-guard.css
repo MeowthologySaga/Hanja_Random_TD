@@ -1,0 +1,62 @@
+/* ══════════════════════════════════════════════════════════════════
+   [FBT-2] 수련장 그만두기 오인 방지 — 트랙 H(#8)
+   ══════════════════════════════════════════════════════════════════
+
+   사용자 실증: 걸음이 끝날 때 [수련 건너뛰기]를 "다음" 버튼으로 오인해
+   눌렀다. 세 겹으로 막는다.
+   ① 문구 — "수련 그만두기"(templates.ts)
+   ② 확인 1회 — #tutorial-quit-dialog(아래 절, p00 서책 창 재사용)
+   ③ 시각 — 진행 말풍선(한지·금테)과 확연히 다른 회색 저강조로,
+      전장 우하단 구석에 고정한다. 기능은 유지하고 숨기지 않는다.
+   400-fbt1-training.css 의 .tutorial-exit 기본값을 이 절이 덮는다
+   (배럴 순서 510 > 400). */
+
+/* ── FBT-2a. [수련 그만두기] — 회색 저강조 · 구석 고정 ───────────── */
+
+.tutorial-exit {
+  top: auto;
+  bottom: 12px;
+  right: 402px;
+  padding: 5px 11px;
+  color: #a89f8f;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  background: rgba(20, 19, 16, 0.78);
+  box-shadow: inset 0 0 0 1px rgba(138, 130, 114, 0.4);
+  opacity: 0.78;
+  transition: opacity 0.25s ease;
+}
+
+/* 접근 의도가 분명할 때만 또렷해진다 — 그래도 회색은 유지(금색 금지). */
+.tutorial-exit:hover,
+.tutorial-exit:focus-visible {
+  color: #cfc7b6;
+  box-shadow: inset 0 0 0 1px rgba(170, 161, 142, 0.6);
+  opacity: 1;
+}
+
+/* ── FBT-2b. 그만두기 확인 창 — 계속이 주(主), 그만두기가 종(從) ── */
+
+.tutorial-quit-frame p {
+  max-width: 360px;
+}
+
+#tutorial-quit-cancel {
+  color: #ffeec4;
+  background:
+    url("/assets/ui/main-menu-b/ui/button-secondary-default-v1.png") center / 100% 100% no-repeat,
+    #4a1e14;
+}
+
+#tutorial-quit-cancel:hover { filter: brightness(1.12); }
+
+#tutorial-quit-confirm {
+  color: #d8c9a8;
+  background:
+    url("/assets/ui/main-menu-b/ui/button-secondary-default-v1.png") center / 100% 100% no-repeat,
+    #26221c;
+  filter: grayscale(0.35);
+}
+
+#tutorial-quit-confirm:hover { filter: grayscale(0) brightness(1.08); }

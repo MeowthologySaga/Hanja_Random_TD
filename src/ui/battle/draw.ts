@@ -14,7 +14,7 @@ import {
 import { definitionForTower, ELEMENT_STYLES } from "../../core/hanzi";
 import { idiomById, partialIdiomChain } from "../../core/idioms";
 import { enemyJaryeongVisualFor } from "../../core/jaryeongs";
-import { learningInfo } from "../../core/learning";
+import { learningInfoForNotation } from "../../core/learning";
 import { type Enemy, type Point, type Tower } from "../../core/types";
 import { abilityZoneSpriteLayout, deterministicZoneRotation } from "../combat-fx-layout";
 import { elementZoneImage } from "../combat-fx-sprites";
@@ -46,7 +46,7 @@ import { jaryeongSpriteImage } from "../jaryeong-sprites";
 import { isLockSpriteReady, LOCK_SPRITE_SIZE, lockSpriteImage } from "../lock-sprites";
 import { CELL_SOCKET_SIZE, cellSocketImage, isCellSocketReady } from "../p0-component-sprites";
 import { EXIT_SEAL_SIZE, exitSealImage, isReady as isPolishSpriteReady } from "../polish-sprites";
-import { calmBattlefield, canvas, context, ctx, reducedMotion } from "../app-context";
+import { calmBattlefield, canvas, context, ctx, reducedMotion, shell } from "../app-context";
 import { casualStarOf } from "../format";
 import { drawHoveredTowerCard, drawTower, flushTowerPlaques } from "./draw-tower";
 import { type IdiomRippleFx, idiomRipples, pushPooled, ringPool, rings, takeRing, updateAndDrawFx } from "./fx";
@@ -56,7 +56,7 @@ export function drawWorld(delta: number): void {
   const selectedTower = ctx.engine.selectedTower();
   canvas.dataset.selectedTowerId = selectedTower ? String(selectedTower.id) : "";
   // compact 명패가 훈음을 줄여 적어도 전체값은 접근성 이름과 상세 팝오버에 남는다.
-  const selectedReading = selectedTower ? learningInfo(state.region, selectedTower.char).short : "";
+  const selectedReading = selectedTower ? learningInfoForNotation(state.notation, selectedTower.char).short : "";
   if (canvas.dataset.selectedTowerReading !== selectedReading) {
     canvas.dataset.selectedTowerReading = selectedReading;
     canvas.setAttribute(
@@ -214,10 +214,11 @@ function drawAbilityZones(): void {
     context.save();
     context.globalAlpha = 0.88 * life;
     // [SKILL-V1] 서리길은 오행 대신 霜 표기 — 감속 지대임을 이름으로 말한다.
+    // [SKILL-V2] 소흔의 잔불도 燼 표기 — 처치 지점에 남은 불씨임을 이름으로 말한다.
     context.fillStyle = zone.kind === "rain" || zone.kind === "frost" ? "#d9f2ff" : zone.color;
     context.font = '900 10px "Malgun Gothic", sans-serif';
     context.textAlign = "center";
-    context.fillText(`${zone.kind === "frost" ? "霜 서리길" : zone.wuxing} ${remaining.toFixed(1)}초`, point.x, point.y + zone.radius + 13);
+    context.fillText(`${zone.kind === "frost" ? "霜 서리길" : zone.kind === "ember" ? "燼 잔불" : zone.wuxing} ${remaining.toFixed(1)}초`, point.x, point.y + zone.radius + 13);
     context.restore();
   }
   for (const id of zoneSpawnTimes.keys()) {
@@ -776,10 +777,24 @@ function refreshSealedIdiomTowerMarks(): void {
   if (canvas.dataset.idiomSealCells !== signature) canvas.dataset.idiomSealCells = signature;
 }
 
+/**
+ * 수련장 7걸음이 정해 둔 성어 줄(전역 칸 번호). 수련 중이 아니면 null.
+ *
+ * 같은 칸에서 여러 방향(가로·세로·대각)으로 줄이 자랄 수 있어 점선 안내가
+ * 여러 칸에 흩어진다. 수련장은 각본이 줄 하나를 정해 두고 그 줄의 다음 칸
+ * 하나만 누를 수 있게 잠그므로(tutorial.ts allowCell), 점선도 그 줄 안으로
+ * 좁혀야 "점선인데 안 눌리는 칸"이 생기지 않는다.
+ */
+function tutorialIdiomLine(): Set<number> | null {
+  const raw = shell.dataset.tutorialIdiomCells;
+  if (!raw) return null;
+  return new Set(raw.split(",").map(Number).filter((cell) => Number.isInteger(cell)));
+}
+
 function refreshIdiomPlacementGuide(): void {
   const idiom = ctx.engine.currentIdiomTarget();
   const key = idiom
-    ? `${idiom.id}|${ctx.engine.state.towers.map((tower) => `${tower.cell}:${tower.char}`).sort().join(",")}|${ctx.engine.state.unlockedFormations.join("")}`
+    ? `${idiom.id}|${ctx.engine.state.towers.map((tower) => `${tower.cell}:${tower.char}`).sort().join(",")}|${ctx.engine.state.unlockedFormations.join("")}|${shell.dataset.tutorialIdiomCells ?? ""}`
     : "";
   if (key === idiomPlacementGuideKey) return;
   idiomPlacementGuideKey = key;
@@ -818,7 +833,10 @@ function refreshIdiomPlacementGuide(): void {
   }
 
   // 직선 규칙에서는 다음 자리가 줄 위에 정해져 있다. 코어가 짚어 준 칸만 쓴다.
-  const nextCells = chain.complete ? [] : chain.nextCells.filter((cell) => ctx.engine.isCellUnlocked(cell));
+  const scriptedLine = tutorialIdiomLine();
+  const nextCells = chain.complete
+    ? []
+    : chain.nextCells.filter((cell) => ctx.engine.isCellUnlocked(cell) && (scriptedLine === null || scriptedLine.has(cell)));
   ctx.idiomPlacementGuide = { idiom, chain, orders, nextCells };
   // 배치 안내 상태를 캔버스 데이터셋으로 내보내 캡처·e2e 가 읽을 수 있게 한다.
   canvas.dataset.idiomTarget = idiom.chars;
@@ -831,10 +849,14 @@ function refreshIdiomPlacementGuide(): void {
     .join(",");
 }
 
-/** 순번 인장(60x60 원본 → 표시 20px). 로드 실패 시 인주 원 + 백색 숫자로 대체한다. */
-export function drawIdiomOrderBadge(centerX: number, centerY: number, size: number, order: IdiomOrder): void {
-  const sprite = idiomOrderSealImage(order);
-  if (idiomSpriteReady(sprite)) {
+/**
+ * 순번 인장(60x60 원본 → 표시 20px). 로드 실패 시 인주 원 + 백색 숫자로 대체한다.
+ * [SKILL-V2] 연환 인장이 같은 문법을 빌린다 — 스프라이트는 1~4까지라 5 이상은
+ * 언제나 절차 인장(인주 원 + 숫자)으로 그린다.
+ */
+export function drawIdiomOrderBadge(centerX: number, centerY: number, size: number, order: IdiomOrder | number): void {
+  const sprite = order >= 1 && order <= 4 ? idiomOrderSealImage(order as IdiomOrder) : null;
+  if (sprite && idiomSpriteReady(sprite)) {
     context.drawImage(sprite, centerX - size / 2, centerY - size / 2, size, size);
     return;
   }
@@ -1078,9 +1100,9 @@ function drawIdiomFlash(): void {
   context.shadowBlur = 0;
   context.font = '800 19px "Malgun Gothic", sans-serif';
   context.lineWidth = 6;
-  context.strokeText(`${flash.reading} · 봉인`, 0, 50);
+  context.strokeText(`${flash.reading} · 발동`, 0, 50);
   context.fillStyle = flash.color;
-  context.fillText(`${flash.reading} · 봉인`, 0, 50);
+  context.fillText(`${flash.reading} · 발동`, 0, 50);
   context.restore();
 }
 
@@ -1254,6 +1276,15 @@ function drawEnemy(enemy: Enemy, point = positionOnPath(enemy.progress)): void {
     context.globalAlpha = 1;
   }
 
+  // [SKILL-V2] 연환 인장: 성어 순번 인장의 시각 문법 재사용 — 쌓인 만큼 1·2·3…
+  // 인장이 줄지어 붙는다. 5겹째(스프라이트는 4까지)는 절차 인장 폴백이 그린다.
+  const sealStacks = (enemy.sealUntil ?? 0) > ctx.engine.state.elapsed ? Math.min(5, enemy.sealStacks ?? 0) : 0;
+  if (sealStacks > 0) {
+    for (let index = 0; index < sealStacks; index += 1) {
+      const x = (index - (sealStacks - 1) / 2) * 13;
+      drawIdiomOrderBadge(x, -artTop - 29, 12, index + 1);
+    }
+  }
   const statuses: Array<{ glyph: string; color: string }> = [];
   if (enemy.poisonUntil > ctx.engine.state.elapsed) statuses.push({ glyph: "毒", color: ELEMENT_STYLES.木.color });
   if (enemy.slowFactor < 1 && enemy.slowUntil > ctx.engine.state.elapsed) statuses.push({ glyph: "凍", color: ELEMENT_STYLES.水.color });

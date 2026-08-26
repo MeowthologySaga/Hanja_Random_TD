@@ -7,6 +7,7 @@ import { GWICHEON_ABILITY } from "../../core/abilities";
 import {
   autoConcentrationPath,
   concentrationEssenceCost,
+  concentrationEssenceRefund,
   concentrationPathLabel,
   MAX_CONCENTRATION_LEVEL
 } from "../../core/game";
@@ -19,12 +20,25 @@ import {
   STAGE_NAMES
 } from "../../core/hanzi";
 import { jaryeongVisualFor } from "../../core/jaryeongs";
-import { learningInfo } from "../../core/learning";
+import { learningInfoForNotation } from "../../core/learning";
 import { radicalGlyph } from "../../core/radicals";
 import { type AbilitySpec, type CompositionBranchPreview, type HanziDefinition, type Tower } from "../../core/types";
 import { abilityGuideDialog, canvas, ctx, must } from "../app-context";
-import { casualStarOf, escapeHtml, spriteStyle, visualBackgroundStyle } from "../format";
+import {
+  casualStarOf,
+  dismantleBlockChip,
+  dismantleBlockNote,
+  dismantleUnlockable,
+  escapeHtml,
+  essenceAmountChip,
+  essenceAmountLabel,
+  goldAmountLabel,
+  protectionShortLabel,
+  spriteStyle,
+  visualBackgroundStyle
+} from "../format";
 import { handleAction, setPanelTab, showToast } from "../hud";
+import { dismantleOptions } from "./growth";
 
 function setCompositionMaterialHighlight(ids: readonly number[] = []): void {
   ctx.hoveredCompositionMaterialIds = new Set(ids);
@@ -68,7 +82,7 @@ function openAbilityGuide(focusedAbilityId?: string): void {
   const tower = ctx.engine.selectedTower();
   if (!tower) return;
   const definition = definitionForTower(ctx.engine.catalog, tower.definitionId);
-  const learning = learningInfo(ctx.engine.state.region, tower.char);
+  const learning = learningInfoForNotation(ctx.engine.state.notation, tower.char);
   const abilities = definition.combat.abilities;
   const activeSkills = ctx.engine.towerHasActiveSkills(tower);
   const skillUnlockLabel = ctx.engine.state.mode === "casual" ? "2★ 승급" : "2단 합성";
@@ -136,7 +150,7 @@ export function renderSelected(): void {
   const duplicateCount = tower ? ctx.engine.state.inventoryTowers.filter((candidate) => candidate.id !== tower.id && candidate.char === tower.char && !candidate.locked).length : 0;
   const branchKey = branches.map((branch) => `${branch.recipeId}:${branch.ready ? "R" : branch.materials.map((material) => material.location).join(",")}`).join("|");
   const polarisActive = tower ? ctx.engine.casualPolarisAuraActive(tower.wuxing) : false;
-  const key = tower ? tower.definitionId + "|" + String(tower.id) + "|" + String(tower.locked) + "|" + String(stored) + "|" + String(ctx.engine.isSynergyActive(tower.wuxing)) + "|" + branchKey + `|M${ctx.engine.state.mode}:S${tower.casualStar ?? 0}|C${concentration}:${concentrationPath ?? "none"}:D${duplicateCount}:E${ctx.engine.state.elementEssence[tower.wuxing]}|P${polarisActive ? 1 : 0}` : "none";
+  const key = tower ? tower.definitionId + "|" + String(tower.id) + "|" + String(tower.locked) + "|" + String(stored) + "|" + String(ctx.engine.isSynergyActive(tower.wuxing)) + "|" + branchKey + `|M${ctx.engine.state.mode}:S${tower.casualStar ?? 0}|C${concentration}:${concentrationPath ?? "none"}:D${duplicateCount}:E${ctx.engine.state.elementEssence[tower.wuxing]}|P${polarisActive ? 1 : 0}|U${ctx.dismantleProtectsUnique ? 1 : 0}` : "none";
   if (key === ctx.selectedRenderKey) {
     if (tower && definition) syncSelectedCharge(card, tower, definition, chargeStep);
     return;
@@ -152,7 +166,7 @@ export function renderSelected(): void {
   const damage = Math.round(definition.combat.baseDamage * ctx.engine.towerPowerMultiplier(tower) * definition.combat.budgetMultiplier * (1 + ctx.engine.idiomBonus("damage")) * (1 + ctx.engine.combinedUpgradeBonus(tower.wuxing, "damage")) * concentrationDamage * ctx.engine.casualPolarisDamageMultiplier(tower.wuxing));
   const range = definition.combat.range + ctx.engine.towerRangeBonus(tower) + ctx.engine.idiomBonus("range") + concentration * 4 + ctx.engine.combinedUpgradeBonus(tower.wuxing, "range");
   const attacksPerSecond = 1 / ctx.engine.towerAttackCooldown(tower);
-  const learning = learningInfo(ctx.engine.state.region, tower.char);
+  const learning = learningInfoForNotation(ctx.engine.state.notation, tower.char);
   const abilities = definition.combat.abilities;
   const activeSkills = ctx.engine.towerHasActiveSkills(tower);
   const periodicAbilities = activeSkills
@@ -169,10 +183,23 @@ export function renderSelected(): void {
   const concentrationStatus = concentration >= MAX_CONCENTRATION_LEVEL
     ? `濃 3/3 완성 · ${concentrationPathLabel(concentrationPath ?? autoConcentrationPath(tower))}`
     : duplicateCount > 0 ? `중복 ${duplicateCount}기 사용 가능` : `${tower.wuxing} 문기 ${ctx.engine.state.elementEssence[tower.wuxing]}/${nextEssenceCost}`;
-  const cleanup = ctx.engine.cleanupAssessments().find((assessment) => assessment.towerId === tower.id);
+  // [J-2] 보호 판정은 분해 경로와 같은 옵션(유일 자령 보호 토글)으로 읽어야
+  // 한 화면 안에서 "여기선 보호, 저기선 분해 가능" 같은 어긋남이 안 생긴다.
+  const cleanup = ctx.engine.cleanupAssessments(dismantleOptions()).find((assessment) => assessment.towerId === tower.id);
+  // [J-2] 보호 칩이 곧 사유 라벨이다. 버튼 아래 별도 줄로 두면 376px 카드의
+  // 스크롤 아래로 밀려 "화면에 드러낸다" 는 목적을 잃는다. 반대로 칩이 한 줄
+  // 늘어나도 [판매] 가 첫 화면 밖으로 밀리므로, 칩은 사유만 한 줄로 싣고
+  // 푸는 법은 [분해 불가] 버튼의 아랫줄이 맡는다.
   const cleanupLabel = cleanup?.protected
-    ? `보호 · ${cleanup.protectedReasons[0] ?? "전략 재료"}`
+    ? dismantleBlockChip(cleanup.protectedReasons)
     : `정리 후보 · ${cleanup?.reasons[0] ?? "직접 판단"}`;
+  // [J-1] 판매는 엽전과 (농축했다면) 환급 문기 두 값을 함께 준다 — 둘 다 단위를 단다.
+  const sellGold = ctx.engine.towerSellValue(tower);
+  const sellEssence = concentrationEssenceRefund(concentration);
+  // 트랙 A #7: 전장 배치 상태 그대로 확인 1회 → 즉시 분해. 보호에 걸리면
+  // 버튼을 잠그고 사유를 title 로 남긴다.
+  const dismantleEssence = ctx.engine.towerDismantleEssenceValue(tower);
+  const dismantleBlocked = cleanup?.protected !== false;
   const casualStar = casualStarOf(tower);
   const progressionLabel = ctx.engine.state.mode === "casual" ? `${casualStar}★ ${CASUAL_STAR_NAMES[casualStar]}` : STAGE_NAMES[tower.stage];
   const progressionColor = ctx.engine.state.mode === "casual" ? CASUAL_STAR_COLORS[casualStar] : STAGE_COLORS[tower.stage];
@@ -204,11 +231,13 @@ export function renderSelected(): void {
     </div>
     <div class="selected-actions">
       <button id="lock-button" class="${tower.locked ? "is-locked" : ""}" type="button" data-testid="lock-tower" title="판매·합성 재료로 쓰이지 않게 보호">${tower.locked ? "鎖 잠금됨" : "잠금"}</button>
-      <button id="store-button" type="button" data-testid="store-tower" title="인벤으로 이동 — 전장 자리를 비웁니다" ${stored ? "disabled" : ""}>${stored ? "보관 중" : "보관"}</button>
+      <button id="store-button" type="button" data-testid="store-tower" title="가방으로 이동 — 전장 자리를 비웁니다" ${stored ? "disabled" : ""}>${stored ? "보관 중" : "보관"}</button>
       <button id="derivative-button" class="${readyBranches > 0 ? "has-ready" : ""}" type="button" data-testid="derivative-composition" title="이 자령이 재료인 파생 조합 목록">${ctx.engine.state.mode === "casual" ? casualStar >= 8 ? "8★ 최고 단계" : "3체 조합 ›" : `합성 ${readyBranches}`}</button>
-      <button id="open-growth-button" type="button" title="강화 제련소 탭으로 이동">분해 ›</button>
+      <button id="dismantle-button" type="button" data-testid="dismantle-tower" class="${dismantleBlocked ? "is-blocked" : ""}" title="${escapeHtml(dismantleBlocked ? dismantleBlockNote(cleanup?.protectedReasons ?? []) : `${tower.char}를 분해해 ${essenceAmountLabel(tower.wuxing, dismantleEssence)} 회수 — 확인 한 번 뒤 즉시 분해, 되돌릴 수 없습니다`)}" ${dismantleBlocked ? "disabled" : ""}>${dismantleBlocked
+        ? `분해 불가<small class="action-price">${escapeHtml(dismantleUnlockable(cleanup?.protectedReasons ?? []) ? "제련소에서 보호 끄기 ›" : `${protectionShortLabel(cleanup?.protectedReasons ?? [])} 보호`)}</small>`
+        : `분해<small class="action-price">${essenceAmountChip(tower.wuxing, dismantleEssence)}</small>`}</button>
       <button id="open-concentration-button" type="button" title="농축 공방 탭으로 이동" ${concentration >= MAX_CONCENTRATION_LEVEL ? "disabled" : ""}>농축 ›</button>
-      <button id="sell-button" type="button" title="엽전을 받고 즉시 제거 — 되돌릴 수 없음" ${tower.locked ? "disabled" : ""}>판매 +${ctx.engine.towerSellValue(tower)}</button>
+      <button id="sell-button" type="button" title="${escapeHtml(`${goldAmountLabel(sellGold)}${sellEssence > 0 ? ` · ${essenceAmountLabel(tower.wuxing, sellEssence)}` : ""} 를 받고 즉시 제거 — 되돌릴 수 없음`)}" ${tower.locked ? "disabled" : ""}>판매<small class="action-price">${goldAmountLabel(sellGold, true)}${sellEssence > 0 ? ` · ${essenceAmountChip(tower.wuxing, sellEssence)}` : ""}</small></button>
     </div>
     <button type="button" class="selected-ability-summary" data-ability-guide><b>${activeSkills ? `技 기술 ${abilityLoadout.length}개 · 모두 자동 판정` : "技 기술 해금 전"}</b><span>${activeSkills ? `주기 ${periodicAbilities.length} · 공격 연동 1 · 조건 특성 1` : "현재 기본 공격 · 2단 합성 필요"}</span><em>설명 ›</em></button>
     ${activeSkills
@@ -230,7 +259,7 @@ function compositionMaterialChip(material: CompositionBranchPreview["materials"]
   const locationLabel = material.location === "board"
     ? "전장"
     : material.location === "inventory"
-      ? "인벤"
+      ? "가방"
       : material.location === "locked" ? "잠금" : "0/1";
   return `<span class="composition-material is-${material.location}"><b>${material.char}</b>${locationLabel}</span>`;
 }
@@ -244,7 +273,7 @@ function compositionBranchCard(branch: CompositionBranchPreview): string {
       <i class="composition-result-spirit" style="${visualBackgroundStyle(visual)}" aria-hidden="true"></i>
       <span class="composition-branch-copy">
         <strong>${branch.parents.join(" + ")} <em>→</em> <b>${branch.result.char}</b></strong>
-        <small>${STAGE_NAMES[branch.result.stage]} · ${escapeHtml(learningInfo(ctx.engine.state.region, branch.result.char).short)}</small>
+        <small>${STAGE_NAMES[branch.result.stage]} · ${escapeHtml(learningInfoForNotation(ctx.engine.state.notation, branch.result.char).short)}</small>
         <span class="composition-materials">${branch.materials.map(compositionMaterialChip).join("")}</span>
       </span>
       <mark>${branch.ready ? "합성 가능" : `${missing.join("·") || "재료"} 부족`}</mark>
@@ -272,11 +301,36 @@ export function renderCompositionDrawer(): void {
   must<HTMLElement>("#composition-ready-count").textContent = String(branches.filter((branch) => branch.ready).length);
   must<HTMLElement>("#composition-source").innerHTML = `
     <i class="composition-source-spirit" style="${spriteStyle(definition)}" aria-hidden="true"></i>
-    <span><b>${selected.char}</b><strong>${escapeHtml(learningInfo(ctx.engine.state.region, selected.char).short)}</strong><small>${selected.cell < 0 ? "런 인벤토리" : "전장 배치"} · 직접 파생 ${branches.length}개</small></span>
+    <span><b>${selected.char}</b><strong>${escapeHtml(learningInfoForNotation(ctx.engine.state.notation, selected.char).short)}</strong><small>${selected.cell < 0 ? "가방" : "전장 배치"} · 직접 파생 ${branches.length}개</small></span>
   `;
   must<HTMLElement>("#composition-branches").innerHTML = branches.length > 0
     ? branches.map(compositionBranchCard).join("")
     : `<div class="empty-composition"><b>직접 파생 합성이 없습니다</b><span>이 자령은 현재 조합표의 끝 단계입니다.</span></div>`;
+}
+
+/**
+ * 트랙 A #7: 전장 자령 즉석 분해.
+ *
+ * 엔진의 dismantleTowers 는 인벤토리 전용이라("인벤토리 자령만"), 전장 자령은
+ * 기존 공개 API 둘을 이어 붙인다 — storeSelectedTower(전장 → 인벤) 뒤
+ * dismantleTowers 1기. 엔진은 손대지 않는다. 확인은 제련소 [선택 분해]와
+ * 같은 window.confirm 1회다. 보호 셈법은 렌더가 이미 잠갔지만, 상태가 그 사이
+ * 바뀌었을 수 있으므로 실패 문장은 그대로 토스트로 올린다(그 경우 자령은
+ * 인벤토리에 남는다 — 사라지지는 않는다).
+ */
+function dismantleSelectedInPlace(): void {
+  const tower = ctx.engine.selectedTower();
+  if (!tower) return;
+  const essence = ctx.engine.towerDismantleEssenceValue(tower);
+  if (!window.confirm(`${tower.char}를 분해해 ${tower.wuxing} 문기 +${essence} — 되돌릴 수 없습니다. 분해하시겠습니까?`)) return;
+  if (tower.cell >= 0) {
+    const storeResult = ctx.engine.storeSelectedTower();
+    if (!storeResult.ok) {
+      handleAction(storeResult);
+      return;
+    }
+  }
+  handleAction(ctx.engine.dismantleTowers([tower.id], { protectUnique: ctx.dismantleProtectsUnique }));
 }
 
 function openCompositionDrawer(): void {
@@ -356,10 +410,7 @@ export function wireSelected3(): void {
       handleAction(result);
     }
     else if (target.closest("#sell-button")) handleAction(ctx.engine.sellSelected());
-    else if (target.closest("#open-growth-button")) {
-      ctx.growthElement = ctx.engine.selectedTower()?.wuxing ?? ctx.growthElement;
-      setPanelTab("growth");
-    }
+    else if (target.closest("#dismantle-button")) dismantleSelectedInPlace();
     else if (target.closest("#open-concentration-button")) {
       ctx.concentrationTargetId = ctx.engine.selectedTower()?.id ?? null;
       setPanelTab("concentration");

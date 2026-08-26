@@ -399,11 +399,13 @@ export const SUMMON_INTENT_LABELS: Readonly<Record<SummonIntent, string>> = Obje
 });
 
 /**
- * 캐주얼 소환의 별 밴드 `[하한, 상한]`. 가중이 아니라 후보 풀 필터이므로
- * 밴드 밖의 별은 뽑기로 아예 나오지 않는다.
+ * 캐주얼 소환의 별 밴드 `[하한, 상한]`. 하한은 하드 필터(밑의 별은 아예
+ * 나오지 않는다 — 티어 "N★ 확정" 광고의 근거), 상한은 소프트다 — 상한 위
+ * 별도 `CASUAL_STAR_TAIL_DECAY` 의 가파른 꼬리 확률로 8★까지 나온다.
  *
- * 기본 계열이 1~3★ 로 닫혀 있어야 "뽑기는 낮은 별, 상위 별은 3기 조합으로"라는
- * 별승급 루프가 성립한다. 하한을 올려 파는 중급·고급이 곧 상위 별 지름길이다.
+ * 기본 계열은 "주로 1~3★"이다 — 상위 별의 정공법은 3기 조합이고, 하한을
+ * 올려 파는 중급·고급이 그 지름길이라는 루프는 그대로다. 꼬리는 잭팟의
+ * 손맛일 뿐 경로가 아니다(원 기획: 별이 오를수록 확률이 확 떨어짐).
  * 실제 적용 밴드는 지역 풀 크기에 따라 `GameEngine.summonStarBand()`가 조정한다.
  */
 export const SUMMON_STAR_BANDS: Readonly<Record<SummonIntent, readonly [number, number] | null>> = Object.freeze({
@@ -415,12 +417,8 @@ export const SUMMON_STAR_BANDS: Readonly<Record<SummonIntent, readonly [number, 
   highstar: [3, 8]
 });
 
-/**
- * 밴드 안에서 별이 하나 오를 때마다 곱해지는 감쇠. 밴드 하한이 가장 흔하고
- * 상한이 가장 귀하다. 글자 수(1★ 332자 · 8★ 18자)에 눌리지 않도록 별 단위
- * 목표 분포로 먼저 나눈 뒤 같은 별의 글자들이 그 몫을 나눠 갖는다.
- */
-export const CASUAL_STAR_DECAY = 0.55;
+// 밴드 안 감쇠(CASUAL_STAR_DECAY)와 상한 위 꼬리 감쇠(CASUAL_STAR_TAIL_DECAY)는
+// 다른 조율 상수들과 함께 engine-tuning.ts 에 있다.
 
 /** 하한을 문구로 광고하는 티어 소환인가(= 밴드 하한이 1보다 큰가). */
 export function isTierSummonIntent(intent: SummonIntent): boolean {
