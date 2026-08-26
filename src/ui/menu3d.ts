@@ -103,6 +103,10 @@ const DOM_ANCHORS: ReadonlyArray<{ selector: string; at: Vector3 }> = [
   // 수련장 목패(FBT). 서갈피 열의 연장선 — 두 갈피의 간격·기울기를 그대로 잇는다.
   // 고정 CSS 좌표로 두면 갈피의 투영 흔들림과 겹치므로 같은 앵커 방식을 태운다.
   { selector: "#tutorial-button", at: new Vector3(-5.05, -0.46, 1.35) },
+  // [트랙 V] 이어하기 목패. 진입점 열(서갈피 둘 → 수련장 → 이어하기)의 마지막
+  // 칸이다. 고정 CSS 좌표로 두면 투영된 수련 목패와 그대로 겹치므로(실측 440~514)
+  // 같은 앵커 방식을 태워 열의 간격을 물려받는다.
+  { selector: "#resume-button", at: new Vector3(-5.05, -0.6, 2.08) },
   { selector: ".s00-regions .s00-region:nth-of-type(1)", at: new Vector3(-1.2, -0.14, 2.86) },
   { selector: ".s00-regions .s00-region:nth-of-type(2)", at: new Vector3(-0.28, -0.18, 2.9) },
   { selector: ".s00-regions .s00-region:nth-of-type(3)", at: new Vector3(0.64, -0.18, 2.9) },
