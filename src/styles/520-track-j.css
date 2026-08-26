@@ -72,10 +72,7 @@
  * 사유 라벨로 승격시켜 버튼 줄 위에 세운다 — 새 높이를 거의 안 먹는다.
  */
 .selected-chip.cleanup-reason.is-protected {
-  flex-basis: 100%;
   color: #7a2c1c !important;
-  line-height: 1.35;
-  white-space: normal;
   background: rgba(159, 47, 35, 0.11) !important;
   box-shadow: inset 3px 0 0 var(--seal, #9f2f23) !important;
 }

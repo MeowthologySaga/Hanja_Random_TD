@@ -141,9 +141,24 @@ export function protectionShortLabel(reasons: readonly string[]): string {
   return PROTECTION_SHORT_LABELS.find(([pattern]) => pattern.test(first))?.[1] ?? "보호";
 }
 
+/** 유일 보유는 사유 7종 중 유일하게 토글 하나로 풀린다 — 푸는 법을 함께 말할 수 있다. */
+export function dismantleUnlockable(reasons: readonly string[]): boolean {
+  return reasons.some((reason) => reason.includes("유일 보유"));
+}
+
 /** 분해 불가 한 줄. 토글로 풀리는 사유(유일 보유)면 푸는 법까지 붙인다. */
 export function dismantleBlockNote(reasons: readonly string[]): string {
   const listed = reasons.length > 0 ? reasons.join(" · ") : "보호 상태를 확인할 수 없습니다";
-  const unlockable = reasons.some((reason) => reason.includes("유일 보유"));
-  return `분해 불가 — ${listed}${unlockable ? ` · 강화 제련소에서 [${DISMANTLE_UNIQUE_TOGGLE_LABEL}]를 끄면 분해할 수 있어요` : ""}`;
+  return `분해 불가 — ${listed}${dismantleUnlockable(reasons) ? ` · 강화 제련소에서 [${DISMANTLE_UNIQUE_TOGGLE_LABEL}]를 끄면 분해할 수 있어요` : ""}`;
+}
+
+/**
+ * 자령 카드(376px) 전용 짧은 사유.
+ *
+ * 그 카드는 이미 내용 580px 를 368px 칸에 담아 스크롤이 난다 — 한 줄만
+ * 늘어도 [판매] 가 첫 화면 밖으로 밀린다. 그래서 여기서는 푸는 법을 떼고
+ * 사유만 남기고, 푸는 법은 [분해 불가] 버튼의 아랫줄이 대신 맡는다.
+ */
+export function dismantleBlockChip(reasons: readonly string[]): string {
+  return `분해 불가 · ${reasons.length > 0 ? reasons.join(" · ") : "보호 상태 확인 필요"}`;
 }
