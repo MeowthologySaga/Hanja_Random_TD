@@ -5,6 +5,9 @@ export type Stage = 1 | 2 | 3 | 4 | 5;
 export type GameMode = "standard" | "casual";
 export type CasualStar = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
 export type RunPhase = "title" | "prep" | "combat" | "victory" | "defeat";
+// FB3: 패배 사유 구분. 종료 화면이 lastMessage 문자열을 파싱하지 않고
+// "왜 졌는지"를 표기할 수 있게 엔진이 원인을 명시한다.
+export type DefeatCause = "enemy-limit" | "boss-timeout";
 export type AutomationMode = "manual" | "semi" | "goal";
 // 상점 소환 상품. `midstar`·`highstar` 는 획수=별 규칙이 있는 캐주얼 8성전 전용
 // 티어 소환이며, 가중이 아니라 후보 풀 필터(확정 보장)로 동작한다.
@@ -277,6 +280,8 @@ export interface GameState {
   region: RegionCode;
   mode: GameMode;
   phase: RunPhase;
+  /** phase 가 "defeat" 일 때만 채워진다. 그 외에는 null. */
+  defeatCause: DefeatCause | null;
   wave: number;
   maxWaves: number;
   gold: number;

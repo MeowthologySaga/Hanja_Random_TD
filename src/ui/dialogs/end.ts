@@ -16,8 +16,13 @@ export function showEndScreen(phase: "victory" | "defeat"): void {
   const previousBest = loadBestWave();
   const renewed = state.wave > previousBest;
   const bestWave = Math.max(previousBest, state.wave);
-  must<HTMLElement>("#end-kicker").textContent = victory ? "봉인 완수" : "수비 실패";
-  must<HTMLElement>("#end-heading").textContent = victory ? "천자문 대봉인 완성" : "수비에 실패했습니다";
+  // [FB3] 패배 사유 명시 — "왜 졌는지"를 엔진의 defeatCause 로 읽는다.
+  // lastMessage(#end-message)가 상세를 맡고, 제목은 원인을 한 줄로 못박는다.
+  const enemyLimitDefeat = !victory && state.defeatCause === "enemy-limit";
+  must<HTMLElement>("#end-kicker").textContent = victory ? "봉인 완수" : enemyLimitDefeat ? "적 한계 초과" : "수비 실패";
+  must<HTMLElement>("#end-heading").textContent = victory
+    ? "천자문 대봉인 완성"
+    : enemyLimitDefeat ? "적 한계 초과로 수비 실패" : "수비에 실패했습니다";
   must<HTMLElement>("#end-message").textContent = state.lastMessage;
   must<HTMLElement>("#end-stats").innerHTML = `
     <div><span>진법</span><b>${gameModeLabel(state.mode)}</b></div>

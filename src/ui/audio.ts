@@ -351,6 +351,15 @@ export class SoundManager {
   }
 
   /**
+   * FB3: first time a run reaches 75% of the enemy cap. Reuses the shipped
+   * boss-warning gong (the boss entrance moved to fx-boss-drum, so this asset
+   * was otherwise idle) — no new audio asset.
+   */
+  playEnemyLimitWarning(): void {
+    this.playSfx("boss-warning");
+  }
+
+  /**
    * Arms the next successful action so it stamps with a placement or unlock sound
    * instead of the generic seal. Consumed by the very next playActionOutcome call.
    */

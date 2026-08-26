@@ -600,6 +600,8 @@ describe("regional recipe defense run", () => {
     engine.update(0.01);
     expect(engine.state.phase).toBe("defeat");
     expect(engine.state.lastMessage).toContain(String(MAX_ENEMIES));
+    // FB3: 종료 화면이 문자열이 아니라 이 원인 값으로 사유를 표기한다.
+    expect(engine.state.defeatCause).toBe("enemy-limit");
   });
 
   it("keeps surviving enemies on the same route for another lap", () => {
@@ -675,6 +677,7 @@ describe("regional recipe defense run", () => {
     engine.update(0.1);
     expect(engine.state.phase).toBe("defeat");
     expect(engine.state.lastMessage).toContain("72초");
+    expect(engine.state.defeatCause).toBe("boss-timeout");
   });
 
   it("ends with the Cheonjamun great seal only after clearing wave 100", () => {
