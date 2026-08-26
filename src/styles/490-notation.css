@@ -31,18 +31,26 @@
   opacity: 0.7;
 }
 
-/* 표기 그룹 아래 한 줄 안내 — 무엇을 고르는 축인지 먼저 말한다. */
+/*
+ * 표기 그룹 아래 한 줄 안내 — 무엇을 고르는 축인지 먼저 말한다.
+ *
+ * S13 은 한지빛 두루마리 위다. 배지와 같은 이유로 글자색을 고정하지 않고
+ * 주변 본문색을 물려받아 옅기로만 낮춘다 — 밝은 색을 박아 두면 밝은 종이
+ * 위에서 통째로 사라진다.
+ */
 .s13-group-note {
   grid-column: 1 / -1;
   margin: 4px 0 0;
   font-size: 11px;
   line-height: 1.5;
-  color: rgba(232, 220, 198, 0.62);
+  color: inherit;
+  opacity: 0.78;
 }
 
 .s13-group-note b {
-  color: rgba(232, 220, 198, 0.82);
-  font-weight: 700;
+  color: inherit;
+  font-weight: 800;
+  opacity: 1;
 }
 
 /*
