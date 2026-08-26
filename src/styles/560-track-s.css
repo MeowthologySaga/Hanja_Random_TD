@@ -75,6 +75,19 @@
 
 #confirm-dialog-accept:hover { filter: brightness(1.12); }
 
+/* ── S/P-09. 목표 갈피 배지 「준비 N%」 ──────────────────────────
+   배지가 숫자만 적던 때는 37px 갈피에 넉넉했지만, 「준비」를 붙이면
+   58px 이 되어 왼쪽 갈피(강화) 위로 23px 올라탄다. 갈피 안에서 두 줄로
+   접는다 — 낱말 중간은 끊지 않는다(한국어 단어 중간 줄바꿈 금지 규범). */
+
+#goal-tab-progress {
+  display: block;
+  max-width: 100%;
+  line-height: 1.12;
+  white-space: normal;
+  word-break: keep-all;
+}
+
 /* ── S/P-25. 강화 설명 한 줄 잘림 ────────────────────────────────
    실측(1280×720, 강화 프레임): `.growth-stat-row > div small` 은 자리
    242px 인데 내용이 385~494px 였다 — 127~252px 가 말줄임으로 잘렸다.

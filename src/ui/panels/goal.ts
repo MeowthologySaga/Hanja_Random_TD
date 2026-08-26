@@ -21,6 +21,21 @@ import { ctx, must } from "../app-context";
 import { escapeHtml } from "../format";
 import { handleAction, setFocusFrame } from "../hud";
 
+/*
+ * [S/P-09] 목표 화면은 서로 다른 두 수를 나란히 보여 준다.
+ *
+ * ① 갈피 배지의 % — engine.idiomProgress().readiness. 가진 글자를 1로 세고,
+ *    없는 글자는 그 글자를 만들 합성 진척(0~1)까지 부분 점수로 더한 값이다.
+ * ② 카드의 N/4 — 지금 손에 든 글자 수만 센 값.
+ *
+ * 같은 성어에서 "75%" 와 "2/4" 가 함께 뜨면 둘 중 하나가 틀린 것처럼 읽힌다
+ * (75% 를 3/4 로 읽는 오독). 라벨을 「준비도」와 「보유」로 갈라 두고,
+ * 셈법은 아래 한 줄이 툴팁으로 말한다.
+ */
+const READINESS_NOTE = "준비도 — 가진 글자에, 아직 없는 글자의 합성 진척까지 더해 셉니다. 카드의 「N/4자 보유」는 지금 손에 든 글자 수만 세므로 두 수는 다를 수 있습니다.";
+
+const OWNED_NOTE = "지금 손에 든 글자 수입니다. 합성 진척까지 함께 세는 준비도(%)와는 다른 수입니다.";
+
 export function renderGoal(): void {
   const engine = ctx.engine;
   const pool = engine.summonDefinitions();
@@ -53,9 +68,17 @@ export function renderGoal(): void {
 
   const seals = engine.state.idiomSeals.length;
   const bestReadiness = tracked.reduce((best, idiom) => Math.max(best, engine.idiomProgress(idiom.id).readiness), 0);
-  must<HTMLElement>("#goal-tab-progress").textContent = `${Math.round(bestReadiness * 100)}%`;
+  const percent = Math.round(bestReadiness * 100);
+  // [S/P-09] 이 %(준비도)와 카드의 "N/4자"(보유)는 서로 다른 셈이다.
+  // 라벨을 갈라 두고, 계산법은 툴팁 한 줄이 말한다.
+  const badge = must<HTMLElement>("#goal-tab-progress");
+  badge.textContent = `준비 ${percent}%`;
+  badge.title = READINESS_NOTE;
+  badge.setAttribute("aria-label", `목표 성어 준비도 ${percent}%`);
   must<HTMLElement>("#goal-owned-summary").innerHTML = `<b>추적 ${tracked.length}/${MAX_TRACKED_IDIOMS}구</b><span>발동 ${seals}/${engine.idioms().length}</span>`;
-  must<HTMLElement>("#goal-panel-summary").innerHTML = `추적 중 성어 <b>${tracked.length}구</b> · 최고 진행 <b>${Math.round(bestReadiness * 100)}%</b>`;
+  const summary = must<HTMLElement>("#goal-panel-summary");
+  summary.innerHTML = `추적 중 성어 <b>${tracked.length}구</b> · 최고 준비도 <b>${percent}%</b>`;
+  summary.title = READINESS_NOTE;
 
   must<HTMLElement>("#goal-selector-list").innerHTML = renderIdiomCards(ownedCounts, trackedIds, selectedId);
   must<HTMLElement>("#goal-codex-detail").innerHTML = renderIdiomDetail(selectedId, ownedCounts, trackedIds);
@@ -104,7 +127,7 @@ function renderIdiomCards(ownedCounts: ReadonlyMap<string, number>, trackedIds: 
   return rows.map(({ idiom, progress, trackedIndex, sealed, live }) => {
     const isTracked = trackedIndex >= 0;
     const selected = idiom.id === selectedId;
-    const percent = Math.round(progress.owned / Math.max(1, progress.total) * 100);
+    const ownedPercent = Math.round(progress.owned / Math.max(1, progress.total) * 100);
     const status = sealed
       ? live ? "발동 중" : "발동 이력 · 흩어짐"
       : isTracked
@@ -120,7 +143,7 @@ function renderIdiomCards(ownedCounts: ReadonlyMap<string, number>, trackedIds: 
     return `<div class="${classes}" data-goal-idiom="${escapeHtml(idiom.id)}" role="button" tabindex="0" aria-pressed="${String(selected)}" style="--goal-accent:${idiom.color}">
       <span class="goal-idiom-glyphs">${ownedIdiomGlyphMarkup(idiom.chars, ownedCounts)}</span>
       <span class="goal-idiom-copy"><strong>${escapeHtml(idiom.reading)}</strong><small>${escapeHtml(idiom.meaning)}</small></span>
-      <span class="goal-idiom-progress" aria-label="보유 ${progress.owned}/${progress.total}자"><i style="width:${percent}%"></i><em>${progress.owned}/${progress.total}</em></span>
+      <span class="goal-idiom-progress" title="${OWNED_NOTE}" aria-label="보유 ${progress.owned}/${progress.total}자"><i style="width:${ownedPercent}%"></i><em>${progress.owned}/${progress.total}자 보유</em></span>
       <button type="button" class="goal-idiom-track" data-goal-track="${escapeHtml(idiom.id)}" aria-pressed="${String(isTracked)}" ${sealed ? "disabled" : ""}>${sealed ? "발동 완료" : isTracked ? "추적 중 ✓" : "추적"}</button>
       <mark>${escapeHtml(status)}</mark>
     </div>`;
