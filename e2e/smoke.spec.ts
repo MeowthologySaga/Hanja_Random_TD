@@ -199,7 +199,7 @@ test("runs the casual eight-star entry and readable one-click promotion workshop
   // 만들 수 있어, 빈 상태 검증은 소환 전에 한다.)
   await page.getByRole("tab", { name: "3체 조합", exact: true }).click();
   await expect(page.locator("#casual-fuse-all")).toBeDisabled();
-  await expect(page.locator("#casual-fuse-all-count")).toHaveText("지금은 0회");
+  await expect(page.locator("#casual-fuse-all-count")).toHaveText("(0회)");
   await expect(page.locator(".casual-group-card")).toHaveCount(0);
   await expect(page.locator(".casual-group-empty")).toBeVisible();
   await expect(page.locator("#casual-goto-shop")).toBeVisible();
@@ -216,11 +216,31 @@ test("runs the casual eight-star entry and readable one-click promotion workshop
   await expect(page.locator(".game-shell")).toHaveAttribute("data-panel-tab", "evolution");
   await expect(page.locator("#standard-evolution-modes")).toBeHidden();
   await expect(page.locator("#casual-fusion-toolbar")).toBeVisible();
-  // 확률 밴드(1~3★) 이후 4연 소환이면 같은 별 트리플이 실제로 모인다 —
-  // 그룹 카드와 [한 번에 승급]이 살아 있는 것이 새 기준선이다.
-  await expect(page.locator("#casual-fuse-all")).toBeEnabled();
-  await expect(page.locator("#casual-fuse-all-count")).toHaveText(/[1-9]\d*회 가능/u);
-  await expect(page.locator(".casual-group-card")).not.toHaveCount(0);
+  // 기본 뷰는 [한 번에 승급] + 그룹 카드.
+  // R16: 같은 수를 세 곳(헤더 배지·버튼 옆 칩·버튼)이 나눠 세던 것을
+  // `한 번에 승급 (N회)` 라벨 하나로 합쳤다. 헤더 배지는 숨는다.
+  await expect(page.locator("#casual-fuse-all-count")).toHaveText(/^\(\d+회\)$/u);
+  await expect(page.locator("#evolution-count")).toBeHidden();
+  await expect(page.locator("#evolution-heading-label")).toHaveText("승급 대기 묶음");
+  // 4연 소환 결과는 시드에 달렸다 — 묶음이 없으면 빈 상태, 있으면 그림 문장 카드.
+  const readyGroups = await page.locator(".casual-group-card").count();
+  if (readyGroups === 0) {
+    await expect(page.locator("#casual-fuse-all")).toBeDisabled();
+    await expect(page.locator(".casual-group-empty")).toBeVisible();
+    await expect(page.locator("#casual-goto-shop")).toBeVisible();
+  } else {
+    // R16 카드 = 그림 한 문장: 초상 3칸 → 물음표 결과 칸. 글줄은 제목 한 줄이다.
+    const card = page.locator(".casual-group-card").first();
+    await expect(card.locator(".casual-group-material")).toHaveCount(3);
+    await expect(card.locator(".casual-group-arrow")).toBeVisible();
+    await expect(card.locator(".casual-group-result > b")).toHaveText(/^[?✕]$/u);
+    await expect(card.locator(".casual-group-result .casual-star-tag")).toHaveText(/^★\d$/u);
+    await expect(card.locator(".casual-group-title")).toHaveText(/무작위|보호|없습니다/u);
+    // 지운 수치는 툴팁에 남는다 — 정보는 보존하고 소음만 걷었다.
+    await expect(card).toHaveAttribute("title", /보유 \d+기/u);
+  }
+  // `1★ ×4 → 2★` 를 "4개를 합친다"로 읽은 오독이 있었다. 보유 수 `×N` 표기는 폐지다.
+  await expect(page.locator(".casual-group-list")).not.toContainText("×");
 
   // v3: 남길 자령(본체)이 사라졌다. 3슬롯 전부 `소모`이고 결과는 무작위다.
   await expect(page.locator(".casual-fusion-slot").first()).toBeHidden();
@@ -237,15 +257,19 @@ test("runs the casual eight-star entry and readable one-click promotion workshop
   await expect(page.locator(".casual-fusion-slots")).not.toContainText("KEEP");
   await expect(page.locator(".casual-fusion-slots")).not.toContainText("USE");
   await expect(page.locator(".casual-fusion-result")).toHaveClass(/is-random/u);
-  // 확률 밴드 이후: 트리플이 실제로 모이므로 그룹 소속 자령은 활성이다.
   await expect(page.locator(".casual-fusion-tower")).toHaveCount(4);
-  await expect(page.locator(".casual-fusion-tower:not(:disabled)")).not.toHaveCount(0);
-  // 3체가 안 모인 자령이 있다면 흐림 + `3체 미달` 배지로 못 고른다.
-  const shortTowers = page.locator(".casual-fusion-tower.is-short");
-  if ((await shortTowers.count()) > 0) {
-    await expect(shortTowers.first()).toContainText("3체 미달");
-    await expect(shortTowers.first()).toBeDisabled();
+  if (readyGroups === 0) {
+    // 3체가 안 모인 자령은 흐림 + `3체 미달` 배지로 못 고른다.
+    // 8★ 는 `최고` 라벨을 받으므로 `3체 미달` 배지는 8★ 미만에만 붙는다.
+    await expect(page.locator(".casual-fusion-tower.is-short")).not.toHaveCount(0);
+    await expect(page.locator(".casual-fusion-tower.is-short").first()).toContainText("3체 미달");
+    await expect(page.locator(".casual-fusion-tower:not(:disabled)")).toHaveCount(0);
+  } else {
+    // 승급 가능한 묶음이 있으면 그 자령들은 손으로도 고를 수 있어야 한다.
+    await expect(page.locator(".casual-fusion-tower:not(:disabled)")).not.toHaveCount(0);
   }
+  // R16: 후보 목록도 그룹 카드와 같은 어휘 — 현재 별은 ★n 금박 배지로 읽는다.
+  await expect(page.locator(".casual-fusion-tower .casual-star-tag").first()).toHaveText(/^★\d$/u);
 
   const desktopLayout = await page.evaluate(() => {
     const workbench = document.querySelector<HTMLElement>(".evolution-workbench")!.getBoundingClientRect();
@@ -262,7 +286,11 @@ test("runs the casual eight-star entry and readable one-click promotion workshop
     };
   });
   expect(desktopLayout.workbenchLeft).toBeLessThan(desktopLayout.panelLeft);
-  expect(desktopLayout.workbenchWidth).toBeGreaterThan(650);
+  // R16: 그림 한 문장 카드(인장 34 + 초상 40x3 + 여분 + 화살 + 결과 52 + 버튼)는
+  // 실측 400px 대에서 성립한다. 전장을 덜 가리도록 확장을 -333 -> -110px 로 줄였고
+  // 작업대 폭도 699 -> 476px 가 됐다. 상한을 함께 두어 다시 넓어지는 것을 막는다.
+  expect(desktopLayout.workbenchWidth).toBeGreaterThan(430);
+  expect(desktopLayout.workbenchWidth).toBeLessThan(520);
   expect(desktopLayout.workbenchHeight).toBeGreaterThanOrEqual(440);
   expect(desktopLayout.overflowX).toBeLessThanOrEqual(0);
   expect(desktopLayout.overflowY).toBeLessThanOrEqual(0);
@@ -270,6 +298,10 @@ test("runs the casual eight-star entry and readable one-click promotion workshop
   await page.screenshot({ path: "artifacts/casual-fusion-workshop-1280x720.png", fullPage: true });
 
   await page.setViewportSize({ width: 1024, height: 720 });
+  // R8 고정 무대는 resize 뒤 rAF 에서 배율을 다시 잡는다. 잡히기 전에 재면 1280 이 나온다.
+  await expect
+    .poll(async () => page.evaluate(() => document.querySelector<HTMLElement>(".game-shell")!.getBoundingClientRect().width))
+    .toBeLessThanOrEqual(1024);
   const narrowLayout = await page.evaluate(() => {
     const shell = document.querySelector<HTMLElement>(".game-shell")!.getBoundingClientRect();
     const candidates = document.querySelector<HTMLElement>(".casual-fusion-candidates")!.getBoundingClientRect();
