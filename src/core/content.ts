@@ -176,6 +176,42 @@ export function positionOnPath(progress: number): Point {
 }
 
 /**
+ * 수술 9 「관문 보정」 — 보스는 시작 진의 가장 가까운 관문에서 등장한다.
+ *
+ * 보스전은 제한시간 안에 처치해야 하는데(타임아웃=패배) 보스 속도는 일반의
+ * 0.34배라, 회전 관문 규칙에서는 시작 진이 먼 관문에 걸리면 도달에만
+ * 제한시간 대부분을 태웠다(실측: 10웨이브 목진 47.7s/72s · 20웨이브 금진
+ * 64.4s/78s). 진별로 "사거리 참조 220 기준 도달이 가장 빠른 관문"을
+ * 정적으로 계산해 보스 웨이브에만 그 관문을 쓴다. 도달 최적 관문은 사거리
+ * 205~250 전 구간에서 동일했다(수#0·금#3·토#0·목#1·화#2). 보스 속도·경로는
+ * 그대로이므로(넉백·후퇴 없음) 위협 상쇄가 필요 없다.
+ */
+const BOSS_PORTAL_REFERENCE_RANGE = 220;
+
+export const BOSS_PORTAL_INDEX_BY_FORMATION: readonly number[] = BOARD_FORMATIONS.map((formation) => {
+  const cells = Array.from({ length: CELLS_PER_FORMATION }, (_, offset) => BOARD_CELLS[formation.startCell + offset] as Point);
+  const coverageSteps = (portalProgress: number): number => {
+    for (let step = 0; step <= 1000; step += 1) {
+      const point = positionOnPath(portalProgress + step * 0.001);
+      if (cells.some((cell) => Math.hypot(cell.x - point.x, cell.y - point.y) <= BOSS_PORTAL_REFERENCE_RANGE)) return step;
+    }
+    return Number.POSITIVE_INFINITY;
+  };
+  return ENEMY_SPAWN_PROGRESS
+    .map((portalProgress, portalIndex) => ({ portalIndex, steps: coverageSteps(portalProgress) }))
+    .sort((left, right) => left.steps - right.steps || left.portalIndex - right.portalIndex)[0]?.portalIndex ?? 0;
+});
+
+/**
+ * 보스의 스폰 지점. 시작 진이 정해져 있으면 그 진의 최적 관문, 아니면
+ * 기존 회전 규칙 그대로다. 일반 적은 계속 4관문을 순환한다.
+ */
+export function bossSpawnProgress(startingFormationIndex: number | null, spawnIndex: number): number {
+  const portalIndex = startingFormationIndex === null ? undefined : BOSS_PORTAL_INDEX_BY_FORMATION[startingFormationIndex];
+  return portalIndex === undefined ? spawnProgressForEnemy(spawnIndex) : (ENEMY_SPAWN_PROGRESS[portalIndex] as number);
+}
+
+/**
  * Returns the smoothed travel direction at a point on the closed enemy path.
  * Sampling on both sides keeps long effects aligned with straight lanes while
  * turning them diagonally through corners instead of snapping past the track.
