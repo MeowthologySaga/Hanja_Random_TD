@@ -244,9 +244,24 @@ export function wireHud1(): void {
   syncEarlyCalmState();
 }
 
+/**
+ * 패널 푸터가 엔진 문장 대신 보여 줄 문장 — 그 엔진 문장과 짝지어 둔다.
+ *
+ * [S/P-26] 3체 승급의 문기 환급은 UI 가 실측 증가분으로 덧붙인다(엔진 문장
+ * 무수정 원칙). 그래서 토스트에는 "水 문기 +2 환급"이 뜨는데 1.9초 뒤 사라지고,
+ * 남는 푸터(`#message-value` = state.lastMessage)에는 그 조각이 없었다.
+ * 놓치면 다시 볼 데가 없는 정보다 — 덧붙인 문장을 푸터도 함께 쓴다.
+ */
+let footerMessage: { readonly base: string; readonly shown: string } | null = null;
+
 export function handleAction(result: ActionResult, options: { invalidatePanels?: boolean } = {}): void {
   sound.playActionOutcome(result.ok);
   if (!result.ok || !result.message.includes("자동 발동")) showToast(result.message, !result.ok);
+  // 엔진 문장을 UI 가 늘려 놓았을 때만 이어받는다(실패 문장·다른 문장은 그대로).
+  const engineMessage = ctx.engine.state.lastMessage;
+  footerMessage = result.ok && result.message !== engineMessage && result.message.startsWith(engineMessage)
+    ? { base: engineMessage, shown: result.message }
+    : null;
   if (options.invalidatePanels !== false) {
     ctx.evolutionRenderKey = "";
     ctx.goalRenderKey = "";
@@ -377,7 +392,10 @@ export function syncPanel(): void {
   // 트랙 B: 자원칸 목표 카운터는 한자 사다리(내부 보상은 유지) 대신 성어 봉인 수를 센다.
   must<HTMLElement>("#goal-count-value").textContent = String(state.idiomSeals.length) + " / " + String(ctx.engine.idioms().length);
   must<HTMLElement>("#seed-value").textContent = state.seed;
-  must<HTMLElement>("#message-value").textContent = state.lastMessage;
+  // [S/P-26] UI 가 늘린 문장이 살아 있으면 그것을, 엔진이 다음 문장을 쓰면 그것을.
+  must<HTMLElement>("#message-value").textContent = footerMessage !== null && footerMessage.base === state.lastMessage
+    ? footerMessage.shown
+    : state.lastMessage;
   renderFormationUnlocks();
   renderSummonShop();
   must<HTMLElement>("#research-level").textContent = String(state.researchLevel);
