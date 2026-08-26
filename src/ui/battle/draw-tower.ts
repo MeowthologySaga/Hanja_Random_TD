@@ -25,6 +25,7 @@ import { canvas, context, ctx, reducedMotion } from "../app-context";
 import { casualStarOf, towerProgressionLabel } from "../format";
 import { drawIdiomOrderBadge } from "./draw";
 import { towerAbilityPopups } from "./fx";
+import { clampScreenBox, placeStageLabel } from "./stage-labels";
 
 function drawChargeRing(
   cell: Point,
@@ -217,6 +218,16 @@ function drawSpiritTowerLabel(tower: Tower, cell: Point, selected: boolean, mate
   context.translate(cell.x, cell.y);
   // Counter-scale the label so Hanja stays readable while the map zooms and pans.
   context.scale(1 / ctx.mapZoom, 1 / ctx.mapZoom);
+  /*
+   * [S/P-12] 명패는 역-스케일이라 이 지점부터 좌표가 곧 화면 px 이다.
+   * 최상단 줄 자령의 명패가 상단 웨이브 칩 띠 밑으로 들어가 통째로 가리던
+   * 것을 여기서 막는다 — 무대 안전 영역 밖으로 나가면 그만큼 되민다.
+   * 밀린 명패가 제 자령의 머리를 조금 덮더라도, 가려서 못 읽는 것보다 낫다.
+   */
+  const anchorX = ctx.mapOffset.x + cell.x * ctx.mapZoom;
+  const anchorY = ctx.mapOffset.y + cell.y * ctx.mapZoom;
+  const shift = clampScreenBox(anchorX + left, anchorY + top, width, height);
+  context.translate(shift.dx, shift.dy);
   drawPlaqueShell(glyphOnly ? null : "compact", width, height, top, glyphOnly ? width : layout.glyphColumn, style.color, selected || material);
 
   context.textAlign = "center";
@@ -569,25 +580,38 @@ function drawTowerAbilityPopup(tower: Tower, cell: Point): void {
   if (!popup) return;
   const ratio = Math.min(1, popup.age / popup.duration);
   const alpha = ratio < 0.18 ? ratio / 0.18 : 1 - (ratio - 0.18) / 0.82;
-  const y = cell.y - 38 - ratio * 7;
+  /*
+   * [S/P-12] 능력 알약이 이름표를 덮던 자리를 이름표 위로 올린다.
+   *
+   * 알약은 월드 좌표로 그리고(글꼴도 월드 단위), 명패는 역-스케일이라 화면
+   * px 로 그린다. 기본 배율 2.0 실측으로 두 상자를 화면 px 로 나란히 놓으면
+   *   명패  cell 기준 -68 ~ -28
+   *   알약  cell 기준 -94 ~ -58   (옛 자리 cell.y-38 월드 = -76 화면)
+   * 이라 -68~-58 구간이 겹쳤다. 명패 윗변을 배율로 되돌려 월드 자리를 잡고,
+   * 알약 반높이(9)에 3px 를 더 띄운다 — 어떤 배율에서도 겹치지 않는다.
+   */
+  const plaqueTopWorld = (PLAQUE_BOTTOM - NAMEPLATE_LAYOUT.compact.height) / ctx.mapZoom;
+  const y = cell.y + plaqueTopWorld - 12 - ratio * 7;
   context.save();
   context.globalAlpha = Math.max(0, alpha);
   context.font = '900 9px "Malgun Gothic", sans-serif';
   const width = Math.min(96, Math.max(52, context.measureText(popup.text).width + 16));
+  // 알약은 자령 위에 뜨는 가장 높은 라벨이라, 최상단 줄에서는 상단 칩 띠로 올라탔다.
+  const spot = placeStageLabel(cell.x, y, width / 2, 9);
   context.fillStyle = "rgba(3, 8, 15, 0.94)";
   context.strokeStyle = popup.color;
   context.lineWidth = 1.5;
   context.shadowColor = popup.color;
   context.shadowBlur = 10;
   context.beginPath();
-  context.roundRect(cell.x - width / 2, y - 9, width, 18, 7);
+  context.roundRect(spot.x - width / 2, spot.y - 9, width, 18, 7);
   context.fill();
   context.stroke();
   context.shadowBlur = 0;
   context.fillStyle = "#ffffff";
   context.textAlign = "center";
   context.textBaseline = "middle";
-  context.fillText(popup.text, cell.x, y + 1, width - 10);
+  context.fillText(popup.text, spot.x, spot.y + 1, width - 10);
   context.restore();
 }
 

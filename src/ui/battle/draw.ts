@@ -50,8 +50,11 @@ import { calmBattlefield, canvas, context, ctx, reducedMotion, shell } from "../
 import { casualStarOf } from "../format";
 import { drawHoveredTowerCard, drawTower, flushTowerPlaques } from "./draw-tower";
 import { type IdiomRippleFx, idiomRipples, pushPooled, ringPool, rings, takeRing, updateAndDrawFx } from "./fx";
+import { placeStageLabel, resetStageLabels } from "./stage-labels";
 
 export function drawWorld(delta: number): void {
+  // [S/P-12] 부동 라벨의 자리 잡기는 프레임 단위다 — 지난 프레임의 점유는 잊는다.
+  resetStageLabels();
   const state = ctx.engine.state;
   const selectedTower = ctx.engine.selectedTower();
   canvas.dataset.selectedTowerId = selectedTower ? String(selectedTower.id) : "";
@@ -218,7 +221,13 @@ function drawAbilityZones(): void {
     context.fillStyle = zone.kind === "rain" || zone.kind === "frost" ? "#d9f2ff" : zone.color;
     context.font = '900 10px "Malgun Gothic", sans-serif';
     context.textAlign = "center";
-    context.fillText(`${zone.kind === "frost" ? "霜 서리길" : zone.kind === "ember" ? "燼 잔불" : zone.wuxing} ${remaining.toFixed(1)}초`, point.x, point.y + zone.radius + 13);
+    context.textBaseline = "middle";
+    // [S/P-12] 장판 이름표도 무대 안으로 민다 — 가장자리 장판에서는 이 글자가
+    // 좌우로 잘리거나 하단 조작 칩 밑으로 들어갔다. 겹침 밀기는 쓰지 않는다
+    // (장판 위로 밀면 이름표가 제 장판을 덮는다).
+    const zoneLabel = `${zone.kind === "frost" ? "霜 서리길" : zone.kind === "ember" ? "燼 잔불" : zone.wuxing} ${remaining.toFixed(1)}초`;
+    const zoneSpot = placeStageLabel(point.x, point.y + zone.radius + 13, context.measureText(zoneLabel).width / 2, 6.5);
+    context.fillText(zoneLabel, zoneSpot.x, zoneSpot.y);
     context.restore();
   }
   for (const id of zoneSpawnTimes.keys()) {

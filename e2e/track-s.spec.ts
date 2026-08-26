@@ -85,6 +85,56 @@ test("routes destructive actions through the shared in-game confirm dialog", asy
   await expect(page.locator("#message-value")).toContainText("분해");
 });
 
+// ── S/P-12 · 전장 부동 라벨의 무대 경계 ────────────────────────────
+// 피해 수치·장판 이름·능력 알약은 월드 좌표를 따라다녀서, 개체가 가장자리에
+// 서면 무대 밖으로 나가 잘리거나 상·하단 붙박이 UI 밑으로 들어갔다.
+test("keeps floating battlefield labels inside the stage safe area", async ({ page }) => {
+  await page.goto("/?seed=TRACK-S-LABELS&mode=standard");
+  await page.getByTestId("start-run").click();
+  await expect(page.locator("#battle-canvas")).toBeVisible();
+
+  const report = await page.evaluate(async () => {
+    const labelsSpecifier = "/src/ui/battle/stage-labels.ts";
+    const worldSpecifier = "/src/core/content.ts";
+    const labels = await import(labelsSpecifier) as typeof import("../src/ui/battle/stage-labels");
+    const world = await import(worldSpecifier) as typeof import("../src/core/content");
+    const camera = (window as unknown as { __HANJA_CTX_QA__: { mapZoom: number; mapOffset: { x: number; y: number } } }).__HANJA_CTX_QA__;
+    const safe = labels.STAGE_SAFE_AREA;
+    const outside: Array<{ zoom: number; worldX: number; worldY: number; left: number; top: number; right: number; bottom: number }> = [];
+    // 월드 네 귀퉁이 바깥까지 훑는다 — 카메라가 어디에 있든 라벨은 무대 안이다.
+    for (const zoom of [0.72, 2, 5.2]) {
+      camera.mapZoom = zoom;
+      camera.mapOffset = { x: 0, y: 0 };
+      labels.resetStageLabels();
+      for (const worldX of [-120, 0, 220, 440, 880, 1_000]) {
+        for (const worldY of [-120, 0, 360, 720, 840]) {
+          const half = { w: 30, h: 8 };
+          const spot = labels.placeStageLabel(worldX, worldY, half.w, half.h, { avoidOverlap: true });
+          const left = camera.mapOffset.x + (spot.x - half.w) * zoom;
+          const right = camera.mapOffset.x + (spot.x + half.w) * zoom;
+          const top = camera.mapOffset.y + (spot.y - half.h) * zoom;
+          const bottom = camera.mapOffset.y + (spot.y + half.h) * zoom;
+          const fits = 2 * half.w * zoom <= world.WORLD_WIDTH - safe.left - safe.right
+            && 2 * half.h * zoom <= world.WORLD_HEIGHT - safe.top - safe.bottom;
+          if (!fits) continue;
+          if (left < safe.left - 0.5 || right > world.WORLD_WIDTH - safe.right + 0.5
+            || top < safe.top - 0.5 || bottom > world.WORLD_HEIGHT - safe.bottom + 0.5) {
+            outside.push({ zoom, worldX, worldY, left, top, right, bottom });
+          }
+        }
+      }
+    }
+    // 같은 자리에 세 번 부르면 세로로 갈라진다(피해 수치 쌓임).
+    camera.mapZoom = 2;
+    camera.mapOffset = { x: 0, y: 0 };
+    labels.resetStageLabels();
+    const stacked = [0, 1, 2].map(() => labels.placeStageLabel(220, 200, 24, 8, { avoidOverlap: true }).y);
+    return { outside, stacked, safe };
+  });
+  expect(report.outside).toEqual([]);
+  expect(new Set(report.stacked).size).toBe(3);
+});
+
 // ── S/P-10 · 웨이브 브리핑 잔존 꼬리 ───────────────────────────────
 // 두 줄 클램프는 넘치는 순간 뒤부터 삼킨다. 잔존 수는 이 문장에서만 알 수
 // 있는 값이므로 장·우두머리 예고보다 앞에 서야 한다. 조판도 함께 잰다 —
