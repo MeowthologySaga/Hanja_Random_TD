@@ -7,7 +7,15 @@ import {
   elementTraitUnlockScore,
   elementTraitUpgradeCost
 } from "../../core/growth";
-import { ELEMENT_STYLES, UPGRADE_STAT_META, UPGRADE_STAT_ORDER, WUXING_ORDER } from "../../core/hanzi";
+import {
+  ELEMENT_STYLES,
+  UPGRADE_MILESTONE_INTERVAL,
+  UPGRADE_MILESTONE_LEVEL_BONUS,
+  UPGRADE_STAT_META,
+  UPGRADE_STAT_ORDER,
+  upgradeMilestoneCount,
+  WUXING_ORDER
+} from "../../core/hanzi";
 import { type Tower, type UpgradeStat, type Wuxing } from "../../core/types";
 import { ctx, DISMANTLE_UNIQUE_STORAGE_KEY, dismantleSelection, must, reducedMotion, sound } from "../app-context";
 import { formatStatBonus, upgradeStateSignature } from "../dialogs/element-upgrade";
@@ -111,17 +119,27 @@ export function renderGrowth(): void {
     // "투자 불가" 는 비용이 아니라 사유다 — 뒤에 화폐를 붙이면 "투자 불가 엽전" 같은 비문이 된다.
     const label = upgradeAmountLabel(scope, stat, null, amount);
     const currency = label === UPGRADE_UNAVAILABLE_LABEL ? "" : scope === "global" ? " 엽전" : ` ${ctx.growthElement}`;
-    return `<button type="button" data-growth-upgrade-scope="${scope}" data-growth-stat="${stat}" data-growth-amount="${amount}" ${!active || quoteForAmount.levels <= 0 || !quoteForAmount.affordable ? "disabled" : ""}>${label}${currency}</button>`;
+    // FB7-강화: 이번 투자가 10단계 이정표를 지나면 버튼에 里 표식을 얹는다.
+    const crossesMilestone = quoteForAmount.levels > 0 && upgradeMilestoneCount(quoteForAmount.toLevel) > upgradeMilestoneCount(quoteForAmount.fromLevel);
+    return `<button type="button" data-growth-upgrade-scope="${scope}" data-growth-stat="${stat}" data-growth-amount="${amount}" ${!active || quoteForAmount.levels <= 0 || !quoteForAmount.affordable ? "disabled" : ""}>${label}${currency}${crossesMilestone ? ` <i class="growth-milestone-flag" title="10단계 이정표 도달 · 추가 보너스">里</i>` : ""}</button>`;
   }).join("");
+  // FB7-강화: 10단계 이정표마다 4단계치 보너스가 더 붙는다. 행마다 이정표
+  // 누적과 다음 이정표까지 남은 단계를 함께 적어 "후반에도 오를 이유"를 보인다.
+  const milestoneNote = (stat: UpgradeStat, level: number, perLevel: number): string => {
+    const milestones = upgradeMilestoneCount(level);
+    const toNext = UPGRADE_MILESTONE_INTERVAL - (level % UPGRADE_MILESTONE_INTERVAL);
+    const bonusLabel = formatStatBonus(stat, perLevel * UPGRADE_MILESTONE_LEVEL_BONUS);
+    return `이정표 ${UPGRADE_MILESTONE_INTERVAL}단계마다 ${bonusLabel}${milestones > 0 ? ` · 달성 ${milestones}회` : ""}${level < 99 ? ` · 다음까지 ${toNext}단계` : ""}`;
+  };
   const globalRows = UPGRADE_STAT_ORDER.map((stat) => {
     const meta = UPGRADE_STAT_META[stat];
     const level = ctx.engine.state.globalUpgrades[stat];
-    return `<article class="growth-stat-row"><i>${meta.glyph}</i><div><b>공용 ${meta.label} <em>Lv.${level}/99</em></b><small>${meta.description} · 현재 ${formatStatBonus(stat, ctx.engine.globalUpgradeBonus(stat))}</small></div><span>${batchButtons("global", stat)}</span></article>`;
+    return `<article class="growth-stat-row"><i>${meta.glyph}</i><div><b>공용 ${meta.label} <em>Lv.${level}/99</em></b><small>${meta.description} · 현재 ${formatStatBonus(stat, ctx.engine.globalUpgradeBonus(stat))} · ${milestoneNote(stat, level, meta.globalPerLevel)}</small></div><span>${batchButtons("global", stat)}</span></article>`;
   }).join("");
   const elementRows = UPGRADE_STAT_ORDER.map((stat) => {
     const meta = UPGRADE_STAT_META[stat];
     const level = ctx.engine.state.elementUpgrades[ctx.growthElement][stat];
-    return `<article class="growth-stat-row is-element" style="--element:${ELEMENT_STYLES[ctx.growthElement].color}"><i>${meta.glyph}</i><div><b>${ctx.growthElement}행 ${meta.label} <em>Lv.${level}/99</em></b><small>현재 ${formatStatBonus(stat, ctx.engine.elementUpgradeBonus(ctx.growthElement, stat))} · 단계당 ${formatStatBonus(stat, meta.elementPerLevel)}</small></div><span>${batchButtons("element", stat)}</span></article>`;
+    return `<article class="growth-stat-row is-element" style="--element:${ELEMENT_STYLES[ctx.growthElement].color}"><i>${meta.glyph}</i><div><b>${ctx.growthElement}행 ${meta.label} <em>Lv.${level}/99</em></b><small>현재 ${formatStatBonus(stat, ctx.engine.elementUpgradeBonus(ctx.growthElement, stat))} · 단계당 ${formatStatBonus(stat, meta.elementPerLevel)} · ${milestoneNote(stat, level, meta.elementPerLevel)}</small></div><span>${batchButtons("element", stat)}</span></article>`;
   }).join("");
   const traitRows = ELEMENT_TRAITS[ctx.growthElement].map((trait, traitIndex) => {
     const level = ctx.engine.elementTraitLevel(ctx.growthElement, traitIndex);

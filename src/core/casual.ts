@@ -75,6 +75,46 @@ export const CASUAL_STAR_POWER: Record<CasualStar, number> = Object.freeze({
   8: 6.7
 });
 
+/**
+ * FB7-8성 「극성 개안」 — 8★ 자령의 전용 오라.
+ *
+ * 별당 배율은 갈수록 줄어(×1.38 → ×1.25) 8★ 승급이 밋밋하다는 피드백.
+ * 8★ 자령이 전장에 서 있으면 같은 오행 아군 전체(자신 포함)의 공격이
+ * 15% 오른다. 같은 오행 오라는 중첩되지 않는다 — 오행당 최대 1개다.
+ */
+export const CASUAL_POLARIS_AURA = Object.freeze({
+  star: 8 as CasualStar,
+  damageBonus: 0.15,
+  name: "극성 개안",
+  summary: "같은 오행 아군 공격 +15%",
+  description: "8★ 극성 자령이 전장에 있으면 같은 오행 아군 전체의 공격이 15% 증가합니다. 같은 오행의 오라는 중첩되지 않습니다."
+});
+
+/**
+ * 광역(스플래시) 계열의 별 스케일 — 사용자 직접 지시.
+ *
+ * splashRadius = 58 + stage×6 은 캐주얼에서 stage 가 사실상 고정이라
+ * 별이 올라도 범위가 그대로였다. 캐주얼에서만 별당 반경 +7%, 확산비 +4%를
+ * 곱해 높은 별의 광역이 실제로 넓고 아프게 만든다. 표준 모드는 기존
+ * stage 스케일을 그대로 쓴다.
+ */
+export const CASUAL_SPLASH_STAR_SCALE = Object.freeze({
+  radiusPerStar: 0.07,
+  ratioPerStar: 0.04
+});
+
+/**
+ * 별별 사거리 성장 곡선 — 사용자 직접 지시.
+ *
+ * 기존 캐주얼 사거리 보정은 +(별-1)×3 으로 1★→8★ 차이가 +21 뿐이라
+ * "초반부터 다들 사거리가 넓고" 별이 올라도 성장감이 없었다.
+ * 기본 −18 에 별당 +8 로 바꿔 1★ −18 → 8★ +38, 스프레드 56 을 만든다.
+ * (1★ 실효 사거리 208~246 — 모든 진의 어느 칸에서도 경로에는 닿는다.)
+ * 공속 성장도 별당 2% → 3% 로 올려 같은 정신의 축을 하나 더 세운다.
+ */
+export const CASUAL_STAR_RANGE = Object.freeze({ base: -18, perStar: 8 });
+export const CASUAL_STAR_HASTE_PER_STAR = 0.03;
+
 export const CASUAL_STAR_NAMES: Record<CasualStar, string> = Object.freeze({
   1: "일반",
   2: "숙련",

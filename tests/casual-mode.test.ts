@@ -581,4 +581,105 @@ describe("casual eight-star mode", () => {
     tower.casualStar = 8;
     expect(engine.towerPowerMultiplier(tower)).toBe(CASUAL_STAR_POWER[8]);
   });
+
+  it("grants the deployed 8-star polaris aura to its element only, without stacking", () => {
+    // FB7-8성 「극성 개안」: 전장의 8★ 자령이 같은 오행 전체 공격을 15% 올린다.
+    const engine = casualEngine("casual-polaris-aura");
+    const definitions = safeCasualDefinitions(engine, 2);
+    const wuxing = definitions[0]?.wuxing as Wuxing;
+    const other = WUXING_ORDER.find((candidate) => candidate !== wuxing) as Wuxing;
+    expect(engine.casualPolarisAuraActive(wuxing)).toBe(false);
+    expect(engine.casualPolarisDamageMultiplier(wuxing)).toBe(1);
+
+    // 인벤토리의 8★ 는 오라를 내지 않는다.
+    const stored = casualTower(definitions[0] as HanziDefinition, 1301, -1, 8);
+    engine.state.inventoryTowers = [stored];
+    expect(engine.casualPolarisAuraActive(wuxing)).toBe(false);
+
+    // 전장에 서면 그 오행만 켜지고, 두 기가 있어도 배율은 그대로다(중첩 불가).
+    const deployed = casualTower(definitions[0] as HanziDefinition, 1302, 0, 8);
+    engine.state.towers = [deployed];
+    expect(engine.casualPolarisAuraActive(wuxing)).toBe(true);
+    expect(engine.casualPolarisAuraActive(other)).toBe(false);
+    expect(engine.casualPolarisDamageMultiplier(wuxing)).toBeCloseTo(1.15, 5);
+    engine.state.towers.push(casualTower(definitions[1] as HanziDefinition, 1303, 1, 8));
+    expect(engine.casualPolarisDamageMultiplier(wuxing)).toBeCloseTo(1.15, 5);
+
+    // 표준 모드에는 이 오라가 없다.
+    const standard = new GameEngine("standard-no-polaris", "KR");
+    standard.begin();
+    expect(standard.casualPolarisDamageMultiplier(wuxing)).toBe(1);
+  });
+
+  it("widens splash radius and ratio with the casual star while standard stays stage-scaled", () => {
+    // 수술 5(사용자 지시): 광역 계열이 별과 무관하게 일정하던 것을 바로잡는다.
+    const engine = casualEngine("casual-splash-scale");
+    const definition = safeCasualDefinitions(engine, 1)[0] as HanziDefinition;
+    const low = casualTower(definition, 1401, 0, 1);
+    const high = casualTower(definition, 1402, 1, 8);
+    expect(engine.casualSplashRadiusScale(low)).toBe(1);
+    expect(engine.casualSplashRatioScale(low)).toBe(1);
+    expect(engine.casualSplashRadiusScale(high)).toBeCloseTo(1.49, 5);
+    expect(engine.casualSplashRatioScale(high)).toBeCloseTo(1.28, 5);
+
+    const standard = new GameEngine("standard-splash-scale", "KR");
+    standard.begin();
+    expect(standard.casualSplashRadiusScale(high)).toBe(1);
+    expect(standard.casualSplashRatioScale(high)).toBe(1);
+  });
+
+  it("narrows low-star reach and steepens per-star range and haste growth", () => {
+    // 수술 7(사용자 지시): "등급별 강해지는 느낌" — 저별 사거리를 낮추고 별당 성장을 키운다.
+    const engine = casualEngine("casual-star-range");
+    const definition = safeCasualDefinitions(engine, 1)[0] as HanziDefinition;
+    const low = casualTower(definition, 1601, 0, 1);
+    const high = casualTower(definition, 1602, 1, 8);
+    expect(engine.towerRangeBonus(low)).toBe(-18);
+    expect(engine.towerRangeBonus(high)).toBe(38);
+    // 1★ 실효 사거리도 경로에는 닿아야 한다(전 역할 최저 기본 226 기준 208).
+    expect(definition.combat.range + engine.towerRangeBonus(low)).toBeGreaterThanOrEqual(190);
+    // 공속: 별당 3% — 8★ 는 1★ 보다 뚜렷이 빠르다.
+    expect(engine.towerAttackCooldown(high)).toBeLessThan(engine.towerAttackCooldown(low) * 0.85);
+
+    const standard = new GameEngine("standard-star-range", "KR");
+    standard.begin();
+    expect(standard.towerRangeBonus({ ...low, stage: 1 })).toBe(0);
+    expect(standard.towerRangeBonus({ ...low, stage: 5 })).toBe(28);
+  });
+
+  it("keeps every casual goal inside the summonable pool in all regions (F2)", () => {
+    // F2: JP/CN 목표(林·森 등)가 미리보기 소환 풀 밖이라 달성 불가였다.
+    for (const region of ["KR", "JP", "CN"] as const) {
+      const engine = casualEngine(`casual-goal-pool-${region}`, region);
+      const pool = new Set(engine.summonDefinitions().map((definition) => definition.char));
+      expect(engine.goalOrder.length).toBeGreaterThan(0);
+      expect(engine.goalOrder.length).toBe(engine.catalog.goalOrder.length);
+      for (const char of engine.goalOrder) expect(pool.has(char)).toBe(true);
+      expect(engine.state.targetChar).toBe(engine.goalOrder[0]);
+    }
+    // 표준 모드 목표는 그대로다.
+    const standard = new GameEngine("standard-goal-pool", "JP");
+    standard.begin();
+    expect(standard.goalOrder).toEqual(standard.catalog.goalOrder);
+  });
+
+  it("completes the casual goal when the target char arrives through a fusion (F2)", () => {
+    // JP 캐주얼의 첫 목표 故 는 火 1★→2★ 결과 풀의 유일 후보라 승급 결과가 보장된다.
+    const engine = casualEngine("casual-goal-fusion", "JP");
+    expect(engine.state.targetChar).toBe("故");
+    const pool = engine.casualResultPool("火", 1);
+    expect(pool?.candidates.map((definition) => definition.char)).toEqual(["故"]);
+
+    const protectedChars = new Set([engine.state.targetChar, ...(engine.currentIdiomTarget()?.chars ?? "")]);
+    const material = engine.catalog.activePool.find((definition) =>
+      definition.wuxing === "火" && casualNaturalStar(definition.char) === 1 && !protectedChars.has(definition.char));
+    expect(material).toBeDefined();
+    engine.state.towers = [];
+    engine.state.inventoryTowers = [1501, 1502, 1503].map((id) => casualTower(material as HanziDefinition, id, -1, 1));
+    const result = engine.fuseCasual([1501, 1502, 1503], true);
+    expect(result.ok).toBe(true);
+    expect(result.gained?.char).toBe("故");
+    expect(engine.state.goalsCompleted).toContain("故");
+    expect(engine.state.targetChar).toBe(engine.goalOrder[1]);
+  });
 });
