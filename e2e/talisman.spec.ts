@@ -59,7 +59,7 @@ test("the default-on talisman tab turns a submitted trace into a jaryeong reward
   // 설정 토글은 켜진 채로 서 있고, 끄면 탭이 접힌다 — 강제는 아니다.
   await page.locator("#settings-button").click();
   await expect(page.getByTestId("talisman-mode-toggle")).toHaveAttribute("aria-checked", "true");
-  // 상환 규칙은 설정 설명에 드러나 있어야 한다 — 숨기지 않는다.
+  // 대가(적 5% 강화)는 설정 설명에 드러나 있어야 한다 — 숨기지 않는다.
   await expect(page.getByTestId("talisman-mode-toggle")).toContainText("적이 5% 강해집니다");
   await page.screenshot({ path: "artifacts/talisman-settings-note-1280x720.png", fullPage: true });
   await page.getByTestId("talisman-mode-toggle").click();
