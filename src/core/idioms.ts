@@ -111,100 +111,106 @@ export function featuredIdiomsForRun(region: RegionCode, seed: string, count = 5
   return picked;
 }
 
-function neighboringCells(first: number, second: number): boolean {
-  const firstFormation = Math.floor(first / CELLS_PER_FORMATION);
-  const secondFormation = Math.floor(second / CELLS_PER_FORMATION);
-  if (firstFormation !== secondFormation) return false;
-  const firstLocal = first % CELLS_PER_FORMATION;
-  const secondLocal = second % CELLS_PER_FORMATION;
-  const rowDistance = Math.abs(Math.floor(firstLocal / FORMATION_COLUMNS) - Math.floor(secondLocal / FORMATION_COLUMNS));
-  const columnDistance = Math.abs(firstLocal % FORMATION_COLUMNS - secondLocal % FORMATION_COLUMNS);
-  return rowDistance <= 1 && columnDistance <= 1 && rowDistance + columnDistance > 0;
+/** 성어 한 구가 차지하는 직선의 길이. 진이 4×4 라서 네 글자가 딱 한 줄이다. */
+const IDIOM_LINE_LENGTH = 4;
+
+/**
+ * 진 하나(4×4) 안의 직선 10개 — 가로 4줄·세로 4줄·대각 2줄. 진 안 로컬 번호다.
+ * 성어는 이 줄 위에 순서대로 놓일 때만 발동한다(꺾인 사슬은 인정하지 않는다).
+ */
+const FORMATION_LINES: readonly (readonly number[])[] = buildFormationLines();
+
+function buildFormationLines(): readonly (readonly number[])[] {
+  const lines: number[][] = [];
+  for (let row = 0; row < FORMATION_ROWS; row += 1) {
+    lines.push(Array.from({ length: FORMATION_COLUMNS }, (_, column) => row * FORMATION_COLUMNS + column));
+  }
+  for (let column = 0; column < FORMATION_COLUMNS; column += 1) {
+    lines.push(Array.from({ length: FORMATION_ROWS }, (_, row) => row * FORMATION_COLUMNS + column));
+  }
+  if (FORMATION_ROWS === FORMATION_COLUMNS) {
+    lines.push(Array.from({ length: FORMATION_ROWS }, (_, step) => step * FORMATION_COLUMNS + step));
+    lines.push(Array.from({ length: FORMATION_ROWS }, (_, step) => step * FORMATION_COLUMNS + (FORMATION_COLUMNS - 1 - step)));
+  }
+  return lines.filter((line) => line.length === IDIOM_LINE_LENGTH);
+}
+
+/**
+ * 판 전체의 "읽는 방향" 목록. 진마다 10줄 × 정·역 2방향 = 20개, 진 5개면 100개다.
+ * 역방향까지 넣어 두었으므로 이 목록을 앞에서부터 맞춰 보기만 하면 역순 배치가
+ * 저절로 인정되고, 맞은 배열은 언제나 글자 순서(첫 칸이 1번 글자)로 나온다.
+ */
+const IDIOM_LINE_SEQUENCES: readonly (readonly number[])[] = buildIdiomLineSequences();
+
+function buildIdiomLineSequences(): readonly (readonly number[])[] {
+  const sequences: number[][] = [];
+  const formationCount = Math.floor(BOARD_CELLS.length / CELLS_PER_FORMATION);
+  for (let formation = 0; formation < formationCount; formation += 1) {
+    for (const line of FORMATION_LINES) {
+      const cells = line.map((local) => formation * CELLS_PER_FORMATION + local);
+      sequences.push(cells);
+      sequences.push([...cells].reverse());
+    }
+  }
+  return sequences;
 }
 
 export function validateIdiomCells(cells: readonly number[]): string | null {
-  if (cells.length !== 4) return "서로 이웃한 한자 4자를 이어 주세요.";
+  if (cells.length !== IDIOM_LINE_LENGTH) return "한 줄에 놓인 한자 4자를 이어 주세요.";
   if (new Set(cells).size !== cells.length) return "같은 칸은 한 번만 지날 수 있습니다.";
   for (const cell of cells) {
     if (!Number.isInteger(cell) || cell < 0 || cell >= BOARD_CELLS.length) return "진법 밖의 칸은 이을 수 없습니다.";
   }
-  for (let index = 1; index < cells.length; index += 1) {
-    const previous = cells[index - 1] as number;
-    const current = cells[index] as number;
-    if (!neighboringCells(previous, current)) {
-      return "가로·세로·대각선으로 맞닿은 칸만 이을 수 있습니다.";
-    }
-  }
+  const straight = IDIOM_LINE_SEQUENCES.some((sequence) => sequence.every((cell, index) => cell === cells[index]));
+  if (!straight) return "같은 진의 가로·세로·대각선 한 줄에 순서대로 놓아야 합니다.";
   return null;
 }
 
-function idiomCandidateCells(towers: readonly Tower[]): Map<string, number[]> {
-  const byCharacter = new Map<string, number[]>();
-  for (const tower of [...towers].sort((left, right) => left.cell - right.cell)) {
+/** 칸 번호 → 그 칸에 선 자령의 글자. 진 밖의 자령(인벤토리 등)은 빼 둔다. */
+function charactersByCell(towers: readonly Tower[]): Map<number, string> {
+  const byCell = new Map<number, string>();
+  for (const tower of towers) {
     if (tower.cell < 0 || tower.cell >= BOARD_CELLS.length) continue;
-    const cells = byCharacter.get(tower.char);
-    if (cells) cells.push(tower.cell);
-    else byCharacter.set(tower.char, [tower.cell]);
+    byCell.set(tower.cell, tower.char);
   }
-  return byCharacter;
+  return byCell;
 }
 
 /**
- * 주어진 글자 차례대로 인접 사슬을 이루는 셀 경로. 대각선·꺾임 허용.
- * `accept` 를 주면 그 조건을 만족하는 경로만 돌려준다(배치 안내에서 자랄 수
- * 있는 사슬을 먼저 고르는 데 쓴다).
- */
-function searchIdiomChain(
-  byCharacter: ReadonlyMap<string, number[]>,
-  characters: readonly string[],
-  accept?: (path: readonly number[]) => boolean
-): number[] | null {
-  const search = (characterIndex: number, path: number[]): number[] | null => {
-    if (characterIndex >= characters.length) return accept && !accept(path) ? null : path;
-    const previous = path[path.length - 1];
-    for (const cell of byCharacter.get(characters[characterIndex] as string) ?? []) {
-      if (path.includes(cell)) continue;
-      if (previous !== undefined && !neighboringCells(previous, cell)) continue;
-      const result = search(characterIndex + 1, [...path, cell]);
-      if (result) return result;
-    }
-    return null;
-  };
-  return search(0, []);
-}
-
-/**
- * 네 글자를 순서대로 이은 사슬을 찾는다. 정방향(1→4)이 없으면 역방향(4→1)도
- * 인정한다. 어느 쪽으로 찾았든 돌려주는 셀 배열은 항상 글자 순서 기준이라
- * cells[0] 이 1번 글자의 칸이다.
+ * 네 글자가 한 직선 위에 순서대로 선 자리를 찾는다. 가로·세로·대각선 어느
+ * 줄이든 좋고, 역방향(4→1)으로 놓아도 인정한다. 돌려주는 셀 배열은 언제나
+ * 글자 순서 기준이라 cells[0] 이 1번 글자의 칸이다.
  */
 export function findIdiomPath(
   towers: readonly Tower[],
   idiom: IdiomDefinition
 ): number[] | null {
   const characters = [...idiom.chars];
-  const byCharacter = idiomCandidateCells(towers);
-  const forward = searchIdiomChain(byCharacter, characters);
-  if (forward) return forward;
-  const backward = searchIdiomChain(byCharacter, [...characters].reverse());
-  return backward ? [...backward].reverse() : null;
+  if (characters.length !== IDIOM_LINE_LENGTH) return null;
+  const byCell = charactersByCell(towers);
+  for (const sequence of IDIOM_LINE_SEQUENCES) {
+    if (characters.every((char, index) => byCell.get(sequence[index] as number) === char)) return [...sequence];
+  }
+  return null;
 }
 
 export interface PartialIdiomChain {
-  /** 사슬을 이루는 칸 — 실제로 놓인 순서. */
+  /** 줄 위에 이미 선 칸 — 언제나 글자 순서라 cells[0] 이 1번 글자다. */
   readonly cells: readonly number[];
-  /** 사슬에 담긴 글자 수. 0 이면 아직 어떤 글자도 진 위에 없다. */
+  /** 줄 앞에서부터 이어진 글자 수. 0 이면 이을 수 있는 줄이 아직 없다. */
   readonly length: number;
-  /** cells[0] 이 성어에서 몇 번째 글자인지(1부터). 사슬이 비면 0. */
+  /** cells[0] 의 순번(1부터). 직선 규칙에서는 언제나 1이고, 비면 0. */
   readonly startOrder: number;
-  /** cells 가 순번 내림차순으로 놓였는지(역방향 사슬). */
+  /** 예전 꺾인 사슬 시절의 역순 표시. 직선 규칙에서는 언제나 false. */
   readonly reversed: boolean;
-  /** 다음에 이어야 할 글자. 사슬이 완성됐으면 null. */
+  /** 다음에 놓아야 할 글자. 줄이 완성됐으면 null. */
   readonly nextChar: string | null;
   /** 다음 글자의 순번(1부터). 표시용. */
   readonly nextOrder: number | null;
-  /** 다음 글자를 맞대야 하는 기준 칸. 사슬이 비어 있으면 null. */
+  /** 다음 글자를 이어야 하는 기준 칸(줄에서 마지막으로 채워진 칸). 비면 null. */
   readonly anchorCell: number | null;
+  /** 다음 글자를 놓을 빈 칸 — 같은 줄의 바로 다음 자리들. 동률이면 모두 담는다. */
+  readonly nextCells: readonly number[];
   readonly complete: boolean;
 }
 
@@ -216,119 +222,65 @@ const EMPTY_CHAIN: PartialIdiomChain = {
   nextChar: null,
   nextOrder: null,
   anchorCell: null,
+  nextCells: [],
   complete: false
 };
 
-interface IdiomWindow {
-  readonly cells: readonly number[];
-  /** 창의 첫 글자 인덱스(0부터). */
-  readonly start: number;
-  readonly reversed: boolean;
-  readonly grows: boolean;
-}
-
 /**
- * 이미 이어져 있는 가장 긴 부분 사슬. 배치 안내(다음 글자를 어디에 놓을지)에 쓴다.
+ * 다음 글자를 어디에 놓아야 하는지 알려 주는 부분 줄. 배치 안내가 쓴다.
  *
- * 앞에서부터가 아니라 성어 안의 연속 구간(창) 전부를 본다. 3번 글자만 갖고
- * 있어도 2번·4번을 어디에 놓을지 알려 줄 수 있어야 하기 때문이다. 같은 길이면
- * 끝에 빈 이웃이 남은 사슬을 고른다. 사방이 막힌 사슬을 잡으면 안내할 칸이
- * 하나도 나오지 않는다.
+ * 판의 방향 100개를 훑어 "0번 자리부터 k−1번 자리까지 올바른 글자가 서 있고
+ * k번 자리는 비어 있는" 최장 k 를 찾는다. 다음 자리가 다른 자령에 막힌 줄은
+ * 그 줄로 성어를 끝낼 수 없으므로 후보에서 뺀다. 같은 k 를 가진 줄이 여럿이면
+ * 빈 칸을 모두 모아 안내한다(가로로도 세로로도 이을 수 있는 상황).
  */
 export function partialIdiomChain(towers: readonly Tower[], idiom: IdiomDefinition): PartialIdiomChain {
   const characters = [...idiom.chars];
-  const byCharacter = idiomCandidateCells(towers);
-  const occupied = new Set(towers.map((tower) => tower.cell));
-  const canGrow = (cell: number): boolean => idiomNeighborCells(cell).some((neighbor) => !occupied.has(neighbor));
+  if (characters.length !== IDIOM_LINE_LENGTH) return EMPTY_CHAIN;
+  const byCell = charactersByCell(towers);
 
-  let found: IdiomWindow[] = [];
-  for (let length = characters.length; length >= 1 && found.length === 0; length -= 1) {
-    for (let start = 0; start + length <= characters.length; start += 1) {
-      const window = characters.slice(start, start + length);
-      for (const reversed of length === 1 ? [false] : [false, true]) {
-        const sequence = reversed ? [...window].reverse() : window;
-        const growable = (path: readonly number[]): boolean =>
-          length === characters.length || canGrow(path[0] as number) || canGrow(path[path.length - 1] as number);
-        const cells = searchIdiomChain(byCharacter, sequence, growable) ?? searchIdiomChain(byCharacter, sequence);
-        if (!cells) continue;
-        found.push({ cells, start, reversed, grows: growable(cells) });
-      }
+  let bestLength = 0;
+  let bestCells: number[] = [];
+  const nextCells: number[] = [];
+  for (const sequence of IDIOM_LINE_SEQUENCES) {
+    let matched = 0;
+    while (matched < characters.length && byCell.get(sequence[matched] as number) === characters[matched]) matched += 1;
+    if (matched === characters.length) {
+      const cells = [...sequence];
+      return {
+        cells,
+        length: matched,
+        startOrder: 1,
+        reversed: false,
+        nextChar: null,
+        nextOrder: null,
+        anchorCell: cells[matched - 1] as number,
+        nextCells: [],
+        complete: true
+      };
     }
-  }
-  if (found.length === 0) return EMPTY_CHAIN;
-  const best = found.find((candidate) => candidate.grows && !candidate.reversed)
-    ?? found.find((candidate) => candidate.grows)
-    ?? (found[0] as IdiomWindow);
-
-  const length = best.cells.length;
-  const complete = length === characters.length;
-  const startOrder = best.reversed ? best.start + length : best.start + 1;
-  const endOrder = best.reversed ? best.start + 1 : best.start + length;
-  const head = best.cells[0] as number;
-  const tail = best.cells[length - 1] as number;
-  // 사슬은 양 끝 어느 쪽으로도 자랄 수 있다. 실제로 빈 칸이 남은 쪽을 안내한다.
-  const tailNext = best.reversed ? endOrder - 1 : endOrder + 1;
-  const headNext = best.reversed ? startOrder + 1 : startOrder - 1;
-  const tailValid = tailNext >= 1 && tailNext <= characters.length;
-  const headValid = headNext >= 1 && headNext <= characters.length;
-  let nextOrder: number | null = null;
-  let anchorCell: number | null = null;
-  if (!complete) {
-    if (tailValid && canGrow(tail)) {
-      nextOrder = tailNext;
-      anchorCell = tail;
-    } else if (headValid && canGrow(head)) {
-      nextOrder = headNext;
-      anchorCell = head;
-    } else if (tailValid) {
-      nextOrder = tailNext;
-      anchorCell = tail;
-    } else if (headValid) {
-      nextOrder = headNext;
-      anchorCell = head;
+    if (matched === 0) continue;
+    const nextCell = sequence[matched] as number;
+    if (byCell.has(nextCell)) continue;
+    if (matched > bestLength) {
+      bestLength = matched;
+      bestCells = sequence.slice(0, matched);
+      nextCells.length = 0;
     }
+    if (matched === bestLength && !nextCells.includes(nextCell)) nextCells.push(nextCell);
   }
+  if (bestLength === 0) return EMPTY_CHAIN;
   return {
-    cells: best.cells,
-    length,
-    startOrder,
-    reversed: best.reversed,
-    nextChar: nextOrder === null ? null : (characters[nextOrder - 1] as string),
-    nextOrder,
-    anchorCell,
-    complete
+    cells: bestCells,
+    length: bestLength,
+    startOrder: 1,
+    reversed: false,
+    nextChar: characters[bestLength] as string,
+    nextOrder: bestLength + 1,
+    anchorCell: bestCells[bestLength - 1] as number,
+    nextCells,
+    complete: false
   };
-}
-
-/** 두 칸이 같은 진 안에서 8방으로 맞닿아 있는지. 배치 안내가 재사용한다. */
-export function idiomCellsAreNeighbors(first: number, second: number): boolean {
-  return neighboringCells(first, second);
-}
-
-const neighborCellCache = new Map<number, readonly number[]>();
-
-/** 같은 진 안에서 8방으로 맞닿은 칸 목록. 진 경계를 넘지 않는다. */
-export function idiomNeighborCells(cell: number): readonly number[] {
-  const cached = neighborCellCache.get(cell);
-  if (cached) return cached;
-  const neighbors: number[] = [];
-  if (cell >= 0 && cell < BOARD_CELLS.length) {
-    const formation = Math.floor(cell / CELLS_PER_FORMATION);
-    const local = cell % CELLS_PER_FORMATION;
-    const column = local % FORMATION_COLUMNS;
-    const row = Math.floor(local / FORMATION_COLUMNS);
-    for (let rowStep = -1; rowStep <= 1; rowStep += 1) {
-      for (let columnStep = -1; columnStep <= 1; columnStep += 1) {
-        if (rowStep === 0 && columnStep === 0) continue;
-        const nextRow = row + rowStep;
-        const nextColumn = column + columnStep;
-        if (nextRow < 0 || nextRow >= FORMATION_ROWS || nextColumn < 0 || nextColumn >= FORMATION_COLUMNS) continue;
-        neighbors.push(formation * CELLS_PER_FORMATION + nextRow * FORMATION_COLUMNS + nextColumn);
-      }
-    }
-  }
-  neighborCellCache.set(cell, neighbors);
-  return neighbors;
 }
 
 export function helpfulDirectCharsForIdiom(catalog: HanziCatalog, towers: readonly Tower[], idiom: IdiomDefinition): Set<string> {

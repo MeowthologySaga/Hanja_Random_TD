@@ -44,7 +44,6 @@ import {
   type IdiomDefinition,
   type PartialIdiomChain,
   idiomById,
-  idiomNeighborCells,
   partialIdiomChain
 } from "./core/idioms";
 import {
@@ -4527,14 +4526,8 @@ function refreshIdiomPlacementGuide(): void {
     takenTowers.add(tower.id);
   }
 
-  const nextCells: number[] = [];
-  if (chain.anchorCell !== null && !chain.complete) {
-    const occupied = new Set(engine.state.towers.map((tower) => tower.cell));
-    for (const cell of idiomNeighborCells(chain.anchorCell)) {
-      if (occupied.has(cell) || !engine.isCellUnlocked(cell)) continue;
-      nextCells.push(cell);
-    }
-  }
+  // 직선 규칙에서는 다음 자리가 줄 위에 정해져 있다. 코어가 짚어 준 칸만 쓴다.
+  const nextCells = chain.complete ? [] : chain.nextCells.filter((cell) => engine.isCellUnlocked(cell));
   idiomPlacementGuide = { idiom, chain, orders, nextCells };
   // 배치 안내 상태를 캔버스 데이터셋으로 내보내 캡처·e2e 가 읽을 수 있게 한다.
   canvas.dataset.idiomTarget = idiom.chars;
