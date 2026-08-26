@@ -108,6 +108,10 @@ export function casualNaturalStar(char: string): CasualStar | null {
   return strokes === undefined ? null : starForStrokes(strokes);
 }
 
+/**
+ * 3기를 소모하면 노리는 별. v3 에서는 이 별의 글자 풀이 비어 있을 수 있어
+ * 실제 결과 별은 GameEngine.casualResultPool 이 사다리를 훑어 정한다.
+ */
 export function casualStarAfterFusion(star: CasualStar): CasualStar | null {
   return star >= 8 ? null : (star + 1) as CasualStar;
 }

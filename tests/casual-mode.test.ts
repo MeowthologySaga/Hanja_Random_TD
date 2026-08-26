@@ -9,7 +9,7 @@ import {
 import { BOARD_FORMATIONS } from "../src/core/content";
 import { GameEngine } from "../src/core/game";
 import { WUXING_ORDER } from "../src/core/hanzi";
-import type { CasualStar, HanziDefinition, Tower, Wuxing } from "../src/core/types";
+import type { CasualStar, HanziDefinition, RegionCode, Tower, Wuxing } from "../src/core/types";
 
 function casualTower(definition: HanziDefinition, id: number, cell: number, star = casualNaturalStar(definition.char)): Tower {
   if (star === null) throw new Error(`Missing casual star for ${definition.char}`);
@@ -54,18 +54,20 @@ function safeCasualDefinitions(engine: GameEngine, count: number, wuxing?: Wuxin
   throw new Error(`No safe casual fixture of size ${count} found`);
 }
 
-function sameElementStarDefinitions(engine: GameEngine, count = 3): HanziDefinition[] {
-  const grouped = new Map<string, HanziDefinition[]>();
-  for (const definition of engine.catalog.activePool) {
-    const star = casualNaturalStar(definition.char);
-    if (star === null || star >= 8) continue;
-    const key = `${definition.wuxing}:${star}`;
-    const group = grouped.get(key) ?? [];
-    group.push(definition);
-    grouped.set(key, group);
-    if (group.length >= count) return group.slice(0, count);
-  }
-  throw new Error("No casual fusion fixture found");
+/** 이 지역 소환 풀에서 (오행, 별) 조합의 글자 수. 폴백 시나리오 고정용. */
+function poolCount(engine: GameEngine, wuxing: Wuxing, star: CasualStar): number {
+  return engine.summonDefinitions().filter((definition) =>
+    definition.wuxing === wuxing && casualNaturalStar(definition.char) === star).length;
+}
+
+function casualEngine(seed: string, region: RegionCode = "KR"): GameEngine {
+  const engine = new GameEngine(seed, region, "casual");
+  engine.begin();
+  return engine;
+}
+
+function allTowers(engine: GameEngine): Tower[] {
+  return [...engine.state.towers, ...engine.state.inventoryTowers];
 }
 
 describe("casual eight-star mode", () => {
@@ -102,183 +104,264 @@ describe("casual eight-star mode", () => {
     expect(engine.availableEvolutions()).toEqual([]);
   });
 
-  it("retains the selected core, consumes exactly two matching materials, and raises one star", () => {
-    const engine = new GameEngine("casual-manual-fusion", "KR", "casual");
-    engine.begin();
-    const [coreDefinition, firstMaterialDefinition, secondMaterialDefinition] = sameElementStarDefinitions(engine);
-    const fromStar = casualNaturalStar(coreDefinition?.char ?? "") as CasualStar;
-    const core = casualTower(coreDefinition as HanziDefinition, 101, 0, fromStar);
-    const firstMaterial = casualTower(firstMaterialDefinition as HanziDefinition, 102, -1, fromStar);
-    const secondMaterial = casualTower(secondMaterialDefinition as HanziDefinition, 103, -1, fromStar);
-    core.locked = true;
-    engine.state.towers = [core];
-    engine.state.inventoryTowers = [firstMaterial, secondMaterial];
+  it("consumes all three bodies and grants one random same-element unit at the next star", () => {
+    // v3 core: 보유 수 -3/+1 · 결과 오행 일치 · 결과 별 = star+1.
+    const engine = casualEngine("casual-v3-core");
+    const definitions = safeCasualDefinitions(engine, 3);
+    const star = casualNaturalStar(definitions[0]?.char ?? "") as CasualStar;
+    const wuxing = definitions[0]?.wuxing as Wuxing;
+    const towers = definitions.map((definition, index) => casualTower(definition, 101 + index, -1, star));
+    engine.state.inventoryTowers = towers;
+    const consumedIds = towers.map((tower) => tower.id);
 
-    const quote = engine.casualFusionQuote(core.id, [firstMaterial.id, secondMaterial.id]);
+    const quote = engine.casualFusionQuote(consumedIds);
     expect(quote.blocked).toEqual([]);
-    expect(quote.warnings.length).toBeGreaterThan(0);
-    expect(engine.fuseCasual(core.id, [firstMaterial.id, secondMaterial.id])).toMatchObject({ ok: false, message: expect.stringContaining("확인") });
-    expect(engine.fuseCasual(core.id, [firstMaterial.id, secondMaterial.id], true)).toMatchObject({ ok: true });
+    expect(quote.fromStar).toBe(star);
+    expect(quote.toStar).toBe(star + 1);
+    expect(quote.poolSize).toBeGreaterThan(0);
+    expect(quote.starFallback).toBe(false);
+    expect(quote.rosterFallback).toBe(false);
+
+    const result = engine.fuseCasual(consumedIds);
+    expect(result).toMatchObject({ ok: true });
+    expect(result.consumedChars).toEqual(towers.map((tower) => tower.char));
+    expect(allTowers(engine)).toHaveLength(1);
+    const gained = allTowers(engine)[0] as Tower;
+    expect(consumedIds).not.toContain(gained.id);
+    expect(gained.wuxing).toBe(wuxing);
+    expect(gained.casualStar).toBe(star + 1);
+    expect(gained.naturalStar).toBe(casualNaturalStar(gained.char));
+    expect(result.gained).toMatchObject({ char: gained.char, star: star + 1, wuxing });
+    expect(engine.state.discoveredChars).toContain(gained.char);
+    expect(engine.state.casualFusionCount).toBe(1);
+    expect(engine.state.lastMessage).toContain(`${star}★×3 → ${star + 1}★`);
+    const event = engine.consumeEvents().find((entry) => entry.type === "casualFuse");
+    expect(event).toBeDefined();
+    if (event?.type === "casualFuse") {
+      expect(event.consumed).toHaveLength(3);
+      expect(event.tower.char).toBe(gained.char);
+      expect(event.toStar).toBe(star + 1);
+    }
+  });
+
+  it("inherits the first consumed board cell and otherwise stays in the inventory", () => {
+    const engine = casualEngine("casual-v3-cell");
+    const definitions = safeCasualDefinitions(engine, 6);
+    const star = casualNaturalStar(definitions[0]?.char ?? "") as CasualStar;
+    const stored = casualTower(definitions[0] as HanziDefinition, 201, -1, star);
+    const onSix = casualTower(definitions[1] as HanziDefinition, 202, 6, star);
+    const onTwo = casualTower(definitions[2] as HanziDefinition, 203, 2, star);
+    engine.state.towers = [onSix, onTwo];
+    engine.state.inventoryTowers = [stored];
+    // 인벤 → 6칸 → 2칸 순으로 넘기면 "소모분의 기존 셀 중 첫 번째"는 6이다.
+    expect(engine.fuseCasual([stored.id, onSix.id, onTwo.id], true)).toMatchObject({ ok: true });
     expect(engine.state.towers).toHaveLength(1);
     expect(engine.state.inventoryTowers).toHaveLength(0);
-    expect(engine.state.towers[0]?.id).toBe(core.id);
-    expect(engine.state.towers[0]?.locked).toBe(true);
-    expect(engine.state.towers[0]?.casualStar).toBe(fromStar + 1);
-    expect(engine.state.casualFusionCount).toBe(1);
-    expect(engine.consumeEvents().some((event) => event.type === "casualFuse")).toBe(true);
-  });
+    expect(engine.state.towers[0]?.cell).toBe(6);
 
-  it("blocks mismatched or locked materials and never consumes them", () => {
-    const engine = new GameEngine("casual-blocks", "KR", "casual");
-    engine.begin();
-    const [first, second, third] = sameElementStarDefinitions(engine);
-    const star = casualNaturalStar(first?.char ?? "") as CasualStar;
-    const core = casualTower(first as HanziDefinition, 201, -1, star);
-    const locked = casualTower(second as HanziDefinition, 202, -1, star);
-    const other = casualTower(third as HanziDefinition, 203, -1, star);
-    locked.locked = true;
-    engine.state.inventoryTowers = [core, locked, other];
-    expect(engine.fuseCasual(core.id, [locked.id, other.id], true)).toMatchObject({ ok: false, message: expect.stringContaining("잠겨") });
-    expect(engine.state.inventoryTowers).toHaveLength(3);
-    other.casualStar = (star === 7 ? 6 : star + 1) as CasualStar;
-    locked.locked = false;
-    expect(engine.fuseCasual(core.id, [locked.id, other.id], true)).toMatchObject({ ok: false, message: expect.stringContaining("별") });
-    expect(engine.state.inventoryTowers).toHaveLength(3);
-  });
-
-  it("uses a locked keeper as the auto-fusion core while materials remain explicit in the preview", () => {
-    const engine = new GameEngine("casual-element-auto", "KR", "casual");
-    engine.begin();
-    const parentChars = new Set(engine.catalog.recipes.flatMap((definition) => definition.parents));
-    const targetPath = engine.evolution.getTargetPath(engine.state.targetChar);
-    const idiomChars = new Set(engine.idioms().flatMap((idiom) => [...idiom.chars]));
-    const grouped = new Map<string, HanziDefinition[]>();
-    for (const definition of engine.catalog.activePool) {
-      const star = casualNaturalStar(definition.char);
-      if (star === null || star >= 8 || parentChars.has(definition.char) || targetPath.has(definition.char) || idiomChars.has(definition.char)) continue;
-      const key = `${definition.wuxing}:${star}`;
-      const group = grouped.get(key) ?? [];
-      group.push(definition);
-      grouped.set(key, group);
-    }
-    const definitions = [...grouped.values()].find((group) => group.length >= 3)?.slice(0, 3);
-    if (!definitions) throw new Error("No safe auto-fusion fixture found");
-    const star = casualNaturalStar(definitions[0]?.char ?? "") as CasualStar;
-    const towers = definitions.map((definition, index) => casualTower(definition, 301 + index, -1, star));
-    const keeper = towers[0] as Tower;
-    keeper.locked = true;
-    engine.state.inventoryTowers = towers;
-    const wuxing = keeper.wuxing as Wuxing;
-
-    const plan = engine.casualAutoFusionPlan(wuxing);
-    expect(plan).toHaveLength(1);
-    expect(plan[0]?.coreId).toBe(keeper.id);
-    expect(plan[0]?.materialIds).toHaveLength(2);
-    expect(plan[0]?.materialIds).not.toContain(keeper.id);
-    expect(engine.autoFuseCasualElement(wuxing, true)).toMatchObject({ ok: true });
+    const inventoryOnly = definitions.slice(3).map((definition, index) => casualTower(definition, 301 + index, -1, star));
+    engine.state.towers = [];
+    engine.state.inventoryTowers = inventoryOnly;
+    expect(engine.fuseCasual(inventoryOnly.map((tower) => tower.id))).toMatchObject({ ok: true });
+    expect(engine.state.towers).toHaveLength(0);
     expect(engine.state.inventoryTowers).toHaveLength(1);
-    expect(engine.state.inventoryTowers[0]?.id).toBe(keeper.id);
-    expect(engine.state.inventoryTowers[0]?.locked).toBe(true);
-    expect(engine.state.inventoryTowers[0]?.casualStar).toBe(star + 1);
+    expect(engine.state.inventoryTowers[0]?.cell).toBe(-1);
   });
 
-  it("keeps sealed-idiom board members out of the auto-fusion material pool", () => {
-    // 요구 4-(가): 이미 봉인이 끝난 사자성어에 참여 중인 전장 자령을 재료로
-    // 태우면 얻은 봉인이 깨진다. 미완 성어와 똑같이 재료에서 빠져야 한다.
-    const engine = new GameEngine("casual-sealed-guard", "KR", "casual");
-    engine.begin();
+  it("blocks mismatched stars or elements and never consumes them", () => {
+    const engine = casualEngine("casual-blocks");
     const definitions = safeCasualDefinitions(engine, 3);
+    const star = casualNaturalStar(definitions[0]?.char ?? "") as CasualStar;
+    const towers = definitions.map((definition, index) => casualTower(definition, 401 + index, -1, star));
+    engine.state.inventoryTowers = towers;
+    const ids = towers.map((tower) => tower.id);
+
+    expect(engine.fuseCasual(ids.slice(0, 2), true)).toMatchObject({ ok: false, message: expect.stringContaining("3기") });
+    expect(engine.fuseCasual([ids[0] as number, ids[0] as number, ids[1] as number], true))
+      .toMatchObject({ ok: false, message: expect.stringContaining("서로 다른") });
+    (towers[2] as Tower).casualStar = (star === 7 ? 6 : star + 1) as CasualStar;
+    expect(engine.fuseCasual(ids, true)).toMatchObject({ ok: false, message: expect.stringContaining("★가 아닙니다") });
+    expect(allTowers(engine)).toHaveLength(3);
+  });
+
+  it("keeps every protected body out of all three consumption slots", () => {
+    // v3 규칙 2: 남는 본체가 없으므로 잠금·농축·봉인 성어·목표 경로 자령은
+    // 세 자리 중 어디에도 들어갈 수 없다. v2 의 "본체 승계" 는 폐기됐다.
+    const engine = casualEngine("casual-v3-protection");
+    const definitions = safeCasualDefinitions(engine, 4);
     const star = casualNaturalStar(definitions[0]?.char ?? "") as CasualStar;
     const towers = definitions.map((definition, index) => casualTower(definition, 501 + index, index, star));
     engine.state.towers = towers;
     const wuxing = towers[0]?.wuxing as Wuxing;
+    expect(towers.map((tower) => engine.casualMaterialProtection(tower.id))).toEqual([null, null, null, null]);
+    expect(engine.casualAutoFusionPlan(wuxing)).toHaveLength(1);
 
-    // 봉인 전: 세 자령이 한 묶음으로 잡힌다.
-    const before = engine.casualAutoFusionPlan(wuxing);
-    expect(before).toHaveLength(1);
-    expect(before[0]?.warnings.some((warning) => warning.kind === "deployed")).toBe(true);
-    expect(towers.map((tower) => engine.casualMaterialProtection(tower.id))).toEqual([null, null, null]);
+    const locked = towers[0] as Tower;
+    const concentrated = towers[1] as Tower;
+    locked.locked = true;
+    concentrated.concentration = 2;
+    concentrated.concentrationPath = "swift";
+    // 2·3번 칸을 쓰는 성어 봉인은 그 자리 자령을 그대로 묶어 둔다.
+    engine.state.idiomSeals.push({ idiomId: "sealed-fixture", cells: [2, 3], completedAt: 0 });
 
-    // 1·2번 칸을 쓰는 성어 봉인이 생기면 그 두 자령은 재료 후보에서 빠지고
-    // 남은 안전 재료가 1기뿐이라 묶음 자체가 사라진다 — 봉인이 깨지지 않는다.
-    engine.state.idiomSeals.push({ idiomId: "sealed-fixture", cells: [1, 2], completedAt: 0 });
-    expect(engine.casualMaterialProtection(towers[1]?.id ?? -1)).toBe("봉인 완료 사자성어 참여");
+    expect(engine.casualMaterialProtection(locked.id)).toBe("잠금 자령");
+    expect(engine.casualMaterialProtection(concentrated.id)).toBe("농축 2단계 투자");
     expect(engine.casualMaterialProtection(towers[2]?.id ?? -1)).toBe("봉인 완료 사자성어 참여");
-    expect(engine.casualMaterialProtection(towers[0]?.id ?? -1)).toBeNull();
+    expect(engine.casualMaterialProtection(towers[3]?.id ?? -1)).toBe("봉인 완료 사자성어 참여");
+
+    // 보호 자령은 첫 자리에 넣어도 차단된다 — v2 처럼 본체로 도피할 자리가 없다.
+    const quote = engine.casualFusionQuote([locked.id, concentrated.id, towers[2]?.id ?? -1]);
+    expect(quote.blocked).toHaveLength(3);
+    expect(quote.blocked.every((issue) => issue.kind === "protected")).toBe(true);
+    expect(quote.blocked[0]?.text).toContain("잠금 자령");
+    expect(engine.fuseCasual([locked.id, concentrated.id, towers[2]?.id ?? -1], true)).toMatchObject({ ok: false });
     expect(engine.casualAutoFusionPlan(wuxing)).toHaveLength(0);
     expect(engine.autoFuseCasual(wuxing, true)).toMatchObject({ ok: false, fused: 0 });
-    expect(engine.state.towers).toHaveLength(3);
+    expect(engine.state.towers).toHaveLength(4);
+  });
+
+  it("leaves every region enough unprotected bodies to form a group", () => {
+    // v3 는 3기 전부를 보호에서 빼므로 보호 범위가 곧 "이 지역에서 승급이 되느냐"다.
+    // 일반 모드 합성식·아직 순서가 오지 않은 성어까지 잠그면 JP/CN 미리보기
+    // 소환 풀(30·32자)은 여유 글자가 0자가 되어 한 묶음도 만들 수 없다.
+    for (const region of ["KR", "JP", "CN"] as const) {
+      const engine = new GameEngine(`casual-reach-${region.toLowerCase()}`, region, "casual");
+      engine.begin();
+      const pool = engine.summonDefinitions();
+      engine.state.towers = [];
+      engine.state.inventoryTowers = pool
+        .filter((definition) => (casualNaturalStar(definition.char) ?? 8) < 8)
+        .map((definition, index) => casualTower(definition, 20_000 + index, -1));
+      const protections = engine.casualMaterialProtections();
+      expect([...protections.values()]).not.toContain("일반 모드 합성식 재료");
+      const buckets = new Map<string, number>();
+      for (const tower of engine.state.inventoryTowers) {
+        if (protections.has(tower.id)) continue;
+        const key = `${tower.wuxing}:${tower.casualStar}`;
+        buckets.set(key, (buckets.get(key) ?? 0) + 1);
+      }
+      const reachable = [...buckets.values()].filter((count) => count >= 3);
+      expect(reachable.length, `${region} 소환 풀에 3기를 채울 (오행,별) 칸이 없다`).toBeGreaterThan(0);
+    }
+  });
+
+  it("reproduces the same random results for the same seed", () => {
+    const run = (): string[] => {
+      const engine = casualEngine("casual-v3-seeded");
+      const definitions = safeCasualDefinitions(engine, 9);
+      const star = casualNaturalStar(definitions[0]?.char ?? "") as CasualStar;
+      engine.state.inventoryTowers = definitions.map((definition, index) => casualTower(definition, 601 + index, -1, star));
+      const report = engine.autoFuseCasual(definitions[0]?.wuxing as Wuxing);
+      expect(report).toMatchObject({ ok: true, fused: 3, consumed: 9 });
+      return report.gained.map((entry) => entry.char);
+    };
+    const first = run();
+    expect(first).toHaveLength(3);
+    expect(run()).toEqual(first);
+  });
+
+  it("skips empty star buckets and reports the fallback it used", () => {
+    // JP 미리보기 소환 풀은 金 1★ 8자 · 2★ 0자 · 3★ 1자다. 2★가 비었으므로
+    // 사다리가 3★로 건너뛰고 그 사실을 결과 문구에 그대로 남겨야 한다.
+    const engine = casualEngine("casual-v3-fallback", "JP");
+    expect(poolCount(engine, "金", 1)).toBeGreaterThanOrEqual(3);
+    expect(poolCount(engine, "金", 2)).toBe(0);
+    expect(poolCount(engine, "金", 3)).toBeGreaterThan(0);
+
+    const pool = engine.casualResultPool("金", 1);
+    expect(pool).toMatchObject({ star: 3, starFallback: true, rosterFallback: false });
+
+    const definitions = engine.summonDefinitions()
+      .filter((definition) => definition.wuxing === "金" && casualNaturalStar(definition.char) === 1)
+      .slice(0, 3);
+    const towers = definitions.map((definition, index) => casualTower(definition, 701 + index, -1, 1));
+    engine.state.inventoryTowers = towers;
+    const result = engine.fuseCasual(towers.map((tower) => tower.id), true);
+    expect(result).toMatchObject({ ok: true, starFallback: true });
+    expect(result.gained?.star).toBe(3);
+    expect(result.message).toContain("2★ 글자가 없어");
+    expect(engine.state.inventoryTowers).toHaveLength(1);
+  });
+
+  it("widens to the regional roster when the run summon pool has no higher star at all", () => {
+    // JP 木 미리보기 풀은 1★ 4자뿐이라 사다리 전체가 비어 있다. 지역 로스터로
+    // 넓히지 않으면 그 오행은 영원히 승급 불가가 된다.
+    const engine = casualEngine("casual-v3-roster", "JP");
+    for (let star = 2 as CasualStar; star <= 8; star = (star + 1) as CasualStar) {
+      expect(poolCount(engine, "木", star)).toBe(0);
+    }
+    const pool = engine.casualResultPool("木", 1);
+    expect(pool).toMatchObject({ star: 2, starFallback: false, rosterFallback: true });
+    expect(pool?.candidates.every((definition) => definition.wuxing === "木")).toBe(true);
+    expect(pool?.candidates.every((definition) => casualNaturalStar(definition.char) === 2)).toBe(true);
+
+    const definitions = engine.summonDefinitions()
+      .filter((definition) => definition.wuxing === "木" && casualNaturalStar(definition.char) === 1)
+      .slice(0, 3);
+    const towers = definitions.map((definition, index) => casualTower(definition, 801 + index, -1, 1));
+    engine.state.inventoryTowers = towers;
+    const result = engine.fuseCasual(towers.map((tower) => tower.id), true);
+    expect(result).toMatchObject({ ok: true, rosterFallback: true });
+    expect(result.gained?.star).toBe(2);
+    expect(result.message).toContain("지역 로스터");
+  });
+
+  it("caps promotion at eight stars", () => {
+    const engine = casualEngine("casual-v3-cap");
+    const definitions = safeCasualDefinitions(engine, 3, "木");
+    const towers = definitions.map((definition, index) => casualTower(definition, 901 + index, -1, 7));
+    engine.state.inventoryTowers = towers;
+    expect(engine.casualResultPool("木", 7)).toMatchObject({ star: 8 });
+    expect(engine.fuseCasual(towers.map((tower) => tower.id))).toMatchObject({ ok: true });
+    const promoted = engine.state.inventoryTowers[0] as Tower;
+    expect(promoted.casualStar).toBe(8);
+
+    const capped = definitions.map((definition, index) => casualTower(definition, 951 + index, -1, 8));
+    engine.state.inventoryTowers = capped;
+    expect(engine.casualResultPool("木", 8)).toBeNull();
+    expect(engine.casualAutoFusionPlan("木")).toHaveLength(0);
+    expect(engine.casualFusionQuote(capped.map((tower) => tower.id)).blocked[0]?.text).toContain("8★");
   });
 
   it("spends inventory bodies before pulling a deployed defender", () => {
-    // 요구 4-(나): 수비 공백 방지. 인벤 2기로 채울 수 있으면 전장은 건드리지 않는다.
-    const engine = new GameEngine("casual-stored-first", "KR", "casual");
-    engine.begin();
-    const definitions = safeCasualDefinitions(engine, 4);
+    // 수비 공백 방지. 인벤 3기로 채울 수 있으면 전장은 건드리지 않는다.
+    const engine = casualEngine("casual-stored-first");
+    const definitions = safeCasualDefinitions(engine, 5);
     const star = casualNaturalStar(definitions[0]?.char ?? "") as CasualStar;
-    const deployedCore = casualTower(definitions[0] as HanziDefinition, 601, 0, star);
-    const deployedSpare = casualTower(definitions[1] as HanziDefinition, 602, 1, star);
-    const stored = [2, 3].map((index) => casualTower(definitions[index] as HanziDefinition, 600 + index + 1, -1, star));
-    engine.state.towers = [deployedCore, deployedSpare];
+    const deployed = [0, 1].map((index) => casualTower(definitions[index] as HanziDefinition, 1001 + index, index, star));
+    const stored = [2, 3, 4].map((index) => casualTower(definitions[index] as HanziDefinition, 1001 + index, -1, star));
+    engine.state.towers = deployed;
     engine.state.inventoryTowers = stored;
-    const wuxing = deployedCore.wuxing as Wuxing;
+    const wuxing = deployed[0]?.wuxing as Wuxing;
 
     const plan = engine.casualAutoFusionPlan(wuxing);
     expect(plan).toHaveLength(1);
     expect(plan[0]?.materialIds).toEqual(expect.arrayContaining(stored.map((tower) => tower.id)));
-    expect(plan[0]?.materialIds).not.toContain(deployedSpare.id);
+    expect(plan[0]?.materialIds).not.toContain(deployed[0]?.id);
     // 인벤만 소모하므로 전장 경고가 없고 원클릭이 그대로 실행된다.
     expect(plan[0]?.autoSkipReason).toBeNull();
     const report = engine.autoFuseCasual(wuxing);
-    expect(report).toMatchObject({ ok: true, fused: 1, consumed: 2, skipped: 0 });
-    expect(engine.state.towers.map((tower) => tower.id).sort()).toEqual([deployedCore.id, deployedSpare.id].sort());
-    expect(engine.state.inventoryTowers).toHaveLength(0);
-  });
-
-  it("carries lock, concentration and board cell over to the promoted core", () => {
-    // 요구 4-(다): 본체 객체를 그대로 승급시키므로 잠금·농축·배치가 살아 있어야 한다.
-    const engine = new GameEngine("casual-core-inherit", "KR", "casual");
-    engine.begin();
-    const definitions = safeCasualDefinitions(engine, 3);
-    const star = casualNaturalStar(definitions[0]?.char ?? "") as CasualStar;
-    const core = casualTower(definitions[0] as HanziDefinition, 701, 6, star);
-    core.locked = true;
-    core.concentration = 2;
-    core.concentrationPath = "swift";
-    const materials = [1, 2].map((index) => casualTower(definitions[index] as HanziDefinition, 700 + index + 1, -1, star));
-    engine.state.towers = [core];
-    engine.state.inventoryTowers = materials;
-    const wuxing = core.wuxing as Wuxing;
-
-    const plan = engine.casualAutoFusionPlan(wuxing);
-    expect(plan).toHaveLength(1);
-    expect(plan[0]?.coreId).toBe(core.id);
-    const report = engine.autoFuseCasual(wuxing);
-    expect(report).toMatchObject({ ok: true, fused: 1 });
-    expect(report.firstFusion).toMatchObject({ char: core.char, fromStar: star, toStar: star + 1 });
-    const promoted = engine.state.towers.find((tower) => tower.id === core.id);
-    expect(promoted?.casualStar).toBe(star + 1);
-    expect(promoted?.locked).toBe(true);
-    expect(promoted?.concentration).toBe(2);
-    expect(promoted?.concentrationPath).toBe("swift");
-    expect(promoted?.cell).toBe(6);
+    expect(report).toMatchObject({ ok: true, fused: 1, consumed: 3, skipped: 0 });
+    expect(report.gained).toHaveLength(1);
+    expect(engine.state.towers.map((tower) => tower.id).sort()).toEqual(deployed.map((tower) => tower.id).sort());
+    expect(engine.state.inventoryTowers).toHaveLength(1);
+    expect(engine.state.inventoryTowers[0]?.cell).toBe(-1);
   });
 
   it("skips only the resonance-breaking group instead of aborting the whole one-click run", () => {
     // 오행진 공명 임계치(4·8·12·16기)를 깨는 묶음만 건너뛰고 나머지는 실행한다.
     // 뽑기 후 자동 배치가 기본이라 "전장 배치"는 건너뛰기 사유가 아니다.
-    const engine = new GameEngine("casual-skip-group", "KR", "casual");
-    engine.begin();
+    const engine = casualEngine("casual-skip-group");
     engine.state.unlockedFormations = [0];
     const north = BOARD_FORMATIONS[0] as { preferredWuxing: Wuxing; startCell: number };
     const resonant = safeCasualDefinitions(engine, 4, north.preferredWuxing);
     const star = casualNaturalStar(resonant[0]?.char ?? "") as CasualStar;
     const boardQuad = resonant.map((definition, index) =>
-      casualTower(definition, 801 + index, north.startCell + index, star));
+      casualTower(definition, 1101 + index, north.startCell + index, star));
     const otherElement = WUXING_ORDER.find((wuxing) => wuxing !== north.preferredWuxing) as Wuxing;
     const spare = safeCasualDefinitions(engine, 3, otherElement);
     const spareStar = casualNaturalStar(spare[0]?.char ?? "") as CasualStar;
-    const inventoryTrio = spare.map((definition, index) => casualTower(definition, 851 + index, -1, spareStar));
+    const inventoryTrio = spare.map((definition, index) => casualTower(definition, 1151 + index, -1, spareStar));
     engine.state.towers = boardQuad;
     engine.state.inventoryTowers = inventoryTrio;
 
@@ -289,7 +372,7 @@ describe("casual eight-star mode", () => {
     expect(engine.casualAutoFusionPlan(otherElement)[0]?.autoSkipReason).toBeNull();
 
     const report = engine.autoFuseCasual("all");
-    expect(report).toMatchObject({ ok: true, fused: 1, consumed: 2, skipped: 1 });
+    expect(report).toMatchObject({ ok: true, fused: 1, consumed: 3, skipped: 1 });
     expect(report.message).toContain("건너뜀");
     // 공명 4기는 그대로 남고 인벤 묶음만 소모됐다.
     expect(engine.formationResonance(0).matching).toBe(4);
@@ -299,10 +382,9 @@ describe("casual eight-star mode", () => {
   it("provides monotonic star power and unlocks active skills from 2-star onward", () => {
     const multipliers = Object.values(CASUAL_STAR_POWER);
     expect(multipliers.every((value, index) => index === 0 || value > (multipliers[index - 1] ?? 0))).toBe(true);
-    const engine = new GameEngine("casual-skill-unlock", "KR", "casual");
-    engine.begin();
-    const definition = sameElementStarDefinitions(engine)[0] as HanziDefinition;
-    const tower = casualTower(definition, 401, -1, 1);
+    const engine = casualEngine("casual-skill-unlock");
+    const definition = safeCasualDefinitions(engine, 1)[0] as HanziDefinition;
+    const tower = casualTower(definition, 1201, -1, 1);
     expect(engine.towerHasActiveSkills(tower)).toBe(false);
     tower.casualStar = 2;
     expect(engine.towerHasActiveSkills(tower)).toBe(true);
