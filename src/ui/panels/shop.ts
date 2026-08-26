@@ -130,7 +130,11 @@ export function renderSummonShop(): void {
     disabled: !active || !multiUnlocked || state.gold < tenCost,
     affordable: !active || !multiUnlocked || state.gold >= tenCost,
     hotkey: "Q",
-    wide: cards.length % 2 === 1,
+    // [FB1] 2열 격자를 빈칸 없이 채우는 배치가 정본이다. 상품 수가 홀수면
+    // 10연이 남은 반 칸에 들어가고(캐주얼 5+1=3행), 짝수면 홀로 한 행을
+    // 넓게 차지한다(표준 4+1=3행). 이전 조건(홀수일 때 wide)은 캐주얼에서
+    // 빈칸 + 전용 행으로 한 행을 통째로 낭비해 상점 세로 넘침의 주범이었다.
+    wide: cards.length % 2 === 0,
     testId: "multi-summon-button",
     title: multiUnlocked
       ? `10연 소환 · ${tenCost}엽전 · 할증 없음`
