@@ -39,6 +39,11 @@ function canvasPoint(event: PointerEvent): Point {
   return { x: (point.x - ctx.mapOffset.x) / ctx.mapZoom, y: (point.y - ctx.mapOffset.y) / ctx.mapZoom };
 }
 
+/** 수련장 soft-lock 이 "이 클릭이 어느 칸인가"를 물을 때 쓰는 공개 판정. */
+export function cellAtPointerEvent(event: PointerEvent): number {
+  return cellAtPoint(canvasPoint(event));
+}
+
 function cellAtPoint(point: Point): number {
   return BOARD_CELLS.findIndex((candidate) => Math.hypot(candidate.x - point.x, candidate.y - point.y) <= 21);
 }

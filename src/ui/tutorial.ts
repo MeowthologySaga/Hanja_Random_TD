@@ -20,6 +20,7 @@ import { type Wuxing } from "../core/types";
 import { isBattleAssetsReady, whenBattleAssetsReady } from "./asset-loader";
 import { canvas, ctx, must, shell, sound } from "./app-context";
 import { focusMapOnCells } from "./battle/camera";
+import { cellAtPointerEvent } from "./battle/input";
 import { setPanelTab, showToast } from "./hud";
 import { startRun } from "./s00-menu";
 import { hideSummonReveal } from "./summon-reveal";
@@ -62,6 +63,8 @@ interface TutorialStep {
   readonly view: () => TutorialView;
   /** 이 단계에서 클릭을 허용하는 영역. 말풍선·소환 결과 카드는 항상 허용. */
   readonly allow: () => readonly string[];
+  /** 전장 클릭을 칸 단위로 더 좁힌다. 없으면 전장 어디든 허용. */
+  readonly allowCell?: () => readonly number[];
   readonly satisfied: () => boolean;
 }
 
@@ -380,6 +383,9 @@ const STEPS: readonly TutorialStep[] = [
       control: "click"
     }),
     allow: () => ["#battle-canvas"],
+    // 성어는 반드시 그 줄 위에서만 완성된다 — 줄 밖 칸을 누르면 배치가 아니라
+    // 말풍선 흔들림으로 답한다(순서는 자유, 자리는 고정).
+    allowCell: () => runtime.idiomLine,
     satisfied: () => ctx.engine.isIdiomSealActive(TUTORIAL_IDIOM_ID)
   },
   {
@@ -660,8 +666,15 @@ function interceptPointer(event: Event): void {
     && !guidanceClicked
     && target.closest("#tutorial-exit, #tutorial-quit-dialog") === null;
   if (advancing) guidanceClicked = true;
-  const allowed = [...GLOBAL_ALLOW, ...(STEPS[stepIndex]?.allow() ?? [])];
-  if (allowed.some((selector) => target.closest(selector) !== null)) return;
+  const step = STEPS[stepIndex];
+  const allowed = [...GLOBAL_ALLOW, ...(step?.allow() ?? [])];
+  if (allowed.some((selector) => target.closest(selector) !== null)) {
+    const cellGate = step?.allowCell?.();
+    // 전장은 요소 하나라 셀렉터로는 칸을 가릴 수 없다 — 좌표로 판정한다.
+    if (!cellGate || target.closest("#battle-canvas") === null) return;
+    const cell = cellAtPointerEvent(event as PointerEvent);
+    if (cellGate.includes(cell)) return;
+  } 
   event.preventDefault();
   event.stopPropagation();
   // 진행 클릭이면 "여기 아니야" 흔들림 대신 다음 걸음이 답한다.
