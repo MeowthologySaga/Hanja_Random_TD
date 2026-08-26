@@ -24,9 +24,13 @@ import { hasActiveSkills } from "./abilities";
 import {
   FROST_ZONE_DURATION,
   FROST_ZONE_RADIUS,
+  GWICHEON_ABILITY,
+  GWICHEON_MIN_STAR,
+  GWICHEON_RUSH_THRESHOLD,
   MOMENTUM_STACK_BONUS,
   WARFARE_BRAND_DURATION,
   frostSlowRatio,
+  gwicheonChargeSeconds,
   momentumMaxStacks,
   warfareBrandPower
 } from "./abilities";
@@ -833,11 +837,63 @@ export class GameEngine {
     for (const tower of this.state.towers) {
       tower.pulse = Math.max(0, tower.pulse - delta * 3);
       tower.abilityFlash = Math.max(0, tower.abilityFlash - delta * 2.4);
+      this.chargeGwicheon(tower, delta);
       tower.cooldownLeft -= delta;
       if (tower.cooldownLeft > 0) continue;
       const target = this.findTarget(tower);
       if (target) this.fireTower(tower, target);
     }
+  }
+
+  /**
+   * [SKILL-V1] 귀천(歸天) — 6★ 이상 자령의 충전 스킬.
+   * 30초(별당 −2초) 충전 후 자동 발동해 가장 오래 버틴 일반 적 1기를 정화한다.
+   * 적 한계 75% 이상이면 충전 2배속. 대상이 없으면 가득 찬 채 다음 적을 기다린다.
+   */
+  private chargeGwicheon(tower: Tower, delta: number): void {
+    if (this.state.mode !== "casual") return;
+    const star = tower.casualStar ?? tower.naturalStar ?? 1;
+    if (star < GWICHEON_MIN_STAR) return;
+    const required = gwicheonChargeSeconds(star);
+    const rush = this.state.enemies.length >= MAX_ENEMIES * GWICHEON_RUSH_THRESHOLD ? 2 : 1;
+    tower.ascendCharge = Math.min(required, (tower.ascendCharge ?? 0) + delta * rush);
+    if (tower.ascendCharge >= required && this.castGwicheon(tower)) tower.ascendCharge = 0;
+  }
+
+  /**
+   * [SKILL-V1] 귀천 대상 — 화면에서 가장 오래 산(가장 먼저 나타난) 일반 적.
+   * 우두머리(boss)와 정예(armored, "정예 철갑 강시")는 면역이다.
+   */
+  findGwicheonTarget(): Enemy | undefined {
+    let oldest: Enemy | undefined;
+    for (const enemy of this.state.enemies) {
+      if (enemy.boss || enemy.archetype === "boss" || enemy.archetype === "armored") continue;
+      if (!oldest || enemy.id < oldest.id) oldest = enemy;
+    }
+    return oldest;
+  }
+
+  /** [SKILL-V1] 귀천 발동 — 즉시 소멸이되 보상·처치 집계는 정상 경로로 지급한다. */
+  private castGwicheon(tower: Tower): boolean {
+    const target = this.findGwicheonTarget();
+    if (!target) return false;
+    const origin = BOARD_CELLS[tower.cell] as Point;
+    const at = this.enemyPoint(target);
+    // 장갑 완전 관통 + 잔여 체력 이상의 피해 = 확정 정화. 보상은 damageEnemy 가 지급한다.
+    this.damageEnemy(target, target.hp + 10, false, false, 1);
+    this.emitAbility(tower, GWICHEON_ABILITY, origin, at, 1, "가장 오래 버틴 일반 망령 정화 · 보상 지급");
+    return true;
+  }
+
+  /**
+   * [SKILL-V1] 귀천 UI 상태. 자격이 없으면 null — 카드·게이지를 아예 그리지 않는다.
+   */
+  gwicheonStatus(tower: Tower): { charge: number; required: number } | null {
+    if (this.state.mode !== "casual") return null;
+    const star = tower.casualStar ?? tower.naturalStar ?? 1;
+    if (star < GWICHEON_MIN_STAR) return null;
+    const required = gwicheonChargeSeconds(star);
+    return { charge: Math.min(required, tower.ascendCharge ?? 0), required };
   }
 
   private findTarget(tower: Tower): Enemy | undefined {
