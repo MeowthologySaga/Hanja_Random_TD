@@ -443,6 +443,7 @@ app.innerHTML = `
         <i class="tab-divider" aria-hidden="true"></i>
         <button id="goal-tab" type="button" data-panel-tab="goal" role="tab" aria-selected="false">목표 <small id="goal-tab-progress">0%</small></button>
         <button id="idiom-tab" type="button" data-panel-tab="idiom" role="tab" aria-selected="false">성어 <small id="idiom-tab-count">0/5</small></button>
+        <button id="record-tab" type="button" data-panel-tab="record" role="tab" aria-selected="false">기록</button>
       </nav>
 
 

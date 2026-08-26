@@ -4064,58 +4064,9 @@ select option {
   opacity: 0.85;
 }
 
-/* ── 바닥 기록 티커 ─────────────────────────────────────────────── */
-.record-ticker {
-  display: flex;
-  gap: 6px;
-  align-items: center;
-  overflow: hidden;
-  min-width: 0;
-  padding: 2px 8px;
-  border-radius: var(--r-sm);
-  background: rgba(201, 183, 143, 0.44);
-  box-shadow: inset 0 0 0 1px rgba(122, 90, 42, 0.26);
-  font-size: 10px;
-  white-space: nowrap;
-}
-
-.record-ticker > i {
-  flex: 0 0 4px;
-  width: 4px;
-  height: 4px;
-  border-radius: 999px;
-  background: var(--text-400);
-}
-
-.record-ticker[data-active="1"] > i {
-  background: var(--seal);
-}
-
-.record-ticker b {
-  flex: 0 0 auto;
-  font-family: "Batang", serif;
-  font-size: 13px;
-  font-weight: 900;
-}
-
-.record-ticker span {
-  overflow: hidden;
-  color: var(--text-300);
-  text-overflow: ellipsis;
-}
-
-/* 티커가 한 줄 들어가므로 세로 예산을 다시 나눈다 */
-@media (min-width: 800px) {
-  .control-panel {
-    grid-template-rows: 34px 56px 52px minmax(0, 1fr) 40px 20px 20px 24px;
-  }
-}
-
-@media (min-width: 1500px) and (min-height: 850px) {
-  .control-panel {
-    grid-template-rows: 44px 70px 64px minmax(0, 1fr) 52px 28px 28px 30px;
-  }
-}
+/* R7-2: 바닥 기록 티커는 사용자 요청으로 DOM 에서 제거됐다(f6604c7).
+   `.record-ticker` 규칙과 "티커 한 줄"을 전제한 8행 격자 예산을 함께
+   지운다. 기록은 이제 패널 탭(data-panel-tab="record")으로 들어간다. */
 
 /* ══════════════════════════════════════════════════════════════════
    41. 강화 제련소 — 400px 안에 2열을 넣어 글자가 세로로 쪼개졌다
@@ -4996,9 +4947,7 @@ dialog,
   font-size: 13.5px !important;
 }
 
-/* 패널 공통 바닥 올리기 */
-.record-ticker { font-size: 11px; }
-.record-ticker b { font-size: 14px; }
+/* 패널 공통 바닥 올리기 (R7-2: 제거된 .record-ticker 두 줄 삭제) */
 .opening-guide > div span { font-size: 10px !important; }
 .goal-choice-copy :is(em, small) { font-size: 10px !important; }
 .concentration-compare > div :is(span, b, i) { font-size: 10px !important; }
@@ -6302,9 +6251,7 @@ dialog,
 .panel-tabs button::before { width: 20px; height: 20px; }
 .panel-tabs button { grid-template-rows: 20px auto; }
 
-/* 티커·푸터 — 10~11px */
-.record-ticker { font-size: 12px; }
-.record-ticker b { font-size: 15px; }
+/* 푸터 — 10~11px (R7-2: 제거된 .record-ticker 두 줄 삭제) */
 #message-value { font-size: 11.5px !important; }
 .panel-footer, .panel-footer span { font-size: 11px !important; }
 .canvas-tip i { font-size: 11.5px; }
