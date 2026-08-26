@@ -69,7 +69,9 @@ import {
   casualFusionEssenceRefund,
   casualFusionHeadline,
   casualGoalOrder,
+  casualStarBandShare,
   casualStarIndexFor,
+  casualSummonStarDistribution,
   concentrationEssenceCost,
   concentrationEssenceRefund,
   concentrationPathLabel,
@@ -105,7 +107,6 @@ import {
 import {
   activePoolBaseWeight,
   CASUAL_PAIR_WEIGHT,
-  CASUAL_STAR_DECAY,
   definitionForTower,
   ELEMENT_STYLES,
   elementUpgradeCost,
@@ -1115,10 +1116,12 @@ export class GameEngine {
     if (this.state.gold < cost) return { ok: false, message: "엽전이 " + String(cost - this.state.gold) + " 부족합니다." };
     if (this.runSummonPool.length === 0) return { ok: false, message: "이 지역의 활성 소환 풀이 비어 있습니다." };
     const maxStage = this.state.mode === "casual" ? 5 : maxSummonStageForWave(this.state.wave);
-    // 캐주얼 소환은 확률 가중이 아니라 후보 풀 자체를 밴드로 잘라 상·하한을 만든다.
+    // 캐주얼 소환의 밴드 하한은 후보 풀 하드 컷("N★ 확정" 보장)이고, 상한은
+    // 컷이 아니다 — 후보는 8★까지 열어 두고 applyStarBandDecay 의 꼬리 감쇠가
+    // 상한 위 별을 잭팟 확률로 누른다(원 기획 #10).
     const band = this.summonStarBand(this.state.summonIntent);
     const casualPool = (): HanziDefinition[] => {
-      const banded = band === null ? [...this.runSummonPool] : this.starBandCandidates(band.min, band.max);
+      const banded = band === null ? [...this.runSummonPool] : this.starBandCandidates(band.min, 8);
       if (guaranteedStar === null) return banded;
       const guaranteed = banded.filter((definition) => (casualNaturalStar(definition.char) ?? 1) === guaranteedStar);
       return guaranteed.length > 0 ? guaranteed : banded;
@@ -1193,7 +1196,7 @@ export class GameEngine {
     });
     // 짝 맞추기·목적 가중까지 끝난 뒤에 별 단위 목표 분포로 다시 눌러 준다.
     // 순서가 바뀌면 글자 수가 많은 낮은 별이 밴드 분포를 통째로 삼킨다.
-    if (band !== null) this.applyStarBandDecay(summonPool, weights);
+    if (band !== null) this.applyStarBandDecay(summonPool, weights, band);
     const targetDefinition = this.catalog.definitions.get(this.state.targetChar);
     const targetGuaranteeReady = this.state.summonIntent === "lineage"
       && this.state.lineageTargetProgress >= 29
@@ -1264,12 +1267,16 @@ export class GameEngine {
           ? "concentration"
           : "replacement";
     const helpfulLabel = helpfulReason === "both" ? " · 목표·사자성어 재료!" : helpfulReason === "goal" ? " · 목표 재료!" : helpfulReason === "idiom" ? " · 사자성어 재료!" : "";
-    const placementMessage = definition.char + " · " + definition.combat.roleLabel + (stored ? " 인벤토리 보관" : " 소환") + helpfulLabel;
+    // 잭팟 = 소프트 상한 위 별. 하한 보장과 달리 광고하지 않는 행운이므로 따로 외친다.
+    const drawnStar = casualNaturalStar(definition.char) ?? 1;
+    const jackpot = band !== null && drawnStar > band.max;
+    const jackpotLabel = jackpot ? ` · 상한 돌파 ${drawnStar}★!` : "";
+    const placementMessage = definition.char + " · " + definition.combat.roleLabel + (stored ? " 인벤토리 보관" : " 소환") + helpfulLabel + jackpotLabel;
     this.state.lastMessage = isFirstSummon && startingFormation
       ? `${definition.wuxing} 자령 출현 → ${startingFormation.label} 무료 개방 · ${placementMessage} · 추가 소환 2기를 권장합니다.`
       : placementMessage;
     const eventAt = stored ? (startingFormation?.center ?? { x: 400, y: 300 }) : BOARD_CELLS[cell] as Point;
-    this.events.push({ type: "summon", at: eventAt, tower: { ...tower }, stored, helpful, helpfulReason, newDiscovery, utility });
+    this.events.push({ type: "summon", at: eventAt, tower: { ...tower }, stored, helpful, helpfulReason, newDiscovery, utility, jackpot });
     if (definition.char === this.state.targetChar) this.completeGoal(definition.char);
     if (!stored) this.resolveIdiomFormations();
     return { ok: true, message: this.state.lastMessage };
@@ -1375,7 +1382,8 @@ export class GameEngine {
       helpful: false,
       helpfulReason: null,
       newDiscovery,
-      utility: newDiscovery ? "new" : "concentration"
+      utility: newDiscovery ? "new" : "concentration",
+      jackpot: false
     });
     return { ok: true, message: this.state.lastMessage };
   }
@@ -1450,16 +1458,20 @@ export class GameEngine {
   }
 
   /**
-   * 밴드 안 별 분포를 `CASUAL_STAR_DECAY^(별 - 밴드하한)` 으로 눌러 낮은 별을 흔하게 만든다.
+   * 별 분포를 `casualStarBandShare` 의 목표 몫으로 눌러 낮은 별을 흔하게 만든다 —
+   * 밴드 안은 `CASUAL_STAR_DECAY^(별-하한)`, 상한 위는 `CASUAL_STAR_TAIL_DECAY`
+   * 의 가파른 잭팟 꼬리다.
    *
    * 별 단위로 먼저 목표 몫을 정하고 같은 별의 글자들이 그 몫을 나눠 갖는다.
    * 글자를 하나씩 곱하기만 하면 1★ 332자와 8★ 18자처럼 칸 크기가 다른 구간에서
-   * 감쇠가 글자 수 차이에 묻혀 버린다.
+   * 감쇠가 글자 수 차이에 묻혀 버린다. 하한은 요청 밴드가 아니라 실제 풀의
+   * 최저 별을 쓴다 — 소형 풀에서 starBandCandidates 가 하한을 넓혔을 수 있다.
    */
-  private applyStarBandDecay(pool: readonly HanziDefinition[], weights: number[]): void {
+  private applyStarBandDecay(pool: readonly HanziDefinition[], weights: number[], band: SummonStarBand): void {
     const starOf = (definition: HanziDefinition) => casualNaturalStar(definition.char) ?? 1;
     let bandMin = 8;
     for (const definition of pool) bandMin = Math.min(bandMin, starOf(definition));
+    const effectiveBand: SummonStarBand = { min: bandMin, max: band.max };
     const totals = new Map<number, number>();
     pool.forEach((definition, index) => {
       const weight = weights[index] ?? 0;
@@ -1473,8 +1485,27 @@ export class GameEngine {
       const star = starOf(definition);
       const total = totals.get(star) ?? 0;
       if (total <= 0) return;
-      weights[index] = (weight / total) * Math.pow(CASUAL_STAR_DECAY, star - bandMin);
+      weights[index] = (weight / total) * casualStarBandShare(star, effectiveBand);
     });
+  }
+
+  /**
+   * 확률 공개 UI 용 — 이 지역·모드에서 해당 소환 카드가 실제로 쓰는 별 분포
+   * (1~8★, 합 1). `applyStarBandDecay` 와 같은 실효 밴드·후보 별만 쓰므로
+   * 화면의 표가 곧 실측 분포다. 밴드가 없는 소환(자형연성·계보)은 null.
+   */
+  summonStarDistribution(intent: SummonIntent): ReadonlyArray<{ star: CasualStar; share: number }> | null {
+    const band = this.summonStarBand(intent);
+    if (band === null) return null;
+    const pool = this.starBandCandidates(band.min, 8);
+    let bandMin = 8;
+    const present = new Set<number>();
+    for (const definition of pool) {
+      const star = casualNaturalStar(definition.char) ?? 1;
+      present.add(star);
+      bandMin = Math.min(bandMin, star);
+    }
+    return casualSummonStarDistribution({ min: bandMin, max: band.max }, present);
   }
 
   /** 모드·지역별 상품 노출. 계보는 자형연성 전용, 티어는 캐주얼 + 충분한 풀 전용. */

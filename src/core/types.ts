@@ -10,7 +10,8 @@ export type RunPhase = "title" | "prep" | "combat" | "victory" | "defeat";
 export type DefeatCause = "enemy-limit" | "boss-timeout";
 export type AutomationMode = "manual" | "semi" | "goal";
 // 상점 소환 상품. `midstar`·`highstar` 는 획수=별 규칙이 있는 캐주얼 8성전 전용
-// 티어 소환이며, 가중이 아니라 후보 풀 필터(확정 보장)로 동작한다.
+// 티어 소환이다. 밴드 하한은 후보 풀 하드 필터("N★ 확정" 보장), 상한은
+// 소프트 — 그 위 별도 가파른 꼬리 확률로 나온다(engine-tuning.CASUAL_STAR_TAIL_DECAY).
 export type SummonIntent = "balanced" | "discovery" | "lineage" | "concentration" | "midstar" | "highstar";
 export type ConcentrationPath = "swift" | "potent";
 export type ConcentrationLevel = 0 | 1 | 2 | 3;
@@ -349,7 +350,8 @@ export type GameEvent =
   | { type: "damage"; at: Point; amount: number; critical: boolean; weakness: boolean }
   | { type: "kill"; at: Point; reward: number }
   | { type: "interest"; amount: number; gold: number }
-  | { type: "summon"; at: Point; tower: Tower; stored: boolean; helpful: boolean; helpfulReason: "goal" | "idiom" | "both" | null; newDiscovery: boolean; utility: "new" | "synthesis" | "concentration" | "replacement" }
+  // jackpot = 캐주얼 밴드의 소프트 상한 위 별이 꼬리 확률로 나온 순간(공개 카드가 강조한다).
+  | { type: "summon"; at: Point; tower: Tower; stored: boolean; helpful: boolean; helpfulReason: "goal" | "idiom" | "both" | null; newDiscovery: boolean; utility: "new" | "synthesis" | "concentration" | "replacement"; jackpot: boolean }
   | { type: "dismantle"; tower: Tower; wuxing: Wuxing; essence: number }
   | { type: "concentrate"; tower: Tower; level: ConcentrationLevel; path: ConcentrationPath; usedDuplicate: boolean; essenceCost: number }
   | { type: "statUpgrade"; scope: "global" | "element"; wuxing: Wuxing | null; stat: UpgradeStat; level: number; cost: number; bonus: number }

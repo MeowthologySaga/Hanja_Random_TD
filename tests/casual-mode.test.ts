@@ -13,6 +13,12 @@ import {
   casualFusionDismantleScore,
   casualFusionEssenceRefund
 } from "../src/core/game";
+import {
+  CASUAL_STAR_DECAY,
+  CASUAL_STAR_TAIL_DECAY,
+  casualStarBandShare,
+  casualSummonStarDistribution
+} from "../src/core/engine-tuning";
 import { MIN_TIER_POOL_SIZE, SUMMON_SURCHARGE, summonCost, WUXING_ORDER } from "../src/core/hanzi";
 import type { CasualStar, HanziDefinition, RegionCode, Tower, Wuxing } from "../src/core/types";
 
@@ -417,10 +423,11 @@ describe("casual eight-star mode", () => {
     expect(engine.state.inventoryTowers).toHaveLength(1);
   });
 
-  it("keeps every casual summon inside its advertised star band and charges the exact surcharge", () => {
+  it("keeps the hard band floor, mostly stays in band, and charges the exact surcharge", () => {
     // 뽑기 별이 완전 무작위면 "같은 오행·같은 별 3기"라는 조합 루프가 성립하지 않는다.
-    // 밴드는 가중이 아니라 후보 풀 필터이므로 200회 전부 상·하한을 지켜야 한다.
-    // 특히 기본 밴드 상한 3★ 가 새는 순간 "뽑기로 상위 별"이 되어 조합이 죽는다.
+    // 하한은 하드 필터다 — 티어 "N★ 확정" 광고의 근거이므로 200회 전부 지켜야 한다.
+    // 상한은 소프트다(원 기획 #10) — 상한 위 별도 가파른 꼬리 확률로 나오되,
+    // 압도적 다수는 밴드 안이어야 "주로 min~max★" 광고가 참이다.
     for (const [intent, min, max] of [["balanced", 1, 3], ["midstar", 2, 5], ["highstar", 3, 8]] as const) {
       const engine = new GameEngine(`casual-band-${intent}`, "KR", "casual");
       engine.setAutoPlaceSummons(false);
@@ -437,7 +444,9 @@ describe("casual eight-star mode", () => {
       }
       expect(engine.state.inventoryTowers).toHaveLength(200);
       const stars = engine.state.inventoryTowers.map((tower) => tower.naturalStar ?? 0);
-      expect(stars.every((star) => star >= min && star <= max)).toBe(true);
+      expect(stars.every((star) => star >= min)).toBe(true);
+      // 꼬리 총 확률은 2% 남짓 — 200회에서 상한 위가 8% 를 넘으면 꼬리가 아니라 구멍이다.
+      expect(stars.filter((star) => star > max).length).toBeLessThanOrEqual(16);
       // 밴드가 실제로 넓게 쓰이는지도 본다(하한 한 칸에 고정되면 밴드가 아니다).
       expect(new Set(stars).size).toBeGreaterThan(1);
       // 소환 목적은 카드 한 장 안에서만 유효하다. 상태로 남지 않는다.
@@ -477,8 +486,12 @@ describe("casual eight-star mode", () => {
     const base = sample("balanced", 400);
     expect(base.get(1) ?? 0).toBeGreaterThan(base.get(2) ?? 0);
     expect(base.get(2) ?? 0).toBeGreaterThan(base.get(3) ?? 0);
-    // 기본 밴드에서 4★ 이상은 단 한 번도 나오지 않는다.
-    expect([4, 5, 6, 7, 8].reduce((total, star) => total + (base.get(star) ?? 0), 0)).toBe(0);
+    // 상한 3★ 위는 잭팟 꼬리다(총 ~2.2%). 400회 기준 0~30회 사이 — 사라지면
+    // 하드 필터로의 회귀, 흔해지면 "확 떨어짐"의 소실이다.
+    const baseTail = [4, 5, 6, 7, 8].reduce((total, star) => total + (base.get(star) ?? 0), 0);
+    expect(baseTail).toBeLessThanOrEqual(30);
+    // 400회에서 3★(16%)는 수십 회 나온다 — 꼬리(2%)가 그보다 흔할 수는 없다.
+    expect(baseTail).toBeLessThan(base.get(3) ?? 0);
 
     const high = sample("highstar", 400);
     expect(high.get(3) ?? 0).toBeGreaterThan(high.get(4) ?? 0);
@@ -487,6 +500,53 @@ describe("casual eight-star mode", () => {
     const top = ((high.get(7) ?? 0) + (high.get(8) ?? 0)) / 400;
     expect(top).toBeGreaterThan(0.02);
     expect(top).toBeLessThan(0.09);
+  });
+
+  it("extends a steep jackpot tail above the soft band ceiling", () => {
+    // 원 기획 #10 복원: "아주 낮은 확률로 그 위 별도 나온다 — 오를수록 확 떨어짐".
+    // summonStarDistribution 은 확률 공개 UI 의 단일 원천이므로 수학 자체를 고정한다.
+    const engine = new GameEngine("casual-tail", "KR", "casual");
+    engine.begin();
+    const distribution = engine.summonStarDistribution("balanced");
+    expect(distribution).not.toBeNull();
+    const shares = new Map((distribution ?? []).map((row) => [row.star, row.share]));
+    expect([...shares.values()].reduce((sum, share) => sum + share, 0)).toBeCloseTo(1, 10);
+    // 밴드 안은 기존 감쇠 그대로.
+    expect((shares.get(2) ?? 0) / (shares.get(1) ?? 1)).toBeCloseTo(CASUAL_STAR_DECAY, 10);
+    expect((shares.get(3) ?? 0) / (shares.get(2) ?? 1)).toBeCloseTo(CASUAL_STAR_DECAY, 10);
+    // 상한을 넘는 순간 훨씬 가파른 꼬리로 꺾여 8★까지 이어진다.
+    expect(CASUAL_STAR_TAIL_DECAY).toBeLessThan(CASUAL_STAR_DECAY / 2);
+    expect((shares.get(4) ?? 0) / (shares.get(3) ?? 1)).toBeCloseTo(CASUAL_STAR_TAIL_DECAY, 10);
+    expect((shares.get(5) ?? 0) / (shares.get(4) ?? 1)).toBeCloseTo(CASUAL_STAR_TAIL_DECAY, 10);
+    // 목표 감각: 기본 소환 4★+ 는 2% 안팎, 5★ 0.2%대, 8★은 로또(0.001% 미만).
+    const tail = [4, 5, 6, 7, 8].reduce((sum, star) => sum + (shares.get(star) ?? 0), 0);
+    expect(tail).toBeGreaterThan(0.01);
+    expect(tail).toBeLessThan(0.03);
+    expect(shares.get(5) ?? 0).toBeGreaterThan(0.001);
+    expect(shares.get(5) ?? 0).toBeLessThan(0.004);
+    expect(shares.get(8) ?? 0).toBeGreaterThan(0);
+    expect(shares.get(8) ?? 0).toBeLessThan(0.00001);
+
+    // 하한은 하드 그대로 — 티어 분포는 하한 밑이 정확히 0이다.
+    const midstar = engine.summonStarDistribution("midstar") ?? [];
+    expect(midstar.find((row) => row.star === 1)?.share).toBe(0);
+    expect(midstar.find((row) => row.star === 6)?.share ?? 0).toBeGreaterThan(0);
+    const highstar = engine.summonStarDistribution("highstar") ?? [];
+    expect(highstar.filter((row) => row.star <= 2).every((row) => row.share === 0)).toBe(true);
+    // 고급 밴드는 상한이 8★ 이라 꼬리 구간이 없고 기존 분포 그대로다.
+    expect((highstar.find((row) => row.star === 8)?.share ?? 0) / (highstar.find((row) => row.star === 7)?.share ?? 1))
+      .toBeCloseTo(CASUAL_STAR_DECAY, 10);
+
+    // 자형연성은 밴드도 분포도 없다.
+    const standard = new GameEngine("standard-tail", "KR", "standard");
+    standard.begin();
+    expect(standard.summonStarDistribution("balanced")).toBeNull();
+
+    // 순수 계산 검증 — 후보에 없는 별은 0 이 되고 남은 별로 재정규화된다.
+    const partial = casualSummonStarDistribution({ min: 1, max: 3 }, new Set([1, 2, 3, 4]));
+    expect(partial.reduce((sum, row) => sum + row.share, 0)).toBeCloseTo(1, 10);
+    expect(partial.find((row) => row.star === 5)?.share).toBe(0);
+    expect(casualStarBandShare(0, { min: 1, max: 3 })).toBe(0);
   });
 
   it("guarantees one band-ceiling summon in every casual ten-pull", () => {
@@ -501,8 +561,9 @@ describe("casual eight-star mode", () => {
       expect(engine.summonMany(10)).toMatchObject({ ok: true });
       const stars = engine.state.inventoryTowers.map((tower) => tower.naturalStar ?? 0);
       expect(stars).toHaveLength(10);
-      expect(stars.every((star) => star >= 1 && star <= 3)).toBe(true);
-      expect(stars.filter((star) => star === 3).length).toBeGreaterThanOrEqual(1);
+      // 하한은 하드, 상한은 소프트 — 보장은 "상한 이상 1기"로 읽는다(잭팟도 인정).
+      expect(stars.every((star) => star >= 1)).toBe(true);
+      expect(stars.filter((star) => star >= 3).length).toBeGreaterThanOrEqual(1);
     }
   });
 
@@ -526,7 +587,11 @@ describe("casual eight-star mode", () => {
         engine.state.gold = summonCost(engine.state.summonCount);
         expect(engine.summonProduct("balanced")).toMatchObject({ ok: true });
       }
-      expect(engine.state.inventoryTowers.every((tower) => (tower.naturalStar ?? 0) <= 3)).toBe(true);
+      // 소형 풀에서도 "주로 1~3★"는 유효하다 — 꼬리(≈2%)가 있으니 상한 위를
+      // 전면 금지하지는 않되, 40회 중 4회를 넘으면 밴드가 무너진 것이다.
+      const smallPoolStars = engine.state.inventoryTowers.map((tower) => tower.naturalStar ?? 0);
+      expect(smallPoolStars.every((star) => star >= 1)).toBe(true);
+      expect(smallPoolStars.filter((star) => star > 3).length).toBeLessThanOrEqual(4);
     }
     const korea = new GameEngine("casual-tier-kr-pool", "KR", "casual");
     korea.begin();
@@ -561,10 +626,12 @@ describe("casual eight-star mode", () => {
       }
       return hits;
     };
-    const trials = 300;
+    // 300 표본은 소프트 밴드 도입으로 뽑기 열이 재배열되자 우연히 문턱을 스쳤다.
+    // (3,000 표본 실측 1.69x — 배수 자체는 건재.) 표본을 늘려 우연을 걷어낸다.
+    const trials = 900;
     const seeded = firstDrawHits(true, trials);
     const plain = firstDrawHits(false, trials);
-    // 설계 배수는 2.2x 이고 다른 가중항이 희석해 실측 1.8x 안팎이 나온다.
+    // 설계 배수는 2.2x 이고 다른 가중항이 희석해 실측 1.7x 안팎이 나온다.
     expect(plain).toBeGreaterThan(0);
     expect(seeded).toBeGreaterThan(plain * 1.35);
   });
