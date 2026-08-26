@@ -8552,3 +8552,162 @@ span.codex-jaryeong-category { color: #4a3f30 !important; }
   .summon-card > small { font-size: 9px; }
   .summon-card > em { font-size: 10.5px; }
 }
+
+/* ── R5-2. 오행진 해금 — 자물쇠 커서 · 확인 팝업 · 상점 5칸 ───
+   잠긴 칸을 누르면 이미 해금이 일어나고 있었는데 시각 단서가 하나도 없었다.
+   전장에는 자물쇠 스프라이트를, 클릭에는 확인 팝업을 붙이고, 상점 5칸은
+   오행색을 실제로 드러내 "어느 진을 사는가"가 눈에 먼저 들어오게 한다.
+   ──────────────────────────────────────────────────────────── */
+
+/* 잠긴 진 위에서만 손가락 커서. drawBoard 가 dataset 으로 알린다. */
+#battle-canvas[data-lock-hover="1"] { cursor: pointer; }
+
+.formation-unlock-dialog::backdrop {
+  background: rgba(10, 8, 5, 0.62);
+}
+
+/* 두루마리 배경은 520×310 고정 비율이다. 폭을 줄이면 좌우 봉 장식까지 같이
+   줄어들어 본문이 봉 위로 올라탄다. P00·S13 과 같은 크기를 그대로 쓴다. */
+.formation-unlock-dialog .p00-frame {
+  height: 300px;
+  gap: 4px;
+}
+
+.formation-unlock-dialog h3 {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin: 2px 0 4px;
+  font-size: 20px;
+}
+
+.formation-unlock-dialog h3 > b {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  color: color-mix(in srgb, var(--formation, #c9963e) 72%, #2e2212);
+  font-family: "Batang", serif;
+  font-size: 22px;
+  border: 2px solid var(--formation, #c9963e);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--formation, #c9963e) 16%, #f2e8cd);
+}
+
+#formation-unlock-body {
+  margin: 0 0 6px;
+  color: #665846;
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
+/* 못 사는 이유는 색이 아니라 글로 남긴다. */
+.formation-unlock-reason {
+  margin: 0 0 4px;
+  color: #9f2f23;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+/* P00 과 같은 서책 버튼 재질을 쓴다. 배경을 주지 않으면 흰 사각형이 남는다. */
+#formation-unlock-confirm {
+  color: #ffeec4;
+  background:
+    url("/assets/ui/main-menu-b/ui/button-secondary-default-v1.png") center / 100% 100% no-repeat,
+    #4a1e14;
+}
+
+#formation-unlock-close {
+  color: #d8c9a8;
+  background:
+    url("/assets/ui/main-menu-b/ui/button-secondary-default-v1.png") center / 100% 100% no-repeat,
+    #26221c;
+  filter: grayscale(0.35);
+}
+
+#formation-unlock-confirm:hover:not(:disabled) { filter: brightness(1.12); }
+#formation-unlock-close:hover { filter: grayscale(0) brightness(1.08); }
+
+#formation-unlock-confirm > em {
+  font-style: normal;
+  font-weight: 900;
+}
+
+#formation-unlock-confirm:disabled {
+  cursor: not-allowed;
+  color: #b4a68c;
+  filter: grayscale(0.7) brightness(0.72);
+}
+
+/* 상점 해금 5칸: 크기 56px + 오행색을 종이 위에 명확히.
+   앞 절들이 이 칸을 `!important` 로 놋쇠판에 고정해 두어 오행색이 전혀 드러나지
+   않았다("크기랑 각 속성 맞는 색" 요청). 같은 파일의 관례대로 !important 로
+   되받되, 잠김(선행 미달)만은 스펙대로 회갈로 눌러 둔다. */
+/* 5칸 × 약 66px 이라 글자칸을 24px 로 두면 "18엽전"이 "18…"로 잘린다.
+   오행 글자는 스펙대로 18px 로 키우되 칸 폭과 여백을 깎아 값이 온전히 남게 한다. */
+.shop-workbench .formation-unlock-list button {
+  grid-template-columns: 19px minmax(0, 1fr) !important;
+  column-gap: 3px !important;
+  min-height: 56px !important;
+  padding: 6px 4px !important;
+}
+
+.shop-workbench .formation-unlock-list button:not(.is-unlocked) {
+  border: 1px solid color-mix(in srgb, var(--formation) 46%, rgba(74, 58, 34, 0.5)) !important;
+  border-top: 4px solid var(--formation) !important;
+  background: color-mix(in srgb, var(--formation) 14%, #f2e8cd) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 253, 244, 0.6) !important;
+}
+
+.shop-workbench .formation-unlock-list button:not(.is-unlocked) b {
+  color: color-mix(in srgb, var(--formation) 70%, #2e2212) !important;
+  font-size: 18px !important;
+}
+
+.shop-workbench .formation-unlock-list button:not(.is-unlocked) span {
+  color: #2a211a !important;
+  font-size: 11.5px !important;
+}
+
+.shop-workbench .formation-unlock-list button:not(.is-unlocked) small {
+  color: #7a5424 !important;
+  font-size: 9.5px !important;
+  letter-spacing: -0.05em !important;
+}
+
+/* 5칸 격자에서 "첫 소환 대기" 같은 긴 사유가 칸 밖으로 새어 나가지 않게 자른다. */
+.shop-workbench .formation-unlock-list button :is(span, small) {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* 살 수 있는 진만 금테로 한 겹 더 들어 올린다. */
+.shop-workbench .formation-unlock-list button.is-affordable:not(.is-unlocked) {
+  border-color: #c9963e !important;
+  border-top-color: var(--formation) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 253, 244, 0.7),
+    0 0 0 2px rgba(201, 150, 62, 0.55),
+    0 0 9px rgba(201, 150, 62, 0.35) !important;
+}
+
+.shop-workbench .formation-unlock-list button.is-affordable:not(.is-unlocked) small {
+  color: #8a5a12 !important;
+  font-weight: 900;
+}
+
+/* 선행 조건 미달은 회갈 종이로 눌러 둔다(스펙 유지). 색만이 아니라 사유 글도 남는다. */
+.shop-workbench .formation-unlock-list button:disabled:not(.is-unlocked) {
+  opacity: 1 !important;
+  border-color: rgba(114, 107, 97, 0.45) !important;
+  border-top-color: rgba(114, 107, 97, 0.7) !important;
+  background: #ddd6c6 !important;
+  box-shadow: none !important;
+}
+
+.shop-workbench .formation-unlock-list button:disabled:not(.is-unlocked) b { color: #6d6558 !important; }
+.shop-workbench .formation-unlock-list button:disabled:not(.is-unlocked) span { color: #4a4438 !important; }
+.shop-workbench .formation-unlock-list button:disabled:not(.is-unlocked) small { color: #6b6355 !important; }
