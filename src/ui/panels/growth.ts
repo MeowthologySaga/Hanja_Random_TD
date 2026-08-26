@@ -129,8 +129,10 @@ export function renderGrowth(): void {
     // [J-1] 오행 강화가 먹는 것은 그 오행의 문기다 — 글자 하나만 두면 무엇인지 모른다.
     const currency = label === UPGRADE_UNAVAILABLE_LABEL ? "" : scope === "global" ? " 엽전" : ` ${ctx.growthElement} 문기`;
     // FB7-강화: 이번 투자가 10단계 이정표를 지나면 버튼에 里 표식을 얹는다.
+    // 앞의 공백을 그냥 두면 91px 버튼에서 里 만 셋째 줄로 떨어져 나가, 깨진
+    // 글자 한 자처럼 읽혔다("최대 +48 · / 5922 엽전 / 里"). 화폐 낱말에 붙인다.
     const crossesMilestone = quoteForAmount.levels > 0 && upgradeMilestoneCount(quoteForAmount.toLevel) > upgradeMilestoneCount(quoteForAmount.fromLevel);
-    return `<button type="button" data-growth-upgrade-scope="${scope}" data-growth-stat="${stat}" data-growth-amount="${amount}" ${!active || quoteForAmount.levels <= 0 || !quoteForAmount.affordable ? "disabled" : ""}>${label}${currency}${crossesMilestone ? ` <i class="growth-milestone-flag" title="10단계 이정표 도달 · 추가 보너스">里</i>` : ""}</button>`;
+    return `<button type="button" data-growth-upgrade-scope="${scope}" data-growth-stat="${stat}" data-growth-amount="${amount}" ${!active || quoteForAmount.levels <= 0 || !quoteForAmount.affordable ? "disabled" : ""}>${label}${currency}${crossesMilestone ? `&nbsp;<i class="growth-milestone-flag" title="10단계 이정표 도달 · 추가 보너스">里</i>` : ""}</button>`;
   }).join("");
   // FB7-강화: 10단계 이정표마다 4단계치 보너스가 더 붙는다. 행마다 이정표
   // 누적과 다음 이정표까지 남은 단계를 함께 적어 "후반에도 오를 이유"를 보인다.
