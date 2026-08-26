@@ -153,6 +153,7 @@ import {
 import { loadDisplayMode, saveDisplayMode, type DisplayMode } from "./ui/display-mode";
 import { jaryeongSpriteImage } from "./ui/jaryeong-sprites";
 import { loadAutoPlaceSummons, saveAutoPlaceSummons } from "./ui/summon-placement";
+import { initStage } from "./ui/stage";
 import {
   UNCOMBINABLE_STAGE_ONE,
   UNCOMBINABLE_STAGE_ONE_COLOR,
@@ -163,6 +164,10 @@ import {
   synthesisTierKey,
   type SynthesisTierFilter
 } from "./ui/codex-synthesis";
+
+// 1280x720 고정 무대를 먼저 켠다. 리사이즈 시 --stage-scale 갱신이
+// fitShell() 의 실측보다 앞서야 캔버스 backing store 가 한 박자 늦지 않는다.
+initStage();
 
 const app = document.querySelector<HTMLDivElement>("#app");
 if (!app) throw new Error("#app element is missing.");
@@ -5889,9 +5894,16 @@ function layoutCoach(): void {
 
   const bubble = must<HTMLElement>("#coach-bubble");
   const bubbleWidth = 258;
+  const bubbleHeight = bubble.offsetHeight || 132;
   const below = focusTop + focusHeight + 14;
-  const fitsBelow = below + 132 <= shell.offsetHeight;
-  bubble.style.top = fitsBelow ? `${below}px` : `${Math.max(8, focusTop - 140)}px`;
+  // 아래로 놓을 자리를 셸 바닥이 아니라 패널 탭 띠 위까지로 본다. 첫 단계의
+  // 대상(자령 소환)은 패널 아래쪽에 있어서, 바닥까지 여유가 있어 보여도
+  // 말풍선이 탭 띠를 덮어 다음 조작을 가로막았다. 그때는 위로 뒤집는다.
+  const tabs = document.querySelector<HTMLElement>(".panel-tabs");
+  const tabsTop = tabs ? (tabs.getBoundingClientRect().top - shellRect.top) / scaleY : shell.offsetHeight;
+  const bottomLimit = Math.min(shell.offsetHeight - 8, tabsTop - 6);
+  const fitsBelow = below + bubbleHeight <= bottomLimit;
+  bubble.style.top = fitsBelow ? `${below}px` : `${Math.max(8, focusTop - bubbleHeight - 14)}px`;
   bubble.style.left = `${Math.max(8, Math.min(shell.offsetWidth - bubbleWidth - 8, focusLeft + focusWidth / 2 - bubbleWidth / 2))}px`;
 }
 
@@ -6042,8 +6054,13 @@ function fitShell(): void {
   shell.style.setProperty("--viewport-height", String(window.innerHeight) + "px");
   const rect = canvas.getBoundingClientRect();
   if (rect.width <= 0 || rect.height <= 0) return;
+  // rect 는 고정 무대의 transform 이 반영된 실측값이라 displayScale 이 곧
+  // 무대 배율이다. backing store 는 devicePixelRatio x 무대배율로 커져
+  // 확대판에서도 흐려지지 않는다. 축소(<1)일 때는 1.0 을 밑돌지 않게 막아
+  // 설계 해상도만큼은 지키고, 상한 2.5 로 고배율에서의 과다 렌더를 끊는다
+  // (menu3d 의 setPixelRatio 와 같은 상한이다).
   const displayScale = rect.width / WORLD_WIDTH;
-  const pixelScale = Math.min(3, Math.max(1, displayScale * (window.devicePixelRatio || 1)));
+  const pixelScale = Math.min(2.5, Math.max(1, displayScale * (window.devicePixelRatio || 1)));
   const backingWidth = Math.round(WORLD_WIDTH * pixelScale);
   const backingHeight = Math.round(WORLD_HEIGHT * pixelScale);
   if (canvas.width !== backingWidth || canvas.height !== backingHeight) {
