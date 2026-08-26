@@ -749,6 +749,10 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
         <span><b>차분한 화면</b><small>맥동·플래시·먹물 흐름 애니메이션을 멈추고 배경 결 무늬를 옅게 합니다. OS 동작 줄이기 설정이면 자동 적용됩니다.</small></span>
         <i aria-hidden="true"><em>OFF</em></i>
       </button>
+      <button id="talisman-mode-toggle" class="settings-toggle" type="button" role="switch" aria-checked="false" data-testid="talisman-mode-toggle">
+        <span><b>학습 모드 · 부적 만들기</b><small>켜면 패널에 「부적」 탭이 생깁니다. 부적지의 한자를 마우스로 따라 쓰면 봉인 부적이 완성되고, 웨이브당 3회까지 소소한 보상을 받습니다.</small></span>
+        <i aria-hidden="true"><em>OFF</em></i>
+      </button>
       <section class="audio-settings" aria-labelledby="audio-settings-title">
         <div class="audio-settings-heading"><b id="audio-settings-title">오디오 믹스</b><small>첫 조작 뒤 재생 · 선택은 브라우저에 저장</small></div>
         <div class="audio-setting-row">
