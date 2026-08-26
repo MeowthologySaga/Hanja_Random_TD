@@ -2317,7 +2317,11 @@ interface CasualFusionBucket {
  * 묶음(보호 자령이 많아 소모 후보 3기 미달, 또는 상위 별 글자 자체가 없음)도
  * 사유와 함께 남겨야 "왜 안 되지"가 사라진다.
  */
-function casualFusionBuckets(allTowers: readonly Tower[], plans: ReadonlyMap<Wuxing, CasualAutoFusionGroup[]>): CasualFusionBucket[] {
+function casualFusionBuckets(
+  allTowers: readonly Tower[],
+  plans: ReadonlyMap<Wuxing, CasualAutoFusionGroup[]>,
+  protections: ReadonlyMap<number, string>
+): CasualFusionBucket[] {
   const owned = new Map<string, Tower[]>();
   for (const tower of allTowers) {
     const star = casualStarOf(tower);
@@ -2338,10 +2342,10 @@ function casualFusionBuckets(allTowers: readonly Tower[], plans: ReadonlyMap<Wux
         if (engine.casualResultPool(wuxing, star) === null) {
           shortReason = `이 오행은 ${star}★ 위 글자가 없습니다`;
         } else {
-          const protections = list.map((tower) => engine.casualMaterialProtection(tower.id)).filter((reason): reason is string => reason !== null);
-          const safe = list.length - protections.length;
-          const top = [...new Set(protections)].slice(0, 2).join(" · ");
-          shortReason = `${top || "보호"} 보호로 소모 후보 ${safe}/3 부족 — 같은 별 ${3 - safe}기를 더 모으세요`;
+          const reasons = list.map((tower) => protections.get(tower.id)).filter((reason): reason is string => reason !== undefined);
+          const safe = list.length - reasons.length;
+          const top = [...new Set(reasons)].slice(0, 2).join(" · ");
+          shortReason = `${top || "보호"} 보호로 소모 후보 ${safe}/3 부족 — 같은 별 ${Math.max(1, 3 - safe)}기를 더 모으세요`;
         }
       }
       buckets.push({ wuxing, star, owned: list, groups, shortReason });
@@ -2393,6 +2397,7 @@ function renderCasualFusion(): void {
   const quote = selectedTowers.length === 3 ? engine.casualFusionQuote(casualFusionSelection) : null;
   const active = engine.state.phase === "prep" || engine.state.phase === "combat";
   const plans = new Map(WUXING_ORDER.map((wuxing) => [wuxing, engine.casualAutoFusionPlan(wuxing)] as const));
+  const protections = engine.casualMaterialProtections();
   const readyCount = [...plans.values()].reduce((sum, groups) => sum + groups.length, 0);
   const inventorySignature = allTowers.map((tower) => `${tower.id}:${tower.wuxing}:${casualStarOf(tower)}:${tower.cell}:${tower.locked ? 1 : 0}:${tower.concentration ?? 0}`).join("|");
   const key = `${inventorySignature}|S${casualFusionSelection.join(",")}|R${readyCount}`;
@@ -2411,12 +2416,11 @@ function renderCasualFusion(): void {
   evolveButton.classList.toggle("has-ready", readyCount > 0);
   const container = must<HTMLElement>("#evolution-options");
   container.classList.add("is-casual");
-  const buckets = casualFusionBuckets(allTowers, plans);
-  const totalGroups = [...plans.values()].reduce((sum, groups) => sum + groups.length, 0);
+  const buckets = casualFusionBuckets(allTowers, plans, protections);
   const fuseAllButton = must<HTMLButtonElement>("#casual-fuse-all");
-  fuseAllButton.disabled = !active || totalGroups === 0;
-  must<HTMLElement>("#casual-fuse-all-count").textContent = totalGroups > 0 ? `${totalGroups}회 가능` : "지금은 0회";
-  must<HTMLElement>("#casual-fuse-all-note").textContent = totalGroups > 0
+  fuseAllButton.disabled = !active || readyCount === 0;
+  must<HTMLElement>("#casual-fuse-all-count").textContent = readyCount > 0 ? `${readyCount}회 가능` : "지금은 0회";
+  must<HTMLElement>("#casual-fuse-all-note").textContent = readyCount > 0
     ? "3기가 모두 사라지고 같은 오행의 다음 별 자령 1기를 무작위로 얻습니다. 인벤토리 자령을 먼저 씁니다."
     : buckets.some((bucket) => bucket.shortReason !== null)
       ? "3체는 모였지만 소모할 수 없는 자령이 섞여 있습니다. 아래 카드에서 사유를 확인하세요."
@@ -2444,7 +2448,7 @@ function renderCasualFusion(): void {
     const star = casualStarOf(tower);
     const tooFew = selectionIndex < 0 && star < 8 && (bucketSize.get(`${tower.wuxing}:${star}`) ?? 0) < 3;
     // v3 규칙 2: 보호 자령은 3기 어디에도 못 들어가므로 첫 슬롯부터 사유를 붙여 잠근다.
-    const protection = selectionIndex < 0 ? engine.casualMaterialProtection(tower.id) : null;
+    const protection = selectionIndex < 0 ? protections.get(tower.id) ?? null : null;
     const noPool = selectionIndex < 0 && star < 8 && engine.casualResultPool(tower.wuxing, star) === null;
     const badge = selectionIndex >= 0 ? null : protection ?? (noPool ? "상위 별 없음" : tooFew ? "3체 미달" : null);
     const disabled = !active

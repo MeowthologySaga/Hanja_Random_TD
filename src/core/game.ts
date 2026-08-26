@@ -1394,6 +1394,21 @@ export class GameEngine {
     return this.casualMaterialProtectionFor(tower, this.casualProtectionContext());
   }
 
+  /**
+   * 보유 자령 전체의 보호 사유를 한 번에. 화면은 매 프레임 목록 전체를 훑으므로
+   * 자령마다 casualMaterialProtection 을 부르면 합성식 조회가 그만큼 반복된다.
+   * 문맥을 한 번만 만들고 재사용한다.
+   */
+  casualMaterialProtections(): Map<number, string> {
+    const context = this.casualProtectionContext();
+    const protections = new Map<number, string>();
+    for (const tower of [...this.state.towers, ...this.state.inventoryTowers]) {
+      const reason = this.casualMaterialProtectionFor(tower, context);
+      if (reason !== null) protections.set(tower.id, reason);
+    }
+    return protections;
+  }
+
   private casualProtectionContext(): {
     targetPath: Set<string>;
     unfinishedIdiomChars: Set<string>;
