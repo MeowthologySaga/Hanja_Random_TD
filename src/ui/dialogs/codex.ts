@@ -20,7 +20,7 @@ import type { IdiomDefinition } from "../../core/idioms";
 import { koreanMeaningExplanation } from "../../core/korean-meaning-explanations";
 import { LEARNING_DATA_META, learningInfoForNotation } from "../../core/learning";
 import { idiomReadingInfoForNotation } from "../../core/notation";
-import { notationBadgeText, notationReadingHtml, notationShortHtml } from "../notation-substitute";
+import { notationBadgeText, notationHeadingHtml, notationReadingHtml, notationShortHtml } from "../notation-substitute";
 import { radicalLearningLabel } from "../../core/radicals";
 import { type AbilitySpec, type CasualStar, type HanziDefinition, type Wuxing } from "../../core/types";
 import {
@@ -395,7 +395,7 @@ function renderCodexDetail(definition: HanziDefinition | undefined): void {
           <div class="codex-jaryeong-name">
             <strong>${definition.char}</strong>
             <div>
-              <h3>${notationShortHtml(learning, ctx.engine.state.notation)}</h3>
+              <h3>${notationHeadingHtml(learning, ctx.engine.state.notation)}</h3>
               <p>${escapeHtml(categoryLabel)} · ${escapeHtml(definition.combat.roleLabel)}</p>
             </div>
           </div>
@@ -478,7 +478,7 @@ function renderIdiomCodexDetail(idiom: ReturnType<GameEngine["idioms"]>[number] 
   detail.innerHTML = `
     <div class="idiom-codex-glyphs" style="--codex:${idiom.color}">${[...idiom.chars].map((char, index) => `<span><b>${char}</b><small>${index + 1}</small></span>`).join("")}</div>
     <p class="eyebrow">${sourceLabel} · ${stateLabel}</p>
-    <h3>${notationShortHtml(codexIdiomReading(idiom), ctx.engine.state.notation, "idiom")}</h3>
+    <h3>${notationHeadingHtml(codexIdiomReading(idiom), ctx.engine.state.notation, "idiom")}</h3>
     <article class="idiom-strategy" style="--codex:${idiom.color}"><b>${idiom.bonus.label}</b><span>${idiom.meaning}</span><small>${featured ? "같은 진의 한 줄(가로·세로·대각선)에 네 글자를 1→2→3→4 순서로 놓으면 자동 발동하며, 효과는 네 자령이 그 줄을 유지하는 동안만 발동합니다. 줄이 흩어지면 달성 기록만 남고, 다시 세우면 재발동합니다. 역순으로 놓아도 인정합니다." : "이번 런 목표에는 포함되지 않았습니다. 다음 시드에서 목표 성구로 등장할 수 있습니다."}</small></article>
     <section class="idiom-material-guide"><h4>필요 한자와 획득법</h4>${[...idiom.chars].map((char) => {
       const definition = ctx.engine.catalog.definitions.get(char);

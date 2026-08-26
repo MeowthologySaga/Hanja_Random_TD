@@ -13,6 +13,7 @@ import {
   type Wuxing
 } from "../core/types";
 import { ctx } from "./app-context";
+import { escapeHtml } from "./escape";
 
 /*
  * 진법 이름은 여기서만 만든다.
@@ -31,9 +32,8 @@ export function formatTime(seconds: number): string {
   return String(minutes).padStart(2, "0") + ":" + String(Math.floor(seconds % 60)).padStart(2, "0");
 }
 
-export function escapeHtml(value: string): string {
-  return value.replace(/[&<>"']/gu, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[character] ?? character);
-}
+/* 잎 모듈에 산다(src/ui/escape.ts) — 여기서 다시 내보내 호출부를 그대로 둔다. */
+export { escapeHtml };
 
 /**
  * 확률 공개 압축형 한 줄 — 예: "1★ 53% · 2★ 29% · 3★ 16% · 4★+ 2.2%".

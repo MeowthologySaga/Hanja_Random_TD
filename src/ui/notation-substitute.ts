@@ -20,7 +20,8 @@
 import { NOTATION_LABELS, SUBSTITUTE_KIND_LABELS } from "../core/notation";
 import type { ReadingProvenance, SubstituteKind } from "../core/notation";
 import type { NotationCode } from "../core/types";
-import { escapeHtml } from "./format";
+// format.ts 가 아니라 잎 모듈에서 받는다 — 이 파일은 DOM 없이도 서야 한다.
+import { escapeHtml } from "./escape";
 
 /**
  * 배지가 읽는 최소 모양. LearningInfo(글자 하나)가 구조적으로 이걸 만족하고,
@@ -90,19 +91,28 @@ export function notationBadgeTitle(
 export function notationBadgeHtml(
   info: NotationMarked,
   notation: NotationCode,
-  scope: "char" | "idiom" = "char"
+  scope: "char" | "idiom" = "char",
+  compact = false
 ): string {
   if (info.provenance === "authentic") return "";
   const title = escapeHtml(notationBadgeTitle(info, notation, scope));
+  // 안쪽 조각까지 전부 span 이다 — b·i·em 은 호스트 화면의 테마 규칙(오행 원
+  // 배지·제목 먹색 …)이 !important 로 집어가 배지가 통째로 다른 것이 된다.
+  //
+  // compact 는 좁은 자리(카드 한 줄)에서 배지가 읽기 자체를 말줄임으로 밀어낼
+  // 때 쓴다. 글자 수만 줄이고 title·aria 는 전문을 그대로 들고 있으므로
+  // 마우스·보조기술 쪽에서는 잃는 것이 없다.
   if (info.provenance === "derived") {
     const origin = info.derivedFrom
-      ? `<b class="notation-mark-glyph">${escapeHtml(info.derivedFrom)}</b>`
+      ? `<span class="notation-mark-glyph">${escapeHtml(info.derivedFrom)}</span>`
       : "";
-    return `<span class="notation-mark notation-mark--derived" title="${title}" aria-label="${title}">정자 기준${origin}</span>`;
+    const label = compact ? "정자" : "정자 기준";
+    return `<span class="notation-mark notation-mark--derived" title="${title}" aria-label="${title}">${label}${origin}</span>`;
   }
-  const kind = info.substituteKind ? SUBSTITUTE_KIND_LABELS[info.substituteKind] : "";
-  const kindHtml = kind ? `<i class="notation-mark-kind">${escapeHtml(kind)}</i>` : "";
-  return `<span class="notation-mark notation-mark--substitute" title="${title}" aria-label="${title}">대체 표기${kindHtml}</span>`;
+  const kind = !compact && info.substituteKind ? SUBSTITUTE_KIND_LABELS[info.substituteKind] : "";
+  const kindHtml = kind ? `<span class="notation-mark-kind">${escapeHtml(kind)}</span>` : "";
+  const label = compact ? "대체" : "대체 표기";
+  return `<span class="notation-mark notation-mark--substitute" title="${title}" aria-label="${title}">${label}${kindHtml}</span>`;
 }
 
 /**
@@ -115,21 +125,36 @@ export function notationGlossHtml(info: NotationMarked): string {
   if (info.provenance !== "substitute" || !info.sourceMeaning) return "";
   const english = info.sourceMeaningLanguage === "en";
   const inherited = info.sourceMeaningDerivedFrom
-    ? `<small class="notation-gloss-origin">${escapeHtml(info.sourceMeaningDerivedFrom)} 승계</small>`
+    ? `<span class="notation-gloss-origin">${escapeHtml(info.sourceMeaningDerivedFrom)} 승계</span>`
     : "";
   const gloss = escapeHtml(info.sourceMeaning);
   const body = english
-    ? `<i class="notation-gloss-text" lang="en">${gloss}</i>`
+    ? `<span class="notation-gloss-text notation-gloss-text--en" lang="en">${gloss}</span>`
     : `<span class="notation-gloss-text">${gloss}</span>`;
   const caption = english ? "원천 뜻(영어 원문)" : "원천 뜻";
-  return `<span class="notation-gloss"><small class="notation-gloss-caption">${caption}</small>${body}${inherited}</span>`;
+  return `<span class="notation-gloss"><span class="notation-gloss-caption">${caption}</span>${body}${inherited}</span>`;
 }
 
 /**
  * 짧은 읽기 + 배지 — 카드·목록처럼 좁은 자리의 표준 조판.
  * 값 이스케이프까지 여기서 끝내므로 호출부는 그대로 끼워 넣으면 된다.
+ *
+ * 배지는 압축형이다. 좁은 칸에서 전문형을 쓰면 배지가 폭을 먹어 정작 읽기가
+ * 말줄임으로 잘린다 — 배지 때문에 읽기를 못 읽으면 앞뒤가 바뀐 것이다.
  */
 export function notationShortHtml(
+  info: NotationMarkedReading,
+  notation: NotationCode,
+  scope: "char" | "idiom" = "char"
+): string {
+  return `${escapeHtml(info.short)}${notationBadgeHtml(info, notation, scope, true)}`;
+}
+
+/**
+ * 짧은 읽기 + 전문형 배지 — 상세 화면의 큰 제목처럼 폭이 넉넉한 자리.
+ * 값은 짧게, 배지는 전문으로. 카드와 상세가 같은 값을 다른 성량으로 말한다.
+ */
+export function notationHeadingHtml(
   info: NotationMarkedReading,
   notation: NotationCode,
   scope: "char" | "idiom" = "char"

@@ -123,7 +123,10 @@ export function learningInfoForNotation(notation: NotationCode, char: string): L
   if (!filled) return { short, readingLabel, reading, meaning, meaningSource, provenance: "authentic" };
   return {
     short: filled.short,
-    readingLabel,
+    // 대체값에 "훈음"·"음독·훈독" 이름표를 그대로 달면 이름표 자체가 거짓말이
+    // 된다 — 그 언어권에 읽기가 없어 빌려 온 값이다. 파생값은 정자의 진짜
+    // 훈음이므로 이름표를 지키고, 어디서 왔는지는 배지가 말한다.
+    readingLabel: filled.provenance === "substitute" ? "빌린 표기" : readingLabel,
     reading: filled.full,
     meaning,
     meaningSource,
