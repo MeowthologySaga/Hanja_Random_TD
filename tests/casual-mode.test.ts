@@ -7,7 +7,12 @@ import {
   casualStrokeCount
 } from "../src/core/casual";
 import { BOARD_FORMATIONS } from "../src/core/content";
-import { GameEngine } from "../src/core/game";
+import {
+  GameEngine,
+  casualDismantleEssence,
+  casualFusionDismantleScore,
+  casualFusionEssenceRefund
+} from "../src/core/game";
 import { MIN_TIER_POOL_SIZE, SUMMON_SURCHARGE, summonCost, WUXING_ORDER } from "../src/core/hanzi";
 import type { CasualStar, HanziDefinition, RegionCode, Tower, Wuxing } from "../src/core/types";
 
@@ -142,6 +147,39 @@ describe("casual eight-star mode", () => {
       expect(event.tower.char).toBe(gained.char);
       expect(event.toStar).toBe(star + 1);
     }
+  });
+
+  it("returns one body's worth of essence and dismantle score for every three-body fusion", () => {
+    // 별승급에서 문기의 유일한 입구는 분해였는데, 3체 승급이 잉여 자령을 전부
+    // 먹어 분해 대기열이 비어 있었다(실측 분해 4기·문기 6/런, 오행 특성 0단계).
+    // 승급 자체가 문기 입구가 되어야 두 루프가 재료를 놓고 싸우지 않는다.
+    const engine = casualEngine("casual-fusion-essence");
+    const definitions = safeCasualDefinitions(engine, 3);
+    const star = casualNaturalStar(definitions[0]?.char ?? "") as CasualStar;
+    const wuxing = definitions[0]?.wuxing as Wuxing;
+    const towers = definitions.map((definition, index) => casualTower(definition, 401 + index, -1, star));
+    engine.state.inventoryTowers = towers;
+
+    const expectedEssence = casualFusionEssenceRefund(star);
+    const expectedScore = casualFusionDismantleScore(star);
+    expect(expectedEssence).toBe(casualDismantleEssence(star));
+    expect(expectedEssence).toBeGreaterThan(0);
+
+    expect(engine.fuseCasual(towers.map((tower) => tower.id))).toMatchObject({ ok: true });
+    expect(engine.state.elementEssence[wuxing]).toBe(expectedEssence);
+    // 새로 생기는 문기이므로 생성 누계에도 들어가야 소비율 지표가 어긋나지 않는다.
+    expect(engine.state.elementEssenceGenerated[wuxing]).toBe(expectedEssence);
+    expect(engine.state.elementDismantleScore[wuxing]).toBe(expectedScore);
+    // 다른 오행은 손대지 않는다.
+    for (const other of WUXING_ORDER.filter((candidate) => candidate !== wuxing)) {
+      expect(engine.state.elementEssence[other]).toBe(0);
+      expect(engine.state.elementDismantleScore[other]).toBe(0);
+    }
+
+    // 자형연성에는 이 입구가 없다 — 3체 조합 자체가 없기 때문이다.
+    const standard = new GameEngine("standard-fusion-essence", "KR", "standard");
+    standard.begin();
+    expect(standard.fuseCasual([1, 2, 3])).toMatchObject({ ok: false });
   });
 
   it("inherits the first consumed board cell and otherwise stays in the inventory", () => {

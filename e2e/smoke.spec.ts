@@ -72,7 +72,7 @@ async function openCodex(page: Page): Promise<void> {
 }
 
 test("renders a viewport-fixed hanji field and moving ink current at minimum zoom", async ({ page }) => {
-  await page.goto("/?seed=E2E-HANJI-INK");
+  await page.goto("/?seed=E2E-HANJI-INK&mode=standard");
   await page.getByTestId("start-run").click();
   await expect(page.locator("#battle-canvas")).toHaveAttribute("data-map-surface", "hanji-ink");
   await expect(page.locator("#battle-canvas")).toHaveAttribute("data-hit-feedback", "ink-local");
@@ -100,7 +100,7 @@ test("renders a viewport-fixed hanji field and moving ink current at minimum zoo
 });
 
 test("shows a readable single summon reveal and explains the ten-pull milestone", async ({ page }) => {
-  await page.goto("/?seed=E2E-SUMMON-REVEAL");
+  await page.goto("/?seed=E2E-SUMMON-REVEAL&mode=standard");
   await page.getByTestId("start-run").click();
   await openShop(page);
   await page.getByTestId("summon-button").click();
@@ -122,7 +122,7 @@ test("shows a readable single summon reveal and explains the ten-pull milestone"
 });
 
 test("freezes the opening until the first summon opens its matching formation", async ({ page }) => {
-  await page.goto("/?seed=FORMATION-SHOP-E2E");
+  await page.goto("/?seed=FORMATION-SHOP-E2E&mode=standard");
   await page.getByTestId("start-run").click();
   await expect(page.locator("#shop-panel")).toBeVisible();
   await expect(page.locator("#shop-tab")).toHaveClass(/is-active/u);
@@ -180,7 +180,7 @@ test("freezes the opening until the first summon opens its matching formation", 
 });
 
 test("runs the casual eight-star entry and readable one-click promotion workshop", async ({ page }) => {
-  await page.goto("/?seed=CASUAL-EIGHT-STAR-E2E");
+  await page.goto("/?seed=CASUAL-EIGHT-STAR-E2E&mode=standard");
   await expect(page.getByRole("radio", { name: /자형연성 진법/ })).toBeChecked();
   await page.getByRole("radio", { name: /별승급 진법/ }).click();
   await expect(page.locator('[data-region="KR"]')).toHaveAttribute("aria-checked", "true");
@@ -195,6 +195,16 @@ test("runs the casual eight-star entry and readable one-click promotion workshop
   await expect(page.locator(".game-shell")).toHaveAttribute("data-panel-tab", "shop");
   await expect(page.locator("#shop-panel")).toBeVisible();
   await expect(page.locator("#shop-pool-count")).toHaveText("1,000");
+  // 소환 0회 시점 = 확정 빈 상태. (확률 밴드 도입 후 4연 소환이 트리플을
+  // 만들 수 있어, 빈 상태 검증은 소환 전에 한다.)
+  await page.getByRole("tab", { name: "3체 조합", exact: true }).click();
+  await expect(page.locator("#casual-fuse-all")).toBeDisabled();
+  await expect(page.locator("#casual-fuse-all-count")).toHaveText("(0회)");
+  await expect(page.locator(".casual-group-card")).toHaveCount(0);
+  await expect(page.locator(".casual-group-empty")).toBeVisible();
+  await expect(page.locator("#casual-goto-shop")).toBeVisible();
+  await page.locator("#casual-goto-shop").click();
+  await expect(page.locator(".game-shell")).toHaveAttribute("data-panel-tab", "shop");
   for (let index = 0; index < 4; index += 1) {
     await page.getByTestId("summon-button").click();
     await expect(page.locator("#summon-reveal")).toHaveClass(/is-active/u);
@@ -206,13 +216,31 @@ test("runs the casual eight-star entry and readable one-click promotion workshop
   await expect(page.locator(".game-shell")).toHaveAttribute("data-panel-tab", "evolution");
   await expect(page.locator("#standard-evolution-modes")).toBeHidden();
   await expect(page.locator("#casual-fusion-toolbar")).toBeVisible();
-  // 기본 뷰는 [한 번에 승급] + 그룹 카드. 4연 소환으로는 같은 오행·같은
-  // 별 3체가 모이지 않으므로 버튼은 비활성이고 빈 상태 안내가 뜬다.
-  await expect(page.locator("#casual-fuse-all")).toBeDisabled();
-  await expect(page.locator("#casual-fuse-all-count")).toHaveText("지금은 0회");
-  await expect(page.locator(".casual-group-card")).toHaveCount(0);
-  await expect(page.locator(".casual-group-empty")).toBeVisible();
-  await expect(page.locator("#casual-goto-shop")).toBeVisible();
+  // 기본 뷰는 [한 번에 승급] + 그룹 카드.
+  // R16: 같은 수를 세 곳(헤더 배지·버튼 옆 칩·버튼)이 나눠 세던 것을
+  // `한 번에 승급 (N회)` 라벨 하나로 합쳤다. 헤더 배지는 숨는다.
+  await expect(page.locator("#casual-fuse-all-count")).toHaveText(/^\(\d+회\)$/u);
+  await expect(page.locator("#evolution-count")).toBeHidden();
+  await expect(page.locator("#evolution-heading-label")).toHaveText("승급 대기 묶음");
+  // 4연 소환 결과는 시드에 달렸다 — 묶음이 없으면 빈 상태, 있으면 그림 문장 카드.
+  const readyGroups = await page.locator(".casual-group-card").count();
+  if (readyGroups === 0) {
+    await expect(page.locator("#casual-fuse-all")).toBeDisabled();
+    await expect(page.locator(".casual-group-empty")).toBeVisible();
+    await expect(page.locator("#casual-goto-shop")).toBeVisible();
+  } else {
+    // R16 카드 = 그림 한 문장: 초상 3칸 → 물음표 결과 칸. 글줄은 제목 한 줄이다.
+    const card = page.locator(".casual-group-card").first();
+    await expect(card.locator(".casual-group-material")).toHaveCount(3);
+    await expect(card.locator(".casual-group-arrow")).toBeVisible();
+    await expect(card.locator(".casual-group-result > b")).toHaveText(/^[?✕]$/u);
+    await expect(card.locator(".casual-group-result .casual-star-tag")).toHaveText(/^★\d$/u);
+    await expect(card.locator(".casual-group-title")).toHaveText(/무작위|보호|없습니다/u);
+    // 지운 수치는 툴팁에 남는다 — 정보는 보존하고 소음만 걷었다.
+    await expect(card).toHaveAttribute("title", /보유 \d+기/u);
+  }
+  // `1★ ×4 → 2★` 를 "4개를 합친다"로 읽은 오독이 있었다. 보유 수 `×N` 표기는 폐지다.
+  await expect(page.locator(".casual-group-list")).not.toContainText("×");
 
   // v3: 남길 자령(본체)이 사라졌다. 3슬롯 전부 `소모`이고 결과는 무작위다.
   await expect(page.locator(".casual-fusion-slot").first()).toBeHidden();
@@ -229,12 +257,19 @@ test("runs the casual eight-star entry and readable one-click promotion workshop
   await expect(page.locator(".casual-fusion-slots")).not.toContainText("KEEP");
   await expect(page.locator(".casual-fusion-slots")).not.toContainText("USE");
   await expect(page.locator(".casual-fusion-result")).toHaveClass(/is-random/u);
-  // 3체가 안 모인 자령은 흐림 + `3체 미달` 배지로 못 고른다.
   await expect(page.locator(".casual-fusion-tower")).toHaveCount(4);
-  // 8★ 는 `최고` 라벨을 받으므로 `3체 미달` 배지는 8★ 미만에만 붙는다.
-  await expect(page.locator(".casual-fusion-tower.is-short")).not.toHaveCount(0);
-  await expect(page.locator(".casual-fusion-tower.is-short").first()).toContainText("3체 미달");
-  await expect(page.locator(".casual-fusion-tower:not(:disabled)")).toHaveCount(0);
+  if (readyGroups === 0) {
+    // 3체가 안 모인 자령은 흐림 + `3체 미달` 배지로 못 고른다.
+    // 8★ 는 `최고` 라벨을 받으므로 `3체 미달` 배지는 8★ 미만에만 붙는다.
+    await expect(page.locator(".casual-fusion-tower.is-short")).not.toHaveCount(0);
+    await expect(page.locator(".casual-fusion-tower.is-short").first()).toContainText("3체 미달");
+    await expect(page.locator(".casual-fusion-tower:not(:disabled)")).toHaveCount(0);
+  } else {
+    // 승급 가능한 묶음이 있으면 그 자령들은 손으로도 고를 수 있어야 한다.
+    await expect(page.locator(".casual-fusion-tower:not(:disabled)")).not.toHaveCount(0);
+  }
+  // R16: 후보 목록도 그룹 카드와 같은 어휘 — 현재 별은 ★n 금박 배지로 읽는다.
+  await expect(page.locator(".casual-fusion-tower .casual-star-tag").first()).toHaveText(/^★\d$/u);
 
   const desktopLayout = await page.evaluate(() => {
     const workbench = document.querySelector<HTMLElement>(".evolution-workbench")!.getBoundingClientRect();
@@ -251,7 +286,11 @@ test("runs the casual eight-star entry and readable one-click promotion workshop
     };
   });
   expect(desktopLayout.workbenchLeft).toBeLessThan(desktopLayout.panelLeft);
-  expect(desktopLayout.workbenchWidth).toBeGreaterThan(650);
+  // R16: 그림 한 문장 카드(인장 34 + 초상 40x3 + 여분 + 화살 + 결과 52 + 버튼)는
+  // 실측 400px 대에서 성립한다. 전장을 덜 가리도록 확장을 -333 -> -110px 로 줄였고
+  // 작업대 폭도 699 -> 476px 가 됐다. 상한을 함께 두어 다시 넓어지는 것을 막는다.
+  expect(desktopLayout.workbenchWidth).toBeGreaterThan(430);
+  expect(desktopLayout.workbenchWidth).toBeLessThan(520);
   expect(desktopLayout.workbenchHeight).toBeGreaterThanOrEqual(440);
   expect(desktopLayout.overflowX).toBeLessThanOrEqual(0);
   expect(desktopLayout.overflowY).toBeLessThanOrEqual(0);
@@ -259,6 +298,10 @@ test("runs the casual eight-star entry and readable one-click promotion workshop
   await page.screenshot({ path: "artifacts/casual-fusion-workshop-1280x720.png", fullPage: true });
 
   await page.setViewportSize({ width: 1024, height: 720 });
+  // R8 고정 무대는 resize 뒤 rAF 에서 배율을 다시 잡는다. 잡히기 전에 재면 1280 이 나온다.
+  await expect
+    .poll(async () => page.evaluate(() => document.querySelector<HTMLElement>(".game-shell")!.getBoundingClientRect().width))
+    .toBeLessThanOrEqual(1024);
   const narrowLayout = await page.evaluate(() => {
     const shell = document.querySelector<HTMLElement>(".game-shell")!.getBoundingClientRect();
     const candidates = document.querySelector<HTMLElement>(".casual-fusion-candidates")!.getBoundingClientRect();
@@ -282,7 +325,7 @@ test("runs the casual eight-star entry and readable one-click promotion workshop
 });
 
 test("uses tabbed owned-aware goals and summons from all one thousand Cheonjamun sprites", async ({ page }) => {
-  await page.goto("/?seed=EVO-E2E-2");
+  await page.goto("/?seed=EVO-E2E-2&mode=standard");
   await page.getByTestId("start-run").click();
   await expect(page.locator(".panel-tabs > button")).toHaveCount(9);
   await expect(page.locator("#selected-card")).toBeHidden();
@@ -317,7 +360,8 @@ test("uses tabbed owned-aware goals and summons from all one thousand Cheonjamun
   await openCodex(page);
   // 도감은 "자령 도감 / 조합표 / 사자성어" 3분류로 통합됐다. 옛 `jaryeongs` 전용 모드는 사라지고
   // 기본 `hanzi` 탭이 천자문 자령 초상화까지 함께 싣는다.
-  await expect(page.locator(".codex-mode-tabs > button")).toHaveCount(3);
+  // R17 도움말도 같은 갈피 어휘(.codex-mode-tabs)를 쓰므로 도감 안으로 좁혀 센다.
+  await expect(page.locator("#codex-dialog .codex-mode-tabs > button")).toHaveCount(3);
   await page.locator('[data-codex-mode="hanzi"]').click();
   await expect(page.locator("#codex-summary")).toContainText(/자령 1,0\d\d\/1,0\d\d · 독립 \d+/u);
   // 천자문 1,000자 + 합성 확장분이므로 정확한 총합보다 "1,000자 이상 실린다" 를 지킨다.
@@ -344,7 +388,7 @@ test("uses tabbed owned-aware goals and summons from all one thousand Cheonjamun
 });
 
 test("opens the dedicated growth tab with batch upgrade controls", async ({ page }) => {
-  await page.goto("/?seed=E2E-ELEMENT-UPGRADE");
+  await page.goto("/?seed=E2E-ELEMENT-UPGRADE&mode=standard");
   await page.getByTestId("start-run").click();
   await openShop(page);
   await page.getByTestId("element-upgrade-button").click();
@@ -369,10 +413,10 @@ test("starts a KR run and exposes the finished core loop at 1280x720", async ({ 
   });
   page.on("pageerror", (error) => errors.push(error.message));
 
-  await page.goto("/?seed=E2E-FIXED-01");
-  await expect(page).toHaveTitle("한자 운명진 · 랜덤 타워 디펜스");
+  await page.goto("/?seed=E2E-FIXED-01&mode=standard");
+  await expect(page).toHaveTitle("천자진 · 오행 자령 디펜스");
   await expect(page.locator(".game-shell")).toHaveAttribute("data-display-mode", "spirit");
-  await expect(page.getByRole("heading", { name: "한자 운명진", exact: true }).last()).toBeVisible();
+  await expect(page.getByRole("heading", { name: "천자진", exact: true }).last()).toBeVisible();
   // S00 지역 타일은 이름과 심사 배지만 노출하고, 한자 범위는 접근명·툴팁과 출정 부제로 알린다.
   await expect(page.locator(".region-option.is-selected")).toHaveAttribute("aria-label", /천자문 1,?000/u);
   await expect(page.locator("#s00-start-sub")).toHaveText(/천자문 1,?000/u);
@@ -505,7 +549,7 @@ test("starts a KR run and exposes the finished core loop at 1280x720", async ({ 
 });
 
 test("advances on the reinforcement clock while surviving enemies keep circulating", async ({ page }) => {
-  await page.goto("/?seed=WAVE-CLOCK-E2E");
+  await page.goto("/?seed=WAVE-CLOCK-E2E&mode=standard");
   await page.getByTestId("start-run").click();
   await page.getByTestId("summon-button").click();
   await page.locator("#summon-reveal-close").click();
@@ -523,7 +567,7 @@ test("advances on the reinforcement clock while surviving enemies keep circulati
 });
 
 test("moves the original glyph battlefield into persistent study mode settings", async ({ page }) => {
-  await page.goto("/?seed=DISPLAY-MODE-E2E");
+  await page.goto("/?seed=DISPLAY-MODE-E2E&mode=standard");
   await page.getByRole("button", { name: "화면 모드 설정" }).click();
   await expect(page.getByRole("heading", { name: "전장 표시 모드" })).toBeVisible();
   await expect(page.getByTestId("spirit-mode")).toHaveAttribute("aria-checked", "true");
@@ -552,7 +596,7 @@ test("stores manual summons in the run inventory, deploys them, and returns boar
   });
   page.on("pageerror", (error) => errors.push(error.message));
 
-  await page.goto("/?seed=RUN-INVENTORY-E2E");
+  await page.goto("/?seed=RUN-INVENTORY-E2E&mode=standard");
   await page.getByRole("button", { name: "화면 모드 설정" }).click();
   await expect(page.getByTestId("auto-place-toggle")).toHaveAttribute("aria-checked", "true");
   await page.getByTestId("auto-place-toggle").click();
@@ -616,7 +660,7 @@ test("stores manual summons in the run inventory, deploys them, and returns boar
 });
 
 test("shows synthesis branches, highlights board materials, protects locked Jaryeong, and keeps the unified codex browsable", async ({ page }) => {
-  await page.goto("/?seed=EVO-1000-5");
+  await page.goto("/?seed=EVO-1000-5&mode=standard");
   await page.getByTestId("start-run").click();
   await expect(page.locator("#stage-enemies")).toHaveText("0 / 80");
   await openShop(page);
@@ -694,7 +738,7 @@ test("shows synthesis branches, highlights board materials, protects locked Jary
 });
 
 test("keeps CN glyphs regional and opens the complete codex", async ({ page }) => {
-  await page.goto("/?seed=CN-E2E-01");
+  await page.goto("/?seed=CN-E2E-01&mode=standard");
   await chooseRegion(page, "CN");
   await page.getByTestId("start-run").click();
   await expect(page.locator("#stage-region")).toHaveText("중국");
@@ -728,7 +772,7 @@ test("keeps CN glyphs regional and opens the complete codex", async ({ page }) =
 });
 
 test("renders only QC-passed generated CN sprites at 1280x720", async ({ page }) => {
-  await page.goto("/?seed=CN-ASSET-1000-5");
+  await page.goto("/?seed=CN-ASSET-1000-5&mode=standard");
   await chooseRegion(page, "CN");
   await page.getByTestId("start-run").click();
   await page.locator("#goal-tab").click();
@@ -759,7 +803,7 @@ test("renders only QC-passed generated CN sprites at 1280x720", async ({ page })
 });
 
 test("shows Japanese on and kun readings as separate learning labels", async ({ page }) => {
-  await page.goto("/?seed=JP-READING-E2E");
+  await page.goto("/?seed=JP-READING-E2E&mode=standard");
   await chooseRegion(page, "JP");
   await page.getByTestId("start-run").click();
 
@@ -781,7 +825,7 @@ test("shows Japanese on and kun readings as separate learning labels", async ({ 
 });
 
 test("automatically seals four correctly placed towers with readable feedback", async ({ page }) => {
-  await page.goto("/?seed=IDIOM-1000-8495");
+  await page.goto("/?seed=IDIOM-1000-8495&mode=standard");
   await page.getByTestId("start-run").click();
   await expect(page.locator(".control-panel #idiom-panel")).toHaveCount(1);
   await expect(page.locator(".battle-stage #idiom-hud, .battle-stage #idiom-result")).toHaveCount(0);
@@ -820,7 +864,7 @@ test("automatically seals four correctly placed towers with readable feedback", 
 
 test("keeps the full game surface on a small laptop without a browser page scrollbar", async ({ page }) => {
   await page.setViewportSize({ width: 900, height: 700 });
-  await page.goto("/?seed=responsive-e2e-01");
+  await page.goto("/?seed=responsive-e2e-01&mode=standard");
   await page.getByTestId("start-run").click();
   await expect(page.locator("#title-overlay")).not.toHaveClass(/modal-layer--visible/u);
   await openShop(page);
@@ -868,7 +912,7 @@ test("keeps the full game surface on a small laptop without a browser page scrol
 
 test("scales Jaryeong labels and the selected reading cleanly at 1600x900", async ({ page }) => {
   await page.setViewportSize({ width: 1600, height: 900 });
-  await page.goto("/?seed=spirit-large-e2e-01");
+  await page.goto("/?seed=spirit-large-e2e-01&mode=standard");
   await page.getByTestId("start-run").click();
   await openShop(page);
   for (let index = 0; index < 4; index += 1) await page.getByTestId("summon-button").click();
@@ -903,19 +947,50 @@ test("opens the rules and exposes synthesis keyboard guidance", async ({ page })
   await expect(page.locator(".s00-utility > button")).toHaveCount(3);
   await page.locator("#title-help-button").click();
   await expect(page.getByRole("heading", { name: "봉인술 입문" })).toBeVisible();
+
+  // R17: 21개 항목 두루마리가 다섯 갈피로 갈렸다. 첫 갈피는 언제나 [시작하기] 다.
+  const tabs = page.locator("#help-dialog .help-tabs [role=tab]");
+  await expect(tabs).toHaveCount(5);
+  await expect(tabs).toHaveText(["시작하기", "소환·상점", "전투·배치", "승급·강화", "사자성어"]);
+  await expect(page.locator("#help-tab-start")).toHaveAttribute("aria-selected", "true");
+
+  // 첫 갈피 = 세 걸음 순서도 + 용어 여섯 장 + 단축키.
+  const startPanel = page.locator("#help-panel-start");
+  await expect(startPanel).toBeVisible();
+  await expect(startPanel.locator(".help-flow > li")).toHaveCount(3);
+  await expect(startPanel.locator(".help-term")).toHaveCount(6);
+  await expect(startPanel).toContainText("자령");
+  await expect(startPanel).toContainText("엽전");
   await expect(page.locator(".key-guide")).toContainText("첫 합성");
   await expect(page.locator(".key-guide")).toContainText("Space");
-  await expect(page.locator("#help-dialog")).toContainText("능력 조합");
-  await expect(page.locator("#help-dialog")).toContainText("사자성어");
-  await expect(page.locator("#help-dialog")).toContainText("자동배치");
-  await expect(page.locator("#help-dialog")).toContainText("은행 이자");
-  await expect(page.locator("#help-dialog")).toContainText("훈·독");
+
+  // 갈피를 눌러도 창은 닫히지 않고(폼 submit 방지) 해당 갈피만 열린다.
+  await page.locator("#help-tab-battle").click();
+  await expect(page.locator("#help-dialog")).toBeVisible();
+  await expect(startPanel).toBeHidden();
+  await expect(page.locator("#help-panel-battle")).toBeVisible();
+  await expect(page.locator("#help-panel-battle")).toContainText("은행 이자");
+  await expect(page.locator("#help-panel-battle")).toContainText("훈·독");
+  await expect(page.locator("#help-panel-battle")).toContainText("오행 공명");
+
+  await page.locator("#help-tab-summon").click();
+  await expect(page.locator("#help-panel-summon")).toContainText("자동배치");
+  await page.locator("#help-tab-growth").click();
+  await expect(page.locator("#help-panel-growth")).toContainText("능력 조합");
+  await page.locator("#help-tab-idiom").click();
+  await expect(page.locator("#help-panel-idiom")).toContainText("사자성어");
+
+  // 다시 열면 첫 갈피로 되돌아온다.
+  await page.locator("#help-dialog .dialog-heading button").click();
+  await expect(page.locator("#help-dialog")).toBeHidden();
+  await page.locator("#title-help-button").click();
+  await expect(page.locator("#help-panel-start")).toBeVisible();
 });
 
 // 코치를 실제로 띄우는 유일한 스펙이다. @onboarding 태그 덕분에 beforeEach 가 "이미 봤음"
 // 표시를 심지 않으므로, 앱이 스스로 남기는 저장값만으로 재노출 여부가 결정된다.
 test("spotlights the first run with a three-step coach that can be skipped for good", { tag: ONBOARDING_TAG }, async ({ page }) => {
-  await page.goto("/?seed=COACH-E2E-01");
+  await page.goto("/?seed=COACH-E2E-01&mode=standard");
   await page.getByTestId("start-run").click();
 
   await expect(page.locator("#coach-layer")).toBeVisible();

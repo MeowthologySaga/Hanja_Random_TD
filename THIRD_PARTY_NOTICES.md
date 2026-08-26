@@ -1,4 +1,19 @@
-# Third-party data notices
+# Third-party notices
+
+## three.js
+
+`three` is the only third-party package bundled into the shipped build. It renders the 3D study scene on the main menu (`src/ui/menu3d.ts`); every other screen is plain Canvas 2D and DOM. All remaining npm packages are development-only and are not distributed.
+
+- Package: https://www.npmjs.com/package/three
+- Version pinned in `package-lock.json`: `0.185.1`
+- Integrity: `sha512-5aojFCXKwnjBRZvUnt3WFfEcvUJgkN5LlijRFN95hMy8WVkG4I0QNcJE+OuWvuJ0bOdStrbfXn0pkd6/QyiAlg==`
+- License: MIT — https://github.com/mrdoob/three.js/blob/dev/LICENSE
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files, to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, subject to the copyright notice and this permission notice being included in all copies or substantial portions of the Software. The Software is provided "as is", without warranty of any kind.
+
+## Fonts
+
+No font files are bundled or downloaded. All typography resolves through system font stacks declared in `index.html` and `src/styles.css` (`Batang`, `Malgun Gothic`, `Pretendard`, `Apple SD Gothic Neo`, `Noto Serif KR`, `ui-monospace`/`Consolas`, with generic `serif`/`sans-serif` fallbacks). There is no `@font-face` rule and no webfont request, so no font license applies to this distribution.
 
 ## Unicode Unihan 17.0.0
 

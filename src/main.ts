@@ -220,8 +220,8 @@ const initialDisplayMode = loadDisplayMode();
 const initialAutoPlaceSummons = loadAutoPlaceSummons();
 
 app.innerHTML = `
-  <main class="game-shell" data-phase="title" data-display-mode="${initialDisplayMode}" data-game-mode="standard">
-    <section class="battle-stage" aria-label="한자 랜덤 타워 디펜스 전장">
+  <main class="game-shell" data-phase="title" data-display-mode="${initialDisplayMode}" data-game-mode="casual">
+    <section class="battle-stage" aria-label="천자진 전장">
       <canvas id="battle-canvas" width="${WORLD_WIDTH}" height="${WORLD_HEIGHT}"></canvas>
       <button id="map-zoom-reset" class="map-zoom-control" type="button" title="지도 확대/축소 초기화">
         <span>지도</span><strong id="map-zoom-value">100%</strong><small>휠 확대·축소</small>
@@ -279,7 +279,7 @@ app.innerHTML = `
 
     <aside class="control-panel" aria-label="합성과 수비 조작 패널">
       <header class="brand-row">
-        <div><p class="eyebrow">한자 랜덤 타워 디펜스</p><h1>한자 운명진</h1></div>
+        <div><p class="eyebrow">오행 자령 디펜스</p><h1>천자진</h1></div>
         <div class="header-actions">
           <button id="speed-button" class="speed-button" type="button" aria-label="게임 배속 1배" title="게임 배속 전환 (F)">1×</button>
           <button id="settings-button" class="icon-button" type="button" aria-label="화면 설정 열기" title="화면 설정">⚙</button>
@@ -378,7 +378,7 @@ app.innerHTML = `
           </div>
           <section id="casual-fusion-toolbar" class="casual-fusion-toolbar" hidden>
             <button id="casual-fuse-all" class="casual-fuse-all" type="button">
-              <b>한 번에 승급</b><span id="casual-fuse-all-count">0회 가능</span>
+              <b>한 번에 승급</b><span id="casual-fuse-all-count" class="casual-fuse-all-count">(0회)</span>
             </button>
             <p id="casual-fuse-all-note" class="casual-fuse-all-note">같은 오행·같은 별 자령 3체를 자동으로 묶습니다. 3기가 모두 사라지고 다음 별 자령 1기를 무작위로 얻습니다.</p>
           </section>
@@ -566,13 +566,13 @@ app.innerHTML = `
 
         <p class="s00-mode-label">진법 선택</p>
         <div class="s00-modes" role="radiogroup" aria-label="진법 선택">
-          <button type="button" class="s00-mode game-mode-option is-selected" data-game-mode-option="standard" role="radio" aria-checked="true"
-            aria-label="자형연성 진법. 실제 한자 구성식으로 합성하고 목표 계보를 완성하는 진법">
-            <i class="s00-skin" aria-hidden="true"></i><b>자형연성 진법</b><small aria-hidden="true"><span class="s00-mode-sub s00-mode-sub--full">실제 한자 구성식 · 목표 계보</span><span class="s00-mode-sub s00-mode-sub--compact">구성식 합성 · 계보 목표</span></small><em>선택됨</em>
+          <button type="button" class="s00-mode game-mode-option is-selected" data-game-mode-option="casual" role="radio" aria-checked="true"
+            aria-label="별승급 진법. 같은 별 셋을 모아 다음 별 자령을 무작위로 얻는 본편 진법. 최고 8성">
+            <i class="s00-skin" aria-hidden="true"></i><b>별승급 진법</b><small aria-hidden="true"><span class="s00-mode-sub s00-mode-sub--full">같은 별 셋 → 다음 별 무작위 · 최고 8성</span><span class="s00-mode-sub s00-mode-sub--compact">3합 승급 · 무작위 재미</span></small><em>선택됨</em>
           </button>
-          <button type="button" class="s00-mode game-mode-option" data-game-mode-option="casual" role="radio" aria-checked="false"
-            aria-label="별승급 진법. 같은 오행·같은 별 3기를 모아 다음 별 자령을 얻는 진법. 최고 8성">
-            <i class="s00-skin" aria-hidden="true"></i><b>별승급 진법</b><small aria-hidden="true"><span class="s00-mode-sub s00-mode-sub--full">같은 오행·같은 별 3기 → 다음 별 · 최고 8성</span><span class="s00-mode-sub s00-mode-sub--compact">3합 승급 · 최고 8성</span></small><em>선택됨</em>
+          <button type="button" class="s00-mode game-mode-option" data-game-mode-option="standard" role="radio" aria-checked="false"
+            aria-label="자형연성 진법. 실제 한자의 설계도대로 부수를 부품 삼아 글자를 조립하는 학습 진법">
+            <i class="s00-skin" aria-hidden="true"></i><b>자형연성 진법</b><small aria-hidden="true"><span class="s00-mode-sub s00-mode-sub--full">부수를 부품 삼아 조립 · 학습 특화</span><span class="s00-mode-sub s00-mode-sub--compact">부수 조립 · 한자 학습</span></small><em>선택됨</em>
           </button>
         </div>
 
@@ -655,8 +655,8 @@ app.innerHTML = `
           <div class="s13-group" aria-label="진법 규칙">
             <span class="s13-group-label">진법 규칙</span>
             <div class="s13-options">
-              <button type="button" data-s13-mode="standard" role="radio"><b>자형연성</b><small>실제 구성식 합성</small></button>
-              <button type="button" data-s13-mode="casual" role="radio"><b>별승급</b><small>3기 소모 · 다음 별 무작위</small></button>
+              <button type="button" data-s13-mode="casual" role="radio"><b>별승급</b><small>3합 승급 · 무작위 획득</small></button>
+              <button type="button" data-s13-mode="standard" role="radio"><b>자형연성</b><small>부수 조립 · 학습 특화</small></button>
               <button type="button" id="s13-autoplace" aria-pressed="true"><b>소환 자동 배치</b><small class="s13-state">ON</small></button>
             </div>
           </div>
@@ -673,8 +673,8 @@ app.innerHTML = `
         <p id="end-message"></p>
         <div id="end-stats" class="end-stats"></div>
         <div class="end-actions">
-          <button id="retry-button" class="start-button" type="button">같은 시드 재도전</button>
-          <button id="new-seed-button" class="secondary-button" type="button">새 시드로 시작</button>
+          <button id="new-seed-button" class="start-button" type="button">다시 도전</button>
+          <button id="retry-button" class="secondary-button" type="button" hidden>같은 시드 재도전</button>
           <button id="return-menu-button" class="secondary-button" type="button">메뉴로 돌아가기</button>
         </div>
       </div>
@@ -683,34 +683,165 @@ app.innerHTML = `
     <dialog id="help-dialog" class="help-dialog">
       <form method="dialog">
         <div class="dialog-heading"><div><p class="eyebrow">놀이 방법</p><h2>봉인술 입문</h2></div><button aria-label="도움말 닫기">×</button></div>
-        <div class="help-quickstart"><b>처음이라면</b><span><i>①</i> 소환(1키)으로 자령 뽑기</span><span><i>②</i> 첫 오행진이 무료로 열림</span><span><i>③</i> 시작 버튼으로 웨이브 개시</span><small class="help-glossary">자령=타워 · 엽전=골드 · 문기=오행 재료 · 濃=농축 단계(최고 3) · 봉인=적 처치, 또는 사자성어 발동</small></div>
-        <ol>
-          <li><b>소환</b><span>지역별 1단계 한자를 품은 자령이 무작위로 나옵니다. 목표에 모자란 재료는 뽑을수록 확률이 올라갑니다.</span></li>
-          <li><b>목적 소환</b><span>네 가지 중 하나를 고릅니다. <em>균형</em>은 목표와 성어 재료를 고루 섞고, <em>탐색</em>은 아직 못 본 한자를 우선하며, <em>계보</em>는 목표 계보의 재료만 노리고(12회마다 재료 1기 보장 · 30회 누적 시 확정 지급), <em>중복 수집</em>은 농축과 분해에 쓸 보유 한자를 다시 부릅니다. 별승급 진법에서는 상품마다 나오는 별 구간이 정해져 있습니다 — <em>기본·탐색·중복</em> 1~3★, <em>중급</em> 2~5★, <em>고급</em> 3~8★ 이며 구간 안에서도 낮은 별이 더 흔합니다. 상위 별은 뽑기가 아니라 3기 조합으로 올립니다.</span></li>
-          <li><b>오행 공명</b><span>같은 진에 그 진의 오행 자령을 4·8·12·16기 모으면 단계가 올라가고, 단계마다 그 진의 피해가 더해집니다. 자동배치가 알려 주는 "오행 공명 N→M단계"가 이 값입니다.</span></li>
-          <li><b>인연 연구</b><span>엽전을 들여 목표 재료가 나올 가중치를 올립니다. 최고 5단계이며 각 단계는 정해진 웨이브를 지나야 열립니다(3키).</span></li>
-          <li><b>10연 소환</b><span>10웨이브를 지키면 개방됩니다. Q키 또는 10연 버튼으로 현재 소환 비용 10회를 한 번에 지불합니다. 별승급 진법에서는 열 장 안에 기본 밴드 상단인 3★ 1기가 보장됩니다.</span></li>
-          <li><b>합성</b><span>실제 구성식의 재료를 모두 보유하면 조합 서책에 카드가 열립니다. 木+木처럼 같은 글자 두 개도 각각 필요합니다.</span></li>
-          <li><b>별승급 진법</b><span>천자문 실제 획수로 기본 별이 정해집니다. 같은 오행·같은 현재 별 자령 3기를 고르면 3기가 모두 사라지고 같은 오행의 다음 별 자령 1기를 무작위로 얻으며 최고 8성입니다. 잠금·농축·목표·사자성어 자령은 소모 대상에서 빠집니다.</span></li>
-          <li><b>방식</b><span>반자동은 가능한 조합만 제안합니다. 목표 자동은 목표 경로의 조합만 자동 실행하며, 수동은 선택한 한자가 포함된 조합만 봅니다.</span></li>
-          <li><b>사자성어</b><span>같은 진의 한 줄 — 가로·세로·대각선 — 네 칸에 글자를 올바른 순서로 배치하면 자동 봉인됩니다. 역순으로 읽어도 인정하며, 직접 선을 그을 필요가 없고 보너스는 그 런 동안 계속 유지됩니다.</span></li>
-          <li><b>첫 오행진</b><span>열린 진 없이 상점에서 시작합니다. 첫 소환 자령과 같은 오행진이 무료로 열리고, 나머지는 원하는 순서로 18·32·52·78엽전에 개방합니다.</span></li>
-          <li><b>자동배치</b><span>런 인벤토리 자령을 현재 개방된 오행진에 투입하고, 완성 가능한 사자성어와 오행 공명을 함께 정리합니다.</span></li>
-          <li><b>은행 이자</b><span>웨이브 종료 시 보유 엽전 20개당 1엽전을 지급하며, 한 번에 최대 20엽전까지만 받을 수 있습니다.</span></li>
-          <li><b>훈·독</b><span>기본 자령 모드는 머리 위 한자·훈음을 표시합니다. 한자 강조를 끄면 머리 위 표찰은 숨기고 별만 남깁니다. 설정의 공부 모드는 전장에 큰 한자와 짧은 읽기를 표시하며, 선택 카드와 도감에서는 자세한 훈음·음독·훈독·병음과 뜻을 확인합니다.</span></li>
-          <li><b>전투</b><span>웨이브 약점 오행은 피해가 30% 증가합니다. 水→木→火→土→金→水 상생을 함께 배치하면 추가 피해를 줍니다.</span></li>
-          <li><b>강화 탭</b><span>인벤토리 자령을 보호 규칙 아래 일괄 분해하고, 공용·오행 5능력치×99단계와 오행별 고유 특성 3종×10단계를 한 화면에서 투자합니다. <em>유일 자령 보호</em> 스위치를 끄면 이 한자를 1기만 가진 자령도 후보에 들어오며, 목록에 <em>유일</em> 배지가 남습니다(잠금·농축·목표·성어 보호는 그대로).</span></li>
-          <li><b>능력 조합</b><span>모든 한자는 오행 효과·전투 역할·조합망 패시브를 가집니다. 합성 한자는 재료의 오행도 계승해 주기 추가타를 얻습니다.</span></li>
-          <li><b>잠금</b><span>선택한 자령을 잠그면 공격·이동은 유지되지만 합성 재료와 판매 대상에서는 제외됩니다.</span></li>
-          <li><b>자령 도감</b><span>전체 한자와 천자문 자령을 한 화면에서 봅니다. 별·독립 여부·조합표·쉬운 훈 풀이와 자령 초상화를 함께 확인합니다.</span></li>
-          <li><b>런 인벤토리</b><span>동일한 한자는 한 스택으로 묶입니다. 인벤토리 자령을 고른 뒤 빈 칸을 누르면 배치하고, 찬 칸을 누르면 기존 자령을 인벤토리로 보내며 즉시 교체합니다.</span></li>
-          <li><b>농축 공방</b><span>같은 한자 중복 1기 또는 같은 오행 문기 4·6·8을 직접 고릅니다. 농축 방향은 자령의 역할이 정합니다 — 연사·지원은 공속(濃당 +7.5%), 나머지는 피해(濃당 +12%). 실행 전 전후 전투 수치를 비교합니다.</span></li>
-          <li><b>지도 배율</b><span>기존 260% 크기를 새 100% 기준으로 사용합니다. 휠로 약 28%~200% 확대·축소하고, 빈 칸·길에서 좌클릭 드래그하거나 휠 버튼을 누른 채 드래그하면 지도를 이동합니다. 왼쪽 아래 배율 버튼은 중앙 정렬된 100%로 돌아갑니다.</span></li>
-          <li><b>게임 배속</b><span>오른쪽 위 배속 버튼이나 F키로 1×·2×·3×를 순환합니다.</span></li>
-          <li><b>게임오버</b><span>적은 경로 끝에서 사라지지 않고 계속 순환합니다. 전장에 ${MAX_ENEMIES}체가 쌓이거나 우두머리를 제한시간 안에 처치하지 못하면 즉시 실패합니다. 제어 능력은 적을 뒤로 밀지 않고 현재 공격권 안에서 감속·봉쇄합니다.</span></li>
-        </ol>
-        <div class="key-guide"><span><kbd>1</kbd> 소환</span><span><kbd>Q</kbd> 10연</span><span><kbd>2</kbd> 첫 합성</span><span><kbd>3</kbd> 연구</span><span><kbd>Space</kbd> 한자 강조</span><span><kbd>F</kbd> 배속</span><span><kbd>P</kbd> 일시정지</span><span><kbd>C</kbd> 도감</span><span><kbd>M</kbd> 음소거</span></div>
-        <p>정예 철갑 강시(방어 높음)·질풍 아귀(빠름)·백귀야행(다수)·회생 요괴(체력 회복)의 특성을 미리 확인하세요. 놓친 적도 사라지지 않고 다음 바퀴를 돌기 때문에 누적 수를 계속 관리해야 합니다.</p>
+        <div class="codex-mode-tabs help-tabs" role="tablist" aria-label="도움말 갈피">
+          <button type="button" class="is-active" role="tab" id="help-tab-start" aria-controls="help-panel-start" aria-selected="true" data-help-tab="start">시작하기</button>
+          <button type="button" role="tab" id="help-tab-summon" aria-controls="help-panel-summon" aria-selected="false" tabindex="-1" data-help-tab="summon">소환·상점</button>
+          <button type="button" role="tab" id="help-tab-battle" aria-controls="help-panel-battle" aria-selected="false" tabindex="-1" data-help-tab="battle">전투·배치</button>
+          <button type="button" role="tab" id="help-tab-growth" aria-controls="help-panel-growth" aria-selected="false" tabindex="-1" data-help-tab="growth">승급·강화</button>
+          <button type="button" role="tab" id="help-tab-idiom" aria-controls="help-panel-idiom" aria-selected="false" tabindex="-1" data-help-tab="idiom">사자성어</button>
+        </div>
+        <div class="help-panels">
+          <section class="help-panel is-active" id="help-panel-start" role="tabpanel" aria-labelledby="help-tab-start" data-help-panel="start">
+            <p class="help-lead">한자를 품은 <b>자령</b>을 뽑아 오행진에 세우고, 밀려오는 요괴를 <b>봉인</b>합니다. 처음은 세 걸음이면 충분합니다.</p>
+            <ol class="help-flow" aria-label="처음 세 걸음">
+              <li><i aria-hidden="true">①</i><b>자령 소환</b><span>상점의 <em>기본 소환</em>(<kbd>1</kbd>)으로 한 기를 뽑습니다. 첫 자령이 시작 오행을 정합니다.</span></li>
+              <li><i aria-hidden="true">②</i><b>첫 진 자동 개방</b><span>그 오행의 진 하나가 무료로 열리고 빈 칸에 바로 놓입니다. 추가 소환 2기를 권합니다.</span></li>
+              <li><i aria-hidden="true">③</i><b>웨이브 시작</b><span>첫 소환 뒤 준비 15초가 흐릅니다. 전장 위 <em>시작</em> 버튼을 누르면 남은 준비 시간만큼 엽전을 더 받습니다.</span></li>
+            </ol>
+            <h3 class="help-subhead">꼭 알아 둘 여섯 낱말</h3>
+            <div class="help-term-grid">
+              <article class="help-term" style="--element:#73df8d"><i aria-hidden="true">靈</i><div><b>자령<em>타워</em></b><span>글자에 깃든 타워. 오행진 한 칸에 한 기가 섭니다.</span></div></article>
+              <article class="help-term" style="--element:#ff755a"><i aria-hidden="true">封</i><div><b>봉인<em>처치</em></b><span>적을 쓰러뜨리는 일, 그리고 사자성어가 완성되는 일.</span></div></article>
+              <article class="help-term" style="--element:#f5c65b"><i aria-hidden="true">錢</i><div><b>엽전<em>골드</em></b><span>이 게임의 돈. 소환·진 해금·공용 강화에 씁니다.</span></div></article>
+              <article class="help-term" style="--element:#61c8ff"><i aria-hidden="true">文</i><div><b>문기<em>오행 재료</em></b><span>자령을 분해해 얻습니다. 오행 강화와 농축에 씁니다.</span></div></article>
+              <article class="help-term" style="--element:#a98cff"><i aria-hidden="true">濃</i><div><b>농축<em>최고 3</em></b><span>같은 글자를 겹쳐 한 기를 키우는 단계입니다.</span></div></article>
+              <article class="help-term" style="--element:#72d8a0"><i aria-hidden="true">共</i><div><b>공명<em>진 보너스</em></b><span>한 진에 그 진의 오행을 4·8·12·16기 모을 때 붙습니다.</span></div></article>
+            </div>
+            <h3 class="help-subhead">단축키</h3>
+            <div class="key-guide"><span><kbd>1</kbd> 소환</span><span><kbd>Q</kbd> 10연</span><span><kbd>2</kbd> 첫 합성</span><span><kbd>3</kbd> 연구</span><span><kbd>Space</kbd> 한자 강조</span><span><kbd>F</kbd> 배속</span><span><kbd>P</kbd> 일시정지</span><span><kbd>C</kbd> 도감</span><span><kbd>M</kbd> 음소거</span></div>
+          </section>
+
+          <section class="help-panel" id="help-panel-summon" role="tabpanel" aria-labelledby="help-tab-summon" data-help-panel="summon">
+            <p class="help-lead">자령은 오직 뽑기로 얻습니다. 상점 상품마다 <b>무엇이 잘 나오는지</b>가 다릅니다.</p>
+            <h3 class="help-subhead">별 구간<em class="help-mode-badge is-casual">별승급 진법</em></h3>
+            <div class="help-band" aria-label="소환 상품별 별 구간">
+              <div class="help-band-row"><b>기본 · 탐색 · 중복</b><span class="help-band-track" aria-hidden="true"><i class="is-on" style="--star:#aeb9cc">1</i><i class="is-on" style="--star:#72d8a0">2</i><i class="is-on" style="--star:#61c8ff">3</i><i>4</i><i>5</i><i>6</i><i>7</i><i>8</i></span><em>1~3★</em></div>
+              <div class="help-band-row"><b>중급 소환</b><span class="help-band-track" aria-hidden="true"><i>1</i><i class="is-on" style="--star:#72d8a0">2</i><i class="is-on" style="--star:#61c8ff">3</i><i class="is-on" style="--star:#a98cff">4</i><i class="is-on" style="--star:#f5c65b">5</i><i>6</i><i>7</i><i>8</i></span><em>2~5★</em></div>
+              <div class="help-band-row"><b>고급 소환</b><span class="help-band-track" aria-hidden="true"><i>1</i><i>2</i><i class="is-on" style="--star:#61c8ff">3</i><i class="is-on" style="--star:#a98cff">4</i><i class="is-on" style="--star:#f5c65b">5</i><i class="is-on" style="--star:#ff8a56">6</i><i class="is-on" style="--star:#ff5f91">7</i><i class="is-on" style="--star:#fff1ad">8</i></span><em>3~8★</em></div>
+            </div>
+            <p class="help-note">구간 안에서도 <b>낮은 별이 더 흔합니다</b>. 상위 별은 뽑기가 아니라 3기 조합으로 올립니다.</p>
+            <h3 class="help-subhead">목적 소환 네 갈래</h3>
+            <div class="help-cards help-cards--tight">
+              <article class="help-card"><b>기본<em>균형</em></b><span>목표와 성어 재료를 고루 섞은 전체 풀입니다.</span></article>
+              <article class="help-card"><b>탐색</b><span>아직 못 본 한자를 우선해 부릅니다.</span></article>
+              <article class="help-card"><b>계보<em class="help-mode-badge is-synth">자형연성</em></b><span>목표 계보의 재료만 노립니다. 12회마다 재료 1기 보장 · 30회 누적 시 확정 지급.</span></article>
+              <article class="help-card"><b>중복 수집</b><span>농축과 분해에 쓸 보유 한자를 다시 부릅니다.</span></article>
+            </div>
+            <h3 class="help-subhead">더 얻는 길</h3>
+            <div class="help-cards">
+              <article class="help-card"><b>소환<em><kbd>1</kbd></em></b><span>지역별 1단계 한자를 품은 자령이 무작위로 나옵니다. 목표에 모자란 재료는 뽑을수록 확률이 올라갑니다.</span></article>
+              <article class="help-card"><b>10연 소환<em><kbd>Q</kbd></em></b><span>10웨이브를 지키면 열립니다. 현재 소환 비용 10회를 한 번에 지불하며, 별승급 진법에서는 열 장 안에 기본 밴드 상단인 3★ 1기가 보장됩니다.</span></article>
+              <article class="help-card"><b>인연 연구<em><kbd>3</kbd></em></b><span>엽전을 들여 목표 재료가 나올 가중치를 올립니다. 최고 5단계이며 각 단계는 정해진 웨이브를 지나야 열립니다.</span></article>
+              <article class="help-card"><b>첫 오행진과 해금</b><span>열린 진 없이 상점에서 시작합니다. 첫 소환 자령과 같은 오행진이 무료로 열리고, 나머지는 원하는 순서로 18·32·52·78엽전에 개방합니다.</span></article>
+              <article class="help-card"><b>자동배치</b><span>런 인벤토리 자령을 현재 개방된 오행진에 투입하고, 완성 가능한 사자성어와 오행 공명을 함께 정리합니다.</span></article>
+            </div>
+          </section>
+
+          <section class="help-panel" id="help-panel-battle" role="tabpanel" aria-labelledby="help-tab-battle" data-help-panel="battle">
+            <p class="help-lead">적은 경로 끝에서 사라지지 않고 <b>계속 순환</b>합니다. 놓친 적도 다음 바퀴를 돌기 때문에 누적 수를 계속 줄여야 합니다.</p>
+            <h3 class="help-subhead">전장 조작</h3>
+            <div class="help-chips" aria-label="지도 조작">
+              <i><em>끌기</em>빈 곳·길을 끌어 화면 이동</i><i><em>클릭</em>눌러 선택·배치</i><i><em>자령 끌기</em>끌어 자리 교환</i>
+            </div>
+            <p class="help-note">휠로 약 28%~200% 확대·축소하고, 휠 버튼을 누른 채 끌어도 이동합니다. 왼쪽 아래 배율 버튼은 중앙 정렬된 100%로 되돌리며, 오른쪽 위 배속 버튼이나 <kbd>F</kbd>는 1×·2×·3×를 순환합니다.</p>
+            <h3 class="help-subhead">오행 공명 — 한 진에 같은 오행을 모을수록</h3>
+            <div class="help-gauge" aria-label="오행 공명 단계">
+              <div class="help-gauge-step" style="--fill:25%"><b>4기</b><i>1단계</i><span>진 피해 +6%</span></div>
+              <div class="help-gauge-step" style="--fill:50%"><b>8기</b><i>2단계</i><span>진 피해 +12%</span></div>
+              <div class="help-gauge-step" style="--fill:75%"><b>12기</b><i>3단계</i><span>진 피해 +18%</span></div>
+              <div class="help-gauge-step" style="--fill:100%"><b>16기</b><i>4단계</i><span>진 피해 +25%</span></div>
+            </div>
+            <p class="help-note">그 진에 놓인 <b>그 진의 오행</b> 자령만 셈합니다. 자동배치가 알려 주는 "오행 공명 N→M단계"가 이 값입니다.</p>
+            <h3 class="help-subhead">전투와 살림</h3>
+            <div class="help-cards">
+              <article class="help-card"><b>약점과 상생</b><span>웨이브 약점 오행은 피해가 30% 증가합니다. 水→木→火→土→金→水 상생을 함께 배치하면 추가 피해를 줍니다.</span></article>
+              <article class="help-card"><b>웨이브와 장</b><span>10웨이브가 한 장(章)이고 장 끝에는 우두머리가 옵니다. 제한시간 안에 처치하지 못하면 즉시 실패합니다.</span></article>
+              <article class="help-card"><b>게임오버</b><span>전장에 ${MAX_ENEMIES}체가 쌓이면 즉시 실패합니다. 제어 능력은 적을 뒤로 밀지 않고 현재 공격권 안에서 감속·봉쇄합니다.</span></article>
+              <article class="help-card"><b>적 특성</b><span>정예 철갑 강시(방어 높음) · 질풍 아귀(빠름) · 백귀야행(다수) · 회생 요괴(체력 회복)를 미리 확인하세요.</span></article>
+              <article class="help-card"><b>은행 이자</b><span>웨이브 종료 시 보유 엽전 20개당 1엽전을 지급하며, 한 번에 최대 20엽전까지만 받을 수 있습니다.</span></article>
+              <article class="help-card"><b>일시정지<em><kbd>P</kbd></em></b><span>직접 멈출 수 있고, 도감·도움말·설정 창이 열려 있는 동안에도 전투가 저절로 멈춥니다. 창을 닫으면 이어집니다.</span></article>
+              <article class="help-card"><b>런 인벤토리</b><span>같은 한자는 한 스택으로 묶입니다. 인벤토리 자령을 고른 뒤 빈 칸을 누르면 배치하고, 찬 칸을 누르면 기존 자령을 인벤토리로 보내며 즉시 교체합니다.</span></article>
+              <article class="help-card"><b>훈·독 표시<em><kbd>Space</kbd></em></b><span>기본 자령 모드는 머리 위에 한자·훈음을 얹습니다. 한자 강조를 끄면 표찰을 숨기고 별만 남기며, 설정의 공부 모드는 전장에 큰 한자와 짧은 읽기를 표시합니다.</span></article>
+            </div>
+          </section>
+
+          <section class="help-panel" id="help-panel-growth" role="tabpanel" aria-labelledby="help-tab-growth" data-help-panel="growth">
+            <p class="help-lead">뽑은 자령을 <b>더 센 자령</b>으로 바꾸는 길은 진법마다 다릅니다. 두 갈래를 모두 담았습니다.</p>
+            <h3 class="help-subhead">3합 승급<em class="help-mode-badge is-casual">별승급 진법</em></h3>
+            <div class="help-fuse" aria-label="같은 오행 같은 별 자령 3기를 다음 별 1기로">
+              <span class="help-fuse-tile" style="--element:#73df8d;--star:#61c8ff"><b>木</b><i>3★</i></span>
+              <span class="help-fuse-op" aria-hidden="true">+</span>
+              <span class="help-fuse-tile" style="--element:#73df8d;--star:#61c8ff"><b>木</b><i>3★</i></span>
+              <span class="help-fuse-op" aria-hidden="true">+</span>
+              <span class="help-fuse-tile" style="--element:#73df8d;--star:#61c8ff"><b>木</b><i>3★</i></span>
+              <span class="help-fuse-op help-fuse-op--to" aria-hidden="true">→</span>
+              <span class="help-fuse-tile is-result" style="--element:#73df8d;--star:#a98cff"><b>?</b><i>4★</i></span>
+            </div>
+            <p class="help-note">기본 별은 천자문 <b>실제 획수</b>로 정해집니다. 같은 오행·같은 현재 별 자령 3기를 고르면 3기가 모두 사라지고, 같은 오행의 다음 별 자령 1기를 무작위로 얻습니다. 최고 8성입니다.</p>
+            <div class="help-guard">
+              <b>소모 대상에서 빠지는 자령</b>
+              <span>잠금</span><span>농축</span><span>목표</span><span>사자성어</span>
+              <small>이 넷은 3합과 일괄 분해 후보에서 자동으로 제외됩니다.</small>
+            </div>
+            <h3 class="help-subhead">구성식 합성<em class="help-mode-badge is-synth">자형연성 진법</em></h3>
+            <div class="help-cards help-cards--tight">
+              <article class="help-card"><b>조합 서책<em><kbd>2</kbd></em></b><span>실제 구성식의 재료를 모두 보유하면 카드가 열립니다. 木+木처럼 같은 글자 두 개도 각각 필요합니다.</span></article>
+              <article class="help-card"><b>방식 세 가지</b><span><em>반자동</em>은 가능한 조합만 제안하고, <em>목표 자동</em>은 목표 경로의 조합만 자동 실행하며, <em>수동</em>은 선택한 한자가 포함된 조합만 봅니다.</span></article>
+            </div>
+            <h3 class="help-subhead">농축 공방 — 방향은 역할이 정합니다</h3>
+            <div class="help-role">
+              <div class="help-role-row"><b>연사 · 지원</b><i aria-hidden="true">→</i><span>공격 속도<em>濃당 +7.5%</em></span></div>
+              <div class="help-role-row"><b>그 밖의 역할</b><i aria-hidden="true">→</i><span>피해<em>濃당 +12%</em></span></div>
+            </div>
+            <p class="help-note">같은 한자 중복 1기 또는 같은 오행 문기 4·6·8을 재료로 직접 고릅니다. 실행 전에 전후 전투 수치를 나란히 비교해 보여 줍니다.</p>
+            <h3 class="help-subhead">강화 제련소</h3>
+            <div class="help-cards">
+              <article class="help-card"><b>① 분해</b><span>안 쓰는 인벤토리 자령을 보호 규칙 아래 일괄 분해해 오행 문기로 바꿉니다.</span></article>
+              <article class="help-card"><b>② 오행 강화</b><span>공용·오행 5능력치를 각 99단계까지, 오행별 고유 특성 3종을 각 10단계까지 한 화면에서 투자합니다.</span></article>
+              <article class="help-card"><b>유일 자령 보호</b><span>스위치를 끄면 이 한자를 1기만 가진 자령도 후보에 들어오며 목록에 <em>유일</em> 배지가 남습니다. 잠금·농축·목표·성어 보호는 그대로입니다.</span></article>
+              <article class="help-card"><b>잠금</b><span>잠근 자령은 공격·이동은 유지되지만 합성 재료와 판매 대상에서는 제외됩니다.</span></article>
+              <article class="help-card"><b>능력 조합</b><span>모든 한자는 오행 효과·전투 역할·조합망 패시브를 가집니다. 합성 한자는 재료의 오행도 계승해 주기 추가타를 얻습니다.</span></article>
+            </div>
+          </section>
+
+          <section class="help-panel" id="help-panel-idiom" role="tabpanel" aria-labelledby="help-tab-idiom" data-help-panel="idiom">
+            <p class="help-lead">같은 진 안 <b>한 직선</b> 네 칸에 글자를 순서대로 놓으면 사자성어가 자동으로 봉인됩니다.</p>
+            <section class="idiom-rule-guide help-idiom-guide" aria-label="성어 발동 규칙">
+              <div class="idiom-rule-figures" aria-hidden="true">
+                <figure class="idiom-rule-figure idiom-rule-figure--row">
+                  <div class="idiom-rule-grid">
+                    <i style="--r:1;--c:1">①</i><i style="--r:1;--c:2">②</i><i style="--r:1;--c:3">③</i><i style="--r:1;--c:4">④</i>
+                  </div>
+                  <figcaption>가로</figcaption>
+                </figure>
+                <figure class="idiom-rule-figure idiom-rule-figure--column">
+                  <div class="idiom-rule-grid">
+                    <i style="--r:1;--c:1">①</i><i style="--r:2;--c:1">②</i><i style="--r:3;--c:1">③</i><i style="--r:4;--c:1">④</i>
+                  </div>
+                  <figcaption>세로</figcaption>
+                </figure>
+                <figure class="idiom-rule-figure idiom-rule-figure--diagonal">
+                  <div class="idiom-rule-grid">
+                    <i style="--r:1;--c:1">①</i><i style="--r:2;--c:2">②</i><i style="--r:3;--c:3">③</i><i style="--r:4;--c:4">④</i>
+                  </div>
+                  <figcaption>대각선</figcaption>
+                </figure>
+              </div>
+              <p>한 줄로 — 가로·세로·대각선 · 순서대로(역순 인정) · 같은 진 안에서</p>
+            </section>
+            <h3 class="help-subhead">화면이 알려 주는 것</h3>
+            <div class="help-idiom-legend">
+              <div><span class="help-cell is-placed" aria-hidden="true">③</span><div><b>순번 인장</b><span>추적 중인 성어의 글자를 가진 자령에 몇 번째 글자인지 인장이 붙습니다.</span></div></div>
+              <div><span class="help-cell is-next" aria-hidden="true">④</span><div><b>다음 칸 점선</b><span>다음 글자를 놓을 수 있는 빈 칸을 금색 점선 테와 순번으로 표시합니다.</span></div></div>
+            </div>
+            <p class="help-note">직접 선을 그을 필요는 없습니다. 순서가 맞는 순간 자동으로 발동하고, <b>보너스는 그 런 동안 계속 유지</b>됩니다. 역순으로 읽어도 인정합니다.</p>
+            <h3 class="help-subhead">글자 익히기</h3>
+            <div class="help-cards help-cards--tight">
+              <article class="help-card"><b>자령 도감<em><kbd>C</kbd></em></b><span>전체 한자와 천자문 자령을 한 화면에서 봅니다. 별·독립 여부·조합표·쉬운 훈 풀이와 자령 초상화를 함께 확인합니다.</span></article>
+              <article class="help-card"><b>자세한 읽기</b><span>선택 카드와 도감에서는 훈음·음독·훈독·병음과 뜻까지 확인합니다.</span></article>
+            </div>
+          </section>
+        </div>
       </form>
     </dialog>
 
@@ -916,7 +1047,10 @@ seedInput.value = initialSeed;
 let selectedRegion: RegionCode = "KR";
 let pendingRegion: RegionCode | null = null;
 let formationUnlockHintShown = false;
-let selectedGameMode: GameMode = "standard";
+// 본편은 별승급 — 게임적 재미 기준의 사용자 결정. 자형연성은 학습 특화로 위치.
+// `?mode=standard|casual` 딥링크는 e2e·공유용.
+const modeParam = new URLSearchParams(window.location.search).get("mode");
+let selectedGameMode: GameMode = modeParam === "standard" ? "standard" : modeParam === "casual" ? "casual" : "casual";
 
 /*
  * 진법 이름은 여기서만 만든다.
@@ -2211,6 +2345,9 @@ function processEvent(event: GameEvent): void {
 }
 
 function showEndScreen(phase: "victory" | "defeat"): void {
+  // 강화·농축 프레임을 연 채 패배하면 종료 화면 뒤에 프레임이 남아,
+  // 재도전 직후 전장이 어두운 유리 아래 갇힌다.
+  setFocusFrame(null);
   const state = engine.state;
   const victory = phase === "victory";
   // 최고 기록은 이번 판을 저장하기 "전"에 읽어야 갱신 여부를 알 수 있다.
@@ -2749,6 +2886,7 @@ function renderEvolutions(): void {
   const options = engine.availableEvolutions();
   const key = engine.state.automationMode + "|" + String(engine.state.selectedTowerId) + "|" + options.map((option) => option.recipeId + ":" + option.materialTowerIds.join(",")).join("|");
   must<HTMLElement>("#evolution-count").textContent = String(options.length);
+  must<HTMLElement>("#evolution-count").hidden = false;
   must<HTMLElement>("#evolve-ready-count").textContent = String(options.length);
   const evolveButton = must<HTMLButtonElement>("#evolve-button");
   must<HTMLElement>("#evolve-action-label").textContent = "합성";
@@ -2793,7 +2931,7 @@ function casualFusionTowerMarkup(tower: Tower, selected: boolean, disabled: bool
   return `<button type="button" class="casual-fusion-tower ${selected ? "is-selected is-material" : ""} ${badge ? "is-short" : ""}" data-casual-fusion-tower="${tower.id}" style="--element:${ELEMENT_STYLES[tower.wuxing].color};--star:${CASUAL_STAR_COLORS[star]}" aria-pressed="${String(selected)}" ${disabled ? "disabled" : ""}>
     <i class="casual-fusion-sprite" style="${visualBackgroundStyle(visual)}" aria-hidden="true"></i>
     <b>${escapeHtml(tower.char)}</b>
-    <span><strong>${tower.wuxing}행 · ${star}★ ${CASUAL_STAR_NAMES[star]}</strong><small>${strokes ?? "?"}획 · 기본 ${natural}★ · ${location}${tower.locked ? " · 鎖 잠금" : ""}</small></span>
+    <span><strong>${casualStarTagMarkup(star)} ${tower.wuxing}행 · ${CASUAL_STAR_NAMES[star]}</strong><small>${strokes ?? "?"}획 · 기본 ${natural}★ · ${location}${tower.locked ? " · 鎖 잠금" : ""}</small></span>
     <em>${badge ? escapeHtml(badge) : selectedRole || (star >= 8 ? "최고" : "선택")}</em>
   </button>`;
 }
@@ -2814,7 +2952,7 @@ function casualFusionSlotMarkup(tower: Tower | undefined, index: number): string
     <span>${roleLabel} <em>소모</em></span>
     <i class="casual-fusion-slot-sprite" style="${visualBackgroundStyle(visual)}" aria-hidden="true"></i>
     <b>${escapeHtml(tower.char)}</b>
-    <div><strong>${tower.wuxing}행 · 현재 ${star}★</strong><small>자연 ${natural}★ · ${strokes ?? "?"}획</small><small>${location}${tower.locked ? " · 鎖 잠금" : ""}</small></div>
+    <div><strong>${casualStarTagMarkup(star)} ${tower.wuxing}행</strong><small>자연 ${natural}★ · ${strokes ?? "?"}획</small><small>${location}${tower.locked ? " · 鎖 잠금" : ""}</small></div>
   </button>`;
 }
 
@@ -2824,6 +2962,12 @@ interface CasualFusionBucket {
   owned: Tower[];
   groups: CasualAutoFusionGroup[];
   shortReason: string | null;
+  /** 막힌 이유의 종류 — 카드가 빈 칸을 그릴지 결과 칸을 지울지 가른다. */
+  blockedKind: "no-pool" | "protected" | null;
+  /** 보호를 뺀, 지금 실제로 소모할 수 있는 자령(최대 3기까지 초상으로 세운다). */
+  usableSamples: Tower[];
+  /** 막힌 카드의 툴팁 — 화면에서 덜어낸 수치를 여기 보존한다. */
+  blockedTip: string;
 }
 
 /**
@@ -2852,58 +2996,122 @@ function casualFusionBuckets(
       if (list.length < 3) continue;
       const groups = (plans.get(wuxing) ?? []).filter((group) => group.fromStar === star);
       let shortReason: string | null = null;
+      let blockedKind: CasualFusionBucket["blockedKind"] = null;
+      let usableSamples: Tower[] = [];
+      let blockedTip = "";
       if (groups.length === 0) {
         if (engine.casualResultPool(wuxing, star) === null) {
-          shortReason = `이 오행은 ${star}★ 위 글자가 없습니다`;
+          // 재료는 멀쩡한데 위 별 글자가 없다 — 빈 칸이 아니라 결과 칸이 없는 경우다.
+          blockedKind = "no-pool";
+          usableSamples = list.slice(0, 3);
+          shortReason = "이 오행에는 다음 별 글자가 없습니다";
+          blockedTip = `${wuxing}행 ${star}★ 보유 ${list.length}기 · ${star + 1}★ 이상 후보 글자가 없어 승급할 수 없습니다`;
         } else {
+          const usable = list.filter((tower) => !protections.has(tower.id));
           const reasons = list.map((tower) => protections.get(tower.id)).filter((reason): reason is string => reason !== undefined);
-          const safe = list.length - reasons.length;
           const top = [...new Set(reasons)].slice(0, 2).join(" · ");
-          shortReason = `${top || "보호"} 보호로 소모 후보 ${safe}/3 부족 — 같은 별 ${Math.max(1, 3 - safe)}기를 더 모으세요`;
+          const need = Math.max(1, 3 - usable.length);
+          // 몇 기가 모자란지는 빈 초상 칸이 말한다. 글줄은 사유와 다음 행동만 남긴다.
+          blockedKind = "protected";
+          usableSamples = usable.slice(0, 3);
+          shortReason = `${top || "보호"} 보호 — 같은 별 ${need}기를 더 모으세요`;
+          blockedTip = `보유 ${list.length}기 중 소모 가능 ${usable.length}기 · ${top || "보호"} 보호로 ${need}기 부족`;
         }
       }
-      buckets.push({ wuxing, star, owned: list, groups, shortReason });
+      buckets.push({ wuxing, star, owned: list, groups, shortReason, blockedKind, usableSamples, blockedTip });
     }
   }
   return buckets;
 }
 
+/** `★n` 은 본문과 다른 서체 등록부(금박·굵기·tabular-nums)로 분리한 배지다. */
+function casualStarTagMarkup(star: number, variant = ""): string {
+  return `<i class="casual-star-tag${variant}">★${star}</i>`;
+}
+
+function casualGroupMaterialMarkup(tower: Tower, star: CasualStar): string {
+  return `<span class="casual-group-material">`
+    + spiritPortraitMarkup(tower.char, tower.wuxing, "workbench-spirit--group")
+    + casualStarTagMarkup(star)
+    + `</span>`;
+}
+
+/**
+ * 그룹 카드는 "읽는 표"가 아니라 "보는 문장"이다.
+ *
+ * `[오행 인장] [초상 3연속(+여분)] → [? 결과 칸]` 가로 한 줄이 곧 규칙이고,
+ * 글자는 제목 한 줄 + 필요할 때만 경고 한 줄로 줄인다. 소모 글자 목록·후보
+ * 글자 수·보유 수 같은 수치는 지우지 않고 카드 툴팁으로 내린다.
+ *
+ * 보유 수 `×N` 표기는 폐지했다 — `1★ ×4 → 2★` 를 보고 "왜 4개를 합치냐"고
+ * 읽는 오독이 실제로 나왔다. 소모 수는 초상 3개만으로 말하고, 남는 자령은
+ * 초상 뒤 흐린 `+N` 스택 칩으로 "쓰이지 않고 남는다"를 그림으로 보여 준다.
+ */
 function casualGroupCardMarkup(bucket: CasualFusionBucket, allTowers: readonly Tower[], active: boolean): string {
-  const style = `--element:${ELEMENT_STYLES[bucket.wuxing].color};--star:${CASUAL_STAR_COLORS[bucket.star]}`;
+  const next = Math.min(8, bucket.star + 1) as CasualStar;
+  const first = bucket.groups[0];
+  const toStar = first?.toStar ?? next;
+  const style = `--element:${ELEMENT_STYLES[bucket.wuxing].color};--star:${CASUAL_STAR_COLORS[bucket.star]};--result-star:${CASUAL_STAR_COLORS[toStar]}`;
   if (bucket.shortReason) {
-    const next = Math.min(8, bucket.star + 1) as CasualStar;
-    return `<article class="casual-group-card is-blocked" style="${style}">
+    const noPool = bucket.blockedKind === "no-pool";
+    // 모자란 만큼을 빈 초상 실루엣으로 세운다 — "2/3" 을 읽지 않아도 보인다.
+    const slots = [0, 1, 2].map((index) => {
+      const tower = bucket.usableSamples[index];
+      return tower
+        ? casualGroupMaterialMarkup(tower, bucket.star)
+        : `<span class="casual-group-material is-empty"><i>＋</i></span>`;
+    }).join("");
+    return `<article class="casual-group-card is-blocked" style="${style}" title="${escapeHtml(bucket.blockedTip)}">
       <i class="casual-group-glyph" aria-hidden="true">${bucket.wuxing}</i>
-      <div class="casual-group-body"><b>${bucket.star}★ ×${bucket.owned.length} → ${next}★ 승급 불가</b><small>${escapeHtml(bucket.shortReason)}</small></div>
-      <span class="casual-group-run is-disabled">보호 중</span>
+      <div class="casual-group-scene" aria-hidden="true">
+        <span class="casual-group-materials">${slots}</span>
+        <i class="casual-group-arrow">→</i>
+        <span class="casual-group-result is-blocked"><b>${noPool ? "✕" : "?"}</b>${noPool ? "" : casualStarTagMarkup(next, " is-result")}</span>
+      </div>
+      <div class="casual-group-body"><b class="casual-group-title">${escapeHtml(bucket.shortReason)}</b></div>
+      <span class="casual-group-run is-disabled">${noPool ? "상위 없음" : "보호 중"}</span>
     </article>`;
   }
-  const first = bucket.groups[0];
-  const toStar = first?.toStar ?? Math.min(8, bucket.star + 1) as CasualStar;
-  const headline = `${bucket.star}★ ×${bucket.owned.length} → ${toStar}★ 무작위 ${bucket.groups.length}기`;
   const materials = (first?.materialIds ?? []).map((id) => allTowers.find((tower) => tower.id === id)).filter((tower): tower is Tower => Boolean(tower));
-  const boardMaterials = bucket.groups.flatMap((group) => group.materialIds)
+  const usedIds = new Set(bucket.groups.flatMap((group) => group.materialIds));
+  const spares = bucket.owned.filter((tower) => !usedIds.has(tower.id));
+  const boardMaterials = [...usedIds]
     .map((id) => allTowers.find((tower) => tower.id === id))
     .filter((tower): tower is Tower => tower !== undefined && tower.cell >= 0).length;
-  const useLine = materials.length > 0 ? `소모 ${materials.map((tower) => escapeHtml(tower.char)).join("·")}` : "소모 자령 확인 중";
-  const poolLine = first ? ` · ${toStar}★ 후보 ${first.poolSize}자` : "";
-  const more = bucket.groups.length > 1 ? ` · 외 ${bucket.groups.length - 1}묶음` : "";
-  const fallback = first?.starFallback ? `<em class="casual-group-badge is-fallback">${bucket.star + 1}★ 없음 → ${toStar}★</em>` : "";
-  const roster = first?.rosterFallback ? `<em class="casual-group-badge is-fallback">지역 로스터 보충</em>` : "";
-  // 사라질 3기가 누구인지는 글자 목록보다 얼굴이 빠르다. 실제 소모 예정
-  // 묶음(first.materialIds)의 초상만 세운다 — 4기 이상 보유해도 3기 기준.
-  const materialStrip = materials.length > 0
-    ? `<span class="casual-group-materials" aria-hidden="true">${materials.map((tower) => spiritPortraitMarkup(tower.char, tower.wuxing, "workbench-spirit--group")).join("")}</span>`
+  const results = bucket.groups.length;
+  const consumed = results * 3;
+  const materialStrip = materials.map((tower) => casualGroupMaterialMarkup(tower, bucket.star)).join("");
+  const spare = spares[0];
+  const spareChip = spare
+    ? `<span class="casual-group-spare">${spiritPortraitMarkup(spare.char, spare.wuxing, "workbench-spirit--group")}<i>+${spares.length}</i></span>`
     : "";
-  return `<article class="casual-group-card" style="${style}">
+  const notes = [
+    boardMaterials > 0 ? `<em class="casual-group-badge is-board">전장 ${boardMaterials}기 소모</em>` : "",
+    results > 1 ? `<em class="casual-group-badge">3기씩 ${results}묶음 한 번에</em>` : "",
+    first?.starFallback ? `<em class="casual-group-badge is-fallback">상위 별 건너뜀</em>` : "",
+    first?.rosterFallback ? `<em class="casual-group-badge is-fallback">지역 로스터 보충</em>` : ""
+  ].filter((note) => note !== "").join("");
+  const tip = [
+    `보유 ${bucket.owned.length}기 중 ${consumed}기 소모${results > 1 ? ` (3기씩 ${results}묶음)` : ""} · 여분 ${spares.length}기 유지`,
+    materials.length > 0 ? `소모 ${materials.map((tower) => tower.char).join("·")}` : "",
+    first ? `${toStar}★ 후보 ${first.poolSize}자 중 하나가 무작위로 나옵니다` : "",
+    boardMaterials > 0 ? `전장 ${boardMaterials}기가 빠집니다` : "",
+    first?.starFallback ? `${bucket.star + 1}★ 글자가 없어 ${toStar}★ 에서 뽑습니다` : "",
+    first?.rosterFallback ? "이번 런 소환 풀에 후보가 없어 지역 로스터에서 보충합니다" : ""
+  ].filter((line) => line !== "").join(" · ");
+  const runLabel = `${bucket.wuxing}행 ${bucket.star}★ ${consumed}기를 소모해 ${toStar}★ 자령 ${results}기를 무작위로 얻습니다`;
+  return `<article class="casual-group-card" style="${style}" title="${escapeHtml(tip)}">
     <i class="casual-group-glyph" aria-hidden="true">${bucket.wuxing}</i>
-    <div class="casual-group-body">
-      <b>${headline}</b>
-      ${materialStrip}
-      <small>${useLine}${poolLine}${more}</small>
-      ${boardMaterials > 0 ? `<em class="casual-group-badge">전장 ${boardMaterials}기 소모</em>` : ""}${fallback}${roster}
+    <div class="casual-group-scene" aria-hidden="true">
+      <span class="casual-group-materials">${materialStrip}${spareChip}</span>
+      <i class="casual-group-arrow">→</i>
+      <span class="casual-group-result"><b>?</b>${casualStarTagMarkup(toStar, " is-result")}</span>
     </div>
-    <button type="button" class="casual-group-run" data-casual-group="${bucket.wuxing}:${bucket.star}" ${active ? "" : "disabled"}>승급</button>
+    <div class="casual-group-body">
+      <b class="casual-group-title">다음 별 자령 ${results}기 — 무작위</b>
+      ${notes === "" ? "" : `<span class="casual-group-notes">${notes}</span>`}
+    </div>
+    <button type="button" class="casual-group-run" data-casual-group="${bucket.wuxing}:${bucket.star}" aria-label="${escapeHtml(runLabel)}" ${active ? "" : "disabled"}>승급</button>
   </article>`;
 }
 
@@ -2923,12 +3131,15 @@ function renderCasualFusion(): void {
   const key = `${inventorySignature}|S${casualFusionSelection.join(",")}|R${readyCount}`;
 
   must<HTMLElement>("#evolution-count").textContent = String(readyCount);
+  // 같은 수를 헤더 배지·버튼 칩·버튼 라벨이 셋이 나눠 세던 것을 [한 번에 승급 (N회)]
+  // 하나로 모은다. 헤더 배지는 숨기고 설명문은 그대로 둔다.
+  must<HTMLElement>("#evolution-count").hidden = true;
   must<HTMLElement>("#evolve-ready-count").textContent = String(readyCount);
   must<HTMLElement>("#evolve-action-label").textContent = "3체 조합";
   must<HTMLElement>("#evolve-action-detail").textContent = "회 가능";
   must<HTMLElement>("#evolution-tab-label").textContent = "3체 조합";
   must<HTMLElement>("#evolution-kicker").textContent = "3체 조합 · 팔성 승급";
-  must<HTMLElement>("#evolution-heading-label").textContent = "현재 가능한 조합";
+  must<HTMLElement>("#evolution-heading-label").textContent = "승급 대기 묶음";
   must<HTMLElement>("#standard-evolution-modes").hidden = true;
   must<HTMLElement>("#casual-fusion-toolbar").hidden = false;
   const evolveButton = must<HTMLButtonElement>("#evolve-button");
@@ -2938,13 +3149,21 @@ function renderCasualFusion(): void {
   container.classList.add("is-casual");
   const buckets = casualFusionBuckets(allTowers, plans, protections);
   const fuseAllButton = must<HTMLButtonElement>("#casual-fuse-all");
-  fuseAllButton.disabled = !active || readyCount === 0;
-  must<HTMLElement>("#casual-fuse-all-count").textContent = readyCount > 0 ? `${readyCount}회 가능` : "지금은 0회";
-  must<HTMLElement>("#casual-fuse-all-note").textContent = readyCount > 0
-    ? "3기가 모두 사라지고 같은 오행의 다음 별 자령 1기를 무작위로 얻습니다. 인벤토리 자령을 먼저 씁니다."
-    : buckets.some((bucket) => bucket.shortReason !== null)
-      ? "3체는 모였지만 소모할 수 없는 자령이 섞여 있습니다. 아래 카드에서 사유를 확인하세요."
-      : "같은 오행·같은 별 자령이 3체 모이면 여기서 한 번에 승급합니다.";
+  // 일괄 실행은 전장 재료 묶음을 건너뛰므로, 버튼이 세는 수도 실제로
+  // 실행될 묶음만이어야 한다. "(2회)"를 보고 눌렀는데 0회 승급되는
+  // 죽은 버튼을 만들지 않는다. 건너뛸 묶음은 안내문이 카드로 보낸다.
+  const runnableCount = [...plans.values()]
+    .reduce((sum, groups) => sum + groups.filter((group) => group.autoSkipReason === null).length, 0);
+  const heldCount = readyCount - runnableCount;
+  fuseAllButton.disabled = !active || runnableCount === 0;
+  must<HTMLElement>("#casual-fuse-all-count").textContent = `(${runnableCount}회)`;
+  must<HTMLElement>("#casual-fuse-all-note").textContent = runnableCount > 0
+    ? `3기가 모두 사라지고 같은 오행의 다음 별 자령 1기를 무작위로 얻습니다. 인벤토리 자령을 먼저 씁니다.${heldCount > 0 ? ` 전장 자령이 낀 ${heldCount}묶음은 아래 카드에서 개별 실행하세요.` : ""}`
+    : heldCount > 0
+      ? `모인 ${heldCount}묶음이 전부 전장 자령을 소모합니다. 일괄에서는 건너뛰니, 아래 카드의 [승급] 버튼으로 하나씩 실행하세요.`
+      : buckets.some((bucket) => bucket.shortReason !== null)
+        ? "3체는 모였지만 소모할 수 없는 자령이 섞여 있습니다. 아래 카드에서 사유를 확인하세요."
+        : "같은 오행·같은 별 자령이 3체 모이면 여기서 한 번에 승급합니다.";
   if (key === evolutionRenderKey) return;
   evolutionRenderKey = key;
 
@@ -2982,7 +3201,7 @@ function renderCasualFusion(): void {
   const status = quote?.blocked.length
     ? `<p class="casual-fusion-status is-blocked"><b>조합 불가</b><span>${quote.blocked.map((issue) => escapeHtml(issue.text)).join(" · ")}</span></p>`
     : quote
-      ? `<p class="casual-fusion-status ${quote.warnings.length > 0 ? "has-warning" : "is-ready"}"><b>${quote.fromStar}★×3 → ${quote.toStar}★ 무작위 1기</b><span>${quote.warnings.length > 0 ? `${quote.warnings.length}개 확인 사항 · 3기가 모두 사라집니다.` : `3기가 모두 사라지고 ${quote.wuxing}행 ${quote.toStar}★ 후보 ${quote.poolSize}자 중 하나를 얻습니다.`}</span></p>`
+      ? `<p class="casual-fusion-status ${quote.warnings.length > 0 ? "has-warning" : "is-ready"}"><b>${casualStarTagMarkup(quote.fromStar ?? 1)} 3기 → 다음 별 자령 1기 · 무작위</b><span>${quote.warnings.length > 0 ? `${quote.warnings.length}개 확인 사항 · 3기가 모두 사라집니다.` : `3기가 모두 사라지고 ${quote.wuxing}행 ${quote.toStar}★ 후보 ${quote.poolSize}자 중 하나를 얻습니다.`}</span></p>`
       : `<p class="casual-fusion-status"><b>${selectedTowers.length}/3 선택</b><span>${selectedTowers.length === 0 ? "소모할 자령부터 선택하세요 — 3기 모두 사라집니다." : "같은 오행·같은 현재 별 자령을 마저 고르세요."}</span></p>`;
   const previewPool = anchor && casualStarOf(anchor) < 8 ? engine.casualResultPool(anchor.wuxing, casualStarOf(anchor)) : null;
   const resultStar = quote?.toStar ?? previewPool?.star ?? null;
@@ -2996,11 +3215,11 @@ function renderCasualFusion(): void {
     <div class="casual-group-list">${groupCards || emptyState}</div>
     <details class="casual-manual" id="casual-manual-details"${casualManualOpen ? " open" : ""}>
       <summary><b>직접 고르기</b><small>소모할 같은 오행·같은 별 자령 3기를 손으로 지정합니다</small></summary>
-      <div class="casual-rarity-rule"><span><b>획수 기본 별</b><small>실제 Unicode kTotalStrokes</small></span>${([1, 2, 3, 4, 5, 6, 7, 8] as CasualStar[]).map((star) => `<i style="--star:${CASUAL_STAR_COLORS[star]}"><b>${star}★</b><small>${casualStarRangeLabel(star)}</small></i>`).join("")}</div>
-      <div class="casual-fusion-slots">${slotMarkup}<i aria-hidden="true">→</i><div class="casual-fusion-result is-random" style="--star:${resultStar ? CASUAL_STAR_COLORS[resultStar] : "#526274"}"><span>무작위 획득</span><b>?</b><strong${resultStar ? "" : ` class="is-placeholder"`}>${resultStar ? `${resultStar}★ 무작위 1기` : "별 미정 — 자령을 먼저 선택"}</strong><small>${resultStar ? `피해 ×${CASUAL_STAR_POWER[resultStar].toFixed(2)} · 후보 ${quote?.poolSize ?? previewPool?.candidates.length ?? 0}자` : "소모할 자령 선택 필요"}</small></div></div>
+      <div class="casual-rarity-rule"><span><b>획수 기본 별</b><small>실제 Unicode kTotalStrokes</small></span>${([1, 2, 3, 4, 5, 6, 7, 8] as CasualStar[]).map((star) => `<i style="--star:${CASUAL_STAR_COLORS[star]}"><b>★${star}</b><small>${casualStarRangeLabel(star)}</small></i>`).join("")}</div>
+      <div class="casual-fusion-slots">${slotMarkup}<i aria-hidden="true">→</i><div class="casual-fusion-result is-random" style="--star:${resultStar ? CASUAL_STAR_COLORS[resultStar] : "#526274"}"><span>무작위 획득</span><b>?</b><strong${resultStar ? "" : ` class="is-placeholder"`}>${resultStar ? `${casualStarTagMarkup(resultStar, " is-result")} 무작위 1기` : "별 미정 — 자령을 먼저 선택"}</strong><small>${resultStar ? `피해 ×${CASUAL_STAR_POWER[resultStar].toFixed(2)} · 후보 ${quote?.poolSize ?? previewPool?.candidates.length ?? 0}자` : "소모할 자령 선택 필요"}</small></div></div>
       ${status}
-      <button id="casual-fusion-review" class="workbench-primary casual-fusion-review" type="button" ${!quote || quote.blocked.length > 0 ? "disabled" : ""}>소모 목록 확인 후 ${resultStar ?? "?"}★ 무작위 획득</button>
-      <div class="casual-candidate-heading"><div><b>보유 자령</b><small>${anchor ? `${anchor.wuxing}행 ${casualStarOf(anchor)}★만 표시` : "3체가 모인 자령만 고를 수 있습니다"}</small></div><em>잠금·농축·목표·성어는 소모 불가</em></div>
+      <button id="casual-fusion-review" class="workbench-primary casual-fusion-review" type="button" ${!quote || quote.blocked.length > 0 ? "disabled" : ""}>소모 목록 확인 후 ${resultStar ? `★${resultStar}` : "?"} 무작위 획득</button>
+      <div class="casual-candidate-heading"><div><b>보유 자령</b><small>${anchor ? `${anchor.wuxing}행 ★${casualStarOf(anchor)}만 표시` : "3체가 모인 자령만 고를 수 있습니다"}</small></div><em>잠금·농축·목표·성어는 소모 불가</em></div>
       <div class="casual-fusion-candidates">${candidateMarkup}</div>
     </details>`;
 }
@@ -6806,8 +7025,52 @@ must<HTMLButtonElement>("#early-button").addEventListener("click", () => {
     window.setTimeout(() => pop.remove(), 1400);
   }
 });
-must<HTMLButtonElement>("#help-button").addEventListener("click", () => helpDialog.showModal());
-must<HTMLButtonElement>("#title-help-button").addEventListener("click", () => helpDialog.showModal());
+/*
+ * R17. 도움말 갈피.
+ *
+ * 21개 항목이 한 두루마리에 이어 붙어 있어 아래 절반은 사실상 읽히지 않았다.
+ * 다섯 갈피로 갈라 한 번에 한 주제만 보이게 한다. 도감과 같은 `.codex-mode-tabs`
+ * 어휘를 쓰고, 갈피를 바꾸면 두루마리를 맨 위로 되감는다 — 이전 갈피에서
+ * 내려둔 자리에 새 글이 걸려 "빈 화면"으로 열리는 일을 막는다.
+ *
+ * 탭 버튼은 `<form method="dialog">` 안에 있으므로 type="button" 이 반드시
+ * 필요하다. 기본 submit 이면 갈피를 누를 때마다 창이 닫힌다.
+ */
+const helpTabButtons = [...helpDialog.querySelectorAll<HTMLButtonElement>("[data-help-tab]")];
+const helpPanels = [...helpDialog.querySelectorAll<HTMLElement>("[data-help-panel]")];
+const helpScroller = must<HTMLFormElement>("#help-dialog > form");
+
+function setHelpTab(tab: string, focusTab = false): void {
+  for (const button of helpTabButtons) {
+    const active = button.dataset.helpTab === tab;
+    button.classList.toggle("is-active", active);
+    button.setAttribute("aria-selected", String(active));
+    button.tabIndex = active ? 0 : -1;
+    if (active && focusTab) button.focus();
+  }
+  for (const panel of helpPanels) panel.classList.toggle("is-active", panel.dataset.helpPanel === tab);
+  helpScroller.scrollTop = 0;
+}
+
+for (const [index, button] of helpTabButtons.entries()) {
+  button.addEventListener("click", () => setHelpTab(button.dataset.helpTab ?? "start"));
+  button.addEventListener("keydown", (event) => {
+    const step = event.key === "ArrowRight" ? 1 : event.key === "ArrowLeft" ? -1 : 0;
+    if (step === 0) return;
+    event.preventDefault();
+    const next = helpTabButtons[(index + step + helpTabButtons.length) % helpTabButtons.length];
+    if (next) setHelpTab(next.dataset.helpTab ?? "start", true);
+  });
+}
+
+/** 언제 열어도 첫 갈피에서 시작한다 — 처음 온 사람이 보는 화면을 고정한다. */
+function openHelpDialog(): void {
+  setHelpTab("start");
+  helpDialog.showModal();
+}
+
+must<HTMLButtonElement>("#help-button").addEventListener("click", openHelpDialog);
+must<HTMLButtonElement>("#title-help-button").addEventListener("click", openHelpDialog);
 must<HTMLButtonElement>("#settings-button").addEventListener("click", () => {
   sound.unlock();
   syncDisplayModeControls();
@@ -7617,6 +7880,8 @@ let devKeyTimer = 0;
 
 function setDevMode(enabled: boolean): void {
   shell.dataset.devMode = enabled ? "1" : "0";
+  // 같은 시드 재도전은 재현·디버그용 — 일반 플레이어에겐 시드 개념을 노출하지 않는다.
+  must<HTMLButtonElement>("#retry-button").hidden = !enabled;
   if (enabled) {
     seedInput.focus();
     seedInput.select();
@@ -7634,6 +7899,9 @@ window.addEventListener("keydown", (event) => {
     }, 1200);
     if (devKeyStreak >= 5) {
       devKeyStreak = 0;
+      // 켜는 순간 시드 입력칸에 포커스가 가므로, 이 백틱 자체가 선택된
+      // 시드 문자열을 "`" 로 덮어써 버린다. 입력만 막는다.
+      event.preventDefault();
       setDevMode(shell.dataset.devMode !== "1");
     }
     return;

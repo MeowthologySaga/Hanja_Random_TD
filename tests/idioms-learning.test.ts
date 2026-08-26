@@ -321,3 +321,26 @@ describe("regional idiom reachability and learning labels", () => {
     }
   });
 });
+
+// final-audit M4 회귀: 동률인 "다른 줄"의 다음 칸이 점선 안내로 새지 않는다.
+describe("partial chain next-cell containment", () => {
+  const engine = new GameEngine("m4-leak", "KR", "standard");
+  engine.begin();
+  const idiom = engine.idioms().find((entry) => entry.chars === "以心傳心") ?? engine.idioms()[0] as IdiomDefinition;
+  const [c1, c2] = [...idiom.chars] as [string, string];
+
+  it("does not leak next cells from tied chains with a different prefix", () => {
+    // 가로 [0,1] 사슬 + 다른 진의 가로 [16,17] 동률 → 다음 칸은 [0,1] 줄의 2 하나.
+    const towers = [towerFor(engine, c1, 0, 901), towerFor(engine, c2, 1, 902), towerFor(engine, c1, 16, 903), towerFor(engine, c2, 17, 904)];
+    const chain = partialIdiomChain(towers, idiom);
+    expect(chain.cells).toEqual([0, 1]);
+    expect(chain.nextCells).toEqual([2]);
+  });
+
+  it("keeps a genuine corner branch where prefixes coincide", () => {
+    const towers = [towerFor(engine, c1, 0, 905)];
+    const chain = partialIdiomChain(towers, idiom);
+    expect(chain.cells).toEqual([0]);
+    expect(chain.nextCells.length).toBeGreaterThanOrEqual(2);
+  });
+});

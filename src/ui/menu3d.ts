@@ -306,16 +306,24 @@ export function startMenu3d(host: HTMLElement): Menu3dHandle {
       }
       material.needsUpdate = true;
     };
-    const cached = cachedTexture(S00_TEXTURE(file));
+    // WebP 를 먼저(부팅 게이트가 받은 1.4MiB 세트), 실패 시 원본 PNG,
+    // 그마저 실패하면 절차 재질 — 세 단 폴백.
+    const webp = file.replace(/\.png$/u, ".webp");
+    const cached = cachedTexture(S00_TEXTURE(webp)) ?? cachedTexture(S00_TEXTURE(file));
     if (cached) {
       commit(cached);
       return;
     }
     loader.load(
-      S00_TEXTURE(file),
+      S00_TEXTURE(webp),
       commit,
       undefined,
-      () => console.warn(`[menu3d] 텍스처 로드 실패, 절차 재질 유지: ${file}`)
+      () => loader.load(
+        S00_TEXTURE(file),
+        commit,
+        undefined,
+        () => console.warn(`[menu3d] 텍스처 로드 실패, 절차 재질 유지: ${file}`)
+      )
     );
   }
 
@@ -553,16 +561,21 @@ export function startMenu3d(host: HTMLElement): Menu3dHandle {
         skin.material.needsUpdate = true;
       }
     };
-    const cached = cachedTexture(S00_TEXTURE("desk-props-atlas-v1.png"));
+    const cached = cachedTexture(S00_TEXTURE("desk-props-atlas-v1.webp")) ?? cachedTexture(S00_TEXTURE("desk-props-atlas-v1.png"));
     if (cached) {
       commit(cached);
       return;
     }
     loader.load(
-      S00_TEXTURE("desk-props-atlas-v1.png"),
+      S00_TEXTURE("desk-props-atlas-v1.webp"),
       commit,
       undefined,
-      () => console.warn("[menu3d] 텍스처 로드 실패, 절차 재질 유지: desk-props-atlas-v1.png")
+      () => loader.load(
+        S00_TEXTURE("desk-props-atlas-v1.png"),
+        commit,
+        undefined,
+        () => console.warn("[menu3d] 텍스처 로드 실패, 절차 재질 유지: desk-props-atlas-v1.png")
+      )
     );
   }
 
