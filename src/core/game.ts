@@ -544,6 +544,21 @@ function casualGoalOrder(catalog: HanziCatalog): readonly string[] {
   return order;
 }
 
+/*
+ * 수련장(튜토리얼) 완화 계수.
+ *
+ * 수련장은 각본이 정한 여덟 걸음을 "반드시 이기며" 밟는 판이다. 규칙은
+ * 본편 그대로 두고 적의 체력·수량만 눌러, 자령 한둘로도 첫 웨이브를
+ * 확실히 넘기게 한다. 계수는 엔진 생성 옵션(tutorial)이 켜졌을 때만 쓴다.
+ */
+export const TUTORIAL_ENEMY_HP_SCALE = 0.4;
+export const TUTORIAL_ENEMY_COUNT_SCALE = 0.5;
+
+/** 엔진 생성 옵션. 지금은 수련장 완화·각본 지급 허용 스위치 하나뿐이다. */
+export interface GameEngineOptions {
+  readonly tutorial?: boolean;
+}
+
 function weightedPick(rng: SeededRng, entries: readonly HanziDefinition[], weights: readonly number[]): HanziDefinition {
   const total = weights.reduce((sum, weight) => sum + weight, 0);
   let roll = rng.next() * total;
@@ -560,6 +575,8 @@ export class GameEngine {
   readonly evolution: EvolutionService;
   /** 이 런의 목표 사다리. 표준은 지역 목표 그대로, 캐주얼은 풀 안 글자로 좁힌다(F2). */
   readonly goalOrder: readonly string[];
+  /** 수련장 여부. 켜져 있을 때만 완화 계수와 tutorialGrant* 지급 훅이 산다. */
+  readonly tutorial: boolean;
   private rng: SeededRng;
   private events: GameEvent[] = [];
   private nextTowerId = 1;
@@ -579,7 +596,8 @@ export class GameEngine {
   /** FB7-8성: 이번 틱에 극성 개안 오라가 살아 있는 오행. 오행당 최대 1개. */
   private readonly combatPolarisElements = new Set<Wuxing>();
 
-  constructor(seed: string, region: RegionCode = "KR", mode: GameMode = "standard") {
+  constructor(seed: string, region: RegionCode = "KR", mode: GameMode = "standard", options: GameEngineOptions = {}) {
+    this.tutorial = options.tutorial === true;
     this.catalog = getCatalog(region);
     this.evolution = new EvolutionService(this.catalog);
     this.rng = new SeededRng(seed);
@@ -753,6 +771,9 @@ export class GameEngine {
       return;
     }
     if (allSpawned && deadlineUnlocked) {
+      // 수련장: 잔존 합류(20초 시계)를 끈다. 각본은 "다 잡으면 준비로 돌아와
+      // 다음 걸음"이 전제라, 웨이브가 저절로 겹치면 지도록 설계된 판이 된다.
+      if (this.tutorial) return;
       if (this.state.nextWaveRemaining === null) this.state.nextWaveRemaining = WAVE_REINFORCEMENT_DELAY;
       this.state.nextWaveRemaining = Math.max(0, this.state.nextWaveRemaining - delta);
       if (this.state.nextWaveRemaining <= 0) this.advanceWaveWithSurvivors();
@@ -763,7 +784,9 @@ export class GameEngine {
     const isBoss = plan.boss && this.state.spawned === plan.count - 1;
     const bossFactor = bossHpFactorForWave(plan.wave);
     const hpJitter = 0.94 + this.rng.next() * 0.12;
-    const hp = plan.hp * (isBoss || !plan.boss ? 1 : 1 / bossFactor) * hpJitter * regionEnemyHpMultiplier(this.state.region, this.state.wave, this.state.mode);
+    const hp = plan.hp * (isBoss || !plan.boss ? 1 : 1 / bossFactor) * hpJitter
+      * regionEnemyHpMultiplier(this.state.region, this.state.wave, this.state.mode)
+      * (this.tutorial ? TUTORIAL_ENEMY_HP_SCALE : 1);
     const archetype = isBoss ? "boss" : plan.boss ? "normal" : plan.archetype;
     this.state.enemies.push({
       id: this.nextEnemyId++,
@@ -1410,7 +1433,11 @@ export class GameEngine {
   private startNextWave(): void {
     const nextWave = this.state.wave + 1;
     this.state.wave = nextWave;
-    this.currentPlan = wavePlan(nextWave);
+    const plan = wavePlan(nextWave);
+    // 수련장은 수량도 함께 눌러 "반드시 이기는 첫 교전"을 보장한다.
+    this.currentPlan = this.tutorial
+      ? { ...plan, count: Math.max(3, Math.round(plan.count * TUTORIAL_ENEMY_COUNT_SCALE)) }
+      : plan;
     this.state.phase = "combat";
     this.state.waveElapsed = 0;
     this.state.spawned = 0;
@@ -1645,6 +1672,62 @@ export class GameEngine {
   setSummonIntent(intent: SummonIntent): ActionResult {
     this.state.summonIntent = intent;
     this.state.lastMessage = `${SUMMON_INTENT_LABELS[intent]} 소환 선택 · 10연 마지막 결과에 목적 보정`;
+    return { ok: true, message: this.state.lastMessage };
+  }
+
+  /*
+   * ── 수련장 각본 지급 훅 ─────────────────────────────────────────
+   * 아래 세 tutorialGrant* 는 tutorial 옵션이 켜진 엔진에서만 동작한다.
+   * 일반 런에서는 어떤 경로로 불려도 상태를 바꾸지 않는다(치트 차단).
+   */
+
+  /** 수련장 각본이 엽전을 지급한다. */
+  tutorialGrantGold(amount: number): ActionResult {
+    if (!this.tutorial) return { ok: false, message: "수련장에서만 쓸 수 있습니다." };
+    if (!Number.isFinite(amount) || amount <= 0) return { ok: false, message: "지급량이 올바르지 않습니다." };
+    this.state.gold += Math.floor(amount);
+    this.state.lastMessage = `수련 지원 · 엽전 +${Math.floor(amount)}`;
+    return { ok: true, message: this.state.lastMessage };
+  }
+
+  /** 수련장 각본이 오행 문기를 지급한다. */
+  tutorialGrantEssence(wuxing: Wuxing, amount: number): ActionResult {
+    if (!this.tutorial) return { ok: false, message: "수련장에서만 쓸 수 있습니다." };
+    if (!Number.isFinite(amount) || amount <= 0) return { ok: false, message: "지급량이 올바르지 않습니다." };
+    this.state.elementEssence[wuxing] += Math.floor(amount);
+    this.state.elementEssenceGenerated[wuxing] += Math.floor(amount);
+    this.state.lastMessage = `수련 지원 · ${wuxing} 문기 +${Math.floor(amount)}`;
+    return { ok: true, message: this.state.lastMessage };
+  }
+
+  /**
+   * 수련장 각본이 지정 한자 자령 1기를 무료로 지급한다(런 인벤토리 보관).
+   * 소환 횟수·가격 곡선은 건드리지 않고, 지급 연출은 일반 소환 이벤트를 탄다.
+   */
+  tutorialGrantTower(char: string): ActionResult {
+    if (!this.tutorial) return { ok: false, message: "수련장에서만 쓸 수 있습니다." };
+    if (!this.isRunActive()) return { ok: false, message: "진행 중인 수비전이 없습니다." };
+    const definition = this.catalog.definitions.get(char);
+    if (!definition) return { ok: false, message: "이 지역에서 사용할 수 없는 한자입니다." };
+    const newDiscovery = !this.state.discoveredChars.includes(char);
+    const tower = this.createTower(definition, -1);
+    this.state.inventoryTowers.push(tower);
+    this.state.selectedTowerId = tower.id;
+    this.discover(char);
+    const at = (this.state.startingFormationIndex !== null
+      ? BOARD_FORMATIONS[this.state.startingFormationIndex]?.center
+      : undefined) ?? { x: 400, y: 300 };
+    this.state.lastMessage = `수련 지원 · ${char} 자령 지급 (인벤토리 보관)`;
+    this.events.push({
+      type: "summon",
+      at,
+      tower: { ...tower },
+      stored: true,
+      helpful: false,
+      helpfulReason: null,
+      newDiscovery,
+      utility: newDiscovery ? "new" : "concentration"
+    });
     return { ok: true, message: this.state.lastMessage };
   }
 
