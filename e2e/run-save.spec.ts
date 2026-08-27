@@ -227,6 +227,44 @@ test("판이 끝나면 저장은 사라진다 — 패배를 무를 수 없다", 
   await expect(page.getByTestId("resume-run")).toBeHidden();
 });
 
+test("수련장을 다녀와도 두고 온 판은 그대로 남는다", async ({ page }) => {
+  await page.goto("/?seed=RUNSAVE-E2E-05&mode=casual");
+  await openFirstWave(page);
+  await clearCurrentWave(page);
+  const before = await page.evaluate((key) => window.localStorage.getItem(key), RUN_SAVE_KEY);
+  expect(before).not.toBeNull();
+
+  // 메뉴로 돌아가 수련장에 들어간다 — 연습 판은 저장되지 않아야 하고,
+  // 그 판이 끝나도 본편 저장을 건드려서는 안 된다.
+  await page.reload();
+  await page.getByTestId("tutorial-button").click();
+  await expect(page.locator(".game-shell")).toHaveAttribute("data-phase", "prep");
+  expect(await page.evaluate(() => {
+    const qa = (window as unknown as { __HANJA_CTX_QA__: { engine: { tutorial: boolean } } }).__HANJA_CTX_QA__;
+    return qa.engine.tutorial;
+  })).toBe(true);
+
+  /*
+   * 수련 판을 지게 만든다. 각본은 이 경우 스스로 첫 걸음부터 다시 세우므로
+   * 종료 화면이 서지 않을 수도 있다 — 이 스펙이 지키려는 것은 화면이 아니라
+   * "그 사이 본편 저장이 지워지지 않는다"이다.
+   */
+  await page.evaluate(() => {
+    const qa = (window as unknown as {
+      __HANJA_CTX_QA__: { engine: { state: { phase: string; defeatCause: string | null; lastMessage: string } } };
+    }).__HANJA_CTX_QA__;
+    qa.engine.state.phase = "defeat";
+    qa.engine.state.defeatCause = "enemy-limit";
+    qa.engine.state.lastMessage = "테스트 종료";
+  });
+  await page.waitForTimeout(600);
+
+  // 본편 저장본은 손대지 않은 그대로여야 한다.
+  expect(await page.evaluate((key) => window.localStorage.getItem(key), RUN_SAVE_KEY)).toBe(before);
+  await page.reload();
+  await expect(page.getByTestId("resume-run")).toBeVisible();
+});
+
 test("읽을 수 없는 저장본은 조용히 버리고 한 줄만 알린다", async ({ page }) => {
   await page.addInitScript((key) => {
     // 형식 판이 다른 저장본 — 판을 올린 뒤 첫 방문이 꼭 이 모습이다.
