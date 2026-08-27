@@ -40,9 +40,25 @@
   --scroll-hint-ink: #6b4d1d;
 }
 
+/* 파인 홈(--mat-well: `#cdbb92 → #ded1b0`)을 바닥으로 쓰는 면들. */
 #evolution-options.scroll-surface,
-#growth-dismantle-list.scroll-surface {
+#growth-dismantle-list.scroll-surface,
+#growth-upgrade-list.scroll-surface,
+#codex-list.scroll-surface {
   --scroll-fade: 222, 209, 176;
+}
+
+/* 목표 서책의 성어 격자는 집중 프레임 종이 위에 바로 앉는다 — 제 스크롤바
+   트랙색(#e5d8ba, 480-goal-codex)과 같은 톤으로 페이드를 잡는다.
+   격자 면이라 의사요소가 칸 하나를 차지한다 — 줄 간격 8px 을 되당긴다. */
+#goal-selector-list.scroll-surface {
+  --scroll-fade: 229, 216, 186;
+  --scroll-hint-gap: 8px;
+}
+
+/* 도감 상세는 서책 낱장(060-hanji-theme: `#f5ecd4 → #e5d8b6`)이다. */
+#codex-detail.scroll-surface {
+  --scroll-fade: 229, 216, 182;
 }
 
 /* flex 세로 면은 칸 간격이 곧 의사요소의 추가 높이다 — 실측 6px. */
@@ -53,9 +69,14 @@
 
 /* 다이얼로그도 한지다(060-hanji-theme: `#f6eed9 → #eadfc1 → #dbcdab`) —
    먹빛으로 잡았다가 종이 위에 검은 띠가 서는 것을 실측으로 잡아 바닥색에 맞췄다. */
-#settings-dialog.scroll-surface {
+#settings-dialog.scroll-surface,
+#help-dialog > form.scroll-surface {
   --scroll-fade: 219, 205, 171;
 }
+
+/* 도움말 본문은 제 스크롤바를 이미 굵게(13px) 세워 둔다(100-readability 절 B8).
+   ID 특이도가 아래 `.scroll-surface[data-scrollable="1"]` 보다 높아 그 폭이
+   그대로 남는다 — 여기서 더하는 것은 "아래에 더 있다" 한 겹뿐이다. */
 
 /* ① 넘치는 동안에만 자리를 고정한다. 색은 표준 속성으로만 — 위 머리말 참조.
    thin 은 10px 로, 전역 금박보다 한 단계 진하게 잡아 한지 위에서도 보인다. */

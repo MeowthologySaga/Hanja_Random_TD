@@ -134,3 +134,83 @@ test("lifts damage numbers clear of nameplates, ability banners and zone labels"
   expect(report.damageOverStatic).toBe(0);
   expect(report.damageOverDamage).toBe(0);
 });
+
+/*
+ * ── 트랙 W #2 · 접힘 신호 없는 스크롤 면 5곳 ──────────────────────
+ * 넘치는데 스크롤바 자리도 하단 페이드도 없어, 보이는 만큼이 전부로 읽혔다.
+ * 셋은 `<dialog>` 안이라 닫혀 있을 때 스윕이 조용히 건너뛰는지도 함께 잰다.
+ */
+test("marks the five newly found scroll surfaces as scrollable with more below", async ({ page }) => {
+  await page.goto("/?seed=TRACK-W-SCROLL&mode=standard");
+  await page.getByTestId("start-run").click();
+  await page.getByTestId("summon-button").click();
+  await page.locator("#summon-reveal-close").click();
+
+  const probe = async (selector: string): Promise<{ clipped: number; scrollable: string | null; more: string | null; surface: boolean }> =>
+    page.evaluate((target) => {
+      const element = document.querySelector<HTMLElement>(target);
+      if (!element) return { clipped: -1, scrollable: null, more: null, surface: false };
+      return {
+        clipped: element.scrollHeight - element.clientHeight,
+        scrollable: element.dataset.scrollable ?? null,
+        more: element.dataset.scrollMore ?? null,
+        surface: element.classList.contains("scroll-surface")
+      };
+    }, selector);
+
+  // 닫힌 다이얼로그 안의 면은 신호를 달지 않는다 — 접힌 면을 "다 숨었다"로
+  // 오판하지 않게 syncSurface 가 먼저 거른다.
+  for (const selector of ["#codex-list", "#codex-detail", "#help-dialog > form"]) {
+    const closed = await probe(selector);
+    expect(closed.scrollable, `${selector} while closed`).toBeNull();
+  }
+
+  const seen: Record<string, unknown> = {};
+
+  // ① 강화 탭 → 제련소 프레임의 오행 강화 목록(탭 진입이 곧 프레임 진입이다).
+  await page.locator("#growth-tab").click();
+  await expect(page.locator(".game-shell")).toHaveAttribute("data-focus-frame", "growth");
+  await expect.poll(async () => (await probe("#growth-upgrade-list")).more).toBe("1");
+  seen["#growth-upgrade-list"] = await probe("#growth-upgrade-list");
+  await page.screenshot({ path: ".claude/uiux/track-w/02-scroll-growth-upgrade-list.png" });
+  await page.keyboard.press("Escape");
+
+  // ② 목표 탭 → 성어 서책의 카드 격자
+  await page.locator("#goal-tab").click();
+  await expect(page.locator(".game-shell")).toHaveAttribute("data-focus-frame", "goal");
+  await expect.poll(async () => (await probe("#goal-selector-list")).more).toBe("1");
+  seen["#goal-selector-list"] = await probe("#goal-selector-list");
+  await page.screenshot({ path: ".claude/uiux/track-w/03-scroll-goal-selector-list.png" });
+  await page.keyboard.press("Escape");
+
+  // ③④ 도감 — 목록과 상세는 한 창 안에 나란히 선다.
+  await page.locator("#codex-button").click();
+  await expect(page.locator("#codex-dialog")).toBeVisible();
+  await expect.poll(async () => (await probe("#codex-list")).more).toBe("1");
+  seen["#codex-list"] = await probe("#codex-list");
+  await expect.poll(async () => (await probe("#codex-detail")).more).toBe("1");
+  seen["#codex-detail"] = await probe("#codex-detail");
+  await page.screenshot({ path: ".claude/uiux/track-w/04-scroll-codex.png" });
+  await page.keyboard.press("Escape");
+  await expect(page.locator("#codex-dialog")).toBeHidden();
+
+  // ⑤ 도움말 본문
+  await page.locator("#help-button").click();
+  await expect(page.locator("#help-dialog")).toBeVisible();
+  await expect.poll(async () => (await probe("#help-dialog > form")).more).toBe("1");
+  seen["#help-dialog > form"] = await probe("#help-dialog > form");
+  await page.screenshot({ path: ".claude/uiux/track-w/05-scroll-help-form.png" });
+  await page.keyboard.press("Escape");
+
+  console.log("[track-w#2]", JSON.stringify(seen));
+  for (const [selector, state] of Object.entries(seen)) {
+    const probed = state as { clipped: number; scrollable: string | null; more: string | null; surface: boolean };
+    expect(probed.surface, `${selector} carries .scroll-surface`).toBe(true);
+    expect(probed.clipped, `${selector} really clips`).toBeGreaterThan(0);
+    expect(probed.scrollable, `${selector} scrollable flag`).toBe("1");
+    expect(probed.more, `${selector} more-below flag`).toBe("1");
+  }
+
+  // 창을 닫으면 신호도 걷힌다 — 다음 프레임 스윕이 조용히 지운다.
+  await expect.poll(async () => (await probe("#help-dialog > form")).scrollable).toBeNull();
+});
