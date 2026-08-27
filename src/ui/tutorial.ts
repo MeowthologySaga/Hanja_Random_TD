@@ -188,12 +188,22 @@ interface TutorialRuntime {
   fusionWuxing: Wuxing;
   idiomGrantIds: number[];
   idiomLine: number[];
+  /** 4걸음 동안만 잠가 둔 전장 자령 — 다음 걸음이 그대로 되돌린다. */
+  fusionLockedIds: number[];
 }
 
 let runtime: TutorialRuntime = freshRuntime();
 
 function freshRuntime(): TutorialRuntime {
-  return { summonBaseline: 0, essenceBaseline: 0, growthWuxing: "木", fusionWuxing: "木", idiomGrantIds: [], idiomLine: [] };
+  return { summonBaseline: 0, essenceBaseline: 0, growthWuxing: "木", fusionWuxing: "木", idiomGrantIds: [], idiomLine: [], fusionLockedIds: [] };
+}
+
+/** 4걸음이 재료 보호를 위해 걸어 둔 잠금을 원래대로 되돌린다. */
+function unlockFusionGuard(): void {
+  if (runtime.fusionLockedIds.length === 0) return;
+  const guarded = new Set(runtime.fusionLockedIds);
+  for (const tower of ctx.engine.state.towers) if (guarded.has(tower.id)) tower.locked = false;
+  runtime.fusionLockedIds = [];
 }
 
 function tutorialCompleted(): boolean {
@@ -296,6 +306,17 @@ const STEPS: readonly TutorialStep[] = [
   {
     id: "fusion",
     enter: () => {
+      /*
+       * 이 걸음이 소모할 것은 방금 드리는 3기뿐이다. 그런데 [한 번에 승급]은
+       * 전장 자령까지 재료로 끌어 쓰므로, 2걸음에서 사람이 직접 놓은 첫 자령과
+       * 3걸음이 세운 자령이 같은 오행·같은 별이면 두 번째 묶음이 되어 함께
+       * 사라졌다 — 말풍선은 "3기가 사라지고"라는데 실제로는 6기였다(QA 실측).
+       * 배운 대로 놓은 것이 예고 없이 없어지는 일이라, 이 걸음 동안 전장
+       * 자령을 잠가 재료에서 뺀다(잠금은 소모 보호 사유다). 다음 걸음이 푼다.
+       */
+      runtime.fusionLockedIds = ctx.engine.state.towers
+        .filter((tower) => !tower.locked)
+        .map((tower) => { tower.locked = true; return tower.id; });
       const pick = pickFusionGrantChars(ctx.engine);
       runtime.fusionWuxing = pick?.wuxing ?? startingWuxing(ctx.engine);
       if (pick) for (const char of pick.chars) ctx.engine.tutorialGrantTower(char);
@@ -321,7 +342,8 @@ const STEPS: readonly TutorialStep[] = [
         : {
           target: panelTab("evolution"),
           title: "승급 서책을 열어요",
-          body: "같은 오행·같은 별 3기가 모이면 승급할 수 있어요. 방금 3기를 드렸어요 — [합성] 갈피를 눌러 주세요.",
+          // 갈피 라벨은 [3체 조합]이다 — "[합성]"이라는 갈피는 화면에 없다.
+          body: "같은 오행·같은 별 3기가 모이면 승급할 수 있어요. 방금 3기를 드렸어요 — [3체 조합] 갈피를 눌러 주세요.",
           control: "click"
         };
     },
@@ -332,6 +354,8 @@ const STEPS: readonly TutorialStep[] = [
   {
     id: "tier-summon",
     enter: () => {
+      // 4걸음이 걸어 둔 잠금을 푼다 — 수련이 건 자물쇠가 본편까지 따라가지 않게.
+      unlockFusionGuard();
       runtime.summonBaseline = ctx.engine.state.summonCount;
       // 이제부터는 본편처럼 뽑는 즉시 빈 칸에 선다.
       ctx.engine.state.autoPlaceSummons = true;
