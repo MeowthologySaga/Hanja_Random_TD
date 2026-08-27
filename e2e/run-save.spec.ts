@@ -113,8 +113,15 @@ test("웨이브를 넘기면 저장되고, 새로고침 뒤 이어하기로 같�
   await page.goto("/?seed=RUNSAVE-E2E-01&mode=casual");
   await openFirstWave(page);
 
-  // 아직 한 웨이브도 넘기지 않았으므로 슬롯은 비어 있어야 한다.
-  expect(await page.evaluate((key) => window.localStorage.getItem(key), RUN_SAVE_KEY)).toBeNull();
+  /*
+   * 첫 웨이브에 나선 순간 이미 저장본이 있다. 예전 규칙은 "준비 단계로 돌아올
+   * 때만 저장"이었는데, 잔존 적이 다음 웨이브에 합류하면 판이 준비 단계로
+   * 돌아오지 않아 저장이 웨이브 1에 멈춘 채 굳었다(사용자 제보: 이어하면
+   * 부적·엽전이 초기화). 그래서 웨이브 이벤트마다·교전 중에도 저장한다.
+   */
+  const opening = await page.evaluate((key) => window.localStorage.getItem(key), RUN_SAVE_KEY);
+  expect(opening).not.toBeNull();
+  expect((JSON.parse(opening ?? "{}") as { state: { wave: number } }).state.wave).toBe(1);
 
   await clearCurrentWave(page);
   const live = await snapshot(page);

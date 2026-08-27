@@ -25,7 +25,7 @@ import { canvas, context, ctx, reducedMotion } from "../app-context";
 import { casualStarOf, towerProgressionLabel } from "../format";
 import { drawIdiomOrderBadge } from "./draw";
 import { towerAbilityPopups } from "./fx";
-import { clampScreenBox, placeStageLabel, reserveScreenBox } from "./stage-labels";
+import { clampScreenBox, placeStageLabel, reserveScreenBox, STAGE_SAFE_AREA } from "./stage-labels";
 
 function drawChargeRing(
   cell: Point,
@@ -490,7 +490,10 @@ function drawTowerDetailPopover(tower: Tower, cell: Point): void {
   // 최소 8px viewport inset 을 지킨다.
   const inset = 8;
   offsetX = Math.max(inset + layout.width / 2 - screenX, Math.min(WORLD_WIDTH - inset - layout.width / 2 - screenX, offsetX));
-  top = Math.max(46 - screenY, Math.min(WORLD_HEIGHT - inset - height - screenY, top));
+  // 상세 팝오버의 상단 바닥도 안전 영역과 한 곳에서 읽는다 — 옛 46 은 상단 칩
+  // 줄 바닥(51~52)보다도 위라, 최상단 줄 자령을 고르면 팝오버 머리가 칩에
+  // 물렸다(카메라 200표본에서 325건). 한 곳에서 읽으면 0건이 된다.
+  top = Math.max(STAGE_SAFE_AREA.top - screenY, Math.min(WORLD_HEIGHT - inset - height - screenY, top));
 
   const left = -layout.width / 2;
   context.save();

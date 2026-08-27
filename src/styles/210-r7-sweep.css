@@ -524,6 +524,6 @@
      안쪽(86%×76%)에만 깐다 — 그림이 오면 그 아래로 완전히 가려지고,
      오지 않으면 글자가 얹힐 판이 된다. */
   background:
-    url("/assets/ui/main-menu-b/ui/p00-scroll-frame-v1.png") center / 100% 100% no-repeat,
+    url("/assets/ui/main-menu-b/ui/p00-scroll-frame-v1.webp") center / 100% 100% no-repeat,
     linear-gradient(#efe2c1, #efe2c1) center / 86% 76% no-repeat;
 }

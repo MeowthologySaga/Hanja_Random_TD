@@ -158,6 +158,7 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
           <button id="sound-button" class="icon-button" type="button" aria-label="소리 끄기" title="소리 켜기/끄기 (M)">♪</button>
           <button id="codex-button" class="icon-button icon-button--codex" type="button" aria-label="통합 자령 도감 열기" title="자령 도감 — 배지는 이번 런에서 처음 만난 한자 수입니다 (C)"><b>도감</b><small><em id="discover-count">0</em></small></button>
           <button id="help-button" class="icon-button" type="button" aria-label="도움말 열기">?</button>
+          <button id="home-button" class="icon-button" type="button" aria-label="제목 화면으로" title="제목 화면으로 — 진행은 저장돼 이어할 수 있습니다">家</button>
         </div>
       </header>
 
@@ -212,8 +213,12 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
               <i>→</i>
               <div data-opening-step="3"><b>③ 웨이브 시작</b><span>첫 소환 뒤 준비 15초가 흐릅니다.</span></div>
             </section>
-            <section class="action-row" aria-label="핵심 행동">
+            <section class="action-row" aria-label="소환 상품">
               <div id="summon-shop" class="summon-shop" role="group" aria-label="소환 상품"></div>
+            </section>
+          </div>
+          <div id="shop-pinned" class="shop-pinned">
+            <div class="shop-actions" role="group" aria-label="핵심 행동">
               <button id="evolve-button" class="action-button action-button--evolve" type="button" data-testid="evolve-button">
                 <span class="hotkey">2</span><b id="evolve-action-label">합성</b><small><em id="evolve-ready-count">0</em><span id="evolve-action-detail">개 조합 확인</span></small>
               </button>
@@ -224,9 +229,7 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
               <button id="element-upgrade-button" class="action-button action-button--element-upgrade" type="button" data-testid="element-upgrade-button">
                 <b>강화 탭</b><small id="element-upgrade-total">총 0단계</small>
               </button>
-            </section>
-          </div>
-          <div id="shop-pinned" class="shop-pinned">
+            </div>
             <button id="auto-arrange-button" class="action-button action-button--auto-arrange" type="button" data-testid="auto-arrange-button" title="완성 가능한 사자성어를 발동하고 오행진 공명을 최적화합니다">
               <b>자동배치</b><small>성어·오행 최적화</small>
             </button>
@@ -514,11 +517,11 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
 
     <section id="title-overlay" class="modal-layer modal-layer--visible" aria-labelledby="title-heading">
       <div class="s00-stage" data-screen-id="S00">
-        <img class="s00-env s00-env--legacy" data-src="${import.meta.env.BASE_URL}assets/ui/main-menu-b/background/S00-living-codex-empty-1280x720-v1.png" alt="" aria-hidden="true" />
+        <img class="s00-env s00-env--legacy" data-src="${import.meta.env.BASE_URL}assets/ui/main-menu-b/background/S00-living-codex-empty-1280x720-v1.webp" alt="" aria-hidden="true" />
         <div id="s00-parallax" class="s00-parallax" aria-hidden="true">
-          <img id="s00-desk" class="s00-env s00-env--desk" data-src="${import.meta.env.BASE_URL}assets/ui/s00-layers-v1/S00-bg-desk-v2.png" alt="" aria-hidden="true" />
-          <img id="s00-book" class="s00-env s00-env--book" data-src="${import.meta.env.BASE_URL}assets/ui/s00-layers-v1/S00-bg-book-v2.png" alt="" aria-hidden="true" />
-          <img id="s00-foreground" class="s00-env s00-env--foreground" data-src="${import.meta.env.BASE_URL}assets/ui/s00-layers-v1/S00-fg-props-v2.png" alt="" aria-hidden="true" />
+          <img id="s00-desk" class="s00-env s00-env--desk" data-src="${import.meta.env.BASE_URL}assets/ui/s00-layers-v1/S00-bg-desk-v2.webp" alt="" aria-hidden="true" />
+          <img id="s00-book" class="s00-env s00-env--book" data-src="${import.meta.env.BASE_URL}assets/ui/s00-layers-v1/S00-bg-book-v2.webp" alt="" aria-hidden="true" />
+          <img id="s00-foreground" class="s00-env s00-env--foreground" data-src="${import.meta.env.BASE_URL}assets/ui/s00-layers-v1/S00-fg-props-v2.webp" alt="" aria-hidden="true" />
         </div>
 
         <div class="s00-title-plaque">
@@ -560,11 +563,11 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
         </button>
 
         <div class="s00-showcase" aria-hidden="true">
-          <figure style="left:455px;top:116px"><img class="s00-ring" data-src="${import.meta.env.BASE_URL}assets/ui/main-menu-b/rings/summon-ring-wood-v1.png" alt="" /><img class="s00-spirit" data-src="${import.meta.env.BASE_URL}assets/ui/main-menu-b/jaryeongs/menu-wood-orchid-frame-v1.png" alt="" /></figure>
-          <figure style="left:803px;top:112px"><img class="s00-ring" data-src="${import.meta.env.BASE_URL}assets/ui/main-menu-b/rings/summon-ring-earth-v1.png" alt="" /><img class="s00-spirit" data-src="${import.meta.env.BASE_URL}assets/ui/main-menu-b/jaryeongs/menu-earth-pottery-frame-v1.png" alt="" /></figure>
-          <figure style="left:368px;top:334px"><img class="s00-ring" data-src="${import.meta.env.BASE_URL}assets/ui/main-menu-b/rings/summon-ring-water-v1.png" alt="" /><img class="s00-spirit" data-src="${import.meta.env.BASE_URL}assets/ui/main-menu-b/jaryeongs/menu-water-ice-frame-v1.png" alt="" /></figure>
-          <figure style="left:637px;top:336px"><img class="s00-ring" data-src="${import.meta.env.BASE_URL}assets/ui/main-menu-b/rings/summon-ring-fire-v1.png" alt="" /><img class="s00-spirit" data-src="${import.meta.env.BASE_URL}assets/ui/main-menu-b/jaryeongs/menu-fire-fox-frame-v1.png" alt="" /></figure>
-          <figure style="left:965px;top:333px"><img class="s00-ring" data-src="${import.meta.env.BASE_URL}assets/ui/main-menu-b/rings/summon-ring-metal-v1.png" alt="" /><img class="s00-spirit" data-src="${import.meta.env.BASE_URL}assets/ui/main-menu-b/jaryeongs/menu-metal-mirror-frame-v1.png" alt="" /></figure>
+          <figure style="left:455px;top:116px"><img class="s00-ring" data-src="${import.meta.env.BASE_URL}assets/ui/main-menu-b/rings/summon-ring-wood-v1.webp" alt="" /><img class="s00-spirit" data-src="${import.meta.env.BASE_URL}assets/ui/main-menu-b/jaryeongs/menu-wood-orchid-frame-v1.webp" alt="" /></figure>
+          <figure style="left:803px;top:112px"><img class="s00-ring" data-src="${import.meta.env.BASE_URL}assets/ui/main-menu-b/rings/summon-ring-earth-v1.webp" alt="" /><img class="s00-spirit" data-src="${import.meta.env.BASE_URL}assets/ui/main-menu-b/jaryeongs/menu-earth-pottery-frame-v1.webp" alt="" /></figure>
+          <figure style="left:368px;top:334px"><img class="s00-ring" data-src="${import.meta.env.BASE_URL}assets/ui/main-menu-b/rings/summon-ring-water-v1.webp" alt="" /><img class="s00-spirit" data-src="${import.meta.env.BASE_URL}assets/ui/main-menu-b/jaryeongs/menu-water-ice-frame-v1.webp" alt="" /></figure>
+          <figure style="left:637px;top:336px"><img class="s00-ring" data-src="${import.meta.env.BASE_URL}assets/ui/main-menu-b/rings/summon-ring-fire-v1.webp" alt="" /><img class="s00-spirit" data-src="${import.meta.env.BASE_URL}assets/ui/main-menu-b/jaryeongs/menu-fire-fox-frame-v1.webp" alt="" /></figure>
+          <figure style="left:965px;top:333px"><img class="s00-ring" data-src="${import.meta.env.BASE_URL}assets/ui/main-menu-b/rings/summon-ring-metal-v1.webp" alt="" /><img class="s00-spirit" data-src="${import.meta.env.BASE_URL}assets/ui/main-menu-b/jaryeongs/menu-metal-mirror-frame-v1.webp" alt="" /></figure>
         </div>
 
         <button id="custom-formation-button" class="s00-custom" type="button"
@@ -861,7 +864,7 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
       <p class="settings-intro">게임 규칙은 그대로 유지됩니다. 전장 표시와 배경음악·효과음 믹스를 기기에 맞게 저장합니다.</p>
       <div class="display-mode-options" role="radiogroup" aria-label="전장 표시 모드">
         <button type="button" class="display-mode-option" data-display-mode-option="spirit" role="radio" data-testid="spirit-mode">
-          <span class="mode-preview mode-preview--spirit" style="background-image:url('${import.meta.env.BASE_URL}assets/jaryeongs/wood-mok/sheet-transparent.png')" aria-hidden="true"></span>
+          <span class="mode-preview mode-preview--spirit" style="background-image:url('${import.meta.env.BASE_URL}assets/jaryeongs/wood-mok/sheet-transparent.webp')" aria-hidden="true"></span>
           <span><b>자령 모드</b><em>기본 모드</em><small>기존 자령 이미지와 머리 위 한자·훈음을 함께 표시합니다.</small></span>
         </button>
         <button type="button" class="display-mode-option" data-display-mode-option="study" role="radio" data-testid="study-mode">

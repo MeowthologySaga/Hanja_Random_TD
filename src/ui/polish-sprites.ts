@@ -49,15 +49,15 @@ export function isReady(image: HTMLImageElement): boolean {
 }
 
 export function exitSealImage(state: ExitSealState): HTMLImageElement {
-  return imageFor(`seals/exit-seal-${state}-84-v1.png`);
+  return imageFor(`seals/exit-seal-${state}-84-v1.webp`);
 }
 
 export function starAscentRingImage(star: StarLevel): HTMLImageElement {
-  return imageFor(`fx/star-ascent-ring-${String(star).padStart(2, "0")}-720-v1.png`);
+  return imageFor(`fx/star-ascent-ring-${String(star).padStart(2, "0")}-720-v1.webp`);
 }
 
 export function idiomCompletionSealImage(): HTMLImageElement {
-  return imageFor("fx/idiom-completion-seal-600-v1.png");
+  return imageFor("fx/idiom-completion-seal-600-v1.webp");
 }
 
 export function clampStarLevel(star: number): StarLevel {

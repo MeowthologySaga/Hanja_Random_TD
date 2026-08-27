@@ -60,7 +60,7 @@
   align-content: center;
   justify-items: center;
   gap: 1px;
-  background: url("/assets/ui/main-menu-b/ui/title-plaque-v1.png") center / 100% 100% no-repeat;
+  background: url("/assets/ui/main-menu-b/ui/title-plaque-v1.webp") center / 100% 100% no-repeat;
 }
 
 .s00-title-plaque h2 {
@@ -98,9 +98,9 @@
   color: #e8d5a4;
 }
 
-.s00-utility button .s00-skin { background-image: url("/assets/ui/main-menu-b/ui/utility-medallion-default-v1.png"); }
-.s00-utility button:hover .s00-skin { background-image: url("/assets/ui/main-menu-b/ui/utility-medallion-hover-v1.png"); }
-.s00-utility button:active .s00-skin { background-image: url("/assets/ui/main-menu-b/ui/utility-medallion-pressed-v1.png"); }
+.s00-utility button .s00-skin { background-image: url("/assets/ui/main-menu-b/ui/utility-medallion-default-v1.webp"); }
+.s00-utility button:hover .s00-skin { background-image: url("/assets/ui/main-menu-b/ui/utility-medallion-hover-v1.webp"); }
+.s00-utility button:active .s00-skin { background-image: url("/assets/ui/main-menu-b/ui/utility-medallion-pressed-v1.webp"); }
 
 #s00-codex-button { left: 1051px; top: 10px; }
 #title-settings-button { left: 1125px; top: 10px; }
@@ -146,10 +146,10 @@
   text-align: left;
 }
 
-.s00-mode .s00-skin { background-image: url("/assets/ui/main-menu-b/ui/mode-bookmark-default-v1.png"); }
-.s00-mode:hover .s00-skin { background-image: url("/assets/ui/main-menu-b/ui/mode-bookmark-hover-v1.png"); }
-.s00-mode:active .s00-skin { background-image: url("/assets/ui/main-menu-b/ui/mode-bookmark-pressed-v1.png"); }
-.s00-mode.is-selected .s00-skin { background-image: url("/assets/ui/main-menu-b/ui/mode-bookmark-selected-v1.png"); }
+.s00-mode .s00-skin { background-image: url("/assets/ui/main-menu-b/ui/mode-bookmark-default-v1.webp"); }
+.s00-mode:hover .s00-skin { background-image: url("/assets/ui/main-menu-b/ui/mode-bookmark-hover-v1.webp"); }
+.s00-mode:active .s00-skin { background-image: url("/assets/ui/main-menu-b/ui/mode-bookmark-pressed-v1.webp"); }
+.s00-mode.is-selected .s00-skin { background-image: url("/assets/ui/main-menu-b/ui/mode-bookmark-selected-v1.webp"); }
 
 .s00-modes .s00-mode:nth-of-type(1) { left: 23px; top: 181px; }
 .s00-modes .s00-mode:nth-of-type(2) { left: 23px; top: 281px; }
@@ -236,7 +236,7 @@
   gap: 1px;
 }
 
-.s00-custom .s00-skin { background-image: url("/assets/ui/main-menu-b/ui/custom-note-disabled-v1.png"); }
+.s00-custom .s00-skin { background-image: url("/assets/ui/main-menu-b/ui/custom-note-disabled-v1.webp"); }
 
 .s00-custom b {
   position: relative;
@@ -273,13 +273,13 @@
 .s00-regions .s00-region:nth-of-type(2) { left: 515px; top: 573px; }
 .s00-regions .s00-region:nth-of-type(3) { left: 648px; top: 573px; }
 
-.s00-region .s00-skin { background-image: url("/assets/ui/main-menu-b/ui/region-seal-default-v1.png"); }
-.s00-region:hover:not(:disabled) .s00-skin { background-image: url("/assets/ui/main-menu-b/ui/region-seal-hover-v1.png"); }
-.s00-region:active:not(:disabled) .s00-skin { background-image: url("/assets/ui/main-menu-b/ui/region-seal-pressed-v1.png"); }
-.s00-region.is-selected[data-region="KR"] .s00-skin { background-image: url("/assets/ui/main-menu-b/ui/region-seal-selected-kr-v1.png"); }
+.s00-region .s00-skin { background-image: url("/assets/ui/main-menu-b/ui/region-seal-default-v1.webp"); }
+.s00-region:hover:not(:disabled) .s00-skin { background-image: url("/assets/ui/main-menu-b/ui/region-seal-hover-v1.webp"); }
+.s00-region:active:not(:disabled) .s00-skin { background-image: url("/assets/ui/main-menu-b/ui/region-seal-pressed-v1.webp"); }
+.s00-region.is-selected[data-region="KR"] .s00-skin { background-image: url("/assets/ui/main-menu-b/ui/region-seal-selected-kr-v1.webp"); }
 .s00-region.is-selected[data-region="JP"] .s00-skin,
-.s00-region.is-selected[data-region="CN"] .s00-skin { background-image: url("/assets/ui/main-menu-b/ui/region-seal-selected-ea-v1.png"); }
-.s00-region:disabled .s00-skin { background-image: url("/assets/ui/main-menu-b/ui/region-seal-disabled-v1.png"); }
+.s00-region.is-selected[data-region="CN"] .s00-skin { background-image: url("/assets/ui/main-menu-b/ui/region-seal-selected-ea-v1.webp"); }
+.s00-region:disabled .s00-skin { background-image: url("/assets/ui/main-menu-b/ui/region-seal-disabled-v1.webp"); }
 
 .s00-region b {
   position: relative;
@@ -327,7 +327,7 @@
   display: grid;
   align-content: center;
   justify-items: center;
-  background: url("/assets/ui/main-menu-b/ui/selection-summary-strip-v1.png") center / 100% 100% no-repeat;
+  background: url("/assets/ui/main-menu-b/ui/selection-summary-strip-v1.webp") center / 100% 100% no-repeat;
 }
 
 .s00-summary strong {
@@ -409,9 +409,9 @@
   justify-items: center;
 }
 
-.s00-start .s00-skin { background-image: url("/assets/ui/main-menu-b/ui/start-clasp-default-v1.png"); }
-.s00-start:hover .s00-skin { background-image: url("/assets/ui/main-menu-b/ui/start-clasp-hover-v1.png"); }
-.s00-start:active .s00-skin { background-image: url("/assets/ui/main-menu-b/ui/start-clasp-pressed-v1.png"); }
+.s00-start .s00-skin { background-image: url("/assets/ui/main-menu-b/ui/start-clasp-default-v1.webp"); }
+.s00-start:hover .s00-skin { background-image: url("/assets/ui/main-menu-b/ui/start-clasp-hover-v1.webp"); }
+.s00-start:active .s00-skin { background-image: url("/assets/ui/main-menu-b/ui/start-clasp-pressed-v1.webp"); }
 
 .s00-start b {
   position: relative;
@@ -453,7 +453,7 @@
   width: 520px;
   height: 310px;
   padding: 30px 48px 44px;
-  background: url("/assets/ui/main-menu-b/ui/p00-scroll-frame-v1.png") center / 100% 100% no-repeat;
+  background: url("/assets/ui/main-menu-b/ui/p00-scroll-frame-v1.webp") center / 100% 100% no-repeat;
   text-align: center;
 }
 
@@ -495,7 +495,7 @@
 #p00-return {
   color: #ffeec4;
   background:
-    url("/assets/ui/main-menu-b/ui/button-secondary-default-v1.png") center / 100% 100% no-repeat,
+    url("/assets/ui/main-menu-b/ui/button-secondary-default-v1.webp") center / 100% 100% no-repeat,
     #4a1e14;
 }
 
@@ -504,7 +504,7 @@
 #p00-continue {
   color: #d8c9a8;
   background:
-    url("/assets/ui/main-menu-b/ui/button-secondary-default-v1.png") center / 100% 100% no-repeat,
+    url("/assets/ui/main-menu-b/ui/button-secondary-default-v1.webp") center / 100% 100% no-repeat,
     #26221c;
   filter: grayscale(0.35);
 }
@@ -579,7 +579,7 @@
 /* 요약 스트립: 이미지 로드 실패 시에도 한지 띠 유지 */
 .s00-summary {
   background:
-    url("/assets/ui/main-menu-b/ui/selection-summary-strip-v1.png") center / 100% 100% no-repeat,
+    url("/assets/ui/main-menu-b/ui/selection-summary-strip-v1.webp") center / 100% 100% no-repeat,
     linear-gradient(180deg, #efe4c8 0%, #dccdac 100%);
   border-radius: 4px;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.45);
@@ -645,7 +645,7 @@
    텍스트가 스킨 밖으로 밀렸다. 스킨은 default 로 통일하고 선택 상태는
    금 글로우 + 주홍 인장(코드 레이어)으로 표현한다. */
 .s00-mode.is-selected .s00-skin {
-  background-image: url("/assets/ui/main-menu-b/ui/mode-bookmark-default-v1.png") !important;
+  background-image: url("/assets/ui/main-menu-b/ui/mode-bookmark-default-v1.webp") !important;
   filter: brightness(1.12) saturate(1.15);
 }
 
@@ -669,7 +669,7 @@
 
 .s00-summary {
   background:
-    url("/assets/ui/main-menu-b/ui/selection-summary-strip-v1.png") center / 838px 101px no-repeat;
+    url("/assets/ui/main-menu-b/ui/selection-summary-strip-v1.webp") center / 838px 101px no-repeat;
   border-radius: 0;
   box-shadow: none;
 }
@@ -894,9 +894,9 @@
 .s00-custom:hover b { color: #f7ecc9; }
 .s00-custom:active { translate: 0 2px; }
 
-.s00-custom .s00-skin { background-image: url("/assets/ui/main-menu-b/ui/custom-note-default-v1.png"); }
-.s00-custom:hover .s00-skin { background-image: url("/assets/ui/main-menu-b/ui/custom-note-hover-v1.png"); }
-.s00-custom:active .s00-skin { background-image: url("/assets/ui/main-menu-b/ui/custom-note-pressed-v1.png"); }
+.s00-custom .s00-skin { background-image: url("/assets/ui/main-menu-b/ui/custom-note-default-v1.webp"); }
+.s00-custom:hover .s00-skin { background-image: url("/assets/ui/main-menu-b/ui/custom-note-hover-v1.webp"); }
+.s00-custom:active .s00-skin { background-image: url("/assets/ui/main-menu-b/ui/custom-note-pressed-v1.webp"); }
 
 /* 65. 우상단 메달리온 비율 — 198x198 정사각 원판을 66x84 버튼에 늘려
    타원이 됐다. 스킨은 66x66 정원으로 상단 고정, 라벨은 그 아래. */
@@ -1034,7 +1034,7 @@
   border: 0;
   border-radius: 5px;
   background:
-    url("/assets/ui/main-menu-b/ui/button-secondary-default-v1.png") center / 100% 100% no-repeat,
+    url("/assets/ui/main-menu-b/ui/button-secondary-default-v1.webp") center / 100% 100% no-repeat,
     #4a1e14;
   font-size: 13px;
   font-weight: 900;

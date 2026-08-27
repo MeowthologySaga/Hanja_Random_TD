@@ -78,7 +78,7 @@ function entryFor(path: string, expected: readonly [number, number]): Entry {
 }
 
 function nameplatePath(form: NameplateForm, state: NameplateState): string {
-  return `nameplates/jaryeong-nameplate-${form}-${state}-v1.png`;
+  return `nameplates/jaryeong-nameplate-${form}-${state}-v1.webp`;
 }
 
 function nameplateSize(form: NameplateForm): readonly [number, number] {
@@ -102,7 +102,7 @@ export function isNameplateReady(form: NameplateForm, state: NameplateState): bo
 }
 
 function socketPath(wuxing: Wuxing, occupied: boolean): string {
-  return `cell-sockets/cell-socket-${WUXING_SLUG[wuxing]}-${occupied ? "occupied" : "empty"}-114-v1.png`;
+  return `cell-sockets/cell-socket-${WUXING_SLUG[wuxing]}-${occupied ? "occupied" : "empty"}-114-v1.webp`;
 }
 
 export function cellSocketImage(wuxing: Wuxing, occupied: boolean): HTMLImageElement {

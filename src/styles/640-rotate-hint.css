@@ -1,0 +1,59 @@
+/* ══════════════════════════════════════════════════════════════════
+   640. 세로로 든 폰 안내
+
+   무대(1280×720)는 비율 고정이라 375×812 세로에서 화면의 26%로 줄고, 위아래
+   601px 이 검은 여백이 된다. 그 안에서 도감·설정 목패는 19×25px, 소환 버튼은
+   52×14px 로 손가락 최소 표적(44px)에 한참 못 미친다(QA 실측). 가로로 돌리면
+   무대가 화면을 채우므로, 세로일 때만 안내를 세운다. 강제는 아니다.
+   ══════════════════════════════════════════════════════════════════ */
+
+.rotate-hint {
+  display: none;
+}
+
+@media (max-width: 767px) and (orientation: portrait) {
+  .rotate-hint {
+    position: fixed;
+    z-index: 90;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    align-items: center;
+    justify-content: center;
+    padding: 28px 22px;
+    inset: 0;
+    background: #14100a;
+    color: #f0e4c6;
+    text-align: center;
+  }
+
+  .rotate-hint.is-dismissed {
+    display: none;
+  }
+
+  .rotate-hint > b {
+    color: #d8ae5a;
+    font-size: 22px;
+    font-weight: 900;
+    letter-spacing: 0.02em;
+  }
+
+  .rotate-hint > span {
+    max-width: 22em;
+    color: #cbbb95;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+
+  .rotate-hint > button {
+    min-height: 44px;
+    margin-top: 8px;
+    padding: 0 18px;
+    border: 1px solid rgba(216, 174, 90, 0.5);
+    border-radius: 6px;
+    background: transparent;
+    color: #e6d6ad;
+    font-size: 14px;
+    font-weight: 700;
+  }
+}

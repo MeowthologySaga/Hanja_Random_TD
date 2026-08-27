@@ -1,0 +1,42 @@
+/* ══════════════════════════════════════════════════════════════════
+   670. 결과 카드의 자령 초상 — 그림이 오기 전에 보이는 것
+
+   자령 그림은 글자마다 다른 PNG(1,000장·평균 82KB)라, 카드가 화면에 붙는
+   순간에야 요청이 시작된다. 유선 광랜에서도 카드가 여럿이면 다 도착하기까지
+   중앙값 1.5초가 걸렸고(실측·스로틀 없음), 그동안 화면에 남는 것은
+   `background-color: #ddd0ad` 크림색 사각형뿐이었다 — 사용자 제보의 "빈 종이".
+   느린 회선(Fast 3G 10연)에서는 최악 13초로 연출 지속시간 9.65초를 넘겨,
+   그 카드는 채워진 모습을 한 번도 못 보여 주고 창이 걷힌다.
+
+   공방 목록(220절 .workbench-spirit)은 같은 사정을 이미 두 겹으로 넘긴다.
+   같은 방식을 결과 카드에 세운다 — 아래층은 오행색이 밴 원판 위의 한자,
+   위층이 그림이다. 그림이 도착하면 덮고, 늦거나 끝내 오지 않으면 한자가 남는다.
+   ══════════════════════════════════════════════════════════════════ */
+
+.summon-result-spirit {
+  position: relative;
+  background-image: none;
+}
+
+.summon-result-spirit > i {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-style: normal;
+}
+
+/* 아래층 — 오행색을 머금은 한자. 그림이 없을 때 카드가 "비어" 보이지 않게 한다. */
+.summon-result-fallback {
+  color: color-mix(in srgb, var(--summon, #b8934a) 62%, #efe4c8);
+  font-family: "Batang", serif;
+  font-size: 34px;
+  font-weight: 800;
+  line-height: 1;
+  text-shadow: 0 1px 0 rgba(28, 20, 8, 0.35);
+}
+
+/* 위층 — 실제 그림. 프레이밍(배경 크기·위치)은 인라인 스타일이 정한다. */
+.summon-result-art {
+  background-repeat: no-repeat;
+}

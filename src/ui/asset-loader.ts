@@ -54,13 +54,13 @@ export interface PreloadProgress {
  * 보이지 않으므로 P2 로 미룬다.
  */
 const P1_CONTROL_SKINS: readonly string[] = [
-  "assets/ui/main-menu-b/ui/mode-bookmark-default-v1.png",
-  "assets/ui/main-menu-b/ui/mode-bookmark-selected-v1.png",
-  "assets/ui/main-menu-b/ui/region-seal-default-v1.png",
-  "assets/ui/main-menu-b/ui/region-seal-selected-kr-v1.png",
-  "assets/ui/main-menu-b/ui/start-clasp-default-v1.png",
-  "assets/ui/main-menu-b/ui/selection-summary-strip-v1.png",
-  "assets/ui/main-menu-b/ui/custom-note-default-v1.png"
+  "assets/ui/main-menu-b/ui/mode-bookmark-default-v1.webp",
+  "assets/ui/main-menu-b/ui/mode-bookmark-selected-v1.webp",
+  "assets/ui/main-menu-b/ui/region-seal-default-v1.webp",
+  "assets/ui/main-menu-b/ui/region-seal-selected-kr-v1.webp",
+  "assets/ui/main-menu-b/ui/start-clasp-default-v1.webp",
+  "assets/ui/main-menu-b/ui/selection-summary-strip-v1.webp",
+  "assets/ui/main-menu-b/ui/custom-note-default-v1.webp"
 ];
 
 /** S00 3D 서재. 한 장이라도 빠지면 그 면만 절차 재질로 남아 눈에 띈다. */
@@ -73,16 +73,16 @@ const P1_S00_3D: readonly string[] = [
   "assets/ui/s00-3d/book-spine-v1.webp",
   "assets/ui/s00-3d/book-page-edge-v1.webp",
   "assets/ui/s00-3d/desk-props-atlas-v1.webp",
-  "assets/ui/main-menu-b/rings/summon-ring-wood-v1.png",
-  "assets/ui/main-menu-b/rings/summon-ring-earth-v1.png",
-  "assets/ui/main-menu-b/rings/summon-ring-water-v1.png",
-  "assets/ui/main-menu-b/rings/summon-ring-fire-v1.png",
-  "assets/ui/main-menu-b/rings/summon-ring-metal-v1.png",
-  "assets/ui/main-menu-b/jaryeongs/menu-wood-orchid-frame-v1.png",
-  "assets/ui/main-menu-b/jaryeongs/menu-earth-pottery-frame-v1.png",
-  "assets/ui/main-menu-b/jaryeongs/menu-water-ice-frame-v1.png",
-  "assets/ui/main-menu-b/jaryeongs/menu-fire-fox-frame-v1.png",
-  "assets/ui/main-menu-b/jaryeongs/menu-metal-mirror-frame-v1.png"
+  "assets/ui/main-menu-b/rings/summon-ring-wood-v1.webp",
+  "assets/ui/main-menu-b/rings/summon-ring-earth-v1.webp",
+  "assets/ui/main-menu-b/rings/summon-ring-water-v1.webp",
+  "assets/ui/main-menu-b/rings/summon-ring-fire-v1.webp",
+  "assets/ui/main-menu-b/rings/summon-ring-metal-v1.webp",
+  "assets/ui/main-menu-b/jaryeongs/menu-wood-orchid-frame-v1.webp",
+  "assets/ui/main-menu-b/jaryeongs/menu-earth-pottery-frame-v1.webp",
+  "assets/ui/main-menu-b/jaryeongs/menu-water-ice-frame-v1.webp",
+  "assets/ui/main-menu-b/jaryeongs/menu-fire-fox-frame-v1.webp",
+  "assets/ui/main-menu-b/jaryeongs/menu-metal-mirror-frame-v1.webp"
 ];
 
 /**
@@ -92,16 +92,16 @@ const P1_S00_3D: readonly string[] = [
  * 이어도 받는다). 지금은 2D 로 갈 때만 `src` 를 붙인다.
  */
 const P1_S00_2D: readonly string[] = [
-  "assets/ui/s00-layers-v1/S00-bg-desk-v2.png",
-  "assets/ui/s00-layers-v1/S00-bg-book-v2.png",
-  "assets/ui/s00-layers-v1/S00-fg-props-v2.png",
-  "assets/ui/main-menu-b/background/S00-living-codex-empty-1280x720-v1.png"
+  "assets/ui/s00-layers-v1/S00-bg-desk-v2.webp",
+  "assets/ui/s00-layers-v1/S00-bg-book-v2.webp",
+  "assets/ui/s00-layers-v1/S00-fg-props-v2.webp",
+  "assets/ui/main-menu-b/background/S00-living-codex-empty-1280x720-v1.webp"
 ];
 
 /** 두 모드 공통 DOM 스킨(CSS 배경). */
 const P1_COMMON: readonly string[] = [
-  "assets/ui/main-menu-b/ui/title-plaque-v1.png",
-  "assets/ui/main-menu-b/ui/utility-medallion-default-v1.png"
+  "assets/ui/main-menu-b/ui/title-plaque-v1.webp",
+  "assets/ui/main-menu-b/ui/utility-medallion-default-v1.webp"
 ];
 
 const WUXING_SLUGS = ["wood", "fire", "earth", "metal", "water"] as const;
@@ -109,48 +109,48 @@ const PLATE_SLUGS = ["water", "metal", "earth", "wood", "fire"] as const;
 const NAMEPLATE_FORMS = ["wide", "glyph"] as const;
 const NAMEPLATE_STATES = ["default", "selected", "material"] as const;
 const INK_PATH_FILES: readonly string[] = [
-  "ink-path-straight-h-v1.png",
-  "ink-path-straight-v-v1.png",
-  "ink-path-cross-v1.png",
-  "ink-path-corner-rd-v1.png",
-  "ink-path-corner-dl-v1.png",
-  "ink-path-corner-lu-v1.png",
-  "ink-path-corner-ur-v1.png",
-  "ink-path-portal-r-v1.png",
-  "ink-path-portal-d-v1.png",
-  "ink-path-portal-l-v1.png",
-  "ink-path-portal-u-v1.png",
-  "ink-path-arrow-r-v1.png",
-  "ink-path-arrow-d-v1.png",
-  "ink-path-arrow-l-v1.png",
-  "ink-path-arrow-u-v1.png"
+  "ink-path-straight-h-v1.webp",
+  "ink-path-straight-v-v1.webp",
+  "ink-path-cross-v1.webp",
+  "ink-path-corner-rd-v1.webp",
+  "ink-path-corner-dl-v1.webp",
+  "ink-path-corner-lu-v1.webp",
+  "ink-path-corner-ur-v1.webp",
+  "ink-path-portal-r-v1.webp",
+  "ink-path-portal-d-v1.webp",
+  "ink-path-portal-l-v1.webp",
+  "ink-path-portal-u-v1.webp",
+  "ink-path-arrow-r-v1.webp",
+  "ink-path-arrow-d-v1.webp",
+  "ink-path-arrow-l-v1.webp",
+  "ink-path-arrow-u-v1.webp"
 ];
 
 /** 출정 직후 첫 2초에 실제로 그려지는 것들. 출정 게이트가 이것만 본다. */
 const P2_BATTLE: readonly string[] = [
-  "assets/map/hanji-ink-field/hanji-paper-base.png",
-  "assets/enemies/p0-v1/enemy-ghost-procession-idle-2frame-v1.png",
-  "assets/enemies/p0-v1/enemy-hundred-demons-idle-2frame-v1.png",
-  "assets/enemies/p0-v1/enemy-gale-hungry-ghost-idle-2frame-v1.png",
-  "assets/enemies/p0-v1/enemy-armored-jiangshi-idle-2frame-v1.png",
-  "assets/enemies/p0-v1/enemy-regenerating-yokai-idle-2frame-v1.png",
-  "assets/enemies/p0-v1/enemy-seal-breaker-boss-idle-2frame-v1.png",
+  "assets/map/hanji-ink-field/hanji-paper-base.webp",
+  "assets/enemies/p0-v1/enemy-ghost-procession-idle-2frame-v1.webp",
+  "assets/enemies/p0-v1/enemy-hundred-demons-idle-2frame-v1.webp",
+  "assets/enemies/p0-v1/enemy-gale-hungry-ghost-idle-2frame-v1.webp",
+  "assets/enemies/p0-v1/enemy-armored-jiangshi-idle-2frame-v1.webp",
+  "assets/enemies/p0-v1/enemy-regenerating-yokai-idle-2frame-v1.webp",
+  "assets/enemies/p0-v1/enemy-seal-breaker-boss-idle-2frame-v1.webp",
   ...PLATE_SLUGS.flatMap((slug) => [
-    `assets/ui/formations/v1/formation-altar-${slug}-open-546-v1.png`,
-    `assets/ui/formations/v1/formation-altar-${slug}-locked-546-v1.png`
+    `assets/ui/formations/v1/formation-altar-${slug}-open-546-v1.webp`,
+    `assets/ui/formations/v1/formation-altar-${slug}-locked-546-v1.webp`
   ]),
   ...NAMEPLATE_FORMS.flatMap((form) =>
-    NAMEPLATE_STATES.map((state) => `assets/ui/p0-v1/nameplates/jaryeong-nameplate-${form}-${state}-v1.png`)),
+    NAMEPLATE_STATES.map((state) => `assets/ui/p0-v1/nameplates/jaryeong-nameplate-${form}-${state}-v1.webp`)),
   ...WUXING_SLUGS.flatMap((slug) => [
-    `assets/ui/p0-v1/cell-sockets/cell-socket-${slug}-empty-114-v1.png`,
-    `assets/ui/p0-v1/cell-sockets/cell-socket-${slug}-occupied-114-v1.png`
+    `assets/ui/p0-v1/cell-sockets/cell-socket-${slug}-empty-114-v1.webp`,
+    `assets/ui/p0-v1/cell-sockets/cell-socket-${slug}-occupied-114-v1.webp`
   ]),
   ...INK_PATH_FILES.map((file) => `assets/ui/path/${file}`),
-  ...WUXING_SLUGS.map((slug) => `assets/fx/element-projectiles/${slug}.png`),
-  ...WUXING_SLUGS.map((slug) => `assets/fx/aoe-modular-v1/aoe-${slug}-v1.png`),
-  "assets/ui/polish-v1/seals/exit-seal-waiting-84-v1.png",
-  "assets/ui/polish-v1/seals/exit-seal-spawning-84-v1.png",
-  "assets/ui/polish-v1/fx/idiom-completion-seal-600-v1.png"
+  ...WUXING_SLUGS.map((slug) => `assets/fx/element-projectiles/${slug}.webp`),
+  ...WUXING_SLUGS.map((slug) => `assets/fx/aoe-modular-v1/aoe-${slug}-v1.webp`),
+  "assets/ui/polish-v1/seals/exit-seal-waiting-84-v1.webp",
+  "assets/ui/polish-v1/seals/exit-seal-spawning-84-v1.webp",
+  "assets/ui/polish-v1/fx/idiom-completion-seal-600-v1.webp"
 ];
 
 /**
@@ -158,16 +158,16 @@ const P2_BATTLE: readonly string[] = [
  * 집중 프레임 두 장은 5.9MB 라 전투 핵심분 뒤로 확실히 밀어 둔다.
  */
 const P2_LATE: readonly string[] = [
-  "assets/ui/main-menu-b/ui/mode-bookmark-hover-v1.png",
-  "assets/ui/main-menu-b/ui/region-seal-hover-v1.png",
-  "assets/ui/main-menu-b/ui/region-seal-selected-ea-v1.png",
-  "assets/ui/main-menu-b/ui/region-seal-disabled-v1.png",
-  "assets/ui/main-menu-b/ui/start-clasp-hover-v1.png",
-  "assets/ui/main-menu-b/ui/start-clasp-pressed-v1.png",
-  "assets/ui/main-menu-b/ui/custom-note-hover-v1.png",
-  "assets/ui/main-menu-b/ui/custom-note-pressed-v1.png",
-  "assets/ui/v4/focus-frames/focus-frame-forge-v1.png",
-  "assets/ui/v4/focus-frames/focus-frame-workshop-v1.png"
+  "assets/ui/main-menu-b/ui/mode-bookmark-hover-v1.webp",
+  "assets/ui/main-menu-b/ui/region-seal-hover-v1.webp",
+  "assets/ui/main-menu-b/ui/region-seal-selected-ea-v1.webp",
+  "assets/ui/main-menu-b/ui/region-seal-disabled-v1.webp",
+  "assets/ui/main-menu-b/ui/start-clasp-hover-v1.webp",
+  "assets/ui/main-menu-b/ui/start-clasp-pressed-v1.webp",
+  "assets/ui/main-menu-b/ui/custom-note-hover-v1.webp",
+  "assets/ui/main-menu-b/ui/custom-note-pressed-v1.webp",
+  "assets/ui/v4/focus-frames/focus-frame-forge-v1.webp",
+  "assets/ui/v4/focus-frames/focus-frame-workshop-v1.webp"
 ];
 
 // ── 캐시 ──────────────────────────────────────────────────────────

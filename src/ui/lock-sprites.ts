@@ -28,7 +28,7 @@ interface LockEntry {
 const locks = new Map<LockSpriteKind, LockEntry>();
 
 function loadLock(kind: LockSpriteKind): LockEntry {
-  const path = `${import.meta.env.BASE_URL}assets/ui/v4/locks/lock-${kind === "closed" ? "closed" : "glow"}-v1.png`;
+  const path = `${import.meta.env.BASE_URL}assets/ui/v4/locks/lock-${kind === "closed" ? "closed" : "glow"}-v1.webp`;
   const image = new Image();
   const entry: LockEntry = { image, state: "loading" };
   image.decoding = "async";

@@ -170,10 +170,10 @@
   white-space: nowrap;
 }
 
-.selected-stat[data-stat="attack"] { --stat-icon: url("/assets/ui/v4/stat-icons/stat-attack-sword-v1.png"); }
-.selected-stat[data-stat="speed"]  { --stat-icon: url("/assets/ui/v4/stat-icons/stat-attack-speed-v1.png"); }
-.selected-stat[data-stat="range"]  { --stat-icon: url("/assets/ui/v4/stat-icons/stat-range-target-v1.png"); }
-.selected-stat[data-stat="branch"] { --stat-icon: url("/assets/ui/v4/stat-icons/stat-derived-branch-v1.png"); }
+.selected-stat[data-stat="attack"] { --stat-icon: url("/assets/ui/v4/stat-icons/stat-attack-sword-v1.webp"); }
+.selected-stat[data-stat="speed"]  { --stat-icon: url("/assets/ui/v4/stat-icons/stat-attack-speed-v1.webp"); }
+.selected-stat[data-stat="range"]  { --stat-icon: url("/assets/ui/v4/stat-icons/stat-range-target-v1.webp"); }
+.selected-stat[data-stat="branch"] { --stat-icon: url("/assets/ui/v4/stat-icons/stat-derived-branch-v1.webp"); }
 
 /* ── 88-C. 보호 사유 · 문기 게이지를 칩 2개로 분리 ──────────── */
 
@@ -255,7 +255,7 @@
 
 /* ══════════════════════════════════════════════════════════════════
    89. 집중 프레임 공통 + S06 강화 제련소
-   에셋: public/assets/ui/v4/focus-frames/focus-frame-forge-v1.png
+   에셋: public/assets/ui/v4/focus-frames/focus-frame-forge-v1.webp
         (1640x1344 원본 -> 820x672 고정 표시 = 정확히 0.5배)
    근거: spec-round4-focus-frames.md B절 / 코덱스 IMPLEMENTATION.md 1절
 
@@ -301,7 +301,7 @@
 }
 
 .focus-frame--forge {
-  background-image: url("/assets/ui/v4/focus-frames/focus-frame-forge-v1.png");
+  background-image: url("/assets/ui/v4/focus-frames/focus-frame-forge-v1.webp");
 }
 
 /* 제목띠(원본 y 100~205 -> 800x652 표시에서 49~99) 위에 코드 텍스트를 얹는다.
@@ -542,7 +542,7 @@
 
 /* ══════════════════════════════════════════════════════════════════
    90. S07 농축 공방 집중 프레임
-   에셋: public/assets/ui/v4/focus-frames/focus-frame-workshop-v1.png
+   에셋: public/assets/ui/v4/focus-frames/focus-frame-workshop-v1.webp
         (1500x1304 원본 -> 750x652 고정 표시 = 정확히 0.5배)
    근거: spec-round4-focus-frames.md B절 S07
 
@@ -556,7 +556,7 @@
   right: 16px;
   width: 750px;
   height: 652px;
-  background-image: url("/assets/ui/v4/focus-frames/focus-frame-workshop-v1.png");
+  background-image: url("/assets/ui/v4/focus-frames/focus-frame-workshop-v1.webp");
 }
 
 /* 공방 그림은 제목띠가 좌우로 더 물려 있다(원본 x 215~1290) */
@@ -1040,8 +1040,8 @@
   margin: -128px 0 0 -128px;
   background: var(--vortex-tint, #d8b46a);
   opacity: 0;
-  -webkit-mask-image: url("/assets/ui/v5/fusion-vortex-v1.png");
-  mask-image: url("/assets/ui/v5/fusion-vortex-v1.png");
+  -webkit-mask-image: url("/assets/ui/v5/fusion-vortex-v1.webp");
+  mask-image: url("/assets/ui/v5/fusion-vortex-v1.webp");
   -webkit-mask-repeat: no-repeat;
   mask-repeat: no-repeat;
   -webkit-mask-size: contain;

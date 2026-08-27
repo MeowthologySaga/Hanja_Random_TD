@@ -174,6 +174,15 @@ function visiblyHittable(target: HTMLElement): boolean {
 
 /** 다른 말풍선·모달이 떠 있으면 기다린다 — 화면에 안내는 항상 1개다. */
 function hintBlockedByOthers(hint: OneShotHint): boolean {
+  /*
+   * 수련장은 걸음마다 무엇을 하라고 제 각본이 말한다. 그 위에 1회성 안내가
+   * 서면 말풍선 둘이 한 화면에 겹치고, 더 나쁘게는 수련의 조작 차단이 안내의
+   * [확인]까지 삼켜 사람이 닫을 수조차 없다(QA 실측: 3회 눌러도 안 닫힘,
+   * 8초 자동 소멸만이 출구). 게다가 안내가 상점을 스크롤시켜 수련이 짚던
+   * 스포트라이트가 54px 어긋났다. 수련 동안에는 세우지 않는다 — 아직 뜬 적이
+   * 없으니 본편에서 제 차례에 그대로 나온다(본 적 표시는 뜰 때 찍힌다).
+   */
+  if (shell.dataset.tutorial === "1") return true;
   if (!must<HTMLElement>("#coach-layer").hidden) return true;
   const early = document.querySelector<HTMLElement>("#early-hint");
   if (early && !early.hidden) return true;

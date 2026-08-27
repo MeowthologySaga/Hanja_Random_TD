@@ -39,18 +39,18 @@
   filter: invert(0.96) sepia(0.7) saturate(3.2) hue-rotate(350deg) brightness(1.06);
 }
 
-.panel-tabs button[data-panel-tab="shop"]          { --tab-icon: url("/assets/ui/icons/icon-shop-v2.png"); }
-.panel-tabs button[data-panel-tab="unit"]          { --tab-icon: url("/assets/ui/icons/icon-jaryeong-v2.png"); }
-.panel-tabs button[data-panel-tab="inventory"]     { --tab-icon: url("/assets/ui/icons/icon-inventory-v2.png"); }
-.panel-tabs button[data-panel-tab="evolution"]     { --tab-icon: url("/assets/ui/icons/icon-fusion-v2.png"); }
-.panel-tabs button[data-panel-tab="concentration"] { --tab-icon: url("/assets/ui/icons/icon-concentration-v2.png"); }
-.panel-tabs button[data-panel-tab="growth"]        { --tab-icon: url("/assets/ui/icons/icon-growth-v2.png"); }
-.panel-tabs button[data-panel-tab="goal"]          { --tab-icon: url("/assets/ui/icons/icon-goal-v2.png"); }
-.panel-tabs button[data-panel-tab="idiom"]         { --tab-icon: url("/assets/ui/icons/icon-idiom-v2.png"); }
+.panel-tabs button[data-panel-tab="shop"]          { --tab-icon: url("/assets/ui/icons/icon-shop-v2.webp"); }
+.panel-tabs button[data-panel-tab="unit"]          { --tab-icon: url("/assets/ui/icons/icon-jaryeong-v2.webp"); }
+.panel-tabs button[data-panel-tab="inventory"]     { --tab-icon: url("/assets/ui/icons/icon-inventory-v2.webp"); }
+.panel-tabs button[data-panel-tab="evolution"]     { --tab-icon: url("/assets/ui/icons/icon-fusion-v2.webp"); }
+.panel-tabs button[data-panel-tab="concentration"] { --tab-icon: url("/assets/ui/icons/icon-concentration-v2.webp"); }
+.panel-tabs button[data-panel-tab="growth"]        { --tab-icon: url("/assets/ui/icons/icon-growth-v2.webp"); }
+.panel-tabs button[data-panel-tab="goal"]          { --tab-icon: url("/assets/ui/icons/icon-goal-v2.webp"); }
+.panel-tabs button[data-panel-tab="idiom"]         { --tab-icon: url("/assets/ui/icons/icon-idiom-v2.webp"); }
 /* 기록 탭(gripe #4)이 사라지며 죽어 있던 규칙을 부적 탭이 물려받는다 —
    두루마리·기록 결이 "부적을 쓴다"와도 맞는다(사용자 지시, 새 자산 없음). */
-.panel-tabs button[data-panel-tab="talisman"]      { --tab-icon: url("/assets/ui/icons/icon-record-v2.png"); }
-.panel-tabs button#codex-button                    { --tab-icon: url("/assets/ui/icons/icon-codex-v2.png"); }
+.panel-tabs button[data-panel-tab="talisman"]      { --tab-icon: url("/assets/ui/icons/icon-record-v2.webp"); }
+.panel-tabs button#codex-button                    { --tab-icon: url("/assets/ui/icons/icon-codex-v2.webp"); }
 
 /* 아이콘이 들어가면서 라벨은 한 줄로 눌린다 */
 .panel-tabs button > b,
@@ -1305,7 +1305,7 @@ select option {
 .stage-chip {
   border-style: solid;
   border-width: 13px 16px 12px 24px;
-  border-image: url("/assets/ui/frames/hud-slip-wide-v1.png") 13 16 12 24 fill stretch;
+  border-image: url("/assets/ui/frames/hud-slip-wide-v1.webp") 13 16 12 24 fill stretch;
   background: none;
   box-shadow: var(--lift-1);
   padding: 2px 6px;
@@ -1315,7 +1315,7 @@ select option {
 .resource-grid {
   border-style: solid;
   border-width: 15px 18px;
-  border-image: url("/assets/ui/frames/resource-rail-v1.png") 15 18 fill stretch;
+  border-image: url("/assets/ui/frames/resource-rail-v1.webp") 15 18 fill stretch;
   background: none;
   padding: 0 2px;
   gap: 0;
@@ -1335,7 +1335,7 @@ select option {
 .wave-card {
   border-style: solid;
   border-width: 15px 24px 15px 18px;
-  border-image: url("/assets/ui/frames/briefing-card-v1.png") 15 24 15 18 fill stretch;
+  border-image: url("/assets/ui/frames/briefing-card-v1.webp") 15 24 15 18 fill stretch;
   background: none !important;
   box-shadow: var(--lift-1) !important;
 }
@@ -1344,7 +1344,7 @@ select option {
 .panel-tabs {
   border-style: solid;
   border-width: 10px 14px;
-  border-image: url("/assets/ui/frames/nav-rail-v1.png") 10 14 fill stretch;
+  border-image: url("/assets/ui/frames/nav-rail-v1.webp") 10 14 fill stretch;
   background: none;
   box-shadow: none;
 }
@@ -1356,7 +1356,7 @@ select option {
 .section-heading {
   border-bottom: 0;
   padding-bottom: 6px;
-  background-image: url("/assets/ui/frames/ink-divider-v1.png");
+  background-image: url("/assets/ui/frames/ink-divider-v1.webp");
   background-repeat: no-repeat;
   background-position: center bottom;
   background-size: 100% 8px;
@@ -1367,7 +1367,7 @@ select option {
 .synergy-strip {
   border-style: solid;
   border-width: 10px 14px;
-  border-image: url("/assets/ui/frames/status-strip-v1.png") 10 14 fill stretch;
+  border-image: url("/assets/ui/frames/status-strip-v1.webp") 10 14 fill stretch;
   background: none !important;
   box-shadow: none !important;
 }
@@ -1380,7 +1380,7 @@ select option {
 .icon-button,
 .speed-button {
   border: 0 !important;
-  background-image: url("/assets/ui/frames/control-hex-v1.png") !important;
+  background-image: url("/assets/ui/frames/control-hex-v1.webp") !important;
   background-size: 100% 100%;
   background-color: transparent !important;
   box-shadow: var(--lift-1) !important;
@@ -1398,7 +1398,7 @@ select option {
   bottom: 1px;
   width: 22px;
   height: 22px;
-  background: url("/assets/ui/frames/seal-cinnabar-v1.png") center / contain no-repeat;
+  background: url("/assets/ui/frames/seal-cinnabar-v1.webp") center / contain no-repeat;
   opacity: 0.9;
   pointer-events: none;
 }
@@ -1422,21 +1422,21 @@ select option {
 .resource-grid {
   padding: 3px 5px;
   background:
-    url("/assets/ui/frames/resource-rail-v1.png") center / 100% 100% no-repeat !important;
+    url("/assets/ui/frames/resource-rail-v1.webp") center / 100% 100% no-repeat !important;
   box-shadow: var(--lift-1);
 }
 
 .wave-card {
   padding: 6px 12px 6px 10px;
   background:
-    url("/assets/ui/frames/briefing-card-v1.png") center / 100% 100% no-repeat !important;
+    url("/assets/ui/frames/briefing-card-v1.webp") center / 100% 100% no-repeat !important;
   box-shadow: var(--lift-1) !important;
 }
 
 .panel-tabs {
   padding: 4px 6px;
   background:
-    url("/assets/ui/frames/nav-rail-v1.png") center / 100% 100% no-repeat !important;
+    url("/assets/ui/frames/nav-rail-v1.webp") center / 100% 100% no-repeat !important;
   box-shadow: none !important;
 }
 
@@ -1444,7 +1444,7 @@ select option {
 .synergy-strip {
   padding: 3px 8px;
   background:
-    url("/assets/ui/frames/status-strip-v1.png") center / 100% 100% no-repeat !important;
+    url("/assets/ui/frames/status-strip-v1.webp") center / 100% 100% no-repeat !important;
   box-shadow: none !important;
 }
 
@@ -1456,7 +1456,7 @@ select option {
    칩 크기를 유지한다. */
 .stage-chip {
   border-width: 11px 13px 10px 18px;
-  border-image: url("/assets/ui/frames/hud-slip-wide-v1.png") 13 16 12 24 fill stretch;
+  border-image: url("/assets/ui/frames/hud-slip-wide-v1.webp") 13 16 12 24 fill stretch;
   padding: 0 4px 0 0;
   min-height: 0;
 }
@@ -1478,7 +1478,7 @@ select option {
   padding: 4px 6px;
   /* v1 스트립은 우측에 인장이 구워져 있어 검은 조각으로 보였다 — 무지 v2 레일로 */
   background:
-    url("/assets/ui/p0-v1/rails/nav-rail-empty-381x89-v2.png") center / 100% 100% no-repeat !important;
+    url("/assets/ui/p0-v1/rails/nav-rail-empty-381x89-v2.webp") center / 100% 100% no-repeat !important;
 }
 
 .panel-tabs button {

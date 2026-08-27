@@ -4,7 +4,7 @@
 import { CASUAL_STAR_COLORS, CASUAL_STAR_NAMES, casualStrokeCount } from "../core/casual";
 import { BOARD_FORMATIONS } from "../core/content";
 import { definitionForTower, ELEMENT_STYLES } from "../core/hanzi";
-import { jaryeongVisualFor } from "../core/jaryeongs";
+import { jaryeongAssetPath, jaryeongVisualFor, type JaryeongVisual } from "../core/jaryeongs";
 import { learningInfoForNotation } from "../core/learning";
 import { notationShortHtml } from "./notation-substitute";
 import { type GameEvent, type Wuxing } from "../core/types";
@@ -44,7 +44,7 @@ export function hideSummonReveal(): void {
 }
 
 /**
- * v5 팩의 `fusion-vortex-v1.png` 를 공개 순간에 겹친다. 명세의 100–420ms 구간을
+ * v5 팩의 `fusion-vortex-v1.webp` 를 공개 순간에 겹친다. 명세의 100–420ms 구간을
  * CSS 애니메이션으로 맡기고(prefers-reduced-motion 이면 회전 없이 페이드),
  * 파일이 없으면 클래스만 붙었다 떨어지므로 기존 소환 광채로 자연히 폴백된다.
  */
@@ -55,6 +55,49 @@ function playFusionVortex(wuxing: Wuxing): void {
   void fusionVortex.offsetWidth;
   fusionVortex.classList.add("is-active");
   ctx.fusionVortexTimer = window.setTimeout(() => fusionVortex.classList.remove("is-active"), 520);
+}
+
+/**
+ * 결과 카드의 자령 초상 — 두 겹.
+ *
+ * 그림은 글자마다 다른 PNG(평균 82KB)라 **카드가 DOM 에 들어가는 그 순간에야**
+ * 요청이 시작된다. 유선 광랜에서도 카드가 여럿이면 다 도착하기까지 중앙값
+ * 1.5초가 걸렸고(실측), 그동안 화면에는 크림색 빈 사각형만 남았다 — 사용자
+ * 제보 "뽑기 할 때 스프라이트가 늦게 뜬다"가 이것이다. 느린 회선에서는 연출
+ * 지속시간(10장 9.65초)보다 늦게 도착해 끝내 못 보고 창이 걷히기도 한다.
+ *
+ * 공방 목록(format.ts spiritPortraitMarkup)은 같은 사정을 이미 두 겹으로
+ * 넘긴다 — 오행색 원판에 한자를 깔고 그림을 그 위에 얹어, 그림이 늦거나 끝내
+ * 오지 않아도 빈칸이 생기지 않는다. 결과 카드만 그 대비가 빠져 있었다.
+ * 도착 시각은 1ms 도 앞당기지 못하지만, 기다리는 동안 보이는 것이 달라진다.
+ */
+function spiritLayers(wuxing: Wuxing, visual: JaryeongVisual): string {
+  // 아래층 글자는 한자가 아니라 **오행**이다. 카드에는 이미 그 한자가 큰 글씨로
+  // 바로 아래 서 있어, 초상 자리에 같은 글자를 또 넣으면 한 카드에 같은 글자가
+  // 두 번 보인다(실측 스크린샷). 오행 글자는 겹치지 않으면서 그 자리가 무엇을
+  // 기다리는 자리인지 말해 준다.
+  return `<span class="summon-result-spirit" aria-hidden="true">`
+    + `<i class="summon-result-fallback">${wuxing}</i>`
+    + `<i class="summon-result-art" style="${visualBackgroundStyle(visual)}"></i>`
+    + `</span>`;
+}
+
+/**
+ * 카드를 세우기 전에 그림부터 부른다.
+ *
+ * 실측: 클릭 → 카드 삽입이 단발 55ms · 10연 114ms 다. 그 시간만큼 요청이 늦게
+ * 나가고 있었다. 마크업을 만들기 전에 같은 URL 로 Image 를 태워 두면 브라우저
+ * 이미지 캐시를 공유하므로 요청은 여전히 한 번이고, 시작만 앞당겨진다.
+ * `fetchPriority` 는 부팅 자산 스트림(출정 뒤에도 흐르는 수십 MB)과 같은 큐에
+ * 서는 이 요청을 앞으로 당긴다 — 첫 소환의 꼬리(실측 1.1초)가 이 경합이었다.
+ */
+function prefetchSpirits(visuals: readonly JaryeongVisual[]): void {
+  for (const visual of visuals) {
+    const image = new Image();
+    image.fetchPriority = "high";
+    image.decoding = "async";
+    image.src = `${import.meta.env.BASE_URL}${jaryeongAssetPath(visual)}`;
+  }
 }
 
 /**
@@ -82,6 +125,7 @@ export function showCasualFusionReveal(events: Array<Extract<GameEvent, { type: 
       ? `<strong>소환 풀에 없어 지역 로스터에서 보충</strong>`
       : "";
   must<HTMLElement>("#summon-reveal-summary").innerHTML = `${fallbackNote}<b>첫 발견 ${newCount}</b><span>소모 ${events.length * 3}기</span><span>${first.tower.wuxing}행 ${first.fromStar}★×3</span><em>${placementLabel}</em>`;
+  prefetchSpirits(events.map((event) => jaryeongVisualFor(event.tower.char, event.tower.wuxing, ctx.engine.state.region)));
   must<HTMLElement>("#summon-reveal-list").innerHTML = events.map((event, index) => {
     const tower = event.tower;
     const style = ELEMENT_STYLES[tower.wuxing];
@@ -89,10 +133,13 @@ export function showCasualFusionReveal(events: Array<Extract<GameEvent, { type: 
     const learning = learningInfoForNotation(ctx.engine.state.notation, tower.char);
     const star = casualStarOf(tower);
     return `<article class="summon-result-card is-fusion ${event.newDiscovery ? "is-new" : "is-helpful"}" style="--summon:${style.color};--summon-star:${CASUAL_STAR_COLORS[star]};--summon-delay:${index * 45}ms">
-      <span class="summon-result-spirit" style="${visualBackgroundStyle(visual)}" aria-hidden="true"></span>
+      ${spiritLayers(tower.wuxing, visual)}
       <strong>${escapeHtml(tower.char)}</strong>
       <b>${notationShortHtml(learning, ctx.engine.state.notation)}</b>
-      <small>${style.name}행 · ${star}★ ${CASUAL_STAR_NAMES[star]} · ${casualStrokeCount(tower.char) ?? "?"}획</small>
+      <!-- 등급 이름(숙련·희귀…)은 별 수와 겹치는 말이라 걷었다. 한 줄에 넣으려고
+           욱여넣으면 끝의 **획수**가 잘려 나가는데(실측 14~20px), 획수는 이 게임에서
+           별을 정하는 값이라 학습자에게 가장 쓸모 있는 정보다. 이름은 카드 배지에 남는다. -->
+      <small title="${style.name}행 · ${star}★ ${CASUAL_STAR_NAMES[star]}">${style.name}행 · ${star}★ · ${casualStrokeCount(tower.char) ?? "?"}획</small>
       <div><em>${event.newDiscovery ? "NEW" : "무작위 획득"}</em><mark>${escapeHtml(event.consumed.map((consumed) => consumed.char).join("·"))} 소모</mark></div>
     </article>`;
   }).join("");
@@ -135,6 +182,7 @@ export function showSummonReveal(events: Array<Extract<GameEvent, { type: "summo
     ? `<strong>${events[0]?.tower.wuxing ?? "?"} 자령 출현 → ${startingFormation.label} 무료 개방</strong>`
     : "";
   must<HTMLElement>("#summon-reveal-summary").innerHTML = `${openingResult}<b>새 발견 ${newCount}</b><span>${ctx.engine.state.mode === "casual" ? "목표·성어" : "합성 재료"} ${helpfulCount}</span><span>중복 ${concentrationCount}</span><em>${placementLabel}</em>`;
+  prefetchSpirits(events.map((event) => jaryeongVisualFor(event.tower.char, event.tower.wuxing, ctx.engine.state.region)));
   must<HTMLElement>("#summon-reveal-list").innerHTML = events.map((event, index) => {
     const tower = event.tower;
     const definition = definitionForTower(ctx.engine.catalog, tower.definitionId);
@@ -146,10 +194,10 @@ export function showSummonReveal(events: Array<Extract<GameEvent, { type: "summo
     const star = casualStarOf(tower);
     // 잭팟(소프트 상한 위 별)은 카드 한 장에 별색 강조 1개만 얹는다 — calm-screen 존중.
     return `<article class="summon-result-card ${event.newDiscovery ? "is-new" : ""} ${event.helpful ? "is-helpful" : ""} ${event.jackpot ? "is-jackpot" : ""}" style="--summon:${style.color};--summon-star:${CASUAL_STAR_COLORS[star]};--summon-delay:${index * 45}ms">
-      <span class="summon-result-spirit" style="${visualBackgroundStyle(visual)}" aria-hidden="true"></span>
+      ${spiritLayers(tower.wuxing, visual)}
       <strong>${tower.char}</strong>
       <b>${notationShortHtml(learning, ctx.engine.state.notation)}</b>
-      <small>${style.name}행 · ${ctx.engine.state.mode === "casual" ? `${star}★ ${CASUAL_STAR_NAMES[star]} · ${casualStrokeCount(tower.char) ?? "?"}획` : escapeHtml(definition.combat.roleLabel)}</small>
+      <small title="${style.name}행 · ${star}★ ${CASUAL_STAR_NAMES[star]}">${style.name}행 · ${ctx.engine.state.mode === "casual" ? `${star}★ · ${casualStrokeCount(tower.char) ?? "?"}획` : escapeHtml(definition.combat.roleLabel)}</small>
       <div><em>${utilityLabel}</em>${event.jackpot ? `<mark class="summon-jackpot">상한 돌파</mark>` : ""}${helpfulLabel ? `<mark>${helpfulLabel}</mark>` : ""}</div>
     </article>`;
   }).join("");

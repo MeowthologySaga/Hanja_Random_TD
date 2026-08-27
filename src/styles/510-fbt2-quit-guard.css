@@ -45,7 +45,7 @@
 #tutorial-quit-cancel {
   color: #ffeec4;
   background:
-    url("/assets/ui/main-menu-b/ui/button-secondary-default-v1.png") center / 100% 100% no-repeat,
+    url("/assets/ui/main-menu-b/ui/button-secondary-default-v1.webp") center / 100% 100% no-repeat,
     #4a1e14;
 }
 
@@ -54,7 +54,7 @@
 #tutorial-quit-confirm {
   color: #d8c9a8;
   background:
-    url("/assets/ui/main-menu-b/ui/button-secondary-default-v1.png") center / 100% 100% no-repeat,
+    url("/assets/ui/main-menu-b/ui/button-secondary-default-v1.webp") center / 100% 100% no-repeat,
     #26221c;
   filter: grayscale(0.35);
 }

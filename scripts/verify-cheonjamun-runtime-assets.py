@@ -92,17 +92,20 @@ def main() -> None:
         if float(entry.get("scale", 2.0)) > 1.0:
             errors.append(f"{sprite_id}: forbidden upscale {entry.get('scale')}")
 
-        asset_path = runtime_dir / f"{sprite_id}.png"
+        asset_path = runtime_dir / f"{sprite_id}.webp"
         if not asset_path.is_file():
-            errors.append(f"{sprite_id}: missing PNG")
+            errors.append(f"{sprite_id}: missing WebP")
             continue
         if sha256(asset_path) != entry.get("sha256"):
             errors.append(f"{sprite_id}: SHA-256 mismatch")
             continue
 
         with Image.open(native_path(asset_path)) as image:
-            if image.format != "PNG" or image.size != (256, 256) or image.mode != "RGBA":
-                errors.append(f"{sprite_id}: expected 256x256 RGBA PNG, got {image.format} {image.size} {image.mode}")
+            # 2026-08-27: 무손실 PNG(장당 82KB·합계 78MB)를 WebP q85 로 바꿨다 —
+            # 소환 결과 카드가 그림을 기다리는 시간이 회선을 그대로 탔기 때문이다.
+            # 픽셀 규격(256×256 RGBA)과 여백 규칙은 그대로 지킨다.
+            if image.format != "WEBP" or image.size != (256, 256) or image.mode != "RGBA":
+                errors.append(f"{sprite_id}: expected 256x256 RGBA WebP, got {image.format} {image.size} {image.mode}")
                 continue
             bbox = image.getchannel("A").getbbox()
             if bbox is None:
@@ -118,9 +121,9 @@ def main() -> None:
         gates[str(entry.get("qualityGate"))] += 1
         checked += 1
 
-    png_count = len(list(runtime_dir.glob("kr-*.png")))
+    png_count = len(list(runtime_dir.glob("kr-*.webp")))
     if png_count != 1000:
-        errors.append(f"runtime directory contains {png_count} kr-*.png files instead of 1,000")
+        errors.append(f"runtime directory contains {png_count} kr-*.webp files instead of 1,000")
 
     summary = {
         "checked": checked,

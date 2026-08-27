@@ -33,23 +33,23 @@ function imageFor(file: string): HTMLImageElement {
 }
 
 export function inkStraightImage(axis: "h" | "v"): HTMLImageElement {
-  return imageFor(`ink-path-straight-${axis}-v1.png`);
+  return imageFor(`ink-path-straight-${axis}-v1.webp`);
 }
 
 export function inkCornerImage(corner: InkCorner): HTMLImageElement {
-  return imageFor(`ink-path-corner-${corner}-v1.png`);
+  return imageFor(`ink-path-corner-${corner}-v1.webp`);
 }
 
 export function inkCrossImage(): HTMLImageElement {
-  return imageFor("ink-path-cross-v1.png");
+  return imageFor("ink-path-cross-v1.webp");
 }
 
 export function inkPortalImage(direction: InkDirection): HTMLImageElement {
-  return imageFor(`ink-path-portal-${direction}-v1.png`);
+  return imageFor(`ink-path-portal-${direction}-v1.webp`);
 }
 
 export function inkArrowImage(direction: InkDirection): HTMLImageElement {
-  return imageFor(`ink-path-arrow-${direction}-v1.png`);
+  return imageFor(`ink-path-arrow-${direction}-v1.webp`);
 }
 
 export function preloadInkPathSprites(): void {

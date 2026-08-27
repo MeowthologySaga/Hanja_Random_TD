@@ -265,7 +265,7 @@ export function renderSelected(): void {
         ? `분해 불가<small class="action-price">${escapeHtml(dismantleUnlockable(cleanup?.protectedReasons ?? []) ? "제련소에서 보호 끄기 ›" : `${protectionShortLabel(cleanup?.protectedReasons ?? [])} 보호`)}</small>`
         : `분해<small class="action-price">${essenceAmountChip(tower.wuxing, dismantleEssence)}</small>`}</button>
       <button id="open-concentration-button" type="button" title="농축 공방 탭으로 이동" ${concentration >= MAX_CONCENTRATION_LEVEL ? "disabled" : ""}>농축 ›</button>
-      <button id="sell-button" type="button" title="${escapeHtml(`${goldAmountLabel(sellGold)}${sellEssence > 0 ? ` · ${essenceAmountLabel(tower.wuxing, sellEssence)}` : ""} 를 받고 즉시 제거 — 되돌릴 수 없음`)}" ${tower.locked ? "disabled" : ""}>판매<small class="action-price">${goldAmountLabel(sellGold, true)}${sellEssence > 0 ? ` · ${essenceAmountChip(tower.wuxing, sellEssence)}` : ""}</small></button>
+      <button id="sell-button" type="button" title="${escapeHtml(`${goldAmountLabel(sellGold)}${sellEssence > 0 ? ` · ${essenceAmountLabel(tower.wuxing, sellEssence)}` : ""}을 받고 즉시 제거 — 되돌릴 수 없음`)}" ${tower.locked ? "disabled" : ""}>판매<small class="action-price">${goldAmountLabel(sellGold, true)}${sellEssence > 0 ? ` · ${essenceAmountChip(tower.wuxing, sellEssence)}` : ""}</small></button>
     </div>
     <button type="button" class="selected-ability-summary" data-ability-guide><b>${activeSkills ? `技 기술 ${abilityLoadout.length}개 · 모두 자동 판정` : "技 기술 해금 전"}</b><span>${activeSkills ? `주기 ${periodicAbilities.length} · 공격 연동 1 · 조건 적용 1` : "현재 기본 공격 · 2단 합성 필요"}</span><em>설명 ›</em></button>
     ${activeSkills
@@ -347,6 +347,31 @@ export function renderCompositionDrawer(): void {
  * 문장은 그대로 토스트로 올린다(그 경우 자령은 인벤토리에 남는다 —
  * 사라지지는 않는다).
  */
+/**
+ * 판매도 분해와 똑같이 되돌릴 수 없다. 그런데 분해에만 확인 창이 있고 판매는
+ * 한 번 클릭으로 즉시 처분됐다(QA 실측) — 두 버튼이 나란히 붙어 있어 잘못
+ * 누르기 쉬운 자리다. 같은 무게의 조작이면 같은 문턱을 둔다.
+ */
+function sellSelectedWithConfirm(): void {
+  const tower = ctx.engine.selectedTower();
+  if (!tower) return;
+  if (tower.locked) {
+    handleAction(ctx.engine.sellSelected());
+    return;
+  }
+  const gold = ctx.engine.towerSellValue(tower);
+  const essence = concentrationEssenceRefund(tower.concentration ?? 0);
+  openConfirm({
+    eyebrow: "선택 자령",
+    title: `${tower.char} 1기를 판매할까요?`,
+    lines: [
+      `획득 <b>엽전 +${gold}</b>${essence > 0 ? ` · <b>${escapeHtml(tower.wuxing)} 문기 +${essence}</b>` : ""}`,
+      "되돌릴 수 없습니다."
+    ],
+    confirmLabel: `${tower.char} 판매`
+  }, () => handleAction(ctx.engine.sellSelected()));
+}
+
 function dismantleSelectedInPlace(): void {
   const tower = ctx.engine.selectedTower();
   if (!tower) return;
@@ -447,7 +472,7 @@ export function wireSelected3(): void {
       if (result.ok) setPanelTab("inventory");
       handleAction(result);
     }
-    else if (target.closest("#sell-button")) handleAction(ctx.engine.sellSelected());
+    else if (target.closest("#sell-button")) sellSelectedWithConfirm();
     else if (target.closest("#dismantle-button")) dismantleSelectedInPlace();
     else if (target.closest("#open-concentration-button")) {
       ctx.concentrationTargetId = ctx.engine.selectedTower()?.id ?? null;

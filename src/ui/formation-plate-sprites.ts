@@ -42,7 +42,7 @@ function keyFor(wuxing: Wuxing, unlocked: boolean): string {
 }
 
 function loadPlate(key: string): PlateEntry {
-  const path = `${import.meta.env.BASE_URL}assets/ui/formations/v1/formation-altar-${key}-546-v1.png`;
+  const path = `${import.meta.env.BASE_URL}assets/ui/formations/v1/formation-altar-${key}-546-v1.webp`;
   // 프리로드본이 있으면 절차 석판을 한 프레임도 그리지 않고 바로 판을 쓴다.
   const preloaded = preloadedImage(path);
   if (preloaded) {

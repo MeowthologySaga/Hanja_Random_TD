@@ -14,6 +14,7 @@ import {
   runSaveSummary,
   writeRunSave
 } from "../core/run-save";
+import { captureTalismanLedger, restoreTalismanLedger } from "./panels/talisman";
 import { ctx } from "./app-context";
 import { REGION_MENU_INFO } from "./dialogs/s13";
 import { formatTime, gameModeLabel } from "./format";
@@ -57,7 +58,12 @@ export function readSavedRun(): RunSave | null {
  * 판이 "전투 한복판에서 갑자기 시작"하는 어색함도 없다.
  */
 export function autoSaveRun(): boolean {
-  const save = captureRunSave(ctx.engine, { talismanFreeSummonTokens: ctx.talismanFreeSummonTokens });
+  const ledger = captureTalismanLedger();
+  const save = captureRunSave(ctx.engine, {
+    talismanFreeSummonTokens: ctx.talismanFreeSummonTokens,
+    talismanCharges: ledger.charges,
+    talismanChargeWave: ledger.chargeWave
+  });
   if (!save) return false;
   return writeRunSave(save);
 }
@@ -77,6 +83,10 @@ export function clearSavedRun(): void {
 /** 저장본의 UI 층 자원을 지금 화면에 얹는다. */
 export function applySavedUiState(save: RunSave): void {
   ctx.talismanFreeSummonTokens = Math.max(0, Math.floor(save.ui.talismanFreeSummonTokens));
+  // 부적 장부가 없는 옛 저장본이면 손대지 않는다 — 그 판은 웨이브 기준으로 다시 센다.
+  if (save.ui.talismanCharges !== undefined && save.ui.talismanChargeWave !== undefined) {
+    restoreTalismanLedger({ charges: save.ui.talismanCharges, chargeWave: save.ui.talismanChargeWave });
+  }
 }
 
 /**

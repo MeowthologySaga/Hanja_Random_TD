@@ -5,11 +5,23 @@
    (사용자 스크린샷). 되돌릴 수 없는 조작을 알리는 자리이므로 한지 카드로
    세우고 경고 색은 인주 주홍만 쓴다. */
 
+/* 한 줄 압축(grid-auto-flow: column)은 카드가 손으로 고른 3기일 때만 맞는
+   가정이었다. [한 번에 승급]은 전장 재료를 전부 세우므로 8장이면 칸이 82px로
+   눌려 한자가 카드 밖 13px로 삐져나오고, 9장이면 글자가 반으로 잘려 **무엇이
+   사라지는지 읽을 수 없다**(사용자 제보 · QA 실측). 되돌릴 수 없는 조작의
+   확인 창이니 장수가 늘면 줄을 바꾸고, 넘치면 이 목록만 스크롤한다. */
 .casual-fusion-confirm-content .casual-confirm-towers {
   display: grid;
-  grid-auto-flow: column;
-  grid-auto-columns: minmax(0, 1fr);
+  grid-template-columns: repeat(auto-fill, minmax(148px, 1fr));
+  /* 줄이 정해진 높이(창) 안에 들어가면 자동 줄이 눌려 카드가 제 내용보다
+     낮아지고, 카드 밑 "소모" 알약이 아래 줄 카드 위로 흘렀다. 줄 높이는
+     내용이 정하고, 넘치는 만큼은 목록이 스크롤한다. */
+  grid-auto-rows: min-content;
+  align-content: start;
   gap: 10px;
+  /* 두 줄(6기)까지는 스크롤 없이 다 보이고, 그보다 많을 때만 목록이 구른다. */
+  max-height: 264px;
+  overflow-y: auto;
 }
 
 .casual-fusion-confirm-content .casual-confirm-tower {
@@ -26,7 +38,15 @@
   box-shadow: inset 0 0 0 1px rgba(255, 250, 232, 0.5);
 }
 
-.casual-fusion-confirm-content .casual-confirm-sprite { grid-area: sprite; }
+/* 그림에는 제 높이가 없어(배경 이미지뿐) 칸 높이를 형제가 정한다 — 줄바꿈
+   격자에서 칸이 좁아지자 그림 칸이 아래 글줄 위로 흘러 "소모 · 복구 불가"와
+   포개졌다. 자리를 못박아 겹칠 여지를 없앤다. */
+.casual-fusion-confirm-content .casual-confirm-sprite {
+  grid-area: sprite;
+  width: 44px;
+  height: 44px;
+  align-self: start;
+}
 
 .casual-fusion-confirm-content .casual-confirm-tower > b {
   grid-area: glyph;
