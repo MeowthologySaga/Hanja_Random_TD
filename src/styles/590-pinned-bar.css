@@ -1,0 +1,20 @@
+/* 자동배치 바가 패널에서 떠 보이던 것.
+
+   상점이 2행 구조(스크롤 목록 + 바깥 고정 바)로 바뀐 뒤로 바는 더 이상
+   아무것도 가리지 않는다. 그런데 sticky 시절의 불투명 판(#f1e6c9)과 위로
+   번지는 그림자가 그대로 남아, 종이 결이 비치는 패널 위에 **결 없는 밝은
+   띠**가 얹힌 꼴이 됐다(사용자: "겉에 삐져나온 것 같아 이질적"). 판을 걷고
+   패널의 종이를 그대로 쓰되, 목록과의 경계만 가는 먹선으로 남긴다. */
+
+.shop-pinned {
+  padding: 7px 8px 4px;
+  background: transparent;
+  border-top: 1px solid rgba(122, 90, 42, 0.26);
+  box-shadow: none;
+}
+
+/* 버튼도 다른 운영 버튼과 같은 옷을 입는다 — 위로 번지던 그림자를 걷고
+   테두리 두께만 남겨 바닥 줄에 눕는다. */
+.shop-pinned .action-button--auto-arrange {
+  box-shadow: inset 0 0 0 1px rgba(122, 90, 42, 0.28);
+}
