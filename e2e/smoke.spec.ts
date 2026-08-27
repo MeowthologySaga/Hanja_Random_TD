@@ -1307,6 +1307,17 @@ test("teaches summon tiers and the stroke-to-star rule with one-shot hints", { t
   await expect(page.locator("#hint-title")).toContainText("별 확률");
   await expect(page.locator("#hint-body")).toContainText("확정, 주로");
 
+  /*
+   * 안내는 짚기만 하고 막지 않는다(절 650).
+   *
+   * 말풍선이 [확인] 때문에 클릭을 받는 표면이었을 때, 대상 버튼 위에 앉는
+   * 자리에서는 그 버튼을 물리적으로 가로챘다 — 실측으로 활성 버튼 4개가 막혔고
+   * 그중 하나가 안내 문구가 "여기서 하세요"라고 가리키던 #evolve-button 이었다.
+   * 몸통은 통과, [확인]만 살아 있어야 한다.
+   */
+  await expect(page.locator("#hint-bubble")).toHaveCSS("pointer-events", "none");
+  await expect(page.locator("#hint-dismiss")).toHaveCSS("pointer-events", "auto");
+
   // [트랙 R · P-27] 안내를 [확인]으로 걷으면 다음 안내(부적)가 같은 자리를 바로
   // 다음 프레임에 이어받았다 — 눈에는 "안 걷혔다"로 보이고, 걷으려던 클릭이
   // 새 안내를 향한 클릭이 되어 두 번째 안내를 못 보고 지나친다. 재장전 지연
