@@ -127,6 +127,10 @@ export const SEMANTIC_ABILITY_TABLE: Record<SemanticFamily, SemanticPattern> = {
   scorch: semanticPattern("scorch", "cluster", 5, 0.32, "소흔", "燼", "blast", "적 처치마다", "처치 지점 잔불", "망령을 처치한 자리에 잔불을 남깁니다. 잔불을 밟는 적은 일정 시간 초당 피해를 입습니다.", "#ff9a52"),
   harvest: semanticPattern("harvest", "front", 6, 0, "채기", "采", "coin", "12번째 처치마다", "자기 오행 문기 +1", "처치를 거둘 때마다 기운을 모아, 일정 처치마다 자기 오행의 문기를 1 얻습니다.", "#c8e69a"),
   // [SKILL-V2] 끝.
+  // [SKILL-V3] 스킬 3차 세트가 신설한 의미 계열.
+  demise: semanticPattern("demise", "strongest", 6, 0.3, "유폭 낙인", "同", "blast", "6번째 공격", "낙인 유폭 전파", "적에게 동귀의 낙인을 새깁니다. 낙인이 남은 동안 그 적이 받은 피해의 일부가 낙인에 적립되고, 낙인을 진 채 쓰러지면 적립분이 주변 망령에게 한꺼번에 번집니다. 뒤로 밀지는 않습니다.", "#ff7f6e"),
+  mire: semanticPattern("mire", "armored", 6, 0, "진흙밭", "泥", "control", "적 3기 이상 · 충전 발동", "장갑·재생 무효화", "길목에 자기 오행의 진흙 지대를 4초 깝니다. 장판 피해는 그대로 들어가고, 밟는 동안 망령의 장갑과 재생이 무효가 되어 철갑은 맨몸이 되고 회생은 멈춥니다. 걸음은 건드리지 않습니다 — 느려지지도, 밀리지도 않습니다.", "#c2a06a"),
+  // [SKILL-V3] 끝.
   general: semanticPattern("general", "front", 6, 1.18, "자의 구현", "字", "solo", "6번째 공격", "뜻의 힘 증폭", "한자의 뜻을 기운으로 구현해 다음 일격을 강화합니다.", "#c7d0e0")
 };
 
@@ -156,7 +160,17 @@ const SEMANTIC_CHAR_GROUPS: Readonly<Record<Exclude<SemanticFamily, "general">, 
   reaper: new Set([..."斬誅殺滅死命刑罰"]),
   command: new Set([..."王帝皇君主號令帥"]),
   scorch: new Set([..."燭煒煌燃焚灼灰炭烟烛"]),
-  harvest: new Set([..."農稼穡耕收穫采種穀畝"])
+  harvest: new Set([..."農稼穡耕收穫采種穀畝"]),
+  // [SKILL-V3] 신설 글자군. 전부 지역 로스터(KR_1000·JP_2136·CN_3500) 실존
+  // 글자이며 기존 글자군과 겹치지 않는다. 滅은 reaper 가 선점해 뺐고,
+  // 散·破는 역할 기술 글자(산화진·축력파쇄)와 눈으로 헷갈려 뺐다.
+  // 지역 편중을 줄이려 세 로스터에 고르게 걸치는 글자만 남겼다(초안 13자는
+  // JP·CN 에만 있는 崩裂爆碎消 때문에 지역 승률 격차를 0.156 까지 벌렸다).
+  demise: new Set([..."同歸亡盡終傾毀覆"]),
+  // 진흙·물웅덩이 계열. 土·地는 mountain 이 선점했으므로 진흙밭은 물기 있는
+  // 땅(泥沼池沙…)으로만 모았다.
+  // 같은 이유로 JP·CN 에만 있는 沼沃湖溺坑을 덜어 세 로스터가 5~6자로 고르다.
+  mire: new Set([..."泥田沙池沈垢"])
 };
 
 export function semanticPatternFor(char: string, wuxing: Wuxing): SemanticPattern {
@@ -378,6 +392,9 @@ export function composeAbilityLoadout(input: AbilityComposeInput): AbilityLoadou
       ...semantic.ability,
       trigger: semantic.family === "weather"
         ? `적 5기 이상 · ${semanticEvery}번째 공격`
+        // [SKILL-V3] 진흙밭도 비구름 강하와 같은 "붐빌 때만" 충전 발동이다.
+        : semantic.family === "mire"
+        ? `적 ${MIRE_MIN_ENEMIES}기 이상 · ${semanticEvery}번째 공격`
         : PASSIVE_TRIGGER_FAMILIES.has(semantic.family)
           ? semantic.ability.trigger
           : `${semanticEvery}번째 공격`
@@ -564,3 +581,139 @@ const PASSIVE_TRIGGER_FAMILIES: ReadonlySet<SemanticFamily> = new Set<SemanticFa
   "scorch",
   "harvest"
 ]);
+
+/* ============================================================================
+ * [SKILL-V3] 스킬 3차 세트 상수·순수 계산.
+ *
+ * 병합 안내: 이 블록 전체가 스킬 트랙의 신규 코드다. 밸런스 트랙과 충돌하면
+ * 이 블록은 통째로 유지하고 위쪽 기존 표의 충돌만 수동으로 푼다.
+ * 절대 원칙(1·2차와 동일): 어떤 스킬도 적을 뒤로 밀지 않는다 — 이동 간섭은
+ * 감속·제자리 정지·경로 장판뿐이고, 진행도는 절대 되돌리지 않는다.
+ * ========================================================================== */
+
+/**
+ * 유폭 낙인(demise): 낙인이 사는 동안 대상이 받은 피해 중 낙인에 적립되는 비율.
+ *
+ * 낙인 지속은 상극 각인과 같은 4초(WARFARE_BRAND_DURATION)를 공유한다 —
+ * 같은 낙인 자료를 쓰기 때문이다. 적립분은 전파 때 대상마다 온전히 들어가므로
+ * 상한 인원(DEMISE_MAX_TARGETS)과 곱해 실효 배수가 정해진다. 보수적으로 잡고
+ * 시뮬 게이트로 수렴시킨다.
+ */
+export const DEMISE_STORE_RATIO = 0.12;
+/** 유폭 낙인: 전파가 닿는 최대 인원. 연쇄 유폭은 재진입 잠금으로 막는다. */
+export const DEMISE_MAX_TARGETS = 4;
+/** 유폭 낙인: 전파 반경 — 기본 100, 캐주얼 별당 +6, 상한 150. */
+export const DEMISE_RADIUS_BASE = 100;
+export const DEMISE_RADIUS_PER_STAR = 6;
+export const DEMISE_RADIUS_CAP = 150;
+
+/** 유폭 전파 반경. 캐주얼이 아니면 별 스케일 없이 기본치, 상한을 넘지 않는다. */
+export function demiseSpreadRadius(casualStar: number | null): number {
+  const scaled = DEMISE_RADIUS_BASE + (casualStar === null ? 0 : Math.max(0, casualStar - 1) * DEMISE_RADIUS_PER_STAR);
+  return Math.min(DEMISE_RADIUS_CAP, scaled);
+}
+
+/**
+ * 획수 공명(畫數共鳴) — 진법 특성(graph) 축의 조건 패시브.
+ *
+ * 같은 진에 **자기와 같은 별**의 자령이 몇 기나 서 있느냐가 조건이다. 별은 곧
+ * 획수 구간이라 규칙 문장이 "같은 획수끼리 울린다"로 그대로 읽힌다.
+ *
+ * 자기 자신은 세지 않는다 — 같은 별 동료 1기당 1중첩, 4중첩이 상한이다.
+ *
+ * **별승급(캐주얼) 전용이다.** 기획서가 이 스킬을 "획수→별 규칙을 전투에서도
+ * 만지게 함"으로 정의했고, 표준 모드에는 별이 없어 합성 단계를 대신 쓸 수밖에
+ * 없는데 — 표준 후반 판은 같은 단계가 한 진에 몰리므로(80칸이 다 차면 거의
+ * 전원이 4중첩) 판 전체에 공속 +16%를 그냥 얹는 꼴이 된다. 실측으로도 표준
+ * 135런 승률이 0.556→0.822 로 튀었다. 별이 있는 모드에서만 운다.
+ */
+/**
+ * 중첩당 공속 가산.
+ *
+ * 기획 초안은 +4%(4중첩 = +16%)였다. 실측에서 이 값 하나가 캐주얼 45런 승률을
+ * 0.511 → 0.711 로 밀어 올렸다(게이트 상한 0.60) — 판이 다 차면 한 진의 열여섯
+ * 칸에 같은 별이 넷 이상 서는 일이 흔해, 사실상 전 자령이 상시 4중첩이기
+ * 때문이다. 곧 "판 전체 공속 +16%"였고, 이 게임의 DPS→승률 탄성에서는 그것이
+ * 20%p 다. 중첩 구조(4중첩 상한)는 기획대로 두고 눈금만 1.5%로 내린다.
+ */
+export const STROKE_RESONANCE_HASTE_PER_STACK = 0.015;
+export const STROKE_RESONANCE_MAX_STACKS = 4;
+
+/** 같은 진·같은 계급 동료 수 → 중첩 수(상한 4). */
+export function strokeResonanceStacks(sameRankAllies: number): number {
+  return Math.max(0, Math.min(STROKE_RESONANCE_MAX_STACKS, Math.floor(sameRankAllies)));
+}
+
+/** 중첩 수 → 공격 대기에 곱할 배율. 4중첩이면 ×0.84(공속 +16% 상당). */
+export function strokeResonanceCooldownScale(stacks: number): number {
+  return 1 - strokeResonanceStacks(stacks) * STROKE_RESONANCE_HASTE_PER_STACK;
+}
+
+/**
+ * 진흙밭(mire): 지대 지속(초)·반경·발동 최소 적 수.
+ *
+ * 실사한 적 특성 가운데 무효화 대상은 장갑과 재생 둘뿐이다 — 정예 철갑
+ * (장갑 0.28~0.48)·회생 요괴(초당 최대 체력 2.6%)·우두머리(장갑 0.1~0.22 +
+ * 초당 0.4%)가 실제로 지닌다. 나머지 적 특성(속도·수량·체력 계수)은 이 지대의
+ * 사정이 아니다. **이동은 일절 건드리지 않는다** — 감속도, 정지도, 밀치기도 없다.
+ *
+ * 초당 피해는 자기 오행 장판(ELEMENT_ZONE_SPECS)의 비율을 그대로 쓴다. 서리길과
+ * 달리 이 지대는 오행 장판을 **대체**하므로, 피해 0으로 두면 진흙밭 자령이
+ * 원래 쓰던 장판을 잃어 순수 하향이 된다(실측: 표준 135런 KR 0.556→0.444).
+ * 지속만 기획값 4초로 짧게 줄여 무효화의 값을 치른다.
+ */
+export const MIRE_ZONE_SECONDS = 4;
+export const MIRE_ZONE_RADIUS = 110;
+/** 진흙밭은 "충전 발동" 계열이다 — 길이 붐빌 때만 깐다(비구름 강하와 같은 문법). */
+export const MIRE_MIN_ENEMIES = 3;
+/**
+ * 지대를 벗어난 뒤 무효화가 풀리기까지의 유예(초). 비·서리·유사 지대가 쓰는
+ * 0.2~0.25초 관례를 그대로 따른다 — 프레임 경계에서 특성이 깜빡이지 않게 한다.
+ */
+export const MIRE_SUPPRESS_GRACE = 0.25;
+
+/**
+ * 회향(回響) — 캐주얼 3합 승급의 전역 규칙.
+ *
+ * 3합은 재료 세 기가 전부 사라지는 규칙이라 "내 자령이 없어진다"는 아쉬움이
+ * 남는다. 사라진 셋이 결과 자령에게 잠시 힘을 남기게 해 그 아쉬움을 서사로
+ * 갚는다 — 기획서 무(戊) 기맥계의 마지막 항목이다.
+ *
+ * 여운 시계는 **전투 중에만** 흐른다. 3합은 대개 준비 시간에 이뤄지는데,
+ * 런 시계로 재면 여운이 전투 시작 전에 다 타 버려 규칙이 죽는다.
+ */
+export const ECHO_DAMAGE_BONUS = 0.2;
+export const ECHO_BASE_SECONDS = 10;
+export const ECHO_PER_STAR = 0.5;
+export const ECHO_CAP_SECONDS = 13;
+
+/** 승급 결과 별 → 여운 지속(초). 기본 10초, 결과 별당 +0.5초, 상한 13초. */
+export function echoSeconds(resultStar: number): number {
+  return Math.min(ECHO_CAP_SECONDS, ECHO_BASE_SECONDS + Math.max(0, resultStar - 1) * ECHO_PER_STAR);
+}
+
+/** 회향 카드·칩용 스펙. 기존 fx(lineage)를 재사용한다 — "물려받은 힘"이라서다. */
+export const ECHO_ABILITY: AbilitySpec = {
+  id: "casual-echo",
+  name: "회향",
+  glyph: "回",
+  category: "lineage",
+  fx: "lineage",
+  trigger: "3합 승급 직후",
+  summary: "여운 공격 +20%",
+  description: "3합 승급으로 사라진 세 자령이 결과 자령에게 힘의 여운을 남깁니다. 여운이 남은 동안 공격이 20% 오릅니다. 여운은 전투 중에만 흐릅니다 — 준비 시간에 승급해도 그냥 타 버리지 않습니다.",
+  color: "#9ce8ff"
+};
+
+/** 획수 공명 카드·칩용 스펙. 기존 fx(resonance)를 재사용한다. */
+export const STROKE_RESONANCE_ABILITY: AbilitySpec = {
+  id: "graph-stroke-resonance",
+  name: "획수 공명",
+  glyph: "畫",
+  category: "graph",
+  fx: "resonance",
+  trigger: "같은 진 · 같은 별 배치",
+  summary: "동성 1기당 공속 +1.5%",
+  description: "같은 오행진에 자기와 같은 별(=같은 획수 구간)의 자령이 함께 서 있으면 1기당 공격 속도가 1.5%씩 빨라집니다. 최대 4중첩(+6%)까지 쌓입니다. 별승급 진법 전용입니다.",
+  color: "#f0d7ff"
+};

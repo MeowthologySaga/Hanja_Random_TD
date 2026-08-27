@@ -2,8 +2,8 @@
  * 선택 자령 카드와 구성식 서랍.
  */
 import { CASUAL_POLARIS_AURA, CASUAL_STAR_COLORS, CASUAL_STAR_NAMES, casualStrokeCount } from "../../core/casual";
-// [SKILL-V1] 귀천 카드·게이지 스펙.
-import { GWICHEON_ABILITY } from "../../core/abilities";
+// [SKILL-V1] 귀천 카드·게이지 스펙. [SKILL-V3] 획수 공명·회향 카드·칩 스펙.
+import { ECHO_ABILITY, GWICHEON_ABILITY, STROKE_RESONANCE_ABILITY, STROKE_RESONANCE_MAX_STACKS } from "../../core/abilities";
 import {
   autoConcentrationPath,
   concentrationEssenceCost,
@@ -93,7 +93,13 @@ function openAbilityGuide(focusedAbilityId?: string): void {
     : [];
   // [SKILL-V1] 6★ 이상 캐주얼 자령은 충전 스킬 귀천이 함께 노출된다.
   const gwicheonAbilities = ctx.engine.gwicheonStatus(tower) ? [GWICHEON_ABILITY] : [];
-  const supportingAbilities = activeSkills ? [abilities.element, abilities.graph] : [abilities.graph];
+  // [SKILL-V3] 획수 공명은 같은 진 동급 동료가 있을 때만 설명 목록에 오른다.
+  const resonanceAbilities = ctx.engine.strokeResonanceStatus(tower) ? [STROKE_RESONANCE_ABILITY] : [];
+  // [SKILL-V3] 회향도 여운이 살아 있는 동안만 설명 목록에 오른다.
+  const echoAbilities = ctx.engine.echoStatus(tower) ? [ECHO_ABILITY] : [];
+  const supportingAbilities = activeSkills
+    ? [abilities.element, abilities.graph, ...resonanceAbilities, ...echoAbilities]
+    : [abilities.graph, ...echoAbilities];
   const loadout = [...periodicAbilities, ...gwicheonAbilities, ...supportingAbilities];
   // 배지 마크업을 못 쓰는 textContent 자리 — 곁말을 괄호로 달아 판정을 잃지 않는다.
   const readingMark = notationBadgeText(learning);
@@ -154,7 +160,13 @@ export function renderSelected(): void {
   const duplicateCount = tower ? ctx.engine.state.inventoryTowers.filter((candidate) => candidate.id !== tower.id && candidate.char === tower.char && !candidate.locked).length : 0;
   const branchKey = branches.map((branch) => `${branch.recipeId}:${branch.ready ? "R" : branch.materials.map((material) => material.location).join(",")}`).join("|");
   const polarisActive = tower ? ctx.engine.casualPolarisAuraActive(tower.wuxing) : false;
-  const key = tower ? tower.definitionId + "|" + String(tower.id) + "|" + String(tower.locked) + "|" + String(stored) + "|" + String(ctx.engine.isSynergyActive(tower.wuxing)) + "|" + branchKey + `|M${ctx.engine.state.mode}:S${tower.casualStar ?? 0}|C${concentration}:${concentrationPath ?? "none"}:D${duplicateCount}:E${ctx.engine.state.elementEssence[tower.wuxing]}|P${polarisActive ? 1 : 0}|U${ctx.dismantleProtectsUnique ? 1 : 0}` : "none";
+  // [SKILL-V3] 획수 공명 중첩은 자리를 옮기면 바뀐다 — 다시 그리기 열쇠에 넣지
+  // 않으면 칩과 공속 표기가 옛 중첩에 머문다.
+  const resonanceStacks = tower ? ctx.engine.strokeResonanceStacks(tower) : 0;
+  // [SKILL-V3] 회향 여운은 초 단위로 흐른다 — 0.5초 칸으로 끊어 다시 그린다
+  // (매 프레임 열쇠를 바꾸면 카드 전체가 초당 60번 재조립된다).
+  const echoTick = tower ? Math.ceil((ctx.engine.echoStatus(tower)?.remaining ?? 0) * 2) : 0;
+  const key = tower ? tower.definitionId + "|" + String(tower.id) + "|" + String(tower.locked) + "|" + String(stored) + "|" + String(ctx.engine.isSynergyActive(tower.wuxing)) + "|" + branchKey + `|M${ctx.engine.state.mode}:S${tower.casualStar ?? 0}|C${concentration}:${concentrationPath ?? "none"}:D${duplicateCount}:E${ctx.engine.state.elementEssence[tower.wuxing]}|P${polarisActive ? 1 : 0}|R${resonanceStacks}|E${echoTick}|U${ctx.dismantleProtectsUnique ? 1 : 0}` : "none";
   if (key === ctx.selectedRenderKey) {
     if (tower && definition) syncSelectedCharge(card, tower, definition, chargeStep);
     return;
@@ -178,7 +190,13 @@ export function renderSelected(): void {
     : [];
   // [SKILL-V1] 6★ 이상 캐주얼 자령의 충전 스킬 귀천.
   const gwicheon = ctx.engine.gwicheonStatus(tower);
-  const supportingAbilities = activeSkills ? [abilities.element, abilities.graph] : [abilities.graph];
+  // [SKILL-V3] 획수 공명 — 같은 진에 선 동급 동료가 있을 때만 칸을 차지한다.
+  const strokeResonance = ctx.engine.strokeResonanceStatus(tower);
+  // [SKILL-V3] 회향 — 3합 승급 직후의 여운이 남아 있는 동안만.
+  const echo = ctx.engine.echoStatus(tower);
+  const supportingAbilities = activeSkills
+    ? [abilities.element, abilities.graph, ...(strokeResonance ? [STROKE_RESONANCE_ABILITY] : []), ...(echo ? [ECHO_ABILITY] : [])]
+    : [abilities.graph, ...(echo ? [ECHO_ABILITY] : [])];
   const abilityLoadout = [...periodicAbilities, ...(gwicheon ? [GWICHEON_ABILITY] : []), ...supportingAbilities];
   const readyBranches = branches.filter((branch) => branch.ready).length;
   const charge = chargeStep / abilities.tuning.signatureEvery;
@@ -230,6 +248,12 @@ export function renderSelected(): void {
         : polarisActive && !stored
           ? `<span class="selected-chip selected-chip--polaris" title="${escapeHtml(CASUAL_POLARIS_AURA.description)}">${CASUAL_POLARIS_AURA.name} 오라 적용 중 · 공격 +${Math.round(CASUAL_POLARIS_AURA.damageBonus * 100)}%</span>`
           : ""}
+      ${strokeResonance
+        ? `<span class="selected-chip selected-chip--resonance" title="${escapeHtml(STROKE_RESONANCE_ABILITY.description)}">${STROKE_RESONANCE_ABILITY.glyph} ${STROKE_RESONANCE_ABILITY.name} ${strokeResonance.stacks}/${STROKE_RESONANCE_MAX_STACKS} · 공속 +${Math.round(strokeResonance.haste * 100)}%</span>`
+        : ""}
+      ${echo
+        ? `<span class="selected-chip selected-chip--echo" title="${escapeHtml(ECHO_ABILITY.description)}">${ECHO_ABILITY.glyph} ${ECHO_ABILITY.name} 여운 ${echo.remaining.toFixed(1)}초 · 공격 +${Math.round(echo.bonus * 100)}%</span>`
+        : ""}
       <span class="selected-chip cleanup-reason ${cleanup?.protected ? "is-protected" : "is-candidate"}">${escapeHtml(cleanupLabel)}</span>
       <span class="selected-chip selected-chip--essence">${escapeHtml(concentrationStatus)}</span>
     </div>
