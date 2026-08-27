@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { casualNaturalStar } from "../src/core/casual";
 import { IDIOM_WISH_COST_MULTIPLIER, idiomWishCost } from "../src/core/engine-tuning";
 import { GameEngine } from "../src/core/game";
-import { summonCost } from "../src/core/hanzi";
+import { summonCost } from "../src/core/engine-tuning";
 import { helpfulDirectCharsForIdiom, idiomById, idiomWishChars } from "../src/core/idioms";
 import type { GameEvent, GameMode, HanziDefinition, Tower } from "../src/core/types";
 

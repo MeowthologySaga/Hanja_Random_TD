@@ -2,8 +2,8 @@
  * 선택 자령 카드와 구성식 서랍.
  */
 import { CASUAL_POLARIS_AURA, CASUAL_STAR_COLORS, CASUAL_STAR_NAMES, casualStrokeCount } from "../../core/casual";
-// [SKILL-V1] 귀천 카드·게이지 스펙.
-import { GWICHEON_ABILITY } from "../../core/abilities";
+// [SKILL-V1] 귀천 카드·게이지 스펙. [SKILL-V3] 획수 공명·회향 카드·칩 스펙.
+import { ECHO_ABILITY, GWICHEON_ABILITY, STROKE_RESONANCE_ABILITY, STROKE_RESONANCE_MAX_STACKS } from "../../core/abilities";
 import {
   autoConcentrationPath,
   concentrationEssenceCost,
@@ -21,6 +21,7 @@ import {
 } from "../../core/hanzi";
 import { jaryeongVisualFor } from "../../core/jaryeongs";
 import { learningInfoForNotation } from "../../core/learning";
+import { notationBadgeText, notationReadingHtml, notationShortHtml } from "../notation-substitute";
 import { radicalGlyph } from "../../core/radicals";
 import { type AbilitySpec, type CompositionBranchPreview, type HanziDefinition, type Tower } from "../../core/types";
 import { abilityGuideDialog, canvas, ctx, must } from "../app-context";
@@ -37,6 +38,7 @@ import {
   spriteStyle,
   visualBackgroundStyle
 } from "../format";
+import { openConfirm } from "../dialogs/confirm";
 import { handleAction, setPanelTab, showToast } from "../hud";
 import { dismantleOptions } from "./growth";
 
@@ -91,9 +93,17 @@ function openAbilityGuide(focusedAbilityId?: string): void {
     : [];
   // [SKILL-V1] 6★ 이상 캐주얼 자령은 충전 스킬 귀천이 함께 노출된다.
   const gwicheonAbilities = ctx.engine.gwicheonStatus(tower) ? [GWICHEON_ABILITY] : [];
-  const supportingAbilities = activeSkills ? [abilities.element, abilities.graph] : [abilities.graph];
+  // [SKILL-V3] 획수 공명은 같은 진 동급 동료가 있을 때만 설명 목록에 오른다.
+  const resonanceAbilities = ctx.engine.strokeResonanceStatus(tower) ? [STROKE_RESONANCE_ABILITY] : [];
+  // [SKILL-V3] 회향도 여운이 살아 있는 동안만 설명 목록에 오른다.
+  const echoAbilities = ctx.engine.echoStatus(tower) ? [ECHO_ABILITY] : [];
+  const supportingAbilities = activeSkills
+    ? [abilities.element, abilities.graph, ...resonanceAbilities, ...echoAbilities]
+    : [abilities.graph, ...echoAbilities];
   const loadout = [...periodicAbilities, ...gwicheonAbilities, ...supportingAbilities];
-  must<HTMLElement>("#ability-guide-title").textContent = `${tower.char} ${learning.short} · 기술 구성`;
+  // 배지 마크업을 못 쓰는 textContent 자리 — 곁말을 괄호로 달아 판정을 잃지 않는다.
+  const readingMark = notationBadgeText(learning);
+  must<HTMLElement>("#ability-guide-title").textContent = `${tower.char} ${learning.short}${readingMark ? ` (${readingMark})` : ""} · 기술 구성`;
   must<HTMLElement>("#ability-guide-content").innerHTML = `
     <section class="ability-guide-rule ${activeSkills ? "" : "is-locked"}">
       <span>${activeSkills ? `기술 ${loadout.length}개 모두 자동 판정` : "1단 재료 자령 · 기술 해금 전"}</span>
@@ -150,7 +160,13 @@ export function renderSelected(): void {
   const duplicateCount = tower ? ctx.engine.state.inventoryTowers.filter((candidate) => candidate.id !== tower.id && candidate.char === tower.char && !candidate.locked).length : 0;
   const branchKey = branches.map((branch) => `${branch.recipeId}:${branch.ready ? "R" : branch.materials.map((material) => material.location).join(",")}`).join("|");
   const polarisActive = tower ? ctx.engine.casualPolarisAuraActive(tower.wuxing) : false;
-  const key = tower ? tower.definitionId + "|" + String(tower.id) + "|" + String(tower.locked) + "|" + String(stored) + "|" + String(ctx.engine.isSynergyActive(tower.wuxing)) + "|" + branchKey + `|M${ctx.engine.state.mode}:S${tower.casualStar ?? 0}|C${concentration}:${concentrationPath ?? "none"}:D${duplicateCount}:E${ctx.engine.state.elementEssence[tower.wuxing]}|P${polarisActive ? 1 : 0}|U${ctx.dismantleProtectsUnique ? 1 : 0}` : "none";
+  // [SKILL-V3] 획수 공명 중첩은 자리를 옮기면 바뀐다 — 다시 그리기 열쇠에 넣지
+  // 않으면 칩과 공속 표기가 옛 중첩에 머문다.
+  const resonanceStacks = tower ? ctx.engine.strokeResonanceStacks(tower) : 0;
+  // [SKILL-V3] 회향 여운은 초 단위로 흐른다 — 0.5초 칸으로 끊어 다시 그린다
+  // (매 프레임 열쇠를 바꾸면 카드 전체가 초당 60번 재조립된다).
+  const echoTick = tower ? Math.ceil((ctx.engine.echoStatus(tower)?.remaining ?? 0) * 2) : 0;
+  const key = tower ? tower.definitionId + "|" + String(tower.id) + "|" + String(tower.locked) + "|" + String(stored) + "|" + String(ctx.engine.isSynergyActive(tower.wuxing)) + "|" + branchKey + `|M${ctx.engine.state.mode}:S${tower.casualStar ?? 0}|C${concentration}:${concentrationPath ?? "none"}:D${duplicateCount}:E${ctx.engine.state.elementEssence[tower.wuxing]}|P${polarisActive ? 1 : 0}|R${resonanceStacks}|E${echoTick}|U${ctx.dismantleProtectsUnique ? 1 : 0}` : "none";
   if (key === ctx.selectedRenderKey) {
     if (tower && definition) syncSelectedCharge(card, tower, definition, chargeStep);
     return;
@@ -174,7 +190,13 @@ export function renderSelected(): void {
     : [];
   // [SKILL-V1] 6★ 이상 캐주얼 자령의 충전 스킬 귀천.
   const gwicheon = ctx.engine.gwicheonStatus(tower);
-  const supportingAbilities = activeSkills ? [abilities.element, abilities.graph] : [abilities.graph];
+  // [SKILL-V3] 획수 공명 — 같은 진에 선 동급 동료가 있을 때만 칸을 차지한다.
+  const strokeResonance = ctx.engine.strokeResonanceStatus(tower);
+  // [SKILL-V3] 회향 — 3합 승급 직후의 여운이 남아 있는 동안만.
+  const echo = ctx.engine.echoStatus(tower);
+  const supportingAbilities = activeSkills
+    ? [abilities.element, abilities.graph, ...(strokeResonance ? [STROKE_RESONANCE_ABILITY] : []), ...(echo ? [ECHO_ABILITY] : [])]
+    : [abilities.graph, ...(echo ? [ECHO_ABILITY] : [])];
   const abilityLoadout = [...periodicAbilities, ...(gwicheon ? [GWICHEON_ABILITY] : []), ...supportingAbilities];
   const readyBranches = branches.filter((branch) => branch.ready).length;
   const charge = chargeStep / abilities.tuning.signatureEvery;
@@ -209,7 +231,7 @@ export function renderSelected(): void {
     <div class="selected-copy">
       <div><span>${progressionLabel} · ${style.name}행 · ${ROLE_LABELS[tower.combatRole]}</span><h3>${tower.char} <small>${GRAPH_ROLE_LABELS[tower.graphRole]}</small></h3></div>
       <p class="selected-learning"><i class="selected-radical">${ctx.displayMode === "spirit"
-        ? `<span>${learning.readingLabel}</span><b>${escapeHtml(learning.reading)}</b>`
+        ? `<span>${learning.readingLabel}</span><b>${notationReadingHtml(learning, ctx.engine.state.notation)}</b>`
         : `<span>부수</span><b>${radicalGlyph(tower.char)}</b>`}</i></p>
       <p class="selected-meaning"><span>${learning.meaningSource === "en" ? "뜻(영)" : "뜻"}</span><b>${escapeHtml(learning.meaning)}</b></p>
     </div>
@@ -226,6 +248,12 @@ export function renderSelected(): void {
         : polarisActive && !stored
           ? `<span class="selected-chip selected-chip--polaris" title="${escapeHtml(CASUAL_POLARIS_AURA.description)}">${CASUAL_POLARIS_AURA.name} 오라 적용 중 · 공격 +${Math.round(CASUAL_POLARIS_AURA.damageBonus * 100)}%</span>`
           : ""}
+      ${strokeResonance
+        ? `<span class="selected-chip selected-chip--resonance" title="${escapeHtml(STROKE_RESONANCE_ABILITY.description)}">${STROKE_RESONANCE_ABILITY.glyph} ${STROKE_RESONANCE_ABILITY.name} ${strokeResonance.stacks}/${STROKE_RESONANCE_MAX_STACKS} · 공속 +${Math.round(strokeResonance.haste * 100)}%</span>`
+        : ""}
+      ${echo
+        ? `<span class="selected-chip selected-chip--echo" title="${escapeHtml(ECHO_ABILITY.description)}">${ECHO_ABILITY.glyph} ${ECHO_ABILITY.name} 여운 ${echo.remaining.toFixed(1)}초 · 공격 +${Math.round(echo.bonus * 100)}%</span>`
+        : ""}
       <span class="selected-chip cleanup-reason ${cleanup?.protected ? "is-protected" : "is-candidate"}">${escapeHtml(cleanupLabel)}</span>
       <span class="selected-chip selected-chip--essence">${escapeHtml(concentrationStatus)}</span>
     </div>
@@ -239,7 +267,7 @@ export function renderSelected(): void {
       <button id="open-concentration-button" type="button" title="농축 공방 탭으로 이동" ${concentration >= MAX_CONCENTRATION_LEVEL ? "disabled" : ""}>농축 ›</button>
       <button id="sell-button" type="button" title="${escapeHtml(`${goldAmountLabel(sellGold)}${sellEssence > 0 ? ` · ${essenceAmountLabel(tower.wuxing, sellEssence)}` : ""} 를 받고 즉시 제거 — 되돌릴 수 없음`)}" ${tower.locked ? "disabled" : ""}>판매<small class="action-price">${goldAmountLabel(sellGold, true)}${sellEssence > 0 ? ` · ${essenceAmountChip(tower.wuxing, sellEssence)}` : ""}</small></button>
     </div>
-    <button type="button" class="selected-ability-summary" data-ability-guide><b>${activeSkills ? `技 기술 ${abilityLoadout.length}개 · 모두 자동 판정` : "技 기술 해금 전"}</b><span>${activeSkills ? `주기 ${periodicAbilities.length} · 공격 연동 1 · 조건 특성 1` : "현재 기본 공격 · 2단 합성 필요"}</span><em>설명 ›</em></button>
+    <button type="button" class="selected-ability-summary" data-ability-guide><b>${activeSkills ? `技 기술 ${abilityLoadout.length}개 · 모두 자동 판정` : "技 기술 해금 전"}</b><span>${activeSkills ? `주기 ${periodicAbilities.length} · 공격 연동 1 · 조건 적용 1` : "현재 기본 공격 · 2단 합성 필요"}</span><em>설명 ›</em></button>
     ${activeSkills
       ? `<div class="ability-loadout">
           <div class="ability-overview"><span><b>주기 겹침: 고유 → 역할 → 계승 중 1개 발동</b></span><button type="button" data-ability-guide>전체 설명</button></div>
@@ -273,7 +301,7 @@ function compositionBranchCard(branch: CompositionBranchPreview): string {
       <i class="composition-result-spirit" style="${visualBackgroundStyle(visual)}" aria-hidden="true"></i>
       <span class="composition-branch-copy">
         <strong>${branch.parents.join(" + ")} <em>→</em> <b>${branch.result.char}</b></strong>
-        <small>${STAGE_NAMES[branch.result.stage]} · ${escapeHtml(learningInfoForNotation(ctx.engine.state.notation, branch.result.char).short)}</small>
+        <small>${STAGE_NAMES[branch.result.stage]} · ${notationShortHtml(learningInfoForNotation(ctx.engine.state.notation, branch.result.char), ctx.engine.state.notation)}</small>
         <span class="composition-materials">${branch.materials.map(compositionMaterialChip).join("")}</span>
       </span>
       <mark>${branch.ready ? "합성 가능" : `${missing.join("·") || "재료"} 부족`}</mark>
@@ -301,7 +329,7 @@ export function renderCompositionDrawer(): void {
   must<HTMLElement>("#composition-ready-count").textContent = String(branches.filter((branch) => branch.ready).length);
   must<HTMLElement>("#composition-source").innerHTML = `
     <i class="composition-source-spirit" style="${spriteStyle(definition)}" aria-hidden="true"></i>
-    <span><b>${selected.char}</b><strong>${escapeHtml(learningInfoForNotation(ctx.engine.state.notation, selected.char).short)}</strong><small>${selected.cell < 0 ? "가방" : "전장 배치"} · 직접 파생 ${branches.length}개</small></span>
+    <span><b>${selected.char}</b><strong>${notationShortHtml(learningInfoForNotation(ctx.engine.state.notation, selected.char), ctx.engine.state.notation)}</strong><small>${selected.cell < 0 ? "가방" : "전장 배치"} · 직접 파생 ${branches.length}개</small></span>
   `;
   must<HTMLElement>("#composition-branches").innerHTML = branches.length > 0
     ? branches.map(compositionBranchCard).join("")
@@ -314,23 +342,33 @@ export function renderCompositionDrawer(): void {
  * 엔진의 dismantleTowers 는 인벤토리 전용이라("인벤토리 자령만"), 전장 자령은
  * 기존 공개 API 둘을 이어 붙인다 — storeSelectedTower(전장 → 인벤) 뒤
  * dismantleTowers 1기. 엔진은 손대지 않는다. 확인은 제련소 [선택 분해]와
- * 같은 window.confirm 1회다. 보호 셈법은 렌더가 이미 잠갔지만, 상태가 그 사이
- * 바뀌었을 수 있으므로 실패 문장은 그대로 토스트로 올린다(그 경우 자령은
- * 인벤토리에 남는다 — 사라지지는 않는다).
+ * 같은 공용 서책 창 1회다([S/P-08] 이전에는 window.confirm 이었다). 보호
+ * 셈법은 렌더가 이미 잠갔지만, 상태가 그 사이 바뀌었을 수 있으므로 실패
+ * 문장은 그대로 토스트로 올린다(그 경우 자령은 인벤토리에 남는다 —
+ * 사라지지는 않는다).
  */
 function dismantleSelectedInPlace(): void {
   const tower = ctx.engine.selectedTower();
   if (!tower) return;
   const essence = ctx.engine.towerDismantleEssenceValue(tower);
-  if (!window.confirm(`${tower.char}를 분해해 ${tower.wuxing} 문기 +${essence} — 되돌릴 수 없습니다. 분해하시겠습니까?`)) return;
-  if (tower.cell >= 0) {
-    const storeResult = ctx.engine.storeSelectedTower();
-    if (!storeResult.ok) {
-      handleAction(storeResult);
-      return;
+  openConfirm({
+    eyebrow: "선택 자령",
+    title: `${tower.char} 1기를 분해할까요?`,
+    lines: [
+      `획득 <b>${escapeHtml(tower.wuxing)} 문기 +${essence}</b>`,
+      "되돌릴 수 없습니다."
+    ],
+    confirmLabel: `${tower.char} 분해`
+  }, () => {
+    if (tower.cell >= 0) {
+      const storeResult = ctx.engine.storeSelectedTower();
+      if (!storeResult.ok) {
+        handleAction(storeResult);
+        return;
+      }
     }
-  }
-  handleAction(ctx.engine.dismantleTowers([tower.id], { protectUnique: ctx.dismantleProtectsUnique }));
+    handleAction(ctx.engine.dismantleTowers([tower.id], { protectUnique: ctx.dismantleProtectsUnique }));
+  });
 }
 
 function openCompositionDrawer(): void {

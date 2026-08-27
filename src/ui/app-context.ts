@@ -17,6 +17,7 @@ import { SoundManager } from "./audio";
 import { buildSynthesisDepths, buildUncombinableStageOneChars, type SynthesisTierFilter } from "./codex-synthesis";
 import { type DisplayMode, loadDisplayMode } from "./display-mode";
 import { type IdiomOrder } from "./idiom-sprites";
+import { loadNotationPreference } from "./notation-preference";
 import { initStage } from "./stage";
 import { loadAutoPlaceSummons } from "./summon-placement";
 import { appShellHtml } from "./templates";
@@ -37,6 +38,12 @@ if (!app) throw new Error("#app element is missing.");
 export const s00Mode: S00Mode = new URLSearchParams(window.location.search).get("menu3d") === "0" ? "2d" : "3d";
 
 export const initialDisplayMode = loadDisplayMode();
+
+/**
+ * 지난 판에서 고른 읽기 표기(gripe #6). 고른 적 없으면 null 이고, 그때
+ * 표기는 로스터의 자국 표기를 따라간다 — 현행 화면 그대로.
+ */
+export const initialNotation = loadNotationPreference();
 
 const initialAutoPlaceSummons = loadAutoPlaceSummons();
 
@@ -81,6 +88,9 @@ export const elementUpgradeDialog = must<HTMLDialogElement>("#element-upgrade-di
 export const abilityGuideDialog = must<HTMLDialogElement>("#ability-guide-dialog");
 
 export const casualFusionConfirmDialog = must<HTMLDialogElement>("#casual-fusion-confirm-dialog");
+
+/** [S/P-08] 되돌릴 수 없는 조작 공용 확인 창. 배선은 ui/dialogs/confirm.ts. */
+export const confirmDialog = must<HTMLDialogElement>("#confirm-dialog");
 
 export const codexDialog = must<HTMLDialogElement>("#codex-dialog");
 
@@ -146,7 +156,14 @@ export type JaryeongDexFilter = "all" | Wuxing;
 
 export const dismantleSelection = new Set<number>();
 
-type PendingCasualFusion = { kind: "manual"; materialIds: [number, number, number]; quote: CasualFusionQuote };
+/**
+ * 확인 창이 기다리고 있는 승급. `manual` 은 손으로 고른 3기,
+ * `auto` 는 [한 번에 승급] 일괄이다 — 트랙 R(P-03)에서 전장 자령이 낀 일괄만
+ * 같은 창을 한 번 거치게 했다.
+ */
+type PendingCasualFusion =
+  | { kind: "manual"; materialIds: [number, number, number]; quote: CasualFusionQuote }
+  | { kind: "auto"; groups: number; boardTowerIds: readonly number[] };
 
 /** 발동 순간 뜨는 성어 4자 대형 플래시. 카메라가 어디에 있든 보이도록 화면 좌표로 그린다. */
 interface IdiomFlashFx {
@@ -252,14 +269,15 @@ class AppContext {
   pendingRegion: RegionCode | null = null;
   /**
    * 읽기 표기 축의 명시적 선택(gripe #6). null = 자동(로스터의 자국 표기).
-   * NOTATION_AXIS_READY=false 동안 S13 표기 그룹이 숨어 있어 null 에서
-   * 벗어날 수 없다 — 그래서 현행 동작이 보장된다.
+   *
+   * 저장소에 아무것도 없으면 계속 null 이라, 한 번도 고른 적 없는 사람은
+   * 표기 축이 열린 뒤에도 로스터 자국 표기 그대로다 — 무변경의 출발점.
    */
-  selectedNotation: NotationCode | null = null;
+  selectedNotation: NotationCode | null = initialNotation;
   formationUnlockHintShown = false;
   selectedGameMode: GameMode = modeParam === "standard" ? "standard" : modeParam === "casual" ? "casual" : "casual";
   displayMode: DisplayMode = initialDisplayMode;
-  engine = new GameEngine(initialSeed, this.selectedRegion, this.selectedGameMode);
+  engine = new GameEngine(initialSeed, this.selectedRegion, this.selectedGameMode, initialNotation ? { notation: initialNotation } : {});
   mapSynthesisDepths = buildSynthesisDepths(this.engine.catalog.definitions.values());
   mapUncombinableStageOne = buildUncombinableStageOneChars(this.engine.catalog.definitions.values());
   previousPhase: RunPhase = "title";
@@ -325,10 +343,12 @@ class AppContext {
     }
   })();
   dismantleProtectsUnique = ((): boolean => {
+    // 기본값 끔(사용자 결정). 켜 두면 보통의 가방은 전부 다른 한자라
+    // 분해 가능 0기가 되어 문기 획득 경로 자체가 막혔다(2차 감사 P-07).
     try {
-      return window.localStorage.getItem(DISMANTLE_UNIQUE_STORAGE_KEY) !== "false";
+      return window.localStorage.getItem(DISMANTLE_UNIQUE_STORAGE_KEY) === "true";
     } catch {
-      return true;
+      return false;
     }
   })();
   /** FB6: 저장된 명시적 선택. null 이면 아직 고르지 않아 OS 값을 따른다. */

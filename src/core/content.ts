@@ -138,14 +138,68 @@ const ARCHETYPE_LABEL: Record<EnemyArchetype, string> = {
   boss: "봉인 파괴자"
 };
 
+/*
+ * 웨이브 브리핑 한 줄.
+ *
+ * 이 문장은 웨이브 카드의 `#wave-briefing` 에 실리는데, 그 자리는 284px 폭에
+ * 12px 두 줄 클램프(절 95)다. 그리고 실제로 화면에 나가는 것은 이 문장
+ * **혼자가 아니라** 뒤에 장·우두머리·잔존 꼬리가 붙은 합성 문자열이다
+ * (`src/ui/hud.ts` 의 `composeWaveBriefing`). 실측 결과 옛 문장(59~64자)은
+ * 꼬리를 붙이면 3~4줄이 되어 "…" 없이 통째로 잘려 나갔다 — 꼬리까지 합쳐
+ * 두 줄에 들어가도록 24자 안팎으로 줄인 판이다. 늘릴 때는 반드시 꼬리를
+ * 붙인 최장 조합으로 재 보라.
+ */
 const ARCHETYPE_BRIEFING: Record<EnemyArchetype, string> = {
-  normal: "표준 병력. 오행 약점을 노려 효율적으로 정리하세요.",
-  swarm: "체력은 낮지만 수가 많습니다. 화·수 계열 광역과 연쇄가 유리합니다.",
-  swift: "빠르게 방어진을 통과합니다. 수·토 계열의 제어가 중요합니다.",
-  armored: "높은 방어력으로 피해를 줄입니다. 금 계열이 방어를 관통합니다.",
-  regenerator: "이동 중 생명력을 회복합니다. 집중 화력으로 빠르게 처치하세요.",
-  boss: "강력한 우두머리입니다. 목표 합성을 완성해 화력을 집중하세요."
+  normal: "표준 병력 — 오행 약점을 노려 정리하세요.",
+  swarm: "체력이 낮고 수가 많습니다 — 광역·연쇄가 유리.",
+  swift: "매우 빠릅니다 — 수·토 계열 제어가 중요.",
+  armored: "방어력이 높습니다 — 금 계열이 관통합니다.",
+  regenerator: "이동 중 회복합니다 — 집중 화력으로 빠르게.",
+  boss: "우두머리 — 목표 합성으로 화력을 집중."
 };
+
+/**
+ * 웨이브 브리핑 두 줄 예산(글자 수) — **조판 실측에서 역산한 지금 문구의 상한**.
+ *
+ * `#wave-briefing` 은 284px · 12px · 줄높이 15.12px · 2줄 클램프(표시 30px)다.
+ * 글자 수는 폭의 근사일 뿐이다 — 전각 한글만 60자면 720px(2.5줄)라 넘친다.
+ * 지금 문구는 한글·중점·숫자가 섞여 있어 301개 조합 전수 실측에서 최장 60자가
+ * 두 줄에 들어갔고, 그것이 이 상한의 근거다.
+ *
+ * 그래서 이 상수는 증명이 아니라 **철사줄**이다. 문구를 손대면 두 곳을 함께
+ * 봐야 한다 — 이 상수를 지키는 `tests/wave-briefing.test.ts` 와, 진짜 조판을
+ * 재는 e2e 「웨이브 브리핑은 어떤 조합에서도 두 줄을 넘지 않는다」.
+ */
+export const WAVE_BRIEFING_CHAR_BUDGET = 60;
+
+/**
+ * 화면에 실제로 나가는 브리핑 한 줄을 만든다.
+ *
+ * 옛 판은 원문 뒤에 장·제한·잔존 꼬리를 무조건 이어 붙여 최장 92자가 됐고,
+ * 실측 39개 조합 중 26개가 두 줄에서 잘렸다. 카드를 키우면 상점 무스크롤
+ * 예산이 깨지므로 문구 쪽을 줄였다.
+ *
+ * 겹치는 말도 턴다 — 우두머리 웨이브에서는 원문이 이미 "우두머리"라고
+ * 말하므로 "우두머리 N웨이브" 예고를 빼고 제한시간만 남긴다. 그러지 않으면
+ * 「우두머리 · 제한 · 잔존」 세 꼬리가 겹쳐 최장 조합만 예산을 넘는다.
+ *
+ * [S/P-10] 조각 차례는 "잃어도 되는 것을 뒤로" 다.
+ *
+ * 두 줄 클램프는 넘치는 순간 말줄임 없이 **뒤부터** 삼킨다. 그런데 잔존
+ * 합류 수는 이 문장에서 유일하게 여기서만 알 수 있는 값이다 — 장 번호와
+ * 우두머리 웨이브는 위 칩의 웨이브 수만 보면 되짚을 수 있고, 원문은 적
+ * 유형별로 고정된 조언이다. 그래서 잔존을 장·우두머리 앞으로 옮겨,
+ * 언젠가 조판이 밀리더라도 마지막까지 남는 쪽이 되게 한다.
+ * (지금 조판에서는 301개 조합 전수가 두 줄 안이다 — e2e 「keeps every
+ * wave briefing inside the two-line clamp」가 실제 높이로 잰다.)
+ */
+export function composeWaveBriefing(base: string, wave: number, bossLimited: boolean, survivors: number | null): string {
+  const chapter = Math.max(1, Math.ceil(wave / 10));
+  const parts = [base];
+  if (survivors !== null) parts.push(`잔존 ${survivors}체 합류`);
+  parts.push(bossLimited ? `제${chapter}장 · 제한 내 처치 필수` : `제${chapter}장 · 우두머리 ${chapter * 10}웨이브`);
+  return parts.join(" · ");
+}
 
 function archetypeForWave(wave: number): EnemyArchetype {
   if (wave > 0 && wave % 10 === 0) return "boss";

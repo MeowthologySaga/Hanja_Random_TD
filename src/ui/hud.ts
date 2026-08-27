@@ -1,7 +1,7 @@
 /*
  * 상단 띠·패널 탭·집중 프레임·토스트 등 상시 HUD.
  */
-import { bossTimeLimitForWave, MAX_ENEMIES, WAVE_REINFORCEMENT_DELAY, wavePlan } from "../core/content";
+import { bossTimeLimitForWave, composeWaveBriefing, MAX_ENEMIES, WAVE_REINFORCEMENT_DELAY, wavePlan } from "../core/content";
 import { FIRST_PREP_SECONDS, type GameEngine, interestForGold } from "../core/game";
 import {
   ELEMENT_STYLES,
@@ -17,6 +17,7 @@ import {
   bossBanner,
   casualFusionConfirmDialog,
   codexDialog,
+  confirmDialog,
   ctx,
   elementUpgradeDialog,
   type FocusFrameId,
@@ -243,9 +244,53 @@ export function wireHud1(): void {
   syncEarlyCalmState();
 }
 
+/**
+ * 패널 푸터가 엔진 문장 대신 보여 줄 문장 — 그 엔진 문장과 짝지어 둔다.
+ *
+ * [S/P-26] 3체 승급의 문기 환급은 UI 가 실측 증가분으로 덧붙인다(엔진 문장
+ * 무수정 원칙). 그래서 토스트에는 "水 문기 +2 환급"이 뜨는데 1.9초 뒤 사라지고,
+ * 남는 푸터(`#message-value` = state.lastMessage)에는 그 조각이 없었다.
+ * 놓치면 다시 볼 데가 없는 정보다 — 덧붙인 문장을 푸터도 함께 쓴다.
+ */
+let footerMessage: { readonly base: string; readonly shown: string } | null = null;
+
+/** 바닥 문장의 곁말을 마지막으로 다시 잰 조건(문장 + 시드 노출 여부). */
+let footerMessageProbe = "";
+
+/**
+ * 바닥 문장 한 줄 — 잘리면 곁말(title)로 전문을 남긴다.
+ *
+ * [2차 감사 실측 · 1280×720] 바닥 줄의 글 자리는 354px 이다(패널 폭에서
+ * 인장 자리 26px 을 뺀 값). 웨이브 0 안내 "① 상점에서 첫 자령을 소환하세요.
+ * 준비 시간은 아직 흐르지 않습니다." 는 380.25px 이라 26.25px(6.9%)가
+ * 말줄임으로 잘렸고, 곁말이 없어 잘린 뒤를 볼 데가 아예 없었다.
+ * 개발자 모드에서는 시드(실측 129.5px)가 자리를 나눠 가져 155.8px(41%)가
+ * 잘린다 — 시드는 버그 신고에 붙일 값이라 줄지 않는 쪽이 정본이다(S/P-24).
+ * 개발자 모드가 꺼져 있으면 `.footer-seed` 가 display:none 이라 문장이
+ * 354px 을 온전히 쓴다(실측 확인) — 나눠 쓰는 것은 개발자 모드뿐이다.
+ *
+ * 곁말은 실제로 잘릴 때만 단다. 다 보이는 문장에 툴팁을 달면 소음이고,
+ * scrollWidth 는 강제 리플로를 부르므로 문장이나 시드 노출이 바뀔 때만 잰다.
+ */
+function syncFooterMessage(message: string): void {
+  const value = must<HTMLElement>("#message-value");
+  const probe = `${message}|${shell.dataset.devMode ?? "0"}`;
+  if (probe === footerMessageProbe) return;
+  footerMessageProbe = probe;
+  value.textContent = message;
+  const clipped = value.scrollWidth > value.clientWidth;
+  const title = clipped ? message : "";
+  if (value.title !== title) value.title = title;
+}
+
 export function handleAction(result: ActionResult, options: { invalidatePanels?: boolean } = {}): void {
   sound.playActionOutcome(result.ok);
   if (!result.ok || !result.message.includes("자동 발동")) showToast(result.message, !result.ok);
+  // 엔진 문장을 UI 가 늘려 놓았을 때만 이어받는다(실패 문장·다른 문장은 그대로).
+  const engineMessage = ctx.engine.state.lastMessage;
+  footerMessage = result.ok && result.message !== engineMessage && result.message.startsWith(engineMessage)
+    ? { base: engineMessage, shown: result.message }
+    : null;
   if (options.invalidatePanels !== false) {
     ctx.evolutionRenderKey = "";
     ctx.goalRenderKey = "";
@@ -253,6 +298,11 @@ export function handleAction(result: ActionResult, options: { invalidatePanels?:
     ctx.runInventoryRenderKey = "";
     ctx.concentrationRenderKey = "";
     ctx.growthRenderKey = "";
+    // [2차 감사] 성어 HUD 도 표기·훈음을 그린다. 표기 전환은 handleAction 을
+    // 거쳐 오므로(dialogs/s13.ts) 이 목록에도 세워 둔다 — 열쇠에 표기가 들어간
+    // 지금은 이것이 없어도 갈리지만, 다음에 열쇠가 놓치는 축이 생겼을 때
+    // 무너지는 자리가 바로 여기다.
+    ctx.idiomRenderKey = "";
   }
   syncPanel();
 }
@@ -376,7 +426,10 @@ export function syncPanel(): void {
   // 트랙 B: 자원칸 목표 카운터는 한자 사다리(내부 보상은 유지) 대신 성어 봉인 수를 센다.
   must<HTMLElement>("#goal-count-value").textContent = String(state.idiomSeals.length) + " / " + String(ctx.engine.idioms().length);
   must<HTMLElement>("#seed-value").textContent = state.seed;
-  must<HTMLElement>("#message-value").textContent = state.lastMessage;
+  // [S/P-26] UI 가 늘린 문장이 살아 있으면 그것을, 엔진이 다음 문장을 쓰면 그것을.
+  syncFooterMessage(footerMessage !== null && footerMessage.base === state.lastMessage
+    ? footerMessage.shown
+    : state.lastMessage);
   renderFormationUnlocks();
   renderSummonShop();
   must<HTMLElement>("#research-level").textContent = String(state.researchLevel);
@@ -425,16 +478,15 @@ export function syncPanel(): void {
   must<HTMLElement>("#wave-label").textContent = state.phase === "prep"
     ? state.summonCount === 0 ? "① 상점에서 첫 자령을 소환하세요" : String(state.wave + 1) + "웨이브 · " + (preview?.label ?? "")
     : plan?.label ?? state.lastMessage;
-  must<HTMLElement>("#wave-briefing").textContent = state.summonCount === 0
-    // 카드 브리핑은 2줄 클램프(절 95)라 이 문장은 284px 두 줄 안에 끝나야
-    // 한다 — 길면 "…런 시간이 흐르지" 에서 잘린 채 보인다(사용자 보고).
+  const briefing = state.summonCount === 0
     ? "첫 자령의 오행에 맞는 진이 무료로 열립니다. 소환 전에는 시간이 멈춥니다."
     : preview
-    ? preview.briefing
-      + ` · 제${Math.ceil(preview.wave / 10)}장 · 다음 장 우두머리 ${Math.ceil(preview.wave / 10) * 10}웨이브`
-      + (previewBossLimit !== null ? " · 제한시간 내 우두머리 처치 필수" : "")
-      + (nextWaveRemaining !== null ? ` · 잔존 ${state.enemies.length}체와 함께 다음 웨이브가 합류합니다.` : "")
-    : "적 " + String(MAX_ENEMIES) + "체 도달 시 즉시 게임오버";
+      ? composeWaveBriefing(preview.briefing, preview.wave, previewBossLimit !== null, nextWaveRemaining !== null ? state.enemies.length : null)
+      : "적 " + String(MAX_ENEMIES) + "체 도달 시 즉시 게임오버";
+  const briefingElement = must<HTMLElement>("#wave-briefing");
+  briefingElement.textContent = briefing;
+  // 조판이 밀려 그래도 잘리는 날을 대비한 안전망 — 호버·스크린리더는 전문을 본다.
+  briefingElement.title = briefing;
   const weakness = preview?.weakness ?? "木";
   const weaknessElement = must<HTMLElement>("#wave-weakness");
   weaknessElement.textContent = weakness;
@@ -474,7 +526,10 @@ export function wireHud2(): void {
   must<HTMLButtonElement>("#concentration-frame-open").addEventListener("click", () => setFocusFrame("concentration"));
   window.addEventListener("keydown", (event) => {
     if (event.key !== "Escape" || ctx.openFocusFrame === null) return;
-    if (helpDialog.open || settingsDialog.open || elementUpgradeDialog.open || abilityGuideDialog.open || casualFusionConfirmDialog.open || codexDialog.open) return;
+    // 열린 창은 프레임보다 안쪽 층위다 — 그 창의 Esc(닫기)를 가로채지 않는다.
+    // [S/P-08] 공용 확인 창도 같은 줄에 선다. 빠뜨리면 Esc 가 확인 창 대신
+    // 프레임을 걷어, 되돌릴 수 없는 확인이 화면에 남는다.
+    if (helpDialog.open || settingsDialog.open || elementUpgradeDialog.open || abilityGuideDialog.open || casualFusionConfirmDialog.open || confirmDialog.open || codexDialog.open) return;
     event.preventDefault();
     // R19: 보관고 일괄 모드는 프레임보다 안쪽 층위다 — Esc 는 안쪽부터 걷는다.
     if (ctx.openFocusFrame === "inventory" && ctx.runInventoryBulkMode) {

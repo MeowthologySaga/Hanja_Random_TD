@@ -14,6 +14,8 @@ import { definitionForTower, ELEMENT_STYLES, STAGE_COLORS } from "../../core/han
 import { jaryeongFrameLayout, jaryeongVisualFor } from "../../core/jaryeongs";
 import { koreanMeaningExplanation } from "../../core/korean-meaning-explanations";
 import { learningInfoForNotation } from "../../core/learning";
+import type { ReadingProvenance } from "../../core/notation";
+import { notationBadgeText } from "../notation-substitute";
 import { type CasualStar, type HanziDefinition, type Point, type Tower } from "../../core/types";
 import { UNCOMBINABLE_STAGE_ONE_COLOR } from "../codex-synthesis";
 import { jaryeongSpriteImage } from "../jaryeong-sprites";
@@ -23,6 +25,7 @@ import { canvas, context, ctx, reducedMotion } from "../app-context";
 import { casualStarOf, towerProgressionLabel } from "../format";
 import { drawIdiomOrderBadge } from "./draw";
 import { towerAbilityPopups } from "./fx";
+import { clampScreenBox, placeStageLabel, reserveScreenBox } from "./stage-labels";
 
 function drawChargeRing(
   cell: Point,
@@ -171,6 +174,33 @@ export function plaqueIsGlyphOnly(): boolean {
   return CELL_SPACING * ctx.mapZoom < NAMEPLATE_LAYOUT.compact.width + PLAQUE_MIN_GAP;
 }
 
+/**
+ * 표기 정직 배지의 캔버스판 — src/styles/490-notation.css 의 DOM 배지와
+ * 같은 색·같은 곁말을 쓴다. 파생은 실선, 대체는 점선이라는 규칙도 옮긴다.
+ */
+function drawNotationBadge(x: number, y: number, label: string, provenance: ReadingProvenance): void {
+  const derived = provenance === "derived";
+  const stroke = derived ? "rgba(159, 176, 141, 0.62)" : "rgba(157, 143, 120, 0.68)";
+  const ink = derived ? "#9fb08d" : "#9d8f78";
+  context.save();
+  context.font = '700 9px "Malgun Gothic", sans-serif';
+  context.textAlign = "left";
+  context.textBaseline = "middle";
+  const width = context.measureText(label).width + 8;
+  context.beginPath();
+  context.roundRect(x, y - 7, width, 14, 3);
+  context.fillStyle = derived ? "rgba(159, 176, 141, 0.1)" : "rgba(157, 143, 120, 0.08)";
+  context.fill();
+  context.strokeStyle = stroke;
+  context.lineWidth = 1;
+  if (!derived) context.setLineDash([2.5, 2]);
+  context.stroke();
+  context.setLineDash([]);
+  context.fillStyle = ink;
+  context.fillText(label, x + 4, y);
+  context.restore();
+}
+
 function drawSpiritTowerLabel(tower: Tower, cell: Point, selected: boolean, material: boolean): void {
   const style = ELEMENT_STYLES[tower.wuxing];
   const learning = learningInfoForNotation(ctx.engine.state.notation, tower.char);
@@ -188,6 +218,19 @@ function drawSpiritTowerLabel(tower: Tower, cell: Point, selected: boolean, mate
   context.translate(cell.x, cell.y);
   // Counter-scale the label so Hanja stays readable while the map zooms and pans.
   context.scale(1 / ctx.mapZoom, 1 / ctx.mapZoom);
+  /*
+   * [S/P-12] 명패는 역-스케일이라 이 지점부터 좌표가 곧 화면 px 이다.
+   * 최상단 줄 자령의 명패가 상단 웨이브 칩 띠 밑으로 들어가 통째로 가리던
+   * 것을 여기서 막는다 — 무대 안전 영역 밖으로 나가면 그만큼 되민다.
+   * 밀린 명패가 제 자령의 머리를 조금 덮더라도, 가려서 못 읽는 것보다 낫다.
+   */
+  const anchorX = ctx.mapOffset.x + cell.x * ctx.mapZoom;
+  const anchorY = ctx.mapOffset.y + cell.y * ctx.mapZoom;
+  const shift = clampScreenBox(anchorX + left, anchorY + top, width, height);
+  // 밀린 최종 자리를 등록한다 — 피해 수치("약점 171")가 `巖 바위 암` 명패를
+  // 덮던 자리다. 명패는 못 박힌 글자라 스스로는 피하지 않고 자리만 내민다.
+  reserveScreenBox(anchorX + left + shift.dx, anchorY + top + shift.dy, width, height, "plaque");
+  context.translate(shift.dx, shift.dy);
   drawPlaqueShell(glyphOnly ? null : "compact", width, height, top, glyphOnly ? width : layout.glyphColumn, style.color, selected || material);
 
   context.textAlign = "center";
@@ -217,6 +260,21 @@ function drawSpiritTowerLabel(tower: Tower, cell: Point, selected: boolean, mate
       context.beginPath();
       context.arc(width / 2 - 6, top + 6, 2, 0, Math.PI * 2);
       context.fill();
+    }
+    // 표기 정직 표식 — 명패는 "대체 표기" 네 글자가 들어갈 폭이 아니라
+    // 배지 대신 점 하나로 말하고, 곁말은 호버 카드의 정식 배지가 맡는다.
+    // 색은 DOM 배지와 같다(연둣빛=정자 파생 · 회갈=대체 표기).
+    if (learning.provenance !== "authentic") {
+      context.beginPath();
+      context.arc(-width / 2 + 6, top + 6, 2.5, 0, Math.PI * 2);
+      if (learning.provenance === "derived") {
+        context.fillStyle = "rgba(159, 176, 141, 0.92)";
+        context.fill();
+      } else {
+        context.strokeStyle = "rgba(157, 143, 120, 0.95)";
+        context.lineWidth = 1.2;
+        context.stroke();
+      }
     }
   }
   // 추적 중 성어의 글자를 가진 자령에는 명패 좌측에 순번 인장을 얹는다.
@@ -525,25 +583,39 @@ function drawTowerAbilityPopup(tower: Tower, cell: Point): void {
   if (!popup) return;
   const ratio = Math.min(1, popup.age / popup.duration);
   const alpha = ratio < 0.18 ? ratio / 0.18 : 1 - (ratio - 0.18) / 0.82;
-  const y = cell.y - 38 - ratio * 7;
+  /*
+   * [S/P-12] 능력 알약이 이름표를 덮던 자리를 이름표 위로 올린다.
+   *
+   * 알약은 월드 좌표로 그리고(글꼴도 월드 단위), 명패는 역-스케일이라 화면
+   * px 로 그린다. 기본 배율 2.0 실측으로 두 상자를 화면 px 로 나란히 놓으면
+   *   명패  cell 기준 -68 ~ -28
+   *   알약  cell 기준 -94 ~ -58   (옛 자리 cell.y-38 월드 = -76 화면)
+   * 이라 -68~-58 구간이 겹쳤다. 명패 윗변을 배율로 되돌려 월드 자리를 잡고,
+   * 알약 반높이(9)에 3px 를 더 띄운다 — 어떤 배율에서도 겹치지 않는다.
+   */
+  const plaqueTopWorld = (PLAQUE_BOTTOM - NAMEPLATE_LAYOUT.compact.height) / ctx.mapZoom;
+  const y = cell.y + plaqueTopWorld - 12 - ratio * 7;
   context.save();
   context.globalAlpha = Math.max(0, alpha);
   context.font = '900 9px "Malgun Gothic", sans-serif';
   const width = Math.min(96, Math.max(52, context.measureText(popup.text).width + 16));
+  // 알약은 자령 위에 뜨는 가장 높은 라벨이라, 최상단 줄에서는 상단 칩 띠로 올라탔다.
+  // 자리도 등록한다 — "225/236" 같은 피해 수치가 `鍛 파갑 단조` 배너를 덮던 자리다.
+  const spot = placeStageLabel(cell.x, y, width / 2, 9, { kind: "ability" });
   context.fillStyle = "rgba(3, 8, 15, 0.94)";
   context.strokeStyle = popup.color;
   context.lineWidth = 1.5;
   context.shadowColor = popup.color;
   context.shadowBlur = 10;
   context.beginPath();
-  context.roundRect(cell.x - width / 2, y - 9, width, 18, 7);
+  context.roundRect(spot.x - width / 2, spot.y - 9, width, 18, 7);
   context.fill();
   context.stroke();
   context.shadowBlur = 0;
   context.fillStyle = "#ffffff";
   context.textAlign = "center";
   context.textBaseline = "middle";
-  context.fillText(popup.text, cell.x, y + 1, width - 10);
+  context.fillText(popup.text, spot.x, spot.y + 1, width - 10);
   context.restore();
 }
 
@@ -777,6 +849,12 @@ export function drawHoveredTowerCard(): void {
   context.fillStyle = "#f7edcf";
   context.font = '900 17px "Malgun Gothic", sans-serif';
   context.fillText(learning.short, copyX, y + 28, copyWidth);
+  // 표기 정직 배지 — DOM 배지와 같은 곁말(notationBadgeText)을 캔버스 알약으로.
+  const badgeLabel = notationBadgeText(learning);
+  if (badgeLabel) {
+    const readingWidth = Math.min(context.measureText(learning.short).width, copyWidth);
+    drawNotationBadge(copyX + readingWidth + 7, y + 21, badgeLabel, learning.provenance);
+  }
   context.fillStyle = style.color;
   context.font = '900 12px "Malgun Gothic", sans-serif';
   context.fillText(`${style.name}행 · ${towerProgressionLabel(tower)}`, copyX, y + 50, copyWidth);

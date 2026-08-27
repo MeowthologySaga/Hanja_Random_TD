@@ -50,8 +50,11 @@ import { calmBattlefield, canvas, context, ctx, reducedMotion, shell } from "../
 import { casualStarOf } from "../format";
 import { drawHoveredTowerCard, drawTower, flushTowerPlaques } from "./draw-tower";
 import { type IdiomRippleFx, idiomRipples, pushPooled, ringPool, rings, takeRing, updateAndDrawFx } from "./fx";
+import { placeStageLabel, resetStageLabels } from "./stage-labels";
 
 export function drawWorld(delta: number): void {
+  // [S/P-12] 부동 라벨의 자리 잡기는 프레임 단위다 — 지난 프레임의 점유는 잊는다.
+  resetStageLabels();
   const state = ctx.engine.state;
   const selectedTower = ctx.engine.selectedTower();
   canvas.dataset.selectedTowerId = selectedTower ? String(selectedTower.id) : "";
@@ -215,10 +218,18 @@ function drawAbilityZones(): void {
     context.globalAlpha = 0.88 * life;
     // [SKILL-V1] 서리길은 오행 대신 霜 표기 — 감속 지대임을 이름으로 말한다.
     // [SKILL-V2] 소흔의 잔불도 燼 표기 — 처치 지점에 남은 불씨임을 이름으로 말한다.
-    context.fillStyle = zone.kind === "rain" || zone.kind === "frost" ? "#d9f2ff" : zone.color;
+    // [SKILL-V3] 진흙밭도 오행이 아니라 泥 표기 — 특성 무효 지대임을 이름으로 말한다.
+    context.fillStyle = zone.kind === "rain" || zone.kind === "frost" ? "#d9f2ff" : zone.kind === "mire" ? "#e2cba1" : zone.color;
     context.font = '900 10px "Malgun Gothic", sans-serif';
     context.textAlign = "center";
-    context.fillText(`${zone.kind === "frost" ? "霜 서리길" : zone.kind === "ember" ? "燼 잔불" : zone.wuxing} ${remaining.toFixed(1)}초`, point.x, point.y + zone.radius + 13);
+    context.textBaseline = "middle";
+    // [S/P-12] 장판 이름표도 무대 안으로 민다 — 가장자리 장판에서는 이 글자가
+    // 좌우로 잘리거나 하단 조작 칩 밑으로 들어갔다. 겹침 밀기는 쓰지 않는다
+    // (장판 위로 밀면 이름표가 제 장판을 덮는다).
+    const zoneLabel = `${zone.kind === "frost" ? "霜 서리길" : zone.kind === "ember" ? "燼 잔불" : zone.kind === "mire" ? "泥 진흙밭" : zone.wuxing} ${remaining.toFixed(1)}초`;
+    // 자리는 등록한다 — 피해 수치가 그 위로 사다리를 타게(2차 감사 후속).
+    const zoneSpot = placeStageLabel(point.x, point.y + zone.radius + 13, context.measureText(zoneLabel).width / 2, 6.5, { kind: "zone" });
+    context.fillText(zoneLabel, zoneSpot.x, zoneSpot.y);
     context.restore();
   }
   for (const id of zoneSpawnTimes.keys()) {

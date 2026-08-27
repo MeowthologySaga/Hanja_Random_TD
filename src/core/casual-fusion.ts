@@ -1,3 +1,5 @@
+// [SKILL-V3] 회향 — 3합 승급이 결과 자령에게 남기는 여운.
+import { ECHO_DAMAGE_BONUS, echoSeconds } from "./abilities";
 import { casualStrokeCount } from "./casual";
 import { BOARD_CELLS } from "./content";
 import {
@@ -406,6 +408,9 @@ function performCasualFusion(context: CasualFusionContext, quote: CasualFusionQu
   const tower = context.createTower(definition, inheritedCell);
   tower.pulse = 1;
   tower.abilityFlash = 1;
+  // [SKILL-V3] 회향: 사라진 셋이 결과 자령에게 남기는 여운. 전투 중에만 흐른다.
+  const echoDuration = echoSeconds(pool.star);
+  tower.echoRemaining = echoDuration;
   if (inheritedCell >= 0) context.state.towers.push(tower);
   else context.state.inventoryTowers.push(tower);
   context.state.selectedTowerId = tower.id;
@@ -429,7 +434,8 @@ function performCasualFusion(context: CasualFusionContext, quote: CasualFusionQu
     starFallback: pool.starFallback,
     rosterFallback: pool.rosterFallback
   });
-  context.state.lastMessage = `${headline} · 소모: ${consumedChars.join("·")}${stroke === null ? "" : ` · ${stroke}획`}`;
+  context.state.lastMessage = `${headline} · 소모: ${consumedChars.join("·")}${stroke === null ? "" : ` · ${stroke}획`}`
+    + ` · 回 회향 여운 ${echoDuration.toFixed(1)}초 공격 +${Math.round(ECHO_DAMAGE_BONUS * 100)}%`;
   context.emit({
     type: "casualFuse",
     at: inheritedCell >= 0 ? BOARD_CELLS[inheritedCell] as Point : { x: 440, y: 360 },

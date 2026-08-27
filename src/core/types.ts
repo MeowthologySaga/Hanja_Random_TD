@@ -55,6 +55,9 @@ export type SemanticFamily =
   | "command"
   | "scorch"
   | "harvest"
+  // [SKILL-V3] 스킬 3차 세트가 신설한 의미 계열.
+  | "demise"
+  | "mire"
   | "general";
 export type TargetPriority = "front" | "strongest" | "fastest" | "armored" | "cluster" | "valuable";
 export type EnemyArchetype = "normal" | "swarm" | "swift" | "armored" | "regenerator" | "boss";
@@ -206,6 +209,10 @@ export interface Tower {
   harvestKills?: number;
   // [SKILL-V2] 참명(reaper): 다음 참격이 가능해지는 시각(숨 고르기).
   reaperReadyAt?: number;
+  // [SKILL-V3] 회향(回響): 3합 승급으로 태어난 자령이 물려받은 여운(남은 초).
+  // 준비 시간에는 흐르지 않고 **전투 중에만** 줄어든다 — 준비 화면에서 합쳐도
+  // 여운이 그냥 타 버리지 않게 하려는 규칙이다.
+  echoRemaining?: number;
 }
 
 export interface Enemy {
@@ -232,6 +239,17 @@ export interface Enemy {
   brandWuxing?: Wuxing;
   brandUntil?: number;
   brandPower?: number;
+  // [SKILL-V3] 유폭 낙인(同歸): 상극 각인과 **같은 낙인 자료**를 쓰되, 낙인을
+  // 새긴 쪽이 同歸 계열이면 유폭 반경이 함께 새겨진다(`brandBlastRadius` > 0).
+  // 그 동안 받은 피해의 일부가 `brandStored` 에 적립되고, 낙인을 진 채 쓰러지면
+  // 적립분이 그 반경 안으로 번진다. 번지는 것은 피해뿐 — 경로·진행도는 그대로다.
+  brandBlastRadius?: number;
+  brandStored?: number;
+  // [SKILL-V3] 진흙밭(泥田): 이 시각까지 **적 고유 방어 특성**이 무효다.
+  // 실사한 적 특성 중 무효화 대상은 장갑(`armor`)과 재생(`regenPerSecond`) 둘로,
+  // 정예 철갑(0.28~0.48)·회생 요괴(체력 2.6%/초)·우두머리(둘 다)가 실제로 지닌다.
+  // 이동에는 손대지 않는다 — 속도·감속·정지·진행도 전부 그대로다.
+  traitsSuppressedUntil?: number;
   // [SKILL-V2] 연환 인장(chainseal): 공격마다 쌓이는 인장 스택과 누적 피해.
   // 상한 도달 시 폭발 + 1.2초 제자리 봉인 — 절대 뒤로 밀지 않는다.
   sealStacks?: number;
@@ -244,7 +262,9 @@ export interface AbilityZone {
   towerId: number;
   // [SKILL-V1] "frost" 는 서리길(피해 없는 감속 장판)이다.
   // [SKILL-V2] "ember" 는 소흔의 잔불(처치 지점 지속 피해 지대)이다.
-  kind: "roots" | "lava" | "quicksand" | "caltrops" | "rain" | "frost" | "ember";
+  // [SKILL-V3] "mire" 는 진흙밭 — 피해도 감속도 없고, 밟는 동안 적의 장갑·재생
+  // 특성만 무효로 만드는 지대다(土행 유사진흙지대 `quicksand` 와는 다른 종류).
+  kind: "roots" | "lava" | "quicksand" | "caltrops" | "rain" | "frost" | "ember" | "mire";
   wuxing: Wuxing;
   progress: number;
   radius: number;
@@ -377,6 +397,22 @@ export interface GameState {
   inventoryTowers: Tower[];
   enemies: Enemy[];
   abilityZones: AbilityZone[];
+}
+
+/**
+ * [트랙 V] `GameState` 밖에 사는 엔진 내부 상태의 저장본.
+ *
+ * 런 저장이 상태만 담으면 이어 돌린 판이 갈라진다 — 난수기의 다음 눈과
+ * 아이디 카운터가 초기값으로 되돌아가기 때문이다. 이 다섯 숫자가 그 틈을 메운다.
+ * `rngState` 는 `SeededRng.snapshot()` 이 뜬 uint32 하나이고,
+ * `SeededRng.restore()` 가 같은 수열로 되돌린다.
+ */
+export interface EngineRuntimeSnapshot {
+  rngState: number;
+  nextTowerId: number;
+  nextEnemyId: number;
+  nextAbilityZoneId: number;
+  autoEvolutionCooldown: number;
 }
 
 export type GameEvent =

@@ -39,6 +39,17 @@
 
 /* 초반 안내 3칸: 62 → 46px대. 문구·3단계 구조는 그대로 둔다. */
 #shop-panel .opening-guide { max-height: 52px; padding: 4px 5px; }
+
+/* [트랙 R · P-17] 위 한 줄이 id 특이성으로 `.opening-guide.is-collapsed`(styles.css
+   6614)를 이겨, 웨이브 1 이후 접힌 안내가 50px 빈 띠로 영구히 남았다. 실측:
+   첫 소환 카드 top 307px · `#shop-scroll` 은닉 51px. 같은 특이성으로 되받는다
+   (패치 뒤 실측: 안내 0px · 첫 카드 256px · 은닉 0px). */
+#shop-panel .opening-guide.is-collapsed {
+  max-height: 0;
+  padding-block: 0;
+  padding-inline: 0;
+  border-width: 0;
+}
 #shop-panel .opening-guide > div { min-height: 28px; gap: 1px; padding: 3px 5px; }
 #shop-panel .opening-guide > div b { font-size: 10.5px !important; line-height: 1.2; }
 #shop-panel .opening-guide > div span { font-size: 9.5px !important; line-height: 1.2; }
@@ -128,31 +139,8 @@
   letter-spacing: -0.02em;
 }
 
-/* ── FB1-3d. 목표 탭 성어 모드 — 성어 카드의 보너스·부족 글자(em)와
-   뜻(small)이 한 줄 말줄임으로 잘려 "어떤 글자가 부족한가"를 잃었다.
-   목록은 세로 스크롤러라 두 줄로 펴도 잃는 것이 없다. */
-#goal-panel .goal-choice-card--idiom .goal-choice-copy :is(small, em) {
-  display: -webkit-box;
-  overflow: hidden;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  line-height: 1.25;
-  white-space: normal;
-  text-overflow: clip;
-}
-
-/* 현재 성어 목표 카드도 같은 결: 머리띠(span)는 반 단계 줄여 온전히,
-   뜻(small)은 두 줄로 편다. */
-#idiom-target-card .idiom-target-copy > span { font-size: 10px !important; }
-#idiom-target-card .idiom-target-copy > small {
-  display: -webkit-box;
-  overflow: hidden;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  line-height: 1.25;
-  white-space: normal;
-  text-overflow: clip;
-}
+/* ── FB1-3d. 목표 탭 성어 모드의 카드 두 줄 클램프는 목표 서책 재편(트랙 B)
+   으로 `.goal-choice-card`·`#idiom-target-card` 가 사라지며 함께 걷혔다. */
 
 /* ── FB1-3e. 상점 초반 안내의 → 화살표가 12px 기둥에서 3px 잘렸다. */
 #shop-panel .opening-guide > i { font-size: 10px; }

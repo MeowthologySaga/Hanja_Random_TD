@@ -1,0 +1,158 @@
+/* ══════════════════════════════════════════════════════════════════
+   [트랙 R] 절 111. 스크롤 접힘 신호 — 공용 처방 1벌
+   플레이테스트 감사 P-02·P-04·P-05·P-06.
+
+   실측(감사 원문 + 재현): 스크롤 면 6곳의 스크롤바 폭이 0px 이라 "아래에 더
+   있다"를 알 길이 없었다. 자령 탭 `#selected-card` 219~328px(능력 카드 4장과
+   [전체 설명] 버튼 전부), 3체 조합 `#evolution-options` 367px, 설정
+   다이얼로그 191~196px(효과음 음량 줄 전체), 성어 탭 `#idiom-scroll` 178px,
+   상점 `#shop-scroll` 51px 이 접힘 아래 숨어 있었다.
+
+   원인은 감사가 지목한 전역 `* { scrollbar-width: thin }` 이 아니라 두 겹이다.
+   실측으로 갈라 두었다(합성 div 로 같은 문서 안에서 잰 값).
+
+     · 폭 0px 의 진짜 원인 — 오버레이 스크롤바.
+       헤드리스 크롬 151: `overflow:auto` 만으로는 `scrollbar-width` 를 무엇으로
+       주든 gutter 0px(auto·thin·initial 전부 0). `scrollbar-gutter: stable`
+       을 걸어야 비로소 자리가 생긴다(thin 10px · auto 15px).
+       헤드풀 크롬 151: 전역 thin 이 먹어 10px. 두 환경을 한 값으로 맞추려면
+       역시 `scrollbar-gutter: stable` 이 필요하다.
+
+     · `::-webkit-scrollbar` 규칙이 죽은 원인 — 전역 `scrollbar-color`.
+       크로미엄은 표준 `scrollbar-color` 가 서 있는 요소의 웹킷 의사요소를
+       통째로 무시한다. 헤드풀 실측: `scrollbar-width:auto` 는 15px 인데
+       `scrollbar-color:auto` 를 같이 주면 8px(= 전역 `*::-webkit-scrollbar`
+       의 값)로 되살아난다. 그래서 `.selected-card::-webkit-scrollbar{width:7px}`
+       (styles.css 3166) 는 처음부터 아무 일도 하지 않았다.
+       → 폭·색은 표준 속성으로만 정한다. 웹킷 규칙은 건드리지 않고 둔다.
+
+   처방은 두 겹이다.
+     ① 넘칠 때만 스크롤바 자리를 고정한다(`data-scrollable`, ui/scroll-affordance.ts).
+        늘 고정하면 넘치지도 않는 면이 폭 10px 을 영구히 헌납한다.
+     ② 아래에 내용이 남아 있을 때만 하단 페이드 + `▾` 를 세운다
+        (`data-scroll-more`). 끝까지 내리면 저절로 걷힌다.
+   ══════════════════════════════════════════════════════════════════ */
+
+/* 면마다 종이색이 조금씩 다르므로 페이드도 그 색이어야 "회색 띠"가 아니라
+   "종이가 이어진다"로 읽힌다. 기본값은 선택 카드 한지, 나머지는 아래에서 되짚는다. */
+.scroll-surface {
+  --scroll-fade: 231, 219, 188;
+  --scroll-hint-ink: #6b4d1d;
+}
+
+/* 파인 홈(--mat-well: `#cdbb92 → #ded1b0`)을 바닥으로 쓰는 면들. */
+#evolution-options.scroll-surface,
+#growth-dismantle-list.scroll-surface,
+#growth-upgrade-list.scroll-surface,
+#codex-list.scroll-surface {
+  --scroll-fade: 222, 209, 176;
+}
+
+/* 목표 서책의 성어 격자는 집중 프레임 종이 위에 바로 앉는다 — 제 스크롤바
+   트랙색(#e5d8ba, 480-goal-codex)과 같은 톤으로 페이드를 잡는다.
+   격자 면이라 의사요소가 칸 하나를 차지한다 — 줄 간격 8px 을 되당긴다. */
+#goal-selector-list.scroll-surface {
+  --scroll-fade: 229, 216, 186;
+  --scroll-hint-gap: 8px;
+}
+
+/* 도감 상세는 서책 낱장(060-hanji-theme: `#f5ecd4 → #e5d8b6`)이다. */
+#codex-detail.scroll-surface {
+  --scroll-fade: 229, 216, 182;
+}
+
+/* flex 세로 면은 칸 간격이 곧 의사요소의 추가 높이다 — 실측 6px. */
+#shop-scroll.scroll-surface,
+#idiom-scroll.scroll-surface {
+  --scroll-hint-gap: 6px;
+}
+
+/* 다이얼로그도 한지다(060-hanji-theme: `#f6eed9 → #eadfc1 → #dbcdab`) —
+   먹빛으로 잡았다가 종이 위에 검은 띠가 서는 것을 실측으로 잡아 바닥색에 맞췄다. */
+#settings-dialog.scroll-surface,
+#help-dialog > form.scroll-surface {
+  --scroll-fade: 219, 205, 171;
+}
+
+/* 도움말 본문은 제 스크롤바를 이미 굵게(13px) 세워 둔다(100-readability 절 B8).
+   ID 특이도가 아래 `.scroll-surface[data-scrollable="1"]` 보다 높아 그 폭이
+   그대로 남는다 — 여기서 더하는 것은 "아래에 더 있다" 한 겹뿐이다. */
+
+/* ① 넘치는 동안에만 자리를 고정한다. 색은 표준 속성으로만 — 위 머리말 참조.
+   thin 은 10px 로, 전역 금박보다 한 단계 진하게 잡아 한지 위에서도 보인다. */
+.scroll-surface[data-scrollable="1"] {
+  scrollbar-width: thin;
+  scrollbar-color: var(--gold-500) rgba(88, 68, 34, 0.22);
+  scrollbar-gutter: stable;
+}
+
+/* ② 하단 페이드 + ▾.
+   높이 0 인 sticky 의사요소로 그린다 — 그림자와 transform 은 레이아웃에도
+   스크롤 넘침 계산에도 잡히지 않으므로, 신호를 켜는 것이 스크롤 길이를 늘려
+   신호가 안 꺼지는 되먹임이 원천적으로 생기지 않는다. */
+.scroll-surface[data-scroll-more="1"]::after {
+  content: "▾";
+  position: sticky;
+  z-index: 6;
+  bottom: 0;
+  display: block;
+  /* 격자 면(#selected-card)에서는 의사요소도 칸 하나를 차지한다 — 첫 열에만
+     띠가 서서 ▾ 가 왼쪽으로 쏠렸다(실측). 줄 전체를 쓰게 못박는다. */
+  grid-column: 1 / -1;
+  width: 100%;
+  height: 0;
+  /* 높이가 0 이어도 flex/grid 면에서는 "칸 사이 간격" 한 벌이 새로 붙는다.
+     상점은 P-17 이 은닉 0px 을 목표로 하는 면이라 그 6px 이 곧 걸쇠가 된다
+     (신호가 만든 6px 이 다시 신호를 세우는 latch). 간격만큼 되당긴다. */
+  margin: calc(-1 * var(--scroll-hint-gap, 0px)) 0 0;
+  color: var(--scroll-hint-ink);
+  box-shadow:
+    0 0 14px 9px rgb(var(--scroll-fade)),
+    0 -10px 16px 2px rgba(var(--scroll-fade), 0.72);
+  font-size: 13px;
+  line-height: 0;
+  text-align: center;
+  pointer-events: none;
+  transform: translateY(-8px);
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   [트랙 R] 절 112. 분해 빈 상태의 원인 지목 — P-07
+   [유일 자령 보호] 기본 ON + 서로 다른 한자로 찬 가방 = 분해 가능 0기.
+   원인과 푸는 길을 목록 첫 칸에 세운다(기본값 자체는 그대로 둔다).
+   ══════════════════════════════════════════════════════════════════ */
+
+.growth-dismantle-list .dismantle-unique-notice {
+  min-height: 0;
+  margin-bottom: 5px;
+  padding: 9px 10px;
+  gap: 5px;
+  border: 1px solid rgba(159, 47, 35, 0.42);
+  border-radius: var(--r-sm);
+  background: rgba(159, 47, 35, 0.09);
+}
+
+.growth-dismantle-list .dismantle-unique-notice span {
+  max-width: 34ch;
+  color: #4a3f30 !important;
+  font-size: 11px !important;
+  line-height: 1.35;
+}
+
+.growth-dismantle-list .dismantle-unique-notice [data-dismantle-unique-off] {
+  margin-top: 2px;
+  min-height: 26px;
+  padding: 0 13px;
+  border: 0;
+  border-radius: var(--r-sm);
+  background: var(--mat-brass);
+  box-shadow: var(--bevel-up), var(--lift-1);
+  color: #2b2009 !important;
+  font-size: 11.5px !important;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.growth-dismantle-list .dismantle-unique-notice [data-dismantle-unique-off]:hover {
+  background: var(--mat-brass-hot);
+}

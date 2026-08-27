@@ -1,0 +1,19 @@
+{
+  "name": "scene-03",
+  "marks": [
+    {
+      "label": "beat",
+      "t": 7.284
+    },
+    {
+      "label": "closeup-end",
+      "t": 13.225
+    },
+    {
+      "label": "end",
+      "t": 39.573
+    }
+  ],
+  "end": 39.704,
+  "file": ".codex_tmp\\demo\\raw\\scene-03.webm"
+}

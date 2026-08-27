@@ -2,7 +2,7 @@
  * requestAnimationFrame 루프와 일시정지.
  */
 import { type GameEvent } from "../core/types";
-import { canvas, ctx, must, shell, sound } from "./app-context";
+import { canvas, ctx, must, shell, sound, summonReveal } from "./app-context";
 import { drawWorld } from "./battle/draw";
 import { syncCoachProgress } from "./coach";
 import { showEndScreen } from "./dialogs/end";
@@ -10,18 +10,35 @@ import { syncEssenceFeedback } from "./essence-feedback";
 import { processEvent } from "./events";
 import { syncOneShotHints } from "./hint";
 import { showToast, syncPanel } from "./hud";
+import { autoSaveRun } from "./run-save-slot";
+import { syncScrollAffordances } from "./scroll-affordance";
 import { showCasualFusionReveal, showSummonReveal } from "./summon-reveal";
 
-/** 열려 있는 모달 다이얼로그가 하나라도 있으면 전투를 세운다. */
+/**
+ * 소환·3합 공개 연출은 `<dialog>` 가 아니라 화면을 덮는 `<section>` 이라
+ * `dialog[open]` 판정에 걸리지 않았다. 3초 남짓한 연출을 읽는 동안 적이 계속
+ * 밀려들어 "카드를 읽었더니 판이 무너져 있다"가 됐다 — 도움말 다이얼로그와
+ * 같은 규칙으로 세운다.
+ */
+export function revealPauseActive(): boolean {
+  return summonReveal.classList.contains("is-active");
+}
+
+/** 열려 있는 모달 다이얼로그·공개 연출이 하나라도 있으면 전투를 세운다. */
 function modalPauseActive(): boolean {
-  return document.querySelector("dialog[open]") !== null;
+  return document.querySelector("dialog[open]") !== null || revealPauseActive();
 }
 
 function syncPauseChip(paused: boolean, manual: boolean): void {
   const chip = must<HTMLElement>("#pause-chip");
   if (chip.hidden !== !paused) chip.hidden = !paused;
   if (!paused) return;
-  const reason = manual ? "P 키로 계속" : "창을 닫으면 계속";
+  // 연출은 닫는 방법이 창과 달라(아무 곳이나 누름 · Esc) 안내 문구도 갈라 준다.
+  const reason = manual
+    ? "P 키로 계속"
+    : revealPauseActive() && document.querySelector("dialog[open]") === null
+      ? "Esc·클릭으로 계속"
+      : "창을 닫으면 계속";
   const label = must<HTMLElement>("#pause-reason");
   if (label.textContent !== reason) label.textContent = reason;
 }
@@ -53,6 +70,17 @@ export function frame(now: number): void {
   const frameEvents = ctx.engine.consumeEvents();
   const waveStartedThisFrame = frameEvents.some((event) => event.type === "wave");
   for (const event of frameEvents) processEvent(event);
+  /*
+   * [트랙 V] 웨이브 경계 자동 저장.
+   *
+   * 전투가 준비 시간으로 넘어가는 순간이 곧 "웨이브를 하나 넘겼다"이고, 그때만
+   * 전장이 비어 있어 담을 것이 상태 본체뿐이다. 아직 첫 웨이브 전이거나
+   * 수련장이면 `autoSaveRun()` 이 스스로 지나간다.
+   *
+   * 목패를 여기서 다시 그리지는 않는다 — 타이틀 화면으로 가는 유일한 길이
+   * 새로고침이라(returnToMenu) 목패는 다음 부팅에 어차피 슬롯을 다시 읽는다.
+   */
+  if (frameEvents.some((event) => event.type === "phase" && event.phase === "prep")) autoSaveRun();
   const summonEvents = frameEvents.filter((event): event is Extract<GameEvent, { type: "summon" }> => event.type === "summon");
   if (summonEvents.length > 0) showSummonReveal(summonEvents);
   else showCasualFusionReveal(frameEvents.filter((event): event is Extract<GameEvent, { type: "casualFuse" }> => event.type === "casualFuse"));
@@ -68,6 +96,8 @@ export function frame(now: number): void {
   // 일시정지 중에는 이펙트도 0 으로 굴려 "적은 멈췄는데 탄만 난다"를 막는다.
   drawWorld(paused ? 0 : delta);
   syncPanel();
+  // 접힘 신호는 패널을 다시 그린 "뒤"에 재야 방금 바뀐 내용 높이를 읽는다.
+  syncScrollAffordances();
   syncCoachProgress();
   // 1회성 안내는 코치보다 뒤에서 판정한다 — 코치가 떠 있으면 항상 기다린다.
   syncOneShotHints();

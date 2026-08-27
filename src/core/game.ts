@@ -4,6 +4,11 @@ import {
   CHAINSEAL_STORE_RATIO,
   chainsealMaxStacks,
   commandRallySeconds,
+  ECHO_DAMAGE_BONUS,
+  echoSeconds,
+  DEMISE_MAX_TARGETS,
+  DEMISE_STORE_RATIO,
+  demiseSpreadRadius,
   FROST_ZONE_DURATION,
   FROST_ZONE_RADIUS,
   frostSlowRatio,
@@ -14,6 +19,10 @@ import {
   HARVEST_KILLS_PER_ESSENCE,
   hasActiveSkills,
   idiomBlessingBonus,
+  MIRE_MIN_ENEMIES,
+  MIRE_SUPPRESS_GRACE,
+  MIRE_ZONE_RADIUS,
+  MIRE_ZONE_SECONDS,
   MOMENTUM_STACK_BONUS,
   momentumMaxStacks,
   REAPER_BOSS_CHIP_RATIO,
@@ -22,6 +31,9 @@ import {
   SCORCH_DPS_RATIO,
   SCORCH_ZONE_RADIUS,
   scorchZoneSeconds,
+  STROKE_RESONANCE_MAX_STACKS,
+  strokeResonanceCooldownScale,
+  strokeResonanceStacks,
   WARFARE_BRAND_DURATION,
   warfareBrandPower
 } from "./abilities";
@@ -104,8 +116,11 @@ import {
   interestForGold,
   MAX_CONCENTRATION_LEVEL,
   MODE_ENEMY_COUNT_SCALE,
+  multiSummonCost,
   regionEnemyHpMultiplier,
   SUMMON_STAGE_WEIGHTS,
+  summonCost,
+  summonSurcharge,
   type SummonStarBand,
   TALISMAN_MODE_ENEMY_HP_SCALE,
   TIERED_SUMMON_INTENTS,
@@ -137,7 +152,6 @@ import {
   MAX_UPGRADE_LEVEL,
   maxSummonStageForWave,
   MIN_TIER_POOL_SIZE,
-  multiSummonCost,
   researchConnectionBonus,
   researchCost,
   researchUnlockWave,
@@ -145,8 +159,6 @@ import {
   STAGE_MULTIPLIERS,
   SUMMON_INTENT_LABELS,
   SUMMON_STAR_BANDS,
-  SUMMON_SURCHARGE,
-  summonCost,
   UPGRADE_STAT_META,
   upgradeEffectiveLevels
 } from "./hanzi";
@@ -174,11 +186,13 @@ import {
   type ConcentrationPayment,
   type DefeatCause,
   type Enemy,
+  type EngineRuntimeSnapshot,
   type EvolutionOption,
   type GameEvent,
   type GameMode,
   type GameState,
   type GoalProgress,
+  type NotationCode,
   type HanziCatalog,
   type HanziDefinition,
   type IdiomBonusKind,
@@ -273,6 +287,8 @@ export class GameEngine {
   private readonly combatIdiomBlessings = [0, 0, 0, 0, 0];
   // [SKILL-V2] 호령: 진별 집중 명령(대상 공유). 4초 남짓의 일시 상태라 세이브 밖이다.
   private readonly commandRallies: Array<{ targetId: number; until: number } | null> = [null, null, null, null, null];
+  // [SKILL-V3] 유폭 낙인 재진입 잠금 — 전파 피해가 다시 적립·유폭되지 않게 한다.
+  private demiseSpreading = false;
   private combatDistinctElements = 0;
   /** FB7-8성: 이번 틱에 극성 개안 오라가 살아 있는 오행. 오행당 최대 1개. */
   private readonly combatPolarisElements = new Set<Wuxing>();
@@ -443,6 +459,10 @@ export class GameEngine {
       return;
     }
 
+    // [SKILL-V3] 회향 여운은 전투 중에만 흐른다. 전장과 가방을 모두 태워
+    // "가방에 넣어 두면 여운이 얼어붙는" 우회를 막는다.
+    for (const tower of this.state.towers) this.decayEcho(tower, delta);
+    for (const tower of this.state.inventoryTowers) this.decayEcho(tower, delta);
     this.updateEnemies(delta);
     if (this.state.phase !== "combat") return;
     this.refreshCombatCache();
@@ -512,7 +532,10 @@ export class GameEngine {
   private updateEnemies(delta: number): void {
     for (const enemy of this.state.enemies) {
       enemy.flash = Math.max(0, enemy.flash - delta);
-      if (enemy.regenPerSecond > 0) enemy.hp = Math.min(enemy.maxHp, enemy.hp + enemy.regenPerSecond * delta);
+      // [SKILL-V3] 진흙밭을 밟는 동안에는 재생 특성이 무효다.
+      if (enemy.regenPerSecond > 0 && !this.enemyTraitsSuppressed(enemy)) {
+        enemy.hp = Math.min(enemy.maxHp, enemy.hp + enemy.regenPerSecond * delta);
+      }
       if (enemy.poisonUntil > this.state.elapsed && enemy.poisonDps > 0) {
         this.damageEnemy(enemy, enemy.poisonDps * delta, false, false);
         if (!this.state.enemies.includes(enemy)) continue;
@@ -601,6 +624,10 @@ export class GameEngine {
           // [SKILL-V1] 서리길: 총 감속 캡 60%(이동 배율 0.4 미만 금지)를 지킨다.
           enemy.slowFactor = Math.min(enemy.slowFactor, Math.max(0.4, zone.slowFactor ?? 1));
           enemy.slowUntil = Math.max(enemy.slowUntil, this.state.elapsed + 0.2);
+        } else if (zone.kind === "mire") {
+          // [SKILL-V3] 진흙밭: 장갑·재생만 무효로 만든다. slowFactor·stunnedUntil·
+          // progress 는 손대지 않는다 — 걸음은 조금도 달라지지 않는다.
+          enemy.traitsSuppressedUntil = Math.max(enemy.traitsSuppressedUntil ?? 0, this.state.elapsed + MIRE_SUPPRESS_GRACE);
         }
       }
     }
@@ -658,6 +685,66 @@ export class GameEngine {
     else this.state.abilityZones.push(zone);
     if (this.state.abilityZones.length > 20) this.state.abilityZones.shift();
     return { label: "서리길", duration: FROST_ZONE_DURATION, damagePerSecond: 0 };
+  }
+
+  /**
+   * [SKILL-V3] 진흙밭(mire) 지대 — 서리길과 같은 "피해 0" 장판 문법을 빌린다.
+   *
+   * 피해 0, 감속 0, 밀치기 0. 밟는 동안 장갑·재생 **특성만** 무효가 된다.
+   * 무효화 대상이 실제로 존재함은 웨이브 계획에서 확인했다 — 정예 철갑
+   * (armor 0.28~0.48)·회생 요괴(regen)·우두머리(둘 다)다.
+   */
+  private deployMireZone(tower: Tower, target: Enemy, damage: number, potency: number, abilityPower: number): { label: string; duration: number; damagePerSecond: number } {
+    const existing = this.state.abilityZones.find((zone) => zone.towerId === tower.id);
+    // 진흙밭은 자기 오행 장판을 **대체하지 않는다** — 같은 초당 피해를 그대로
+    // 이고, 지속을 기획값 4초로 줄이는 대신 장갑·재생 무효를 얹는다. 초안처럼
+    // 피해 0으로 두었더니 진흙밭 자령이 원래 쓰던 오행 장판(비구름·유사 등)을
+    // 잃어 순수 하향이 됐고, 그 글자를 많이 가진 KR 로스터의 표준 135런 승률이
+    // 0.556→0.444 로 떨어져 지역 격차 게이트를 깼다.
+    const spec = ELEMENT_ZONE_SPECS[tower.wuxing];
+    const zone: AbilityZone = {
+      id: existing?.id ?? this.nextAbilityZoneId++,
+      towerId: tower.id,
+      kind: "mire",
+      wuxing: tower.wuxing,
+      progress: target.progress,
+      radius: MIRE_ZONE_RADIUS * this.casualSplashRadiusScale(tower),
+      damagePerSecond: damage * spec.damageRatio * potency * abilityPower,
+      expiresAt: this.state.elapsed + MIRE_ZONE_SECONDS,
+      color: "#c2a06a"
+    };
+    if (existing) Object.assign(existing, zone);
+    else this.state.abilityZones.push(zone);
+    if (this.state.abilityZones.length > 20) this.state.abilityZones.shift();
+    return { label: "진흙밭", duration: MIRE_ZONE_SECONDS, damagePerSecond: zone.damagePerSecond };
+  }
+
+  /** [SKILL-V3] 이 적의 장갑·재생 특성이 지금 무효인가(진흙밭을 밟는 중인가). */
+  enemyTraitsSuppressed(enemy: Enemy): boolean {
+    return (enemy.traitsSuppressedUntil ?? 0) > this.state.elapsed;
+  }
+
+  /** [SKILL-V3] 회향 여운 감쇠. 전투 갱신에서만 부른다. */
+  private decayEcho(tower: Tower, delta: number): void {
+    const remaining = tower.echoRemaining ?? 0;
+    if (remaining <= 0) return;
+    const next = remaining - delta;
+    if (next > 0) tower.echoRemaining = next;
+    else tower.echoRemaining = undefined;
+  }
+
+  /**
+   * [SKILL-V3] 회향 UI 상태. 여운이 없으면 null — 칩·카드를 아예 그리지 않는다.
+   * 3합이 캐주얼 전용 규칙이므로 표준 모드에서는 언제나 null이다.
+   */
+  echoStatus(tower: Tower): { remaining: number; total: number; bonus: number } | null {
+    const remaining = tower.echoRemaining ?? 0;
+    if (this.state.mode !== "casual" || remaining <= 0) return null;
+    return {
+      remaining,
+      total: echoSeconds(tower.casualStar ?? tower.naturalStar ?? 1),
+      bonus: ECHO_DAMAGE_BONUS
+    };
   }
 
   /**
@@ -863,7 +950,9 @@ export class GameEngine {
       && abilities.semanticFamily !== "chainseal"
       && abilities.semanticFamily !== "scorch"
       && abilities.semanticFamily !== "harvest"
-      && (abilities.semanticFamily !== "weather" || this.state.enemies.length >= 5);
+      && (abilities.semanticFamily !== "weather" || this.state.enemies.length >= 5)
+      // [SKILL-V3] 진흙밭은 길이 붐빌 때만 깐다 — 비구름 강하와 같은 충전 조건.
+      && (abilities.semanticFamily !== "mire" || this.state.enemies.length >= MIRE_MIN_ENEMIES);
     // At most one active skill may resolve from a tower on the same attack.
     const signature = activeSkills && !semanticTrigger && tower.shotCount % tuning.signatureEvery === 0;
     const lineageTrigger = activeSkills && !semanticTrigger && !signature
@@ -882,6 +971,8 @@ export class GameEngine {
     // the free starting formation's map position from deciding a run before
     // the player can buy a second formation, then disappears after wave 10.
     if (this.state.wave <= 10 && towerFormationIndex === this.state.startingFormationIndex) damage *= 1.15;
+    // [SKILL-V3] 회향: 3합으로 사라진 셋이 남긴 여운. 남아 있는 동안만 곱한다.
+    if (this.state.mode === "casual" && (tower.echoRemaining ?? 0) > 0) damage *= 1 + ECHO_DAMAGE_BONUS;
     // FB7-8성 「극성 개안」: 8★ 자령이 서 있는 오행의 아군 전체 공격 +15%.
     // Set 기반이라 같은 오행 오라는 몇 기가 있어도 최대 1개만 산다.
     if (this.combatPolarisElements.has(tower.wuxing)) damage *= 1 + CASUAL_POLARIS_AURA.damageBonus;
@@ -1069,9 +1160,12 @@ export class GameEngine {
     const abilityPower = 1 + this.combinedUpgradeBonus(tower.wuxing, "abilityPower");
     const statusPower = 1 + this.combinedUpgradeBonus(tower.wuxing, "statusPower");
     // [SKILL-V1] 서리길은 오행 장판 대신 전용 감속 지대를 깐다(비구름 문법 재사용).
+    // [SKILL-V3] 진흙밭도 같은 자리를 쓴다 — 피해 없는 전용 지대다.
     const zone = family === "frost"
       ? this.deployFrostZone(tower, target)
-      : this.deployElementZone(tower, target, damage, potency, abilityPower);
+      : family === "mire"
+        ? this.deployMireZone(tower, target, damage, potency, abilityPower)
+        : this.deployElementZone(tower, target, damage, potency, abilityPower);
     const activeZone = this.state.abilityZones.find((candidate) => candidate.towerId === tower.id);
     const zoneTargets = activeZone
       ? this.state.enemies.filter((enemy) => distance(this.enemyPoint(enemy), targetPoint) <= activeZone.radius).length
@@ -1171,18 +1265,39 @@ export class GameEngine {
       target.brandWuxing = tower.wuxing;
       target.brandPower = brandPower;
       target.brandUntil = this.state.elapsed + WARFARE_BRAND_DURATION;
+      // [SKILL-V3] 상극 각인은 유폭이 없는 순수 증폭 낙인이다 — 한 적에게 낙인
+      // 자리는 하나뿐이므로 덧쓸 때 유폭 반경과 적립분을 함께 지운다.
+      target.brandBlastRadius = 0;
+      target.brandStored = 0;
       effect = `${tower.wuxing}행 상극 낙인 ${WARFARE_BRAND_DURATION}초 · 같은 오행 피해 +${Math.round(brandPower * 100)}%`;
+    } else if (family === "demise" && this.state.enemies.includes(target)) {
+      // [SKILL-V3] 유폭 낙인: 상극 각인과 같은 낙인 자료를 그대로 쓰되 유폭
+      // 표식을 세운다. 낙인이 사는 동안 받은 피해의 일부가 적립되고, 낙인을
+      // 진 채 쓰러지면 그 적립분이 반경 안으로 번진다(밀치기 없음).
+      const star = this.state.mode === "casual" ? tower.casualStar ?? tower.naturalStar ?? 1 : null;
+      const brandPower = warfareBrandPower(star);
+      target.brandWuxing = tower.wuxing;
+      target.brandPower = brandPower;
+      target.brandUntil = this.state.elapsed + WARFARE_BRAND_DURATION;
+      target.brandBlastRadius = demiseSpreadRadius(star);
+      target.brandStored = 0;
+      effect = `${tower.wuxing}행 유폭 낙인 ${WARFARE_BRAND_DURATION}초 · 처치 시 반경 ${Math.round(demiseSpreadRadius(star))} 안 ${DEMISE_MAX_TARGETS}체 유폭`;
     } else if (family === "frost") {
       // [SKILL-V1] 서리길: 적중 지점 서리 지대 — 감속만 있고 피해·밀치기는 없다.
       const slowRatio = frostSlowRatio(this.state.mode === "casual" ? tower.casualStar ?? tower.naturalStar ?? 1 : null);
       targets = Math.max(1, zoneTargets);
       effect = `서리길 ${zone.duration.toFixed(1)}초 · 밟는 적 ${Math.round(slowRatio * 100)}% 감속`;
+    } else if (family === "mire") {
+      // [SKILL-V3] 진흙밭: 밟는 동안 장갑·재생만 무효 — 걸음에는 손대지 않는다.
+      targets = Math.max(1, zoneTargets);
+      effect = `진흙밭 ${zone.duration.toFixed(1)}초 · 초당 ${Math.round(zone.damagePerSecond)} 피해 · 밟는 적 장갑·재생 무효 (이동 그대로)`;
     } else {
       effect = "뜻 구현 · 이번 공격 ×" + tuning.semanticMultiplier.toFixed(2);
     }
 
     // [SKILL-V1] frost 는 장판 자체가 본 효과라 꼬리 문구를 겹쳐 붙이지 않는다.
-    if (family !== "weather" && family !== "frost") effect += ` · ${zone.label} ${zone.duration.toFixed(1)}초`;
+    // [SKILL-V3] mire 도 같은 이유로 뺀다.
+    if (family !== "weather" && family !== "frost" && family !== "mire") effect += ` · ${zone.label} ${zone.duration.toFixed(1)}초`;
 
     this.emitAbility(tower, abilities.semantic, origin, targetPoint, targets, effect, persistent);
   }
@@ -1206,10 +1321,17 @@ export class GameEngine {
 
   private damageEnemy(enemy: Enemy, rawAmount: number, critical: boolean, weakness: boolean, armorPenetration = 0, source?: Tower): void {
     if (!this.state.enemies.includes(enemy)) return;
-    const effectiveArmor = enemy.armor * (1 - armorPenetration);
+    // [SKILL-V3] 진흙밭을 밟는 동안에는 장갑 특성이 무효다 — 관통 계산 이전에
+    // 장갑 자체가 0이 되므로 관통 수치와 곱해 이중으로 세지 않는다.
+    const effectiveArmor = this.enemyTraitsSuppressed(enemy) ? 0 : enemy.armor * (1 - armorPenetration);
     const amount = rawAmount * (1 - effectiveArmor);
     enemy.hp -= amount;
     enemy.flash = 0.09;
+    // [SKILL-V3] 유폭 낙인: 낙인이 살아 있는 동안 받은 피해의 일부를 적립한다.
+    // 전파 피해 자체는 적립되지 않는다(재진입 잠금) — 연쇄 유폭을 막는다.
+    if (!this.demiseSpreading && (enemy.brandBlastRadius ?? 0) > 0 && (enemy.brandUntil ?? 0) > this.state.elapsed) {
+      enemy.brandStored = (enemy.brandStored ?? 0) + amount * DEMISE_STORE_RATIO;
+    }
     if (amount >= 1.5) this.events.push({ type: "damage", at: this.enemyPoint(enemy), amount, critical, weakness });
     if (enemy.hp > 0) return;
     const at = this.enemyPoint(enemy);
@@ -1220,6 +1342,46 @@ export class GameEngine {
     this.events.push({ type: "kill", at, reward: enemy.reward });
     // [SKILL-V2] 소흔·채기 처치 훅 — 출처 자령이 있는 직접 처치만 센다.
     if (source) this.handleTowerKill(source, enemy, at);
+    // [SKILL-V3] 유폭 낙인 전파는 처치 훅 뒤에 온다 — 소흔의 잔불이 먼저 깔린 뒤
+    // 유폭이 터져야 "쓰러진 자리에 남은 것"의 순서가 화면과 맞는다.
+    this.detonateDemiseBrand(enemy, at, source);
+  }
+
+  /**
+   * [SKILL-V3] 유폭 낙인 전파 — 낙인을 진 채 쓰러진 자리에서 적립분이 번진다.
+   *
+   * 절대 원칙: 번지는 것은 피해뿐이다. 감속·정지·밀치기를 일절 걸지 않으므로
+   * 주변 적의 경로와 진행도는 조금도 흔들리지 않는다.
+   * 재진입 잠금(`demiseSpreading`)이 전파 피해의 재적립과 연쇄 유폭을 막는다.
+   */
+  private detonateDemiseBrand(victim: Enemy, at: Point, source?: Tower): void {
+    const stored = victim.brandStored ?? 0;
+    const radius = victim.brandBlastRadius ?? 0;
+    if (this.demiseSpreading || stored <= 0 || radius <= 0 || (victim.brandUntil ?? 0) <= this.state.elapsed) return;
+    victim.brandStored = 0;
+    victim.brandBlastRadius = 0;
+    const neighbours = this.state.enemies
+      .filter((candidate) => candidate.id !== victim.id && distance(this.enemyPoint(candidate), at) <= radius)
+      .slice(0, DEMISE_MAX_TARGETS);
+    if (neighbours.length === 0) return;
+    this.demiseSpreading = true;
+    try {
+      for (const neighbour of neighbours) {
+        this.damageEnemy(neighbour, stored, false, neighbour.weakness === victim.brandWuxing, 0.15, source);
+      }
+    } finally {
+      this.demiseSpreading = false;
+    }
+    if (!source) return;
+    const definition = definitionForTower(this.catalog, source.definitionId);
+    this.emitAbility(
+      source,
+      definition.combat.abilities.semantic,
+      BOARD_CELLS[source.cell] as Point,
+      at,
+      neighbours.length,
+      `유폭 ${Math.round(stored)} 피해 · 반경 ${Math.round(radius)} 안 ${neighbours.length}체`
+    );
   }
 
   private finishWave(): void {
@@ -1268,16 +1430,25 @@ export class GameEngine {
     return { ok: true, message: bonus > 0 ? "조기 출전 보너스 " + String(bonus) + "엽전" : "웨이브 시작" };
   }
 
-  private startNextWave(): void {
-    const nextWave = this.state.wave + 1;
-    this.state.wave = nextWave;
-    const plan = wavePlan(nextWave);
+  /**
+   * 이 런에서 N 번째 웨이브의 편성. 웨이브 번호·진법·수련장 여부만 보는 순수
+   * 함수라 같은 인자면 언제나 같은 결과다 — 그래서 `adoptRun()` 이 저장된
+   * 웨이브 번호만으로 편성을 다시 세울 수 있고, WavePlan 을 저장하지 않는다.
+   */
+  private planForWave(wave: number): WavePlan {
+    const plan = wavePlan(wave);
     // 모드 수량 계수: 캐주얼은 몸수를 줄이고 체력 계수로 총 내구를 보존한다.
     const modeCount = Math.max(1, Math.round(plan.count * MODE_ENEMY_COUNT_SCALE[this.state.mode]));
     // 수련장은 그 위에서 수량을 한 번 더 눌러 "반드시 이기는 첫 교전"을 보장한다.
-    this.currentPlan = this.tutorial
+    return this.tutorial
       ? { ...plan, count: Math.max(3, Math.round(modeCount * TUTORIAL_ENEMY_COUNT_SCALE)) }
       : { ...plan, count: modeCount };
+  }
+
+  private startNextWave(): void {
+    const nextWave = this.state.wave + 1;
+    this.state.wave = nextWave;
+    this.currentPlan = this.planForWave(nextWave);
     this.state.phase = "combat";
     this.state.waveElapsed = 0;
     this.state.spawned = 0;
@@ -1509,6 +1680,19 @@ export class GameEngine {
     return { ok: true, message: this.state.lastMessage };
   }
 
+  /**
+   * 읽기 표기 축을 런 도중에 바꾼다. (gripe #6, 트랙 Q)
+   *
+   * 표기는 화면 설정이라 전투 판정에 하나도 닿지 않는다 — learningInfo 계열은
+   * ui/ 밖에서 호출되지 않으므로 시드·난수·수치가 흔들릴 여지가 없다.
+   * 그래서 다음 런을 기다리지 않고 즉시 갈아 끼운다.
+   */
+  setNotation(notation: NotationCode): ActionResult {
+    this.state.notation = notation;
+    this.state.lastMessage = `읽기 표기 · ${notation === "kr-hunum" ? "한국 훈음" : notation === "jp-onkun" ? "일본 음훈" : "중국 병음"}`;
+    return { ok: true, message: this.state.lastMessage };
+  }
+
   setAutoPlaceSummons(enabled: boolean): ActionResult {
     this.state.autoPlaceSummons = enabled;
     this.state.lastMessage = enabled ? "뽑기 후 자동 배치 켜짐" : "뽑기 후 가방 보관";
@@ -1594,7 +1778,7 @@ export class GameEngine {
     const previous = this.state.summonIntent;
     this.state.summonIntent = intent;
     try {
-      const result = this.summon(false, SUMMON_SURCHARGE[intent]);
+      const result = this.summon(false, summonSurcharge(this.state.summonCount, intent));
       if (result.ok && intent !== "balanced") {
         this.state.lastMessage = `${SUMMON_INTENT_LABELS[intent]} 소환 · ${result.message}`;
         return { ok: true, message: this.state.lastMessage };
@@ -2155,7 +2339,49 @@ export class GameEngine {
     const progressionHaste = this.state.mode === "casual"
       ? ((tower.casualStar ?? tower.naturalStar ?? 1) - 1) * CASUAL_STAR_HASTE_PER_STAR
       : (tower.stage - 1) * 0.035;
-    return Math.max(0.28, profile.cooldown * (1 - progressionHaste) * (1 - concentrationHaste) / (1 + upgradeHaste));
+    // [SKILL-V3] 획수 공명: 같은 진에 선 동급 자령 1기당 공격 대기 −4%(4중첩 상한).
+    const resonanceScale = strokeResonanceCooldownScale(this.strokeResonanceStacks(tower));
+    return Math.max(0.28, profile.cooldown * (1 - progressionHaste) * (1 - concentrationHaste) * resonanceScale / (1 + upgradeHaste));
+  }
+
+  /** [SKILL-V3] 이 자령의 별. 별승급 진법에서만 뜻이 있다. */
+  towerStarRank(tower: Tower): number {
+    return tower.casualStar ?? tower.naturalStar ?? 1;
+  }
+
+  /**
+   * [SKILL-V3] 획수 공명 중첩 — 같은 진에 선 **자기와 같은 별** 동료 수(자신 제외),
+   * 4중첩 상한. 별승급(캐주얼) 전용이다 — 표준 모드에는 별이 없다.
+   *
+   * 가방(inventoryTowers)은 세지 않는다 — `state.towers` 만이 진에 서 있는 자령이다.
+   * 기술이 깨어나지 않은 자령(1★)은 울리지도, 울려 주지도 않는다.
+   * 발동 중 성어로 칸이 고정된(핀) 자령도 진에 서 있는 한 그대로 센다. 자동배치는
+   * 오행과 실화력만 보고 자리를 정하므로 이 축을 최적화하지 않는다 — 공명은
+   * 자동배치가 만들어 주는 보너스가 아니라, 배치를 손보는 사람이 노려서 얻는
+   * 보너스다(그래서 자동배치와 서로 간섭하지 않는다).
+   */
+  strokeResonanceStacks(tower: Tower): number {
+    if (this.state.mode !== "casual" || tower.cell < 0 || !this.towerHasActiveSkills(tower)) return 0;
+    const formationIndex = Math.floor(tower.cell / CELLS_PER_FORMATION);
+    const star = this.towerStarRank(tower);
+    let allies = 0;
+    for (const candidate of this.state.towers) {
+      if (candidate.id === tower.id || candidate.cell < 0) continue;
+      if (Math.floor(candidate.cell / CELLS_PER_FORMATION) !== formationIndex) continue;
+      if (this.towerStarRank(candidate) !== star) continue;
+      // 기술이 깨어나지 않은 자령은 공명을 보태지 않는다.
+      if (!this.towerHasActiveSkills(candidate)) continue;
+      allies += 1;
+      if (allies >= STROKE_RESONANCE_MAX_STACKS) break;
+    }
+    return strokeResonanceStacks(allies);
+  }
+
+  /** [SKILL-V3] 획수 공명 UI 상태. 중첩이 없으면 null — 칩을 아예 그리지 않는다. */
+  strokeResonanceStatus(tower: Tower): { stacks: number; star: number; haste: number } | null {
+    const stacks = this.strokeResonanceStacks(tower);
+    if (stacks <= 0) return null;
+    return { stacks, star: this.towerStarRank(tower), haste: 1 - strokeResonanceCooldownScale(stacks) };
   }
 
   towerPowerMultiplier(tower: Tower): number {
@@ -3019,6 +3245,58 @@ export class GameEngine {
     const events = this.events;
     this.events = [];
     return events;
+  }
+
+  /**
+   * [트랙 V] `GameState` 밖에 있는 엔진 내부 상태 — 런 저장이 함께 담아야
+   * 이어 돌린 판이 쭉 돌린 판과 같아진다.
+   *
+   * 여기 없는 나머지 private 필드는 전부 (a) 저장 시점(웨이브 경계)에 비어
+   * 있거나 (b) 매 전투 틱마다 통째로 다시 계산되는 캐시다. 자세한 목록은
+   * `adoptRun()` 주석에 적어 두었다.
+   */
+  captureRuntime(): EngineRuntimeSnapshot {
+    return {
+      rngState: this.rng.snapshot(),
+      nextTowerId: this.nextTowerId,
+      nextEnemyId: this.nextEnemyId,
+      nextAbilityZoneId: this.nextAbilityZoneId,
+      autoEvolutionCooldown: this.autoEvolutionCooldown
+    };
+  }
+
+  /**
+   * [트랙 V] 저장된 런을 이 엔진에 얹는다. `begin()` 의 자리를 대신하므로
+   * 생성 직후에 한 번만 부른다 — 시드·지역·진법·표기·부적 모드는 생성자가
+   * 이미 같은 값으로 받았다는 전제다(run-save.ts 의 `restoreRun` 이 지킨다).
+   *
+   * 되살리지 않고 다시 계산하는 것들:
+   * - `currentPlan`: 웨이브 번호에서 순수 함수로 나온다(`planForWave`).
+   * - `runSummonPool`: 복원된 추적 성어 목록에서 다시 세운다.
+   * - `enemyPositions`·`targetCandidates`·`combat*` 캐시: 전투 틱마다
+   *   `refreshCombatCache()` 가 통째로 덮어쓴다.
+   * - `commandRallies`(호령 4초 명령): 웨이브 경계에는 이미 만료다.
+   * - `events`: 소비되지 않은 연출 큐. 화면이 없는 저장본에 의미가 없다.
+   */
+  adoptRun(state: GameState, runtime: EngineRuntimeSnapshot): void {
+    Object.assign(this.state, state);
+    this.rng.restore(runtime.rngState);
+    this.nextTowerId = runtime.nextTowerId;
+    this.nextEnemyId = runtime.nextEnemyId;
+    this.nextAbilityZoneId = runtime.nextAbilityZoneId;
+    this.autoEvolutionCooldown = runtime.autoEvolutionCooldown;
+    this.currentPlan = this.state.wave > 0 ? this.planForWave(this.state.wave) : null;
+    this.commandRallies.fill(null);
+    this.enemyPositions.clear();
+    this.combatCharCounts.clear();
+    this.combatSynergies.clear();
+    this.combatPolarisElements.clear();
+    this.targetCandidates.length = 0;
+    this.combatFormationBonuses.fill(0);
+    this.combatIdiomBlessings.fill(0);
+    this.combatDistinctElements = 0;
+    this.runSummonPool = this.buildRunSummonPool();
+    this.events = [{ type: "phase", phase: this.state.phase }];
   }
 
   private createTower(definition: HanziDefinition, cell: number): Tower {

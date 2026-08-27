@@ -1,0 +1,15 @@
+{
+  "name": "scene-01",
+  "marks": [
+    {
+      "label": "beat",
+      "t": 5.143
+    },
+    {
+      "label": "end",
+      "t": 30.373
+    }
+  ],
+  "end": 30.483,
+  "file": ".codex_tmp\\demo\\raw\\scene-01.webm"
+}

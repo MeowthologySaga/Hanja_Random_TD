@@ -18,6 +18,7 @@ import {
 } from "../../core/hanzi";
 import { type Tower, type UpgradeStat, type Wuxing } from "../../core/types";
 import { ctx, DISMANTLE_UNIQUE_STORAGE_KEY, dismantleSelection, must, reducedMotion, sound } from "../app-context";
+import { openConfirm } from "../dialogs/confirm";
 import { formatStatBonus, upgradeStateSignature } from "../dialogs/element-upgrade";
 import {
   casualStarOf,
@@ -70,6 +71,36 @@ function setDismantleProtectsUnique(enabled: boolean): void {
 
 const UPGRADE_UNAVAILABLE_LABEL = "투자 불가";
 
+/** cleanupAssessments 가 붙이는 유일 보유 보호 사유. 원인 지목의 기준점이다. */
+const SOLE_COPY_REASON = "유일 보유 한자";
+
+/**
+ * "[유일 자령 보호] 하나만 걷으면 바로 분해되는" 가방 자령의 수 — 트랙 R(P-07).
+ *
+ * 감사 실측: 보통의 가방은 서로 다른 한자로 차므로 기본 ON 인 이 보호가 후보를
+ * 전부 삼켜 분해 가능 0기가 된다(끄면 즉시 8기 전부). 그런데 빈 상태 문구는
+ * "필터를 바꾸거나…"라 원인을 안 가리켜, 문기 획득 자체가 막힌 것처럼 보였다.
+ * 기본값은 그대로 두고(사용자 결정), 막힌 이유와 그 자리에서 푸는 길만 세운다.
+ */
+function soleCopyOnlyCount(assessments: ReadonlyMap<number, { protected: boolean; protectedReasons: readonly string[] }>): number {
+  if (!ctx.dismantleProtectsUnique) return 0;
+  return ctx.engine.state.inventoryTowers.filter((tower) => {
+    const assessment = assessments.get(tower.id);
+    if (!assessment?.protected) return false;
+    return assessment.protectedReasons.every((reason) => reason === SOLE_COPY_REASON);
+  }).length;
+}
+
+/** 원인 지목 + 그 자리에서 끄는 바로가기. 빈 목록과 "전부 보호" 양쪽에 쓴다. */
+function soleCopyNoticeMarkup(count: number, empty: boolean): string {
+  return `<div class="workbench-empty dismantle-unique-notice">
+    <b>전부 유일 보유 보호에 걸렸습니다</b>
+    <span>가방 자령 ${count}기가 "이 한자는 이 1기뿐"이라는 이유 하나로 후보에서 빠졌습니다. [유일 자령 보호]를 끄면 그 ${count}기가 그대로 분해 후보로 들어옵니다.</span>
+    <button type="button" data-dismantle-unique-off>[유일 자령 보호] 끄기</button>
+    ${empty ? `<button type="button" data-goto-inventory>가방 탭 열기</button>` : ""}
+  </div>`;
+}
+
 function upgradeAmountLabel(scope: "global" | "element" | "trait", stat: UpgradeStat | null, traitIndex: number | null, amount: number | "max"): string {
   const quote = scope === "global" && stat
     ? ctx.engine.quoteGlobalUpgrade(stat, amount)
@@ -100,7 +131,10 @@ export function renderGrowth(): void {
   must<HTMLElement>("#growth-resource-summary").textContent = "문기 " + WUXING_ORDER.map((wuxing) => `${wuxing}${ctx.engine.state.elementEssence[wuxing]}`).join(" ");
   const dismantleReady = ctx.engine.state.inventoryTowers.filter((tower) => !assessmentMap.get(tower.id)?.protected).length;
   must<HTMLElement>("#growth-panel-dismantle").textContent = `분해 가능 ${dismantleReady}기 · 선택 ${dismantleSelection.size}기`;
-  must<HTMLElement>("#growth-dismantle-list").innerHTML = rows.length > 0 ? rows.map(({ tower, assessment }) => {
+  // 원인 지목: 분해 가능이 0기이고 그 이유가 오직 유일 보유 보호일 때만 세운다.
+  const soleOnly = dismantleReady === 0 ? soleCopyOnlyCount(assessmentMap) : 0;
+  const soleNotice = soleOnly > 0 ? soleCopyNoticeMarkup(soleOnly, rows.length === 0) : "";
+  must<HTMLElement>("#growth-dismantle-list").innerHTML = rows.length > 0 ? soleNotice + rows.map(({ tower, assessment }) => {
     const protectedReasons = assessment?.protectedReasons ?? ["보호 상태 확인 필요"];
     const protectedState = assessment?.protected ?? true;
     const essence = ctx.engine.towerDismantleEssenceValue(tower);
@@ -110,7 +144,7 @@ export function renderGrowth(): void {
       <input type="checkbox" data-dismantle-id="${tower.id}" ${dismantleSelection.has(tower.id) ? "checked" : ""} ${protectedState || !active ? "disabled" : ""}>
       ${spiritPortraitMarkup(tower.char, tower.wuxing, "workbench-spirit--dismantle")}<b>${escapeHtml(tower.char)}</b><span><strong>${soleBadge}${tower.wuxing}행 · ${towerProgressionLabel(tower)} · #${tower.id}</strong><small>${protectedState ? `분해 불가 — ${protectedReasons.map(escapeHtml).join(" · ")}` : (assessment?.reasons ?? []).map(escapeHtml).join(" · ") || "분해 가능"}</small></span><em>${protectedState ? "보호" : essenceAmountChip(tower.wuxing, essence)}</em>
     </label>`;
-  }).join("") : `<div class="workbench-empty"><b>조건에 맞는 가방 자령이 없습니다</b><span>필터를 바꾸거나 소환 자령을 가방에 보관하세요.</span><button type="button" data-goto-inventory>가방 탭 열기</button></div>`;
+  }).join("") : soleNotice || `<div class="workbench-empty"><b>조건에 맞는 가방 자령이 없습니다</b><span>필터를 바꾸거나 소환 자령을 가방에 보관하세요.</span><button type="button" data-goto-inventory>가방 탭 열기</button></div>`;
 
   const quote = ctx.engine.quoteDismantle([...dismantleSelection], dismantleOptions());
   // [J-1] "木+3" 은 무엇이 3인지 안 말한다 — 문기·분해 점수 각각에 단위를 붙인다.
@@ -129,8 +163,10 @@ export function renderGrowth(): void {
     // [J-1] 오행 강화가 먹는 것은 그 오행의 문기다 — 글자 하나만 두면 무엇인지 모른다.
     const currency = label === UPGRADE_UNAVAILABLE_LABEL ? "" : scope === "global" ? " 엽전" : ` ${ctx.growthElement} 문기`;
     // FB7-강화: 이번 투자가 10단계 이정표를 지나면 버튼에 里 표식을 얹는다.
+    // 앞의 공백을 그냥 두면 91px 버튼에서 里 만 셋째 줄로 떨어져 나가, 깨진
+    // 글자 한 자처럼 읽혔다("최대 +48 · / 5922 엽전 / 里"). 화폐 낱말에 붙인다.
     const crossesMilestone = quoteForAmount.levels > 0 && upgradeMilestoneCount(quoteForAmount.toLevel) > upgradeMilestoneCount(quoteForAmount.fromLevel);
-    return `<button type="button" data-growth-upgrade-scope="${scope}" data-growth-stat="${stat}" data-growth-amount="${amount}" ${!active || quoteForAmount.levels <= 0 || !quoteForAmount.affordable ? "disabled" : ""}>${label}${currency}${crossesMilestone ? ` <i class="growth-milestone-flag" title="10단계 이정표 도달 · 추가 보너스">里</i>` : ""}</button>`;
+    return `<button type="button" data-growth-upgrade-scope="${scope}" data-growth-stat="${stat}" data-growth-amount="${amount}" ${!active || quoteForAmount.levels <= 0 || !quoteForAmount.affordable ? "disabled" : ""}>${label}${currency}${crossesMilestone ? `&nbsp;<i class="growth-milestone-flag" title="10단계 이정표 도달 · 추가 보너스">里</i>` : ""}</button>`;
   }).join("");
   // FB7-강화: 10단계 이정표마다 4단계치 보너스가 더 붙는다. 행마다 이정표
   // 누적과 다음 이정표까지 남은 단계를 함께 적어 "후반에도 오를 이유"를 보인다.
@@ -140,15 +176,19 @@ export function renderGrowth(): void {
     const bonusLabel = formatStatBonus(stat, perLevel * UPGRADE_MILESTONE_LEVEL_BONUS);
     return `이정표 ${UPGRADE_MILESTONE_INTERVAL}단계마다 ${bonusLabel}${milestones > 0 ? ` · 달성 ${milestones}회` : ""}${level < 99 ? ` · 다음까지 ${toNext}단계` : ""}`;
   };
+  // [S/P-25] 설명 줄은 자리(242px)보다 두 배 가까이 길어 뒤가 통째로 잘렸다.
+  // 절 560 이 두 줄로 펴 주지만, 그래도 못 담는 극단을 위해 전문을 title 에 남긴다.
   const globalRows = UPGRADE_STAT_ORDER.map((stat) => {
     const meta = UPGRADE_STAT_META[stat];
     const level = ctx.engine.state.globalUpgrades[stat];
-    return `<article class="growth-stat-row"><i>${meta.glyph}</i><div><b>공용 ${meta.label} <em>Lv.${level}/99</em></b><small>${meta.description} · 현재 ${formatStatBonus(stat, ctx.engine.globalUpgradeBonus(stat))} · ${milestoneNote(stat, level, meta.globalPerLevel)}</small></div><span>${batchButtons("global", stat)}</span></article>`;
+    const note = `${meta.description} · 현재 ${formatStatBonus(stat, ctx.engine.globalUpgradeBonus(stat))} · ${milestoneNote(stat, level, meta.globalPerLevel)}`;
+    return `<article class="growth-stat-row"><i>${meta.glyph}</i><div><b>공용 ${meta.label} <em>Lv.${level}/99</em></b><small title="${escapeHtml(note)}">${note}</small></div><span>${batchButtons("global", stat)}</span></article>`;
   }).join("");
   const elementRows = UPGRADE_STAT_ORDER.map((stat) => {
     const meta = UPGRADE_STAT_META[stat];
     const level = ctx.engine.state.elementUpgrades[ctx.growthElement][stat];
-    return `<article class="growth-stat-row is-element" style="--element:${ELEMENT_STYLES[ctx.growthElement].color}"><i>${meta.glyph}</i><div><b>${ctx.growthElement}행 ${meta.label} <em>Lv.${level}/99</em></b><small>현재 ${formatStatBonus(stat, ctx.engine.elementUpgradeBonus(ctx.growthElement, stat))} · 단계당 ${formatStatBonus(stat, meta.elementPerLevel)} · ${milestoneNote(stat, level, meta.elementPerLevel)}</small></div><span>${batchButtons("element", stat)}</span></article>`;
+    const note = `현재 ${formatStatBonus(stat, ctx.engine.elementUpgradeBonus(ctx.growthElement, stat))} · 단계당 ${formatStatBonus(stat, meta.elementPerLevel)} · ${milestoneNote(stat, level, meta.elementPerLevel)}`;
+    return `<article class="growth-stat-row is-element" style="--element:${ELEMENT_STYLES[ctx.growthElement].color}"><i>${meta.glyph}</i><div><b>${ctx.growthElement}행 ${meta.label} <em>Lv.${level}/99</em></b><small title="${escapeHtml(note)}">${note}</small></div><span>${batchButtons("element", stat)}</span></article>`;
   }).join("");
   const traitRows = ELEMENT_TRAITS[ctx.growthElement].map((trait, traitIndex) => {
     const level = ctx.engine.elementTraitLevel(ctx.growthElement, traitIndex);
@@ -178,7 +218,15 @@ export function wireGrowth2(): void {
     });
   }
   must<HTMLElement>("#growth-dismantle-list").addEventListener("click", (event) => {
-    if (!(event.target as HTMLElement).closest("[data-goto-inventory]")) return;
+    const target = event.target as HTMLElement;
+    // 원인 지목 안내의 바로가기 — 필터 줄까지 눈을 옮기지 않고 그 자리에서 푼다.
+    if (target.closest("[data-dismantle-unique-off]")) {
+      sound.unlock();
+      setDismantleProtectsUnique(false);
+      sound.playUiConfirm();
+      return;
+    }
+    if (!target.closest("[data-goto-inventory]")) return;
     setPanelTab("inventory");
   });
   must<HTMLElement>("#growth-dismantle-list").addEventListener("change", (event) => {
@@ -214,10 +262,20 @@ export function wireGrowth2(): void {
     const towers = quote.ids.map((id) => ctx.engine.state.inventoryTowers.find((tower) => tower.id === id)).filter((tower): tower is Tower => Boolean(tower));
     const towerLabel = towers.map((tower) => `${tower.char}(${tower.wuxing} ${towerProgressionLabel(tower)})`).join(" · ");
     const gainLabel = essenceGainsLabel(quote.gains);
-    if (!window.confirm(`${towers.length}기를 한 번에 분해합니다.\n${towerLabel}\n획득: ${gainLabel}`)) return;
-    const result = ctx.engine.dismantleTowers(quote.ids, dismantleOptions());
-    if (result.ok) dismantleSelection.clear();
-    handleAction(result);
+    // [S/P-08] 브라우저 기본 확인 창 → 게임 서책 확인 창.
+    openConfirm({
+      eyebrow: "강화 제련소",
+      title: `${towers.length}기를 한 번에 분해할까요?`,
+      lines: [
+        `<b>${escapeHtml(towerLabel)}</b>`,
+        `획득 ${escapeHtml(gainLabel || "없음")} · 되돌릴 수 없습니다.`
+      ],
+      confirmLabel: `${towers.length}기 분해`
+    }, () => {
+      const result = ctx.engine.dismantleTowers(quote.ids, dismantleOptions());
+      if (result.ok) dismantleSelection.clear();
+      handleAction(result);
+    });
   });
   must<HTMLElement>("#growth-element-tabs").addEventListener("click", (event) => {
     const wuxing = (event.target as HTMLElement).closest<HTMLButtonElement>("[data-growth-element]")?.dataset.growthElement as Wuxing | undefined;
@@ -243,12 +301,29 @@ export function wireGrowth2(): void {
       : scope === "element" && stat
         ? ctx.engine.quoteElementUpgrade(ctx.growthElement, stat, amount)
         : ctx.engine.quoteElementTraitUpgrade(ctx.growthElement, traitIndex, amount);
-    if (amount === "max" && !window.confirm(`실제 누적 비용 ${quote.cost}을 사용해 ${quote.levels}단계 강화할까요? (${quote.fromLevel} → ${quote.toLevel})`)) return;
-    const result = scope === "global" && stat
-      ? ctx.engine.upgradeGlobal(stat, amount)
-      : scope === "element" && stat
-        ? ctx.engine.upgradeElement(ctx.growthElement, stat, amount)
-        : ctx.engine.upgradeElementTrait(ctx.growthElement, traitIndex, amount);
-    handleAction(result);
+    const apply = (): void => {
+      const result = scope === "global" && stat
+        ? ctx.engine.upgradeGlobal(stat, amount)
+        : scope === "element" && stat
+          ? ctx.engine.upgradeElement(ctx.growthElement, stat, amount)
+          : ctx.engine.upgradeElementTrait(ctx.growthElement, traitIndex, amount);
+      handleAction(result);
+    };
+    // [S/P-08] [최대]는 가진 자원을 통째로 쓴다 — 확인 1회를 서책 창으로 세운다.
+    if (amount !== "max") {
+      apply();
+      return;
+    }
+    const currency = scope === "global" ? "엽전" : `${ctx.growthElement} 문기`;
+    openConfirm({
+      eyebrow: "강화 제련소",
+      title: `${quote.levels}단계를 한 번에 올릴까요?`,
+      lines: [
+        `Lv.${quote.fromLevel} → <b>Lv.${quote.toLevel}</b>`,
+        `누적 비용 <b>${quote.cost} ${escapeHtml(currency)}</b>`
+      ],
+      confirmLabel: `+${quote.levels}단계 강화`,
+      tone: "neutral"
+    }, apply);
   });
 }

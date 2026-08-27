@@ -6,6 +6,7 @@ import { elementProjectileImage } from "../combat-fx-sprites";
 import { isReady as isPolishSpriteReady } from "../polish-sprites";
 import { calmBattlefield, canvas, context, ctx } from "../app-context";
 import { drawIdiomRipples, isWorldPointVisible } from "./draw";
+import { placeStageLabel } from "./stage-labels";
 
 interface ProjectileFx {
   from: Point;
@@ -269,10 +270,23 @@ export function updateAndDrawFx(delta: number): void {
     context.globalAlpha = 1 - ratio;
     context.fillStyle = floater.color;
     context.textAlign = "center";
-    context.font = String(floater.large ? 900 : 800) + " " + String(floater.large ? 23 : 16) + "px sans-serif";
+    // [S/P-12] 기준선(alphabetic) 대신 가운데를 쓴다 — 클램프가 상자로 셈하므로
+    // 그리는 자리와 상자의 중심이 같아야 위·아래 여백이 실제로 맞는다.
+    context.textBaseline = "middle";
+    const fontSize = floater.large ? 23 : 16;
+    context.font = String(floater.large ? 900 : 800) + " " + String(fontSize) + "px sans-serif";
     context.shadowColor = "#050810";
     context.shadowBlur = 5;
-    context.fillText(floater.text, floater.at.x, floater.at.y - 25 - ratio * 28);
+    // 피해 수치는 개체가 가장자리에 서면 무대 밖으로 나가 잘렸고, 같은 적을
+    // 여러 번 때리면 한 점에 겹쳐 쌓였다. 무대 안으로 밀고, 겹치면 위로 민다.
+    const spot = placeStageLabel(
+      floater.at.x,
+      floater.at.y - 25 - ratio * 28,
+      context.measureText(floater.text).width / 2,
+      fontSize * 0.62,
+      { avoidOverlap: true, kind: "damage" }
+    );
+    context.fillText(floater.text, spot.x, spot.y);
     context.restore();
   }
   drawIdiomRipples();

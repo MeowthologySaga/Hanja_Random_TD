@@ -6,10 +6,10 @@ import {
   getCatalog,
   globalUpgradeCost,
   maxSummonStageForWave,
-  multiSummonCost,
   researchUnlockWave,
   summonStageUnlockWave
 } from "../src/core/hanzi";
+import { multiSummonCost } from "../src/core/engine-tuning";
 import type { Enemy, RegionCode, Tower } from "../src/core/types";
 
 function tower(region: RegionCode, char: string, id: number, cell: number): Tower {

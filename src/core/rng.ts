@@ -40,6 +40,18 @@ export class SeededRng {
   snapshot(): number {
     return this.state;
   }
+
+  /**
+   * `snapshot()` 이 뜬 내부 상태를 그대로 되돌린다 — 런 저장·이어하기(트랙 V)의
+   * 결정성 축.
+   *
+   * 이 난수기의 상태는 uint32 하나가 전부라(mulberry32 계열) 스냅샷 한 숫자면
+   * 다음에 나올 수열이 완전히 정해진다. 저장 시점의 숫자를 되돌려 놓으면
+   * 이어 돌린 판과 쭉 돌린 판이 같은 눈을 본다.
+   */
+  restore(state: number): void {
+    this.state = state >>> 0;
+  }
 }
 
 export function createRunSeed(now = Date.now()): string {

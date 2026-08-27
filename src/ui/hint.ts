@@ -35,6 +35,17 @@ const HINT_STORAGE_SUFFIX = ":v1";
 /** 저절로 걷히기까지의 시간. 코치와 달리 게임을 막지 않으므로 짧게 잡는다. */
 const HINT_AUTO_HIDE_MS = 8000;
 
+/**
+ * 안내가 걷힌 뒤 다음 안내를 세우기까지의 재장전 지연 — 트랙 R(P-27).
+ *
+ * 안내를 [확인]으로 걷으면 다음 안내가 **같은 자리에** 바로 다음 프레임에
+ * 즉시 떴다(중급 소환 → 부적). 사람 눈에는 "안 걷혔다"로 보이고, 걷으려던
+ * 클릭이 새 안내를 향한 클릭이 되어 두 번째 안내를 못 보고 지나친다.
+ * 지금까지 e2e 가 통과한 것은 1프레임 여유가 우연히 맞아떨어졌기 때문이다.
+ * 말풍선 하나가 사라지는 것을 눈이 확인할 만큼만 비운다.
+ */
+const HINT_RELOAD_DELAY_MS = 500;
+
 function hintStorageKey(id: string): string {
   return HINT_STORAGE_PREFIX + id + HINT_STORAGE_SUFFIX;
 }
@@ -114,7 +125,7 @@ const ONE_SHOT_HINTS: readonly OneShotHint[] = [
     id: "talisman",
     target: "#talisman-tab",
     title: () => "부적 만들기가 켜져 있습니다",
-    body: () => "한자를 따라 쓰고 [부적 봉인]을 누르면 그 글자의 자령이 보상을 두고 갑니다. 그 대신 이 모드에서는 적이 5% 강해져요 — 원치 않으면 설정에서 끌 수 있습니다.",
+    body: () => "한자를 따라 쓰고 [부적 완성]을 누르면 그 글자의 자령이 보상을 두고 갑니다. 부적은 웨이브마다 3장씩 더해지고 안 쓴 장수는 그대로 쌓이니 서두르지 않아도 됩니다. 그 대신 이 모드에서는 적이 5% 강해져요 — 원치 않으면 설정에서 끌 수 있습니다.",
     // 기본 켜짐(트랙 C2)이라 대부분의 사람은 이 탭을 처음 본다. 탭이 실제로
     // 서 있는 순간 딱 한 번만 짚는다. 수련장은 자체 각본이 화면을 이끌므로 비킨다.
     when: () => ctx.talismanMode && shell.dataset.tutorial !== "1"
@@ -124,6 +135,9 @@ const ONE_SHOT_HINTS: readonly OneShotHint[] = [
 let activeHint: OneShotHint | null = null;
 
 let hintTimer = 0;
+
+/** 마지막 안내가 걷힌 시각. 0 이면 아직 아무 안내도 서지 않았다는 뜻이다. */
+let hintHiddenAt = 0;
 
 /**
  * 대상이 스크롤 접힘 아래에 있어 안 보일 때 한 번만 굴려 꺼낸다(항목당 1회).
@@ -201,6 +215,9 @@ function layoutHint(target: HTMLElement): void {
 
 export function hideOneShotHint(): void {
   window.clearTimeout(hintTimer);
+  // 재장전 시계는 실제로 서 있던 안내가 걷힐 때만 돌린다 — 아무것도 없을 때의
+  // 무해한 호출(바깥 클릭·차단 판정)까지 세면 첫 안내가 늘 반 초씩 늦는다.
+  if (activeHint !== null) hintHiddenAt = performance.now();
   activeHint = null;
   must<HTMLElement>("#hint-layer").hidden = true;
 }
@@ -236,6 +253,8 @@ export function syncOneShotHints(): void {
     return;
   }
   if (!running) return;
+  // 방금 걷힌 안내의 자리를 다음 안내가 그대로 이어받지 않게 한 박자 비운다.
+  if (hintHiddenAt > 0 && performance.now() - hintHiddenAt < HINT_RELOAD_DELAY_MS) return;
   for (const hint of ONE_SHOT_HINTS) {
     if (hintSeen(hint.id) || hintBlockedByOthers(hint) || !hint.when()) continue;
     const target = laidOut(hint.target);

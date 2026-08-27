@@ -7,8 +7,8 @@
 import { CASUAL_STAR_BINS, CASUAL_STAR_COLORS } from "../core/casual";
 import { MAX_ENEMIES, WORLD_HEIGHT, WORLD_WIDTH } from "../core/content";
 import { CHEONJAMUN_JARYEONG_DEX_META } from "../core/cheonjamun-jaryeong-dex";
-import { casualSummonStarDistribution, type SummonStarBand } from "../core/engine-tuning";
-import { GAME_CONFIG, SUMMON_STAR_BANDS } from "../core/hanzi";
+import { casualSummonStarDistribution, SUMMON_COST_MULTIPLIER, type SummonStarBand } from "../core/engine-tuning";
+import { GAME_CONFIG, SUMMON_INTENT_LABELS, SUMMON_STAR_BANDS } from "../core/hanzi";
 import { NOTATION_AXIS_READY, NOTATION_LABELS } from "../core/notation";
 import type { CasualStar } from "../core/types";
 import type { DisplayMode } from "./display-mode";
@@ -68,6 +68,20 @@ function helpSummonOddsHtml(): string {
   return head + rows.join("");
 }
 
+/**
+ * 목적 소환 값의 배수표 — 상수(SUMMON_COST_MULTIPLIER)에서 그대로 읽어 그린다.
+ *
+ * 정찰료가 정액이던 시절에는 "+5·+12" 를 도움말에 적어도 틀리지 않았지만,
+ * 정률로 바꾼 뒤에는 기본가마다 실액이 달라진다. 문구를 손으로 적어 두면
+ * 계수를 만질 때마다 낡으므로 배수 자체를 보여 준다.
+ */
+function helpSummonPriceRatiosHtml(): string {
+  return (["discovery", "concentration", "lineage", "midstar", "highstar"] as const)
+    .filter((intent) => SUMMON_COST_MULTIPLIER[intent] !== 1)
+    .map((intent) => `${SUMMON_INTENT_LABELS[intent]} ${SUMMON_COST_MULTIPLIER[intent]}배`)
+    .join(" · ");
+}
+
 /** `#app` 에 넣을 게임 셸 전체 마크업. */
 export function appShellHtml(initialDisplayMode: DisplayMode): string {
   return `
@@ -89,7 +103,7 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
         <div class="stage-chip stage-chip--chapter" title="10웨이브마다 우두머리가 오는 장(章) 진행"><span>장</span><strong id="stage-chapter">1 / 10</strong></div>
         <div class="stage-chip stage-chip--phase"><i id="phase-dot"></i><strong id="stage-phase">준비 전</strong></div>
         <button id="early-button" class="early-start" type="button" data-testid="early-wave">시작 보너스</button>
-        <div id="enemy-limit-chip" class="stage-chip"><span>적 한계</span><strong id="stage-enemies">0 / ${MAX_ENEMIES}</strong></div>
+        <div id="enemy-limit-chip" class="stage-chip" title="지금 전장에 남은 적 수 / 적 상한 ${MAX_ENEMIES}체 — 상한에 닿으면 수비 실패입니다"><span>적 한계</span><strong id="stage-enemies">0 / ${MAX_ENEMIES}</strong></div>
       </div>
       <div id="active-idioms" class="active-idioms" aria-label="발동 중 사자성어" aria-live="polite"></div>
       <div class="wave-progress" aria-hidden="true"><i id="wave-progress-fill"></i></div>
@@ -149,7 +163,12 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
 
       <section class="resource-grid" aria-label="현재 자원">
         <div><span>엽전 <em id="interest-preview">이자 +2</em></span><strong id="gold-value">${GAME_CONFIG.startingGold}</strong></div>
-        <div><span>적 한계</span><strong id="enemy-cap-value">${MAX_ENEMIES}체</strong></div>
+        <!--
+          [S/P-11] 여기와 전장 상단 칩이 둘 다 "적 한계"였다. 칩은 "5 / 80"(현재/상한),
+          이 칸은 "80체"(상한만) — 같은 낱말이 한 화면에서 두 뜻으로 읽혔다.
+          한 낱말 한 뜻으로 가른다: 칩이 「적 한계」(차오르는 눈금), 이 칸이 「적 상한」(그 눈금의 끝).
+        -->
+        <div title="이 판이 버티는 적 수의 끝 — 전장 상단 [적 한계] 눈금이 이 수에 닿으면 수비 실패입니다"><span>적 상한</span><strong id="enemy-cap-value">${MAX_ENEMIES}체</strong></div>
         <div title="전장에 배치된 자령 수 / 열린 진의 칸 수"><span>배치</span><strong id="tower-count-value">0 / 16</strong></div>
         <div title="이번 런에 발동한 성어 수 / 이번 런 성어 목표 수"><span>성어 발동</span><strong id="goal-count-value">0 / 5</strong></div>
       </section>
@@ -277,6 +296,12 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
                 </figure>
               </div>
               <p>한 줄로 — 가로·세로·대각선 · 순서대로(역순 인정) · 같은 진 안에서</p>
+              <!--
+                트랙 N: ①②③④ 는 이 도식과 전장 명패에 같은 모양으로 뜨는데,
+                전장 쪽 인장이 무엇을 뜻하는지는 도움말에만 있었다. 도식 바로
+                아래에서 두 표시를 한 줄로 이어 준다.
+              -->
+              <p class="idiom-rule-legend"><i aria-hidden="true">③</i>전장 인장 = <b>성어의 몇 번째 글자</b> · 점선 칸이 다음 차례</p>
               <!-- [SKILL-V1] 성어의 가호 한 줄 규칙 안내 -->
               <p>성어의 가호 — 발동 중 성어와 같은 진의 자령 전원 공격 +10%, 같은 진의 추가 발동 성어당 +5%p. 줄이 흩어지면 즉시 사라집니다.</p>
             </section>
@@ -393,7 +418,8 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
         <button id="concentration-tab" type="button" data-panel-tab="concentration" role="tab" aria-selected="false">농축</button>
         <button id="growth-tab" type="button" data-panel-tab="growth" role="tab" aria-selected="false">강화</button>
         <i class="tab-divider" aria-hidden="true"></i>
-        <button id="goal-tab" type="button" data-panel-tab="goal" role="tab" aria-selected="false">목표 <small id="goal-tab-progress">0%</small></button>
+        <!-- [S/P-09] 배지는 「준비도」 — 카드의 「N/4자 보유」와 다른 셈이다. 문구는 goal.ts 가 채운다. -->
+        <button id="goal-tab" type="button" data-panel-tab="goal" role="tab" aria-selected="false">목표 <small id="goal-tab-progress">준비 0%</small></button>
         <button id="idiom-tab" type="button" data-panel-tab="idiom" role="tab" aria-selected="false">성어 <small id="idiom-tab-count">0/5</small></button>
       </nav>
 
@@ -464,6 +490,28 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
       </div>
     </dialog>
 
+    <!--
+      [S/P-08] 공용 확인 창.
+
+      되돌릴 수 없는 조작(분해·최대 강화)이 브라우저 기본 window.confirm 을 쓰고
+      있었다. 게임 어휘와 따로 놀 뿐 아니라, OS 창이라 자동화가 열지도 읽지도
+      못해 e2e 로 지킬 수 없었다. 수련장 그만두기 창(p00 서책)과 같은 틀을
+      빌려 한 벌로 세운다 — 부르는 쪽은 dialogs/confirm.ts 의 openConfirm 뿐이다.
+      승급 확인(#casual-fusion-confirm-dialog)은 재료 격자를 그리는 별개 창이라
+      그대로 둔다.
+    -->
+    <dialog id="confirm-dialog" class="p00-dialog confirm-dialog" aria-labelledby="confirm-dialog-title" data-testid="confirm-dialog">
+      <div class="p00-frame confirm-frame">
+        <p id="confirm-dialog-eyebrow" class="s00-mode-label">확인</p>
+        <h3 id="confirm-dialog-title">진행할까요?</h3>
+        <div id="confirm-dialog-body" class="confirm-dialog-body"></div>
+        <div class="p00-actions">
+          <button id="confirm-dialog-cancel" type="button" data-testid="confirm-dialog-cancel">취소</button>
+          <button id="confirm-dialog-accept" type="button" data-testid="confirm-dialog-accept">확인</button>
+        </div>
+      </div>
+    </dialog>
+
     <section id="title-overlay" class="modal-layer modal-layer--visible" aria-labelledby="title-heading">
       <div class="s00-stage" data-screen-id="S00">
         <img class="s00-env s00-env--legacy" data-src="${import.meta.env.BASE_URL}assets/ui/main-menu-b/background/S00-living-codex-empty-1280x720-v1.png" alt="" aria-hidden="true" />
@@ -500,6 +548,15 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
         <button id="tutorial-button" class="s00-training" type="button" data-testid="tutorial-button"
           aria-label="수련장. 소환부터 사자성어 발동까지 여덟 걸음으로 배우는 연습 판. 처음이라면 여기부터">
           <b>수련장</b><small>처음이라면 여기부터</small><em>八</em>
+        </button>
+
+        <!-- [트랙 V] 이어하기 목패. 저장된 런이 있을 때만 선다(기본 hidden).
+             요약은 두 줄로 갈라 둔다 — 진법·지역 한 줄, 웨이브·경과 한 줄.
+             한 줄로 이으면 목패 폭에서 접혀 인장과 겹친다. -->
+        <button id="resume-button" class="s00-resume" type="button" data-testid="resume-run" hidden>
+          <b>이어하기</b>
+          <small id="resume-summary"><i id="resume-where"></i><i id="resume-progress"></i></small>
+          <em>續</em>
         </button>
 
         <div class="s00-showcase" aria-hidden="true">
@@ -568,8 +625,9 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
             </div>
           </div>
 
-          <!-- gripe #6: 범위와 독립인 읽기 표기 축. 통합 표기 테이블(요청서 v8)
-               도착 전에는 NOTATION_AXIS_READY=false 로 숨긴다 — 플래그만 켜면 열린다. -->
+          <!-- gripe #6: 범위와 독립인 읽기 표기 축. 통합 표기 테이블 v2 가
+               도착해 NOTATION_AXIS_READY 를 켜면서 열렸다. 위 「한자 범위」가
+               어떤 글자가 나오는지를, 여기는 그 글자를 어떻게 읽는지를 정한다. -->
           <div class="s13-group s13-notation-group" role="radiogroup" aria-label="읽기 표기법" ${NOTATION_AXIS_READY ? "" : "hidden"}>
             <span class="s13-group-label">읽기 표기법</span>
             <div class="s13-options">
@@ -577,6 +635,7 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
               <button type="button" data-s13-notation="jp-onkun" role="radio"><b>${NOTATION_LABELS["jp-onkun"].name}</b><small>${NOTATION_LABELS["jp-onkun"].sample}</small></button>
               <button type="button" data-s13-notation="cn-pinyin" role="radio"><b>${NOTATION_LABELS["cn-pinyin"].name}</b><small>${NOTATION_LABELS["cn-pinyin"].sample}</small></button>
             </div>
+            <p class="s13-group-note">범위가 <b>어떤 글자가 나오는가</b>라면, 표기는 <b>그 글자를 어떻게 읽는가</b>입니다. 둘은 따로 고를 수 있어 중국 3,500자를 한국 훈음으로 익히는 식도 됩니다.<br>고른 표기에 그 글자의 사전 독음이 없으면 <span class="notation-mark notation-mark--derived">정자 기준</span> 또는 <span class="notation-mark notation-mark--substitute">대체 표기</span> 배지를 달아 빌려 온 값임을 밝힙니다.</p>
           </div>
 
           <div class="s13-group" aria-label="읽기 표기">
@@ -669,6 +728,7 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
               <article class="help-card"><b>계보<em class="help-mode-badge is-synth">자형연성</em></b><span>목표 계보의 재료만 노립니다. 12회마다 재료 1기 보장 · 30회 누적 시 확정 지급.</span></article>
               <article class="help-card"><b>중복 수집</b><span>농축과 분해에 쓸 보유 한자를 다시 부릅니다.</span></article>
             </div>
+            <p class="help-note">목적 소환의 값은 <b>기본 소환가의 배수</b>입니다 — ${helpSummonPriceRatiosHtml()}. 뽑을수록 기본가가 올라도 상품 사이의 값 비율은 그대로라, 초반에 유리하던 선택이 후반에 뒤집히지 않습니다.</p>
             <h3 class="help-subhead">더 얻는 길</h3>
             <div class="help-cards">
               <article class="help-card"><b>소환<em><kbd>1</kbd></em></b><span>지역별 1단계 한자를 품은 자령이 무작위로 나옵니다. 목표에 모자란 재료는 뽑을수록 확률이 올라갑니다.</span></article>
@@ -785,6 +845,8 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
             <div class="help-cards help-cards--tight">
               <article class="help-card"><b>자령 도감<em><kbd>C</kbd></em></b><span>전체 한자와 천자문 자령을 한 화면에서 봅니다. 별·독립 여부·조합표·쉬운 훈 풀이와 자령 초상화를 함께 확인합니다.</span></article>
               <article class="help-card"><b>자세한 읽기</b><span>선택 카드와 도감에서는 훈음·음독·훈독·병음과 뜻까지 확인합니다.</span></article>
+              <article class="help-card"><b>읽기 표기법</b><span>맞춤 진법에서 <b>한자 범위</b>와 따로 고릅니다. 범위는 어떤 글자가 나오는지를, 표기는 그 글자를 어떻게 읽는지를 정하므로 중국 3,500자를 한국 훈음으로 익히는 조합도 됩니다.</span></article>
+              <article class="help-card"><b>읽기 곁의 배지</b><span><span class="notation-mark notation-mark--derived">정자 기준</span>은 그 자형 대신 정자(옛 글자꼴)의 독음을 쓴다는 뜻이고, <span class="notation-mark notation-mark--substitute">대체 표기</span>는 그 문자권에 읽기가 없어 다른 문자권의 표기를 빌려 왔다는 뜻입니다. 빌려 온 뜻은 원문 그대로라 <i lang="en">기울인 글씨</i>로 갈라 둡니다 — 훈음으로 외우지 마세요.</span></article>
             </div>
           </section>
         </div>
@@ -820,7 +882,7 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
         <i aria-hidden="true"><em>OFF</em></i>
       </button>
       <button id="talisman-mode-toggle" class="settings-toggle" type="button" role="switch" aria-checked="false" data-testid="talisman-mode-toggle">
-        <span><b>학습 모드 · 부적 만들기</b><small>패널에 「부적」 탭이 섭니다. 부적지의 한자를 따라 쓰고 [부적 봉인]을 누르면 그 글자의 자령이 보상을 두고 갑니다 — 웨이브마다 3장 한 세트입니다. 부적 모드에서는 적이 5% 강해집니다. 그 대신 부적 보상을 얻습니다.</small></span>
+        <span><b>학습 모드 · 부적 만들기</b><small>패널에 「부적」 탭이 섭니다. 부적지의 한자를 따라 쓰고 [부적 완성]을 누르면 그 글자의 자령이 보상을 두고 갑니다 — 웨이브마다 3장이 더해지고 쓰지 않은 장수는 최대 30장까지 그대로 쌓입니다. 부적 모드에서는 적이 5% 강해집니다. 그 대신 부적 보상을 얻습니다.</small></span>
         <i aria-hidden="true"><em>OFF</em></i>
       </button>
       <section class="audio-settings" aria-labelledby="audio-settings-title">
@@ -893,7 +955,12 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
       </div>
       <div class="codex-toolbar">
         <div class="codex-mode-tabs" role="tablist" aria-label="도감 분류">
-          <button type="button" class="is-active" data-codex-mode="hanzi" role="tab" aria-selected="true">자령 도감 <small>${CHEONJAMUN_JARYEONG_DEX_META.total}+</small></button>
+          <!--
+            [S/P-23] 한 화면이 같은 수를 세 가지로 적었다 — 갈피 "1000+", 오행 거르개
+            "전체 1001", 요약 "1,001/1,001". 도감 안의 모든 개수는 이제 한 서식
+            (천 단위 쉼표)에 실제 실린 수를 적는다. 갈피 배지도 렌더가 채운다.
+          -->
+          <button type="button" class="is-active" data-codex-mode="hanzi" role="tab" aria-selected="true">자령 도감 <small id="codex-hanzi-count">${CHEONJAMUN_JARYEONG_DEX_META.total.toLocaleString("ko-KR")}</small></button>
           <button type="button" data-codex-mode="recipes" role="tab" aria-selected="false">조합표</button>
           <button type="button" data-codex-mode="idioms" role="tab" aria-selected="false">사자성어</button>
         </div>
