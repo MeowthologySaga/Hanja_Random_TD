@@ -517,11 +517,11 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
 
     <section id="title-overlay" class="modal-layer modal-layer--visible" aria-labelledby="title-heading">
       <div class="s00-stage" data-screen-id="S00">
-        <img class="s00-env s00-env--legacy" data-src="${import.meta.env.BASE_URL}assets/ui/main-menu-b/background/S00-living-codex-empty-1280x720-v1.png" alt="" aria-hidden="true" />
+        <img class="s00-env s00-env--legacy" data-src="${import.meta.env.BASE_URL}assets/ui/main-menu-b/background/S00-living-codex-empty-1280x720-v1.webp" alt="" aria-hidden="true" />
         <div id="s00-parallax" class="s00-parallax" aria-hidden="true">
-          <img id="s00-desk" class="s00-env s00-env--desk" data-src="${import.meta.env.BASE_URL}assets/ui/s00-layers-v1/S00-bg-desk-v2.png" alt="" aria-hidden="true" />
-          <img id="s00-book" class="s00-env s00-env--book" data-src="${import.meta.env.BASE_URL}assets/ui/s00-layers-v1/S00-bg-book-v2.png" alt="" aria-hidden="true" />
-          <img id="s00-foreground" class="s00-env s00-env--foreground" data-src="${import.meta.env.BASE_URL}assets/ui/s00-layers-v1/S00-fg-props-v2.png" alt="" aria-hidden="true" />
+          <img id="s00-desk" class="s00-env s00-env--desk" data-src="${import.meta.env.BASE_URL}assets/ui/s00-layers-v1/S00-bg-desk-v2.webp" alt="" aria-hidden="true" />
+          <img id="s00-book" class="s00-env s00-env--book" data-src="${import.meta.env.BASE_URL}assets/ui/s00-layers-v1/S00-bg-book-v2.webp" alt="" aria-hidden="true" />
+          <img id="s00-foreground" class="s00-env s00-env--foreground" data-src="${import.meta.env.BASE_URL}assets/ui/s00-layers-v1/S00-fg-props-v2.webp" alt="" aria-hidden="true" />
         </div>
 
         <div class="s00-title-plaque">
@@ -563,11 +563,11 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
         </button>
 
         <div class="s00-showcase" aria-hidden="true">
-          <figure style="left:455px;top:116px"><img class="s00-ring" data-src="${import.meta.env.BASE_URL}assets/ui/main-menu-b/rings/summon-ring-wood-v1.png" alt="" /><img class="s00-spirit" data-src="${import.meta.env.BASE_URL}assets/ui/main-menu-b/jaryeongs/menu-wood-orchid-frame-v1.png" alt="" /></figure>
-          <figure style="left:803px;top:112px"><img class="s00-ring" data-src="${import.meta.env.BASE_URL}assets/ui/main-menu-b/rings/summon-ring-earth-v1.png" alt="" /><img class="s00-spirit" data-src="${import.meta.env.BASE_URL}assets/ui/main-menu-b/jaryeongs/menu-earth-pottery-frame-v1.png" alt="" /></figure>
-          <figure style="left:368px;top:334px"><img class="s00-ring" data-src="${import.meta.env.BASE_URL}assets/ui/main-menu-b/rings/summon-ring-water-v1.png" alt="" /><img class="s00-spirit" data-src="${import.meta.env.BASE_URL}assets/ui/main-menu-b/jaryeongs/menu-water-ice-frame-v1.png" alt="" /></figure>
-          <figure style="left:637px;top:336px"><img class="s00-ring" data-src="${import.meta.env.BASE_URL}assets/ui/main-menu-b/rings/summon-ring-fire-v1.png" alt="" /><img class="s00-spirit" data-src="${import.meta.env.BASE_URL}assets/ui/main-menu-b/jaryeongs/menu-fire-fox-frame-v1.png" alt="" /></figure>
-          <figure style="left:965px;top:333px"><img class="s00-ring" data-src="${import.meta.env.BASE_URL}assets/ui/main-menu-b/rings/summon-ring-metal-v1.png" alt="" /><img class="s00-spirit" data-src="${import.meta.env.BASE_URL}assets/ui/main-menu-b/jaryeongs/menu-metal-mirror-frame-v1.png" alt="" /></figure>
+          <figure style="left:455px;top:116px"><img class="s00-ring" data-src="${import.meta.env.BASE_URL}assets/ui/main-menu-b/rings/summon-ring-wood-v1.webp" alt="" /><img class="s00-spirit" data-src="${import.meta.env.BASE_URL}assets/ui/main-menu-b/jaryeongs/menu-wood-orchid-frame-v1.webp" alt="" /></figure>
+          <figure style="left:803px;top:112px"><img class="s00-ring" data-src="${import.meta.env.BASE_URL}assets/ui/main-menu-b/rings/summon-ring-earth-v1.webp" alt="" /><img class="s00-spirit" data-src="${import.meta.env.BASE_URL}assets/ui/main-menu-b/jaryeongs/menu-earth-pottery-frame-v1.webp" alt="" /></figure>
+          <figure style="left:368px;top:334px"><img class="s00-ring" data-src="${import.meta.env.BASE_URL}assets/ui/main-menu-b/rings/summon-ring-water-v1.webp" alt="" /><img class="s00-spirit" data-src="${import.meta.env.BASE_URL}assets/ui/main-menu-b/jaryeongs/menu-water-ice-frame-v1.webp" alt="" /></figure>
+          <figure style="left:637px;top:336px"><img class="s00-ring" data-src="${import.meta.env.BASE_URL}assets/ui/main-menu-b/rings/summon-ring-fire-v1.webp" alt="" /><img class="s00-spirit" data-src="${import.meta.env.BASE_URL}assets/ui/main-menu-b/jaryeongs/menu-fire-fox-frame-v1.webp" alt="" /></figure>
+          <figure style="left:965px;top:333px"><img class="s00-ring" data-src="${import.meta.env.BASE_URL}assets/ui/main-menu-b/rings/summon-ring-metal-v1.webp" alt="" /><img class="s00-spirit" data-src="${import.meta.env.BASE_URL}assets/ui/main-menu-b/jaryeongs/menu-metal-mirror-frame-v1.webp" alt="" /></figure>
         </div>
 
         <button id="custom-formation-button" class="s00-custom" type="button"
@@ -864,7 +864,7 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
       <p class="settings-intro">게임 규칙은 그대로 유지됩니다. 전장 표시와 배경음악·효과음 믹스를 기기에 맞게 저장합니다.</p>
       <div class="display-mode-options" role="radiogroup" aria-label="전장 표시 모드">
         <button type="button" class="display-mode-option" data-display-mode-option="spirit" role="radio" data-testid="spirit-mode">
-          <span class="mode-preview mode-preview--spirit" style="background-image:url('${import.meta.env.BASE_URL}assets/jaryeongs/wood-mok/sheet-transparent.png')" aria-hidden="true"></span>
+          <span class="mode-preview mode-preview--spirit" style="background-image:url('${import.meta.env.BASE_URL}assets/jaryeongs/wood-mok/sheet-transparent.webp')" aria-hidden="true"></span>
           <span><b>자령 모드</b><em>기본 모드</em><small>기존 자령 이미지와 머리 위 한자·훈음을 함께 표시합니다.</small></span>
         </button>
         <button type="button" class="display-mode-option" data-display-mode-option="study" role="radio" data-testid="study-mode">

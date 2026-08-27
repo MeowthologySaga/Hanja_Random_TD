@@ -20,12 +20,12 @@ const SHEET_WIDTH = ENEMY_FRAME_SIZE * 2;
 const SHEET_HEIGHT = ENEMY_FRAME_SIZE;
 
 const ENEMY_SHEET_FILES: Readonly<Record<EnemyArchetype, string>> = Object.freeze({
-  normal: "enemy-ghost-procession-idle-2frame-v1.png",
-  swarm: "enemy-hundred-demons-idle-2frame-v1.png",
-  swift: "enemy-gale-hungry-ghost-idle-2frame-v1.png",
-  armored: "enemy-armored-jiangshi-idle-2frame-v1.png",
-  regenerator: "enemy-regenerating-yokai-idle-2frame-v1.png",
-  boss: "enemy-seal-breaker-boss-idle-2frame-v1.png"
+  normal: "enemy-ghost-procession-idle-2frame-v1.webp",
+  swarm: "enemy-hundred-demons-idle-2frame-v1.webp",
+  swift: "enemy-gale-hungry-ghost-idle-2frame-v1.webp",
+  armored: "enemy-armored-jiangshi-idle-2frame-v1.webp",
+  regenerator: "enemy-regenerating-yokai-idle-2frame-v1.webp",
+  boss: "enemy-seal-breaker-boss-idle-2frame-v1.webp"
 });
 
 /**

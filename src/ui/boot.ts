@@ -29,7 +29,7 @@ import { frame } from "./game-loop";
 import { syncPanel } from "./hud";
 import { mountS00, syncTitleModeSelection } from "./s00-menu";
 
-const hanjiPaperUrl = `${import.meta.env.BASE_URL}assets/map/hanji-ink-field/hanji-paper-base.png`;
+const hanjiPaperUrl = `${import.meta.env.BASE_URL}assets/map/hanji-ink-field/hanji-paper-base.webp`;
 
 /**
  * 한지 바탕(2.0MB)은 전장에서만 보인다. 모듈 평가 시점에 붙이면 S00 텍스처와
@@ -147,7 +147,7 @@ export function wireBoot3(): void {
    * 도착 전까지 먹 글자와 버튼만 메뉴 위에 둥둥 떠 보였다. CSS 가 쓰는
    * 것과 같은 경로로 미리 받아 둔다(R7-30 의 한지 바탕과 짝).
    */
-  for (const path of ["assets/ui/main-menu-b/ui/p00-scroll-frame-v1.png"]) {
+  for (const path of ["assets/ui/main-menu-b/ui/p00-scroll-frame-v1.webp"]) {
     const warm = new Image();
     warm.decoding = "async";
     // 하위 경로 배포(GitHub Pages)에서 루트 절대 경로는 404 가 된다 — 문서 기준으로.

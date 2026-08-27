@@ -54,11 +54,11 @@ interface SpiritSlot {
 }
 
 const SPIRIT_SLOTS: readonly SpiritSlot[] = [
-  { ring: "rings/summon-ring-wood-v1.png", spirit: "jaryeongs/menu-wood-orchid-frame-v1.png", x: -1.5, z: -0.85, dy: 0 },
-  { ring: "rings/summon-ring-earth-v1.png", spirit: "jaryeongs/menu-earth-pottery-frame-v1.png", x: 1.55, z: -0.88, dy: -0.09 },
-  { ring: "rings/summon-ring-water-v1.png", spirit: "jaryeongs/menu-water-ice-frame-v1.png", x: -2.35, z: 0.62, dy: -0.11 },
-  { ring: "rings/summon-ring-fire-v1.png", spirit: "jaryeongs/menu-fire-fox-frame-v1.png", x: 0.2, z: 0.66, dy: 0 },
-  { ring: "rings/summon-ring-metal-v1.png", spirit: "jaryeongs/menu-metal-mirror-frame-v1.png", x: 2.5, z: 0.6, dy: -0.04 }
+  { ring: "rings/summon-ring-wood-v1.webp", spirit: "jaryeongs/menu-wood-orchid-frame-v1.webp", x: -1.5, z: -0.85, dy: 0 },
+  { ring: "rings/summon-ring-earth-v1.webp", spirit: "jaryeongs/menu-earth-pottery-frame-v1.webp", x: 1.55, z: -0.88, dy: -0.09 },
+  { ring: "rings/summon-ring-water-v1.webp", spirit: "jaryeongs/menu-water-ice-frame-v1.webp", x: -2.35, z: 0.62, dy: -0.11 },
+  { ring: "rings/summon-ring-fire-v1.webp", spirit: "jaryeongs/menu-fire-fox-frame-v1.webp", x: 0.2, z: 0.66, dy: 0 },
+  { ring: "rings/summon-ring-metal-v1.webp", spirit: "jaryeongs/menu-metal-mirror-frame-v1.webp", x: 2.5, z: 0.6, dy: -0.04 }
 ];
 
 /**
@@ -76,21 +76,21 @@ interface ArtCrop {
 }
 
 const CROPS: Record<string, ArtCrop> = {
-  "ui/mode-bookmark-default-v1.png": { w: 840, h: 264, l: 35, t: 9, r: 16, b: 39 },
-  "ui/mode-bookmark-hover-v1.png": { w: 840, h: 264, l: 35, t: 9, r: 16, b: 39 },
-  "ui/mode-bookmark-selected-v1.png": { w: 840, h: 264, l: 4, t: 15, r: 4, b: 15 },
-  "ui/region-seal-default-v1.png": { w: 396, h: 378, l: 48, t: 5, r: 71, b: 12 },
-  "ui/region-seal-hover-v1.png": { w: 396, h: 378, l: 45, t: 2, r: 68, b: 9 },
-  "ui/region-seal-selected-kr-v1.png": { w: 396, h: 378, l: 80, t: 6, r: 38, b: 16 },
-  "ui/region-seal-selected-ea-v1.png": { w: 396, h: 378, l: 80, t: 6, r: 38, b: 16 },
-  "ui/region-seal-disabled-v1.png": { w: 396, h: 378, l: 48, t: 5, r: 71, b: 12 },
-  "ui/start-clasp-default-v1.png": { w: 840, h: 354, l: 9, t: 3, r: 10, b: 3 },
-  "ui/start-clasp-hover-v1.png": { w: 840, h: 354, l: 9, t: 3, r: 10, b: 3 },
-  "ui/start-clasp-pressed-v1.png": { w: 840, h: 354, l: 9, t: 3, r: 10, b: 3 },
-  "ui/selection-summary-strip-v1.png": { w: 990, h: 162, l: 296, t: 38, r: 304, b: 37 },
-  "ui/custom-note-default-v1.png": { w: 444, h: 252, l: 12, t: 10, r: 6, b: 19 },
-  "ui/custom-note-hover-v1.png": { w: 444, h: 252, l: 12, t: 9, r: 4, b: 19 },
-  "ui/custom-note-pressed-v1.png": { w: 444, h: 252, l: 12, t: 16, r: 6, b: 13 }
+  "ui/mode-bookmark-default-v1.webp": { w: 840, h: 264, l: 35, t: 9, r: 16, b: 39 },
+  "ui/mode-bookmark-hover-v1.webp": { w: 840, h: 264, l: 35, t: 9, r: 16, b: 39 },
+  "ui/mode-bookmark-selected-v1.webp": { w: 840, h: 264, l: 4, t: 15, r: 4, b: 15 },
+  "ui/region-seal-default-v1.webp": { w: 396, h: 378, l: 48, t: 5, r: 71, b: 12 },
+  "ui/region-seal-hover-v1.webp": { w: 396, h: 378, l: 45, t: 2, r: 68, b: 9 },
+  "ui/region-seal-selected-kr-v1.webp": { w: 396, h: 378, l: 80, t: 6, r: 38, b: 16 },
+  "ui/region-seal-selected-ea-v1.webp": { w: 396, h: 378, l: 80, t: 6, r: 38, b: 16 },
+  "ui/region-seal-disabled-v1.webp": { w: 396, h: 378, l: 48, t: 5, r: 71, b: 12 },
+  "ui/start-clasp-default-v1.webp": { w: 840, h: 354, l: 9, t: 3, r: 10, b: 3 },
+  "ui/start-clasp-hover-v1.webp": { w: 840, h: 354, l: 9, t: 3, r: 10, b: 3 },
+  "ui/start-clasp-pressed-v1.webp": { w: 840, h: 354, l: 9, t: 3, r: 10, b: 3 },
+  "ui/selection-summary-strip-v1.webp": { w: 990, h: 162, l: 296, t: 38, r: 304, b: 37 },
+  "ui/custom-note-default-v1.webp": { w: 444, h: 252, l: 12, t: 10, r: 6, b: 19 },
+  "ui/custom-note-hover-v1.webp": { w: 444, h: 252, l: 12, t: 9, r: 4, b: 19 },
+  "ui/custom-note-pressed-v1.webp": { w: 444, h: 252, l: 12, t: 16, r: 6, b: 13 }
 };
 
 /** DOM 버튼을 붙일 3D 앵커(모델 면 중심). 중립 카메라 대비 편차만 적용한다. */
@@ -379,7 +379,7 @@ export function startMenu3d(host: HTMLElement): Menu3dHandle {
   // 뒷벽에는 키라이트가 닿지 않아 albedo 만으로는 검게 죽는다. 같은 텍스처를
   // 낮은 자체 발광으로 물려 서재가 "흐릿하게" 보이게 하되, 책·자령보다
   // 선명해지지 않도록 세기를 0.4 로 묶는다.
-  applyTexture(wallMaterial, "study-backdrop-v1.png", { material: { roughness: 1, metalness: 0 }, selfLit: 0.4 });
+  applyTexture(wallMaterial, "study-backdrop-v1.webp", { material: { roughness: 1, metalness: 0 }, selfLit: 0.4 });
   const wall = new Mesh(new PlaneGeometry(64, 28), wallMaterial);
   wall.position.set(0, 8, -12);
   scene.add(wall);
@@ -411,7 +411,7 @@ export function startMenu3d(host: HTMLElement): Menu3dHandle {
   const deskTexture = sharpen(new CanvasTexture(deskCanvas));
   deskTexture.colorSpace = SRGBColorSpace;
   const deskMaterial = new MeshStandardMaterial({ map: deskTexture, roughness: 0.72, metalness: 0.12 });
-  applyTexture(deskMaterial, "desk-wood-v1.png", { material: { roughness: 0.68, metalness: 0 } });
+  applyTexture(deskMaterial, "desk-wood-v1.webp", { material: { roughness: 0.68, metalness: 0 } });
   const desk = new Mesh(new PlaneGeometry(34, 22), deskMaterial);
   desk.rotation.x = -Math.PI / 2;
   desk.position.y = -0.72;
@@ -425,7 +425,7 @@ export function startMenu3d(host: HTMLElement): Menu3dHandle {
   const bookmarkSide = new MeshStandardMaterial({ map: leather, roughness: 0.62 });
 
   const coverMaterial = new MeshStandardMaterial({ map: leather, roughness: 0.58, metalness: 0.14 });
-  applyTexture(coverMaterial, "book-cover-leather-v1.png", { material: { roughness: 0.72, metalness: 0.04 } });
+  applyTexture(coverMaterial, "book-cover-leather-v1.webp", { material: { roughness: 0.72, metalness: 0.04 } });
   const cover = new Mesh(new BoxGeometry(10.4, 0.22, 5.9), coverMaterial);
   cover.position.y = -0.58;
   cover.receiveShadow = true;
@@ -439,7 +439,7 @@ export function startMenu3d(host: HTMLElement): Menu3dHandle {
   }
 
   const spineMaterial = new MeshStandardMaterial({ map: leather, roughness: 0.6 });
-  applyTexture(spineMaterial, "book-spine-v1.png", { material: { roughness: 0.66, metalness: 0.05 } });
+  applyTexture(spineMaterial, "book-spine-v1.webp", { material: { roughness: 0.66, metalness: 0.05 } });
   const spine = new Mesh(new CylinderGeometry(0.34, 0.34, 5.8, 18, 1, false, 0, Math.PI), spineMaterial);
   spine.rotation.x = Math.PI / 2;
   spine.rotation.y = Math.PI / 2;
@@ -450,7 +450,7 @@ export function startMenu3d(host: HTMLElement): Menu3dHandle {
   const edgeMaterial = new MeshStandardMaterial({ map: edge, roughness: 0.9 });
   // 512x128 은 4:1 이고 블록 옆면은 5.15:0.62 ≈ 8:1 이라 가로로 두 번 반복해야
   // 종이 층이 늘어지지 않는다. 세로는 Clamp 로 두어 위아래가 이어지지 않게 한다.
-  applyTexture(edgeMaterial, "book-page-edge-v1.png", {
+  applyTexture(edgeMaterial, "book-page-edge-v1.webp", {
     material: { roughness: 0.92, metalness: 0 },
     configure: (texture) => {
       texture.wrapS = RepeatWrapping;
@@ -505,7 +505,7 @@ export function startMenu3d(host: HTMLElement): Menu3dHandle {
     const pageMaterial = new MeshStandardMaterial({ map: pageTextures[sideName], roughness: 0.95 });
     // 페이지 괘선·얼룩은 재질 디테일일 뿐 고리 좌표가 아니다. 고리는 아래에서
     // 별도 평면으로 계속 그려지고 UV 를 굽지 않는다.
-    applyTexture(pageMaterial, `book-page-${sideName}-v1.png`, {
+    applyTexture(pageMaterial, `book-page-${sideName}-v1.webp`, {
       material: { roughness: 0.88, metalness: 0 }
     });
     const page = new Mesh(curvedPage(side === -1 ? 1 : -1), pageMaterial);
@@ -568,7 +568,7 @@ export function startMenu3d(host: HTMLElement): Menu3dHandle {
         skin.material.needsUpdate = true;
       }
     };
-    const cached = cachedTexture(S00_TEXTURE("desk-props-atlas-v1.webp")) ?? cachedTexture(S00_TEXTURE("desk-props-atlas-v1.png"));
+    const cached = cachedTexture(S00_TEXTURE("desk-props-atlas-v1.webp")) ?? cachedTexture(S00_TEXTURE("desk-props-atlas-v1.webp"));
     if (cached) {
       commit(cached);
       return;
@@ -578,10 +578,10 @@ export function startMenu3d(host: HTMLElement): Menu3dHandle {
       commit,
       undefined,
       () => loader.load(
-        S00_TEXTURE("desk-props-atlas-v1.png"),
+        S00_TEXTURE("desk-props-atlas-v1.webp"),
         commit,
         undefined,
-        () => console.warn("[menu3d] 텍스처 로드 실패, 절차 재질 유지: desk-props-atlas-v1.png")
+        () => console.warn("[menu3d] 텍스처 로드 실패, 절차 재질 유지: desk-props-atlas-v1.webp")
       )
     );
   }
@@ -694,9 +694,9 @@ export function startMenu3d(host: HTMLElement): Menu3dHandle {
   };
 
   const bookmarkSkins = {
-    default: croppedTexture("ui/mode-bookmark-default-v1.png"),
-    hover: croppedTexture("ui/mode-bookmark-hover-v1.png"),
-    selected: croppedTexture("ui/mode-bookmark-selected-v1.png")
+    default: croppedTexture("ui/mode-bookmark-default-v1.webp"),
+    hover: croppedTexture("ui/mode-bookmark-hover-v1.webp"),
+    selected: croppedTexture("ui/mode-bookmark-selected-v1.webp")
   };
   // 서갈피: 왼쪽 페이지 블록 층 사이에서 삐져나온 가죽 판.
   // 위 갈피는 위층(-0.10), 아래 갈피는 아래층(-0.30)에 끼워 층이 읽히게 한다.
@@ -720,11 +720,11 @@ export function startMenu3d(host: HTMLElement): Menu3dHandle {
   }
 
   const sealSkins = {
-    default: croppedTexture("ui/region-seal-default-v1.png"),
-    hover: croppedTexture("ui/region-seal-hover-v1.png"),
-    "selected-kr": croppedTexture("ui/region-seal-selected-kr-v1.png"),
-    "selected-ea": croppedTexture("ui/region-seal-selected-ea-v1.png"),
-    disabled: croppedTexture("ui/region-seal-disabled-v1.png")
+    default: croppedTexture("ui/region-seal-default-v1.webp"),
+    hover: croppedTexture("ui/region-seal-hover-v1.webp"),
+    "selected-kr": croppedTexture("ui/region-seal-selected-kr-v1.webp"),
+    "selected-ea": croppedTexture("ui/region-seal-selected-ea-v1.webp"),
+    disabled: croppedTexture("ui/region-seal-disabled-v1.webp")
   };
   // 지역 인장: 표지 앞턱에 걸쳐 앞으로 기운 밀랍 원판. 아트에 리본이
   // 포함돼 있어 판이 표지 아래로 늘어진다.
@@ -751,9 +751,9 @@ export function startMenu3d(host: HTMLElement): Menu3dHandle {
   }
 
   const claspSkins = {
-    default: croppedTexture("ui/start-clasp-default-v1.png"),
-    hover: croppedTexture("ui/start-clasp-hover-v1.png"),
-    pressed: croppedTexture("ui/start-clasp-pressed-v1.png")
+    default: croppedTexture("ui/start-clasp-default-v1.webp"),
+    hover: croppedTexture("ui/start-clasp-hover-v1.webp"),
+    pressed: croppedTexture("ui/start-clasp-pressed-v1.webp")
   };
   // 출정 걸쇠: 표지 우앞 모서리를 물고 있는 금속 잠금판. 앞턱 너머로 돌출.
   const claspMaterial = new MeshStandardMaterial({ map: claspSkins.default, transparent: true, roughness: 0.55, metalness: 0 });
@@ -779,7 +779,7 @@ export function startMenu3d(host: HTMLElement): Menu3dHandle {
   });
 
   // 요약 띠: 오른 페이지 위에 눕힌 종이 띠.
-  const summaryTexture = croppedTexture("ui/selection-summary-strip-v1.png");
+  const summaryTexture = croppedTexture("ui/selection-summary-strip-v1.webp");
   const summaryStrip = new Mesh(
     new PlaneGeometry(2.35, 0.56),
     new MeshStandardMaterial({ map: summaryTexture, transparent: true, roughness: 0.9, depthWrite: false })
@@ -791,9 +791,9 @@ export function startMenu3d(host: HTMLElement): Menu3dHandle {
 
   // 맞춤 쪽지: 책상 위 종이. 눌리는 조작물이므로 상태 스킨을 바인딩한다.
   const noteSkins = {
-    default: croppedTexture("ui/custom-note-default-v1.png"),
-    hover: croppedTexture("ui/custom-note-hover-v1.png"),
-    pressed: croppedTexture("ui/custom-note-pressed-v1.png")
+    default: croppedTexture("ui/custom-note-default-v1.webp"),
+    hover: croppedTexture("ui/custom-note-hover-v1.webp"),
+    pressed: croppedTexture("ui/custom-note-pressed-v1.webp")
   };
   const noteMaterial = new MeshStandardMaterial({ map: noteSkins.default, transparent: true, roughness: 0.95 });
   const note = new Mesh(new PlaneGeometry(1.55, 0.9), noteMaterial);

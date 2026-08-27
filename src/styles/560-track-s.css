@@ -52,7 +52,7 @@
 #confirm-dialog-cancel {
   color: #d8c9a8;
   background:
-    url("/assets/ui/main-menu-b/ui/button-secondary-default-v1.png") center / 100% 100% no-repeat,
+    url("/assets/ui/main-menu-b/ui/button-secondary-default-v1.webp") center / 100% 100% no-repeat,
     #26221c;
   filter: grayscale(0.35);
 }
@@ -62,14 +62,14 @@
 #confirm-dialog-accept {
   color: #ffeec4;
   background:
-    url("/assets/ui/main-menu-b/ui/button-secondary-default-v1.png") center / 100% 100% no-repeat,
+    url("/assets/ui/main-menu-b/ui/button-secondary-default-v1.webp") center / 100% 100% no-repeat,
     #3a2a16;
 }
 
 /* 되돌릴 수 없는 조작은 붉은 인장으로 한 번 더 눈에 걸리게 한다. */
 #confirm-dialog-accept.is-danger {
   background:
-    url("/assets/ui/main-menu-b/ui/button-secondary-default-v1.png") center / 100% 100% no-repeat,
+    url("/assets/ui/main-menu-b/ui/button-secondary-default-v1.webp") center / 100% 100% no-repeat,
     #4a1e14;
 }
 

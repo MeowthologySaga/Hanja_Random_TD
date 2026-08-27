@@ -2,8 +2,8 @@
  * 전장 명패 래스터 로더.
  *
  * 출처: handoff/to-claude/v5-compact-tier-assets-pack-v1/assets/nameplates/
- *  - `nameplate-compact-v1.png`: 252x120 원본 → 84x40 고정 표시(상시 명패).
- *  - `nameplate-detail-v1.png`: 312x180 원본 → 104x60 고정 표시(상세 팝오버).
+ *  - `nameplate-compact-v1.webp`: 252x120 원본 → 84x40 고정 표시(상시 명패).
+ *  - `nameplate-detail-v1.webp`: 312x180 원본 → 104x60 고정 표시(상세 팝오버).
  *
  * 두 파일 모두 무문자 RGBA 다. 한자·훈음·별·상태는 굽지 않고 코드가 그린다.
  * 9-slice 하지 않고 각각 1/3 배율로만 그린다. 늘여서 서로 대체하지 않는다.
@@ -41,7 +41,7 @@ export function nameplateImage(kind: NameplateKind): HTMLImageElement {
   if (cached) return cached;
   const image = new Image();
   image.decoding = "async";
-  image.src = `${BASE_PATH}nameplate-${kind}-v1.png`;
+  image.src = `${BASE_PATH}nameplate-${kind}-v1.webp`;
   images.set(kind, image);
   void image.decode().catch(() => undefined);
   return image;

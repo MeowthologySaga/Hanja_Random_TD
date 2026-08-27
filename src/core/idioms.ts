@@ -6,7 +6,7 @@ import { SeededRng } from "./rng";
 /**
  * 순번 인장 글리프 ①②③④.
  *
- * 전장 명패에 얹히는 인장(`assets/ui/.../idiom-order-seal-N-v1.png`), 성어 탭의
+ * 전장 명패에 얹히는 인장(`assets/ui/.../idiom-order-seal-N-v1.webp`), 성어 탭의
  * 규칙 도식, 도감 상세의 번호가 모두 이 순번을 말한다. 설명 문구도 같은 글자로
  * 가리켜야 "화면의 그것"과 이어진다 — 1~4 로 바꿔 쓰면 연결이 끊긴다.
  */

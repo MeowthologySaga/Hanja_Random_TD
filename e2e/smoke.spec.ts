@@ -103,7 +103,7 @@ test("renders a viewport-fixed hanji field and moving ink current at minimum zoo
   await expect(page.locator("#battle-canvas")).toHaveAttribute("data-map-surface", "hanji-ink");
   await expect(page.locator("#battle-canvas")).toHaveAttribute("data-hit-feedback", "ink-local");
   await expect(page.locator(".battle-stage")).toHaveCSS("filter", "none");
-  await expect.poll(() => page.evaluate(() => performance.getEntriesByType("resource").some((entry) => entry.name.includes("/assets/map/hanji-ink-field/hanji-paper-base.png")))).toBe(true);
+  await expect.poll(() => page.evaluate(() => performance.getEntriesByType("resource").some((entry) => entry.name.includes("/assets/map/hanji-ink-field/hanji-paper-base.webp")))).toBe(true);
   const firstCurrent = Number(await page.locator("#battle-canvas").getAttribute("data-ink-current-offset"));
   await page.waitForTimeout(350);
   expect(Number(await page.locator("#battle-canvas").getAttribute("data-ink-current-offset"))).toBe(firstCurrent);
@@ -121,7 +121,7 @@ test("renders a viewport-fixed hanji field and moving ink current at minimum zoo
     return { color: style.backgroundColor, image: style.backgroundImage };
   });
   expect(backdrop.color).toBe("rgb(239, 227, 194)");
-  expect(backdrop.image).toContain("hanji-paper-base.png");
+  expect(backdrop.image).toContain("hanji-paper-base.webp");
   await page.screenshot({ path: "artifacts/hanji-ink-route-zoomout-1280x720.png", fullPage: true });
 });
 
@@ -452,7 +452,7 @@ test("opens the idiom goal codex frame and summons from all one thousand Cheonja
   await expect(page.locator("#summon-pool-summary")).toContainText("천자문 1,000종");
   await page.locator('button[data-summon-product="discovery"]').click();
   await expect(page.locator(".summon-result-card > strong")).not.toHaveText("");
-  await expect(page.locator(".summon-result-art")).toHaveCSS("background-image", /cheonjamun-runtime-v1\/kr-[0-9a-f]+\.png/u);
+  await expect(page.locator(".summon-result-art")).toHaveCSS("background-image", /cheonjamun-runtime-v1\/kr-[0-9a-f]+\.webp/u);
   await expect(page.locator(".summon-result-art")).toHaveCSS("background-size", "contain");
   await page.locator("#summon-reveal-close").click();
   await openCodex(page);
@@ -984,21 +984,27 @@ test("renders only QC-passed generated CN sprites at 1280x720", async ({ page })
 
   await expect(page.locator("#stage-region")).toHaveText("중국");
   await expect(page.locator(".summon-result-card > strong")).toHaveText("一");
-  await expect(page.locator(".summon-result-art")).toHaveCSS("background-image", /assets\/jaryeongs\/cn-4e00\/sheet-transparent\.png/u);
+  await expect(page.locator(".summon-result-art")).toHaveCSS("background-image", /assets\/jaryeongs\/cn-4e00\/sheet-transparent\.webp/u);
 
-  const passedAsset = await page.request.get("/assets/jaryeongs/cn-4e00/sheet-transparent.png");
-  expect(passedAsset.headers()["content-type"]).toContain("image/png");
-  expect((await passedAsset.body()).byteLength).toBe(225141);
+  /*
+   * 자령 시트는 WebP 다(2026-08-27). 무손실 PNG 로는 640×640 한 장이 평균 287KB 라,
+   * 결과 카드가 그림을 기다리는 시간이 회선을 그대로 탔다 — 같은 픽셀 규격 그대로
+   * 포맷만 바꿔 21% 로 줄였다. 바이트 수는 그래서 규격이 아니라 상한만 지킨다.
+   */
+  const passedAsset = await page.request.get("/assets/jaryeongs/cn-4e00/sheet-transparent.webp");
+  expect(passedAsset.headers()["content-type"]).toContain("image/webp");
+  expect((await passedAsset.body()).byteLength).toBeGreaterThan(10_000);
+  expect((await passedAsset.body()).byteLength).toBeLessThan(120_000);
 
-  const retryPassedAsset = await page.request.get("/assets/jaryeongs/cn-5382/sheet-transparent.png");
-  expect(retryPassedAsset.headers()["content-type"]).toContain("image/png");
+  const retryPassedAsset = await page.request.get("/assets/jaryeongs/cn-5382/sheet-transparent.webp");
+  expect(retryPassedAsset.headers()["content-type"]).toContain("image/webp");
   expect((await retryPassedAsset.body()).byteLength).toBeGreaterThan(10_000);
 
-  const intentionallySkippedAsset = await page.request.get("/assets/jaryeongs/cn-4eba/sheet-transparent.png");
-  expect(intentionallySkippedAsset.headers()["content-type"]).not.toContain("image/png");
+  const intentionallySkippedAsset = await page.request.get("/assets/jaryeongs/cn-4eba/sheet-transparent.webp");
+  expect(intentionallySkippedAsset.headers()["content-type"]).not.toContain("image/webp");
   for (const rejectedId of ["cn-4e8e", "cn-58eb"]) {
-    const rejectedAsset = await page.request.get(`/assets/jaryeongs/${rejectedId}/sheet-transparent.png`);
-    expect(rejectedAsset.headers()["content-type"]).not.toContain("image/png");
+    const rejectedAsset = await page.request.get(`/assets/jaryeongs/${rejectedId}/sheet-transparent.webp`);
+    expect(rejectedAsset.headers()["content-type"]).not.toContain("image/webp");
   }
   await page.screenshot({ path: "artifacts/cn-generated-jaryeong-1280x720.png", fullPage: true });
 });

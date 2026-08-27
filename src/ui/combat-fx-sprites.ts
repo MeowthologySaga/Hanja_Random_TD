@@ -39,11 +39,11 @@ function imageFor(path: string): HTMLImageElement {
 }
 
 export function elementProjectileImage(wuxing: Wuxing): HTMLImageElement {
-  return imageFor(`element-projectiles/${ELEMENT_ASSET_NAMES[wuxing]}.png`);
+  return imageFor(`element-projectiles/${ELEMENT_ASSET_NAMES[wuxing]}.webp`);
 }
 
 export function elementZoneImage(wuxing: Wuxing): HTMLImageElement {
-  return imageFor(`aoe-modular-v1/aoe-${ZONE_ASSET_NAMES[wuxing]}-v1.png`);
+  return imageFor(`aoe-modular-v1/aoe-${ZONE_ASSET_NAMES[wuxing]}-v1.webp`);
 }
 
 export function preloadCombatFxSprites(): void {

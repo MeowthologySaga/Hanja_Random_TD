@@ -81,7 +81,7 @@ function summonCardMarkup(options: {
   const badge = options.badge ? `<mark class="summon-card-badge">${escapeHtml(options.badge)}</mark>` : "";
   const spoken = escapeHtml([options.label, options.effect, options.price, ...options.details].filter((part) => part !== "").join(" · "));
   return `<button type="button" class="${classes.join(" ")}" data-summon-product="${options.key}"${testId}`
-    + ` style="--product:${options.tint};--product-icon:url('${SUMMON_ICON_BASE}${options.icon}.png')"`
+    + ` style="--product:${options.tint};--product-icon:url('${SUMMON_ICON_BASE}${options.icon}.webp')"`
     + ` title="${spoken}" aria-label="${spoken}"`
     + `${options.disabled ? " disabled" : ""}>`
     + `<i class="summon-card-icon" aria-hidden="true"></i>`

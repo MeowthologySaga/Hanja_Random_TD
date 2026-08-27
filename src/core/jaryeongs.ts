@@ -125,7 +125,9 @@ export function jaryeongVisualFor(char: string, wuxing: Wuxing, region: RegionCo
 }
 
 export function jaryeongAssetPath(visual: JaryeongVisual): string {
-  return visual.assetPath ?? `assets/jaryeongs/${visual.id}/sheet-transparent.png`;
+  // 시트도 런타임 스프라이트와 같은 WebP 다 — 무손실 PNG 로는 640×640 한 장이
+  // 평균 287KB 라, 결과 카드가 뜨는 순간 그 한 장이 자령 셋 몫을 먹었다.
+  return visual.assetPath ?? `assets/jaryeongs/${visual.id}/sheet-transparent.webp`;
 }
 
 export function jaryeongFrameLayout(visual: JaryeongVisual): "2x2" | "single" {

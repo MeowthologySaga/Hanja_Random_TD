@@ -44,7 +44,7 @@ export function hideSummonReveal(): void {
 }
 
 /**
- * v5 팩의 `fusion-vortex-v1.png` 를 공개 순간에 겹친다. 명세의 100–420ms 구간을
+ * v5 팩의 `fusion-vortex-v1.webp` 를 공개 순간에 겹친다. 명세의 100–420ms 구간을
  * CSS 애니메이션으로 맡기고(prefers-reduced-motion 이면 회전 없이 페이드),
  * 파일이 없으면 클래스만 붙었다 떨어지므로 기존 소환 광채로 자연히 폴백된다.
  */
