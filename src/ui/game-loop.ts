@@ -80,7 +80,10 @@ export function frame(now: number): void {
    * 목패를 여기서 다시 그리지는 않는다 — 타이틀 화면으로 가는 유일한 길이
    * 새로고침이라(returnToMenu) 목패는 다음 부팅에 어차피 슬롯을 다시 읽는다.
    */
-  if (frameEvents.some((event) => event.type === "phase" && event.phase === "prep")) autoSaveRun();
+  // 웨이브가 넘어갈 때마다 저장한다 — 준비 단계 복귀만 기다리면 잔존 합류로
+  // 연쇄되는 판에서 저장이 영영 멈춘다(위 주석의 사고).
+  if (frameEvents.some((event) => event.type === "phase" && event.phase === "prep")
+    || frameEvents.some((event) => event.type === "wave")) autoSaveRun();
   const summonEvents = frameEvents.filter((event): event is Extract<GameEvent, { type: "summon" }> => event.type === "summon");
   if (summonEvents.length > 0) showSummonReveal(summonEvents);
   else showCasualFusionReveal(frameEvents.filter((event): event is Extract<GameEvent, { type: "casualFuse" }> => event.type === "casualFuse"));

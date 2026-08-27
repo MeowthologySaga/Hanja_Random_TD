@@ -110,8 +110,10 @@ export function parseRunSave(raw: string | null): RunSave | null {
   if (!NOTATIONS.includes(parsed.notation as NotationCode)) return null;
   if (typeof parsed.talismanMode !== "boolean") return null;
   if (typeof parsed.savedAt !== "number" || !Number.isFinite(parsed.savedAt)) return null;
-  // 이어 돌릴 수 있는 판인가 — 준비 시간이어야 하고 웨이브가 하나는 지나 있어야 한다.
-  if (state.phase !== "prep") return null;
+  // 이어 돌릴 수 있는 판인가 — 웨이브가 하나는 지나 있어야 한다. 교전 중
+  // 지점도 받는다(잔존 합류로 연쇄되는 판은 준비 단계로 돌아오지 않아,
+  // 준비만 받으면 저장이 첫 웨이브에 멈춘다 — captureRunSave 주석 참조).
+  if (state.phase !== "prep" && state.phase !== "combat") return null;
   if (typeof state.wave !== "number" || !Number.isInteger(state.wave) || state.wave < 1) return null;
   if (typeof state.maxWaves !== "number" || typeof state.gold !== "number") return null;
   if (typeof state.elapsed !== "number" || !Number.isFinite(state.elapsed)) return null;
@@ -133,7 +135,13 @@ export function captureRunSave(engine: GameEngine, ui: RunSaveUiState, now = Dat
   const state = engine.state;
   // 수련장은 저장 대상이 아니다(맨 위 주석). 아직 시작하지 않았거나 끝난 판도 마찬가지.
   if (engine.tutorial) return null;
-  if (state.phase !== "prep" || state.wave < 1) return null;
+  // 준비 단계만 저장하던 규칙은 이 게임에서 치명적이었다 — 잔존 적이 다음
+  // 웨이브로 합류하면(advanceWaveWithSurvivors) 판은 준비 단계로 돌아오지 않고
+  // 웨이브만 계속 넘어간다. 그래서 잘 굴러가는 판일수록 저장이 초반 웨이브에
+  // 멈춰, 이어하기가 "엽전·부적이 리셋된 판"처럼 보였다(사용자 제보).
+  // 적은 상태 본체에 담긴 순수 자료라 교전 중 지점도 그대로 되살릴 수 있다.
+  if (state.wave < 1) return null;
+  if (state.phase !== "prep" && state.phase !== "combat") return null;
   return {
     version: RUN_SAVE_VERSION,
     savedAt: now,

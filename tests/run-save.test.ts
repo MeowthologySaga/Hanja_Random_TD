@@ -251,13 +251,18 @@ describe("parseRunSave 무결성", () => {
       { ...base, savedAt: "어제" },
       { ...base, runtime: {} },
       { ...base, ui: {} },
-      { ...base, state: { ...(base.state as Record<string, unknown>), phase: "combat" } },
+      // 교전 중 저장은 이제 정상이다(잔존 합류로 연쇄되는 판을 담기 위함) —
+      // 대신 판이 끝난 상태는 여전히 거른다.
+      { ...base, state: { ...(base.state as Record<string, unknown>), phase: "defeat" } },
       { ...base, state: { ...(base.state as Record<string, unknown>), wave: 0 } },
       { ...base, state: { ...(base.state as Record<string, unknown>), towers: "여럿" } },
       // 시드만 바꿔치기한 파일 — 상태 안의 시드와 갈라진다.
       { ...base, seed: "손댄-시드" }
     ];
     for (const candidate of broken) expect(parseRunSave(JSON.stringify(candidate))).toBeNull();
+    // 교전 중 지점은 받아야 한다 — 저장이 첫 웨이브에 멈추던 사고의 수정분.
+    const inCombat = { ...base, state: { ...(base.state as Record<string, unknown>), phase: "combat" } };
+    expect(parseRunSave(JSON.stringify(inCombat))).not.toBeNull();
     // 원본은 여전히 살아 있어야 한다 — 위 검사가 과하게 잡는 게 아님을 못박는다.
     expect(parseRunSave(raw)).not.toBeNull();
   });
