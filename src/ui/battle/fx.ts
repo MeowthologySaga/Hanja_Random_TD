@@ -284,7 +284,7 @@ export function updateAndDrawFx(delta: number): void {
       floater.at.y - 25 - ratio * 28,
       context.measureText(floater.text).width / 2,
       fontSize * 0.62,
-      { avoidOverlap: true }
+      { avoidOverlap: true, kind: "damage" }
     );
     context.fillText(floater.text, spot.x, spot.y);
     context.restore();

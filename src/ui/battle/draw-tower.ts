@@ -25,7 +25,7 @@ import { canvas, context, ctx, reducedMotion } from "../app-context";
 import { casualStarOf, towerProgressionLabel } from "../format";
 import { drawIdiomOrderBadge } from "./draw";
 import { towerAbilityPopups } from "./fx";
-import { clampScreenBox, placeStageLabel } from "./stage-labels";
+import { clampScreenBox, placeStageLabel, reserveScreenBox } from "./stage-labels";
 
 function drawChargeRing(
   cell: Point,
@@ -227,6 +227,9 @@ function drawSpiritTowerLabel(tower: Tower, cell: Point, selected: boolean, mate
   const anchorX = ctx.mapOffset.x + cell.x * ctx.mapZoom;
   const anchorY = ctx.mapOffset.y + cell.y * ctx.mapZoom;
   const shift = clampScreenBox(anchorX + left, anchorY + top, width, height);
+  // 밀린 최종 자리를 등록한다 — 피해 수치("약점 171")가 `巖 바위 암` 명패를
+  // 덮던 자리다. 명패는 못 박힌 글자라 스스로는 피하지 않고 자리만 내민다.
+  reserveScreenBox(anchorX + left + shift.dx, anchorY + top + shift.dy, width, height, "plaque");
   context.translate(shift.dx, shift.dy);
   drawPlaqueShell(glyphOnly ? null : "compact", width, height, top, glyphOnly ? width : layout.glyphColumn, style.color, selected || material);
 
@@ -597,7 +600,8 @@ function drawTowerAbilityPopup(tower: Tower, cell: Point): void {
   context.font = '900 9px "Malgun Gothic", sans-serif';
   const width = Math.min(96, Math.max(52, context.measureText(popup.text).width + 16));
   // 알약은 자령 위에 뜨는 가장 높은 라벨이라, 최상단 줄에서는 상단 칩 띠로 올라탔다.
-  const spot = placeStageLabel(cell.x, y, width / 2, 9);
+  // 자리도 등록한다 — "225/236" 같은 피해 수치가 `鍛 파갑 단조` 배너를 덮던 자리다.
+  const spot = placeStageLabel(cell.x, y, width / 2, 9, { kind: "ability" });
   context.fillStyle = "rgba(3, 8, 15, 0.94)";
   context.strokeStyle = popup.color;
   context.lineWidth = 1.5;

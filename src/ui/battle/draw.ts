@@ -226,7 +226,8 @@ function drawAbilityZones(): void {
     // 좌우로 잘리거나 하단 조작 칩 밑으로 들어갔다. 겹침 밀기는 쓰지 않는다
     // (장판 위로 밀면 이름표가 제 장판을 덮는다).
     const zoneLabel = `${zone.kind === "frost" ? "霜 서리길" : zone.kind === "ember" ? "燼 잔불" : zone.wuxing} ${remaining.toFixed(1)}초`;
-    const zoneSpot = placeStageLabel(point.x, point.y + zone.radius + 13, context.measureText(zoneLabel).width / 2, 6.5);
+    // 자리는 등록한다 — 피해 수치가 그 위로 사다리를 타게(2차 감사 후속).
+    const zoneSpot = placeStageLabel(point.x, point.y + zone.radius + 13, context.measureText(zoneLabel).width / 2, 6.5, { kind: "zone" });
     context.fillText(zoneLabel, zoneSpot.x, zoneSpot.y);
     context.restore();
   }
