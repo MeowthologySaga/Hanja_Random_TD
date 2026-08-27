@@ -134,7 +134,10 @@ test("shows a readable single summon reveal and explains the ten-pull milestone"
   await expect(page.locator("#summon-reveal-title")).toContainText("자령 출현");
   await expect(page.locator(".summon-result-card")).toHaveCount(1);
   await expect(page.locator(".summon-result-card > strong")).not.toHaveText("");
-  await expect(page.locator(".summon-result-spirit")).toHaveCSS("background-image", /assets\/jaryeongs\//u);
+  // 초상은 두 겹이다(절 670) — 그림은 위층 .summon-result-art 가 인다.
+  await expect(page.locator(".summon-result-art")).toHaveCSS("background-image", /assets\/jaryeongs\//u);
+  // 아래층은 그림이 늦거나 오지 않아도 남는 오행 글자다. 빈 사각형이 보이지 않는다는 계약.
+  await expect(page.locator(".summon-result-fallback")).not.toHaveText("");
   await page.locator("#battle-canvas").click({ position: { x: 40, y: 110 } });
   await expect(page.locator("#summon-reveal")).not.toHaveClass(/is-active/u);
 
@@ -449,8 +452,8 @@ test("opens the idiom goal codex frame and summons from all one thousand Cheonja
   await expect(page.locator("#summon-pool-summary")).toContainText("천자문 1,000종");
   await page.locator('button[data-summon-product="discovery"]').click();
   await expect(page.locator(".summon-result-card > strong")).not.toHaveText("");
-  await expect(page.locator(".summon-result-spirit")).toHaveCSS("background-image", /cheonjamun-runtime-v1\/kr-[0-9a-f]+\.png/u);
-  await expect(page.locator(".summon-result-spirit")).toHaveCSS("background-size", "contain");
+  await expect(page.locator(".summon-result-art")).toHaveCSS("background-image", /cheonjamun-runtime-v1\/kr-[0-9a-f]+\.png/u);
+  await expect(page.locator(".summon-result-art")).toHaveCSS("background-size", "contain");
   await page.locator("#summon-reveal-close").click();
   await openCodex(page);
   // 도감은 "자령 도감 / 조합표 / 사자성어" 3분류로 통합됐다. 옛 `jaryeongs` 전용 모드는 사라지고
@@ -981,7 +984,7 @@ test("renders only QC-passed generated CN sprites at 1280x720", async ({ page })
 
   await expect(page.locator("#stage-region")).toHaveText("중국");
   await expect(page.locator(".summon-result-card > strong")).toHaveText("一");
-  await expect(page.locator(".summon-result-spirit")).toHaveCSS("background-image", /assets\/jaryeongs\/cn-4e00\/sheet-transparent\.png/u);
+  await expect(page.locator(".summon-result-art")).toHaveCSS("background-image", /assets\/jaryeongs\/cn-4e00\/sheet-transparent\.png/u);
 
   const passedAsset = await page.request.get("/assets/jaryeongs/cn-4e00/sheet-transparent.png");
   expect(passedAsset.headers()["content-type"]).toContain("image/png");
