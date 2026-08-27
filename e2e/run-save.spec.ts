@@ -189,11 +189,24 @@ test("새 판은 두고 온 판을 덮기 전에 한 번 묻는다", async ({ pa
   await page.reload();
 
   await expect(page.getByTestId("resume-run")).toBeVisible();
+  /*
+   * 제목 화면의 배경이 살아 있는지 확인 창 전후로 견준다.
+   *
+   * [출정] 클릭에 3D 서재 해제가 걸려 있던 시절, 두고 온 판이 있으면 출정이
+   * **판을 시작하지 않고 확인 창만 띄우는데** 배경만 사라져 화면이 통째로
+   * 검게 됐다(사용자 제보). 해제 시점을 판이 실제로 서는 순간으로 옮겼다.
+   * 3D·2D 어느 배경이든 "누르기 전과 같다"로 재서 두 경로를 함께 지킨다.
+   */
   await page.getByTestId("start-run").click();
 
   const confirmDialog = page.getByTestId("confirm-dialog");
   await expect(confirmDialog).toBeVisible();
   await expect(confirmDialog).toContainText("두고 온 판을 덮고");
+  // 3D 서재가 켜진 판이라면 캔버스가 그대로 살아 있어야 한다 — 이 단언이 곧
+  // "확인 창 뒤가 검지 않다" 이다. 2D 폴백(WebGL 없음)에서는 조건이 비고 통과한다.
+  await expect.poll(async () => page.locator(".s00-stage").evaluate((el) => (
+    el.classList.contains("is-3d") ? el.querySelectorAll("canvas").length : 1
+  ))).toBeGreaterThan(0);
   await page.screenshot({ path: `${SHOT_DIR}/overwrite-confirm-1280x720.png` });
 
   // 돌아가기 — 저장본도 목패도 그대로 남는다.
