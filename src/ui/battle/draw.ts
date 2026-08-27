@@ -50,7 +50,7 @@ import { calmBattlefield, canvas, context, ctx, reducedMotion, shell } from "../
 import { casualStarOf } from "../format";
 import { drawHoveredTowerCard, drawTower, flushTowerPlaques } from "./draw-tower";
 import { type IdiomRippleFx, idiomRipples, pushPooled, ringPool, rings, takeRing, updateAndDrawFx } from "./fx";
-import { placeStageLabel, resetStageLabels } from "./stage-labels";
+import { clampScreenBox, placeStageLabel, resetStageLabels } from "./stage-labels";
 
 export function drawWorld(delta: number): void {
   // [S/P-12] 부동 라벨의 자리 잡기는 프레임 단위다 — 지난 프레임의 점유는 잊는다.
@@ -110,6 +110,76 @@ export function isWorldPointVisible(point: Point, margin = 0): boolean {
   const y = ctx.mapOffset.y + point.y * ctx.mapZoom;
   const screenMargin = margin * ctx.mapZoom;
   return x >= -screenMargin && x <= WORLD_WIDTH + screenMargin && y >= -screenMargin && y <= WORLD_HEIGHT + screenMargin;
+}
+
+/*
+ * 오행진 라벨(진 이름표 · 자물쇠 안내)의 자리 잡기.
+ *
+ * 두 라벨은 진 중심에서 위 122 · 아래 24 월드px 에 못 박힌 채 카메라 변환
+ * 안에서 그려진다. 기본 시점은 배율 2.0 이라 월드 880x720 중 가운데만
+ * 담아(app-context.ts DEFAULT_MAP_ZOOM) 가장자리 진의 라벨이 화면 밖으로
+ * 나갔다 — 실측(기본 시점, 캔버스 논리 px): 금진 이름표 좌 142 잘림(글자가
+ * 한 획도 안 보인다) · 목진 우 33 · 수진은 위로 284 라 아예 없음 · 자물쇠
+ * 안내도 금진 좌 29 · 목진 우 27. 자령 명패·능력 배너가 이미 쓰는
+ * clampScreenBox 로 무대 안 안전 영역에 물린다. 라벨은 배율 안에서
+ * 그려지므로 화면 px 로 재고 배율로 나눠 월드 px 로 되돌린다.
+ *
+ * 클램프만 걸면 안 되는 이유 — 실측. 벽으로 밀린 라벨끼리 한 줄에 포갠다.
+ * 기본 시점에서 수진 이름표와 수진 자물쇠 안내가 둘 다 상단 안전선으로
+ * 밀려 4,026px² 겹쳤고(안내가 뒤에 그려져 이름표를 덮어 "수진 · 18엽"까지만
+ * 읽혔다), 배율 2.6 중앙 시점에서는 이름표 셋이 좌상단 한 줄에 몰려
+ * 28,262px² 겹쳤다. 카메라 64가지를 훑으니 클램프만 건 판은 28곳에서 없던
+ * 겹침을 만들었다. stage-labels.ts 머리 주석의 "라벨이 라벨을 통째로 덮는다"가
+ * 바로 이 계열이다. 그래서 이미 잡힌 진 라벨과 겹치면 아예 그리지 않는다 —
+ * 지금도 그 라벨은 화면 밖이라 잃을 것이 없고, 자물쇠 안내는 같은 진의
+ * 이름표가 대개 같은 문안을 이미 이고 있다.
+ *
+ * 자리를 stage-labels 의 occupied 에 올리지 않는 이유: 피해 수치의 회피
+ * 사다리가 함께 흔들려 e2e track-w 의 단언이 움직인다. 여기서 필요한 것은
+ * 진 라벨끼리의 중재뿐이라 이 파일 안에 가둔다.
+ */
+interface FormationLabelBox {
+  readonly left: number;
+  readonly top: number;
+  readonly right: number;
+  readonly bottom: number;
+}
+
+/** 이번 프레임에 자리를 잡은 진 라벨들(화면 px). drawBoard 가 프레임마다 비운다. */
+const formationLabelBoxes: FormationLabelBox[] = [];
+
+/**
+ * 진 라벨을 무대 안전 영역 안으로 물릴 거리(화면 px). 그리지 말아야 하면 null.
+ *
+ * null 이 되는 두 경우:
+ *   ① 제단 사각(반지름 91)이 화면과 아예 겹치지 않는다 — 멀리 밀어 둔 진의
+ *      라벨이 모서리에 붙박여 "여기 없는 진"의 유령 라벨이 되는 것을 막는다.
+ *   ② 먼저 자리를 잡은 진 라벨과 겹친다 — 위 주석의 포갬을 막는다.
+ */
+function placeFormationLabel(
+  center: Point,
+  worldLeft: number,
+  worldTop: number,
+  worldWidth: number,
+  worldHeight: number
+): { dx: number; dy: number } | null {
+  if (!isWorldPointVisible(center, 91)) return null;
+  const left = ctx.mapOffset.x + worldLeft * ctx.mapZoom;
+  const top = ctx.mapOffset.y + worldTop * ctx.mapZoom;
+  const width = worldWidth * ctx.mapZoom;
+  const height = worldHeight * ctx.mapZoom;
+  const nudge = clampScreenBox(left, top, width, height);
+  const placed: FormationLabelBox = {
+    left: left + nudge.dx,
+    top: top + nudge.dy,
+    right: left + nudge.dx + width,
+    bottom: top + nudge.dy + height
+  };
+  for (const other of formationLabelBoxes) {
+    if (placed.left < other.right && placed.right > other.left && placed.top < other.bottom && placed.bottom > other.top) return null;
+  }
+  formationLabelBoxes.push(placed);
+  return nudge;
 }
 
 /** 장판 생성 시각 기록 — 스케일-인 연출과 생성 고리에 쓴다. */
@@ -447,6 +517,8 @@ function drawSpawnPortals(): void {
  * 아래로 드리우는 그림자로만 표현한다.
  */
 function drawBoard(): void {
+  // 지난 프레임의 라벨 자리는 이번 프레임과 무관하다(stage-labels 의 resetStageLabels 와 같은 규칙).
+  formationLabelBoxes.length = 0;
   context.save();
   context.textAlign = "center";
   const occupied = new Set(ctx.engine.state.towers.map((tower) => tower.cell));
@@ -587,17 +659,26 @@ function drawBoard(): void {
     const nameWidth = context.measureText(plateText).width + 16;
     // 판 위 중앙은 윗줄 자령 명패가 차지한다. 좌상단 모서리에 붙인다.
     const plateLeft = cx - 91;
-    context.fillStyle = "rgba(28, 25, 21, 0.94)";
-    context.beginPath();
-    context.roundRect(plateLeft, cy - 122, nameWidth, 17, [3, 8, 3, 8]);
-    context.fill();
-    context.strokeStyle = unlocked ? formation.color + "8c" : "rgba(112, 108, 102, 0.55)";
-    context.lineWidth = 1;
-    context.stroke();
-    context.fillStyle = unlocked ? "#f6ecd2" : unlockAffordable ? "#ffd98a" : "#a8a29a";
-    context.textAlign = "left";
-    context.fillText(plateText, plateLeft + 8, cy - 113.5);
-    context.textAlign = "center";
+    const plateTop = cy - 122;
+    // 무대 안전 영역 안으로 물리고, 이미 잡힌 진 라벨과 겹치면 그리지 않는다
+    // (placeFormationLabel 주석 참조).
+    const plateNudge = placeFormationLabel(formation.center, plateLeft, plateTop, nameWidth, 17);
+    if (plateNudge !== null) {
+      const plateX = plateLeft + plateNudge.dx / ctx.mapZoom;
+      const plateY = plateTop + plateNudge.dy / ctx.mapZoom;
+      context.fillStyle = "rgba(28, 25, 21, 0.94)";
+      context.beginPath();
+      context.roundRect(plateX, plateY, nameWidth, 17, [3, 8, 3, 8]);
+      context.fill();
+      context.strokeStyle = unlocked ? formation.color + "8c" : "rgba(112, 108, 102, 0.55)";
+      context.lineWidth = 1;
+      context.stroke();
+      context.fillStyle = unlocked ? "#f6ecd2" : unlockAffordable ? "#ffd98a" : "#a8a29a";
+      context.textAlign = "left";
+      // 원본 기준선 cy-113.5 = 상자 윗변 + 8.5 다. 밀린 뒤에도 그대로 유지한다.
+      context.fillText(plateText, plateX + 8, plateY + 8.5);
+      context.textAlign = "center";
+    }
   }
 
   // 8. 셀은 돌판에 파인 소켓으로 그린다. 표 칸처럼 보이지 않게 안쪽 그림자를 준다.
@@ -734,12 +815,25 @@ function drawFormationLocks(): void {
     context.font = '900 10px "Malgun Gothic", sans-serif';
     context.textAlign = "center";
     const noteWidth = context.measureText(note).width + 12;
-    context.fillStyle = "rgba(28, 25, 21, 0.9)";
-    context.beginPath();
-    context.roundRect(cx - noteWidth / 2, cy + 24, noteWidth, 15, 4);
-    context.fill();
-    context.fillStyle = affordable ? "#ffd98a" : "#c8c1b6";
-    context.fillText(note, cx, cy + 35);
+    /*
+     * 이 안내는 textAlign=center 로 진 중심에 못 박혀 있어 이름표와 같은 이유로
+     * 좌·우 각 27~29px 씩 잘렸다(기본 시점 실측: 금진 좌 29, 목진 우 27).
+     * 이름표와 같은 규칙을 태운다. 이름표가 먼저 자리를 잡으므로, 둘이 같은
+     * 벽으로 밀려 포개질 때는 이 안내가 물러난다 — 같은 문안을 이름표가 이미
+     * 이고 있어 잃는 정보가 없다.
+     */
+    const noteNudge = placeFormationLabel(formation.center, cx - noteWidth / 2, cy + 24, noteWidth, 15);
+    if (noteNudge !== null) {
+      const noteX = cx + noteNudge.dx / ctx.mapZoom;
+      const noteY = cy + 24 + noteNudge.dy / ctx.mapZoom;
+      context.fillStyle = "rgba(28, 25, 21, 0.9)";
+      context.beginPath();
+      context.roundRect(noteX - noteWidth / 2, noteY, noteWidth, 15, 4);
+      context.fill();
+      context.fillStyle = affordable ? "#ffd98a" : "#c8c1b6";
+      // 원본 기준선 cy+35 = 상자 윗변 + 11.
+      context.fillText(note, noteX, noteY + 11);
+    }
     context.restore();
   }
 }
