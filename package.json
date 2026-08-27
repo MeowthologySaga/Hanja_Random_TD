@@ -17,7 +17,8 @@
     "simulate": "tsx scripts/simulate.ts",
     "verify:run-save": "tsx scripts/verify-run-save.ts",
     "test:e2e": "playwright test",
-    "check": "npm run audit:huneum && npm run validate:data && npm run test && npm run simulate -- --runs=45 && npm run build"
+    "check": "npm run audit:huneum && npm run validate:data && npm run test && npm run simulate -- --runs=45 && npm run build",
+    "rollback:live": "node scripts/rollback-live.mjs"
   },
   "devDependencies": {
     "@openai/sites-vite-plugin": "^0.2.0",
