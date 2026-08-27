@@ -26,6 +26,7 @@ import { wireShop1 } from "./ui/panels/shop";
 import { wireTalisman1 } from "./ui/panels/talisman";
 import { wireS00Menu1, wireS00Menu2, wireS00Menu3, wireS00Menu4 } from "./ui/s00-menu";
 import { wireScrollAffordance1 } from "./ui/scroll-affordance";
+import { wireStageScrollGuard1 } from "./ui/scroll-into-container";
 import { wireSummonReveal1 } from "./ui/summon-reveal";
 import { wireTutorial1 } from "./ui/tutorial";
 
@@ -73,6 +74,7 @@ wireDevTools1();
 wireCoach1();
 wireHint1();
 wireScrollAffordance1();
+wireStageScrollGuard1();
 wireTutorial1();
 wireBoot3();
 wireBoot4();

@@ -12,6 +12,7 @@
  */
 import { researchUnlockWave, WUXING_ORDER } from "../core/hanzi";
 import { ctx, must, shell, summonReveal } from "./app-context";
+import { scrollIntoContainer } from "./scroll-into-container";
 
 interface OneShotHint {
   readonly id: string;
@@ -264,7 +265,8 @@ export function syncOneShotHints(): void {
       // center 인 이유: nearest 는 고정 바 밑단까지만 굴려 그대로 가려진다.
       if (!hintScrolledOnce.has(hint.id)) {
         hintScrolledOnce.add(hint.id);
-        target.scrollIntoView({ block: "center" });
+        // 조상까지 미는 scrollIntoView 는 무대를 밀어 올린다 — 스크롤 면 안에서만 굴린다.
+        scrollIntoContainer(target, target.closest<HTMLElement>(".scroll-surface, [data-scrollable]") ?? target.parentElement, { block: "center" });
       }
       continue;
     }
