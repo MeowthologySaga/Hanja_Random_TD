@@ -9,6 +9,7 @@ import { battleAssetProgress, isBattleAssetsReady, whenBattleAssetsReady } from 
 import { buildSynthesisDepths, buildUncombinableStageOneChars } from "./codex-synthesis";
 import {
   applySavedUiState,
+  autoSaveRun,
   clearSavedRun,
   readRunSaveSlot,
   readSavedRun,
@@ -274,8 +275,13 @@ function resumeSavedRun(): void {
     syncResumePlaque();
     return;
   }
-  applySavedUiState(save);
+  // 순서가 목숨이다: 화면 쪽 자원(부적 장부·무료 소환권)은 **엔진이 꽂힌 뒤** 얹는다.
+  // 장부는 자기가 어느 엔진의 것인지 도장을 찍어 두고 판이 갈리면 스스로 리셋한다.
+  // 그래서 startRun 앞에서 얹으면 옛 엔진 도장이 찍혀, 새 엔진이 들어오는 순간
+  // 통째로 무효가 되고 다시 3장으로 돌아간다 — 이어하기가 매번 부적 3장이던 사고.
   startRun(false, { createEngine: () => restoreRun(save), resume: true, skipCoach: true });
+  applySavedUiState(save);
+  syncPanel();
 }
 
 /**
@@ -397,6 +403,23 @@ function returnToMenu(): void {
 /** main.ts 가 원래 순서대로 부르는 배선 묶음. */
 export function wireS00Menu3(): void {
   must<HTMLButtonElement>("#return-menu-button").addEventListener("click", returnToMenu);
+  // 전장 우상단 [家] — 판 도중에도 제목 화면으로. 진행은 자동 저장이 들고
+  // 있으므로 "잃는다"가 아니라 "여기서 멈춘다"임을 확인 창이 말한다.
+  must<HTMLButtonElement>("#home-button").addEventListener("click", () => {
+    const running = ctx.engine.state.phase === "prep" || ctx.engine.state.phase === "combat";
+    if (!running) { returnToMenu(); return; }
+    const saved = autoSaveRun();
+    openConfirm({
+      eyebrow: "제목 화면으로",
+      title: "지금 판을 멈추고 제목 화면으로 갈까요?",
+      lines: saved
+        ? ["진행은 저장돼 있습니다 — 제목 화면의 [이어하기]로 이 자리에서 다시 시작할 수 있어요."]
+        : ["아직 저장 지점이 없어(첫 웨이브 전) 이 판은 사라집니다."],
+      confirmLabel: "제목 화면으로",
+      cancelLabel: "계속 하기",
+      tone: saved ? "neutral" : "danger"
+    }, returnToMenu);
+  });
   window.addEventListener("keydown", (event) => {
     if (event.code !== "Escape") return;
     if (!endOverlay.classList.contains("modal-layer--visible")) return;

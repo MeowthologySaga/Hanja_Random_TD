@@ -1,0 +1,72 @@
+/* ══════════════════════════════════════════════════════════════════
+   600. 핵심 3버튼을 스크롤 밖으로 — 첫 화면에서 사라지던 합성·연구·강화
+
+   실측(원격·로컬 동일): 1280×720·1920×1080 에서 `#shop-scroll` 이 54px
+   접히고, 그 접힘 아래에 [합성]·[인연 연구]·[강화 탭] 한 행이 통째로
+   들어가 있었다. 즉 **판을 처음 여는 순간 핵심 행동 셋이 화면에 없다**
+   (웨이브 1이 시작돼 초반 안내가 접히면 그제야 올라온다). 1024×768 에서만
+   폰트가 작아 우연히 들어맞던 터라 넓은 화면일수록 나빠지는 회귀였다.
+
+   상품 목록은 원래 스크롤해도 되는 것이고, 행동 버튼은 아니다. 그래서
+   버튼 셋을 자동배치와 같은 고정 바(`#shop-pinned`)로 옮긴다 — 목록이
+   길어지든 폰트가 커지든 다시는 접힘 아래로 밀리지 않는다.
+
+   색 체계(절 R5-3)는 `.action-row >` 직계로만 걸려 있어 자리를 옮기면
+   끊긴다. 같은 규칙을 새 자리에 그대로 다시 세운다.
+   ══════════════════════════════════════════════════════════════════ */
+
+#shop-pinned.shop-pinned {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.shop-actions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 5px;
+}
+
+.shop-workbench .shop-actions > .action-button {
+  /* 절 R5 는 이 셋을 6칸 격자의 지정석(2·3행)에 앉힌다 — 그 격자를 떠났으니
+     자리 지정을 풀어야 새 3칸 격자에 나란히 선다. */
+  grid-column: auto;
+  grid-row: auto;
+  min-height: 38px;
+  max-height: none;
+  padding: 3px 6px;
+  border-left: 4px solid var(--fn, #6d5a3c) !important;
+  border-radius: 8px !important;
+}
+
+.shop-workbench .shop-actions > .action-button :is(b, small, em, i, span) {
+  line-height: 1.25;
+}
+
+.shop-workbench .shop-actions > .action-button:not(:disabled) :is(em, i) {
+  color: var(--fn) !important;
+  font-weight: 900;
+}
+
+.shop-workbench .shop-actions > .action-button .hotkey {
+  color: var(--fn) !important;
+  background: color-mix(in srgb, var(--fn) 14%, transparent) !important;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--fn) 40%, transparent) !important;
+}
+
+.shop-workbench .shop-actions > .action-button:disabled {
+  border-left-color: rgba(114, 107, 97, 0.55) !important;
+}
+
+.shop-workbench .shop-actions > .action-button:disabled .hotkey {
+  color: #8a7c64 !important;
+  background: rgba(122, 90, 42, 0.12) !important;
+  box-shadow: inset 0 0 0 1px rgba(122, 90, 42, 0.25) !important;
+}
+
+/* 목록만 남은 행은 세로 여백을 붙들 이유가 없다(절 030 의 min-height 92 는
+   버튼이 함께 있던 시절의 예산이다). */
+#shop-panel .action-row {
+  min-height: 0;
+  grid-template-rows: auto !important;
+}

@@ -158,6 +158,7 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
           <button id="sound-button" class="icon-button" type="button" aria-label="소리 끄기" title="소리 켜기/끄기 (M)">♪</button>
           <button id="codex-button" class="icon-button icon-button--codex" type="button" aria-label="통합 자령 도감 열기" title="자령 도감 — 배지는 이번 런에서 처음 만난 한자 수입니다 (C)"><b>도감</b><small><em id="discover-count">0</em></small></button>
           <button id="help-button" class="icon-button" type="button" aria-label="도움말 열기">?</button>
+          <button id="home-button" class="icon-button" type="button" aria-label="제목 화면으로" title="제목 화면으로 — 진행은 저장돼 이어할 수 있습니다">家</button>
         </div>
       </header>
 
@@ -212,8 +213,12 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
               <i>→</i>
               <div data-opening-step="3"><b>③ 웨이브 시작</b><span>첫 소환 뒤 준비 15초가 흐릅니다.</span></div>
             </section>
-            <section class="action-row" aria-label="핵심 행동">
+            <section class="action-row" aria-label="소환 상품">
               <div id="summon-shop" class="summon-shop" role="group" aria-label="소환 상품"></div>
+            </section>
+          </div>
+          <div id="shop-pinned" class="shop-pinned">
+            <div class="shop-actions" role="group" aria-label="핵심 행동">
               <button id="evolve-button" class="action-button action-button--evolve" type="button" data-testid="evolve-button">
                 <span class="hotkey">2</span><b id="evolve-action-label">합성</b><small><em id="evolve-ready-count">0</em><span id="evolve-action-detail">개 조합 확인</span></small>
               </button>
@@ -224,9 +229,7 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
               <button id="element-upgrade-button" class="action-button action-button--element-upgrade" type="button" data-testid="element-upgrade-button">
                 <b>강화 탭</b><small id="element-upgrade-total">총 0단계</small>
               </button>
-            </section>
-          </div>
-          <div id="shop-pinned" class="shop-pinned">
+            </div>
             <button id="auto-arrange-button" class="action-button action-button--auto-arrange" type="button" data-testid="auto-arrange-button" title="완성 가능한 사자성어를 발동하고 오행진 공명을 최적화합니다">
               <b>자동배치</b><small>성어·오행 최적화</small>
             </button>
