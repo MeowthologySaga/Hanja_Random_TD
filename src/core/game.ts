@@ -174,6 +174,7 @@ import {
   type ConcentrationPayment,
   type DefeatCause,
   type Enemy,
+  type EngineRuntimeSnapshot,
   type EvolutionOption,
   type GameEvent,
   type GameMode,
@@ -1269,16 +1270,25 @@ export class GameEngine {
     return { ok: true, message: bonus > 0 ? "조기 출전 보너스 " + String(bonus) + "엽전" : "웨이브 시작" };
   }
 
-  private startNextWave(): void {
-    const nextWave = this.state.wave + 1;
-    this.state.wave = nextWave;
-    const plan = wavePlan(nextWave);
+  /**
+   * 이 런에서 N 번째 웨이브의 편성. 웨이브 번호·진법·수련장 여부만 보는 순수
+   * 함수라 같은 인자면 언제나 같은 결과다 — 그래서 `adoptRun()` 이 저장된
+   * 웨이브 번호만으로 편성을 다시 세울 수 있고, WavePlan 을 저장하지 않는다.
+   */
+  private planForWave(wave: number): WavePlan {
+    const plan = wavePlan(wave);
     // 모드 수량 계수: 캐주얼은 몸수를 줄이고 체력 계수로 총 내구를 보존한다.
     const modeCount = Math.max(1, Math.round(plan.count * MODE_ENEMY_COUNT_SCALE[this.state.mode]));
     // 수련장은 그 위에서 수량을 한 번 더 눌러 "반드시 이기는 첫 교전"을 보장한다.
-    this.currentPlan = this.tutorial
+    return this.tutorial
       ? { ...plan, count: Math.max(3, Math.round(modeCount * TUTORIAL_ENEMY_COUNT_SCALE)) }
       : { ...plan, count: modeCount };
+  }
+
+  private startNextWave(): void {
+    const nextWave = this.state.wave + 1;
+    this.state.wave = nextWave;
+    this.currentPlan = this.planForWave(nextWave);
     this.state.phase = "combat";
     this.state.waveElapsed = 0;
     this.state.spawned = 0;
@@ -3033,6 +3043,58 @@ export class GameEngine {
     const events = this.events;
     this.events = [];
     return events;
+  }
+
+  /**
+   * [트랙 V] `GameState` 밖에 있는 엔진 내부 상태 — 런 저장이 함께 담아야
+   * 이어 돌린 판이 쭉 돌린 판과 같아진다.
+   *
+   * 여기 없는 나머지 private 필드는 전부 (a) 저장 시점(웨이브 경계)에 비어
+   * 있거나 (b) 매 전투 틱마다 통째로 다시 계산되는 캐시다. 자세한 목록은
+   * `adoptRun()` 주석에 적어 두었다.
+   */
+  captureRuntime(): EngineRuntimeSnapshot {
+    return {
+      rngState: this.rng.snapshot(),
+      nextTowerId: this.nextTowerId,
+      nextEnemyId: this.nextEnemyId,
+      nextAbilityZoneId: this.nextAbilityZoneId,
+      autoEvolutionCooldown: this.autoEvolutionCooldown
+    };
+  }
+
+  /**
+   * [트랙 V] 저장된 런을 이 엔진에 얹는다. `begin()` 의 자리를 대신하므로
+   * 생성 직후에 한 번만 부른다 — 시드·지역·진법·표기·부적 모드는 생성자가
+   * 이미 같은 값으로 받았다는 전제다(run-save.ts 의 `restoreRun` 이 지킨다).
+   *
+   * 되살리지 않고 다시 계산하는 것들:
+   * - `currentPlan`: 웨이브 번호에서 순수 함수로 나온다(`planForWave`).
+   * - `runSummonPool`: 복원된 추적 성어 목록에서 다시 세운다.
+   * - `enemyPositions`·`targetCandidates`·`combat*` 캐시: 전투 틱마다
+   *   `refreshCombatCache()` 가 통째로 덮어쓴다.
+   * - `commandRallies`(호령 4초 명령): 웨이브 경계에는 이미 만료다.
+   * - `events`: 소비되지 않은 연출 큐. 화면이 없는 저장본에 의미가 없다.
+   */
+  adoptRun(state: GameState, runtime: EngineRuntimeSnapshot): void {
+    Object.assign(this.state, state);
+    this.rng.restore(runtime.rngState);
+    this.nextTowerId = runtime.nextTowerId;
+    this.nextEnemyId = runtime.nextEnemyId;
+    this.nextAbilityZoneId = runtime.nextAbilityZoneId;
+    this.autoEvolutionCooldown = runtime.autoEvolutionCooldown;
+    this.currentPlan = this.state.wave > 0 ? this.planForWave(this.state.wave) : null;
+    this.commandRallies.fill(null);
+    this.enemyPositions.clear();
+    this.combatCharCounts.clear();
+    this.combatSynergies.clear();
+    this.combatPolarisElements.clear();
+    this.targetCandidates.length = 0;
+    this.combatFormationBonuses.fill(0);
+    this.combatIdiomBlessings.fill(0);
+    this.combatDistinctElements = 0;
+    this.runSummonPool = this.buildRunSummonPool();
+    this.events = [{ type: "phase", phase: this.state.phase }];
   }
 
   private createTower(definition: HanziDefinition, cell: number): Tower {

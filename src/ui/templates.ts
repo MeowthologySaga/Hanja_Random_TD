@@ -550,6 +550,15 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
           <b>수련장</b><small>처음이라면 여기부터</small><em>八</em>
         </button>
 
+        <!-- [트랙 V] 이어하기 목패. 저장된 런이 있을 때만 선다(기본 hidden).
+             요약은 두 줄로 갈라 둔다 — 진법·지역 한 줄, 웨이브·경과 한 줄.
+             한 줄로 이으면 목패 폭에서 접혀 인장과 겹친다. -->
+        <button id="resume-button" class="s00-resume" type="button" data-testid="resume-run" hidden>
+          <b>이어하기</b>
+          <small id="resume-summary"><i id="resume-where"></i><i id="resume-progress"></i></small>
+          <em>續</em>
+        </button>
+
         <div class="s00-showcase" aria-hidden="true">
           <figure style="left:455px;top:116px"><img class="s00-ring" data-src="${import.meta.env.BASE_URL}assets/ui/main-menu-b/rings/summon-ring-wood-v1.png" alt="" /><img class="s00-spirit" data-src="${import.meta.env.BASE_URL}assets/ui/main-menu-b/jaryeongs/menu-wood-orchid-frame-v1.png" alt="" /></figure>
           <figure style="left:803px;top:112px"><img class="s00-ring" data-src="${import.meta.env.BASE_URL}assets/ui/main-menu-b/rings/summon-ring-earth-v1.png" alt="" /><img class="s00-spirit" data-src="${import.meta.env.BASE_URL}assets/ui/main-menu-b/jaryeongs/menu-earth-pottery-frame-v1.png" alt="" /></figure>

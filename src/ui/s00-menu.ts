@@ -3,9 +3,18 @@
  */
 import { GameEngine } from "../core/game";
 import { createRunSeed } from "../core/rng";
+import { restoreRun, type RunSave } from "../core/run-save";
 import { type AutomationMode, type GameMode, type RegionCode } from "../core/types";
 import { battleAssetProgress, isBattleAssetsReady, whenBattleAssetsReady } from "./asset-loader";
 import { buildSynthesisDepths, buildUncombinableStageOneChars } from "./codex-synthesis";
+import {
+  applySavedUiState,
+  clearSavedRun,
+  readRunSaveSlot,
+  readSavedRun,
+  savedRunConfirmLine,
+  savedRunSummaryLines
+} from "./run-save-slot";
 import { loadAutoPlaceSummons } from "./summon-placement";
 import {
   canvas,
@@ -36,6 +45,7 @@ import {
   towerAbilityPopups
 } from "./battle/fx";
 import { startCoach } from "./coach";
+import { openConfirm } from "./dialogs/confirm";
 import { REGION_MENU_INFO, syncS13 } from "./dialogs/s13";
 import { gameModeLabel } from "./format";
 import { handleAction, setPanelTab, showToast, syncPanel } from "./hud";
@@ -135,6 +145,12 @@ export interface StartRunOptions {
   readonly createEngine?: () => GameEngine;
   /** 첫 실행 3단계 코치를 띄우지 않는다(수련장은 자체 각본 안내가 있다). */
   readonly skipCoach?: boolean;
+  /**
+   * [트랙 V] 이미 저장된 상태를 얹은 엔진이라 `begin()` 으로 되감지 않는다.
+   * 화면·이펙트·패널 초기화는 새 판과 똑같이 지나간다 — 지난 판의 투사체나
+   * 열려 있던 작업대가 되살린 판까지 따라오면 안 된다.
+   */
+  readonly resume?: boolean;
 }
 
 export function startRun(useNewSeed = false, options: StartRunOptions = {}): void {
@@ -150,12 +166,26 @@ export function startRun(useNewSeed = false, options: StartRunOptions = {}): voi
       talismanMode: ctx.talismanMode
     });
   seedInput.value = ctx.engine.state.seed;
+  if (options.resume) {
+    // 되살린 판은 저장된 지역·진법을 따른다 — 목록 선택이 그 사이 바뀌어 있어도
+    // 화면 표기(요약 줄·도감 범위)가 실제로 굴러가는 판과 어긋나지 않게.
+    // 새 판에서는 애초에 이 선택으로 엔진을 만들었으므로 손대지 않는다(수련장은
+    // KR·별승급으로 고정한 판이라, 여기서 옮겨 적으면 메뉴 선택을 덮어 버린다).
+    ctx.selectedRegion = ctx.engine.state.region;
+    ctx.selectedGameMode = ctx.engine.state.mode;
+  }
   shell.dataset.gameMode = ctx.engine.state.mode;
   ctx.mapSynthesisDepths = buildSynthesisDepths(ctx.engine.catalog.definitions.values());
   ctx.mapUncombinableStageOne = buildUncombinableStageOneChars(ctx.engine.catalog.definitions.values());
+  // 자동 배치는 런이 아니라 사람의 설정이라 저장본이 아니라 저장소를 따른다.
   ctx.engine.state.autoPlaceSummons = loadAutoPlaceSummons();
-  ctx.engine.begin();
-  ctx.previousPhase = "prep";
+  if (options.resume) {
+    // 상태는 이미 얹혀 있다. begin() 을 부르면 그 판을 처음으로 되감아 버린다.
+    ctx.previousPhase = ctx.engine.state.phase;
+  } else {
+    ctx.engine.begin();
+    ctx.previousPhase = "prep";
+  }
   ctx.manualPause = false;
   ctx.mapCameraGestures = 0;
   titleOverlay.classList.remove("modal-layer--visible");
@@ -193,8 +223,9 @@ export function startRun(useNewSeed = false, options: StartRunOptions = {}): voi
   ctx.pendingCasualFusion = null;
   if (casualFusionConfirmDialog.open) casualFusionConfirmDialog.close();
   setPanelTab("shop");
-  ctx.formationUnlockHintShown = false;
-  if (!options.skipCoach) startCoach();
+  // 이어하기는 이미 한 판을 굴려 본 사람이다 — 진 해금 안내도 코치도 세우지 않는다.
+  ctx.formationUnlockHintShown = options.resume === true;
+  if (!options.skipCoach && !options.resume) startCoach();
   ctx.evolutionRenderKey = "";
   ctx.goalRenderKey = "";
   ctx.selectedRenderKey = "";
@@ -207,8 +238,73 @@ export function startRun(useNewSeed = false, options: StartRunOptions = {}): voi
   ctx.towerDragTowerId = null;
   ctx.towerDragStart = null;
   ctx.towerDragMoved = false;
-  showToast(`${ctx.engine.catalog.title} · ${gameModeLabel(ctx.engine.state.mode)}을 시작합니다.`);
+  showToast(options.resume
+    ? `${ctx.engine.state.wave}웨이브 준비 시간부터 이어서 봉인합니다.`
+    : `${ctx.engine.catalog.title} · ${gameModeLabel(ctx.engine.state.mode)}을 시작합니다.`);
   syncPanel();
+}
+
+/*
+ * ── 이어하기 (트랙 V) ───────────────────────────────────────────────
+ *
+ * 목패는 저장된 런이 있을 때만 선다. 없거나·판이 다르거나·파손이면 그냥
+ * 서지 않는다 — 사람에게는 "이어할 것이 없다"가 전부라 셋을 구분할 이유가 없다.
+ * 다만 **읽으려다 실패한 경우**만은 부팅 때 한 줄 알린다(`wireS00Menu2` 끝).
+ */
+
+/** 부팅 때 슬롯에 무엇이 있었는지. 목패 동기화가 매번 저장소를 다시 읽지 않게 든다. */
+let savedRun: RunSave | null = null;
+
+/** 목패를 지금 슬롯 상태에 맞춘다. 저장·삭제 뒤에 부른다. */
+export function syncResumePlaque(): void {
+  savedRun = readSavedRun();
+  const button = must<HTMLButtonElement>("#resume-button");
+  button.hidden = savedRun === null;
+  if (!savedRun) return;
+  const { where, progress } = savedRunSummaryLines(savedRun);
+  must<HTMLElement>("#resume-where").textContent = where;
+  must<HTMLElement>("#resume-progress").textContent = progress;
+  button.setAttribute("aria-label", `이어하기. ${where} · ${progress} 지점부터 다시 시작합니다.`);
+}
+
+/** 저장된 런을 되살려 전장으로 들어간다. */
+function resumeSavedRun(): void {
+  const save = savedRun ?? readSavedRun();
+  if (!save) {
+    syncResumePlaque();
+    return;
+  }
+  applySavedUiState(save);
+  startRun(false, { createEngine: () => restoreRun(save), resume: true, skipCoach: true });
+}
+
+/**
+ * 새 판이 저장된 런을 덮기 전에 한 번 묻는다. 슬롯이 하나뿐이라 시작하는
+ * 순간 두고 온 판은 사라진다 — 그 사실을 누르기 전에 말한다.
+ *
+ * 슬롯이 비어 있으면 묻지 않고 바로 간다(종료 화면에서 오는 길이 그렇다 —
+ * 판이 끝나는 순간 이미 지워져 있다).
+ */
+function withOverwriteGuard(start: () => void): void {
+  const save = readSavedRun();
+  if (!save) {
+    start();
+    return;
+  }
+  openConfirm({
+    eyebrow: "이어하기",
+    title: "두고 온 판을 덮고 새로 시작할까요?",
+    lines: [
+      savedRunConfirmLine(save),
+      "새 판을 시작하면 이 기록은 사라지고 되돌릴 수 없습니다."
+    ],
+    confirmLabel: "덮고 새로 시작",
+    cancelLabel: "돌아가기"
+  }, () => {
+    clearSavedRun();
+    syncResumePlaque();
+    start();
+  });
 }
 
 /** main.ts 가 원래 순서대로 부르는 배선 묶음. */
@@ -261,9 +357,28 @@ const startButton = must<HTMLButtonElement>("#start-button");
 
 /** main.ts 가 원래 순서대로 부르는 배선 묶음. */
 export function wireS00Menu2(): void {
-  startButton.addEventListener("click", () => void enterRun(startButton));
+  startButton.addEventListener("click", () => withOverwriteGuard(() => void enterRun(startButton)));
+  // 종료 화면의 두 길은 이미 슬롯이 비워진 뒤라(판이 끝나면 지운다) 묻지 않는다.
   must<HTMLButtonElement>("#retry-button").addEventListener("click", () => startRun(false));
   must<HTMLButtonElement>("#new-seed-button").addEventListener("click", () => startRun(true));
+  must<HTMLButtonElement>("#resume-button").addEventListener("click", () => {
+    sound.unlock();
+    sound.playUiConfirm();
+    resumeSavedRun();
+  });
+  /*
+   * 부팅 때 슬롯을 한 번 열어 본다.
+   *
+   * 읽을 수 없는 값이 들어 있으면 — 형식 판을 올린 뒤 첫 방문이 대개 그렇다 —
+   * 목패를 세우지 않고 슬롯을 비운 뒤 딱 한 줄만 알린다. 자세한 사정(판이
+   * 다르다·JSON 이 잘렸다)은 사람이 할 수 있는 일이 없으므로 말하지 않는다.
+   */
+  const slot = readRunSaveSlot();
+  if (slot.status === "unreadable") {
+    clearSavedRun();
+    showToast("이전 기록을 불러올 수 없습니다.");
+  }
+  syncResumePlaque();
 }
 
 /*
