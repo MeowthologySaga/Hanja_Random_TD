@@ -155,6 +155,9 @@ export interface StartRunOptions {
 }
 
 export function startRun(useNewSeed = false, options: StartRunOptions = {}): void {
+  // 판이 실제로 서는 이 지점에서만 3D 서재를 걷는다(위 menu3dHandle 주석 참조).
+  menu3dHandle?.dispose();
+  menu3dHandle = null;
   const seed = useNewSeed ? createRunSeed() : seedInput.value.trim() || createRunSeed();
   ctx.engine = options.createEngine
     ? options.createEngine()
@@ -440,6 +443,17 @@ export function wireS00Menu3(): void {
 // 있고, WebGL 초기화가 실패하면 자동으로 2D 로 폴백한다.
 // R11: 1차 프리로드가 끝난 뒤에 세운다. 텍스처가 이미 캐시에 있으므로
 // `startMenu3d` 안의 재질 교체가 동기로 끝나고 절차 재질이 화면에 남지 않는다.
+/**
+ * 3D 서재 손잡이 — 판이 실제로 시작될 때 걷기 위해 들고 있는다.
+ *
+ * 예전에는 [출정] 버튼 클릭에 곧바로 `dispose()` 를 걸어 두었다. 누르면 판으로
+ * 들어간다는 전제였는데, 두고 온 판이 있으면 **출정은 판을 시작하지 않고 덮어쓰기
+ * 확인 창만 띄운다** — 그 경로에서 배경만 사라져 제목 화면이 통째로 검게 됐다
+ * (사용자 제보). 저장이 고쳐지면서 그 경로가 처음으로 실제로 열렸다.
+ * 그래서 해제 시점을 "버튼을 눌렀을 때" 가 아니라 "판이 실제로 서는 순간"으로 옮긴다.
+ */
+let menu3dHandle: { dispose(): void } | null = null;
+
 export async function mountS00(): Promise<void> {
   const stage = document.querySelector<HTMLElement>(".s00-stage");
   if (!stage) return;
@@ -450,8 +464,7 @@ export async function mountS00(): Promise<void> {
   stage.classList.add("is-3d");
   try {
     const { startMenu3d } = await import("./menu3d");
-    const handle = startMenu3d(stage);
-    must<HTMLButtonElement>("#start-button").addEventListener("click", () => handle.dispose(), { once: true });
+    menu3dHandle = startMenu3d(stage);
   } catch (error) {
     // WebGL 이 없으면 2D 배경으로 되돌린다. 이때 비로소 레이어를 내려받는다.
     // 조용히 삼키면 3D 가 왜 안 뜨는지 알 길이 없어 이유는 남긴다.
