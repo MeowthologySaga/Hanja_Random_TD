@@ -66,6 +66,15 @@ export function initStage(): void {
   apply();
   if (bound) return;
   bound = true;
+  // 세로 안내는 무대 배율과 같은 이야기라 여기서 배선한다(절 640). 걷은 선택은
+  // 이 세션 동안만 남는다 — 다시 세로로 들면 굳이 되살리지 않는다.
+  // 셸 마크업이 붙기 전에 이 함수가 돌 수 있어 위임으로 건다.
+  document.addEventListener("click", (event) => {
+    const target = event.target;
+    if (target instanceof Element && target.closest("#rotate-hint-dismiss")) {
+      document.querySelector("#rotate-hint")?.classList.add("is-dismissed");
+    }
+  });
   window.addEventListener("resize", apply);
   window.addEventListener("orientationchange", apply);
   window.visualViewport?.addEventListener("resize", apply);

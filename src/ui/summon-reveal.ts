@@ -92,7 +92,10 @@ export function showCasualFusionReveal(events: Array<Extract<GameEvent, { type: 
       <span class="summon-result-spirit" style="${visualBackgroundStyle(visual)}" aria-hidden="true"></span>
       <strong>${escapeHtml(tower.char)}</strong>
       <b>${notationShortHtml(learning, ctx.engine.state.notation)}</b>
-      <small>${style.name}행 · ${star}★ ${CASUAL_STAR_NAMES[star]} · ${casualStrokeCount(tower.char) ?? "?"}획</small>
+      <!-- 등급 이름(숙련·희귀…)은 별 수와 겹치는 말이라 걷었다. 한 줄에 넣으려고
+           욱여넣으면 끝의 **획수**가 잘려 나가는데(실측 14~20px), 획수는 이 게임에서
+           별을 정하는 값이라 학습자에게 가장 쓸모 있는 정보다. 이름은 카드 배지에 남는다. -->
+      <small title="${style.name}행 · ${star}★ ${CASUAL_STAR_NAMES[star]}">${style.name}행 · ${star}★ · ${casualStrokeCount(tower.char) ?? "?"}획</small>
       <div><em>${event.newDiscovery ? "NEW" : "무작위 획득"}</em><mark>${escapeHtml(event.consumed.map((consumed) => consumed.char).join("·"))} 소모</mark></div>
     </article>`;
   }).join("");
@@ -149,7 +152,7 @@ export function showSummonReveal(events: Array<Extract<GameEvent, { type: "summo
       <span class="summon-result-spirit" style="${visualBackgroundStyle(visual)}" aria-hidden="true"></span>
       <strong>${tower.char}</strong>
       <b>${notationShortHtml(learning, ctx.engine.state.notation)}</b>
-      <small>${style.name}행 · ${ctx.engine.state.mode === "casual" ? `${star}★ ${CASUAL_STAR_NAMES[star]} · ${casualStrokeCount(tower.char) ?? "?"}획` : escapeHtml(definition.combat.roleLabel)}</small>
+      <small title="${style.name}행 · ${star}★ ${CASUAL_STAR_NAMES[star]}">${style.name}행 · ${ctx.engine.state.mode === "casual" ? `${star}★ · ${casualStrokeCount(tower.char) ?? "?"}획` : escapeHtml(definition.combat.roleLabel)}</small>
       <div><em>${utilityLabel}</em>${event.jackpot ? `<mark class="summon-jackpot">상한 돌파</mark>` : ""}${helpfulLabel ? `<mark>${helpfulLabel}</mark>` : ""}</div>
     </article>`;
   }).join("");

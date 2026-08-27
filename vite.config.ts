@@ -1,5 +1,6 @@
+/// <reference types="vitest/config" />
 import { sites } from "@openai/sites-vite-plugin";
-import { defineConfig } from "vite";
+import { defineConfig } from "vitest/config";
 
 /**
  * 서비스 워커 캐시 버전 키. 빌드마다 새 값이 박히므로 배포하면 등록 URL

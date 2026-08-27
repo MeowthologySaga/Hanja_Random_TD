@@ -233,6 +233,21 @@ export function syncCoachProgress(): void {
   if (coachIndex < 0) return;
   const base = COACH_STEPS[coachIndex];
   if (!base) return;
+  /*
+   * 집중 프레임(강화 제련소·농축)이 열려 있는 동안에는 물러선다.
+   *
+   * 프레임은 화면 대부분을 덮는데 코치의 링은 그 뒤의 전장을 계속 짚는다 —
+   * "휠을 굴려 확대·축소하고" 안내가 가리키는 곳이 프레임에 100% 가려져 따를
+   * 수가 없고, 스포트라이트(0 0 0 9999px 그림자)가 프레임 UI 전체를 어둡게
+   * 깔아 제련소 제목과 구획 이름까지 덮었다(QA 실측). 프레임을 닫으면 그
+   * 걸음 그대로 다시 선다 — 진행을 잃지 않는다.
+   */
+  const layer = must<HTMLElement>("#coach-layer");
+  if (ctx.openFocusFrame !== null) {
+    layer.hidden = true;
+    return;
+  }
+  if (layer.hidden) renderCoach();
   // 대상이 나타나거나 사라지면(소환 직후의 웨이브 시작 버튼) 문구와
   // 스포트라이트를 그 자리에서 갈아 끼운다.
   const resolved = resolveCoachStep(base).step.target;

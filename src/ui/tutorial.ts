@@ -773,6 +773,13 @@ function interceptPointer(event: Event): void {
 
 function interceptKeys(event: KeyboardEvent): void {
   if (!active) return;
+  /*
+   * 열려 있는 창의 Esc 는 막지 않는다. 각본 밖 단축키를 잠그는 규칙이 Esc 까지
+   * 삼키는 바람에, 잠긴 진을 눌러 뜬 해금 창처럼 각본 밖에서 열린 창을 키보드로
+   * 닫을 수 없었다(QA 실측 — [닫기] 버튼을 찾아야만 빠져나옴). 창을 닫는 Esc 는
+   * 각본을 흔들지 않는다.
+   */
+  if (event.code === "Escape" && document.querySelector("dialog[open]") !== null) return;
   if (!BLOCKED_KEYS.has(event.code)) return;
   event.preventDefault();
   event.stopImmediatePropagation();
