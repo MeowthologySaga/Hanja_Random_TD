@@ -166,10 +166,14 @@ export function startRun(useNewSeed = false, options: StartRunOptions = {}): voi
       talismanMode: ctx.talismanMode
     });
   seedInput.value = ctx.engine.state.seed;
-  // 되살린 판은 저장된 지역·진법을 따른다 — 목록 선택이 그 사이 바뀌어 있어도
-  // 화면 표기(요약 줄·도감 범위)가 실제로 굴러가는 판과 어긋나지 않게.
-  ctx.selectedRegion = ctx.engine.state.region;
-  ctx.selectedGameMode = ctx.engine.state.mode;
+  if (options.resume) {
+    // 되살린 판은 저장된 지역·진법을 따른다 — 목록 선택이 그 사이 바뀌어 있어도
+    // 화면 표기(요약 줄·도감 범위)가 실제로 굴러가는 판과 어긋나지 않게.
+    // 새 판에서는 애초에 이 선택으로 엔진을 만들었으므로 손대지 않는다(수련장은
+    // KR·별승급으로 고정한 판이라, 여기서 옮겨 적으면 메뉴 선택을 덮어 버린다).
+    ctx.selectedRegion = ctx.engine.state.region;
+    ctx.selectedGameMode = ctx.engine.state.mode;
+  }
   shell.dataset.gameMode = ctx.engine.state.mode;
   ctx.mapSynthesisDepths = buildSynthesisDepths(ctx.engine.catalog.definitions.values());
   ctx.mapUncombinableStageOne = buildUncombinableStageOneChars(ctx.engine.catalog.definitions.values());
@@ -245,7 +249,7 @@ export function startRun(useNewSeed = false, options: StartRunOptions = {}): voi
  *
  * 목패는 저장된 런이 있을 때만 선다. 없거나·판이 다르거나·파손이면 그냥
  * 서지 않는다 — 사람에게는 "이어할 것이 없다"가 전부라 셋을 구분할 이유가 없다.
- * 다만 **읽으려다 실패한 경우**만은 한 줄 알린다(아래 `noteUnreadableSave`).
+ * 다만 **읽으려다 실패한 경우**만은 부팅 때 한 줄 알린다(`wireS00Menu2` 끝).
  */
 
 /** 부팅 때 슬롯에 무엇이 있었는지. 목패 동기화가 매번 저장소를 다시 읽지 않게 든다. */
