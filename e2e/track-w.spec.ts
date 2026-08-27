@@ -326,3 +326,55 @@ test("gives the clipped footer message a full-text tooltip", async ({ page }) =>
   await expect.poll(async () => (await measure()).text).toBe("짧은 문장");
   expect((await measure()).title).toBe("");
 });
+
+/*
+ * ── 트랙 W #5 · 표기를 바꿔도 성어 HUD·부적 읽기가 안 따라온다 ────
+ * 두 자리 모두 표기를 렌더 열쇠에 넣지 않아, 표기만 바뀌면 옛 읽기가 남았다.
+ * 성어 HUD 는 ctx.idiomRenderKey 가 handleAction 초기화 목록에도 없었다.
+ */
+test("re-reads the idiom HUD and the talisman line when the notation axis changes", async ({ page }) => {
+  test.setTimeout(60_000);
+  /*
+   * 한국 로스터(자국 표기 kr-hunum)로 시작해 병음으로 바꾼다.
+   * 반대 방향(중국 로스터 → 훈음)은 성어 이름이 안 갈린다 — 성어 읽기는
+   * kr-hunum 과 로스터 자국 표기 둘 다에서 idiom.reading 그대로다
+   * (core/notation.ts idiomReadingInfoForNotation 의 두 지름길).
+   */
+  await page.goto("/?seed=TRACK-W-NOTATION&mode=standard");
+  await page.getByTestId("start-run").click();
+  await page.getByTestId("summon-button").click();
+  await page.locator("#summon-reveal-close").click();
+
+  await page.locator("#idiom-tab").click();
+  await expect(page.locator("#idiom-name")).not.toHaveText("");
+  const beforeIdiom = (await page.locator("#idiom-name").innerText()).trim();
+
+  await page.locator("#talisman-tab").click();
+  await expect(page.locator("#talisman-reading")).not.toHaveText("");
+  const beforeTalisman = (await page.locator("#talisman-reading").innerText()).trim();
+
+  // 표기만 바꾼다 — S13 의 applyNotation 과 같은 길(표 적재 → setNotation → handleAction).
+  await page.evaluate(async () => {
+    const notationSpecifier = "/src/core/notation.ts";
+    const hudSpecifier = "/src/ui/hud.ts";
+    const notation = await import(notationSpecifier) as typeof import("../src/core/notation");
+    const hud = await import(hudSpecifier) as typeof import("../src/ui/hud");
+    await notation.ensureUnifiedReadings();
+    const qa = (window as unknown as { __HANJA_CTX_QA__: { engine: { setNotation(code: "cn-pinyin"): { ok: boolean; message: string } } } }).__HANJA_CTX_QA__;
+    hud.handleAction(qa.engine.setNotation("cn-pinyin"));
+  });
+
+  // 부적 읽기는 먹선을 지우지 않고 줄만 갈린다.
+  await expect.poll(async () => (await page.locator("#talisman-reading").innerText()).trim()).not.toBe(beforeTalisman);
+  const afterTalisman = (await page.locator("#talisman-reading").innerText()).trim();
+  await page.screenshot({ path: ".claude/uiux/track-w/11-notation-talisman.png" });
+
+  await page.locator("#idiom-tab").click();
+  await expect.poll(async () => (await page.locator("#idiom-name").innerText()).trim()).not.toBe(beforeIdiom);
+  const afterIdiom = (await page.locator("#idiom-name").innerText()).trim();
+  // 훈음 → 병음. 한글이 사라진 것 자체가 표기가 갈린 증거다.
+  expect(beforeIdiom).toMatch(/[가-힣]/u);
+  expect(afterIdiom).not.toMatch(/[가-힣]/u);
+  console.log("[track-w#5]", JSON.stringify({ beforeIdiom, afterIdiom, beforeTalisman, afterTalisman }));
+  await page.screenshot({ path: ".claude/uiux/track-w/12-notation-idiom-hud.png" });
+});

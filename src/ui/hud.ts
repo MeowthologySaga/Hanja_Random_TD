@@ -298,6 +298,11 @@ export function handleAction(result: ActionResult, options: { invalidatePanels?:
     ctx.runInventoryRenderKey = "";
     ctx.concentrationRenderKey = "";
     ctx.growthRenderKey = "";
+    // [2차 감사] 성어 HUD 도 표기·훈음을 그린다. 표기 전환은 handleAction 을
+    // 거쳐 오므로(dialogs/s13.ts) 이 목록에도 세워 둔다 — 열쇠에 표기가 들어간
+    // 지금은 이것이 없어도 갈리지만, 다음에 열쇠가 놓치는 축이 생겼을 때
+    // 무너지는 자리가 바로 여기다.
+    ctx.idiomRenderKey = "";
   }
   syncPanel();
 }
