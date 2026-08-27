@@ -22,6 +22,7 @@ import { isBattleAssetsReady, whenBattleAssetsReady } from "./asset-loader";
 import { canvas, ctx, must, shell, sound } from "./app-context";
 import { focusMapOnCells } from "./battle/camera";
 import { cellAtPointerEvent } from "./battle/input";
+import { scrollIntoContainer } from "./scroll-into-container";
 import { setPanelTab, showToast } from "./hud";
 import { startRun } from "./s00-menu";
 import { hideSummonReveal } from "./summon-reveal";
@@ -125,7 +126,8 @@ function keepGrowthTargetInView(): void {
   const listRect = list.getBoundingClientRect();
   const buttonRect = button.getBoundingClientRect();
   if (buttonRect.top >= listRect.top + 2 && buttonRect.bottom <= listRect.bottom - 2) return;
-  button.scrollIntoView({ block: "center" });
+  // 무대를 미는 사고를 막으려 목록 안에서만 굴린다.
+  scrollIntoContainer(button, list, { block: "center" });
 }
 
 /**

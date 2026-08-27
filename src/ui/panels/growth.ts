@@ -28,6 +28,7 @@ import {
   spiritPortraitMarkup,
   towerProgressionLabel
 } from "../format";
+import { scrollIntoContainer } from "../scroll-into-container";
 import { handleAction, setPanelTab, showToast } from "../hud";
 import { renderRunInventory } from "./inventory";
 
@@ -284,9 +285,9 @@ export function wireGrowth2(): void {
     ctx.growthRenderKey = "";
     renderGrowth();
     // 탭만 바뀌고 화면은 그대로라 "눌렀는데 아무 일도 없다"로 읽혔다 — 해당 오행 섹션으로 데려간다.
-    must<HTMLElement>("#growth-upgrade-list")
-      .querySelector<HTMLElement>(`[data-growth-section='${wuxing}']`)
-      ?.scrollIntoView({ block: "start", behavior: reducedMotion ? "auto" : "smooth" });
+    // 조상까지 미는 scrollIntoView 는 무대를 통째로 밀어 올린 전례가 있다.
+    const list = must<HTMLElement>("#growth-upgrade-list");
+    scrollIntoContainer(list.querySelector<HTMLElement>(`[data-growth-section='${wuxing}']`), list, { block: "start", smooth: !reducedMotion });
   });
   must<HTMLElement>("#growth-upgrade-list").addEventListener("click", (event) => {
     const button = (event.target as HTMLElement).closest<HTMLButtonElement>("[data-growth-upgrade-scope]");
