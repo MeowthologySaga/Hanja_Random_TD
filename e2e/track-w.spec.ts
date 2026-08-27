@@ -214,3 +214,59 @@ test("marks the five newly found scroll surfaces as scrollable with more below",
   // 창을 닫으면 신호도 걷힌다 — 다음 프레임 스윕이 조용히 지운다.
   await expect.poll(async () => (await probe("#help-dialog > form")).scrollable).toBeNull();
 });
+
+/*
+ * ── 트랙 W #3 · 소환 연출이 Esc 를 안 받고 스스로 걷히지도 않는다 ──
+ * 연출은 `<dialog>` 가 아니라 `<section>` 이라 Esc 를 받는 이가 없었고,
+ * 다장 연출에는 자동 숨김 타이머조차 없어 클릭 전까지 전투 정지가 무기한
+ * 이어졌다(summon-reveal.ts 의 `events.length === 1` 분기).
+ */
+test("closes the summon reveal with Escape and auto-hides multi-card reveals", async ({ page }) => {
+  await page.goto("/?seed=TRACK-W-REVEAL&mode=standard");
+  await page.getByTestId("start-run").click();
+
+  // ① 한 장짜리 — Esc 로 닫힌다. 정지도 함께 풀린다.
+  await page.getByTestId("summon-button").click();
+  await expect(page.locator("#summon-reveal")).toHaveClass(/is-active/u);
+  await expect(page.locator("#pause-reason")).toHaveText("Esc·클릭으로 계속");
+  await page.screenshot({ path: ".claude/uiux/track-w/07-reveal-before-escape.png" });
+  await page.keyboard.press("Escape");
+  await expect(page.locator("#summon-reveal")).not.toHaveClass(/is-active/u);
+  await expect(page.locator("#pause-chip")).toBeHidden();
+  await page.screenshot({ path: ".claude/uiux/track-w/08-reveal-after-escape.png" });
+
+  // 연출이 없을 때의 Esc 는 집중 프레임 몫이다 — 캡처 단계가 삼키지 않는다.
+  await page.locator("#growth-tab").click();
+  await expect(page.locator(".game-shell")).toHaveAttribute("data-focus-frame", "growth");
+  await page.keyboard.press("Escape");
+  await expect(page.locator(".game-shell")).not.toHaveAttribute("data-focus-frame", "growth");
+
+  // ② 10연 — 자동 숨김이 실제로 걷는다. 대기 시간은 실측 근거로 정한 값이다.
+  for (let press = 0; press < 5; press += 1) await page.keyboard.press("Backquote");
+  await page.locator("#dev-tools-button").click();
+  await page.evaluate(() => {
+    const state = (window as unknown as { __HANJA_CTX_QA__: QaHandle }).__HANJA_CTX_QA__.engine.state;
+    state.gold = 100_000;
+    state.wave = 12;
+    state.prepRemaining = 0;
+  });
+  await page.locator("#dev-tools-close").click();
+  await expect(page.locator(".game-shell")).toHaveAttribute("data-phase", "combat", { timeout: 15_000 });
+
+  const hold = await page.evaluate(async () => {
+    const specifier = "/src/ui/summon-reveal.ts";
+    const module = await import(specifier) as typeof import("../src/ui/summon-reveal");
+    return [1, 3, 10, 20].map((count) => [count, module.summonRevealHoldMs(count)]);
+  });
+  console.log("[track-w#3] hold(ms)", JSON.stringify(hold));
+  expect(hold).toEqual([[1, 3_800], [3, 5_100], [10, 9_650], [20, 12_000]]);
+
+  await page.locator("#shop-tab").click();
+  await page.getByTestId("multi-summon-button").click();
+  await expect(page.locator("#summon-reveal")).toHaveClass(/is-active/u);
+  await expect(page.locator("#summon-reveal-list .summon-result-card")).toHaveCount(10);
+  await page.screenshot({ path: ".claude/uiux/track-w/09-reveal-ten-pull.png" });
+  // 9.65초 뒤에 스스로 걷힌다 — 옛 동작은 여기서 영원히 서 있었다.
+  await expect(page.locator("#summon-reveal")).toHaveClass(/is-active/u, { timeout: 2_000 });
+  await expect(page.locator("#summon-reveal")).not.toHaveClass(/is-active/u, { timeout: 12_000 });
+});

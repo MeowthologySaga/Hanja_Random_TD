@@ -32,11 +32,11 @@ function syncPauseChip(paused: boolean, manual: boolean): void {
   const chip = must<HTMLElement>("#pause-chip");
   if (chip.hidden !== !paused) chip.hidden = !paused;
   if (!paused) return;
-  // 연출은 닫는 방법이 창과 달라(아무 곳이나 누름) 안내 문구도 갈라 준다.
+  // 연출은 닫는 방법이 창과 달라(아무 곳이나 누름 · Esc) 안내 문구도 갈라 준다.
   const reason = manual
     ? "P 키로 계속"
     : revealPauseActive() && document.querySelector("dialog[open]") === null
-      ? "결과를 닫으면 계속"
+      ? "Esc·클릭으로 계속"
       : "창을 닫으면 계속";
   const label = must<HTMLElement>("#pause-reason");
   if (label.textContent !== reason) label.textContent = reason;
