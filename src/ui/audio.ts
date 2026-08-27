@@ -654,11 +654,15 @@ export class SoundManager {
     if (this.waveSfxPreloadScheduled) return;
     this.waveSfxPreloadScheduled = true;
     window.setTimeout(() => {
-      // The boss entrance now uses the v3 drum, so that file joins the warm-up.
-      for (const id of ["wave-start", "fx-boss-drum"] as const) {
-        const rule = SFX_RULES[id];
-        for (const node of this.sfxPool(id, rule.poolSize)) node.load();
-      }
+      // 웜업의 실체는 풀 "생성"이다. sfxPool 이 만드는 Audio 는 preload="auto" 라
+      // 만들어지는 순간 이미 파일을 받기 시작한다. 여기서 load() 를 한 번 더 부르면
+      // 방금 생성자가 시작한 리소스 선택을 통째로 되감는다 — 실측으로 매 부팅
+      // 프리로드 요소 4개 전부에서 emptied 가 떴다(20/20 런, 생성 +0.8ms 로
+      // loadstart 보다도 먼저). 요청이 아직 소켓에 나가기 전이라 오늘은 대가가
+      // 0일 뿐, load() 가 보태는 이득도 0이다. 되감기만 남는 한 줄이라 지운다.
+      // 요청 수는 그대로 id 당 poolSize 개다(A/B 네트워크 로그로 확인).
+      // 보스 등장이 v3 드럼을 쓰므로 그 파일도 같이 데운다.
+      for (const id of ["wave-start", "fx-boss-drum"] as const) this.sfxPool(id, SFX_RULES[id].poolSize);
     }, 0);
   }
 
