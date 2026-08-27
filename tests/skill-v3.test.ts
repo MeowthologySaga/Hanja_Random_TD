@@ -182,6 +182,11 @@ function safeCasualDefinitions(engine: GameEngine, count: number): HanziDefiniti
   throw new Error(`No safe casual fixture of size ${count} found`);
 }
 
+/** 이 지역 로스터에서 자연 별이 정확히 `star` 인 정의들(획수 공명 무대용). */
+function starPool(engine: GameEngine, star: CasualStar): HanziDefinition[] {
+  return [...engine.catalog.definitions.values()].filter((definition) => casualNaturalStar(definition.char) === star);
+}
+
 function casualTower(definition: HanziDefinition, id: number, cell: number, star: CasualStar): Tower {
   return {
     ...makeTower(definition, id, { cell }),
@@ -439,7 +444,8 @@ describe("[SKILL-V3] 진흙밭 (泥田)", () => {
     engine.update(0.02);
     const zone = engine.state.abilityZones.find((candidate) => candidate.towerId === tower.id);
     expect(zone?.kind).toBe("mire");
-    expect(zone?.damagePerSecond).toBe(0);
+    // 진흙밭은 자기 오행 장판을 대체하므로 그 장판의 초당 피해를 그대로 인다.
+    expect(zone?.damagePerSecond ?? 0).toBeGreaterThan(0);
     expect((zone?.expiresAt ?? 0) - engine.state.elapsed).toBeCloseTo(MIRE_ZONE_SECONDS, 1);
     // 지대는 자령이 쏜 뒤에 깔리므로 무효 판정은 다음 프레임의 장판 갱신에서 켜진다.
     expect(engine.enemyTraitsSuppressed(enemy)).toBe(false);
@@ -447,12 +453,15 @@ describe("[SKILL-V3] 진흙밭 (泥田)", () => {
     engine.update(0.02);
     expect(engine.enemyTraitsSuppressed(enemy)).toBe(true);
 
-    // 재생 무효: 진흙 위에 선 회생 요괴는 체력이 회복되지 않는다.
+    // 재생 무효: 초당 재생(500)은 장판 초당 피해(20 남짓)보다 스무 배 넘게 크다.
+    // 재생이 살아 있었다면 체력은 반드시 올랐어야 한다 — 내려갔다는 것이 곧
+    // 재생이 꺼졌다는 증거다.
+    expect(enemy.regenPerSecond).toBeGreaterThan((zone?.damagePerSecond ?? 0) * 5);
     const hpBefore = enemy.hp;
     const progressBefore = enemy.progress;
     const stunnedBefore = enemy.stunnedUntil;
     for (let step = 0; step < 10; step += 1) engine.update(0.05);
-    expect(enemy.hp).toBeCloseTo(hpBefore, 6);
+    expect(enemy.hp).toBeLessThan(hpBefore);
     expect(engine.enemyTraitsSuppressed(enemy)).toBe(true);
     // 절대 원칙: 진흙밭은 걸음을 건드리지 않는다 — 새로 묶거나 되돌리지 않는다.
     expect(enemy.stunnedUntil).toBe(stunnedBefore);
@@ -561,7 +570,7 @@ describe("[SKILL-V3] 진흙밭 (泥田)", () => {
 });
 
 describe("[SKILL-V3] 획수 공명 (畫數共鳴)", () => {
-  it("중첩은 같은 계급 동료 1기당 1이고 4에서 멈춘다 — 중첩 상한", () => {
+  it("중첩은 같은 별 동료 1기당 1이고 4에서 멈춘다 — 중첩 상한", () => {
     expect(strokeResonanceStacks(0)).toBe(0);
     expect(strokeResonanceStacks(1)).toBe(1);
     expect(strokeResonanceStacks(STROKE_RESONANCE_MAX_STACKS)).toBe(STROKE_RESONANCE_MAX_STACKS);
@@ -573,59 +582,76 @@ describe("[SKILL-V3] 획수 공명 (畫數共鳴)", () => {
     expect(STROKE_RESONANCE_ABILITY.category).toBe("graph");
   });
 
-  it("같은 진의 같은 계급만 센다 — 다른 진·다른 계급·가방은 세지 않는다 (판정 경계)", () => {
-    const engine = new GameEngine("skill-resonance-scope", "KR");
+  it("같은 진의 같은 별만 센다 — 다른 진·다른 별·가방·1★는 세지 않는다 (판정 경계)", () => {
+    const engine = new GameEngine("skill-resonance-scope", "KR", "casual");
     engine.begin();
     engine.state.summonCount = 1;
     engine.state.startingFormationIndex = 0;
     engine.state.unlockedFormations = [0, 1, 2, 3, 4];
-    const pool = [...getCatalog("KR").definitions.values()].filter(hasActiveSkills);
-    const anchorStage = (pool[0] as HanziDefinition).stage;
-    const sameRank = pool.filter((definition) => definition.stage === anchorStage);
-    const otherRank = pool.find((definition) => definition.stage !== anchorStage);
-    expect(sameRank.length).toBeGreaterThan(5);
-    expect(otherRank).toBeDefined();
+    const pool = starPool(engine, 3);
+    const otherStar = starPool(engine, 4);
+    const dormant = starPool(engine, 1); // 1★ — 기술이 깨어나지 않은 자령.
+    expect(pool.length).toBeGreaterThan(5);
 
-    // 1진(cell 0~15)에 같은 계급 3기.
-    const trio = sameRank.slice(0, 3).map((definition, index) => makeTower(definition, 8000 + index, { cell: index }));
-    // 같은 진의 다른 계급 1기 — 중첩에 끼지 않는다.
-    const mismatched = makeTower(otherRank as HanziDefinition, 8100, { cell: 3 });
-    // 다른 진(cell 16~31)의 같은 계급 1기 — 진 경계를 넘지 않는다.
-    const neighbourFormation = makeTower(sameRank[3] as HanziDefinition, 8200, { cell: CELLS_PER_FORMATION });
+    // 1진(cell 0~15)에 같은 별 3기.
+    const trio = pool.slice(0, 3).map((definition, index) => casualTower(definition, 8000 + index, index, 3));
+    // 같은 진의 다른 별 1기 — 중첩에 끼지 않는다.
+    const mismatched = casualTower(otherStar[0] as HanziDefinition, 8100, 3, 4);
+    // 같은 진의 1★ 1기 — 기술이 깨어나지 않아 울리지도, 울려 주지도 않는다.
+    const sleeper = casualTower(dormant[0] as HanziDefinition, 8110, 4, 1);
+    const sleeperTwin = casualTower(dormant[1] as HanziDefinition, 8111, 5, 1);
+    // 다른 진(cell 16~31)의 같은 별 1기 — 진 경계를 넘지 않는다.
+    const neighbourFormation = casualTower(pool[3] as HanziDefinition, 8200, CELLS_PER_FORMATION, 3);
     // 가방 자령(cell -1)은 진에 서 있지 않다.
-    const stored = makeTower(sameRank[4] as HanziDefinition, 8300, { cell: -1 });
-    engine.state.towers = [...trio, mismatched, neighbourFormation];
+    const stored = casualTower(pool[4] as HanziDefinition, 8300, -1, 3);
+    engine.state.towers = [...trio, mismatched, sleeper, sleeperTwin, neighbourFormation];
     engine.state.inventoryTowers = [stored];
 
     for (const tower of trio) expect(engine.strokeResonanceStacks(tower)).toBe(2);
     expect(engine.strokeResonanceStacks(mismatched)).toBe(0);
+    expect(engine.strokeResonanceStacks(sleeper)).toBe(0);
     expect(engine.strokeResonanceStacks(neighbourFormation)).toBe(0);
     expect(engine.strokeResonanceStacks(stored)).toBe(0);
     expect(engine.strokeResonanceStatus(mismatched)).toBeNull();
-    expect(engine.strokeResonanceStatus(trio[0] as Tower)).toMatchObject({ stacks: 2 });
+    expect(engine.strokeResonanceStatus(trio[0] as Tower)).toMatchObject({ stacks: 2, star: 3 });
+  });
+
+  it("표준 모드에는 별이 없어 공명이 울리지 않는다 (모드 경계)", () => {
+    const standard = new GameEngine("skill-resonance-standard", "KR");
+    standard.begin();
+    standard.state.summonCount = 1;
+    standard.state.startingFormationIndex = 0;
+    standard.state.unlockedFormations = [0];
+    const pool = [...getCatalog("KR").definitions.values()].filter(hasActiveSkills);
+    const anchorStage = (pool[0] as HanziDefinition).stage;
+    const sameStage = pool.filter((definition) => definition.stage === anchorStage).slice(0, 5);
+    expect(sameStage.length).toBe(5);
+    standard.state.towers = sameStage.map((definition, index) => makeTower(definition, 8600 + index, { cell: index }));
+    for (const tower of standard.state.towers) {
+      expect(standard.strokeResonanceStacks(tower)).toBe(0);
+      expect(standard.strokeResonanceStatus(tower)).toBeNull();
+    }
   });
 
   it("중첩만큼 공격 대기가 실제로 줄고, 상한 위로는 더 줄지 않는다", () => {
-    const engine = new GameEngine("skill-resonance-cooldown", "KR");
+    const engine = new GameEngine("skill-resonance-cooldown", "KR", "casual");
     engine.begin();
     engine.state.summonCount = 1;
     engine.state.startingFormationIndex = 0;
     engine.state.unlockedFormations = [0];
-    const pool = [...getCatalog("KR").definitions.values()].filter(hasActiveSkills);
-    const definition = pool[0] as HanziDefinition;
-    const sameRank = pool.filter((candidate) => candidate.stage === definition.stage);
-    expect(sameRank.length).toBeGreaterThan(STROKE_RESONANCE_MAX_STACKS + 2);
+    const pool = starPool(engine, 3);
+    expect(pool.length).toBeGreaterThan(STROKE_RESONANCE_MAX_STACKS + 2);
 
-    const solo = makeTower(definition, 8400, { cell: 0 });
+    const solo = casualTower(pool[0] as HanziDefinition, 8400, 0, 3);
     engine.state.towers = [solo];
     const soloCooldown = engine.towerAttackCooldown(solo);
     expect(engine.strokeResonanceStacks(solo)).toBe(0);
 
-    // 동급 동료를 한 기씩 더한다 — 중첩 1·2·3·4 에서 대기가 계단처럼 줄어든다.
+    // 동성 동료를 한 기씩 더한다 — 중첩 1·2·3·4 에서 대기가 계단처럼 줄어든다.
     for (let allies = 1; allies <= STROKE_RESONANCE_MAX_STACKS; allies += 1) {
       engine.state.towers = [
         solo,
-        ...sameRank.slice(1, allies + 1).map((candidate, index) => makeTower(candidate, 8410 + index, { cell: index + 1 }))
+        ...pool.slice(1, allies + 1).map((candidate, index) => casualTower(candidate, 8410 + index, index + 1, 3))
       ];
       expect(engine.strokeResonanceStacks(solo)).toBe(allies);
       expect(engine.towerAttackCooldown(solo)).toBeCloseTo(soloCooldown * strokeResonanceCooldownScale(allies), 6);
@@ -635,28 +661,29 @@ describe("[SKILL-V3] 획수 공명 (畫數共鳴)", () => {
     const cappedCooldown = engine.towerAttackCooldown(solo);
     engine.state.towers = [
       solo,
-      ...sameRank.slice(1, STROKE_RESONANCE_MAX_STACKS + 3).map((candidate, index) => makeTower(candidate, 8450 + index, { cell: index + 1 }))
+      ...pool.slice(1, STROKE_RESONANCE_MAX_STACKS + 3).map((candidate, index) => casualTower(candidate, 8450 + index, index + 1, 3))
     ];
     expect(engine.strokeResonanceStacks(solo)).toBe(STROKE_RESONANCE_MAX_STACKS);
     expect(engine.towerAttackCooldown(solo)).toBeCloseTo(cappedCooldown, 6);
   });
 
   it("자동배치와 공존한다 — 핀 고정된 봉인 자령도 그대로 세고, 배치 뒤엔 새 칸으로 다시 센다", () => {
-    const engine = new GameEngine("skill-resonance-autoarrange", "KR");
+    const engine = new GameEngine("skill-resonance-autoarrange", "KR", "casual");
     engine.begin();
     engine.state.summonCount = 1;
     engine.state.startingFormationIndex = 2;
     engine.state.unlockedFormations = [0, 1, 2, 3, 4];
     engine.state.towers = [..."以心傳心"].map((char, index) => {
       const definition = getCatalog("KR").definitions.get(char) as HanziDefinition;
-      return makeTower(definition, 8500 + index, { cell: index });
+      // 네 자령을 같은 별로 세워 공명이 실제로 켜지는 판을 만든다.
+      return casualTower(definition, 8500 + index, index, 3);
     });
     // 한 줄 봉인이 서면 그 네 자령은 자동배치에서 칸이 고정된다(핀).
     expect(engine.resolveIdiomFormations()).toBe(1);
     const pinned = engine.sealedIdiomTowerIds();
     expect(pinned.size).toBe(4);
 
-    /** 지금 상태에서 손으로 센 같은 진·같은 계급 동료 수(상한 4). */
+    /** 지금 상태에서 손으로 센 같은 진·같은 별 동료 수(상한 4). */
     const expectedStacks = (tower: Tower): number => {
       if (!engine.towerHasActiveSkills(tower)) return 0;
       const formation = Math.floor(tower.cell / CELLS_PER_FORMATION);
@@ -664,7 +691,8 @@ describe("[SKILL-V3] 획수 공명 (畫數共鳴)", () => {
         candidate.id !== tower.id
         && candidate.cell >= 0
         && Math.floor(candidate.cell / CELLS_PER_FORMATION) === formation
-        && candidate.stage === tower.stage
+        && engine.towerHasActiveSkills(candidate)
+        && (candidate.casualStar ?? candidate.naturalStar ?? 1) === (tower.casualStar ?? tower.naturalStar ?? 1)
       ).length;
       return Math.min(STROKE_RESONANCE_MAX_STACKS, allies);
     };
@@ -673,6 +701,7 @@ describe("[SKILL-V3] 획수 공명 (畫數共鳴)", () => {
     for (const tower of engine.state.towers) {
       expect(pinned.has(tower.id)).toBe(true);
       expect(engine.strokeResonanceStacks(tower)).toBe(expectedStacks(tower));
+      expect(engine.strokeResonanceStacks(tower)).toBe(3);
     }
 
     const cellsBefore = new Map(engine.state.towers.map((tower) => [tower.id, tower.cell] as const));

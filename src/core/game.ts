@@ -693,8 +693,14 @@ export class GameEngine {
    * 무효화 대상이 실제로 존재함은 웨이브 계획에서 확인했다 — 정예 철갑
    * (armor 0.28~0.48)·회생 요괴(regen)·우두머리(둘 다)다.
    */
-  private deployMireZone(tower: Tower, target: Enemy): { label: string; duration: number; damagePerSecond: number } {
+  private deployMireZone(tower: Tower, target: Enemy, damage: number, potency: number, abilityPower: number): { label: string; duration: number; damagePerSecond: number } {
     const existing = this.state.abilityZones.find((zone) => zone.towerId === tower.id);
+    // 진흙밭은 자기 오행 장판을 **대체하지 않는다** — 같은 초당 피해를 그대로
+    // 이고, 지속을 기획값 4초로 줄이는 대신 장갑·재생 무효를 얹는다. 초안처럼
+    // 피해 0으로 두었더니 진흙밭 자령이 원래 쓰던 오행 장판(비구름·유사 등)을
+    // 잃어 순수 하향이 됐고, 그 글자를 많이 가진 KR 로스터의 표준 135런 승률이
+    // 0.556→0.444 로 떨어져 지역 격차 게이트를 깼다.
+    const spec = ELEMENT_ZONE_SPECS[tower.wuxing];
     const zone: AbilityZone = {
       id: existing?.id ?? this.nextAbilityZoneId++,
       towerId: tower.id,
@@ -702,14 +708,14 @@ export class GameEngine {
       wuxing: tower.wuxing,
       progress: target.progress,
       radius: MIRE_ZONE_RADIUS * this.casualSplashRadiusScale(tower),
-      damagePerSecond: 0,
+      damagePerSecond: damage * spec.damageRatio * potency * abilityPower,
       expiresAt: this.state.elapsed + MIRE_ZONE_SECONDS,
       color: "#c2a06a"
     };
     if (existing) Object.assign(existing, zone);
     else this.state.abilityZones.push(zone);
     if (this.state.abilityZones.length > 20) this.state.abilityZones.shift();
-    return { label: "진흙밭", duration: MIRE_ZONE_SECONDS, damagePerSecond: 0 };
+    return { label: "진흙밭", duration: MIRE_ZONE_SECONDS, damagePerSecond: zone.damagePerSecond };
   }
 
   /** [SKILL-V3] 이 적의 장갑·재생 특성이 지금 무효인가(진흙밭을 밟는 중인가). */
@@ -1157,7 +1163,7 @@ export class GameEngine {
     const zone = family === "frost"
       ? this.deployFrostZone(tower, target)
       : family === "mire"
-        ? this.deployMireZone(tower, target)
+        ? this.deployMireZone(tower, target, damage, potency, abilityPower)
         : this.deployElementZone(tower, target, damage, potency, abilityPower);
     const activeZone = this.state.abilityZones.find((candidate) => candidate.towerId === tower.id);
     const zoneTargets = activeZone
@@ -1283,7 +1289,7 @@ export class GameEngine {
     } else if (family === "mire") {
       // [SKILL-V3] 진흙밭: 밟는 동안 장갑·재생만 무효 — 걸음에는 손대지 않는다.
       targets = Math.max(1, zoneTargets);
-      effect = `진흙밭 ${zone.duration.toFixed(1)}초 · 밟는 적 장갑·재생 무효 (이동 그대로)`;
+      effect = `진흙밭 ${zone.duration.toFixed(1)}초 · 초당 ${Math.round(zone.damagePerSecond)} 피해 · 밟는 적 장갑·재생 무효 (이동 그대로)`;
     } else {
       effect = "뜻 구현 · 이번 공격 ×" + tuning.semanticMultiplier.toFixed(2);
     }
@@ -2328,33 +2334,33 @@ export class GameEngine {
     return Math.max(0.28, profile.cooldown * (1 - progressionHaste) * (1 - concentrationHaste) * resonanceScale / (1 + upgradeHaste));
   }
 
-  /**
-   * [SKILL-V3] 이 자령의 계급 — 캐주얼은 별(=획수 구간), 표준은 합성 단계다.
-   * 파죽·연환 인장이 쓰는 관례와 같은 축이다.
-   */
-  towerProgressionRank(tower: Tower): number {
-    return this.state.mode === "casual" ? tower.casualStar ?? tower.naturalStar ?? 1 : tower.stage;
+  /** [SKILL-V3] 이 자령의 별. 별승급 진법에서만 뜻이 있다. */
+  towerStarRank(tower: Tower): number {
+    return tower.casualStar ?? tower.naturalStar ?? 1;
   }
 
   /**
-   * [SKILL-V3] 획수 공명 중첩 — 같은 진에 선 **자기와 같은 계급** 동료 수(자신 제외),
-   * 4중첩 상한.
+   * [SKILL-V3] 획수 공명 중첩 — 같은 진에 선 **자기와 같은 별** 동료 수(자신 제외),
+   * 4중첩 상한. 별승급(캐주얼) 전용이다 — 표준 모드에는 별이 없다.
    *
    * 가방(inventoryTowers)은 세지 않는다 — `state.towers` 만이 진에 서 있는 자령이다.
+   * 기술이 깨어나지 않은 자령(1★)은 울리지도, 울려 주지도 않는다.
    * 발동 중 성어로 칸이 고정된(핀) 자령도 진에 서 있는 한 그대로 센다. 자동배치는
    * 오행과 실화력만 보고 자리를 정하므로 이 축을 최적화하지 않는다 — 공명은
    * 자동배치가 만들어 주는 보너스가 아니라, 배치를 손보는 사람이 노려서 얻는
    * 보너스다(그래서 자동배치와 서로 간섭하지 않는다).
    */
   strokeResonanceStacks(tower: Tower): number {
-    if (tower.cell < 0 || !this.towerHasActiveSkills(tower)) return 0;
+    if (this.state.mode !== "casual" || tower.cell < 0 || !this.towerHasActiveSkills(tower)) return 0;
     const formationIndex = Math.floor(tower.cell / CELLS_PER_FORMATION);
-    const rank = this.towerProgressionRank(tower);
+    const star = this.towerStarRank(tower);
     let allies = 0;
     for (const candidate of this.state.towers) {
       if (candidate.id === tower.id || candidate.cell < 0) continue;
       if (Math.floor(candidate.cell / CELLS_PER_FORMATION) !== formationIndex) continue;
-      if (this.towerProgressionRank(candidate) !== rank) continue;
+      if (this.towerStarRank(candidate) !== star) continue;
+      // 기술이 깨어나지 않은 자령은 공명을 보태지 않는다.
+      if (!this.towerHasActiveSkills(candidate)) continue;
       allies += 1;
       if (allies >= STROKE_RESONANCE_MAX_STACKS) break;
     }
@@ -2362,10 +2368,10 @@ export class GameEngine {
   }
 
   /** [SKILL-V3] 획수 공명 UI 상태. 중첩이 없으면 null — 칩을 아예 그리지 않는다. */
-  strokeResonanceStatus(tower: Tower): { stacks: number; rank: number; haste: number } | null {
+  strokeResonanceStatus(tower: Tower): { stacks: number; star: number; haste: number } | null {
     const stacks = this.strokeResonanceStacks(tower);
     if (stacks <= 0) return null;
-    return { stacks, rank: this.towerProgressionRank(tower), haste: 1 - strokeResonanceCooldownScale(stacks) };
+    return { stacks, star: this.towerStarRank(tower), haste: 1 - strokeResonanceCooldownScale(stacks) };
   }
 
   towerPowerMultiplier(tower: Tower): number {
