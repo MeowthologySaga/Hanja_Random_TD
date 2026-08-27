@@ -254,6 +254,35 @@ export function wireHud1(): void {
  */
 let footerMessage: { readonly base: string; readonly shown: string } | null = null;
 
+/** 바닥 문장의 곁말을 마지막으로 다시 잰 조건(문장 + 시드 노출 여부). */
+let footerMessageProbe = "";
+
+/**
+ * 바닥 문장 한 줄 — 잘리면 곁말(title)로 전문을 남긴다.
+ *
+ * [2차 감사 실측 · 1280×720] 바닥 줄의 글 자리는 354px 이다(패널 폭에서
+ * 인장 자리 26px 을 뺀 값). 웨이브 0 안내 "① 상점에서 첫 자령을 소환하세요.
+ * 준비 시간은 아직 흐르지 않습니다." 는 380.25px 이라 26.25px(6.9%)가
+ * 말줄임으로 잘렸고, 곁말이 없어 잘린 뒤를 볼 데가 아예 없었다.
+ * 개발자 모드에서는 시드(실측 129.5px)가 자리를 나눠 가져 155.8px(41%)가
+ * 잘린다 — 시드는 버그 신고에 붙일 값이라 줄지 않는 쪽이 정본이다(S/P-24).
+ * 개발자 모드가 꺼져 있으면 `.footer-seed` 가 display:none 이라 문장이
+ * 354px 을 온전히 쓴다(실측 확인) — 나눠 쓰는 것은 개발자 모드뿐이다.
+ *
+ * 곁말은 실제로 잘릴 때만 단다. 다 보이는 문장에 툴팁을 달면 소음이고,
+ * scrollWidth 는 강제 리플로를 부르므로 문장이나 시드 노출이 바뀔 때만 잰다.
+ */
+function syncFooterMessage(message: string): void {
+  const value = must<HTMLElement>("#message-value");
+  const probe = `${message}|${shell.dataset.devMode ?? "0"}`;
+  if (probe === footerMessageProbe) return;
+  footerMessageProbe = probe;
+  value.textContent = message;
+  const clipped = value.scrollWidth > value.clientWidth;
+  const title = clipped ? message : "";
+  if (value.title !== title) value.title = title;
+}
+
 export function handleAction(result: ActionResult, options: { invalidatePanels?: boolean } = {}): void {
   sound.playActionOutcome(result.ok);
   if (!result.ok || !result.message.includes("자동 발동")) showToast(result.message, !result.ok);
@@ -393,9 +422,9 @@ export function syncPanel(): void {
   must<HTMLElement>("#goal-count-value").textContent = String(state.idiomSeals.length) + " / " + String(ctx.engine.idioms().length);
   must<HTMLElement>("#seed-value").textContent = state.seed;
   // [S/P-26] UI 가 늘린 문장이 살아 있으면 그것을, 엔진이 다음 문장을 쓰면 그것을.
-  must<HTMLElement>("#message-value").textContent = footerMessage !== null && footerMessage.base === state.lastMessage
+  syncFooterMessage(footerMessage !== null && footerMessage.base === state.lastMessage
     ? footerMessage.shown
-    : state.lastMessage;
+    : state.lastMessage);
   renderFormationUnlocks();
   renderSummonShop();
   must<HTMLElement>("#research-level").textContent = String(state.researchLevel);

@@ -18,6 +18,7 @@ interface QaHandle {
       gold: number;
       wave: number;
       prepRemaining: number;
+      lastMessage: string;
       readonly towers: readonly unknown[];
       readonly enemies: readonly unknown[];
     };
@@ -269,4 +270,59 @@ test("closes the summon reveal with Escape and auto-hides multi-card reveals", a
   // 9.65초 뒤에 스스로 걷힌다 — 옛 동작은 여기서 영원히 서 있었다.
   await expect(page.locator("#summon-reveal")).toHaveClass(/is-active/u, { timeout: 2_000 });
   await expect(page.locator("#summon-reveal")).not.toHaveClass(/is-active/u, { timeout: 12_000 });
+});
+
+/*
+ * ── 트랙 W #4 · 첫 안내 문장이 잘리는데 곁말이 없다 ────────────────
+ * 바닥 줄의 글 자리는 354px 인데 웨이브 0 안내는 380.25px 이라 26.25px 이
+ * 말줄임으로 잘렸고, 개발자 모드에서는 시드가 자리를 나눠 155.8px 이 잘렸다.
+ * 곁말(title)이 없어 잘린 뒤를 볼 데가 아예 없었다.
+ */
+test("gives the clipped footer message a full-text tooltip", async ({ page }) => {
+  await page.goto("/?seed=TRACK-W-FOOTER&mode=standard");
+  await page.getByTestId("start-run").click();
+  await expect(page.locator(".game-shell")).toHaveAttribute("data-phase", "prep");
+
+  const measure = async (): Promise<{ text: string; title: string; shown: number; natural: number; seed: number }> =>
+    page.evaluate(() => {
+      const value = document.querySelector<HTMLElement>("#message-value")!;
+      const seed = document.querySelector<HTMLElement>("#footer-seed")!;
+      const probe = document.createElement("span");
+      probe.style.cssText = "position:absolute;visibility:hidden;white-space:nowrap;";
+      probe.style.font = getComputedStyle(value).font;
+      probe.textContent = value.textContent;
+      document.body.append(probe);
+      const natural = probe.getBoundingClientRect().width;
+      probe.remove();
+      return {
+        text: value.textContent ?? "",
+        title: value.title,
+        shown: Math.round(value.getBoundingClientRect().width * 100) / 100,
+        natural: Math.round(natural * 100) / 100,
+        seed: Math.round(seed.getBoundingClientRect().width * 100) / 100
+      };
+    });
+
+  const plain = await measure();
+  // 개발자 모드가 꺼져 있으면 시드는 display:none 이라 문장이 자리를 온전히 쓴다.
+  expect(plain.seed).toBe(0);
+  expect(plain.shown).toBe(354);
+  expect(plain.natural).toBeGreaterThan(plain.shown);
+  expect(plain.title).toBe(plain.text);
+  await page.screenshot({ path: ".claude/uiux/track-w/10-footer-tooltip-plain.png" });
+
+  // 개발자 모드에서는 시드가 자리를 나눠 가진다 — 그래도 곁말은 전문을 준다.
+  for (let press = 0; press < 5; press += 1) await page.keyboard.press("Backquote");
+  await expect.poll(async () => (await measure()).seed).toBeGreaterThan(50);
+  const dev = await measure();
+  expect(dev.shown).toBeLessThan(plain.shown);
+  expect(dev.title).toBe(dev.text);
+  console.log("[track-w#4]", JSON.stringify({ plain, dev }));
+
+  // 다 보이는 짧은 문장에는 곁말을 달지 않는다 — 툴팁이 소음이 되지 않게.
+  await page.evaluate(() => {
+    (window as unknown as { __HANJA_CTX_QA__: QaHandle }).__HANJA_CTX_QA__.engine.state.lastMessage = "짧은 문장";
+  });
+  await expect.poll(async () => (await measure()).text).toBe("짧은 문장");
+  expect((await measure()).title).toBe("");
 });
