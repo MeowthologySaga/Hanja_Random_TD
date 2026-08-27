@@ -343,10 +343,12 @@ class AppContext {
     }
   })();
   dismantleProtectsUnique = ((): boolean => {
+    // 기본값 끔(사용자 결정). 켜 두면 보통의 가방은 전부 다른 한자라
+    // 분해 가능 0기가 되어 문기 획득 경로 자체가 막혔다(2차 감사 P-07).
     try {
-      return window.localStorage.getItem(DISMANTLE_UNIQUE_STORAGE_KEY) !== "false";
+      return window.localStorage.getItem(DISMANTLE_UNIQUE_STORAGE_KEY) === "true";
     } catch {
-      return true;
+      return false;
     }
   })();
   /** FB6: 저장된 명시적 선택. null 이면 아직 고르지 않아 OS 값을 따른다. */

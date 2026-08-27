@@ -1,0 +1,104 @@
+/* 승급 확인 창의 소모 카드 가독성.
+
+   `.casual-confirm-tower` 에는 여태 규칙이 하나도 없었다 — 어두운 바탕에
+   어두운 글씨가 그대로 얹혀 "소모 · 복구 불가"와 한자가 거의 안 읽혔다
+   (사용자 스크린샷). 되돌릴 수 없는 조작을 알리는 자리이므로 한지 카드로
+   세우고 경고 색은 인주 주홍만 쓴다. */
+
+.casual-fusion-confirm-content .casual-confirm-towers {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  gap: 10px;
+}
+
+.casual-fusion-confirm-content .casual-confirm-tower {
+  display: grid;
+  grid-template-columns: 44px 1fr;
+  grid-template-areas: "sprite glyph" "text text" "tag tag";
+  align-items: center;
+  gap: 4px 10px;
+  padding: 10px 12px;
+  border: 1px solid rgba(122, 90, 42, 0.42);
+  border-left: 3px solid var(--element, #9f2f23);
+  border-radius: 4px;
+  background: linear-gradient(180deg, #f6efdc 0%, #ece0c2 100%);
+  box-shadow: inset 0 0 0 1px rgba(255, 250, 232, 0.5);
+}
+
+.casual-fusion-confirm-content .casual-confirm-sprite { grid-area: sprite; }
+
+.casual-fusion-confirm-content .casual-confirm-tower > b {
+  grid-area: glyph;
+  color: #2b2214;
+  font-size: 26px;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.casual-fusion-confirm-content .casual-confirm-tower > span {
+  grid-area: text;
+  display: grid;
+  gap: 2px;
+}
+
+.casual-fusion-confirm-content .casual-confirm-tower > span > strong {
+  color: #8e2a1e;
+  font-size: 12.5px;
+  font-weight: 900;
+  letter-spacing: 0.02em;
+}
+
+.casual-fusion-confirm-content .casual-confirm-tower > span > small {
+  color: #4a3f30;
+  font-size: 11.5px;
+  font-weight: 700;
+}
+
+.casual-fusion-confirm-content .casual-confirm-tower > em {
+  grid-area: tag;
+  justify-self: start;
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: rgba(142, 42, 30, 0.14);
+  color: #8e2a1e;
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 900;
+}
+
+/* 확인 창 행동 줄. 옛 어두운 테마 값(styles.css 7234: 10px 글자·#9caaba·
+   남색 판)이 한지 창 위에 그대로 남아 [취소]가 거의 안 읽혔다. 주버튼은
+   금박, 취소는 종이 위 먹글씨로 세운다. */
+
+.casual-fusion-confirm-actions button {
+  min-height: 42px;
+  font-size: 13px;
+  border-radius: 4px;
+}
+
+.casual-fusion-confirm-actions #casual-fusion-cancel {
+  border: 1px solid rgba(122, 90, 42, 0.5);
+  background: linear-gradient(180deg, #f2e9d2 0%, #e3d6b4 100%);
+  color: #3b2f1c;
+}
+
+.casual-fusion-confirm-actions #casual-fusion-execute {
+  border: 1px solid rgba(122, 90, 42, 0.72);
+  background: linear-gradient(180deg, #c79a45 0%, #a2762a 100%);
+  color: #2b2214;
+  text-shadow: 0 1px 0 rgba(255, 250, 232, 0.42);
+}
+
+/* 카드가 여섯 장까지 늘어서므로 경고 줄이 "소모 · 복구 / 불가" 로 접히지
+   않게 자간을 조이고, 접힐 때는 낱말 단위로만 접는다. */
+.casual-fusion-confirm-content .casual-confirm-tower > span > strong {
+  font-size: 11.5px;
+  letter-spacing: -0.02em;
+  word-break: keep-all;
+}
+
+.casual-fusion-confirm-content .casual-confirm-tower > span > small {
+  font-size: 11px;
+  word-break: keep-all;
+}

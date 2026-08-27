@@ -378,12 +378,15 @@ test("dismantles a deployed jaryeong straight from the selected card", async ({ 
   await openUnit(page);
   const dismantle = page.getByTestId("dismantle-tower");
   await expect(dismantle).toBeVisible();
-  // 유일 보유 1기는 보호로 잠기고, 사유는 title 이 말한다.
+  // [유일 자령 보호]는 기본 꺼짐(사용자 결정) — 처음부터 분해할 수 있다.
+  await expect(dismantle).toBeEnabled();
+  // 토글을 켜면 유일 보유 1기가 잠기고, 사유가 툴팁과 라벨 양쪽에 선다.
+  await page.evaluate(() => {
+    (window as unknown as { __HANJA_CTX_QA__: { dismantleProtectsUnique: boolean } }).__HANJA_CTX_QA__.dismantleProtectsUnique = true;
+  });
   await expect(dismantle).toBeDisabled();
-  // 트랙 J: 사유가 툴팁에만 숨지 않고 라벨로도 선다("분해 불가 — 유일 보유 한자 …").
   await expect(dismantle).toHaveAttribute("title", /분해 불가 — /u);
   await expect(dismantle).toContainText("분해 불가");
-  // 제련소 [유일 보유 보호] 토글과 같은 ctx 플래그를 끄면 버튼이 열린다.
   await page.evaluate(() => {
     (window as unknown as { __HANJA_CTX_QA__: { dismantleProtectsUnique: boolean } }).__HANJA_CTX_QA__.dismantleProtectsUnique = false;
   });
