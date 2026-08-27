@@ -4,7 +4,7 @@
 import { BOARD_FORMATIONS } from "../../core/content";
 import { IDIOM_WISH_COST_MULTIPLIER, multiSummonCost, SUMMON_COST_MULTIPLIER, summonCost, summonProductCost } from "../../core/engine-tuning";
 import { type SummonIntent } from "../../core/types";
-import { ctx, must } from "../app-context";
+import { ctx, must, shell } from "../app-context";
 import { summonAndFocus, summonIdiomWishAndFocus } from "../battle/camera";
 import { escapeHtml, summonOddsSummary } from "../format";
 import { showToast } from "../hud";
@@ -216,7 +216,11 @@ export function renderFormationUnlocks(): void {
   // 상점의 해금 바는 걷어냈다(전장 자물쇠 + 확인 팝업이 정본).
   // 처음 하는 사람은 진을 추가 구매할 수 있다는 사실 자체를 모르므로,
   // 해금 가능해지는 최초 1회만 토스트로 전장 자물쇠를 짚어 준다.
-  if (cost !== null && state.gold >= cost && state.startingFormationIndex !== null && state.unlockedFormations.length < BOARD_FORMATIONS.length && !ctx.formationUnlockHintShown) {
+  // 수련 중에는 세우지 않는다 — 각본이 짚는 것과 다른 조작을 권하는 셈이고,
+  // 실제로 그 말을 따라 자물쇠를 누르면 해금 창이 각본 대상 칸을 통째로 덮었다
+  // (QA 실측). 수련을 마치고 본편에 들어가면 그때 제 차례에 뜬다.
+  if (shell.dataset.tutorial !== "1"
+    && cost !== null && state.gold >= cost && state.startingFormationIndex !== null && state.unlockedFormations.length < BOARD_FORMATIONS.length && !ctx.formationUnlockHintShown) {
     ctx.formationUnlockHintShown = true;
     showToast(`엽전 ${cost}으로 새 오행진을 해금할 수 있습니다 — 전장의 잠긴 진 자물쇠를 눌러 원하는 진을 고르세요`);
   }
