@@ -33,6 +33,7 @@
  * 선례)과 ctx 의 무료권 수로만 지급한다. 무료권 사용은 소환 비용만큼 엽전을
  * state 에 먼저 얹고 즉시 소환하는 래퍼다(실패 시 얹은 엽전을 물려 권 보존).
  */
+import { casualStrokeCount } from "../../core/casual";
 import { TALISMAN_MODE_ENEMY_HP_SCALE } from "../../core/engine-tuning";
 import { type GameEngine } from "../../core/game";
 import { summonCost } from "../../core/engine-tuning";
@@ -116,6 +117,16 @@ let sealed = false;
 
 let drawing = false;
 
+/**
+ * 이번 종이에 뗐다 붙인 획의 수.
+ *
+ * 픽셀 채점(정확·덮음)만으로는 낙서가 걸러지지 않는다 — 획이 촘촘한 글자에서는
+ * 가로줄 서너 개로도 정확 0.8·덮음 1.0 이 나온다(QA 실측: 24회 중 6회 즉시
+ * 통과). 그런데 부적은 "글자를 따라 쓰는" 자리다. 그래서 획을 몇 번 나눠
+ * 그었는가를 함께 본다 — 낙서와 따라쓰기를 가르는 가장 싼 신호다.
+ */
+let strokesDrawn = 0;
+
 let lastPoint = { x: 0, y: 0 };
 
 /** 장수 적립 장부. 엔진 교체(재도전)면 처음부터 다시 센다. */
@@ -184,6 +195,27 @@ function talismanCharges(): number {
   return charges;
 }
 
+/**
+ * 이어하기를 위해 장부를 뜬다 — 남은 장수와 그 기준 웨이브.
+ *
+ * 장부는 엔진이 바뀌면 스스로 처음부터 세는데(재도전을 위한 규칙), 이어하기도
+ * 새 엔진을 세우므로 그 규칙에 걸려 부적이 초기화됐다(사용자 제보).
+ */
+export function captureTalismanLedger(): { charges: number; chargeWave: number } {
+  talismanCharges();
+  return { charges, chargeWave };
+}
+
+/** 저장본에서 장부를 되살린다. 되살린 판의 엔진을 기준으로 다시 센다. */
+export function restoreTalismanLedger(ledger: { charges: number; chargeWave: number }): void {
+  chargeEngine = ctx.engine;
+  charges = Math.max(0, Math.min(CHARGE_CAP, Math.floor(ledger.charges)));
+  chargeWave = Math.max(1, Math.floor(ledger.chargeWave));
+  waveCredit = 0;
+  recentRewards = emptyTally();
+  outOfCharges = charges <= 0;
+}
+
 function recentRewardText(): string {
   const parts: string[] = [];
   if (recentRewards.gold > 0) parts.push(`엽전 +${recentRewards.gold}`);
@@ -204,9 +236,13 @@ function syncRewardNote(): void {
   const left = talismanCharges();
   must<HTMLElement>("#talisman-charge-count").textContent = `남은 부적 ${left}장`;
   const credit = must<HTMLElement>("#talisman-charge-credit");
+  // 다 써서 잠긴 종이 옆에 "이번 웨이브 +3 적립"이 남아 있으면 지금 세 장이
+  // 있다는 말로 읽힌다(QA 실측). 0장일 때는 언제 다시 쓸 수 있는지를 적는다.
   credit.textContent = left >= CHARGE_CAP
     ? `상한 ${CHARGE_CAP}장`
-    : waveCredit > 0 ? `이번 웨이브 +${waveCredit} 적립` : "이번 웨이브 적립 없음";
+    : left === 0
+      ? `다음 웨이브에 ${CHARGES_PER_WAVE}장 적립`
+      : waveCredit > 0 ? `이번 웨이브 +${waveCredit} 적립` : "이번 웨이브 적립 없음";
   credit.classList.toggle("is-capped", left >= CHARGE_CAP);
   const recent = must<HTMLElement>("#talisman-recent-reward");
   const text = recentRewardText();
@@ -282,6 +318,7 @@ function clearInk(): void {
   if (!inkContext) return;
   inkContext.clearRect(0, 0, PAPER_WIDTH, PAPER_HEIGHT);
   drawing = false;
+  strokesDrawn = 0;
 }
 
 /**
@@ -305,7 +342,7 @@ function syncSubmitButton(hasInk: boolean): void {
   submit.title = sealed
     ? "이미 완성된 부적입니다 — [새 부적 쓰기] 로 다음 글자를 받으세요"
     : hasInk
-      ? `획순은 자유 · 정확 ${Math.round(TALISMAN_THRESHOLDS.inside * 100)}% · 덮음 ${Math.round(TALISMAN_THRESHOLDS.coverage * 100)}% 이상이면 부적이 완성됩니다`
+      ? `획순은 자유 · 정확 ${Math.round(TALISMAN_THRESHOLDS.inside * 100)}% · 덮음 ${Math.round(TALISMAN_THRESHOLDS.coverage * 100)}%${requiredStrokeCount() === null ? "" : ` · ${requiredStrokeCount()}획 이상`} 이면 부적이 완성됩니다`
       : "먼저 부적지의 한자를 따라 써 보세요";
 }
 
@@ -516,12 +553,33 @@ function submitTalisman(): void {
   if (sealed) return;
   const score = refreshScore();
   if (!score || score.inkPixels === 0) return;
+  const needed = requiredStrokeCount();
+  if (needed !== null && strokesDrawn < needed) {
+    setStatus(`획을 나눠 써 보세요 — ${needed}획 이상 필요 (지금 ${strokesDrawn}획)`, "hint");
+    sound.playActionOutcome(false);
+    return;
+  }
   if (!score.pass) {
     setStatus(shortfallHint(score), "hint");
     sound.playActionOutcome(false);
     return;
   }
   completeTalisman(score);
+}
+
+/**
+ * 이 글자에 요구하는 최소 획 수 — 실제 획 수의 절반(올림), 최소 2획.
+ *
+ * 절반인 이유: 따라 쓰는 사람도 붓을 안 떼고 두 획을 잇는 일이 흔하다. 반만
+ * 나눠 그어도 통과시키되, 가로줄 서너 개짜리 낙서(17획 글자에 3~5획)는 걸러진다.
+ * 획 수를 모르는 글자(자료 밖)는 이 관문을 세우지 않는다 — 없는 근거로 막지 않는다.
+ */
+function requiredStrokeCount(): number | null {
+  const char = currentDefinition?.char;
+  if (char === undefined) return null;
+  const strokes = casualStrokeCount(char);
+  if (strokes === null || strokes < 2) return null;
+  return Math.max(2, Math.ceil(strokes / 2));
 }
 
 function canvasPoint(canvas: HTMLCanvasElement, event: PointerEvent): { x: number; y: number } {
@@ -551,6 +609,7 @@ function wireDrawing(ink: HTMLCanvasElement): void {
   ink.addEventListener("pointerdown", (event) => {
     if (sealed || event.button > 0) return;
     drawing = true;
+    strokesDrawn += 1;
     // 합성 이벤트(QA 자동 따라쓰기)는 활성 포인터가 없어 캡처가 거부될 수 있다.
     try {
       ink.setPointerCapture(event.pointerId);
@@ -635,9 +694,18 @@ export function setTalismanMode(enabled: boolean): void {
   }
   syncModeToggle();
   syncTabPresence();
+  /*
+   * 적 체력 +5%는 런이 시작될 때의 설정으로 굳는다(engine 생성 인자). 그래서
+   * 판 도중에 끄면 보상만 사라지고 대가는 그 판 끝까지 남는데, 예전 문구는
+   * 탭이 접힌다는 말만 했다(QA 실측). 굳어 있는 판에서는 그 사실을 말한다.
+   */
+  const runFrozenPenalty = ctx.engine.talismanMode
+    && (ctx.engine.state.phase === "prep" || ctx.engine.state.phase === "combat");
   showToast(enabled
     ? "부적 만들기 ON · 패널에 「부적」 탭이 열립니다"
-    : "부적 만들기 OFF · 「부적」 탭을 접습니다");
+    : runFrozenPenalty
+      ? "부적 만들기 OFF · 「부적」 탭을 접습니다 — 이 판의 적 +5%는 그대로 남고, 다음 판부터 사라집니다"
+      : "부적 만들기 OFF · 「부적」 탭을 접습니다");
 }
 
 /* ── 기본 소환 무료권 ─────────────────────────────────────────── */

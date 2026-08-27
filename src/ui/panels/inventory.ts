@@ -177,7 +177,7 @@ function renderRunInventoryActions(
   dismantle.title = !selected
     ? "먼저 카드를 고르세요"
     : dismantleReady
-      ? `${essenceAmountLabel(selected.wuxing, essence)} 를 회수하고 이 자령을 없앱니다. 되돌릴 수 없습니다.`
+      ? `${essenceAmountLabel(selected.wuxing, essence)}을 회수하고 이 자령을 없앱니다. 되돌릴 수 없습니다.`
       : dismantleBlockNote(assessment?.protectedReasons ?? []);
 
   /*
