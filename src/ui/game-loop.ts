@@ -10,6 +10,7 @@ import { syncEssenceFeedback } from "./essence-feedback";
 import { processEvent } from "./events";
 import { syncOneShotHints } from "./hint";
 import { showToast, syncPanel } from "./hud";
+import { autoSaveRun } from "./run-save-slot";
 import { syncScrollAffordances } from "./scroll-affordance";
 import { showCasualFusionReveal, showSummonReveal } from "./summon-reveal";
 
@@ -69,6 +70,17 @@ export function frame(now: number): void {
   const frameEvents = ctx.engine.consumeEvents();
   const waveStartedThisFrame = frameEvents.some((event) => event.type === "wave");
   for (const event of frameEvents) processEvent(event);
+  /*
+   * [트랙 V] 웨이브 경계 자동 저장.
+   *
+   * 전투가 준비 시간으로 넘어가는 순간이 곧 "웨이브를 하나 넘겼다"이고, 그때만
+   * 전장이 비어 있어 담을 것이 상태 본체뿐이다. 아직 첫 웨이브 전이거나
+   * 수련장이면 `autoSaveRun()` 이 스스로 지나간다.
+   *
+   * 목패를 여기서 다시 그리지는 않는다 — 타이틀 화면으로 가는 유일한 길이
+   * 새로고침이라(returnToMenu) 목패는 다음 부팅에 어차피 슬롯을 다시 읽는다.
+   */
+  if (frameEvents.some((event) => event.type === "phase" && event.phase === "prep")) autoSaveRun();
   const summonEvents = frameEvents.filter((event): event is Extract<GameEvent, { type: "summon" }> => event.type === "summon");
   if (summonEvents.length > 0) showSummonReveal(summonEvents);
   else showCasualFusionReveal(frameEvents.filter((event): event is Extract<GameEvent, { type: "casualFuse" }> => event.type === "casualFuse"));

@@ -5,10 +5,22 @@ import { MAX_ENEMIES } from "../../core/content";
 import { ctx, endOverlay, must } from "../app-context";
 import { formatTime, gameModeLabel } from "../format";
 import { setFocusFrame } from "../hud";
+import { clearSavedRun } from "../run-save-slot";
 import { hideSummonReveal } from "../summon-reveal";
 import { totalElementUpgradeLevels, totalGlobalUpgradeLevels } from "./element-upgrade";
 
 export function showEndScreen(phase: "victory" | "defeat"): void {
+  /*
+   * [트랙 V] 끝난 판의 저장은 여기서 지운다.
+   *
+   * 마지막 저장 지점은 진 웨이브 직전의 준비 시간이다. 그대로 두면 종료 화면을
+   * 지나 새로고침하는 것만으로 패배를 무를 수 있다 — 이어하기가 아니라 무르기다.
+   * 재도전·새 시드·메뉴 복귀 세 길이 전부 이 지점을 지나므로 여기 한 곳이면 된다.
+   *
+   * 수련장은 예외다. 연습 판은 애초에 저장되지 않으므로 여기서 지울 것이
+   * 자기 자신일 수 없다 — 지우면 남의 판(두고 온 본편)을 지운다.
+   */
+  if (!ctx.engine.tutorial) clearSavedRun();
   // 강화·농축 프레임을 연 채 패배하면 종료 화면 뒤에 프레임이 남아,
   // 재도전 직후 전장이 어두운 유리 아래 갇힌다.
   setFocusFrame(null);
