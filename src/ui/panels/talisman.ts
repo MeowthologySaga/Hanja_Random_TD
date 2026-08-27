@@ -238,6 +238,8 @@ export function syncTalismanPanel(): void {
   if (ctx.activePanelTab !== "talisman") return;
   if (!document.querySelector("#talisman-panel")) return;
   refreshCharges();
+  // 표기 전환은 이 탭을 다시 그리지 않는다 — 읽기 줄만 따로 따라오게 한다.
+  syncTalismanReading();
 }
 
 /** 현재 지역 로스터에서 다음 글자를 뽑는다(직전 글자는 피한다). */
@@ -313,6 +315,30 @@ function hideSeal(): void {
   seal.classList.remove("is-stamped");
 }
 
+/** 읽기 줄을 마지막으로 쓴 조건(글자 + 표기). 표기가 바뀌면 다시 쓴다. */
+let talismanReadingKey = "";
+
+/**
+ * 부적지 위 글자의 읽기 한 줄.
+ *
+ * [2차 감사 · 성어 HUD 와 같은 갈래] 이 줄은 presentDefinition 안에서만 쓰였다.
+ * 그 함수는 글자를 새로 뽑을 때만 부르므로, 표기를 바꿔도(S13) 눈앞의 글자는
+ * 옛 표기로 남아 있었다 — 글자의 출신 지역이 아니라 사용자가 고른 표기로
+ * 읽는 것이 규칙인데 그 규칙이 전환 순간에만 깨졌다.
+ * 다시 뽑기로 되돌리면 먹선이 지워지므로, 되그리지 않고 읽기 줄만 갈아 끼운다.
+ */
+function syncTalismanReading(): void {
+  const definition = currentDefinition;
+  if (!definition) return;
+  const notation = ctx.engine.state.notation;
+  const key = `${definition.char}|${notation}`;
+  if (key === talismanReadingKey) return;
+  talismanReadingKey = key;
+  const info = learningInfoForNotation(notation, definition.char);
+  const infoMark = notationBadgeText(info);
+  must<HTMLElement>("#talisman-reading").textContent = `${info.readingLabel} · ${info.reading}${infoMark ? ` (${infoMark})` : ""}`;
+}
+
 /** 새 글자를 부적지에 앉힌다. 먹선·인장·상태를 함께 되돌린다. */
 function presentDefinition(definition: HanziDefinition): void {
   currentDefinition = definition;
@@ -322,10 +348,7 @@ function presentDefinition(definition: HanziDefinition): void {
   clearInk();
   must<HTMLCanvasElement>("#talisman-ink").classList.remove("is-sealed");
   hideSeal();
-  // 글자의 출신 지역이 아니라 사용자가 고른 표기로 읽는다 — 읽는 사람은 사용자다.
-  const info = learningInfoForNotation(ctx.engine.state.notation, definition.char);
-  const infoMark = notationBadgeText(info);
-  must<HTMLElement>("#talisman-reading").textContent = `${info.readingLabel} · ${info.reading}${infoMark ? ` (${infoMark})` : ""}`;
+  syncTalismanReading();
   setStatus("반투명 글자를 따라 쓰고 [부적 완성]");
   must<HTMLButtonElement>("#talisman-redraw").textContent = "다시 뽑기";
   syncSubmitButton(false);

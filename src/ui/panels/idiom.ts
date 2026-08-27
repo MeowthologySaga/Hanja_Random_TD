@@ -107,7 +107,13 @@ export function renderIdiomHud(): void {
   const ownedSignature = ctx.engine.state.towers.map((tower) => tower.char).sort().join("");
   // R18: 기록(id)과 활성 여부가 함께 열쇠에 들어가야 해제·재발동이 즉시 반영된다.
   const sealSignature = ctx.engine.state.idiomSeals.map((seal) => `${seal.idiomId}:${seal.active ? "on" : "off"}`).join(",");
-  const key = sealSignature + "|" + (target?.id ?? "done") + "|" + ownedSignature;
+  /*
+   * [2차 감사] 열쇠에 표기 축이 빠져 있었다. 이 HUD 는 성어의 읽기와 자령
+   * 훈음을 그리는데(idiomReadingInfoForNotation · notationBadgeText), 표기를
+   * 바꿔도 봉인 상태·목표·보유 글자가 그대로면 열쇠가 같아 옛 읽기가 남았다.
+   * 발동 중 성어 스택(renderActiveIdioms)은 이미 넣고 있었다 — 같은 줄에 세운다.
+   */
+  const key = sealSignature + "|" + (target?.id ?? "done") + "|" + ownedSignature + "|" + ctx.engine.state.notation;
   if (key === ctx.idiomRenderKey) return;
   ctx.idiomRenderKey = key;
   maybeShowIdiomHint(target);
