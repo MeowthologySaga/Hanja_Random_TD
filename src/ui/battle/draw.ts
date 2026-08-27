@@ -182,6 +182,30 @@ function placeFormationLabel(
   return nudge;
 }
 
+/**
+ * 잠긴 진의 자물쇠 자리를 라벨보다 먼저 예약한다.
+ *
+ * 이름표는 진 중심에서 122 월드px 위에 있어 제자리에서는 자물쇠와 만날 일이
+ * 없다. 그런데 벽으로 밀리면(위쪽 안전선) 제 진의 자물쇠 위로 끌려 내려온다 —
+ * 실측: 기본 시점에서 수진 이름표가 자물쇠 스프라이트 뒤로 들어가 "수진 · 18엽
+ * ▨ 해금 가능!" 처럼 가운데가 지워졌다(자물쇠는 이름표보다 뒤에 그려진다).
+ * 그 자리에서 잃는 정보는 진 이름 하나뿐이고, 바로 아래 자물쇠 안내가 값과
+ * 조건을 이미 이고 있다. 그래서 겹칠 바에는 이름표를 접는다.
+ */
+function reserveFormationLockBoxes(): void {
+  for (let index = 0; index < BOARD_FORMATIONS.length; index += 1) {
+    if (ctx.engine.isFormationUnlocked(index)) continue;
+    const center = (BOARD_FORMATIONS[index] as (typeof BOARD_FORMATIONS)[number]).center;
+    // 자물쇠 스프라이트는 40×40 이라 반 20 이면 덮는다. 22 로 2px 만 더 준다 —
+    // 24 이상으로 키우면 자물쇠 바로 아래(+24)에 서는 해금 안내까지 걸려
+    // 사라진다(실측: 반 26 일 때 "18엽전 해금"이 통째로 접혔다).
+    const half = 22 * ctx.mapZoom;
+    const x = ctx.mapOffset.x + center.x * ctx.mapZoom;
+    const y = ctx.mapOffset.y + center.y * ctx.mapZoom;
+    formationLabelBoxes.push({ left: x - half, top: y - half, right: x + half, bottom: y + half });
+  }
+}
+
 /** 장판 생성 시각 기록 — 스케일-인 연출과 생성 고리에 쓴다. */
 const zoneSpawnTimes = new Map<number, number>();
 
@@ -519,6 +543,7 @@ function drawSpawnPortals(): void {
 function drawBoard(): void {
   // 지난 프레임의 라벨 자리는 이번 프레임과 무관하다(stage-labels 의 resetStageLabels 와 같은 규칙).
   formationLabelBoxes.length = 0;
+  reserveFormationLockBoxes();
   context.save();
   context.textAlign = "center";
   const occupied = new Set(ctx.engine.state.towers.map((tower) => tower.cell));
