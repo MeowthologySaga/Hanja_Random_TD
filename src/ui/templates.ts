@@ -173,7 +173,7 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
       -->
       <section class="resource-grid" aria-label="현재 자원">
         <div title="지금 지닌 엽전 — 소환과 진 해금에 쓴다"><span>엽전</span><strong id="gold-value">${GAME_CONFIG.startingGold}</strong></div>
-        <div title="다섯 오행에 쌓인 문기의 합 — 강화와 승급에 쓴다. 오행별 잔량은 강화 탭에서 본다"><span>문기</span><strong id="essence-total-value">0</strong></div>
+        <div title="오행별로 쌓인 문기 — 농축과 강화는 그 오행의 문기를 쓴다"><span>문기</span><strong id="essence-total-value"></strong></div>
       </section>
 
       <section class="wave-card">

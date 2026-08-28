@@ -24,7 +24,12 @@ export type AutomationMode = "manual" | "semi" | "goal";
 // 소프트 — 그 위 별도 가파른 꼬리 확률로 나온다(engine-tuning.CASUAL_STAR_TAIL_DECAY).
 export type SummonIntent = "balanced" | "discovery" | "lineage" | "concentration" | "midstar" | "highstar";
 export type ConcentrationPath = "swift" | "potent";
-export type ConcentrationLevel = 0 | 1 | 2 | 3;
+/*
+ * 농축 단계. 상한이 없다 — 성어 줄에 세우려 고른 낮은 등급 글자도 끝까지
+ * 자랄 수 있어야 "성어 때문에 손해"가 되지 않는다(2026-08-28 결정).
+ * 무한을 여는 대신 값이 기하급수로 오르고, 힘은 단계마다 덜 붙는다.
+ */
+export type ConcentrationLevel = number;
 export type ConcentrationPayment =
   | { kind: "duplicate"; towerId: number }
   | { kind: "essence" };

@@ -12,7 +12,6 @@ import {
   type AbilityZone,
   type CasualStar,
   type CombatRole,
-  type ConcentrationLevel,
   type ConcentrationPath,
   type GameMode,
   type HanziCatalog,
@@ -198,7 +197,20 @@ export function sumElementValues(values: Record<Wuxing, number>): number {
   return values.木 + values.火 + values.土 + values.金 + values.水;
 }
 
-export const MAX_CONCENTRATION_LEVEL: ConcentrationLevel = 3;
+/*
+ * 농축의 옛 상한. 이제 막는 문이 아니라 **동결선**이다.
+ *
+ * 상한을 걷으면서도 두 가지는 이 선에서 멈춘다.
+ *  · 엽전 생산(재물 계열의 농축 가산) — 안 그러면 농축이 제 값을 스스로 벌어
+ *    무한히 자라는 고리가 된다(조폐).
+ *  · 분해 환급 — 비싸게 올린 단계를 환급으로 되받으면 그것도 조폐다.
+ * 힘(피해·사거리·공속)은 이 선을 넘어서도 계속 붙되, 아래 곡선이 점점
+ * 덜 주고 값은 기하급수로 오른다.
+ */
+export const CONCENTRATION_FREEZE_LEVEL = 3;
+
+/** 옛 이름. 화면이 "최고 단계"를 말하던 자리는 모두 걷었다. */
+export const MAX_CONCENTRATION_LEVEL = CONCENTRATION_FREEZE_LEVEL;
 
 export const FIRST_PREP_SECONDS = 15;
 
@@ -229,8 +241,20 @@ const CONCENTRATION_ESSENCE_COSTS = [10, 16, 24] as const;
  */
 const CONCENTRATION_ESSENCE_REFUND_BASE = [4, 6, 8] as const;
 
+/**
+ * 다음 한 단계의 문기 값.
+ *
+ * 앞 세 단계는 예전 표 그대로다(10 · 16 · 24) — 여태 하던 판이 달라지지 않게.
+ * 그 위로는 단계마다 1.5배로 오른다: 36 · 54 · 81 · 122 · 182 …
+ * 무한이되 공짜가 아니라는 것이 상한을 걷는 유일한 조건이다. 열 단계째의
+ * 한 번이 앞 세 단계 전부(50)의 열 배가 넘는다.
+ */
 export function concentrationEssenceCost(currentLevel: number): number {
-  return CONCENTRATION_ESSENCE_COSTS[Math.max(0, Math.min(2, currentLevel))] ?? 24;
+  const level = Math.max(0, Math.floor(currentLevel));
+  const table = CONCENTRATION_ESSENCE_COSTS[level];
+  if (table !== undefined) return table;
+  const last = CONCENTRATION_ESSENCE_COSTS[CONCENTRATION_ESSENCE_COSTS.length - 1] ?? 24;
+  return Math.round(last * 1.5 ** (level - CONCENTRATION_ESSENCE_COSTS.length + 1));
 }
 
 /**

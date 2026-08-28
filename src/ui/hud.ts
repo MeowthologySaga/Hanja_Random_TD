@@ -430,10 +430,22 @@ export function syncPanel(): void {
   // 트랙 C2: 부적 보상이 자원칸에 꽂히는 순간에만 숫자가 굴러간다. 굴리는 중이
   // 아니거나 다른 수입·지출이 끼어들면 즉시 실제 보유량으로 돌아온다.
   must<HTMLElement>("#gold-value").textContent = String(talismanGoldRoll(state.gold) ?? state.gold);
-  // 문기는 오행별로 갈라져 있다. 자원칸은 합만 적고, 어느 오행에 얼마인지는
-  // 강화 탭의 「문기 木0 火0 …」 줄이 그대로 맡는다 — 한 줄에 다섯 수를 넣으면
-  // 좁은 칸에서 접힌다.
-  must<HTMLElement>("#essence-total-value").textContent = String(totalEssenceOf(state));
+  /*
+   * 문기는 오행별로 적는다.
+   *
+   * 합계 한 수로는 쓸 수 있는지를 못 판단한다 — 농축도 강화도 **그 오행의**
+   * 문기를 요구하므로, 합이 20이어도 필요한 오행이 0이면 아무것도 못 한다.
+   * 다섯 수를 오행색으로 나란히 두면 좁은 칸에서도 어느 쪽이 마른지 한눈에 든다.
+   * 소리로는 합까지 함께 읽히도록 접근명에 적는다.
+   */
+  const essenceCell = must<HTMLElement>("#essence-total-value");
+  essenceCell.innerHTML = WUXING_ORDER
+    .map((wuxing) => `<i style="--element:${ELEMENT_STYLES[wuxing].color}">${wuxing}${state.elementEssence[wuxing]}</i>`)
+    .join("");
+  essenceCell.setAttribute(
+    "aria-label",
+    `문기 합 ${totalEssenceOf(state)} · ` + WUXING_ORDER.map((wuxing) => `${wuxing} ${state.elementEssence[wuxing]}`).join(" · ")
+  );
   must<HTMLElement>("#seed-value").textContent = state.seed;
   // [S/P-26] UI 가 늘린 문장이 살아 있으면 그것을, 엔진이 다음 문장을 쓰면 그것을.
   syncFooterMessage(footerMessage !== null && footerMessage.base === state.lastMessage

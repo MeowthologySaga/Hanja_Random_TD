@@ -113,7 +113,7 @@ import {
   IDIOM_RESEARCH_CONNECTION_SCALE,
   idiomWishCost,
   interestForGold,
-  MAX_CONCENTRATION_LEVEL,
+  CONCENTRATION_FREEZE_LEVEL,
   MODE_ENEMY_COUNT_SCALE,
   multiSummonCost,
   regionEnemyHpMultiplier,
@@ -231,7 +231,6 @@ export {
   elementZoneKind,
   type SummonStarBand,
   interestForGold,
-  MAX_CONCENTRATION_LEVEL,
   FIRST_PREP_SECONDS,
   GATE_OPENING_WARD,
   IDIOM_RESEARCH_CONNECTION_SCALE,
@@ -1309,7 +1308,9 @@ export class GameEngine {
       targets = this.state.towers.length;
       effect = "진 전체 " + String(targets) + "기 호흡 가속";
     } else if (family === "wealth") {
-      const bonus = 1 + Math.floor((tower.concentration ?? 0) / 2);
+      // 조폐 차단: 농축 가산은 옛 상한(동결선)에서 멈춘다. 안 그러면 농축이
+      // 제 값을 스스로 벌어 무한히 자라는 고리가 된다.
+      const bonus = 1 + Math.floor(Math.min(CONCENTRATION_FREEZE_LEVEL, tower.concentration ?? 0) / 2);
       this.state.gold += bonus;
       effect = "현상금 적 추적 · 엽전 +" + String(bonus);
     } else if (family === "sight") {
@@ -2448,7 +2449,16 @@ export class GameEngine {
   towerAttackCooldown(tower: Tower): number {
     const profile = definitionForTower(this.catalog, tower.definitionId).combat;
     const concentration = tower.concentration ?? 0;
-    const concentrationHaste = tower.concentrationPath === "swift" ? concentration * 0.075 : concentration * 0.02;
+    /*
+     * 농축 공속은 단계마다 **곱으로** 줄인다(선형이 아니다).
+     *
+     * 상한이 열리면서 선형 0.075/단계는 13단계에서 1.0 을 넘어 대기시간이
+     * 음수가 된다 — 하한 0.28 이 가려 줄 뿐 사실상 즉시 발사다. 곱으로 두면
+     * 아무리 올려도 0 에 수렴할 뿐 뒤집히지 않고, 앞 세 단계는 예전 값과
+     * 거의 같다(3단계 0.792 vs 옛 0.775).
+     */
+    const hastePerLevel = tower.concentrationPath === "swift" ? 0.075 : 0.02;
+    const concentrationHaste = 1 - (1 - hastePerLevel) ** concentration;
     const upgradeHaste = this.combinedUpgradeBonus(tower.wuxing, "attackSpeed");
     // 수술 7: 캐주얼 공속 성장 별당 2% → 3%. 별이 오르면 실제로 빨라진다.
     const progressionHaste = this.state.mode === "casual"
@@ -2922,11 +2932,35 @@ export class GameEngine {
     return this.dismantleTowers(ids, options);
   }
 
+  /**
+   * 성어 줄을 지키고 있는 자령인가.
+   *
+   * 봉인의 네 자리 중 하나에 서 있으면 그렇다. 흩어진 봉인(active=false)은
+   * 세지 않는다 — 지금 줄을 지키는 값을 치르는 것이기 때문이다.
+   */
+  isTowerHoldingIdiom(towerId: number): boolean {
+    const tower = this.state.towers.find((candidate) => candidate.id === towerId);
+    if (!tower || tower.cell < 0) return false;
+    return this.state.idiomSeals.some((seal) => seal.active && seal.cells.includes(tower.cell));
+  }
+
+  /**
+   * 이 자령의 다음 농축 값.
+   *
+   * 성어 줄을 지키는 자령은 **절반**만 낸다. 요구의 원래 뜻이 여기 있다 —
+   * "레어도 낮은 한자를 성어 줄에 세우면 손해"라는 감각을 지우려는 것이다.
+   * 줄을 채우려 고른 약한 글자일수록 농축이 필요한데, 값까지 같으면 성어를
+   * 세우는 선택이 벌처럼 느껴진다.
+   */
+  private concentrationEssenceCostFor(target: Tower, currentLevel: number): number {
+    const base = concentrationEssenceCost(currentLevel);
+    return this.isTowerHoldingIdiom(target.id) ? Math.max(1, Math.ceil(base / 2)) : base;
+  }
+
   concentrationQuote(targetId: number, path: ConcentrationPath): ConcentrationQuote | null {
     const target = [...this.state.towers, ...this.state.inventoryTowers].find((tower) => tower.id === targetId);
     if (!target) return null;
     const currentLevel = target.concentration ?? 0;
-    if (currentLevel >= MAX_CONCENTRATION_LEVEL) return null;
     const chosenPath = target.concentrationPath ?? path;
     if (target.concentrationPath && chosenPath !== path) return null;
     const nextLevel = (currentLevel + 1) as ConcentrationLevel;
@@ -2938,7 +2972,7 @@ export class GameEngine {
       path: chosenPath,
       currentLevel,
       nextLevel,
-      essenceCost: concentrationEssenceCost(currentLevel),
+      essenceCost: this.concentrationEssenceCostFor(target, currentLevel),
       duplicateIds,
       current: this.concentrationCombatSnapshot(target, target.concentrationPath ?? path, currentLevel),
       next: this.concentrationCombatSnapshot(target, chosenPath, nextLevel)
@@ -2950,7 +2984,7 @@ export class GameEngine {
     const damage = profile.baseDamage * this.towerPowerMultiplier(tower) * profile.budgetMultiplier
       * (1 + level * (path === "potent" ? 0.12 : 0.055))
       * (1 + this.combinedUpgradeBonus(tower.wuxing, "damage"));
-    const concentrationHaste = level * (path === "swift" ? 0.075 : 0.02);
+    const concentrationHaste = 1 - (1 - (path === "swift" ? 0.075 : 0.02)) ** level;
     const progressionHaste = this.state.mode === "casual"
       ? ((tower.casualStar ?? tower.naturalStar ?? 1) - 1) * CASUAL_STAR_HASTE_PER_STAR
       : (tower.stage - 1) * 0.035;
@@ -2970,7 +3004,6 @@ export class GameEngine {
     if (!target) return { ok: false, message: "농축 대상이 더 이상 존재하지 않습니다." };
     const quote = this.concentrationQuote(targetId, path);
     if (!quote) {
-      if ((target.concentration ?? 0) >= MAX_CONCENTRATION_LEVEL) return { ok: false, message: `${target.char} 농축이 최고 단계입니다.` };
       return { ok: false, message: `${target.char} 농축 방향은 ${concentrationPathLabel(target.concentrationPath ?? "swift")}으로 이미 고정되어 있습니다.` };
     }
     let usedDuplicate = false;
@@ -2991,7 +3024,7 @@ export class GameEngine {
     target.concentration = quote.nextLevel;
     target.concentrationPath = quote.path;
     this.state.selectedTowerId = target.id;
-    this.state.lastMessage = `${target.char} 濃 ${target.concentration}/3 · ${concentrationPathLabel(quote.path)}`;
+    this.state.lastMessage = `${target.char} 濃 ${target.concentration} · ${concentrationPathLabel(quote.path)}`;
     this.events.push({
       type: "concentrate",
       tower: { ...target },

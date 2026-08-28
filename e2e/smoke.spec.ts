@@ -437,17 +437,20 @@ test("dismantles a deployed jaryeong straight from the selected card", async ({ 
   // A-2: 획득 순간 오행색 "+N 문기" 플로팅이 자원칸 근처에 선다.
   await expect(page.locator(".essence-floater")).toHaveText(/\+\d+ 문기/u);
   /*
-   * 자원칸의 문기 칸은 다섯 오행의 **합**을 적는다. 분해로 들어온 문기가
-   * 그 수에 그대로 반영되는지 — 화면 문자열과 엔진 상태가 같은 말을 하는지 본다.
+   * 자원칸의 문기 칸은 다섯 오행을 **따로** 적는다. 합계 한 수로는 "쓸 수
+   * 있는가"를 못 판단하기 때문이다 — 농축도 강화도 그 오행의 문기를 쓴다.
+   * 화면 문자열과 엔진 상태가 같은 말을 하는지 본다.
    */
   const essence = await page.evaluate(() => {
     const state = (window as unknown as {
       __HANJA_CTX_QA__: { engine: { state: { elementEssence: Record<string, number> } } };
     }).__HANJA_CTX_QA__.engine.state;
-    return Object.values(state.elementEssence).reduce((sum, value) => sum + value, 0);
+    return (["木", "火", "土", "金", "水"] as const).map((wuxing) => `${wuxing}${state.elementEssence[wuxing]}`);
   });
-  expect(essence).toBeGreaterThan(0);
-  await expect(page.locator("#essence-total-value")).toHaveText(String(essence));
+  expect(essence.some((chip) => !chip.endsWith("0"))).toBe(true);
+  await expect(page.locator("#essence-total-value")).toHaveText(essence.join(""));
+  // 소리로는 합까지 함께 읽힌다.
+  await expect(page.locator("#essence-total-value")).toHaveAttribute("aria-label", /문기 합 \d+/u);
 });
 
 test("opens the idiom goal codex frame and summons from all one thousand Cheonjamun sprites", async ({ page }) => {
@@ -620,7 +623,7 @@ test("starts a KR run and exposes the finished core loop at 1280x720", async ({ 
   await expect(page.locator("#tower-count-value")).toHaveCount(0);
   await expect(page.locator("#goal-count-value")).toHaveCount(0);
   await expect(page.locator("#gold-value")).toHaveText("42");
-  await expect(page.locator("#essence-total-value")).toHaveText("0");
+  await expect(page.locator("#essence-total-value")).toHaveText("木0火0土0金0水0");
   await expect(page.locator(".game-shell")).toHaveAttribute("data-game-speed", "1");
   // 기본 카메라는 100%(=2.60) 가 아니라 전장이 한눈에 들어오는 77%(=2.00) 에서 시작한다.
   // 100% 는 기준 배율일 뿐 시작 배율이 아니다.
