@@ -181,3 +181,87 @@ test("훈·독이 자혼 옆에 서고, 새기기는 스크롤에 안 가리며,
     }))
     .toBe(4 + 7);
 });
+
+interface SoulQaWindow {
+  __HANJA_SOUL_QA__: { autoTrace(): void; currentChar(): string | null; isOpen(): boolean };
+}
+
+test("한자를 써서 성어 능력을 다시 굴리고, 새김 연출이 무엇이 나왔는지 말한다", async ({ page }) => {
+  await page.addInitScript(
+    ([key, value]: string[]) => window.localStorage.setItem(key as string, value as string),
+    [
+      ARCHIVE_KEY,
+      JSON.stringify({
+        version: 1,
+        souls: { 天: 4, 地: 4, 玄: 4, 黃: 4 },
+        idioms: [{
+          id: "demo",
+          chars: "天地玄黃",
+          reading: "천지현황",
+          meaning: "하늘과 땅",
+          bonus: { kind: "damage", value: 0.08, label: "모든 자령 피해 +8%" },
+          createdAt: 1
+        }],
+        equipped: []
+      })
+    ]
+  );
+  await page.goto("/?seed=SOULS-REROLL-E2E");
+  await page.getByTestId("soul-archive-open").click();
+
+  /*
+   * ① 찾기 — 원하는 음으로 만들려면 글자를 먼저 찾아야 한다. 한자·훈·음
+   *    어느 쪽으로 쳐도 걸린다.
+   */
+  await expect(page.locator(".soul-chip")).toHaveCount(4);
+  await page.locator("#soul-search").fill("하늘");
+  await expect(page.locator(".soul-chip")).toHaveCount(1);
+  await expect(page.locator('.soul-chip[data-soul-char="天"]')).toBeVisible();
+  await page.locator("#soul-search").fill("天");
+  await expect(page.locator(".soul-chip")).toHaveCount(1);
+  await page.locator("#soul-search").fill("없는글자");
+  await expect(page.locator(".soul-chip")).toHaveCount(0);
+  await expect(page.locator("#soul-holdings-empty")).toContainText("걸리는 자혼이 없습니다");
+  await page.locator("#soul-search").fill("");
+
+  /*
+   * ② 다시 굴리기 — 그 성어의 글자 하나를 부적에 써 내면 능력을 한 번 다시
+   *    굴린다. 값이 엽전도 자혼도 아니라 「글자를 쓸 줄 아는가」다.
+   *    손그림 채점은 글꼴 렌더링에 좌우돼 불안정하므로, 부적과 같은 처방으로
+   *    개발 전용 자동 따라쓰기(실제 포인터 이벤트 합성)로 결정론화한다.
+   */
+  await page.getByTestId("soul-tab-equip").click();
+  await expect(page.locator(".soul-card-bonus")).toHaveText("모든 자령 피해 +8%");
+  await page.locator("[data-soul-reroll]").click();
+  await expect(page.locator("#soul-reroll")).toBeVisible();
+  await expect(page.locator("#soul-reroll-title")).toHaveText("천지현황 다시 굴리기");
+  // 네 글자 중 어느 것으로 써도 된다.
+  await expect(page.locator(".soul-reroll-char")).toHaveCount(4);
+  // 쓰기 전에는 제출이 잠겨 있다 — 획을 떼도 저절로 통과하지 않는다는 규칙.
+  await expect(page.getByTestId("soul-reroll-submit")).toBeDisabled();
+
+  await page.evaluate(() => (window as unknown as SoulQaWindow).__HANJA_SOUL_QA__.autoTrace());
+  await expect(page.getByTestId("soul-reroll-submit")).toBeEnabled();
+  await page.getByTestId("soul-reroll-submit").click();
+
+  // 판이 닫히고, 다시 굴린 결과가 연출로 온다.
+  await expect(page.locator("#soul-reroll")).toBeHidden();
+  await expect(page.locator("#soul-forge-fx")).toBeVisible();
+  await expect(page.locator("#soul-forge-fx-reading")).toHaveText("천지현황");
+  /*
+   * ③ 연출은 **무엇이 나왔는지**를 말한다. 음만 띄우면 "새겨졌다"까지만 알고
+   *    무엇을 얻었는지는 토스트를 놓치면 끝내 모른다.
+   */
+  await expect(page.locator("#soul-forge-fx-bonus")).not.toBeEmpty();
+  await expect(page.locator("#soul-forge-fx")).toBeHidden({ timeout: 4_000 });
+
+  // 능력이 실제로 다시 굴려져 장부에 남는다(음·뜻·글자는 그대로다).
+  const after = await page.evaluate(() => {
+    const raw = window.localStorage.getItem("hanja-td:soul-archive-v1");
+    const parsed = raw ? (JSON.parse(raw) as { idioms?: Array<{ reading: string; meaning: string; bonus: { label: string } }> }) : {};
+    return parsed.idioms?.[0];
+  });
+  expect(after?.reading).toBe("천지현황");
+  expect(after?.meaning).toBe("하늘과 땅");
+  expect(after?.bonus.label.length ?? 0).toBeGreaterThan(0);
+});

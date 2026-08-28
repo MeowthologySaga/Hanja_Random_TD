@@ -1016,6 +1016,13 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
         <div class="soul-forge-layout">
           <section class="soul-col soul-col--holdings" aria-label="지닌 자혼">
             <p class="eyebrow">지닌 자혼 <em id="soul-holdings-count">0</em></p>
+            <!--
+              원하는 음으로 성어를 만들려면 글자를 찾아야 하는데, 자혼은 수백
+              자로 불어난다. 한자·훈·음 어느 쪽으로 쳐도 걸리게 한다 —
+              "천"을 치면 天도 千도 泉도 나오고, "하늘"을 쳐도 天이 나온다.
+            -->
+            <input id="soul-search" class="soul-search" type="search" maxlength="20"
+              placeholder="한자 · 훈 · 음으로 찾기 (예 · 천, 하늘, 天)" aria-label="자혼 찾기" />
             <div id="soul-grid" class="soul-grid" role="list"></div>
             <p id="soul-holdings-empty" class="soul-empty">아직 자혼이 없습니다. 우두머리를 봉인하면 반드시 하나를 남기고, 그 밖의 자령도 드물게 남깁니다.</p>
           </section>
@@ -1101,10 +1108,37 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
         </div>
       </div>
 
+      <!--
+        다시 굴리기 — 그 성어의 글자 하나를 부적에 써 내면 능력을 한 번 다시
+        굴린다. 값이 엽전도 자혼도 아니라 「글자를 쓸 줄 아는가」라서,
+        다시 굴릴수록 그 글자를 손이 외운다.
+      -->
+      <div id="soul-reroll" class="soul-reroll" hidden>
+        <div class="soul-reroll-sheet" role="dialog" aria-labelledby="soul-reroll-title">
+          <p class="eyebrow">한자를 써서 다시 굴립니다</p>
+          <h3 id="soul-reroll-title">다시 굴리기</h3>
+          <p class="soul-reroll-current">지금 능력 · <b id="soul-reroll-current"></b></p>
+          <div id="soul-reroll-chars" class="soul-reroll-chars" role="group" aria-label="쓸 글자 고르기"></div>
+          <div class="soul-reroll-paper">
+            <canvas id="soul-reroll-guide" width="196" height="232" aria-hidden="true"></canvas>
+            <canvas id="soul-reroll-ink" width="196" height="232" aria-label="다시 굴리기 따라쓰기 화선지"></canvas>
+          </div>
+          <p id="soul-reroll-status" class="soul-note"></p>
+          <div class="soul-reroll-actions">
+            <button id="soul-reroll-cancel" type="button" data-testid="soul-reroll-cancel">그만두기</button>
+            <button id="soul-reroll-clear" type="button" data-testid="soul-reroll-clear">지우기</button>
+            <button id="soul-reroll-submit" class="soul-forge-button" type="button" data-testid="soul-reroll-submit" disabled>다시 굴리기</button>
+          </div>
+        </div>
+      </div>
+
       <!-- 새김 연출 — 인장이 찍히고 새 성어의 음이 떠오른다. -->
       <div id="soul-forge-fx" class="soul-forge-fx" aria-hidden="true" hidden>
         <b id="soul-forge-fx-chars"></b>
         <em id="soul-forge-fx-reading"></em>
+        <!-- 무엇이 나왔는지가 이 연출의 요점이다. 음만 띄우면 "새겨졌다"까지만
+             알고 "무엇을 얻었나"는 토스트를 놓치면 끝내 모른다. -->
+        <s id="soul-forge-fx-bonus"></s>
         <i class="soul-forge-fx-seal">刻</i>
       </div>
     </dialog>

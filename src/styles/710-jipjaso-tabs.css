@@ -411,3 +411,163 @@
     box-shadow: 0 0 0 2px rgba(107, 74, 156, 0.6);
   }
 }
+
+/* ══════════════════════════════════════════════════════════════════
+   찾기 · 발동 효과 · 다시 굴리기
+   ══════════════════════════════════════════════════════════════════ */
+
+/* 원하는 음으로 만들려면 글자를 먼저 찾아야 한다. 자혼은 수백 자로 불어난다. */
+.soul-dialog .soul-search {
+  width: 100%;
+  padding: 5px 9px;
+  border: 1px solid rgba(122, 90, 42, 0.45);
+  border-radius: var(--r-sm);
+  background: rgba(255, 252, 242, 0.9);
+  color: var(--text-100);
+  font: inherit;
+  font-size: var(--fs-xs);
+}
+
+.soul-dialog .soul-search::placeholder {
+  color: rgba(79, 70, 57, 0.55);
+}
+
+/* 새김 연출의 발동 효과 — 무엇이 나왔는지가 이 연출의 요점이다. */
+.soul-dialog .soul-forge-fx s {
+  padding: 3px 12px;
+  border-radius: 999px;
+  background: rgba(86, 61, 19, 0.14);
+  box-shadow: inset 0 0 0 1px rgba(122, 90, 42, 0.4);
+  color: var(--gold-200);
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.soul-dialog .soul-forge-fx.is-playing s {
+  animation: soul-fx-bonus 1.7s ease-out both;
+}
+
+@keyframes soul-fx-bonus {
+  0%, 52% { opacity: 0; transform: translateY(8px) scale(0.94); }
+  70% { opacity: 1; transform: translateY(0) scale(1); }
+  88% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+/* ── 다시 굴리기 판 ─────────────────────────────────────────── */
+
+.soul-dialog .soul-reroll[hidden] {
+  display: none;
+}
+
+.soul-dialog .soul-reroll {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  display: grid;
+  place-items: center;
+  background: rgba(30, 24, 14, 0.42);
+}
+
+.soul-dialog .soul-reroll-sheet {
+  display: grid;
+  gap: 8px;
+  justify-items: center;
+  width: 300px;
+  padding: 18px 20px 20px;
+  border: 1px solid rgba(122, 90, 42, 0.5);
+  border-radius: var(--r-sm);
+  background: linear-gradient(180deg, #f7f0dd 0%, #ece0c6 100%);
+  box-shadow: 0 18px 44px -20px rgba(28, 20, 8, 0.8);
+}
+
+.soul-dialog .soul-reroll-sheet h3 {
+  margin: 0;
+  color: var(--text-100);
+  font-size: var(--fs-lg);
+}
+
+.soul-dialog .soul-reroll-current {
+  margin: 0;
+  color: var(--text-300);
+  font-size: var(--fs-2xs);
+}
+
+.soul-dialog .soul-reroll-current b {
+  color: var(--gold-200);
+}
+
+/* 넷 중 어느 글자를 쓸지 고른다 — 쉬운 글자로 도망갈 수 있게 두는 것이 아니라,
+   그 성어의 글자라면 무엇이든 값이 된다는 뜻이다. */
+.soul-dialog .soul-reroll-chars {
+  display: flex;
+  gap: 6px;
+}
+
+.soul-dialog .soul-reroll-char {
+  width: 40px;
+  height: 40px;
+  border: 1px solid rgba(122, 90, 42, 0.45);
+  border-radius: var(--r-sm);
+  background: rgba(255, 252, 242, 0.8);
+  color: var(--text-200);
+  font-size: var(--fs-lg);
+  cursor: pointer;
+}
+
+.soul-dialog .soul-reroll-char.is-active {
+  border-color: var(--gold-300);
+  background: linear-gradient(180deg, #fbf5e6, #ecdcb4);
+  color: var(--text-100);
+}
+
+.soul-dialog .soul-reroll-paper {
+  position: relative;
+  width: 196px;
+  height: 232px;
+  border: 1px solid rgba(122, 90, 42, 0.4);
+  background: #fbf6e8;
+}
+
+.soul-dialog .soul-reroll-paper canvas {
+  position: absolute;
+  inset: 0;
+}
+
+.soul-dialog #soul-reroll-ink {
+  touch-action: none;
+  cursor: crosshair;
+}
+
+.soul-dialog .soul-reroll-actions {
+  display: flex;
+  gap: 6px;
+  width: 100%;
+}
+
+.soul-dialog .soul-reroll-actions button {
+  flex: 1 1 auto;
+  padding: 7px 10px;
+  border: 1px solid rgba(122, 90, 42, 0.5);
+  border-radius: var(--r-sm);
+  background: rgba(247, 240, 221, 0.95);
+  color: var(--text-200);
+  font-size: var(--fs-2xs);
+  cursor: pointer;
+}
+
+/* 위 `.soul-reroll-actions button`(0,1,1)이 금색 바탕을 덮어, 크림색 글자가
+   크림색 바탕에 얹혀 글자가 사라졌다. 바탕까지 함께 되돌린다. */
+.soul-dialog .soul-reroll-actions .soul-forge-button {
+  flex: 1.4 1 auto;
+  border-color: var(--gold-300);
+  background: linear-gradient(180deg, #8a6620, #6b4d1d);
+  color: #fbf5e6;
+  font-size: var(--fs-sm);
+}
+
+.soul-dialog .soul-reroll-actions button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}

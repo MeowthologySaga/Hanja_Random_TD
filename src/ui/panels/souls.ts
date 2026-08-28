@@ -36,6 +36,7 @@ import { defaultNotationForRegion } from "../../core/notation";
 import { learningInfoForNotation } from "../../core/learning";
 import { ctx, must, shell } from "../app-context";
 import { showToast } from "../hud";
+import { bindSoulReroll, closeSoulReroll, openSoulReroll } from "./soul-reroll";
 import { onSoulArchiveChange, setSoulArchive, soulArchive, updateSoulArchive } from "../souls";
 
 /**
@@ -64,6 +65,9 @@ let freshIdiomId: string | null = null;
 /** 「내 성어」 정렬 축. */
 let shelfSort: "equipped" | "recent" | "axis" = "equipped";
 
+/** 자혼 찾기 글. 한자·훈·음 어느 쪽으로 쳐도 걸린다. */
+let holdingsQuery = "";
+
 let bound = false;
 
 function dialog(): HTMLDialogElement {
@@ -82,16 +86,33 @@ function remaining(archive: SoulArchive, char: string): number {
 function renderHoldings(archive: SoulArchive): void {
   const grid = must<HTMLDivElement>("#soul-grid");
   const empty = must<HTMLParagraphElement>("#soul-holdings-empty");
+  /*
+   * 찾기 — 원하는 음으로 성어를 만들려면 글자를 먼저 찾아야 하는데, 자혼은
+   * 수백 자로 불어난다. 한자 자체·훈음·음 셋 다 걸리게 한다. "천"을 치면
+   * 天도 千도 泉도 나오고, "하늘"을 쳐도 天이 나온다.
+   */
+  const query = holdingsQuery.trim().toLowerCase();
+  const matches = (char: string): boolean => {
+    if (query === "") return true;
+    if (char.includes(query)) return true;
+    const reading = readingOf(char);
+    return reading.short.toLowerCase().includes(query);
+  };
   const entries = Object.entries(archive.souls)
-    .filter(([, count]) => count > 0)
+    .filter(([char, count]) => count > 0 && matches(char))
     // 많이 지닌 것부터, 같은 수면 글자 순서로. 같은 자리에 같은 글자가 오래
     // 머물러야 눈이 자리를 외운다.
     .sort((left, right) => right[1] - left[1] || left[0].localeCompare(right[0]));
 
-  must<HTMLElement>("#soul-holdings-count").textContent = String(
-    entries.reduce((sum, [, count]) => sum + count, 0)
-  );
+  const held = Object.values(archive.souls).reduce((sum, count) => sum + count, 0);
+  const shown = entries.reduce((sum, [, count]) => sum + count, 0);
+  must<HTMLElement>("#soul-holdings-count").textContent =
+    query === "" ? String(held) : `${shown} / ${held}`;
   empty.hidden = entries.length > 0;
+  // 찾기로 비었을 때와 애초에 없을 때는 다른 말을 해야 한다.
+  empty.textContent = query === "" || held === 0
+    ? "아직 자혼이 없습니다. 우두머리를 봉인하면 반드시 하나를 남기고, 그 밖의 자령도 드물게 남깁니다."
+    : `「${holdingsQuery.trim()}」에 걸리는 자혼이 없습니다.`;
   grid.replaceChildren(
     ...entries.map(([char, count]) => {
       const left = remaining(archive, char);
@@ -210,6 +231,7 @@ function idiomCard(archive: SoulArchive, idiom: CustomIdiom): HTMLElement {
     <p class="soul-card-bonus">${idiom.bonus.label}</p>
     <div class="soul-card-actions">
       <button type="button" data-soul-equip="${idiom.id}"${!equipped && full ? " disabled" : ""}>${equipped ? "해제" : "장착"}</button>
+      <button type="button" data-soul-reroll="${idiom.id}">다시 굴리기</button>
       <button type="button" data-soul-meaning="${idiom.id}">뜻 쓰기</button>
       <button type="button" class="soul-card-discard" data-soul-discard="${idiom.id}">버리기</button>
     </div>`;
@@ -314,6 +336,8 @@ function playForgeFx(idiom: CustomIdiom): void {
   const fx = must<HTMLElement>("#soul-forge-fx");
   must<HTMLElement>("#soul-forge-fx-chars").textContent = [...idiom.chars].join(" ");
   must<HTMLElement>("#soul-forge-fx-reading").textContent = idiom.reading;
+  // 무엇이 나왔는지가 이 연출의 요점이다 — 음만 띄우면 "새겨졌다"까지만 안다.
+  must<HTMLElement>("#soul-forge-fx-bonus").textContent = idiom.bonus.label;
   fx.hidden = false;
   // 재생 중에 또 새기면 애니메이션이 이어붙지 않도록 한 번 되감는다.
   fx.classList.remove("is-playing");
@@ -379,6 +403,13 @@ function handleClick(event: MouseEvent): void {
       isEquipped(archive, equip) ? unequipCustomIdiom(archive, equip) : equipCustomIdiom(archive, equip)
     );
     renderSoulArchive();
+    return;
+  }
+
+  const reroll = target.closest<HTMLElement>("[data-soul-reroll]")?.dataset.soulReroll;
+  if (reroll) {
+    const idiom = soulArchive().idioms.find((entry) => entry.id === reroll);
+    if (idiom) openSoulReroll(idiom);
     return;
   }
 
@@ -528,6 +559,23 @@ export function bindSoulArchive(): void {
       renderSoulArchive();
     });
   }
+  bindSoulReroll({
+    read: soulArchive,
+    write: setSoulArchive,
+    done: (_archive, idiom) => {
+      // 다시 굴린 결과도 새길 때와 같은 무게로 보여 준다 — 무엇이 나왔는지가
+      // 요점이고, 그 답은 연출이 한다.
+      freshIdiomId = idiom.id;
+      playForgeFx(idiom);
+      showToast(`${idiom.reading} · ${idiom.bonus.label}`);
+      renderSoulArchive();
+    }
+  });
+
+  must<HTMLInputElement>("#soul-search").addEventListener("input", (event) => {
+    holdingsQuery = (event.target as HTMLInputElement).value;
+    renderSoulArchive();
+  });
   must<HTMLSelectElement>("#soul-sort").addEventListener("change", (event) => {
     shelfSort = (event.target as HTMLSelectElement).value as typeof shelfSort;
     renderSoulArchive();
@@ -550,6 +598,7 @@ export function bindSoulArchive(): void {
   });
   // 새김대를 비운 채 닫으면 다음에 열었을 때 남은 글자에 놀라지 않는다.
   box.addEventListener("close", () => {
+    closeSoulReroll();
     draft = [];
     must<HTMLInputElement>("#soul-meaning-input").value = "";
   });
