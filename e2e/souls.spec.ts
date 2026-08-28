@@ -1,11 +1,11 @@
 /*
- * 자혼 서재 — 판을 넘어 남는 첫 장부.
+ * 집자소 — 판을 넘어 남는 첫 장부.
  *
  * 여기서 못박는 규칙 넷.
- *   ① 자혼 넷을 올리면 **음이 한자 음 그대로** 붙는다(사람이 고치지 못한다).
- *   ② 새기면 그만큼 자혼이 줄고, 성어 한 구가 남는다.
+ *   ① 묵편 넷을 올리면 **음이 한자 음 그대로** 붙는다(사람이 고치지 못한다).
+ *   ② 새기면 그만큼 묵편이 줄고, 성어 한 구가 남는다.
  *   ③ 장착은 15구까지다.
- *   ④ 새긴 성어와 남은 자혼은 창을 닫았다 열어도 그대로다 — 판과 달리
+ *   ④ 새긴 성어와 남은 묵편은 창을 닫았다 열어도 그대로다 — 판과 달리
  *      보관소는 지워지지 않는다.
  */
 import { expect, test } from "@playwright/test";
@@ -34,10 +34,10 @@ test.beforeEach(async ({ page }) => {
   );
 });
 
-test("자혼 넷을 새겨 나만의 성어를 만들고 장착한다", async ({ page }) => {
+test("묵편 넷을 새겨 나만의 성어를 만들고 장착한다", async ({ page }) => {
   await page.goto("/?seed=SOULS-E2E");
 
-  // 제목 화면의 자혼 배지가 지닌 수를 센다(여덟 글자 × 4).
+  // 제목 화면의 묵편 배지가 지닌 수를 센다(여덟 글자 × 4).
   await expect(page.locator("#s00-souls-badge")).toHaveText("32");
 
   await page.getByTestId("soul-archive-open").click();
@@ -58,7 +58,7 @@ test("자혼 넷을 새겨 나만의 성어를 만들고 장착한다", async ({
 
   await page.getByTestId("soul-forge").click();
 
-  // ② 자혼 넷이 줄고 성어 한 구가 남는다.
+  // ② 묵편 넷이 줄고 성어 한 구가 남는다.
   await expect(page.locator("#soul-holdings-count")).toHaveText("28");
   await expect(page.locator(".soul-card")).toHaveCount(1);
   await expect(page.locator(".soul-card-reading")).toHaveText("천지현황");

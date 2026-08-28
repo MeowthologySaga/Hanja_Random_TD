@@ -1,12 +1,18 @@
 /*
- * 자혼 보관소 — 판을 넘어 남는 첫 장부.
+ * 묵편 보관소 — 판을 넘어 남는 첫 장부.
+ *
+ * 화면의 이름: 재료는 **묵편(墨片)**, 그것으로 성어를 새기는 곳은
+ * **집자소(集字所)** 다. 집자(集字)는 흩어진 글자를 모아 새 글을 짓는 실제
+ * 서예 용어라, 넉 자를 모아 한 구를 만드는 이 행위를 그대로 가리킨다.
+ * 코드의 soul/archive 는 그 이름이 정해지기 전의 영어 껍데기다 —
+ * 저장 키(hanja-td:soul-archive-v1)도 사람이 모은 것을 잃지 않으려 그대로 둔다.
  *
  * 이 게임에는 여태 메타 진행이 없었다. 판이 끝나면 모든 것이 사라졌고, 그게
- * 미덕이었다. 자혼은 그 규칙을 처음으로 깨는 물건이라 자리를 좁게 잡는다.
+ * 미덕이었다. 묵편은 그 규칙을 처음으로 깨는 물건이라 자리를 좁게 잡는다.
  *
- *  · 남는 것은 **자혼(글자)** 과 **내가 새긴 성어** 둘뿐이다. 엽전도 자령도
+ *  · 남는 것은 **묵편(글자)** 과 **내가 새긴 성어** 둘뿐이다. 엽전도 자령도
  *    진도 판과 함께 사라진다 — 세기를 이월하지 않으니 판의 긴장이 안 무뎌진다.
- *  · 자혼은 능력이 아니라 **재료**다. 지녔다고 세지지 않고, 넷을 새겨 성어로
+ *  · 묵편은 능력이 아니라 **재료**다. 지녔다고 세지지 않고, 넷을 새겨 성어로
  *    만들어 장착해야 힘이 된다.
  *  · 장착 상한 15구. 만드는 데는 상한이 없다 — 모으는 재미와 고르는 재미를
  *    갈라 둔다.
@@ -35,7 +41,7 @@ export const SOUL_ARCHIVE_VERSION = 1;
 
 export interface SoulArchive {
   readonly version: number;
-  /** 한자 → 지닌 자혼 수. 0 이 된 글자는 남기지 않는다. */
+  /** 한자 → 지닌 묵편 수. 0 이 된 글자는 남기지 않는다. */
   readonly souls: Readonly<Record<string, number>>;
   /** 새긴 커스텀 성어. 만든 순서대로 쌓인다. */
   readonly idioms: readonly CustomIdiom[];
@@ -127,18 +133,18 @@ export function serializeSoulArchive(archive: SoulArchive): string {
   return JSON.stringify(archive);
 }
 
-/** 지닌 자혼 수. */
+/** 지닌 묵편 수. */
 export function soulsHeld(archive: SoulArchive, char: string): number {
   return archive.souls[char] ?? 0;
 }
 
-/** 자혼을 하나 더 얻는다. 우두머리 처치와 야생 자령의 드물게 떨어지는 몫. */
+/** 묵편을 하나 더 얻는다. 우두머리 처치와 야생 자령의 드물게 떨어지는 몫. */
 export function gainSoul(archive: SoulArchive, char: string, amount = 1): SoulArchive {
   if ([...char].length !== 1 || amount <= 0) return archive;
   return { ...archive, souls: { ...archive.souls, [char]: soulsHeld(archive, char) + Math.floor(amount) } };
 }
 
-/** 네 글자를 새기는 데 필요한 자혼 수. 같은 글자를 두 번 쓰면 두 개가 든다. */
+/** 네 글자를 새기는 데 필요한 묵편 수. 같은 글자를 두 번 쓰면 두 개가 든다. */
 export function soulCost(chars: string): Map<string, number> {
   const cost = new Map<string, number>();
   for (const char of chars) cost.set(char, (cost.get(char) ?? 0) + 1);
@@ -184,7 +190,7 @@ export interface CreateCustomIdiomInput {
 }
 
 /**
- * 자혼 넷을 새겨 성어 한 구를 만든다.
+ * 묵편 넷을 새겨 성어 한 구를 만든다.
  *
  * 음은 한자 음을 그대로 이어 붙여 규칙이 정한다 — 사람은 **뜻만** 쓴다.
  * 내 마음대로 음을 지어 붙이면 그건 더 이상 한자 학습이 아니다.
@@ -192,11 +198,11 @@ export interface CreateCustomIdiomInput {
 export function createCustomIdiom(archive: SoulArchive, input: CreateCustomIdiomInput): CreateCustomIdiomResult {
   const { chars, meaning, axisRoll, valueRoll, region = "KR", now = 0 } = input;
   if (!isValidCustomIdiomChars(chars)) {
-    return { ok: false, archive, idiom: null, message: `자혼 ${CUSTOM_IDIOM_LENGTH}개를 골라 주세요.` };
+    return { ok: false, archive, idiom: null, message: `묵편 ${CUSTOM_IDIOM_LENGTH}개를 골라 주세요.` };
   }
   const missing = missingSouls(archive, chars);
   if (missing.length > 0) {
-    return { ok: false, archive, idiom: null, message: `자혼이 모자랍니다 — ${missing.join(" ")}` };
+    return { ok: false, archive, idiom: null, message: `묵편이 모자랍니다 — ${missing.join(" ")}` };
   }
   const idiom: CustomIdiom = {
     id: input.id ?? `custom-${chars}-${now}`,
@@ -218,7 +224,7 @@ export function createCustomIdiom(archive: SoulArchive, input: CreateCustomIdiom
 /**
  * 이미 새긴 성어의 능력을 다시 굴린다.
  *
- * 자혼을 되돌려 받지 않는다 — 다시 굴리는 값은 부적에 한자를 써서 얻는다.
+ * 묵편을 되돌려 받지 않는다 — 다시 굴리는 값은 부적에 한자를 써서 얻는다.
  * (뽑기 재굴림과 같은 매커니즘을 그대로 쓴다.)
  */
 export function rerollCustomIdiom(
@@ -261,7 +267,7 @@ export function unequipCustomIdiom(archive: SoulArchive, id: string): SoulArchiv
   return { ...archive, equipped: archive.equipped.filter((entry) => entry !== id) };
 }
 
-/** 새긴 성어를 버린다. 자혼은 돌아오지 않는다. */
+/** 새긴 성어를 버린다. 묵편은 돌아오지 않는다. */
 export function discardCustomIdiom(archive: SoulArchive, id: string): SoulArchive {
   if (!archive.idioms.some((idiom) => idiom.id === id)) return archive;
   return {
@@ -303,7 +309,7 @@ export function writeSoulArchive(archive: SoulArchive, storage: WritableStorage 
     storage.setItem(SOUL_ARCHIVE_STORAGE_KEY, serializeSoulArchive(archive));
     return true;
   } catch {
-    // 저장이 막혀도 판은 굴러가야 한다. 이번 판의 자혼만 잃는다.
+    // 저장이 막혀도 판은 굴러가야 한다. 이번 판의 묵편만 잃는다.
     return false;
   }
 }

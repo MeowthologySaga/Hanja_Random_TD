@@ -1,0 +1,42 @@
+/*
+ * 상단 자원 띠 — [엽전][문기] 두 칸.
+ *
+ * 틀은 border 가 아니라 **배경 그림**(resource-rail-v1.webp)을 100% 100% 로
+ * 늘려 그린다(060-hanji-theme.css). 그래서 칸이 조금만 커도 틀의 그려진
+ * 테두리 위로 그대로 올라탄다 — 실제로 그렇게 삐져나왔다.
+ *
+ * 실측: 띠 높이 50px · 세로 여백 3px×2 라 칸에 주어진 높이는 44px 인데,
+ * 칸 내용이 48px 이었다. 격자 행이 내용에 맞춰 부풀면서 그만큼 틀 밖으로
+ * 새어 나갔다. 칸의 세로 여백을 6 → 3 으로 줄여 44px 안에 앉힌다.
+ * (4px 에서는 46px 이라 아래 여백을 1px 만 남기고 눌렀다 — 실측으로 잡은 값이다.)
+ */
+.resource-grid > div {
+  padding-top: 3px;
+  padding-bottom: 3px;
+}
+
+/*
+ * 문기 — 오행 다섯 수.
+ *
+ * 합계 한 수로는 "쓸 수 있는가"를 못 판단한다(농축·강화는 그 오행의 문기를
+ * 쓴다). 다섯을 오행색으로 나란히 두되, 칸 폭이 183px 이라 글자를 작게 잡고
+ * 등폭 숫자로 자리를 고정해 값이 바뀌어도 폭이 흔들리지 않게 한다.
+ */
+#essence-total-value {
+  display: flex;
+  gap: 3px;
+  justify-content: center;
+  font-variant-numeric: tabular-nums;
+}
+
+#essence-total-value i {
+  /* 자원 띠는 밝은 한지다. 오행색 원본(전장 캔버스용)은 이 위에서 안 읽히므로
+     토스트 환급 칩과 같은 처방으로 먹을 섞어 내린다(460-track-a.css 참조).
+     비율은 실측으로 잡았다 — 46%면 금(金)이 한지 어두운 끝에서 3.13 까지
+     내려가 AA(4.5)에 못 미친다. 32% 에서 다섯 오행의 최악이 4.75 다. */
+  color: color-mix(in srgb, var(--element, #b8934a) 32%, #1b150b);
+  font-style: normal;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.2;
+}

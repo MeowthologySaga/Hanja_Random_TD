@@ -103,7 +103,7 @@
 .s00-utility button:active .s00-skin { background-image: url("/assets/ui/main-menu-b/ui/utility-medallion-pressed-v1.webp"); }
 
 /*
- * 네 메달리온의 자리. 74px 간격 한 줄이고, 자혼 서재가 넷째로 들어오면서
+ * 네 메달리온의 자리. 74px 간격 한 줄이고, 집자소가 넷째로 들어오면서
  * 왼쪽으로 한 칸(977px) 늘렸다 — 오른쪽 끝은 1265px 라 무대 1280px 안에 든다.
  * 좌표를 안 주면 '.s00-stage button' 의 절대 위치가 offset auto 로 남아
  * 무대 좌상단(0,0)에 붙어 제호 현판을 덮는다. 단추를 더하면 여기도 함께 늘려라.
@@ -113,7 +113,7 @@
 #title-settings-button { left: 1125px; top: 10px; }
 #title-help-button { left: 1199px; top: 10px; }
 
-/* 자혼 배지 — 지닌 자혼 수를 단추 우상단에 얹는다. 단추가 이미 절대 위치라
+/* 묵편 배지 — 지닌 묵편 수를 단추 우상단에 얹는다. 단추가 이미 절대 위치라
    그 자체가 컨테이닝 블록이 된다(따로 position 을 주면 안 된다). */
 .s00-utility .s00-souls-badge {
   position: absolute;

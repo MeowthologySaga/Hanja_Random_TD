@@ -1,10 +1,10 @@
 /*
- * 자혼 서재 — 모은 자혼을 성어로 새기고 장착하는 화면.
+ * 집자소 — 모은 묵편을 성어로 새기고 장착하는 화면.
  *
  * 판 밖의 화면이라 엔진을 건드리지 않는다. 규칙은 core/soul-archive.ts 와
  * core/custom-idioms.ts 가 쥐고, 여기는 그 규칙을 눌러 보이게만 한다.
  *
- * 화면을 셋으로 가른 이유: 자혼(재료) → 새김대(만드는 자리) → 내 성어(고르는
+ * 화면을 셋으로 가른 이유: 묵편(재료) → 새김대(만드는 자리) → 내 성어(고르는
  * 자리)가 왼쪽에서 오른쪽으로 흐른다. 재료를 보며 만들고, 만들며 무엇을
  * 장착할지 고르는 한 흐름이라 세 곳을 오갈 일이 없다.
  */
@@ -43,7 +43,7 @@ function dialog(): HTMLDialogElement {
   return must<HTMLDialogElement>("#soul-dialog");
 }
 
-/** 새김대가 이미 쓰고 있는 그 글자의 수 — 남은 자혼을 셀 때 뺀다. */
+/** 새김대가 이미 쓰고 있는 그 글자의 수 — 남은 묵편을 셀 때 뺀다. */
 function draftUsage(char: string): number {
   return draft.filter((entry) => entry === char).length;
 }
@@ -74,7 +74,7 @@ function renderHoldings(archive: SoulArchive): void {
       button.dataset.soulChar = char;
       button.setAttribute("role", "listitem");
       button.disabled = left <= 0 || draft.length >= CUSTOM_IDIOM_LENGTH;
-      button.setAttribute("aria-label", `${char} 자혼 ${count}개 — 새김대에 올리기`);
+      button.setAttribute("aria-label", `${char} 묵편 ${count}개 — 새김대에 올리기`);
       button.innerHTML = `<b>${char}</b><em>${left}<i>/${count}</i></em>`;
       return button;
     })
@@ -138,17 +138,17 @@ function renderOdds(): void {
 
 function forgeNote(archive: SoulArchive): string {
   if (draft.length < CUSTOM_IDIOM_LENGTH) {
-    return `자혼 ${CUSTOM_IDIOM_LENGTH - draft.length}개를 더 올려 주세요.`;
+    return `묵편 ${CUSTOM_IDIOM_LENGTH - draft.length}개를 더 올려 주세요.`;
   }
   const chars = draft.join("");
   const missing = missingSouls(archive, chars);
-  if (missing.length > 0) return `자혼이 모자랍니다 — ${missing.join(" ")}`;
+  if (missing.length > 0) return `묵편이 모자랍니다 — ${missing.join(" ")}`;
   const unique = uniqueCharCount(chars);
   const stars = starSumOf(chars);
   const duplicate = unique < CUSTOM_IDIOM_LENGTH ? ` · 같은 글자 ${CUSTOM_IDIOM_LENGTH - unique + 1}겹이라 능력이 약해집니다` : "";
   // 「별 합」은 획수에서 나온 등급의 합이다(4~32). 이름을 「획수」로 적으면
   // 실제 획수와 다른 수라 사람이 세어 보고 어긋난다.
-  return `자혼 ${[...soulCost(chars)].map(([char, need]) => `${char}×${need}`).join(" ")}를 태웁니다`
+  return `묵편 ${[...soulCost(chars)].map(([char, need]) => `${char}×${need}`).join(" ")}를 태웁니다`
     + ` · 별 합 ${stars}/32 — 높을수록 능력이 세집니다${duplicate}`;
 }
 
@@ -206,7 +206,7 @@ export function renderSoulArchive(): void {
   renderShelf(archive);
 }
 
-/** 제목 화면의 자혼 배지 — 지닌 자혼이 있을 때만 선다. */
+/** 제목 화면의 묵편 배지 — 지닌 묵편이 있을 때만 선다. */
 export function refreshSoulBadge(): void {
   const badge = document.getElementById("s00-souls-badge");
   if (!badge) return;
@@ -287,8 +287,8 @@ function handleClick(event: MouseEvent): void {
   const discard = target.closest<HTMLElement>("[data-soul-discard]")?.dataset.soulDiscard;
   if (discard) {
     const idiom = soulArchive().idioms.find((entry) => entry.id === discard);
-    // 되돌릴 수 없는 일이라 한 번 묻는다. 태운 자혼은 돌아오지 않는다.
-    if (!window.confirm(`${idiom?.reading ?? "이 성어"}을 버릴까요? 태운 자혼은 돌아오지 않습니다.`)) return;
+    // 되돌릴 수 없는 일이라 한 번 묻는다. 태운 묵편은 돌아오지 않는다.
+    if (!window.confirm(`${idiom?.reading ?? "이 성어"}을 버릴까요? 태운 묵편은 돌아오지 않습니다.`)) return;
     updateSoulArchive((archive) => discardCustomIdiom(archive, discard));
     renderSoulArchive();
   }

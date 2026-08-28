@@ -438,7 +438,7 @@ export const MODE_ENEMY_COUNT_SCALE: Record<GameMode, number> = { standard: 1, c
 export const CASUAL_BOSS_HP_TRIM = 0.86;
 
 /**
- * 봉인한 야생 자령이 자혼을 남길 확률(우두머리 제외).
+ * 봉인한 야생 자령이 묵편을 남길 확률(우두머리 제외).
  *
  * 우두머리는 반드시 남긴다 — 한 장(章)에 하나라 "이 판에서 무엇을 얻었나"가
  * 또렷하다. 일반 적까지 늘 남기면 재료가 흔해져 조합의 무게가 사라지므로,

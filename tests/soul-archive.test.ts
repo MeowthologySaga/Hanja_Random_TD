@@ -24,15 +24,15 @@ function archiveWith(chars: string, each = 1) {
   return archive;
 }
 
-describe("자혼 보관소", () => {
-  it("자혼을 얻고 센다", () => {
+describe("묵편 보관소", () => {
+  it("묵편을 얻고 센다", () => {
     let archive = gainSoul(EMPTY_SOUL_ARCHIVE, "天");
     archive = gainSoul(archive, "天", 2);
     expect(soulsHeld(archive, "天")).toBe(3);
     expect(soulsHeld(archive, "地")).toBe(0);
   });
 
-  it("같은 글자를 두 번 쓰면 자혼도 두 개 든다", () => {
+  it("같은 글자를 두 번 쓰면 묵편도 두 개 든다", () => {
     const cost = soulCost("天天地玄");
     expect(cost.get("天")).toBe(2);
     expect(cost.get("地")).toBe(1);
@@ -42,7 +42,7 @@ describe("자혼 보관소", () => {
     expect(missingSouls(archive, "天地玄天")).toEqual(["天"]);
   });
 
-  it("새기면 자혼이 줄고 성어가 남는다", () => {
+  it("새기면 묵편이 줄고 성어가 남는다", () => {
     const archive = archiveWith("天地玄黃");
     const result = createCustomIdiom(archive, { chars: "天地玄黃", meaning: "하늘과 땅", axisRoll: 0.1, valueRoll: 0.5 });
 
@@ -63,7 +63,7 @@ describe("자혼 보관소", () => {
     expect(result.idiom?.reading).toBe("천지현황");
   });
 
-  it("자혼이 모자라면 새기지 못하고 보관소도 그대로다", () => {
+  it("묵편이 모자라면 새기지 못하고 보관소도 그대로다", () => {
     const archive = archiveWith("天地玄");
     const result = createCustomIdiom(archive, { chars: "天地玄黃", meaning: "", axisRoll: 0.2, valueRoll: 0.2 });
 

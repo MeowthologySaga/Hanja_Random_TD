@@ -624,6 +624,31 @@ test("starts a KR run and exposes the finished core loop at 1280x720", async ({ 
   await expect(page.locator("#goal-count-value")).toHaveCount(0);
   await expect(page.locator("#gold-value")).toHaveText("42");
   await expect(page.locator("#essence-total-value")).toHaveText("木0火0土0金0水0");
+  /*
+   * 두 칸은 띠의 **그려진 틀 안에** 앉아야 한다.
+   *
+   * 이 띠의 테두리는 border 가 아니라 배경 그림을 늘려 그린 것이라, 칸이
+   * 조금만 커도 그림 위로 그대로 올라탄다 — 칸 내용이 48px 인데 틀 안쪽이
+   * 44px 이라 실제로 삐져나온 적이 있다. 넘침이 아니라 **자리**를 잰다.
+   */
+  const railFit = await page.locator(".resource-grid").evaluate((rail) => {
+    const box = rail.getBoundingClientRect();
+    return [...rail.children].map((cell) => {
+      const r = cell.getBoundingClientRect();
+      return {
+        top: Math.round(r.top - box.top),
+        bottom: Math.round(box.bottom - r.bottom),
+        left: Math.round(r.left - box.left),
+        right: Math.round(box.right - r.right)
+      };
+    });
+  });
+  for (const gap of railFit) {
+    expect(gap.top).toBeGreaterThan(0);
+    expect(gap.bottom).toBeGreaterThan(0);
+    expect(gap.left).toBeGreaterThanOrEqual(0);
+    expect(gap.right).toBeGreaterThanOrEqual(0);
+  }
   await expect(page.locator(".game-shell")).toHaveAttribute("data-game-speed", "1");
   // 기본 카메라는 100%(=2.60) 가 아니라 전장이 한눈에 들어오는 77%(=2.00) 에서 시작한다.
   // 100% 는 기준 배율일 뿐 시작 배율이 아니다.
@@ -1276,13 +1301,13 @@ test("scales Jaryeong labels and the selected reading cleanly at 1600x900", asyn
 test("opens the rules and exposes synthesis keyboard guidance", async ({ page }) => {
   await page.goto("/");
   // S00 보조 메뉴는 아이콘+짧은 이름으로 압축돼 있다.
-  // (魂 자혼 / 冊 도감 / ⚙ 설정 / ? 도움말 — 자혼 서재가 넷째로 붙었다.)
+  // (魂 묵편 / 冊 도감 / ⚙ 설정 / ? 도움말 — 집자소가 넷째로 붙었다.)
   await expect(page.locator(".s00-utility > button")).toHaveCount(4);
   await expect(page.getByTestId("soul-archive-open")).toBeVisible();
   /*
    * 넷은 한 줄에 서야 한다.
    *
-   * 자혼 단추를 넣을 때 `.s00-utility button { position: relative; }` 한 줄이
+   * 묵편 단추를 넣을 때 `.s00-utility button { position: relative; }` 한 줄이
    * `.s00-stage button` 의 절대 위치를 특이도 동점·배럴 순서 우위로 덮어써서,
    * 메달리온 넷이 통째로 흐름으로 되돌아가 계단처럼 흘러내린 적이 있다.
    * 좌표를 안 준 단추가 무대 좌상단(0,0)에 붙는 것도 같은 실패의 얼굴이다.
