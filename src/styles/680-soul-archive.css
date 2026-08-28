@@ -4,6 +4,11 @@
  * 도감 대화상자의 살결(.codex-dialog)을 그대로 입고, 안쪽 짜임만 여기서 짠다.
  * 세 칸은 왼쪽에서 오른쪽으로 재료 → 새김대 → 내 성어 순서다. 가운데 새김대가
  * 가장 넓다 — 사람이 실제로 손을 대는 자리이기 때문이다.
+ *
+ * 이 파일은 **자혼 서재만** 손댄다(.soul-* / #soul-*). 제목 화면의 자혼 단추와
+ * 배지 살결은 090-s00-menu.css 에 있다 — 여기에 두었다가 '.s00-utility button'
+ * 한 줄이 090 의 'position: absolute' 를 특이도 동점·순서 우위로 덮어써서
+ * 보조 메뉴 넷이 통째로 흐름으로 되돌아간 적이 있다. 배럴 순서가 곧 캐스케이드다.
  */
 /* 무대가 1280×720 고정 좌표라 대화상자도 설계 px 로 잡는다 — vw/vh 는 무대
    바깥 창을 재므로 여기서는 뜻이 어긋난다(280-r8-stage.css 의 규범). */
@@ -379,26 +384,6 @@
   color: var(--ji-900);
 }
 
-/* 제목 화면 자혼 배지 — 지닌 수를 보조 메뉴 단추 위에 얹는다. */
-.s00-souls-badge {
-  position: absolute;
-  top: -4px;
-  right: -4px;
-  min-width: 17px;
-  padding: 0 4px;
-  border-radius: 9px;
-  background: #c9a8ff;
-  color: #241d16;
-  font-style: normal;
-  font-size: 11px;
-  line-height: 17px;
-  text-align: center;
-  font-variant-numeric: tabular-nums;
-}
-
-.s00-utility button {
-  position: relative;
-}
 
 .soul-odds-peak {
   display: flex;

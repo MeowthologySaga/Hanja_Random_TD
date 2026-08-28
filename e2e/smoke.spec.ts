@@ -1231,6 +1231,29 @@ test("opens the rules and exposes synthesis keyboard guidance", async ({ page })
   // (魂 자혼 / 冊 도감 / ⚙ 설정 / ? 도움말 — 자혼 서재가 넷째로 붙었다.)
   await expect(page.locator(".s00-utility > button")).toHaveCount(4);
   await expect(page.getByTestId("soul-archive-open")).toBeVisible();
+  /*
+   * 넷은 한 줄에 서야 한다.
+   *
+   * 자혼 단추를 넣을 때 `.s00-utility button { position: relative; }` 한 줄이
+   * `.s00-stage button` 의 절대 위치를 특이도 동점·배럴 순서 우위로 덮어써서,
+   * 메달리온 넷이 통째로 흐름으로 되돌아가 계단처럼 흘러내린 적이 있다.
+   * 좌표를 안 준 단추가 무대 좌상단(0,0)에 붙는 것도 같은 실패의 얼굴이다.
+   * 그래서 개수가 아니라 **자리**를 잰다.
+   */
+  const utilityRow = await page.locator(".s00-utility").evaluate((nav) => {
+    const boxes = [...nav.children].map((child) => child.getBoundingClientRect());
+    return {
+      positions: [...nav.children].map((child) => getComputedStyle(child).position),
+      distinctTops: new Set(boxes.map((box) => Math.round(box.top))).size,
+      minLeft: Math.round(Math.min(...boxes.map((box) => box.left))),
+      gaps: boxes.slice(1).map((box, index) => Math.round(box.left - (boxes[index] as DOMRect).left))
+    };
+  });
+  expect(utilityRow.positions).toEqual(["absolute", "absolute", "absolute", "absolute"]);
+  expect(utilityRow.distinctTops).toBe(1);
+  expect(utilityRow.gaps).toEqual([74, 74, 74]);
+  // 무대 좌상단에 붙어 제호 현판을 덮는 단추가 없어야 한다.
+  expect(utilityRow.minLeft).toBeGreaterThan(600);
   await page.locator("#title-help-button").click();
   await expect(page.getByRole("heading", { name: "봉인술 입문" })).toBeVisible();
 
