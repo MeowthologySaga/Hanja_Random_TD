@@ -1,0 +1,104 @@
+/*
+ * 집자소 — 다시 굴리기 판의 진행 표시.
+ *
+ * 값은 네 글자다. 어디까지 왔는지가 한눈에 보여야 「한 글자 더」가 부담이
+ * 아니라 눈금이 된다. 다 쓴 자리는 인장(封)으로 덮어, 남은 자리가 저절로
+ * 도드라지게 한다 — 성어 발동의 순번 인장과 같은 시각 문법이다.
+ */
+
+.soul-dialog .soul-reroll-cost {
+  margin: -2px 0 2px;
+  color: var(--text-400);
+  font-size: var(--fs-2xs);
+}
+
+.soul-dialog .soul-reroll-cost b {
+  color: var(--gold-200);
+}
+
+.soul-dialog .soul-reroll-progress {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: 0;
+  color: var(--gold-500);
+  font-size: var(--fs-2xs);
+  letter-spacing: 0.14em;
+}
+
+.soul-dialog .soul-reroll-progress b {
+  color: var(--text-100);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0;
+}
+
+/* 자리 하나 — 글자 위에 인장이 겹쳐 찍힌다. */
+.soul-dialog .soul-reroll-char {
+  position: relative;
+  display: grid;
+  place-items: center;
+}
+
+.soul-dialog .soul-reroll-char b {
+  font-size: var(--fs-lg);
+  font-weight: 400;
+}
+
+/* 다 쓴 자리 — 글자는 옅어지고 주홍 인장이 얹힌다. */
+.soul-dialog .soul-reroll-char.is-done {
+  border-color: rgba(159, 47, 35, 0.55);
+  background: rgba(159, 47, 35, 0.08);
+  cursor: default;
+}
+
+.soul-dialog .soul-reroll-char.is-done b {
+  opacity: 0.4;
+}
+
+.soul-dialog .soul-reroll-char i {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: #9f2f23;
+  font-style: normal;
+  font-size: 20px;
+  font-weight: 900;
+  /* 인장은 종이에 눌러 찍은 것처럼 살짝 기울어 앉는다. */
+  transform: rotate(-9deg);
+}
+
+/* 지금 쓰는 자리 — 아직 안 쓴 것 중 하나다. */
+.soul-dialog .soul-reroll-char.is-active:not(.is-done) {
+  border-color: var(--gold-300);
+  background: linear-gradient(180deg, #fbf5e6, #ecdcb4);
+  box-shadow: 0 0 0 1px rgba(155, 113, 55, 0.35);
+}
+
+/*
+ * [다시 굴리기]는 넷을 다 쓴 뒤에만 선다. 그 자리에 있던 [이 글자 완성]과
+ * 같은 폭으로 서야 단추가 튀지 않는다.
+ */
+.soul-dialog .soul-reroll-roll[hidden] {
+  display: none;
+}
+
+.soul-dialog .soul-reroll-actions .soul-reroll-roll {
+  flex: 1.4 1 auto;
+  border-color: rgba(159, 47, 35, 0.6);
+  background: linear-gradient(180deg, #a8352a, #7c241b);
+  color: #f6ecd4;
+  font-size: var(--fs-sm);
+  animation: soul-reroll-ready 0.5s ease-out;
+}
+
+@keyframes soul-reroll-ready {
+  0% { transform: scale(0.94); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .soul-dialog .soul-reroll-actions .soul-reroll-roll {
+    animation: none;
+  }
+}

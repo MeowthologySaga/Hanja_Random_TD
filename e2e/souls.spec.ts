@@ -235,14 +235,28 @@ test("한자를 써서 성어 능력을 다시 굴리고, 새김 연출이 무�
   await page.locator("[data-soul-reroll]").click();
   await expect(page.locator("#soul-reroll")).toBeVisible();
   await expect(page.locator("#soul-reroll-title")).toHaveText("천지현황 다시 굴리기");
-  // 네 글자 중 어느 것으로 써도 된다.
   await expect(page.locator(".soul-reroll-char")).toHaveCount(4);
   // 쓰기 전에는 제출이 잠겨 있다 — 획을 떼도 저절로 통과하지 않는다는 규칙.
   await expect(page.getByTestId("soul-reroll-submit")).toBeDisabled();
 
-  await page.evaluate(() => (window as unknown as SoulQaWindow).__HANJA_SOUL_QA__.autoTrace());
-  await expect(page.getByTestId("soul-reroll-submit")).toBeEnabled();
-  await page.getByTestId("soul-reroll-submit").click();
+  /*
+   * 값은 **네 글자 전부**다. 자혼 넷을 태워 만든 것이니 다시 굴리는 값도
+   * 넷이어야 무게가 맞는다 — 한 글자면 마음에 들 때까지 돌리는 손잡이가 된다.
+   * 그래서 다 쓰기 전에는 [다시 굴리기]가 아예 서지 않는다.
+   */
+  for (let written = 1; written <= 4; written += 1) {
+    await expect(page.getByTestId("soul-reroll-roll")).toBeHidden();
+    await page.evaluate(() => (window as unknown as SoulQaWindow).__HANJA_SOUL_QA__.autoTrace());
+    await expect(page.getByTestId("soul-reroll-submit")).toBeEnabled();
+    await page.getByTestId("soul-reroll-submit").click();
+    await expect(page.locator("#soul-reroll-progress")).toHaveText(`${written} / 4자`);
+    await expect(page.locator(".soul-reroll-char.is-done")).toHaveCount(written);
+  }
+
+  // 넷을 다 쓰면 그때 딱 한 번 나온다.
+  await expect(page.getByTestId("soul-reroll-submit")).toBeHidden();
+  await expect(page.getByTestId("soul-reroll-roll")).toBeVisible();
+  await page.getByTestId("soul-reroll-roll").click();
 
   // 판이 닫히고, 다시 굴린 결과가 연출로 온다.
   await expect(page.locator("#soul-reroll")).toBeHidden();

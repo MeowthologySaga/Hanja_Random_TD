@@ -1118,6 +1118,8 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
           <p class="eyebrow">한자를 써서 다시 굴립니다</p>
           <h3 id="soul-reroll-title">다시 굴리기</h3>
           <p class="soul-reroll-current">지금 능력 · <b id="soul-reroll-current"></b></p>
+          <p class="soul-reroll-cost">네 글자를 모두 써야 <b>한 번</b> 다시 굴립니다.</p>
+          <p class="soul-reroll-progress"><span>다 쓴 글자</span><b id="soul-reroll-progress">0 / 4자</b></p>
           <div id="soul-reroll-chars" class="soul-reroll-chars" role="group" aria-label="쓸 글자 고르기"></div>
           <div class="soul-reroll-paper">
             <canvas id="soul-reroll-guide" width="196" height="232" aria-hidden="true"></canvas>
@@ -1127,7 +1129,9 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
           <div class="soul-reroll-actions">
             <button id="soul-reroll-cancel" type="button" data-testid="soul-reroll-cancel">그만두기</button>
             <button id="soul-reroll-clear" type="button" data-testid="soul-reroll-clear">지우기</button>
-            <button id="soul-reroll-submit" class="soul-forge-button" type="button" data-testid="soul-reroll-submit" disabled>다시 굴리기</button>
+            <button id="soul-reroll-submit" class="soul-forge-button" type="button" data-testid="soul-reroll-submit" disabled>이 글자 완성</button>
+            <!-- 넷을 다 써야 나온다. 쓰는 동안 함께 보이면 "지금 눌러도 되나"를 매번 판단하게 된다. -->
+            <button id="soul-reroll-roll" class="soul-forge-button soul-reroll-roll" type="button" data-testid="soul-reroll-roll" hidden>다시 굴리기</button>
           </div>
         </div>
       </div>

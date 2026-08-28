@@ -7,10 +7,14 @@
  * 공짜로 다시 굴리게 두면 굴림이 뜻을 잃는다 — 아무거나 새겨 놓고 원하는 축이
  * 나올 때까지 누르면 되기 때문이다.
  *
- * 그래서 값을 **손으로** 치르게 한다. 그 성어를 이루는 네 글자 중 하나를
- * 부적에 써 내면 한 번 다시 굴린다. 이 게임이 부적 만들기에서 이미 쓰는
- * 매커니즘 그대로다 — 값이 엽전도 자혼도 아니라 **글자를 쓸 줄 아는가**라서,
- * 다시 굴릴수록 그 글자를 손이 외운다. 벌이 곧 학습이 되는 자리다.
+ * 그래서 값을 **손으로** 치르게 한다. 그 성어의 **네 글자를 모두** 부적에
+ * 써 내야 한 번 다시 굴린다. 자혼 넷을 태워 만든 것이니 다시 굴리는 값도
+ * 넷이어야 무게가 맞는다 — 한 글자면 너무 싸서, 마음에 들 때까지 돌리는
+ * 손잡이가 되어 버린다.
+ *
+ * 이 게임이 부적 만들기에서 이미 쓰는 매커니즘 그대로다. 값이 엽전도 자혼도
+ * 아니라 **글자를 쓸 줄 아는가**라서, 다시 굴릴수록 그 네 글자를 손이 외운다.
+ * 벌이 곧 학습이 되는 자리다.
  *
  * ── 왜 부적 패널을 그대로 안 쓰나
  *
@@ -44,8 +48,10 @@ const CELL_SIZE = 8;
 
 interface RerollSession {
   readonly idiom: CustomIdiom;
-  /** 지금 쓰고 있는 글자. 넷 중 사람이 고른다. */
-  char: string;
+  /** 지금 쓰고 있는 자리(0~3). 아직 안 쓴 자리 중에서 고른다. */
+  index: number;
+  /** 자리마다 다 썼는가. 넷이 모두 참이어야 다시 굴릴 수 있다. */
+  readonly written: boolean[];
 }
 
 let session: RerollSession | null = null;
@@ -148,36 +154,73 @@ function strokeSegment(from: { x: number; y: number }, to: { x: number; y: numbe
   inkContext.restore();
 }
 
-/** 고를 수 있는 네 글자를 그린다. 겹친 글자는 한 번만 세운다. */
+/** 지금 쓰는 자리의 글자. */
+function currentChar(): string {
+  return session ? ([...session.idiom.chars][session.index] ?? "") : "";
+}
+
+function allWritten(): boolean {
+  return session !== null && session.written.every(Boolean);
+}
+
+/**
+ * 네 자리를 그린다 — 어디까지 왔는지가 한눈에 보여야 한다.
+ *
+ * 겹친 글자도 자리마다 따로 센다. 「네 글자를 다 쓴다」가 값이므로 같은 글자가
+ * 둘이면 두 번 쓴다 — 겹쳐 만든 성어가 값까지 싸지면 중복 보정과 어긋난다.
+ */
 function renderChoices(): void {
   if (!session) return;
   const row = must<HTMLElement>("#soul-reroll-chars");
-  const unique = [...new Set([...session.idiom.chars])];
   row.replaceChildren(
-    ...unique.map((char) => {
+    ...[...session.idiom.chars].map((char, index) => {
+      const done = session?.written[index] === true;
+      const active = session?.index === index;
       const button = document.createElement("button");
       button.type = "button";
-      button.className = char === session?.char ? "soul-reroll-char is-active" : "soul-reroll-char";
-      button.dataset.rerollChar = char;
-      button.textContent = char;
-      button.setAttribute("aria-pressed", char === session?.char ? "true" : "false");
+      button.className = `soul-reroll-char${done ? " is-done" : ""}${active ? " is-active" : ""}`;
+      button.dataset.rerollIndex = String(index);
+      // 다 쓴 자리는 인장으로 덮는다 — 남은 자리가 저절로 도드라진다.
+      button.innerHTML = `<b>${char}</b>${done ? '<i aria-hidden="true">封</i>' : ""}`;
+      button.setAttribute("aria-label", `${index + 1}번째 ${char}${done ? " · 다 썼습니다" : ""}`);
+      button.setAttribute("aria-pressed", active ? "true" : "false");
       return button;
     })
   );
+  must<HTMLElement>("#soul-reroll-progress").textContent =
+    `${session.written.filter(Boolean).length} / ${session.written.length}자`;
 }
 
-function useChar(char: string): void {
+function useIndex(index: number): void {
   if (!session) return;
-  session.char = char;
+  session.index = index;
+  const char = currentChar();
   prepareMask(char);
   if (guideContext) drawGlyph(guideContext, char, "rgba(34, 26, 16, 0.2)");
   clearInk();
   renderChoices();
+  syncActions();
 }
 
-/** 다 썼는가 — 부적 완성과 같은 문턱이다. */
+/**
+ * 단추 둘의 자리 — 쓰는 동안에는 [이 글자 완성]만, 넷을 다 쓰면 그때
+ * [다시 굴리기]가 **한 번** 나온다. 두 단추를 늘 함께 보이면 「지금 눌러도
+ * 되나」를 매번 판단하게 된다.
+ */
+function syncActions(): void {
+  const done = allWritten();
+  must<HTMLButtonElement>("#soul-reroll-submit").hidden = done;
+  must<HTMLButtonElement>("#soul-reroll-roll").hidden = !done;
+}
+
+/**
+ * 이 한 글자를 다 썼는가 — 부적 완성과 같은 문턱이다.
+ *
+ * 통과하면 그 자리에 인장이 찍히고 다음 빈 자리로 넘어간다. 판정은 이 단추만의
+ * 권한이다 — 획을 떼도 저절로 넘어가지 않는다(부적 패널의 규범 그대로).
+ */
 function submit(): void {
-  if (!session || !readArchive || !writeArchive) return;
+  if (!session) return;
   const score = refreshScore();
   if (!score) return;
   if (score.coverage < TALISMAN_THRESHOLDS.coverage) {
@@ -189,6 +232,23 @@ function submit(): void {
     return;
   }
 
+  session.written[session.index] = true;
+  const nextEmpty = session.written.findIndex((done) => !done);
+  renderChoices();
+  if (nextEmpty < 0) {
+    // 넷을 다 썼다. 이제 [다시 굴리기]가 한 번 나온다.
+    clearInk();
+    syncActions();
+    setStatus("네 글자를 다 썼습니다 — 이제 한 번 다시 굴릴 수 있습니다");
+    return;
+  }
+  useIndex(nextEmpty);
+  setStatus(`${currentChar()} — 남은 ${session.written.filter((done) => !done).length}자`);
+}
+
+/** 넷을 다 쓴 뒤 딱 한 번. */
+function roll(): void {
+  if (!session || !readArchive || !writeArchive || !allWritten()) return;
   const next = rerollCustomIdiom(readArchive(), session.idiom.id, Math.random(), Math.random());
   writeArchive(next);
   const rolled = next.idioms.find((entry) => entry.id === session?.idiom.id);
@@ -242,20 +302,25 @@ export function bindSoulReroll(hooks: SoulRerollHooks): void {
   }
 
   must<HTMLElement>("#soul-reroll-chars").addEventListener("click", (event) => {
-    const char = (event.target as HTMLElement).closest<HTMLElement>("[data-reroll-char]")?.dataset.rerollChar;
-    if (char) useChar(char);
+    const raw = (event.target as HTMLElement).closest<HTMLElement>("[data-reroll-index]")?.dataset.rerollIndex;
+    if (raw === undefined) return;
+    const index = Number(raw);
+    // 이미 쓴 자리는 다시 열지 않는다 — 인장이 찍힌 자리다.
+    if (session?.written[index] === true) return;
+    useIndex(index);
   });
   must<HTMLButtonElement>("#soul-reroll-clear").addEventListener("click", clearInk);
   must<HTMLButtonElement>("#soul-reroll-submit").addEventListener("click", submit);
+  must<HTMLButtonElement>("#soul-reroll-roll").addEventListener("click", roll);
   must<HTMLButtonElement>("#soul-reroll-cancel").addEventListener("click", closeSoulReroll);
 }
 
 export function openSoulReroll(idiom: CustomIdiom): void {
-  session = { idiom, char: [...idiom.chars][0] ?? "" };
+  session = { idiom, index: 0, written: [...idiom.chars].map(() => false) };
   must<HTMLElement>("#soul-reroll-title").textContent = `${idiom.reading} 다시 굴리기`;
   must<HTMLElement>("#soul-reroll-current").textContent = idiom.bonus.label;
   sheet().hidden = false;
-  useChar(session.char);
+  useIndex(0);
 }
 
 export function closeSoulReroll(): void {
@@ -309,7 +374,8 @@ if (import.meta.env.DEV) {
     __HANJA_SOUL_QA__: {
       autoTrace: autoTraceReroll,
       submit,
-      currentChar: () => session?.char ?? null,
+      roll,
+      currentChar: () => (session ? currentChar() : null),
       isOpen: isSoulRerollOpen
     }
   });
