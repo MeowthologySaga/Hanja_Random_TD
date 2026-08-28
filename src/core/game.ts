@@ -257,6 +257,32 @@ export {
  */
 export const MAX_TRACKED_IDIOMS = 3;
 
+/**
+ * 기존 성어의 전역 보너스 상한. 커스텀만 굴리는 축은 여기에 없다(상한 없음이
+ * 아니라 기존 성어가 그 축을 아예 안 굴린다).
+ */
+const BASE_IDIOM_BONUS_CAPS: Partial<Record<IdiomBonusKind, number>> = {
+  damage: 0.15,
+  range: 36,
+  enemySlow: 0.1,
+  evolutionGold: 8
+};
+
+/**
+ * 커스텀 성어의 전역 보너스 상한. 장착 15구를 한 축에 몰아도 판이 무너지지
+ * 않을 선에서 잡았다 — 대략 「좋은 굴림 3~4구」가 천장이다.
+ */
+const CUSTOM_IDIOM_BONUS_CAPS: Record<IdiomBonusKind, number> = {
+  damage: 0.24,
+  range: 60,
+  enemySlow: 0.16,
+  evolutionGold: 20,
+  killEssence: 5,
+  waveGold: 40,
+  weaknessDamage: 0.35,
+  formationAttack: 0.4
+};
+
 export class GameEngine {
   readonly state: GameState;
   readonly catalog: HanziCatalog;
@@ -280,6 +306,13 @@ export class GameEngine {
   private currentPlan: WavePlan | null = null;
   private autoEvolutionCooldown = 0;
   private runSummonPool: readonly HanziDefinition[] = [];
+  /**
+   * 이 판에 들고 온 커스텀 성어. 지역 명단에 없는 성어라 엔진이 따로 쥔다.
+   * 비어 있으면(시뮬·수련장·저장본 복원 전) 여태와 완전히 같은 판이 된다.
+   */
+  private readonly customIdioms: readonly IdiomDefinition[];
+  /** 처치 문기의 소수점 나머지. 판이 끝나면 사라지는 잔돈이라 상태에 담지 않는다. */
+  private killEssenceCarry = 0;
   private readonly enemyPositions = new Map<number, Point>();
   private readonly targetCandidates: Enemy[] = [];
   private readonly combatCharCounts = new Map<string, number>();
@@ -296,12 +329,22 @@ export class GameEngine {
   constructor(seed: string, region: RegionCode = "KR", mode: GameMode = "standard", options: GameEngineOptions = {}) {
     this.tutorial = options.tutorial === true;
     this.talismanMode = options.talismanMode === true;
+    this.customIdioms = options.customIdioms ?? [];
     this.catalog = getCatalog(region);
     this.evolution = new EvolutionService(this.catalog);
     this.rng = new SeededRng(seed);
     this.goalOrder = mode === "casual" ? casualGoalOrder(this.catalog) : this.catalog.goalOrder;
     const targetChar = this.goalOrder[0] ?? this.catalog.activePool[0]?.char ?? "";
-    const featuredIdiomIds = featuredIdiomsForRun(region, seed).map((idiom) => idiom.id);
+    /*
+     * 이 판의 성어 명단 = 지역에서 고른 다섯 구 + 장착한 커스텀 전부.
+     *
+     * 커스텀은 "뽑히길 바라는" 것이 아니라 사람이 골라 장착한 것이라 무조건
+     * 들어간다. 다섯이라는 수는 애초에 화면 자리 때문이었고, 그 제한은 걷혔다.
+     */
+    const featuredIdiomIds = [
+      ...featuredIdiomsForRun(region, seed).map((idiom) => idiom.id),
+      ...(options.customIdioms ?? []).map((idiom) => idiom.id)
+    ];
     this.state = {
       seed,
       region,
@@ -559,7 +602,7 @@ export class GameEngine {
       }
       if (enemy.slowUntil <= this.state.elapsed) enemy.slowFactor = 1;
       if (enemy.stunnedUntil > this.state.elapsed) continue;
-      enemy.progress += enemy.speed * enemy.slowFactor * (1 - this.idiomBonus("enemySlow")) * delta;
+      enemy.progress += enemy.speed * enemy.slowFactor * (1 - this.totalIdiomBonus("enemySlow")) * delta;
     }
   }
 
@@ -587,6 +630,32 @@ export class GameEngine {
       const matching = formationMatches[index] ?? 0;
       const tier = matching >= 16 ? 4 : matching >= 12 ? 3 : matching >= 8 ? 2 : matching >= 4 ? 1 : 0;
       this.combatFormationBonuses[index] = [0, 0.06, 0.12, 0.18, 0.25][tier] ?? 0;
+    }
+    /*
+     * 커스텀 성어의 「이 성어가 선 진의 자령 공격 +N%」.
+     *
+     * 걷어낸 「가호」와 겉모습이 닮았지만 다른 물건이다. 가호는 모든 성어에
+     * 조용히 붙어 아무도 몰랐고, 이건 사람이 직접 굴려 뽑은 축이라 카드에
+     * 그 문장이 적혀 있다. 보이는 힘은 남기고 숨은 힘만 걷는다는 결정 그대로다.
+     *
+     * 봉인의 네 자리는 한 진(4×4) 안의 한 줄이라 첫 자리만 보면 진이 정해진다.
+     */
+    if (this.customIdioms.length > 0) {
+      const perFormation = [0, 0, 0, 0, 0];
+      for (const seal of this.state.idiomSeals) {
+        if (!seal.active) continue;
+        const idiom = this.lookupIdiom(seal.idiomId);
+        if (!idiom || idiom.source !== "custom" || idiom.bonus.kind !== "formationAttack") continue;
+        const first = seal.cells[0];
+        if (first === undefined || first < 0) continue;
+        const index = Math.floor(first / CELLS_PER_FORMATION);
+        if (index < 0 || index >= perFormation.length) continue;
+        perFormation[index] = (perFormation[index] ?? 0) + idiom.bonus.value;
+      }
+      for (let index = 0; index < this.combatFormationBonuses.length; index += 1) {
+        const custom = Math.min(CUSTOM_IDIOM_BONUS_CAPS.formationAttack, perFormation[index] ?? 0);
+        if (custom > 0) this.combatFormationBonuses[index] = (this.combatFormationBonuses[index] ?? 0) + custom;
+      }
     }
   }
 
@@ -889,7 +958,7 @@ export class GameEngine {
   private findTarget(tower: Tower): Enemy | undefined {
     const origin = BOARD_CELLS[tower.cell] as Point;
     const definition = definitionForTower(this.catalog, tower.definitionId);
-    const range = definition.combat.range + this.towerRangeBonus(tower) + this.idiomBonus("range") + (tower.concentration ?? 0) * 4 + this.combinedUpgradeBonus(tower.wuxing, "range") + this.gateOpeningRangeBonus(tower);
+    const range = definition.combat.range + this.towerRangeBonus(tower) + this.totalIdiomBonus("range") + (tower.concentration ?? 0) * 4 + this.combinedUpgradeBonus(tower.wuxing, "range") + this.gateOpeningRangeBonus(tower);
     const candidates = this.targetCandidates;
     candidates.length = 0;
     for (const enemy of this.state.enemies) if (distance(origin, this.enemyPoint(enemy)) <= range) candidates.push(enemy);
@@ -960,7 +1029,7 @@ export class GameEngine {
     let damage = profile.baseDamage * this.towerPowerMultiplier(tower) * profile.budgetMultiplier;
     damage *= 1 + concentration * (concentrationPath === "potent" ? 0.12 : 0.055);
     damage *= 1 + this.combinedUpgradeBonus(tower.wuxing, "damage");
-    damage *= 1 + this.idiomBonus("damage");
+    damage *= 1 + this.totalIdiomBonus("damage");
     // 봉인한 성어 수만큼 판 전체가 세진다. 걷어낸 「가호」(진 단위 증폭)의 몫을
     // 기획 결정대로 **판 전체** 축 하나로 돌려준 것이다 — 실측에서 가호를 걷자
     // 성어를 실제로 발동하는 지역(JP·CN, 발동 중앙값 4구)이 그대로 주저앉았다.
@@ -978,7 +1047,9 @@ export class GameEngine {
     // Set 기반이라 같은 오행 오라는 몇 기가 있어도 최대 1개만 산다.
     if (this.combatPolarisElements.has(tower.wuxing)) damage *= 1 + CASUAL_POLARIS_AURA.damageBonus;
     if (synergy) damage *= 1 + GAME_CONFIG.synergyBonus + (profile.role === "support" ? 0.08 : 0);
-    if (weakness) damage *= GAME_CONFIG.weaknessMultiplier;
+    // 커스텀 성어의 「약점 오행 적에게 피해 +N%」는 약점 배수 위에 곱한다 —
+    // 약점을 찔렀을 때만 붙는 힘이라야 축의 이름과 실제가 같다.
+    if (weakness) damage *= GAME_CONFIG.weaknessMultiplier * (1 + this.customIdiomBonus("weaknessDamage"));
     // [SKILL-V1] 상극 각인: 낙인이 남은 동안 같은 오행 공격이 주는 피해가 커진다.
     // 약점 배율과 같은 층에서 곱해, 이 공격에서 파생되는 확산·연쇄·독도 함께 강해진다.
     if ((target.brandUntil ?? 0) > this.state.elapsed && target.brandWuxing === tower.wuxing) {
@@ -1343,6 +1414,23 @@ export class GameEngine {
     this.events.push({ type: "kill", at, reward: enemy.reward });
     // 봉인한 야생 자령이 남기는 혼 — 우두머리는 반드시, 그 밖은 낮은 확률로.
     // 저장은 판 밖의 일이라 엔진은 사실만 알리고 보관은 UI 가 한다.
+    /*
+     * 커스텀 성어의 「적을 봉인할 때마다 그 오행 문기 +N」.
+     *
+     * 쌓이는 곳은 **그 적의 약점 오행**이다 — 그 적을 이긴 기운이 남는다는
+     * 뜻이고, 웨이브마다 약점이 바뀌므로 다섯 오행에 고루 돈다. 소수점은
+     * 누적분에 담아 두고 1 이 될 때 넘긴다(0.4 짜리가 버려지지 않게).
+     */
+    const essenceGain = this.customIdiomBonus("killEssence");
+    if (essenceGain > 0) {
+      this.killEssenceCarry += essenceGain;
+      const whole = Math.floor(this.killEssenceCarry);
+      if (whole > 0) {
+        this.killEssenceCarry -= whole;
+        this.state.elementEssence[enemy.weakness] += whole;
+        this.state.elementEssenceGenerated[enemy.weakness] += whole;
+      }
+    }
     if (enemy.char && (enemy.boss || this.rng.next() < WILD_SOUL_DROP_CHANCE)) {
       this.events.push({ type: "soul", at, char: enemy.char, boss: enemy.boss });
     }
@@ -1454,6 +1542,10 @@ export class GameEngine {
   private startNextWave(): void {
     const nextWave = this.state.wave + 1;
     this.state.wave = nextWave;
+    // 커스텀 성어의 「웨이브가 시작될 때 엽전 +N」. 웨이브가 서는 이 한 지점에서만
+    // 준다 — 미리 시작하든 기다리든 같은 값이라 조기 출전과 셈이 겹치지 않는다.
+    const waveGold = Math.floor(this.customIdiomBonus("waveGold"));
+    if (waveGold > 0) this.state.gold += waveGold;
     this.currentPlan = this.planForWave(nextWave);
     this.state.phase = "combat";
     this.state.waveElapsed = 0;
@@ -2012,7 +2104,7 @@ export class GameEngine {
     this.state.evolutionCount += 1;
     this.discover(option.result.char);
 
-    const idiomGold = this.idiomBonus("evolutionGold");
+    const idiomGold = this.totalIdiomBonus("evolutionGold");
     if (idiomGold > 0) this.state.gold += idiomGold;
 
     const targetCompleted = option.result.char === this.state.targetChar;
@@ -2107,7 +2199,7 @@ export class GameEngine {
 
   /** 이 성어를 1순위 추적 목표로 세운다(수련장·"목표로 지정" 경로). */
   setIdiomTarget(id: string): ActionResult {
-    const idiom = idiomById(this.state.region, id);
+    const idiom = this.lookupIdiom(id);
     if (!idiom) return { ok: false, message: "이 지역에서 사용할 수 없는 성어입니다." };
     if (this.state.idiomSeals.some((seal) => seal.idiomId === id)) return { ok: false, message: `${idiom.reading}은 이미 발동했습니다.` };
     const current = this.trackedIdioms().map((entry) => entry.id).filter((candidate) => candidate !== id);
@@ -2125,7 +2217,7 @@ export class GameEngine {
    * 승계된다). 승계로만 존재하던 기본 추적도 토글 순간 상태로 굳힌다.
    */
   setIdiomTracking(id: string, tracked: boolean): ActionResult {
-    const idiom = idiomById(this.state.region, id);
+    const idiom = this.lookupIdiom(id);
     if (!idiom) return { ok: false, message: "이 지역에서 사용할 수 없는 성어입니다." };
     if (this.state.idiomSeals.some((seal) => seal.idiomId === id)) return { ok: false, message: `${idiom.reading}은 이미 봉인했습니다.` };
     const current = this.trackedIdioms().map((entry) => entry.id);
@@ -2156,7 +2248,7 @@ export class GameEngine {
   trackedIdioms(): readonly IdiomDefinition[] {
     const sealedIds = new Set(this.state.idiomSeals.map((seal) => seal.idiomId));
     const resolved = this.state.trackedIdiomIds
-      .map((id) => idiomById(this.state.region, id))
+      .map((id) => this.lookupIdiom(id))
       .filter((idiom): idiom is IdiomDefinition => idiom !== undefined && !sealedIds.has(idiom.id));
     if (resolved.length > 0) return resolved;
     const inherited = this.idioms().find((idiom) => !sealedIds.has(idiom.id));
@@ -2182,7 +2274,7 @@ export class GameEngine {
   }
 
   idiomProgress(id: string): { owned: number; total: number; readiness: number; missingChars: string[] } {
-    const idiom = idiomById(this.state.region, id);
+    const idiom = this.lookupIdiom(id);
     if (!idiom) return { owned: 0, total: 4, readiness: 0, missingChars: [] };
     const counts = new Map<string, number>();
     for (const tower of [...this.state.towers, ...this.state.inventoryTowers]) {
@@ -2959,12 +3051,14 @@ export class GameEngine {
 
   idioms(): readonly IdiomDefinition[] {
     return this.state.featuredIdiomIds
-      .map((id) => idiomById(this.state.region, id))
+      .map((id) => this.lookupIdiom(id))
       .filter((idiom): idiom is IdiomDefinition => Boolean(idiom));
   }
 
   allIdioms(): readonly IdiomDefinition[] {
-    return idiomsForRegion(this.state.region);
+    return this.customIdioms.length === 0
+      ? idiomsForRegion(this.state.region)
+      : [...idiomsForRegion(this.state.region), ...this.customIdioms];
   }
 
   summonDefinitions(): readonly HanziDefinition[] {
@@ -3001,15 +3095,55 @@ export class GameEngine {
     return Math.min(IDIOM_SEAL_ATTACK_CAP, seals * IDIOM_SEAL_ATTACK_PER_SEAL);
   }
 
+  /**
+   * 기존 성어(104구)의 전역 보너스. 커스텀 성어는 여기 섞이지 않는다 —
+   * 이 통은 두 구면 상한에 닿으므로, 커스텀까지 같은 통에 넣으면 애써 새긴
+   * 성어가 아무 일도 하지 않는다(custom-idioms.ts 머리말).
+   */
   idiomBonus(kind: IdiomBonusKind): number {
     // 유지형 규칙: 흩어진 봉인은 기록에만 남고 보너스는 내지 않는다.
     const total = this.state.idiomSeals.reduce((sum, seal) => {
       if (!seal.active) return sum;
-      const idiom = idiomById(this.state.region, seal.idiomId);
-      return sum + (idiom?.bonus.kind === kind ? idiom.bonus.value : 0);
+      const idiom = this.lookupIdiom(seal.idiomId);
+      if (!idiom || idiom.source === "custom") return sum;
+      return sum + (idiom.bonus.kind === kind ? idiom.bonus.value : 0);
     }, 0);
-    const caps: Record<IdiomBonusKind, number> = { damage: 0.15, range: 36, enemySlow: 0.1, evolutionGold: 8 };
-    return Math.min(caps[kind], total);
+    const cap = BASE_IDIOM_BONUS_CAPS[kind];
+    return cap === undefined ? total : Math.min(cap, total);
+  }
+
+  /**
+   * 커스텀 성어(자혼으로 새긴 것)의 전역 보너스 — 통이 따로다.
+   *
+   * 장착 상한이 15구라 통이 넉넉해야 "열다섯을 모은 보람"이 생긴다. 대신
+   * 상한을 둬서 한 축에 몰아 넣어도 판이 무너지지 않게 막는다.
+   */
+  customIdiomBonus(kind: IdiomBonusKind): number {
+    if (this.customIdioms.length === 0) return 0;
+    let total = 0;
+    for (const seal of this.state.idiomSeals) {
+      if (!seal.active) continue;
+      const idiom = this.lookupIdiom(seal.idiomId);
+      if (!idiom || idiom.source !== "custom") continue;
+      if (idiom.bonus.kind === kind) total += idiom.bonus.value;
+    }
+    return Math.min(CUSTOM_IDIOM_BONUS_CAPS[kind], total);
+  }
+
+  /** 두 통을 합친 값. 같은 축을 쓰는 자리는 이걸 본다. */
+  totalIdiomBonus(kind: IdiomBonusKind): number {
+    return this.idiomBonus(kind) + this.customIdiomBonus(kind);
+  }
+
+  /**
+   * 커스텀 성어까지 포함한 성어 조회.
+   *
+   * 커스텀은 지역 명단에 없다 — 사람이 새긴 것이라 판마다 다르다. 그래서
+   * 장착분을 먼저 보고, 없으면 지역 명단에서 찾는다.
+   */
+  private lookupIdiom(id: string): IdiomDefinition | undefined {
+    for (const idiom of this.customIdioms) if (idiom.id === id) return idiom;
+    return idiomById(this.state.region, id);
   }
 
   private buildRunSummonPool(): readonly HanziDefinition[] {
@@ -3155,7 +3289,7 @@ export class GameEngine {
     const candidates: IdiomDefinition[] = [...this.idioms()];
     for (const seal of this.state.idiomSeals) {
       if (candidates.some((idiom) => idiom.id === seal.idiomId)) continue;
-      const idiom = idiomById(this.state.region, seal.idiomId);
+      const idiom = this.lookupIdiom(seal.idiomId);
       if (idiom) candidates.push(idiom);
     }
     for (const idiom of candidates) {

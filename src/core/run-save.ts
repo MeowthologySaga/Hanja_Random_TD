@@ -32,6 +32,7 @@
  *   화면 상태다.
  */
 import { GameEngine } from "./game";
+import type { IdiomDefinition } from "./idioms";
 import type { EngineRuntimeSnapshot, GameMode, GameState, NotationCode, RegionCode } from "./types";
 
 /** 저장 슬롯 키. 1슬롯 — 마지막 런 하나만 남는다. */
@@ -177,10 +178,17 @@ export function captureRunSave(engine: GameEngine, ui: RunSaveUiState, now = Dat
  * 사다리까지 저장 당시와 같게 세운 뒤, `adoptRun()` 으로 상태와 내부 카운터를
  * 얹는다. `begin()` 은 부르지 않는다 — 그건 처음부터 다시 시작하는 문이다.
  */
-export function restoreRun(save: RunSave): GameEngine {
+export function restoreRun(save: RunSave, customIdioms: readonly IdiomDefinition[] = []): GameEngine {
+  /*
+   * 커스텀 성어는 저장본에 담지 않는다. 서재(보관소)가 이미 그것을 판보다
+   * 오래 들고 있으므로 두 벌을 만들면 어긋난다 — 저장본을 되살릴 때는 지금
+   * 장착된 것을 그대로 다시 얹는다. 그 사이 성어를 갈아 끼웠다면 이어하는
+   * 판도 새 명단을 따른다(줄이 남아 있던 봉인은 `adoptRun` 이 정리한다).
+   */
   const engine = new GameEngine(save.seed, save.region, save.mode, {
     notation: save.notation,
-    talismanMode: save.talismanMode
+    talismanMode: save.talismanMode,
+    customIdioms
   });
   engine.adoptRun(save.state, save.runtime);
   return engine;

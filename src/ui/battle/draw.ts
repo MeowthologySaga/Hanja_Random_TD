@@ -1298,7 +1298,7 @@ function drawTowerRange(tower: Tower, hovered: boolean): void {
   context.lineWidth = hovered ? 2.2 : 1.5;
   context.setLineDash(hovered ? [10, 6] : [7, 7]);
   context.beginPath();
-  context.arc(cell.x, cell.y, definition.combat.range + ctx.engine.towerRangeBonus(tower) + ctx.engine.idiomBonus("range") + (tower.concentration ?? 0) * 4 + ctx.engine.combinedUpgradeBonus(tower.wuxing, "range"), 0, Math.PI * 2);
+  context.arc(cell.x, cell.y, definition.combat.range + ctx.engine.towerRangeBonus(tower) + ctx.engine.totalIdiomBonus("range") + (tower.concentration ?? 0) * 4 + ctx.engine.combinedUpgradeBonus(tower.wuxing, "range"), 0, Math.PI * 2);
   context.fill();
   context.stroke();
   context.restore();
@@ -1384,6 +1384,35 @@ function drawEnemy(enemy: Enemy, point = positionOnPath(enemy.progress)): void {
     context.textAlign = "center";
     context.textBaseline = "middle";
     context.fillText(visual.hanja, 0, 1);
+  }
+
+  /*
+   * 야생 자령이 이고 나온 글자.
+   *
+   * 적도 자령이다 — 다른 것은 아군이 머리에 부적을 쓰고 있다는 것뿐이다.
+   * 그래서 이 글자를 몸에 새겨 "무엇을 봉인하는 중인지"를 화면에서 읽히게
+   * 한다. 봉인하면 이 글자의 자혼이 남으므로, 오늘 만난 글자가 곧 내일
+   * 새길 성어의 재료다.
+   *
+   * 우두머리는 반드시 혼을 남기므로 더 또렷하게 적는다.
+   */
+  if (enemy.char) {
+    const plate = enemy.boss ? 17 : 11;
+    const y = drawSize * 0.07;
+    context.globalAlpha = enemy.boss ? 0.95 : 0.72;
+    context.fillStyle = "rgba(10, 7, 5, 0.82)";
+    context.beginPath();
+    context.arc(0, y, plate, 0, Math.PI * 2);
+    context.fill();
+    context.lineWidth = 1;
+    context.strokeStyle = enemy.boss ? "#c9a8ff" : "rgba(201, 168, 255, 0.55)";
+    context.stroke();
+    context.fillStyle = enemy.boss ? "#e6d8ff" : "#cfc0e8";
+    context.font = '900 ' + String(enemy.boss ? 20 : 13) + 'px "Malgun Gothic", serif';
+    context.textAlign = "center";
+    context.textBaseline = "middle";
+    context.fillText(enemy.char, 0, y + 1);
+    context.globalAlpha = 1;
   }
 
   if (enemy.flash > 0) {

@@ -19,7 +19,7 @@ export interface IdiomDefinition {
   reading: string;
   meaning: string;
   color: string;
-  source: "common" | "cheonjamun";
+  source: "common" | "cheonjamun" | "custom";
   sourceOrder: number | null;
   bonus: {
     kind: IdiomBonusKind;

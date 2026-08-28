@@ -62,7 +62,21 @@ export type SemanticFamily =
 export type TargetPriority = "front" | "strongest" | "fastest" | "armored" | "cluster" | "valuable";
 export type EnemyArchetype = "normal" | "swarm" | "swift" | "armored" | "regenerator" | "boss";
 export type AbilityCategory = "element" | "semantic" | "role" | "graph" | "lineage";
-export type IdiomBonusKind = "range" | "damage" | "evolutionGold" | "enemySlow";
+/*
+ * 성어 능력 축. 앞 넷은 기존 성어(104구)가 쓰고, 뒤 넷은 커스텀 성어만 굴린다.
+ * 한 타입으로 합친 이유는 성어가 결국 한 종류의 물건이기 때문이다 — 엔진의
+ * 발동 판정·줄 세우기·화면 표시가 전부 같은 길을 탄다. 다만 **합산 통은
+ * 다르다**(custom-idioms.ts 머리말 참조).
+ */
+export type IdiomBonusKind =
+  | "range"
+  | "damage"
+  | "evolutionGold"
+  | "enemySlow"
+  | "killEssence"
+  | "waveGold"
+  | "weaknessDamage"
+  | "formationAttack";
 export type AbilityFxKind =
   | "poison"
   | "blast"

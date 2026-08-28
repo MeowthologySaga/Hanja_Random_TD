@@ -1,0 +1,414 @@
+/*
+ * 자혼 서재.
+ *
+ * 도감 대화상자의 살결(.codex-dialog)을 그대로 입고, 안쪽 짜임만 여기서 짠다.
+ * 세 칸은 왼쪽에서 오른쪽으로 재료 → 새김대 → 내 성어 순서다. 가운데 새김대가
+ * 가장 넓다 — 사람이 실제로 손을 대는 자리이기 때문이다.
+ */
+/* 무대가 1280×720 고정 좌표라 대화상자도 설계 px 로 잡는다 — vw/vh 는 무대
+   바깥 창을 재므로 여기서는 뜻이 어긋난다(280-r8-stage.css 의 규범). */
+.soul-dialog {
+  width: 1180px;
+  height: 664px;
+  padding: var(--sp-4) var(--sp-5) var(--sp-5);
+  color: var(--ji-500);
+}
+
+.soul-dialog .soul-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--sp-3);
+}
+
+.soul-dialog .soul-heading h2 {
+  margin: 0;
+  font-size: var(--fs-xl);
+  color: var(--ji-400);
+}
+
+.soul-dialog .soul-heading .eyebrow {
+  margin: 0 0 2px;
+  color: var(--gold-600);
+  letter-spacing: 0.18em;
+  font-size: var(--fs-2xs);
+}
+
+.soul-dialog #soul-close {
+  border: 0;
+  background: transparent;
+  color: var(--ji-700);
+  font-size: var(--fs-xl);
+  line-height: 1;
+  cursor: pointer;
+}
+
+.soul-lede {
+  margin: var(--sp-2) 0 var(--sp-3);
+  max-width: 72ch;
+  color: var(--ji-700);
+  font-size: var(--fs-xs);
+  line-height: 1.6;
+}
+
+.soul-lede b {
+  color: var(--dan-chija);
+  font-weight: 600;
+}
+
+.soul-layout {
+  display: grid;
+  /* 재료 칸은 글자 격자라 좁아도 되고, 새김대는 확률표를 안고 있어 넓다. */
+  grid-template-columns: minmax(180px, 0.8fr) minmax(280px, 1.3fr) minmax(240px, 1fr);
+  gap: var(--sp-4);
+  align-items: start;
+  overflow: hidden;
+}
+
+.soul-col {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  min-width: 0;
+  max-height: 452px;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+
+.soul-col .eyebrow {
+  margin: 0;
+  color: var(--gold-600);
+  letter-spacing: 0.14em;
+  font-size: var(--fs-2xs);
+}
+
+.soul-col .eyebrow em {
+  font-style: normal;
+  color: var(--ji-500);
+  font-variant-numeric: tabular-nums;
+}
+
+.soul-col .eyebrow small {
+  margin-left: 6px;
+  color: var(--ji-900);
+  letter-spacing: 0;
+}
+
+.soul-empty {
+  margin: 0;
+  color: var(--ji-900);
+  font-size: var(--fs-2xs);
+  line-height: 1.6;
+}
+
+/* ── 지닌 자혼 ─────────────────────────────────────────── */
+.soul-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(56px, 1fr));
+  gap: 6px;
+}
+
+.soul-chip {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 6px 2px 4px;
+  border: 1px solid rgba(122, 90, 42, 0.45);
+  border-radius: var(--r-sm);
+  background: linear-gradient(180deg, rgba(52, 44, 33, 0.9), rgba(28, 23, 17, 0.9));
+  color: var(--ji-500);
+  cursor: pointer;
+}
+
+.soul-chip:hover:not(:disabled) {
+  border-color: var(--dan-chija);
+}
+
+.soul-chip:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.soul-chip b {
+  font-size: var(--fs-lg);
+  line-height: 1.1;
+}
+
+.soul-chip em {
+  font-style: normal;
+  font-size: var(--fs-2xs);
+  color: var(--dan-chija);
+  font-variant-numeric: tabular-nums;
+}
+
+.soul-chip em i {
+  font-style: normal;
+  color: var(--ji-900);
+}
+
+/* ── 새김대 ────────────────────────────────────────────── */
+.soul-slots {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+}
+
+.soul-slot {
+  aspect-ratio: 1;
+  border: 1px dashed rgba(122, 90, 42, 0.55);
+  border-radius: var(--r-sm);
+  background: rgba(20, 16, 12, 0.65);
+  color: var(--ji-400);
+  font-size: var(--fs-2xl);
+  line-height: 1;
+  cursor: default;
+}
+
+.soul-slot.is-filled {
+  border-style: solid;
+  border-color: var(--dan-chija);
+  background: linear-gradient(180deg, rgba(64, 52, 36, 0.95), rgba(32, 26, 19, 0.95));
+  cursor: pointer;
+}
+
+.soul-reading {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-2);
+  margin: 0;
+}
+
+.soul-reading span {
+  color: var(--gold-600);
+  font-size: var(--fs-2xs);
+  letter-spacing: 0.14em;
+}
+
+.soul-reading b {
+  color: var(--ji-700);
+  font-size: var(--fs-lg);
+  letter-spacing: 0.08em;
+}
+
+/* 넉 자가 다 차야 음이 확정된다 — 그때만 또렷하게 켠다. */
+.soul-reading b.is-ready {
+  color: var(--dan-chija);
+}
+
+.soul-meaning-label {
+  margin: var(--sp-1) 0 0;
+  color: var(--gold-600);
+  font-size: var(--fs-2xs);
+  letter-spacing: 0.14em;
+}
+
+.soul-meaning-label small {
+  margin-left: 6px;
+  color: var(--ji-900);
+  letter-spacing: 0;
+}
+
+#soul-meaning-input {
+  width: 100%;
+  padding: 7px 9px;
+  border: 1px solid rgba(122, 90, 42, 0.5);
+  border-radius: var(--r-sm);
+  background: rgba(16, 13, 10, 0.85);
+  color: var(--ji-400);
+  font: inherit;
+  font-size: var(--fs-sm);
+}
+
+#soul-meaning-input::placeholder {
+  color: rgba(184, 166, 126, 0.5);
+}
+
+.soul-odds-title {
+  margin-top: var(--sp-2) !important;
+}
+
+.soul-odds {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+/* 넉 자가 차기 전의 확률표는 재료 보정이 아직 안 걸린 값이라 눌러 둔다. */
+.soul-odds[data-provisional="1"] {
+  opacity: 0.62;
+}
+
+.soul-odds-row {
+  display: grid;
+  grid-template-columns: 42px 1fr auto;
+  gap: var(--sp-2);
+  align-items: baseline;
+  padding: 3px 6px;
+  border-radius: var(--r-sm);
+  background: rgba(24, 19, 14, 0.6);
+  font-size: var(--fs-2xs);
+}
+
+.soul-odds-chance {
+  color: var(--dan-chija);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.soul-odds-range {
+  color: var(--ji-600);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.soul-odds-hint {
+  margin: 4px 0 0;
+  color: var(--ji-900);
+  font-size: var(--fs-2xs);
+  line-height: 1.5;
+}
+
+.soul-note {
+  margin: var(--sp-1) 0 0;
+  min-height: 2.4em;
+  color: var(--ji-700);
+  font-size: var(--fs-2xs);
+  line-height: 1.5;
+}
+
+.soul-forge-button {
+  padding: 9px 12px;
+  border: 1px solid var(--gold-300);
+  border-radius: var(--r-sm);
+  background: linear-gradient(180deg, #6b4d1d, #402c10);
+  color: var(--ji-400);
+  font-size: var(--fs-sm);
+  letter-spacing: 0.1em;
+  cursor: pointer;
+}
+
+.soul-forge-button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/* ── 내 성어 ───────────────────────────────────────────── */
+.soul-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.soul-card {
+  padding: 8px 10px;
+  border: 1px solid rgba(122, 90, 42, 0.4);
+  border-radius: var(--r-sm);
+  background: rgba(22, 18, 13, 0.75);
+}
+
+/* 장착한 구는 왼쪽에 인주빛 띠를 세워, 목록을 훑을 때 판에 서는 것만 골라진다. */
+.soul-card.is-equipped {
+  border-color: rgba(201, 168, 255, 0.55);
+  box-shadow: inset 3px 0 0 #c9a8ff;
+}
+
+.soul-card p {
+  margin: 0 0 3px;
+}
+
+.soul-card-chars {
+  display: flex;
+  gap: 4px;
+  font-size: var(--fs-lg);
+  color: var(--ji-400);
+}
+
+.soul-card-reading {
+  color: #c9a8ff;
+  font-size: var(--fs-xs);
+  letter-spacing: 0.08em;
+}
+
+.soul-card-meaning {
+  color: var(--ji-700);
+  font-size: var(--fs-2xs);
+  line-height: 1.5;
+}
+
+.soul-card-meaning i {
+  color: var(--ji-900);
+}
+
+.soul-card-bonus {
+  color: var(--dan-chija);
+  font-size: var(--fs-2xs);
+  line-height: 1.5;
+}
+
+.soul-card-actions {
+  display: flex;
+  gap: 4px;
+  margin-top: 5px;
+}
+
+.soul-card-actions button {
+  flex: 1;
+  padding: 4px 6px;
+  border: 1px solid rgba(122, 90, 42, 0.5);
+  border-radius: var(--r-sm);
+  background: rgba(40, 33, 24, 0.9);
+  color: var(--ji-600);
+  font-size: var(--fs-2xs);
+  cursor: pointer;
+}
+
+.soul-card-actions button:hover:not(:disabled) {
+  border-color: var(--dan-chija);
+  color: var(--ji-400);
+}
+
+.soul-card-actions button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.soul-card-actions .soul-card-discard {
+  flex: 0 0 auto;
+  color: var(--ji-900);
+}
+
+/* 제목 화면 자혼 배지 — 지닌 수를 보조 메뉴 단추 위에 얹는다. */
+.s00-souls-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  min-width: 17px;
+  padding: 0 4px;
+  border-radius: 9px;
+  background: #c9a8ff;
+  color: #241d16;
+  font-style: normal;
+  font-size: 11px;
+  line-height: 17px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.s00-utility button {
+  position: relative;
+}
+
+.soul-odds-peak {
+  display: flex;
+  gap: 6px;
+  color: var(--ji-600);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.soul-odds-peak i {
+  font-style: normal;
+  color: var(--ji-900);
+}

@@ -14,19 +14,12 @@
  *  · 획이 많은 글자를 모을수록 세진다 — 그 넷을 모으는 것 자체가 비용이다.
  */
 import { casualNaturalStar } from "./casual";
+import type { IdiomDefinition } from "./idioms";
 import { learningInfo } from "./learning";
-import type { RegionCode } from "./types";
+import type { IdiomBonusKind, RegionCode } from "./types";
 
 /** 커스텀 성어가 굴릴 수 있는 능력 축. 앞 넷은 기존 성어와 같은 종류다. */
-export type CustomIdiomBonusKind =
-  | "damage"
-  | "range"
-  | "enemySlow"
-  | "evolutionGold"
-  | "killEssence"
-  | "waveGold"
-  | "weaknessDamage"
-  | "formationAttack";
+export type CustomIdiomBonusKind = IdiomBonusKind;
 
 export interface CustomIdiomBonus {
   readonly kind: CustomIdiomBonusKind;
@@ -58,6 +51,10 @@ export interface CustomIdiomAxis {
   readonly peak: number;
   /** 소수 자리(표시·반올림 단위). 0 이면 정수 축이다. */
   readonly decimals: number;
+  /** 값만 짧게 적은 표기. 확률표 한 줄이 문장을 두 번 되풀이하지 않게 한다. */
+  readonly short: (value: number) => string;
+  /** 축 이름(값 없는 말). 확률표는 이름 한 번 + 값 여러 번으로 적는다. */
+  readonly name: string;
   readonly label: (value: number) => string;
 }
 
@@ -72,34 +69,50 @@ export interface CustomIdiomAxis {
 export const CUSTOM_IDIOM_AXES: readonly CustomIdiomAxis[] = Object.freeze([
   {
     kind: "damage", weight: 18, min: 0.04, max: 0.11, peak: 0.16, decimals: 3,
+    name: "모든 자령 피해",
+    short: (value) => `+${Math.round(value * 100)}%`,
     label: (value) => `모든 자령 피해 +${Math.round(value * 100)}%`
   },
   {
     kind: "range", weight: 16, min: 8, max: 22, peak: 32, decimals: 0,
+    name: "모든 자령 사거리",
+    short: (value) => `+${Math.round(value)}`,
     label: (value) => `모든 자령 사거리 +${Math.round(value)}`
   },
   {
     kind: "enemySlow", weight: 10, min: 0.03, max: 0.08, peak: 0.12, decimals: 3,
+    name: "적 이동 속도",
+    short: (value) => `−${Math.round(value * 100)}%`,
     label: (value) => `모든 적 이동 속도 −${Math.round(value * 100)}%`
   },
   {
     kind: "evolutionGold", weight: 12, min: 2, max: 6, peak: 9, decimals: 0,
+    name: "합성 엽전",
+    short: (value) => `+${Math.round(value)}엽전`,
     label: (value) => `합성할 때마다 엽전 +${Math.round(value)}`
   },
   {
     kind: "killEssence", weight: 14, min: 0.4, max: 1.4, peak: 2.5, decimals: 2,
+    name: "봉인 문기",
+    short: (value) => `+${value.toFixed(2)}문기`,
     label: (value) => `적을 봉인할 때마다 그 오행 문기 +${value.toFixed(2)}`
   },
   {
     kind: "waveGold", weight: 14, min: 4, max: 12, peak: 18, decimals: 0,
+    name: "웨이브 엽전",
+    short: (value) => `+${Math.round(value)}엽전`,
     label: (value) => `웨이브가 시작될 때 엽전 +${Math.round(value)}`
   },
   {
     kind: "weaknessDamage", weight: 10, min: 0.05, max: 0.14, peak: 0.2, decimals: 3,
+    name: "약점 피해",
+    short: (value) => `+${Math.round(value * 100)}%`,
     label: (value) => `약점 오행 적에게 피해 +${Math.round(value * 100)}%`
   },
   {
     kind: "formationAttack", weight: 6, min: 0.06, max: 0.16, peak: 0.25, decimals: 3,
+    name: "이 진의 공격",
+    short: (value) => `+${Math.round(value * 100)}%`,
     label: (value) => `이 성어가 선 진의 자령 공격 +${Math.round(value * 100)}%`
   }
 ]);
@@ -146,6 +159,8 @@ export function rarityFactor(starSum: number): number {
 
 export interface CustomIdiomOdds {
   readonly kind: CustomIdiomBonusKind;
+  /** 축 이름(값 없는 말). */
+  readonly name: string;
   /** 이 축이 나올 확률(0~1). */
   readonly chance: number;
   /** 이 조합에서 실제로 나올 수 있는 값의 범위. */
@@ -156,6 +171,10 @@ export interface CustomIdiomOdds {
   readonly minLabel: string;
   readonly maxLabel: string;
   readonly peakLabel: string;
+  /** 값만 짧게 — 확률표 한 줄에 범위와 천장을 함께 적을 때 쓴다. */
+  readonly minShort: string;
+  readonly maxShort: string;
+  readonly peakShort: string;
 }
 
 function roundTo(value: number, decimals: number): number {
@@ -182,13 +201,17 @@ export function customIdiomOdds(chars: string): readonly CustomIdiomOdds[] {
     const max = applyFactors(axis, axis.max, factor);
     return {
       kind: axis.kind,
+      name: axis.name,
       chance: axis.weight / total,
       min,
       max,
       peak: axis.peak,
       minLabel: axis.label(min),
       maxLabel: axis.label(max),
-      peakLabel: axis.label(axis.peak)
+      peakLabel: axis.label(axis.peak),
+      minShort: axis.short(min),
+      maxShort: axis.short(max),
+      peakShort: axis.short(axis.peak)
     };
   });
 }
@@ -240,4 +263,29 @@ export function isValidCustomIdiomChars(chars: string): boolean {
   const glyphs = [...chars];
   if (glyphs.length !== CUSTOM_IDIOM_LENGTH) return false;
   return glyphs.every((glyph) => /\p{Script=Han}/u.test(glyph));
+}
+
+/** 커스텀 성어가 판에 설 때 쓰는 빛깔. 자혼의 보랏빛 그대로다. */
+export const CUSTOM_IDIOM_COLOR = "#c9a8ff";
+
+/**
+ * 새긴 성어를 엔진이 아는 성어 정의로 옮긴다.
+ *
+ * 엔진에게 커스텀은 특별한 물건이 아니다 — 줄 세우기·발동·해제가 전부 같은
+ * 길을 탄다. 다른 것은 `source: "custom"` 하나뿐이고, 그 표식으로 합산 통과
+ * 화면 표시만 갈린다.
+ */
+export function customIdiomToDefinition(idiom: CustomIdiom): IdiomDefinition {
+  return {
+    id: idiom.id,
+    chars: idiom.chars,
+    name: idiom.reading,
+    reading: idiom.reading,
+    // 뜻을 안 적었으면 빈 자리를 남기지 않고 재료를 적어 준다.
+    meaning: idiom.meaning || `${[...idiom.chars].join("·")} — 자혼으로 새긴 성어`,
+    color: CUSTOM_IDIOM_COLOR,
+    source: "custom",
+    sourceOrder: null,
+    bonus: { kind: idiom.bonus.kind, value: idiom.bonus.value, label: idiom.bonus.label }
+  };
 }

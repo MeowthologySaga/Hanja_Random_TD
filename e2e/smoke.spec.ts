@@ -1227,8 +1227,10 @@ test("scales Jaryeong labels and the selected reading cleanly at 1600x900", asyn
 
 test("opens the rules and exposes synthesis keyboard guidance", async ({ page }) => {
   await page.goto("/");
-  // S00 보조 메뉴는 아이콘+짧은 이름(冊 도감 / ⚙ 설정 / ? 도움말)으로 압축됐다.
-  await expect(page.locator(".s00-utility > button")).toHaveCount(3);
+  // S00 보조 메뉴는 아이콘+짧은 이름으로 압축돼 있다.
+  // (魂 자혼 / 冊 도감 / ⚙ 설정 / ? 도움말 — 자혼 서재가 넷째로 붙었다.)
+  await expect(page.locator(".s00-utility > button")).toHaveCount(4);
+  await expect(page.getByTestId("soul-archive-open")).toBeVisible();
   await page.locator("#title-help-button").click();
   await expect(page.getByRole("heading", { name: "봉인술 입문" })).toBeVisible();
 

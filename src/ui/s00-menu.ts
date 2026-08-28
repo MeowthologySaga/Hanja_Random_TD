@@ -7,6 +7,10 @@ import { restoreRun, type RunSave } from "../core/run-save";
 import { type AutomationMode, type GameMode, type RegionCode } from "../core/types";
 import { battleAssetProgress, isBattleAssetsReady, whenBattleAssetsReady } from "./asset-loader";
 import { buildSynthesisDepths, buildUncombinableStageOneChars } from "./codex-synthesis";
+import { customIdiomToDefinition } from "../core/custom-idioms";
+import { equippedCustomIdioms } from "../core/soul-archive";
+import { soulArchive } from "./souls";
+import { openSoulArchive, refreshSoulBadge } from "./panels/souls";
 import {
   applySavedUiState,
   autoSaveRun,
@@ -175,7 +179,10 @@ export function startRun(useNewSeed = false, options: StartRunOptions = {}): voi
     // 도중에 토글을 만져도 그 런의 적 체력이 흔들리지 않는다.
     : new GameEngine(seed, ctx.selectedRegion, ctx.selectedGameMode, {
       ...(ctx.selectedNotation ? { notation: ctx.selectedNotation } : {}),
-      talismanMode: ctx.talismanMode
+      talismanMode: ctx.talismanMode,
+      // 장착한 커스텀 성어도 런이 설 때 굳힌다 — 판 도중에 서재에서 갈아 끼워도
+      // 굴러가는 판의 성어 명단이 흔들리지 않게. 부적 모드와 같은 규칙이다.
+      customIdioms: equippedCustomIdioms(soulArchive()).map(customIdiomToDefinition)
     });
   seedInput.value = ctx.engine.state.seed;
   if (options.resume) {
@@ -290,7 +297,7 @@ function resumeSavedRun(): void {
   // 장부는 자기가 어느 엔진의 것인지 도장을 찍어 두고 판이 갈리면 스스로 리셋한다.
   // 그래서 startRun 앞에서 얹으면 옛 엔진 도장이 찍혀, 새 엔진이 들어오는 순간
   // 통째로 무효가 되고 다시 3장으로 돌아간다 — 이어하기가 매번 부적 3장이던 사고.
-  startRun(false, { createEngine: () => restoreRun(save), resume: true, skipCoach: true });
+  startRun(false, { createEngine: () => restoreRun(save, equippedCustomIdioms(soulArchive()).map(customIdiomToDefinition)), resume: true, skipCoach: true });
   applySavedUiState(save);
   syncPanel();
 }
@@ -330,6 +337,12 @@ export function wireS00Menu1(): void {
     seedInput.value = createRunSeed();
     sound.playUiConfirm();
   });
+  must<HTMLButtonElement>("#s00-souls-button").addEventListener("click", () => {
+    openSoulArchive();
+  });
+  // 제목 화면이 서는 이 지점에서 자혼 배지를 한 번 맞춘다 — 지난 판에서 거둔
+  // 수확이 돌아오자마자 눈에 들어와야 서재로 걸어 들어갈 이유가 생긴다.
+  refreshSoulBadge();
   must<HTMLButtonElement>("#s00-codex-button").addEventListener("click", () => {
     must<HTMLButtonElement>("#codex-button").click();
   });

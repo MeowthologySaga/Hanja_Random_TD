@@ -530,6 +530,7 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
 
         <nav class="s00-utility" aria-label="보조 메뉴">
           <button id="s00-codex-button" type="button"><i class="s00-skin" aria-hidden="true"></i><b>冊</b><span>도감</span></button>
+          <button id="s00-souls-button" type="button" data-testid="soul-archive-open" aria-label="자혼 서재. 모은 자혼으로 나만의 성어를 새기고 장착합니다"><i class="s00-skin" aria-hidden="true"></i><b>魂</b><span>자혼</span><em id="s00-souls-badge" class="s00-souls-badge" hidden>0</em></button>
           <button id="title-settings-button" type="button" aria-label="화면 모드 설정"><i class="s00-skin" aria-hidden="true"></i><b>⚙</b><span>설정</span></button>
           <button id="title-help-button" type="button"><i class="s00-skin" aria-hidden="true"></i><b>?</b><span>도움말</span></button>
         </nav>
@@ -975,6 +976,43 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
       </div>
       <p id="codex-note" class="codex-note">훈음의 낯선 옛말은 오늘말 뜻풀이와 용례로 풀어 표시합니다. 별 등급, 독립 자령, 조합 경로는 서로 다른 표식으로 구분합니다.</p>
     </dialog>
+
+    <dialog id="soul-dialog" class="codex-dialog soul-dialog" aria-labelledby="soul-heading">
+      <div class="dialog-heading soul-heading">
+        <div><p class="eyebrow">자혼 서재</p><h2 id="soul-heading">나만의 성어를 새깁니다</h2></div>
+        <button id="soul-close" type="button" aria-label="자혼 서재 닫기">×</button>
+      </div>
+      <p class="soul-lede">
+        봉인한 자령이 남긴 <b>자혼</b> 넷을 이어 성어 한 구를 새깁니다.
+        음은 한자 음 그대로 붙고 <b>뜻만</b> 직접 적습니다.
+        장착한 성어는 다음 판부터 함께 서고, 자혼은 판이 끝나도 사라지지 않습니다.
+      </p>
+      <div class="soul-layout">
+        <section class="soul-col soul-col--holdings" aria-label="지닌 자혼">
+          <p class="eyebrow">지닌 자혼 <em id="soul-holdings-count">0</em></p>
+          <div id="soul-grid" class="soul-grid" role="list"></div>
+          <p id="soul-holdings-empty" class="soul-empty">아직 자혼이 없습니다. 우두머리를 봉인하면 반드시 하나를 남기고, 그 밖의 자령도 드물게 남깁니다.</p>
+        </section>
+        <section class="soul-col soul-col--forge" aria-label="새김대">
+          <p class="eyebrow">새김대</p>
+          <div id="soul-slots" class="soul-slots"></div>
+          <p class="soul-reading"><span>음</span><b id="soul-reading">····</b></p>
+          <label class="soul-meaning-label" for="soul-meaning-input">뜻 <small>내가 적습니다</small></label>
+          <input id="soul-meaning-input" type="text" maxlength="40" placeholder="예 · 하늘과 땅이 열리다" />
+          <p class="eyebrow soul-odds-title">확률표 <small>태우기 전에 봅니다</small></p>
+          <div id="soul-odds" class="soul-odds"></div>
+          <p id="soul-odds-hint" class="soul-odds-hint"></p>
+          <p id="soul-forge-note" class="soul-note"></p>
+          <button id="soul-forge-button" class="soul-forge-button" type="button" data-testid="soul-forge" disabled>새기기</button>
+        </section>
+        <section class="soul-col soul-col--shelf" aria-label="내 성어">
+          <p class="eyebrow">내 성어 <em id="soul-equip-count">0/15</em></p>
+          <div id="soul-list" class="soul-list"></div>
+          <p id="soul-list-empty" class="soul-empty">새긴 성어가 여기에 쌓입니다. 장착한 구만 판에 섭니다.</p>
+        </section>
+      </div>
+    </dialog>
+
   </main>
 `;
 }

@@ -37,6 +37,7 @@ import {
   showWaveBanner
 } from "./hud";
 import { showIdiomBrokenResult, showIdiomResult } from "./panels/idiom";
+import { collectSoul } from "./souls";
 
 export function processEvent(event: GameEvent): void {
   sound.handle(event);
@@ -54,6 +55,19 @@ export function processEvent(event: GameEvent): void {
       pushPooled(floaters, floaterPool, takeFloater(event.at, "+" + String(event.reward), "#ffd86d", 0.72, false), 48);
       // 처치 순간에 먹이 튀는 고리를 남겨 "정리됐다"가 화면에서 읽히게 한다.
       pushPooled(rings, ringPool, takeRing(event.at, "#241d16", 0.42), 32);
+      break;
+    case "soul":
+      // 자혼은 판이 끝나도 남는 유일한 수확이다. 우두머리의 혼은 크게,
+      // 야생의 혼은 작게 띄워 "드물게 떨어지는 것"이 화면에서도 드물게 보이게 한다.
+      collectSoul(event.char);
+      pushPooled(rings, ringPool, takeRing(event.at, "#c9a8ff", event.boss ? 1.1 : 0.6), 32);
+      pushPooled(
+        floaters,
+        floaterPool,
+        takeFloater(event.at, `${event.char} 자혼`, "#c9a8ff", event.boss ? 1.15 : 0.8, event.boss),
+        48
+      );
+      if (event.boss) showToast(`${event.char} 자혼을 얻었습니다 — 자혼 넷을 모으면 나만의 성어를 새깁니다`);
       break;
     case "interest":
       showToast("은행 이자 +" + String(event.amount) + "엽전");

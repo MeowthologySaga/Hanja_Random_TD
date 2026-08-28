@@ -179,8 +179,8 @@ export function renderSelected(): void {
   if (!definition) return;
   const style = ELEMENT_STYLES[tower.wuxing];
   const concentrationDamage = 1 + concentration * (concentrationPath === "potent" ? 0.12 : 0.055);
-  const damage = Math.round(definition.combat.baseDamage * ctx.engine.towerPowerMultiplier(tower) * definition.combat.budgetMultiplier * (1 + ctx.engine.idiomBonus("damage")) * (1 + ctx.engine.combinedUpgradeBonus(tower.wuxing, "damage")) * concentrationDamage * ctx.engine.casualPolarisDamageMultiplier(tower.wuxing));
-  const range = definition.combat.range + ctx.engine.towerRangeBonus(tower) + ctx.engine.idiomBonus("range") + concentration * 4 + ctx.engine.combinedUpgradeBonus(tower.wuxing, "range");
+  const damage = Math.round(definition.combat.baseDamage * ctx.engine.towerPowerMultiplier(tower) * definition.combat.budgetMultiplier * (1 + ctx.engine.totalIdiomBonus("damage")) * (1 + ctx.engine.combinedUpgradeBonus(tower.wuxing, "damage")) * concentrationDamage * ctx.engine.casualPolarisDamageMultiplier(tower.wuxing));
+  const range = definition.combat.range + ctx.engine.towerRangeBonus(tower) + ctx.engine.totalIdiomBonus("range") + concentration * 4 + ctx.engine.combinedUpgradeBonus(tower.wuxing, "range");
   const attacksPerSecond = 1 / ctx.engine.towerAttackCooldown(tower);
   const learning = learningInfoForNotation(ctx.engine.state.notation, tower.char);
   const abilities = definition.combat.abilities;
