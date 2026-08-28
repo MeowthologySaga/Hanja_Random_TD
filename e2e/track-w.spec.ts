@@ -44,7 +44,7 @@ async function stageDenseBoard(page: import("@playwright/test").Page): Promise<v
   await page.locator("#dev-tools-button").click();
   await expect(page.locator("#dev-tools-panel")).toBeVisible();
 
-  // 10연 소환은 10웨이브에 열린다 — 웨이브를 먼저 옮기고 자령을 채운다.
+  // 웨이브를 먼저 옮기고 자령을 채운다(10연 자물쇠는 걷혔고 값만 남았다).
   await page.evaluate(() => {
     const state = (window as unknown as { __HANJA_CTX_QA__: QaHandle }).__HANJA_CTX_QA__.engine.state;
     state.gold = 100_000;

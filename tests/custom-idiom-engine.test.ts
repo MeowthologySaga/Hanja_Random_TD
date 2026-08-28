@@ -131,3 +131,30 @@ describe("커스텀 성어가 판에 들어간다", () => {
     expect(delta).toBe(0);
   });
 });
+
+describe("장착한 커스텀 성어는 명단에서 밀려나지 않는다", () => {
+  it("아무 성어나 추적해도 장착분이 명단에 남는다", () => {
+    const mine = [
+      customIdiom("mine-1", "damage", 0.1),
+      customIdiom("mine-2", "range", 12),
+      customIdiom("mine-3", "waveGold", 7)
+    ];
+    const engine = engineWith(...mine);
+    engine.begin();
+
+    /*
+     * 명단 자리를 다섯으로 고정해 두면, 지역 성어 하나를 추적하는 순간
+     * 커스텀 셋이 뒤로 밀려 판에서 사라졌다. 자리 수는 다섯 + 장착 수다.
+     */
+    const outsider = engine
+      .allIdioms()
+      .find((idiom) => idiom.source !== "custom" && !engine.state.featuredIdiomIds.includes(idiom.id));
+    expect(outsider).toBeDefined();
+    engine.setIdiomTarget(outsider!.id);
+
+    for (const idiom of mine) {
+      expect(engine.state.featuredIdiomIds).toContain(idiom.id);
+    }
+    expect(engine.state.featuredIdiomIds).toContain(outsider!.id);
+  });
+});

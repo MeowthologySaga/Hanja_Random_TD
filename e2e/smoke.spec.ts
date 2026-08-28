@@ -148,8 +148,12 @@ test("shows a readable single summon reveal and explains the ten-pull milestone"
   await page.reload();
   await page.getByTestId("start-run").click();
   await openShop(page);
-  // 10연은 이제 상품 카드다. 가격 자리에 개방 조건을 그대로 적는다.
-  await expect(page.locator('[data-summon-product="multi"] em')).toHaveText("10W 개방");
+  /*
+   * 10연은 상품 카드이고, 웨이브 자물쇠는 걷었다 — 값이 이미 문지기다
+   * (시작 42엽전 · 10연 70이라 실제로 낼 수 있는 시점이 W7~9 근처다).
+   * 그래서 가격 자리에는 언제나 값이 적히고, 잠기는 사유는 엽전 부족뿐이다.
+   */
+  await expect(page.locator('[data-summon-product="multi"] em')).toHaveText(/\d+ 엽전/);
   await expect(page.getByTestId("multi-summon-button")).toBeDisabled();
   await page.screenshot({ path: "artifacts/summon-ten-locked-1280x720.png", fullPage: true });
 });

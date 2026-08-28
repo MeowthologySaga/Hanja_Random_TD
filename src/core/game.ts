@@ -283,6 +283,9 @@ const CUSTOM_IDIOM_BONUS_CAPS: Record<IdiomBonusKind, number> = {
   formationAttack: 0.4
 };
 
+/** 이 판의 지역 성어 명단 자리 수. 장착한 커스텀 성어는 이 위에 얹힌다. */
+const FEATURED_IDIOM_SLOTS = 5;
+
 export class GameEngine {
   readonly state: GameState;
   readonly catalog: HanziCatalog;
@@ -342,7 +345,7 @@ export class GameEngine {
      * 들어간다. 다섯이라는 수는 애초에 화면 자리 때문이었고, 그 제한은 걷혔다.
      */
     const featuredIdiomIds = [
-      ...featuredIdiomsForRun(region, seed).map((idiom) => idiom.id),
+      ...featuredIdiomsForRun(region, seed, FEATURED_IDIOM_SLOTS).map((idiom) => idiom.id),
       ...(options.customIdioms ?? []).map((idiom) => idiom.id)
     ];
     this.state = {
@@ -1744,7 +1747,6 @@ export class GameEngine {
   summonMany(amount = 10): ActionResult {
     if (!Number.isInteger(amount) || amount <= 0) return { ok: false, message: "연속 소환 횟수가 올바르지 않습니다." };
     if (!this.isRunActive()) return { ok: false, message: "진행 중인 수비전이 없습니다." };
-    if (amount >= 10 && this.state.wave < 10) return { ok: false, message: "10연 소환은 10웨이브를 지키면 개방됩니다." };
     const totalCost = multiSummonCost(this.state.summonCount, amount);
     if (this.state.gold < totalCost) return { ok: false, message: `연속 소환에 엽전 ${totalCost}이 필요합니다.` };
     if (this.runSummonPool.length === 0) return { ok: false, message: "이 지역의 활성 소환 풀이 비어 있습니다." };
@@ -2181,20 +2183,35 @@ export class GameEngine {
   }
 
   /**
-   * 성어를 이번 런 목표 다섯 구에 편입시킨다. 추적(발동 판정·자동배치 후보)의
-   * 전제 조건이라 setIdiomTarget/setIdiomTracking 이 함께 쓴다. 봉인 이력과
-   * 추적 중인 구는 다섯 자리 정리에서 살아남는다.
+   * 성어를 이번 런 명단에 편입시킨다. 추적(발동 판정·자동배치 후보)의 전제
+   * 조건이라 setIdiomTarget/setIdiomTracking 이 함께 쓴다.
+   *
+   * 명단은 지역 성어 다섯 자리 + 장착한 커스텀 전부다. 커스텀은 뽑힌 것이
+   * 아니라 사람이 골라 장착한 것이라 **자리 다툼에 끼지 않는다** — 다섯 자리는
+   * 지역 성어끼리만 겨루고, 장착분은 언제나 그 뒤에 그대로 붙는다.
+   * (자리 수만 늘려서는 부족했다. 새 구가 들어오는 순간 늘어난 자리도 함께
+   *  차서, 맨 뒤에 있던 장착 커스텀이 그대로 밀려났다.)
    */
   private ensureFeaturedIdiom(id: string): void {
-    const rest = this.state.featuredIdiomIds.filter((candidate) => candidate !== id);
+    const equipped = new Set(this.customIdioms.map((idiom) => idiom.id));
+    const rest = this.state.featuredIdiomIds
+      .filter((candidate) => candidate !== id && !equipped.has(candidate));
     const sealedIds = rest.filter((candidate) => this.state.idiomSeals.some((seal) => seal.idiomId === candidate));
     const trackedIds = rest.filter((candidate) => !sealedIds.includes(candidate) && this.state.trackedIdiomIds.includes(candidate));
     const pendingIds = rest.filter((candidate) => !sealedIds.includes(candidate) && !trackedIds.includes(candidate));
-    // 다섯 자리 정리 우선순위: 새 추적 > 기존 추적 > 봉인 이력 > 나머지.
-    // 봉인 이력이 다섯 자리에서 밀려도 발동·해제 판정은 idiomSeals 목록이
-    // 따로 지키므로(resolveIdiomFormations) 효과는 끊기지 않는다 — 반대로
-    // 추적 중인 구가 밀리면 봉인 자체가 성립하지 않으니 추적이 앞선다.
-    this.state.featuredIdiomIds = [id, ...trackedIds, ...sealedIds, ...pendingIds].slice(0, 5);
+    /*
+     * 자리 정리 우선순위: 새 추적 > 기존 추적 > 봉인 이력 > 나머지.
+     * 봉인 이력이 자리에서 밀려도 발동·해제 판정은 idiomSeals 목록이 따로
+     * 지키므로(resolveIdiomFormations) 효과는 끊기지 않는다 — 반대로 추적 중인
+     * 구가 밀리면 봉인 자체가 성립하지 않으니 추적이 앞선다.
+     */
+    const region = [id, ...trackedIds, ...sealedIds, ...pendingIds].slice(0, FEATURED_IDIOM_SLOTS);
+    // 장착분은 명단 순서를 흔들지 않도록 늘 뒤에 붙인다(id 가 장착분이면 여기서
+    // 한 번만 실린다 — 위 filter 가 앞 목록에서 걷어 낸다).
+    this.state.featuredIdiomIds = [
+      ...region.filter((candidate) => !equipped.has(candidate)),
+      ...this.customIdioms.map((idiom) => idiom.id)
+    ];
   }
 
   /** 이 성어를 1순위 추적 목표로 세운다(수련장·"목표로 지정" 경로). */

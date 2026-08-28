@@ -107,10 +107,20 @@ describe("regional recipe defense run", () => {
     expect(manual.state.towers).toHaveLength(0);
     expect(manual.state.inventoryTowers).toHaveLength(10);
 
-    const locked = new GameEngine("ten-summon-locked", "KR");
-    locked.begin();
-    locked.state.gold = 70;
-    expect(locked.summonMany(10)).toMatchObject({ ok: false, message: expect.stringContaining("10웨이브") });
+    /*
+     * 10연의 웨이브 자물쇠는 걷었다 — 값이 이미 문지기다(시작 42엽전 · 10연 70).
+     * 첫 웨이브에도 값만 치르면 통하고, 막히는 사유는 엽전 부족 하나뿐이다.
+     */
+    const early = new GameEngine("ten-summon-early", "KR");
+    early.begin();
+    early.state.gold = 70;
+    expect(early.state.wave).toBeLessThan(10);
+    expect(early.summonMany(10)).toMatchObject({ ok: true });
+
+    const broke = new GameEngine("ten-summon-broke", "KR");
+    broke.begin();
+    broke.state.gold = 0;
+    expect(broke.summonMany(10)).toMatchObject({ ok: false, message: expect.stringContaining("엽전") });
   });
 
   it("opens summon stages and lineage research only at their 100-wave milestones", () => {

@@ -94,7 +94,6 @@ export function renderSummonShop(): void {
   const active = state.phase === "prep" || state.phase === "combat";
   const base = summonCost(state.summonCount);
   const tenCost = multiSummonCost(state.summonCount, 10);
-  const multiUnlocked = state.wave >= 10;
   const products = SUMMON_PRODUCTS
     .filter((product) => ctx.engine.isSummonProductAvailable(product.intent))
     .map((product) => {
@@ -120,7 +119,7 @@ export function renderSummonShop(): void {
   // 부적 무료권(트랙 C)은 기본 소환 카드에서만 쓴다 — 있으면 가격 대신
   // "무료"가 서고, 엽전이 모자라도 카드가 눌린다(래퍼가 소환가를 먼저 얹는다).
   const talismanTokens = ctx.talismanFreeSummonTokens;
-  const key = `${state.mode}|${base}|${tenCost}|${multiUnlocked ? "10" : "-"}|${state.gold}|${active ? "on" : "off"}`
+  const key = `${state.mode}|${base}|${tenCost}|${state.gold}|${active ? "on" : "off"}`
     + `|${multiBand === null ? "-" : multiBand.max}|tt:${talismanTokens}`
     + `|wish:${wish.cost}:${wish.reason ?? wishChars.join("")}`
     + `|${products.map((product) => `${product.intent}:${product.effect}`).join(",")}`;
@@ -186,12 +185,12 @@ export function renderSummonShop(): void {
   cards.push(summonCardMarkup({
     key: "multi",
     label: "10연 소환",
-    effect: multiUnlocked ? (multiBand === null ? "기본 확률 10회" : `${multiBand.max}★ 1기 보장`) : "10웨이브에 개방",
+    effect: multiBand === null ? "기본 확률 10회" : `${multiBand.max}★ 1기 보장`,
     tint: "#a8791f",
     icon: "v4/shop/shop-ten-pull-coin-bundle-v1",
-    price: multiUnlocked ? `${tenCost} 엽전` : "10W 개방",
-    disabled: !active || !multiUnlocked || state.gold < tenCost,
-    affordable: !active || !multiUnlocked || state.gold >= tenCost,
+    price: `${tenCost} 엽전`,
+    disabled: !active || state.gold < tenCost,
+    affordable: !active || state.gold >= tenCost,
     hotkey: "Q",
     // [FB1] 2열 격자를 빈칸 없이 채우는 배치가 정본이다. 상품 수가 홀수면
     // 10연이 남은 반 칸에 들어가고(캐주얼 5+1=3행), 짝수면 홀로 한 행을
@@ -199,9 +198,8 @@ export function renderSummonShop(): void {
     // 빈칸 + 전용 행으로 한 행을 통째로 낭비해 상점 세로 넘침의 주범이었다.
     wide: cards.length % 2 === 0,
     testId: "multi-summon-button",
-    details: multiUnlocked
-      ? ["할증 없음", multiBand === null ? "" : `주로 ${multiBand.min}~${multiBand.max}★ · ${multiBand.max}★ 1기 보장`]
-      : ["10웨이브를 지키면 열립니다"]
+    // 웨이브 자물쇠는 걷었다 — 값이 이미 문지기다(시작 42엽전 · 10연 70).
+    details: ["할증 없음", multiBand === null ? "" : `주로 ${multiBand.min}~${multiBand.max}★ · ${multiBand.max}★ 1기 보장`]
   }));
   must<HTMLElement>("#summon-shop").innerHTML = cards.join("");
 }
