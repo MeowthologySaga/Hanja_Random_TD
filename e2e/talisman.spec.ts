@@ -191,3 +191,36 @@ test("the default-on talisman tab turns a submitted trace into a jaryeong reward
   await expect(page.locator("#talisman-tab")).toHaveCount(0);
   await expect(page.locator(".panel-tabs > button")).toHaveCount(8);
 });
+
+test("게임오버 뒤 다시 도전하면 지난 판의 무료 소환권이 따라오지 않는다", async ({ page }) => {
+  await page.goto("/?seed=TALISMAN-TOKEN-E2E&mode=casual");
+  await page.getByTestId("start-run").click();
+  await expect(page.locator(".game-shell")).toHaveAttribute("data-phase", "prep");
+
+  /*
+   * 무료 소환권은 부적 보상이 주는 그 판의 자원인데, 엔진이 아니라 ctx 에 얹혀
+   * 있어 판이 끝나도 남았다 — [다시 도전]이 지난 판의 권을 새 판으로 데려왔다
+   * (사용자 제보). 보상을 실제로 타는 대신 같은 자리에 값을 넣어 경로만 잰다.
+   */
+  await page.evaluate(() => {
+    (window as unknown as { __HANJA_CTX_QA__: { talismanFreeSummonTokens: number } })
+      .__HANJA_CTX_QA__.talismanFreeSummonTokens = 3;
+  });
+
+  // 판을 끝낸다(적 한계 초과 패배).
+  await page.evaluate(() => {
+    const qa = (window as unknown as {
+      __HANJA_CTX_QA__: { engine: { state: { phase: string; defeatCause: string | null; lastMessage: string } } };
+    }).__HANJA_CTX_QA__;
+    qa.engine.state.phase = "defeat";
+    qa.engine.state.defeatCause = "enemy-limit";
+    qa.engine.state.lastMessage = "테스트 종료";
+  });
+  await expect(page.locator("#end-overlay")).toHaveClass(/modal-layer--visible/u);
+
+  await page.locator("#new-seed-button").click();
+  await expect(page.locator(".game-shell")).toHaveAttribute("data-phase", "prep");
+  expect(await page.evaluate(() => (window as unknown as {
+    __HANJA_CTX_QA__: { talismanFreeSummonTokens: number };
+  }).__HANJA_CTX_QA__.talismanFreeSummonTokens)).toBe(0);
+});

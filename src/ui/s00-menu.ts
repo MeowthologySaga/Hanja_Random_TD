@@ -158,6 +158,14 @@ export function startRun(useNewSeed = false, options: StartRunOptions = {}): voi
   // 판이 실제로 서는 이 지점에서만 3D 서재를 걷는다(위 menu3dHandle 주석 참조).
   menu3dHandle?.dispose();
   menu3dHandle = null;
+  /*
+   * 부적 보상으로 받은 무료 소환권은 그 판의 자원이다. 엔진에 딸린 값이 아니라
+   * ctx 에 얹혀 있어(app-context) 판이 끝나도 그대로 남았다 — 게임오버 뒤
+   * [다시 도전]을 누르면 지난 판의 권이 새 판으로 따라왔다(사용자 제보).
+   * 부적 장부는 엔진이 바뀌면 스스로 리셋되는데(panels/talisman) 이 값만 빠져
+   * 있었다. 이어하기는 이 뒤에 저장본을 얹으므로(applySavedUiState) 영향 없다.
+   */
+  ctx.talismanFreeSummonTokens = 0;
   const seed = useNewSeed ? createRunSeed() : seedInput.value.trim() || createRunSeed();
   ctx.engine = options.createEngine
     ? options.createEngine()
