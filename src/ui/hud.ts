@@ -2,7 +2,7 @@
  * 상단 띠·패널 탭·집중 프레임·토스트 등 상시 HUD.
  */
 import { bossTimeLimitForWave, composeWaveBriefing, MAX_ENEMIES, WAVE_REINFORCEMENT_DELAY, wavePlan } from "../core/content";
-import { FIRST_PREP_SECONDS, type GameEngine, interestForGold } from "../core/game";
+import { FIRST_PREP_SECONDS, type GameEngine } from "../core/game";
 import {
   ELEMENT_STYLES,
   GAME_CONFIG,
@@ -11,7 +11,7 @@ import {
   researchUnlockWave,
   WUXING_ORDER
 } from "../core/hanzi";
-import { type ActionResult, type Wuxing } from "../core/types";
+import { type ActionResult, type GameState, type Wuxing } from "../core/types";
 import {
   abilityGuideDialog,
   bossBanner,
@@ -403,6 +403,16 @@ export function showTowerAbilityPopup(towerId: number, glyph: string, name: stri
   towerAbilityPopups.set(towerId, { text: glyph + " " + name, color, age: 0, duration: 0.82 });
 }
 
+/**
+ * 다섯 오행에 쌓인 문기의 합.
+ *
+ * 자원칸은 이 한 수만 적는다. 오행별 잔량은 강화 탭·오행 강화 창이 따로
+ * 적으므로, 좁은 칸에 다섯 수를 밀어 넣어 접히게 만들 이유가 없다.
+ */
+export function totalEssenceOf(state: GameState): number {
+  return WUXING_ORDER.reduce((sum, wuxing) => sum + state.elementEssence[wuxing], 0);
+}
+
 export function syncPanel(): void {
   const state = ctx.engine.state;
   const plan = ctx.engine.getCurrentPlan();
@@ -420,11 +430,10 @@ export function syncPanel(): void {
   // 트랙 C2: 부적 보상이 자원칸에 꽂히는 순간에만 숫자가 굴러간다. 굴리는 중이
   // 아니거나 다른 수입·지출이 끼어들면 즉시 실제 보유량으로 돌아온다.
   must<HTMLElement>("#gold-value").textContent = String(talismanGoldRoll(state.gold) ?? state.gold);
-  must<HTMLElement>("#interest-preview").textContent = "이자 +" + String(interestForGold(state.gold));
-  must<HTMLElement>("#enemy-cap-value").textContent = String(MAX_ENEMIES) + "체";
-  must<HTMLElement>("#tower-count-value").textContent = String(state.towers.length) + " / " + String(ctx.engine.deployedTowerCapacity());
-  // 트랙 B: 자원칸 목표 카운터는 한자 사다리(내부 보상은 유지) 대신 성어 봉인 수를 센다.
-  must<HTMLElement>("#goal-count-value").textContent = String(state.idiomSeals.length) + " / " + String(ctx.engine.idioms().length);
+  // 문기는 오행별로 갈라져 있다. 자원칸은 합만 적고, 어느 오행에 얼마인지는
+  // 강화 탭의 「문기 木0 火0 …」 줄이 그대로 맡는다 — 한 줄에 다섯 수를 넣으면
+  // 좁은 칸에서 접힌다.
+  must<HTMLElement>("#essence-total-value").textContent = String(totalEssenceOf(state));
   must<HTMLElement>("#seed-value").textContent = state.seed;
   // [S/P-26] UI 가 늘린 문장이 살아 있으면 그것을, 엔진이 다음 문장을 쓰면 그것을.
   syncFooterMessage(footerMessage !== null && footerMessage.base === state.lastMessage

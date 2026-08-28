@@ -162,16 +162,18 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
         </div>
       </header>
 
+      <!--
+        자원 칸은 **쓸 수 있는 것** 둘만 센다 — 엽전과 문기.
+
+        전에는 네 칸이었다. 「엽전 이자 +2」에 이자가 세들어 있었고, 그 옆에
+        적 상한(런 내내 80 고정)·배치(0 / 16)·성어 발동(0 / 5)이 붙어 있었다.
+        셋 다 같은 화면 다른 곳에 이미 있다 — 적 상한은 전장 상단 [적 한계]
+        칩의 분모에, 성어 발동은 성어 패널 머리글에. 배치 수는 진을 보면 안다.
+        자원이 아닌 것을 자원칸에 두면 정작 쓸 것 둘이 눈에 안 들어온다.
+      -->
       <section class="resource-grid" aria-label="현재 자원">
-        <div><span>엽전 <em id="interest-preview">이자 +2</em></span><strong id="gold-value">${GAME_CONFIG.startingGold}</strong></div>
-        <!--
-          [S/P-11] 여기와 전장 상단 칩이 둘 다 "적 한계"였다. 칩은 "5 / 80"(현재/상한),
-          이 칸은 "80체"(상한만) — 같은 낱말이 한 화면에서 두 뜻으로 읽혔다.
-          한 낱말 한 뜻으로 가른다: 칩이 「적 한계」(차오르는 눈금), 이 칸이 「적 상한」(그 눈금의 끝).
-        -->
-        <div title="이 판이 버티는 적 수의 끝 — 전장 상단 [적 한계] 눈금이 이 수에 닿으면 수비 실패입니다"><span>적 상한</span><strong id="enemy-cap-value">${MAX_ENEMIES}체</strong></div>
-        <div title="전장에 배치된 자령 수 / 열린 진의 칸 수"><span>배치</span><strong id="tower-count-value">0 / 16</strong></div>
-        <div title="이번 런에 발동한 성어 수 / 이번 런 성어 목표 수"><span>성어 발동</span><strong id="goal-count-value">0 / 5</strong></div>
+        <div title="지금 지닌 엽전 — 소환과 진 해금에 쓴다"><span>엽전</span><strong id="gold-value">${GAME_CONFIG.startingGold}</strong></div>
+        <div title="다섯 오행에 쌓인 문기의 합 — 강화와 승급에 쓴다. 오행별 잔량은 강화 탭에서 본다"><span>문기</span><strong id="essence-total-value">0</strong></div>
       </section>
 
       <section class="wave-card">
@@ -267,7 +269,7 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
             <!-- 지금 상태(추적 성어 · 최근 감지)가 먼저, 규칙 도식은 그 아래로.
                  스크롤 한 화면에 남는 것이 45웨이브에 필요한 쪽이어야 한다. -->
             <div id="idiom-hud" class="idiom-hud">
-              <div class="idiom-heading"><span>四字成語 진법</span><b id="idiom-count">0 / 4</b></div>
+              <div class="idiom-heading"><span>四字成語 진법</span><b id="idiom-count">0구</b></div>
               <div id="idiom-glyphs" class="idiom-glyphs"></div>
               <strong id="idiom-name">이심전심</strong>
               <p id="idiom-meaning">말하지 않아도 서로 마음이 통함</p>
@@ -421,7 +423,7 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
         <i class="tab-divider" aria-hidden="true"></i>
         <!-- [S/P-09] 배지는 「준비도」 — 카드의 「N/4자 보유」와 다른 셈이다. 문구는 goal.ts 가 채운다. -->
         <button id="goal-tab" type="button" data-panel-tab="goal" role="tab" aria-selected="false">목표 <small id="goal-tab-progress">준비 0%</small></button>
-        <button id="idiom-tab" type="button" data-panel-tab="idiom" role="tab" aria-selected="false">성어 <small id="idiom-tab-count">0/5</small></button>
+        <button id="idiom-tab" type="button" data-panel-tab="idiom" role="tab" aria-selected="false">성어 <small id="idiom-tab-count">0</small></button>
       </nav>
 
 

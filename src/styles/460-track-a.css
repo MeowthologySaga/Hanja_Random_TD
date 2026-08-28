@@ -196,6 +196,7 @@
 }
 
 /* ── A-2b. 자원칸 요약 반짝 — 증가 순간에만 1회 ─────────────────── */
+#essence-total-value.is-essence-flash,
 #essence-summary.is-essence-flash,
 #growth-resource-summary.is-essence-flash {
   animation: essence-summary-flash 0.9s ease-out;
@@ -217,6 +218,7 @@
 
 /* 차분한 화면 게이트(FB6 문법: .game-shell[data-calm-screen="1"]) —
    애니메이션 없이 색 변화만 남긴다. OS 모션 최소화도 같은 처방. */
+.game-shell[data-calm-screen="1"] #essence-total-value.is-essence-flash,
 .game-shell[data-calm-screen="1"] #essence-summary.is-essence-flash,
 .game-shell[data-calm-screen="1"] #growth-resource-summary.is-essence-flash {
   animation: none;
@@ -224,6 +226,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  #essence-total-value.is-essence-flash,
   #essence-summary.is-essence-flash,
   #growth-resource-summary.is-essence-flash {
     animation: none;

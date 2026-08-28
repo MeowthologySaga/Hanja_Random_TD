@@ -117,9 +117,17 @@ export function renderIdiomHud(): void {
   if (key === ctx.idiomRenderKey) return;
   ctx.idiomRenderKey = key;
   maybeShowIdiomHint(target);
-  // 카운트는 "이 런에서 봉인해 본" 달성 기록이다. 지금 몇 구가 살아 있는지는 상태 줄이 말한다.
-  must<HTMLElement>("#idiom-count").textContent = String(ctx.engine.state.idiomSeals.length) + " / " + String(ctx.engine.idioms().length);
-  must<HTMLElement>("#idiom-tab-count").textContent = String(ctx.engine.state.idiomSeals.length) + "/" + String(ctx.engine.idioms().length);
+  /*
+   * 분모를 걷었다. 「0 / 5」의 5는 상한이 아니라 이 판 명단의 크기였는데,
+   * 사람은 그것을 "다섯 구까지만 된다"로 읽었다. 성어에는 상한이 없다.
+   * 게다가 장착한 커스텀만큼 명단이 길어지므로 분모는 판마다 달라져
+   * 기준으로도 쓸모가 없다.
+   *
+   * 카운트는 "이 런에서 봉인해 본" 달성 기록이다. 지금 몇 구가 살아 있는지는
+   * 아래 상태 줄이 따로 말한다.
+   */
+  must<HTMLElement>("#idiom-count").textContent = String(ctx.engine.state.idiomSeals.length) + "구";
+  must<HTMLElement>("#idiom-tab-count").textContent = String(ctx.engine.state.idiomSeals.length);
   renderIdiomSealStatus();
   const hud = must<HTMLElement>("#idiom-hud");
   if (!target) {

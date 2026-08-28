@@ -80,8 +80,9 @@
    ══════════════════════════════════════════════════════════════════ */
 
 .resource-grid {
-  /* 엽전 칸만 넓힌다. 이자는 최대 "+20" 까지 커진다. */
-  grid-template-columns: 1.28fr 0.906fr 0.906fr 0.906fr;
+  /* 자원 칸은 [엽전][문기] 둘이다. 넷이던 시절의 네 칸 격자를 그대로 두면
+     오른쪽 두 칸 자리가 빈 채 남아 띠 오른쪽이 텅 빈다. 둘로 고르게 나눈다. */
+  grid-template-columns: 1fr 1fr;
 }
 
 .resource-grid span::before {
@@ -97,10 +98,10 @@
   background-repeat: no-repeat;
 }
 
+/* 아이콘을 자리 순서로 물린다. 자원칸이 [엽전][문기] 둘로 줄면서 적 상한·배치·
+   성어 아이콘 셋은 물릴 자리가 없어졌다 — 자리를 늘리면 여기도 함께 늘려라. */
 .resource-grid div:nth-child(1) span { --resource-icon: url("/assets/ui/p0-v1/resource-icons/resource-coin-60-v1.webp"); }
-.resource-grid div:nth-child(2) span { --resource-icon: url("/assets/ui/p0-v1/resource-icons/resource-enemy-limit-60-v1.webp"); }
-.resource-grid div:nth-child(3) span { --resource-icon: url("/assets/ui/p0-v1/resource-icons/resource-formation-60-v1.webp"); }
-.resource-grid div:nth-child(4) span { --resource-icon: url("/assets/ui/p0-v1/resource-icons/resource-completion-60-v1.webp"); }
+.resource-grid div:nth-child(2) span { --resource-icon: url("/assets/ui/p0-v1/resource-icons/resource-completion-60-v1.webp"); }
 
 /* ══════════════════════════════════════════════════════════════════
    81. P0 UI 부품 팩 v1 — 조작 픽토그램 3종

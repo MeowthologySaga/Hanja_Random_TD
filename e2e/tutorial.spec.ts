@@ -9,6 +9,16 @@
 import { mkdirSync } from "node:fs";
 import { expect, test, type Page } from "@playwright/test";
 
+/*
+ * 배치 수 탐침. 상단 자원칸이 [엽전][문기] 둘로 줄면서 「배치 0 / 16」 칸이
+ * 사라졌다 — 화면 문자열 대신 엔진 상태를 직접 읽는다.
+ */
+async function placedCount(page: Page): Promise<number> {
+  return page.evaluate(() => (window as unknown as {
+    __HANJA_CTX_QA__: { engine: { state: { towers: unknown[] } } };
+  }).__HANJA_CTX_QA__.engine.state.towers.length);
+}
+
 const TUTORIAL_STORAGE_KEY = "hanja-td:tutorial-complete-v1";
 
 /** 단계별 스크린샷 보관처 — 보고용(.claude/uiux/fbt/). */
@@ -111,7 +121,7 @@ test("walks the training grounds through all eight scripted steps", async ({ pag
   await expect(fuseAll).toBeVisible();
   await expect(fuseAll).toBeEnabled();
   await page.screenshot({ path: `${SHOT_DIR}/tutorial-step4-fusion-1280x720.png` });
-  const boardBefore = await page.locator("#tower-count-value").textContent();
+  const boardBefore = await placedCount(page);
   await fuseAll.click();
   /*
    * 소모는 방금 지급한 가방 3기뿐이다. 예전에는 전장에 선 같은 오행·1★ 3기
@@ -121,8 +131,8 @@ test("walks the training grounds through all eight scripted steps", async ({ pag
    * 전장 소실을 알리는 확인 창도 서지 않는다(그 창은 전장 재료 전용이다).
    */
   await expect(page.locator("#casual-fusion-confirm-dialog")).toBeHidden();
-  // 사람이 놓은 자령은 그대로 서 있다 — 배치 수가 승급 전후로 같다.
-  await expect(page.locator("#tower-count-value")).toHaveText(boardBefore ?? "");
+  // 사람이 놓은 자령은 그대로 서 있다 — 반에 선 수가 승급 전후로 같다.
+  expect(await placedCount(page)).toBe(boardBefore);
   // 완료 연출 — 승급이 남긴 문기를 자원칸 스포트라이트로 짚는다(걸음 수 유지).
   await expect(page.locator("#tutorial-title")).toContainText("승급이 문기를 남겼어요");
   await expect(page.locator("#tutorial-body")).toContainText("아무 곳이나 눌러 계속");
@@ -201,13 +211,12 @@ test("walks the training grounds through all eight scripted steps", async ({ pag
   await expect(canvasHint).toHaveAttribute("data-idiom-next-cells", String(cells[1]));
 
   // ① 순번 밖 칸은 배치가 아니라 말풍선 흔들림으로 답한다 — 자령 수가 그대로다.
-  const deployed = page.locator("#tower-count-value");
-  const beforeWrong = await deployed.textContent();
+  const beforeWrong = await placedCount(page);
   await clickCell(page, cells[3] as number); // ④번 칸 — 아직 차례가 아니다
   await expect(page.locator("#tutorial-bubble")).toHaveClass(/is-nudge/);
   await page.screenshot({ path: `${TRACK_H3_DIR}/tutorial-step7-wrong-cell-nudge-1280x720.png` });
   await page.waitForTimeout(300);
-  expect(await deployed.textContent()).toBe(beforeWrong);
+  expect(await placedCount(page)).toBe(beforeWrong);
   await expect(canvasHint).toHaveAttribute("data-idiom-next-cells", String(cells[1]));
 
   // ② 순번대로 ②→③→④ 를 누르면 줄이 채워지고 발동한다.
