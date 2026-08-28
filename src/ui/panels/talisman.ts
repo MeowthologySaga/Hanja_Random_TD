@@ -44,6 +44,7 @@ import { type HanziDefinition, type Wuxing } from "../../core/types";
 import { calmBattlefield, ctx, must, TALISMAN_MODE_STORAGE_KEY, sound } from "../app-context";
 import { summonAndFocus } from "../battle/camera";
 import { setPanelTab, showToast } from "../hud";
+import { pickTalismanVisitLine } from "../talisman-lines";
 import { playTalismanImpact, playTalismanRewardVisit, type TalismanRewardGrant } from "../talisman-reward";
 import { rasterizeImageAlpha, scoreTalismanDrawing, TALISMAN_THRESHOLDS, type TalismanCellGrid, type TalismanScore } from "./talisman-score";
 
@@ -443,8 +444,11 @@ function grantReward(): void {
     grants.push({ kind: "token", amount: 1, glyph: "券", label: "무료 소환권 +1" });
   }
   const summary = grants.map((grant) => grant.label).join(" · ");
-  showToast(`${char} 자령이 응답했습니다 — 보상을 두고 갑니다 · ${summary}`);
-  playTalismanRewardVisit(char, wuxing, grants, goldBefore);
+  // 말은 한 번만 뽑아 말풍선과 토스트가 같은 말을 하게 한다. 강림 연출은
+  // 통째로 aria-hidden 이라, 이 말이 소리로 닿는 길은 토스트뿐이다.
+  const line = pickTalismanVisitLine(grants[0]?.kind ?? "gold");
+  showToast(`${char} 자령이 응답했습니다 — "${line}" · ${summary}`);
+  playTalismanRewardVisit(char, wuxing, grants, goldBefore, line);
 }
 
 /** 완성 연출 — 먹선이 또렷해지고 주홍 인장이 찍힌다(calm-screen 은 맥동 없이). */
@@ -755,7 +759,7 @@ const PANEL_MARKUP = `
       <button id="talisman-redraw" class="small-button" type="button" data-testid="talisman-redraw">다시 뽑기</button>
       <button id="talisman-submit" class="small-button talisman-submit" type="button" data-testid="talisman-submit" disabled>부적 완성</button>
     </div>
-    <p id="talisman-economy-note" class="talisman-economy-note">부적 모드에서는 적이 ${Math.round((TALISMAN_MODE_ENEMY_HP_SCALE - 1) * 100)}% 강해집니다 — 그 대신 부적 보상을 얻습니다</p>
+    <p id="talisman-economy-note" class="talisman-economy-note">부적 모드에서는 적이 ${Math.round((TALISMAN_MODE_ENEMY_HP_SCALE - 1) * 100)}% 강해집니다 — 그 대신 부적 보상을 얻습니다 · 설정에서 학습부적을 켜고 끌 수 있습니다</p>
   </div>`;
 
 function mountTalismanPanel(): void {

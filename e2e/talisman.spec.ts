@@ -127,6 +127,18 @@ test("the default-on talisman tab turns a submitted trace into a jaryeong reward
   // 그 글자의 자령이 부적지 위로 내려와 보상 꾸러미를 놓는다.
   await expect(page.locator(".talisman-visit")).toHaveCount(1);
   await expect(page.locator(".talisman-visit-name")).toContainText("자령");
+  /*
+   * 자령이 말을 한다 — "왜 이 자령이 나에게 보상을 주는가"의 당위를 세우는
+   * 한 줄이다. 강림 연출은 통째로 aria-hidden 이라 소리로 닿는 길은 토스트뿐이고,
+   * 그래서 말풍선과 토스트는 **같은 줄**을 말해야 한다.
+   */
+  const spokenLine = (await page.locator(".talisman-visit-line").textContent())?.trim() ?? "";
+  expect(spokenLine.length).toBeGreaterThan(0);
+  await expect(page.locator("#toast")).toContainText(spokenLine);
+  // 말줄은 발치 꾸러미를 덮지 않는다 — 자령 머리 위에 선다.
+  const lineBox = await page.locator(".talisman-visit-line").boundingBox();
+  const giftBox = await page.locator(".talisman-gift").first().boundingBox();
+  expect(lineBox && giftBox && lineBox.y + lineBox.height <= giftBox.y).toBe(true);
   await expect(page.locator(".talisman-gift")).toHaveCount(1);
   // 트랙 C3 ④: 무엇을 받았는지 글자로 남는다 — 숫자만 날아가면 알 수 없다.
   await expect(page.locator(".talisman-gift > em"))

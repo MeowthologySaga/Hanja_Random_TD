@@ -55,6 +55,7 @@ export interface TalismanRewardGrant {
 /** 자령이 머무는 총 길이. 540절의 talisman-visit-arc 길이와 맞춘다. */
 const VISIT_MS = 2_700;
 
+
 /** 강림 뒤 보상이 발치에서 튀어나오기까지. */
 const GIFT_DELAY_MS = 320;
 
@@ -248,7 +249,8 @@ export function playTalismanRewardVisit(
   char: string,
   wuxing: Wuxing,
   grants: readonly TalismanRewardGrant[],
-  goldBefore: number
+  goldBefore: number,
+  line = ""
 ): void {
   const paper = document.querySelector<HTMLElement>("#talisman-paper");
   if (!paper || !visible(paper)) return;
@@ -260,7 +262,16 @@ export function playTalismanRewardVisit(
   visit.style.left = `${Math.round(center.x)}px`;
   visit.style.top = `${Math.round(center.y)}px`;
   visit.setAttribute("aria-hidden", "true");
+  /*
+   * 말은 자령 **머리 위**에 둔다. 발치(+88px)는 보상 꾸러미의 자리이고,
+   * 이름표 아래끝이 이미 중심에서 +51.5px 라 여유가 9px 뿐이다 — 말줄을
+   * 아래에 붙이면 격자가 위아래로 함께 자라 꾸러미를 덮는다(실측).
+   *
+   * 말은 토스트가 읽어 주는 것과 **같은 줄**이어야 한다. 이 연출은 통째로
+   * aria-hidden 이라 스크린리더에는 닿지 않는다 — 접근성 채널은 토스트뿐이다.
+   */
   visit.innerHTML = `${calm ? "" : '<span class="talisman-visit-halo"></span>'}`
+    + (line === "" ? "" : `<q class="talisman-visit-line">${line}</q>`)
     + spiritPortraitMarkup(char, wuxing, "workbench-spirit--talisman")
     + `<b class="talisman-visit-name">${char} 자령</b>`;
   shell.append(visit);
