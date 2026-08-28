@@ -340,7 +340,7 @@ export function wireS00Menu1(): void {
   must<HTMLButtonElement>("#s00-souls-button").addEventListener("click", () => {
     openSoulArchive();
   });
-  // 제목 화면이 서는 이 지점에서 묵편 배지를 한 번 맞춘다 — 지난 판에서 거둔
+  // 제목 화면이 서는 이 지점에서 자혼 배지를 한 번 맞춘다 — 지난 판에서 거둔
   // 수확이 돌아오자마자 눈에 들어와야 서재로 걸어 들어갈 이유가 생긴다.
   refreshSoulBadge();
   must<HTMLButtonElement>("#s00-codex-button").addEventListener("click", () => {

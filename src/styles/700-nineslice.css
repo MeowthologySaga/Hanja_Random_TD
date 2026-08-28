@@ -195,3 +195,25 @@
   border-image: url("/assets/ui/p0-v1/rails/status-strip-empty-333x43-v2.webp") 10 14 fill stretch;
   border-image-width: 6.5px 9.1px;
 }
+
+/*
+ * 자원 띠의 첫 칸(엽전)이 두르던 제 테두리를 걷는다.
+ *
+ * 4배 확대로 보고서야 알았다 — 삐져나온다고 보이던 것은 칸이 틀을 넘은 것이
+ * 아니라, **틀의 띠와 칸의 테두리가 두 겹으로 나란히** 서 있는 것이었다.
+ * 엽전 칸만 1px 금색 고리(box-shadow inset)와 둥근 3px 모서리로 카드 하나를
+ * 더 그리고 있었고, 그 카드가 틀 안쪽 선에 딱 붙어 경계가 둘로 읽혔다.
+ *
+ * 그 고리는 자원칸이 네 칸이던 시절, 띠에 제대로 된 틀이 없을 때 엽전을
+ * 도드라지게 하려고 둔 것이다. 이제 띠 자체가 9슬라이스 틀을 갖췄으므로
+ * 칸이 또 액자를 두를 이유가 없다 — 문기 칸처럼 종이 위에 그냥 앉는다.
+ * 엽전이 첫째라는 것은 글자 크기(19px)가 이미 말한다.
+ */
+.resource-grid > div:first-child {
+  border-radius: 0;
+  /* 위아래 실선 한 줄씩만 남겨 둘째 칸과 결을 맞춘다(고리는 걷는다).
+     070-panel-repairs.css:545 가 !important 로 금색 고리를 그리므로 같은 무게가 필요하다. */
+  box-shadow:
+    inset 0 1px 0 rgba(255, 250, 235, 0.4),
+    inset 0 -1px 0 rgba(96, 76, 40, 0.22) !important;
+}

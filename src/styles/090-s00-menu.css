@@ -113,7 +113,7 @@
 #title-settings-button { left: 1125px; top: 10px; }
 #title-help-button { left: 1199px; top: 10px; }
 
-/* 묵편 배지 — 지닌 묵편 수를 단추 우상단에 얹는다. 단추가 이미 절대 위치라
+/* 자혼 배지 — 지닌 자혼 수를 단추 우상단에 얹는다. 단추가 이미 절대 위치라
    그 자체가 컨테이닝 블록이 된다(따로 position 을 주면 안 된다). */
 .s00-utility .s00-souls-badge {
   position: absolute;

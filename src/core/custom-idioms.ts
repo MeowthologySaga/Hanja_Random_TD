@@ -1,5 +1,5 @@
 /*
- * 커스텀 성어 — 묵편 넷을 새겨 만드는 내 성어.
+ * 커스텀 성어 — 자혼 넷을 새겨 만드는 내 성어.
  *
  * 기존 성어(104구)와 커스텀은 일부러 결이 다르다. 기존 성어는 이미 존재하는
  * 글귀라 "뜻이 곧 규칙"인 특별대우를 받고, 커스텀은 **수치와 무작위**로 선다.
@@ -189,7 +189,7 @@ function applyFactors(axis: CustomIdiomAxis, base: number, factor: number): numb
 /**
  * 조합 확률표 — 태우기 **전에** 보여 준다.
  *
- * 이 게임은 소환 확률을 이미 공개한다(도움말 확률표). 묵편 넷은 되돌릴 수 없으니
+ * 이 게임은 소환 확률을 이미 공개한다(도움말 확률표). 자혼 넷은 되돌릴 수 없으니
  * 같은 규범을 따른다. 「이 축의 최고」까지 함께 적어 지금 조합의 천장이 어디인지
  * 눈으로 재게 한다.
  */
@@ -265,7 +265,7 @@ export function isValidCustomIdiomChars(chars: string): boolean {
   return glyphs.every((glyph) => /\p{Script=Han}/u.test(glyph));
 }
 
-/** 커스텀 성어가 판에 설 때 쓰는 빛깔. 묵편의 보랏빛 그대로다. */
+/** 커스텀 성어가 판에 설 때 쓰는 빛깔. 자혼의 보랏빛 그대로다. */
 export const CUSTOM_IDIOM_COLOR = "#c9a8ff";
 
 /**
@@ -282,7 +282,7 @@ export function customIdiomToDefinition(idiom: CustomIdiom): IdiomDefinition {
     name: idiom.reading,
     reading: idiom.reading,
     // 뜻을 안 적었으면 빈 자리를 남기지 않고 재료를 적어 준다.
-    meaning: idiom.meaning || `${[...idiom.chars].join("·")} — 묵편으로 새긴 성어`,
+    meaning: idiom.meaning || `${[...idiom.chars].join("·")} — 자혼으로 새긴 성어`,
     color: CUSTOM_IDIOM_COLOR,
     source: "custom",
     sourceOrder: null,

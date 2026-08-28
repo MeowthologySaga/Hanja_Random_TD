@@ -215,10 +215,10 @@ function grantEssence(scope: Wuxing | "all"): void {
   ok(scope === "all" ? "오행 문기 전부 +10" : `${scope} 문기 +10`);
 }
 
-/* ── 묵편 지급 ─────────────────────────────────────────────── */
+/* ── 자혼 지급 ─────────────────────────────────────────────── */
 
 /**
- * 묵편을 장부에 바로 넣는다.
+ * 자혼을 장부에 바로 넣는다.
  *
  * 보관소는 판 밖에 사는 장부라 런이 없어도 손댈 수 있다 — 집자소를 열어
  * 보려고 매번 우두머리를 열 번 잡을 수는 없다.
@@ -231,7 +231,7 @@ function grantShard(raw: string): void {
   }
   updateSoulArchive((archive) => gainSoul(archive, char));
   refreshSoulBadge();
-  ok(`${char} 묵편 +1 · 지닌 ${soulsHeld(soulArchive(), char)}개`);
+  ok(`${char} 자혼 +1 · 지닌 ${soulsHeld(soulArchive(), char)}개`);
 }
 
 /** 이 판(또는 KR)의 소환 풀에서 여덟 자를 골라 세 개씩. 새김대를 채울 만큼이다. */
@@ -248,7 +248,7 @@ function grantRandomShards(): void {
   }
   updateSoulArchive((archive) => chars.reduce((next, char) => gainSoul(next, char, 3), archive));
   refreshSoulBadge();
-  ok(`묵편 ${chars.join("")} 각 3개`);
+  ok(`자혼 ${chars.join("")} 각 3개`);
 }
 
 function clearShardArchive(): void {
@@ -492,15 +492,15 @@ const PANEL_HTML = `
       </div>
     </fieldset>
     <fieldset class="dev-tools-group">
-      <legend>묵편 지급</legend>
+      <legend>자혼 지급</legend>
       <!--
-        묵편은 우두머리를 봉인해야 나온다. 집자소를 손보려면 판을 10웨이브씩
+        자혼은 우두머리를 봉인해야 나온다. 집자소를 손보려면 판을 10웨이브씩
         굴려야 하므로, 여기서 바로 채운다. 보관소는 판 밖의 장부라 런이
         없어도 지급된다 — 제목 화면에서도 눌린다.
       -->
       <div class="dev-tools-row">
-        <input id="dev-shard-char" type="text" maxlength="2" placeholder="天" aria-label="지급할 묵편 한자 1자" />
-        <button id="dev-shard-grant" type="button" data-testid="dev-shard-grant">묵편 +1</button>
+        <input id="dev-shard-char" type="text" maxlength="2" placeholder="天" aria-label="지급할 자혼 한자 1자" />
+        <button id="dev-shard-grant" type="button" data-testid="dev-shard-grant">자혼 +1</button>
       </div>
       <div class="dev-tools-row">
         <button id="dev-shard-random" type="button" data-testid="dev-shard-random">무작위 8자 ×3</button>

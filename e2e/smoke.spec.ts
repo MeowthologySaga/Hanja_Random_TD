@@ -1301,13 +1301,13 @@ test("scales Jaryeong labels and the selected reading cleanly at 1600x900", asyn
 test("opens the rules and exposes synthesis keyboard guidance", async ({ page }) => {
   await page.goto("/");
   // S00 보조 메뉴는 아이콘+짧은 이름으로 압축돼 있다.
-  // (魂 묵편 / 冊 도감 / ⚙ 설정 / ? 도움말 — 집자소가 넷째로 붙었다.)
+  // (魂 자혼 / 冊 도감 / ⚙ 설정 / ? 도움말 — 집자소가 넷째로 붙었다.)
   await expect(page.locator(".s00-utility > button")).toHaveCount(4);
   await expect(page.getByTestId("soul-archive-open")).toBeVisible();
   /*
    * 넷은 한 줄에 서야 한다.
    *
-   * 묵편 단추를 넣을 때 `.s00-utility button { position: relative; }` 한 줄이
+   * 자혼 단추를 넣을 때 `.s00-utility button { position: relative; }` 한 줄이
    * `.s00-stage button` 의 절대 위치를 특이도 동점·배럴 순서 우위로 덮어써서,
    * 메달리온 넷이 통째로 흐름으로 되돌아가 계단처럼 흘러내린 적이 있다.
    * 좌표를 안 준 단추가 무대 좌상단(0,0)에 붙는 것도 같은 실패의 얼굴이다.

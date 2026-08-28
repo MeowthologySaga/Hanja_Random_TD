@@ -532,7 +532,7 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
 
         <nav class="s00-utility" aria-label="보조 메뉴">
           <button id="s00-codex-button" type="button"><i class="s00-skin" aria-hidden="true"></i><b>冊</b><span>도감</span></button>
-          <button id="s00-souls-button" type="button" data-testid="soul-archive-open" aria-label="집자소. 모은 묵편으로 나만의 성어를 새기고 장착합니다"><i class="s00-skin" aria-hidden="true"></i><b>集</b><span>집자소</span><em id="s00-souls-badge" class="s00-souls-badge" hidden>0</em></button>
+          <button id="s00-souls-button" type="button" data-testid="soul-archive-open" aria-label="집자소. 모은 자혼으로 나만의 성어를 새기고 장착합니다"><i class="s00-skin" aria-hidden="true"></i><b>集</b><span>집자소</span><em id="s00-souls-badge" class="s00-souls-badge" hidden>0</em></button>
           <button id="title-settings-button" type="button" aria-label="화면 모드 설정"><i class="s00-skin" aria-hidden="true"></i><b>⚙</b><span>설정</span></button>
           <button id="title-help-button" type="button"><i class="s00-skin" aria-hidden="true"></i><b>?</b><span>도움말</span></button>
         </nav>
@@ -985,15 +985,15 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
         <button id="soul-close" type="button" aria-label="집자소 닫기">×</button>
       </div>
       <p class="soul-lede">
-        봉인한 자령이 남긴 <b>묵편</b> 넷을 이어 성어 한 구를 새깁니다.
+        봉인한 자령이 남긴 <b>자혼</b> 넷을 이어 성어 한 구를 새깁니다.
         음은 한자 음 그대로 붙고 <b>뜻만</b> 직접 적습니다.
-        장착한 성어는 다음 판부터 함께 서고, 묵편은 판이 끝나도 사라지지 않습니다.
+        장착한 성어는 다음 판부터 함께 서고, 자혼은 판이 끝나도 사라지지 않습니다.
       </p>
       <div class="soul-layout">
-        <section class="soul-col soul-col--holdings" aria-label="지닌 묵편">
-          <p class="eyebrow">지닌 묵편 <em id="soul-holdings-count">0</em></p>
+        <section class="soul-col soul-col--holdings" aria-label="지닌 자혼">
+          <p class="eyebrow">지닌 자혼 <em id="soul-holdings-count">0</em></p>
           <div id="soul-grid" class="soul-grid" role="list"></div>
-          <p id="soul-holdings-empty" class="soul-empty">아직 묵편이 없습니다. 우두머리를 봉인하면 반드시 하나를 남기고, 그 밖의 자령도 드물게 남깁니다.</p>
+          <p id="soul-holdings-empty" class="soul-empty">아직 자혼이 없습니다. 우두머리를 봉인하면 반드시 하나를 남기고, 그 밖의 자령도 드물게 남깁니다.</p>
         </section>
         <section class="soul-col soul-col--forge" aria-label="새김대">
           <p class="eyebrow">새김대</p>

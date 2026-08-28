@@ -68,7 +68,7 @@ test("dev tools panel stages the tracked idiom and fires the seal", async ({ pag
   await page.screenshot({ path: "artifacts/dev-tools-idiom-fired-1280x720.png", fullPage: true });
 
   /*
-   * 묵편 지급 — 집자소를 손보려고 우두머리를 열 번 잡을 수는 없다.
+   * 자혼 지급 — 집자소를 손보려고 우두머리를 열 번 잡을 수는 없다.
    *
    * 보관소는 판 밖의 장부라 즉시 localStorage 에 남고, 제목 화면 배지도
    * 그 자리에서 따라 오른다.
