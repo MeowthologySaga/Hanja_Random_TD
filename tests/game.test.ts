@@ -36,6 +36,7 @@ function enemy(id: number): Enemy {
   return {
     id,
     wave: 1,
+    char: "天",
     hp: 10,
     maxHp: 10,
     speed: 0,

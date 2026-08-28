@@ -338,6 +338,7 @@ function fillEnemyCap(): void {
     state.enemies.push({
       id: DEV_ENEMY_ID_BASE + devEnemySerial++,
       wave: state.wave,
+      char: "天",
       hp: plan.hp,
       maxHp: plan.hp,
       speed: plan.speed * 0.9,

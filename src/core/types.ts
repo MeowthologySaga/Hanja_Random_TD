@@ -218,6 +218,15 @@ export interface Tower {
 export interface Enemy {
   id: number;
   wave: number;
+  /**
+   * 이 적이 이고 나온 한자.
+   *
+   * 정본 세계관: 자령은 야생으로 존재하고, 부적술사가 그 한자를 적은 부적을
+   * 붙여 강시로 부린다. 그래서 내 편은 머리에 부적이 있고 야생(적)은 맨머리다 —
+   * 구분은 생김새가 아니라 부적의 유무다(2026-08-28 기획 결정).
+   * 봉인하면 이 글자의 자혼이 남아 커스텀 성어의 재료가 된다.
+   */
+  char: string;
   hp: number;
   maxHp: number;
   speed: number;
@@ -419,6 +428,8 @@ export type GameEvent =
   | { type: "shot"; from: Point; to: Point; color: string; critical: boolean; wuxing: Wuxing }
   | { type: "damage"; at: Point; amount: number; critical: boolean; weakness: boolean }
   | { type: "kill"; at: Point; reward: number }
+  // 봉인한 야생 자령이 남긴 혼. 우두머리는 반드시, 그 밖은 낮은 확률로 남는다.
+  | { type: "soul"; at: Point; char: string; boss: boolean }
   | { type: "interest"; amount: number; gold: number }
   // jackpot = 캐주얼 밴드의 소프트 상한 위 별이 꼬리 확률로 나온 순간(공개 카드가 강조한다).
   | { type: "summon"; at: Point; tower: Tower; stored: boolean; helpful: boolean; helpfulReason: "goal" | "idiom" | "both" | null; newDiscovery: boolean; utility: "new" | "synthesis" | "concentration" | "replacement"; jackpot: boolean }

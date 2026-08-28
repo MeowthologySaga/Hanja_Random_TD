@@ -18,7 +18,6 @@ import {
   gwicheonChargeSeconds,
   HARVEST_KILLS_PER_ESSENCE,
   hasActiveSkills,
-  idiomBlessingBonus,
   MIRE_MIN_ENEMIES,
   MIRE_SUPPRESS_GRACE,
   MIRE_ZONE_RADIUS,
@@ -126,6 +125,9 @@ import {
   TIERED_SUMMON_INTENTS,
   TUTORIAL_ENEMY_COUNT_SCALE,
   TUTORIAL_ENEMY_HP_SCALE,
+  IDIOM_SEAL_ATTACK_CAP,
+  IDIOM_SEAL_ATTACK_PER_SEAL,
+  WILD_SOUL_DROP_CHANCE,
   weightedPick
 } from "./engine-tuning";
 import { EvolutionService } from "./evolution";
@@ -283,8 +285,6 @@ export class GameEngine {
   private readonly combatCharCounts = new Map<string, number>();
   private readonly combatSynergies = new Set<Wuxing>();
   private readonly combatFormationBonuses = [0, 0, 0, 0, 0];
-  // [SKILL-V1] 성어의 가호: 진별 가호 배율 캐시(발동 중 봉인 기준).
-  private readonly combatIdiomBlessings = [0, 0, 0, 0, 0];
   // [SKILL-V2] 호령: 진별 집중 명령(대상 공유). 4초 남짓의 일시 상태라 세이브 밖이다.
   private readonly commandRallies: Array<{ targetId: number; until: number } | null> = [null, null, null, null, null];
   // [SKILL-V3] 유폭 낙인 재진입 잠금 — 전파 피해가 다시 적립·유폭되지 않게 한다.
@@ -490,6 +490,20 @@ export class GameEngine {
     }
   }
 
+  /**
+   * 야생 자령이 이고 나올 글자 하나.
+   *
+   * 이 판의 소환 풀에서 고른다 — 판마다 등장 한자가 다르므로 적도 그 범위를
+   * 따라야 "오늘 만난 글자"라는 말이 성립한다. 풀이 비면 빈 문자열이고,
+   * 그때는 화면이 글자를 그리지 않는다(빈칸이 낫지 잘못된 글자는 안 된다).
+   */
+  private rollWildChar(): string {
+    const pool = this.runSummonPool;
+    if (pool.length === 0) return "";
+    const index = Math.floor(this.rng.next() * pool.length);
+    return pool[Math.min(pool.length - 1, index)]?.char ?? "";
+  }
+
   private spawnEnemy(plan: WavePlan): void {
     const isBoss = plan.boss && this.state.spawned === plan.count - 1;
     const bossFactor = bossHpFactorForWave(plan.wave);
@@ -504,6 +518,9 @@ export class GameEngine {
     this.state.enemies.push({
       id: this.nextEnemyId++,
       wave: plan.wave,
+      // 야생 자령이 이고 나오는 글자 — 이 판 소환 풀에서 고른다. 봉인하면 그
+      // 글자의 자혼이 남으므로, 오늘 만난 글자가 내일의 재료가 된다.
+      char: this.rollWildChar(),
       hp,
       maxHp: hp,
       // Bosses keep circulating; the explicit boss clock is their deadline.
@@ -571,24 +588,6 @@ export class GameEngine {
       const tier = matching >= 16 ? 4 : matching >= 12 ? 3 : matching >= 8 ? 2 : matching >= 4 ? 1 : 0;
       this.combatFormationBonuses[index] = [0, 0.06, 0.12, 0.18, 0.25][tier] ?? 0;
     }
-    // [SKILL-V1] 성어의 가호: 발동 중 봉인이 선 진의 자령 전원이 공격 증폭을 받는다.
-    for (let index = 0; index < this.combatIdiomBlessings.length; index += 1) {
-      this.combatIdiomBlessings[index] = this.idiomBlessingBonusAt(index);
-    }
-  }
-
-  /**
-   * [SKILL-V1] 성어의 가호 — 이 진에 선 "발동 중" 성어 수로 계산한 공격 배율.
-   * 첫 구 +10%, 같은 진의 추가 구당 +5%p. 봉인이 흩어지면(active=false) 즉시 0.
-   */
-  idiomBlessingBonusAt(formationIndex: number): number {
-    let seals = 0;
-    for (const seal of this.activeIdiomSeals()) {
-      const anchorCell = seal.cells[0];
-      if (anchorCell === undefined) continue;
-      if (Math.floor(anchorCell / CELLS_PER_FORMATION) === formationIndex) seals += 1;
-    }
-    return idiomBlessingBonus(seals);
   }
 
   private enemyPoint(enemy: Enemy): Point {
@@ -962,11 +961,13 @@ export class GameEngine {
     damage *= 1 + concentration * (concentrationPath === "potent" ? 0.12 : 0.055);
     damage *= 1 + this.combinedUpgradeBonus(tower.wuxing, "damage");
     damage *= 1 + this.idiomBonus("damage");
+    // 봉인한 성어 수만큼 판 전체가 세진다. 걷어낸 「가호」(진 단위 증폭)의 몫을
+    // 기획 결정대로 **판 전체** 축 하나로 돌려준 것이다 — 실측에서 가호를 걷자
+    // 성어를 실제로 발동하는 지역(JP·CN, 발동 중앙값 4구)이 그대로 주저앉았다.
+    damage *= 1 + this.idiomSealAttackBonus();
     const towerFormationIndex = Math.floor(tower.cell / CELLS_PER_FORMATION);
     damage *= 1 + (this.combatFormationBonuses[towerFormationIndex] ?? 0);
     damage *= FORMATION_ROUTE_COVERAGE_MULTIPLIER[towerFormationIndex] ?? 1;
-    // [SKILL-V1] 성어의 가호: 발동 중 성어와 같은 진에 선 자령 전원 공격 증폭.
-    damage *= 1 + (this.combatIdiomBlessings[towerFormationIndex] ?? 0);
     // Every elemental start receives the same first-chapter ward. It prevents
     // the free starting formation's map position from deciding a run before
     // the player can buy a second formation, then disappears after wave 10.
@@ -1340,6 +1341,11 @@ export class GameEngine {
     this.state.gold += enemy.reward;
     this.state.killCount += 1;
     this.events.push({ type: "kill", at, reward: enemy.reward });
+    // 봉인한 야생 자령이 남기는 혼 — 우두머리는 반드시, 그 밖은 낮은 확률로.
+    // 저장은 판 밖의 일이라 엔진은 사실만 알리고 보관은 UI 가 한다.
+    if (enemy.char && (enemy.boss || this.rng.next() < WILD_SOUL_DROP_CHANCE)) {
+      this.events.push({ type: "soul", at, char: enemy.char, boss: enemy.boss });
+    }
     // [SKILL-V2] 소흔·채기 처치 훅 — 출처 자령이 있는 직접 처치만 센다.
     if (source) this.handleTowerKill(source, enemy, at);
     // [SKILL-V3] 유폭 낙인 전파는 처치 훅 뒤에 온다 — 소흔의 잔불이 먼저 깔린 뒤
@@ -2982,6 +2988,19 @@ export class GameEngine {
     return this.state.idiomSeals.some((seal) => seal.idiomId === idiomId && seal.active);
   }
 
+  /**
+   * 발동 중인 성어 수가 주는 판 전체 공격 증폭.
+   *
+   * 성어 한 구마다 IDIOM_SEAL_ATTACK_PER_SEAL 씩, 상한까지. 진을 가리지 않으므로
+   * "성어를 어느 진에 몰아 세울까"가 아니라 "몇 구를 세웠나"만 본다 —
+   * 화면에 이미 「성어 발동 N구」가 있으니 사람이 셀 수 있는 수와 힘이 같아진다.
+   */
+  idiomSealAttackBonus(): number {
+    let seals = 0;
+    for (const seal of this.state.idiomSeals) if (seal.active) seals += 1;
+    return Math.min(IDIOM_SEAL_ATTACK_CAP, seals * IDIOM_SEAL_ATTACK_PER_SEAL);
+  }
+
   idiomBonus(kind: IdiomBonusKind): number {
     // 유지형 규칙: 흩어진 봉인은 기록에만 남고 보너스는 내지 않는다.
     const total = this.state.idiomSeals.reduce((sum, seal) => {
@@ -3293,7 +3312,6 @@ export class GameEngine {
     this.combatPolarisElements.clear();
     this.targetCandidates.length = 0;
     this.combatFormationBonuses.fill(0);
-    this.combatIdiomBlessings.fill(0);
     this.combatDistinctElements = 0;
     this.runSummonPool = this.buildRunSummonPool();
     this.events = [{ type: "phase", phase: this.state.phase }];

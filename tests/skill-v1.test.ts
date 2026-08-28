@@ -18,7 +18,6 @@ import {
   frostSlowRatio,
   gwicheonChargeSeconds,
   hasActiveSkills,
-  idiomBlessingBonus,
   momentumMaxStacks,
   semanticCharGroup,
   warfareBrandPower
@@ -51,6 +50,7 @@ function makeEnemy(id: number, archetype: EnemyArchetype, overrides: Partial<Ene
   return {
     id,
     wave: 1,
+    char: "天",
     hp: 100000,
     maxHp: 100000,
     speed: 0,
@@ -193,30 +193,11 @@ describe("[SKILL-V1] 파죽 (破竹)", () => {
   });
 });
 
-describe("[SKILL-V1] 성어의 가호", () => {
-  it("발동 중 성어가 선 진에만 +10%, 같은 진 추가 성어당 +5%p, 흩어지면 즉시 소멸", () => {
-    expect(idiomBlessingBonus(0)).toBe(0);
-    expect(idiomBlessingBonus(1)).toBeCloseTo(0.1, 6);
-    expect(idiomBlessingBonus(3)).toBeCloseTo(0.2, 6);
-    const engine = new GameEngine("skill-blessing", "KR");
-    engine.begin();
-    expect(engine.idiomBlessingBonusAt(0)).toBe(0);
-    engine.state.idiomSeals.push({ idiomId: "test-a", cells: [0, 1, 2, 3], completedAt: 0, active: true });
-    expect(engine.idiomBlessingBonusAt(0)).toBeCloseTo(0.1, 6);
-    expect(engine.idiomBlessingBonusAt(1)).toBe(0);
-    engine.state.idiomSeals.push({ idiomId: "test-b", cells: [4, 5, 6, 7], completedAt: 0, active: true });
-    expect(engine.idiomBlessingBonusAt(0)).toBeCloseTo(0.15, 6);
-    // 다른 진의 성어는 그 진의 가호로만 선다.
-    engine.state.idiomSeals.push({ idiomId: "test-c", cells: [16, 17, 18, 19], completedAt: 0, active: true });
-    expect(engine.idiomBlessingBonusAt(0)).toBeCloseTo(0.15, 6);
-    expect(engine.idiomBlessingBonusAt(1)).toBeCloseTo(0.1, 6);
-    // 줄이 흩어지면(active=false) 가호도 즉시 꺼진다.
-    engine.state.idiomSeals[0]!.active = false;
-    expect(engine.idiomBlessingBonusAt(0)).toBeCloseTo(0.1, 6);
-    engine.state.idiomSeals[1]!.active = false;
-    expect(engine.idiomBlessingBonusAt(0)).toBe(0);
-  });
-});
+/*
+ * [SKILL-V1] 성어의 가호는 걷었다 — 기획 의도는 "성어는 판 전체에 붙는 힘 하나"였고
+ * 진 단위 증폭은 요구된 적이 없다(2026-08-28 결정). 판 전체 보너스(idiomBonus)의
+ * 검증은 tests/idioms-learning.test.ts 가 계속 진다.
+ */
 
 describe("[SKILL-V1] 귀천 (歸天)", () => {
   it("충전 시간 — 6★ 30초, 별당 −2초", () => {

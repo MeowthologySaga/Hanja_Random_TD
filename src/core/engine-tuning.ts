@@ -362,9 +362,14 @@ const REGION_ENEMY_HP_CURVE: Record<RegionCode, { base: number; chapterGrowth: n
   // 기준으로 세 지역을 45런/지역(--runs=135) 시뮬 승률 0.533~0.600 에 맞춘 값.
   // 승률은 이 계수에 극도로 민감하다(±1% 체력 ≈ ±5~20%p, 런 단위 카오스) —
   // 손보려면 반드시 --runs=135 로 재고정하라.
-  KR: { base: 25.25, chapterGrowth: 0 },
-  JP: { base: 23.4, chapterGrowth: 0.97 },
-  CN: { base: 23.4, chapterGrowth: 0.85 }
+  //
+  // 재보정(2026-08, 성어 개편): 「성어의 가호」를 걷고 판 전체 축 하나로 바꾸면서,
+  // 1장 우두머리 체력을 절반으로 낮췄다(진 하나뿐인 초반에 미커버 노선이 생기던 문제).
+  // 두 변경 모두 판을 쉽게 만들어 135런 승률이 KR 0.667 · JP 0.867 · CN 0.644 로 떠올랐다.
+  // 위 주석대로 이 계수로 되받는다 — 실측 감도는 여전히 ±1% 체력 ≈ ±5~20%p 다.
+  KR: { base: 25.55, chapterGrowth: 0 },
+  JP: { base: 24.5, chapterGrowth: 0.97 },
+  CN: { base: 23.92, chapterGrowth: 0.85 }
 };
 
 /**
@@ -380,7 +385,10 @@ const REGION_ENEMY_HP_CURVE: Record<RegionCode, { base: number; chapterGrowth: n
  * 글자가 소환 가중을 더는 빨아들이지 않는다 — 소환이 다양해져 캐주얼 실측
  * 승률이 0.489→0.778 로 뛰었다(45런). 규칙이 좋아진 만큼 체력으로 되받는다.
  */
-const MODE_ENEMY_HP_SCALE: Record<GameMode, number> = { standard: 1, casual: 4.02 };
+// 성어 개편 재보정(2026-08): 1장 우두머리 절반이 캐주얼도 0.556→0.733 으로
+// 띄웠다. 체력 계수는 몸빵 시간을 늘려 런이 길어지므로(4.4 에서 중앙 50.3분,
+// 게이트 상한 초과) 절반만 여기서 되받고 나머지는 아래 보스 트림이 맡는다.
+const MODE_ENEMY_HP_SCALE: Record<GameMode, number> = { standard: 1, casual: 4.1 };
 
 /**
  * 모드별 적 수량 계수. 캐주얼은 웨이브당 몸수를 15% 줄이는 대신 체력 계수를
@@ -400,7 +408,35 @@ export const MODE_ENEMY_COUNT_SCALE: Record<GameMode, number> = { standard: 1, c
  * 트랙 B 재고정: 일반 체력 3.8→4.02 인상이 런 시간을 50분 경계까지 밀어,
  * 트림을 0.78→0.76 으로 함께 내려 시간을 되샀다(45런 실측 0.556 / 49.3분).
  */
-export const CASUAL_BOSS_HP_TRIM = 0.76;
+// 성어 개편 재보정: 0.76 → 0.86. 우두머리는 판을 가르는 관문이라 승률은 크게
+// 움직이면서 런 시간은 거의 안 늘린다(0.95 면 0.40 으로 내려가 과했다).
+// 실측 45런: 0.86 에서 승률 0.467 · 중앙 48.4분.
+export const CASUAL_BOSS_HP_TRIM = 0.86;
+
+/**
+ * 봉인한 야생 자령이 자혼을 남길 확률(우두머리 제외).
+ *
+ * 우두머리는 반드시 남긴다 — 한 장(章)에 하나라 "이 판에서 무엇을 얻었나"가
+ * 또렷하다. 일반 적까지 늘 남기면 재료가 흔해져 조합의 무게가 사라지므로,
+ * 낮은 확률로만 떨어뜨려 "가끔 얻는 덤"으로 둔다(2026-08-28 기획 결정).
+ * 100웨이브 완주 기준 대략 서른 남짓이 남는 값이다.
+ */
+export const WILD_SOUL_DROP_CHANCE = 0.03;
+
+/**
+ * 발동 중인 성어 한 구가 주는 판 전체 공격 증폭과 그 상한.
+ *
+ * 「성어의 가호」(진 단위 +10%, 같은 진 추가 구당 +5%p)를 걷어낸 자리다.
+ * 기획 결정은 "성어의 힘은 판 전체에 붙는 것 하나"였으므로, 같은 무게를 진이
+ * 아니라 판 전체로 돌려준다. 실측 근거: 가호만 걷었을 때 성어를 실제로 발동하는
+ * 지역이 무너졌다(135런 — JP 0.444 · CN 0.244, 발동 중앙값 4구).
+ * 눈금은 135런으로 되짚었다 — 기준선(KR 0.489 · JP 0.600 · CN 0.467)에서 가호만
+ * 걷으면 JP 0.444 · CN 0.244 로 주저앉고, 구당 5%(천장 25%)면 JP 0.978 · CN 0.933 으로
+ * 넘어간다. 그 사이를 갈라 구당 2%, 천장 10%(5구)로 잡았다.
+ */
+export const IDIOM_SEAL_ATTACK_PER_SEAL = 0.02;
+
+export const IDIOM_SEAL_ATTACK_CAP = 0.1;
 
 // The center formation overlaps more of the loop than the east formation.
 // These small route-coverage coefficients make "which element appeared first"

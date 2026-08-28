@@ -28,6 +28,18 @@ export function bossTimeLimitForWave(wave: number): number | null {
 
 export function bossHpFactorForWave(wave: number): number {
   const chapter = Math.max(1, Math.min(10, Math.ceil(wave / 10)));
+  /*
+   * 제1장 우두머리만 절반이다.
+   *
+   * 그때는 진이 하나뿐이라 판이 노선을 다 덮지 못한다 — 우두머리가 열린 진에서
+   * 먼 구역으로 돌면 사거리 안에 한 번도 들어오지 않아, 잘 싸우고도 손을 못 대고
+   * 지나 보낸다(사용자 제보). 체력을 깎아 "닿는 동안 잡을 수 있는" 양으로 맞춘다.
+   * 2장부터는 진이 둘 이상이라 종전 곡선을 그대로 지킨다.
+   *
+   * 이 계수는 우두머리에게만 붙는다 — 같은 웨이브의 잡졸은 spawnEnemy 가 같은
+   * 값으로 도로 나누므로(1 / bossFactor) 체력이 변하지 않는다.
+   */
+  if (chapter === 1) return (6.5 + 1.25) / 2;
   return 6.5 + chapter * 1.25;
 }
 

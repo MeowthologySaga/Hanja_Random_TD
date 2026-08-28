@@ -69,6 +69,7 @@ function makeEnemy(id: number, archetype: EnemyArchetype, overrides: Partial<Ene
   return {
     id,
     wave: 1,
+    char: "天",
     hp: 100000,
     maxHp: 100000,
     speed: 0,
