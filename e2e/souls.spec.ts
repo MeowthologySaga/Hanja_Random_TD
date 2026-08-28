@@ -42,6 +42,8 @@ test("자혼 넷을 새겨 나만의 성어를 만들고 장착한다", async ({
 
   await page.getByTestId("soul-archive-open").click();
   await expect(page.locator("#soul-dialog")).toBeVisible();
+  // 집자소는 갈피 둘로 갈렸다 — 만드는 자리(새기기)와 고르는 자리(장착).
+  await expect(page.getByTestId("soul-tab-forge")).toHaveClass(/is-active/);
   await expect(page.locator("#soul-holdings-count")).toHaveText("32");
 
   // 넉 자를 올리기 전에는 새기지 못한다.
@@ -56,7 +58,15 @@ test("자혼 넷을 새겨 나만의 성어를 만들고 장착한다", async ({
   await page.locator("#soul-meaning-input").fill("하늘과 땅이 열리다");
   await expect(page.locator("#soul-reading")).toHaveText("천지현황");
 
+  /*
+   * 새김 연출 — 자혼 넷은 되돌릴 수 없이 사라진다. 그 무게에 견주면 토스트
+   * 한 줄은 너무 가벼워, 인장이 찍히고 새 성어의 음이 한 박자 머문다.
+   */
   await page.getByTestId("soul-forge").click();
+  await expect(page.locator("#soul-forge-fx")).toBeVisible();
+  await expect(page.locator("#soul-forge-fx-reading")).toHaveText("천지현황");
+  // 연출은 스스로 걷힌다 — 막이 남으면 뒤 화면이 계속 뿌옇다.
+  await expect(page.locator("#soul-forge-fx")).toBeHidden({ timeout: 3_000 });
 
   // ② 자혼 넷이 줄고 성어 한 구가 남는다.
   await expect(page.locator("#soul-holdings-count")).toHaveText("28");
@@ -66,6 +76,8 @@ test("자혼 넷을 새겨 나만의 성어를 만들고 장착한다", async ({
   // 능력은 무작위로 굴리므로 값이 아니라 "한 문장이 적혀 있는가"를 본다.
   await expect(page.locator(".soul-card-bonus")).not.toBeEmpty();
 
+  // 만든 성어는 장착 갈피에서 고른다.
+  await page.getByTestId("soul-tab-equip").click();
   await expect(page.locator("#soul-equip-count")).toHaveText("0/15");
   await page.locator(".soul-card button[data-soul-equip]").click();
   await expect(page.locator("#soul-equip-count")).toHaveText("1/15");
@@ -76,6 +88,7 @@ test("자혼 넷을 새겨 나만의 성어를 만들고 장착한다", async ({
   await expect(page.locator("#soul-dialog")).toBeHidden();
   await page.reload();
   await page.getByTestId("soul-archive-open").click();
+  await page.getByTestId("soul-tab-equip").click();
   await expect(page.locator(".soul-card")).toHaveCount(1);
   await expect(page.locator("#soul-equip-count")).toHaveText("1/15");
   await expect(page.locator("#soul-holdings-count")).toHaveText("28");
@@ -106,6 +119,7 @@ test("장착은 15구에서 멈춘다", async ({ page }) => {
   );
   await page.goto("/?seed=SOULS-LIMIT-E2E");
   await page.getByTestId("soul-archive-open").click();
+  await page.getByTestId("soul-tab-equip").click();
   await expect(page.locator(".soul-card")).toHaveCount(16);
 
   for (let index = 0; index < 15; index += 1) {
@@ -115,4 +129,55 @@ test("장착은 15구에서 멈춘다", async ({ page }) => {
 
   // 열여섯째는 장착 단추가 잠긴다 — 무엇을 뺄지는 사람이 고른다.
   await expect(page.locator(".soul-card:not(.is-equipped) button[data-soul-equip]").first()).toBeDisabled();
+});
+
+test("훈·독이 자혼 옆에 서고, 새기기는 스크롤에 안 가리며, 디버그는 개발자 모드에서만 선다", async ({ page }) => {
+  await page.goto("/?seed=SOULS-UX-E2E");
+  await page.getByTestId("soul-archive-open").click();
+  await expect(page.locator("#soul-dialog")).toBeVisible();
+
+  /*
+   * ① 자혼에 훈·독을 적는다.
+   *
+   * 글자만 덩그러니 있으면 모으기가 수집이지 학습이 아니다. 재료를 고르는
+   * 동안 그 글자를 읽을 수 있어야 "오늘 만난 글자"가 내일의 재료로 남는다.
+   */
+  const chip = page.locator('.soul-chip[data-soul-char="天"]');
+  await expect(chip.locator("small")).toHaveText("하늘 천");
+  await chip.click();
+  // 새김대에 올려 둔 채로도 읽힌다.
+  await expect(page.locator(".soul-slot.is-filled small").first()).toHaveText("하늘 천");
+
+  /*
+   * ② [새기기]는 스크롤을 따라다니지 않는다.
+   *
+   * 확률표가 길어 새김대 칸은 스크롤한다. 끝까지 읽고 나서 단추를 찾아
+   * 되돌아가야 한다면 그 스크롤이 벌이 된다 — 단추는 스크롤 밖 고정 행에 있다.
+   */
+  const scroller = page.locator(".soul-forge-scroll");
+  const before = (await page.getByTestId("soul-forge").boundingBox())!;
+  await scroller.evaluate((element) => { element.scrollTop = element.scrollHeight; });
+  await page.waitForTimeout(120);
+  const after = (await page.getByTestId("soul-forge").boundingBox())!;
+  expect(Math.round(after.y)).toBe(Math.round(before.y));
+  expect(await scroller.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
+
+  /*
+   * ③ 디버그 갈피는 개발자 모드(백틱 5회)에서만 선다.
+   */
+  await expect(page.getByTestId("soul-tab-dev")).toBeHidden();
+  for (let press = 0; press < 5; press += 1) await page.keyboard.press("Backquote");
+  await expect(page.getByTestId("soul-tab-dev")).toBeVisible();
+
+  await page.getByTestId("soul-tab-dev").click();
+  await page.locator("#soul-dev-char").fill("宇");
+  await page.locator("#soul-dev-amount").fill("7");
+  await page.getByTestId("soul-dev-grant").click();
+  await expect
+    .poll(async () => page.evaluate(() => {
+      const raw = window.localStorage.getItem("hanja-td:soul-archive-v1");
+      const parsed = raw ? (JSON.parse(raw) as { souls?: Record<string, number> }) : {};
+      return (parsed.souls ?? {})["宇"] ?? 0;
+    }))
+    .toBe(4 + 7);
 });

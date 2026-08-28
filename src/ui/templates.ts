@@ -979,39 +979,133 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
       <p id="codex-note" class="codex-note">훈음의 낯선 옛말은 오늘말 뜻풀이와 용례로 풀어 표시합니다. 별 등급, 독립 자령, 조합 경로는 서로 다른 표식으로 구분합니다.</p>
     </dialog>
 
+    <!--
+      집자소 — 자혼을 모아 내 성어를 새기고 고르는 곳.
+
+      일이 둘이라 탭으로 가른다. **새기기**는 재료를 보며 만드는 자리이고,
+      **장착**은 만든 것 중에서 판에 세울 열다섯을 고르는 자리다. 세 칸을 한
+      화면에 밀어 넣었을 때는 어느 쪽도 제 폭을 못 가졌다 — 재료 격자는 좁아
+      훈음이 안 들어갔고, 성어 카드는 한 줄에 하나씩만 섰다.
+
+      디버그 탭은 개발자 모드(백틱 5회)에서만 선다.
+    -->
     <dialog id="soul-dialog" class="codex-dialog soul-dialog" aria-labelledby="soul-heading">
       <div class="dialog-heading soul-heading">
         <div><p class="eyebrow">집자소</p><h2 id="soul-heading">나만의 성어를 새깁니다</h2></div>
         <button id="soul-close" type="button" aria-label="집자소 닫기">×</button>
       </div>
-      <p class="soul-lede">
-        봉인한 자령이 남긴 <b>자혼</b> 넷을 이어 성어 한 구를 새깁니다.
-        음은 한자 음 그대로 붙고 <b>뜻만</b> 직접 적습니다.
-        장착한 성어는 다음 판부터 함께 서고, 자혼은 판이 끝나도 사라지지 않습니다.
-      </p>
-      <div class="soul-layout">
-        <section class="soul-col soul-col--holdings" aria-label="지닌 자혼">
-          <p class="eyebrow">지닌 자혼 <em id="soul-holdings-count">0</em></p>
-          <div id="soul-grid" class="soul-grid" role="list"></div>
-          <p id="soul-holdings-empty" class="soul-empty">아직 자혼이 없습니다. 우두머리를 봉인하면 반드시 하나를 남기고, 그 밖의 자령도 드물게 남깁니다.</p>
-        </section>
-        <section class="soul-col soul-col--forge" aria-label="새김대">
-          <p class="eyebrow">새김대</p>
-          <div id="soul-slots" class="soul-slots"></div>
-          <p class="soul-reading"><span>음</span><b id="soul-reading">····</b></p>
-          <label class="soul-meaning-label" for="soul-meaning-input">뜻 <small>내가 적습니다</small></label>
-          <input id="soul-meaning-input" type="text" maxlength="40" placeholder="예 · 하늘과 땅이 열리다" />
-          <p class="eyebrow soul-odds-title">확률표 <small>태우기 전에 봅니다</small></p>
-          <div id="soul-odds" class="soul-odds"></div>
-          <p id="soul-odds-hint" class="soul-odds-hint"></p>
-          <p id="soul-forge-note" class="soul-note"></p>
-          <button id="soul-forge-button" class="soul-forge-button" type="button" data-testid="soul-forge" disabled>새기기</button>
-        </section>
-        <section class="soul-col soul-col--shelf" aria-label="내 성어">
+
+      <div class="soul-tabs" role="tablist" aria-label="집자소 갈피">
+        <button type="button" class="soul-tab is-active" data-soul-tab="forge" role="tab" aria-selected="true" data-testid="soul-tab-forge">
+          <b>새기기</b><small id="soul-tab-forge-note">자혼 0</small>
+        </button>
+        <button type="button" class="soul-tab" data-soul-tab="equip" role="tab" aria-selected="false" data-testid="soul-tab-equip">
+          <b>장착</b><small id="soul-tab-equip-note">0 / 15</small>
+        </button>
+        <button type="button" class="soul-tab soul-tab--dev" data-soul-tab="dev" role="tab" aria-selected="false" data-testid="soul-tab-dev" hidden>
+          <b>디버그</b><small>개발자</small>
+        </button>
+      </div>
+
+      <!-- ── 새기기 ─────────────────────────────────────────── -->
+      <div class="soul-view" data-soul-view="forge">
+        <p class="soul-lede">
+          봉인한 자령이 남긴 <b>자혼</b> 넷을 이어 성어 한 구를 새깁니다.
+          음은 한자 음 그대로 붙고 <b>뜻만</b> 직접 적습니다.
+        </p>
+        <div class="soul-forge-layout">
+          <section class="soul-col soul-col--holdings" aria-label="지닌 자혼">
+            <p class="eyebrow">지닌 자혼 <em id="soul-holdings-count">0</em></p>
+            <div id="soul-grid" class="soul-grid" role="list"></div>
+            <p id="soul-holdings-empty" class="soul-empty">아직 자혼이 없습니다. 우두머리를 봉인하면 반드시 하나를 남기고, 그 밖의 자령도 드물게 남깁니다.</p>
+          </section>
+          <section class="soul-col soul-col--forge" aria-label="새김대">
+            <div class="soul-forge-scroll">
+              <p class="eyebrow">새김대</p>
+              <div id="soul-slots" class="soul-slots"></div>
+              <p class="soul-reading"><span>음</span><b id="soul-reading">····</b></p>
+              <label class="soul-meaning-label" for="soul-meaning-input">뜻 <small>내가 적습니다</small></label>
+              <input id="soul-meaning-input" type="text" maxlength="40" placeholder="예 · 하늘과 땅이 열리다" />
+              <p class="eyebrow soul-odds-title">확률표 <small>태우기 전에 봅니다</small></p>
+              <div id="soul-odds" class="soul-odds"></div>
+              <p id="soul-odds-hint" class="soul-odds-hint"></p>
+            </div>
+            <!-- 새기기는 스크롤을 따라다니지 않는다 — 확률표를 끝까지 읽어도
+                 손이 닿는 자리에 그대로 있어야 한다. -->
+            <div class="soul-forge-foot">
+              <p id="soul-forge-note" class="soul-note"></p>
+              <button id="soul-forge-button" class="soul-forge-button" type="button" data-testid="soul-forge" disabled>새기기</button>
+            </div>
+          </section>
+        </div>
+      </div>
+
+      <!-- ── 장착 ───────────────────────────────────────────── -->
+      <div class="soul-view" data-soul-view="equip" hidden>
+        <p class="soul-lede">
+          장착한 성어만 다음 판에 함께 섭니다. <b>열다섯 구</b>까지 고를 수 있고,
+          만드는 데는 상한이 없습니다 — 모으는 재미와 고르는 재미를 갈라 둡니다.
+        </p>
+        <div class="soul-equip-bar">
           <p class="eyebrow">내 성어 <em id="soul-equip-count">0/15</em></p>
-          <div id="soul-list" class="soul-list"></div>
-          <p id="soul-list-empty" class="soul-empty">새긴 성어가 여기에 쌓입니다. 장착한 구만 판에 섭니다.</p>
-        </section>
+          <div class="soul-equip-actions">
+            <label class="soul-sort" for="soul-sort">정렬
+              <select id="soul-sort">
+                <option value="equipped">장착 먼저</option>
+                <option value="recent">새긴 순서</option>
+                <option value="axis">능력 종류</option>
+              </select>
+            </label>
+          </div>
+        </div>
+        <div id="soul-list" class="soul-list"></div>
+        <p id="soul-list-empty" class="soul-empty">새긴 성어가 여기에 쌓입니다. 장착한 구만 판에 섭니다.</p>
+      </div>
+
+      <!-- ── 디버그 ─────────────────────────────────────────── -->
+      <div class="soul-view soul-view--dev" data-soul-view="dev" hidden>
+        <p class="soul-lede">
+          개발자 모드에서만 서는 갈피입니다. 집자소를 손보려고 우두머리를 열 번
+          잡을 수는 없으니, 여기서 재료를 바로 채웁니다.
+        </p>
+        <div class="soul-dev-grid">
+          <section class="soul-dev-card">
+            <p class="eyebrow">자혼 얻기</p>
+            <div class="soul-dev-row">
+              <input id="soul-dev-char" type="text" maxlength="2" placeholder="天" aria-label="지급할 자혼 한자 1자" />
+              <input id="soul-dev-amount" type="number" min="1" max="99" value="1" aria-label="지급 개수" />
+              <button id="soul-dev-grant" type="button" data-testid="soul-dev-grant">지급</button>
+            </div>
+            <div class="soul-dev-row">
+              <button id="soul-dev-random" type="button" data-testid="soul-dev-random">무작위 8자 ×3</button>
+              <button id="soul-dev-pool" type="button" data-testid="soul-dev-pool">이 지역 앞 40자 ×2</button>
+            </div>
+          </section>
+          <section class="soul-dev-card">
+            <p class="eyebrow">성어 만들기</p>
+            <div class="soul-dev-row">
+              <button id="soul-dev-forge" type="button" data-testid="soul-dev-forge">무작위로 한 구 새기기</button>
+            </div>
+            <div class="soul-dev-row">
+              <button id="soul-dev-equip-all" type="button" data-testid="soul-dev-equip-all">가능한 만큼 장착</button>
+            </div>
+          </section>
+          <section class="soul-dev-card">
+            <p class="eyebrow">비우기</p>
+            <div class="soul-dev-row">
+              <button id="soul-dev-clear-idioms" type="button" data-testid="soul-dev-clear-idioms">성어만 비우기</button>
+              <button id="soul-dev-clear" class="soul-dev-danger" type="button" data-testid="soul-dev-clear">보관소 전부 비우기</button>
+            </div>
+            <p class="soul-note">되돌릴 수 없습니다.</p>
+          </section>
+        </div>
+      </div>
+
+      <!-- 새김 연출 — 인장이 찍히고 새 성어의 음이 떠오른다. -->
+      <div id="soul-forge-fx" class="soul-forge-fx" aria-hidden="true" hidden>
+        <b id="soul-forge-fx-chars"></b>
+        <em id="soul-forge-fx-reading"></em>
+        <i class="soul-forge-fx-seal">刻</i>
       </div>
     </dialog>
 

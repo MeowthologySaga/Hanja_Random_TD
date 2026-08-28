@@ -19,9 +19,11 @@ import {
 } from "../../core/custom-idioms";
 import type { CustomIdiom } from "../../core/custom-idioms";
 import {
+  EMPTY_SOUL_ARCHIVE,
   createCustomIdiom,
   discardCustomIdiom,
   equipCustomIdiom,
+  gainSoul,
   isEquipped,
   missingSouls,
   soulCost,
@@ -32,9 +34,9 @@ import {
 } from "../../core/soul-archive";
 import { defaultNotationForRegion } from "../../core/notation";
 import { learningInfoForNotation } from "../../core/learning";
-import { ctx, must } from "../app-context";
+import { ctx, must, shell } from "../app-context";
 import { showToast } from "../hud";
-import { onSoulArchiveChange, soulArchive, updateSoulArchive } from "../souls";
+import { onSoulArchiveChange, setSoulArchive, soulArchive, updateSoulArchive } from "../souls";
 
 /**
  * 이 글자의 훈·독.
@@ -52,6 +54,15 @@ function readingOf(char: string): { short: string; label: string } {
 
 /** 새김대에 올려 둔 글자들. 화면에만 사는 상태라 저장하지 않는다. */
 let draft: string[] = [];
+
+/** 지금 열려 있는 갈피. 창을 닫았다 열어도 하던 자리로 돌아온다. */
+let activeTab: "forge" | "equip" | "dev" = "forge";
+
+/** 방금 새긴 성어의 id — 장착 갈피에서 한 번 도드라지게 한다. */
+let freshIdiomId: string | null = null;
+
+/** 「내 성어」 정렬 축. */
+let shelfSort: "equipped" | "recent" | "axis" = "equipped";
 
 let bound = false;
 
@@ -86,7 +97,8 @@ function renderHoldings(archive: SoulArchive): void {
       const left = remaining(archive, char);
       const button = document.createElement("button");
       button.type = "button";
-      button.className = "soul-chip";
+      // 「지금 못 누른다」(새김대가 참)와 「재료가 없다」(남은 0)를 흐림으로 가른다.
+      button.className = left <= 0 ? "soul-chip is-empty" : "soul-chip";
       button.dataset.soulChar = char;
       button.setAttribute("role", "listitem");
       button.disabled = left <= 0 || draft.length >= CUSTOM_IDIOM_LENGTH;
@@ -186,6 +198,8 @@ function idiomCard(archive: SoulArchive, idiom: CustomIdiom): HTMLElement {
   const equipped = isEquipped(archive, idiom.id);
   const card = document.createElement("article");
   card.className = equipped ? "soul-card is-equipped" : "soul-card";
+  // 갓 새긴 구는 한 번 도드라진다 — 장착 갈피로 넘어가도 어느 것이 새 것인지 안다.
+  if (idiom.id === freshIdiomId) card.classList.add("is-fresh");
   card.dataset.soulIdiom = idiom.id;
 
   const full = archive.equipped.length >= CUSTOM_IDIOM_EQUIP_LIMIT;
@@ -209,12 +223,63 @@ function renderShelf(archive: SoulArchive): void {
   must<HTMLElement>("#soul-equip-count").textContent =
     `${archive.equipped.length}/${CUSTOM_IDIOM_EQUIP_LIMIT}`;
   empty.hidden = archive.idioms.length > 0;
-  // 장착한 구를 위로 올린다 — 판에 서는 것이 먼저 보여야 한다.
+  /*
+   * 정렬 축 셋.
+   *  · 장착 먼저 — 판에 서는 것이 먼저 보여야 한다(기본).
+   *  · 새긴 순서 — 방금 만든 것을 찾을 때.
+   *  · 능력 종류 — 같은 축을 몰아 보고 무엇을 뺄지 고를 때.
+   * 어느 축이든 마지막 갈림은 새긴 순서다 — 순서가 흔들리면 카드 자리가
+   * 매번 바뀌어 손이 자리를 못 외운다.
+   */
   const ordered = [...archive.idioms].sort((left, right) => {
-    const gap = Number(isEquipped(archive, right.id)) - Number(isEquipped(archive, left.id));
-    return gap !== 0 ? gap : right.createdAt - left.createdAt;
+    if (shelfSort === "equipped") {
+      const gap = Number(isEquipped(archive, right.id)) - Number(isEquipped(archive, left.id));
+      if (gap !== 0) return gap;
+    }
+    if (shelfSort === "axis") {
+      const gap = left.bonus.kind.localeCompare(right.bonus.kind);
+      if (gap !== 0) return gap;
+    }
+    return right.createdAt - left.createdAt;
   });
   list.replaceChildren(...ordered.map((idiom) => idiomCard(archive, idiom)));
+}
+
+/**
+ * 갈피를 바꾼다.
+ *
+ * 집자소의 일은 둘이다 — 만드는 일과 고르는 일. 한 화면에 세 칸으로 밀어
+ * 넣었을 때는 어느 쪽도 제 폭을 못 가졌다(재료 격자에 훈음이 안 들어가고,
+ * 성어 카드가 한 줄에 하나씩만 섰다). 갈피로 가르면 각자 넓어진다.
+ */
+function setTab(tab: "forge" | "equip" | "dev"): void {
+  activeTab = tab;
+  for (const button of document.querySelectorAll<HTMLButtonElement>("[data-soul-tab]")) {
+    const active = button.dataset.soulTab === tab;
+    button.classList.toggle("is-active", active);
+    button.setAttribute("aria-selected", active ? "true" : "false");
+  }
+  for (const view of document.querySelectorAll<HTMLElement>("[data-soul-view]")) {
+    view.hidden = view.dataset.soulView !== tab;
+  }
+}
+
+/** 디버그 갈피는 개발자 모드(백틱 5회)에서만 선다. */
+function syncDevTab(): void {
+  const tab = document.querySelector<HTMLButtonElement>('[data-soul-tab="dev"]');
+  if (!tab) return;
+  const enabled = shell.dataset.devMode === "1";
+  tab.hidden = !enabled;
+  // 켜 놓고 보다가 껐을 때 그 갈피에 갇히지 않게 되돌린다.
+  if (!enabled && activeTab === "dev") setTab("forge");
+}
+
+function renderTabs(archive: SoulArchive): void {
+  const held = Object.values(archive.souls).reduce((sum, count) => sum + count, 0);
+  must<HTMLElement>("#soul-tab-forge-note").textContent = `자혼 ${held}`;
+  must<HTMLElement>("#soul-tab-equip-note").textContent =
+    `${archive.equipped.length} / ${CUSTOM_IDIOM_EQUIP_LIMIT}`;
+  syncDevTab();
 }
 
 export function renderSoulArchive(): void {
@@ -225,6 +290,7 @@ export function renderSoulArchive(): void {
   renderOdds();
   renderForge(archive);
   renderShelf(archive);
+  renderTabs(archive);
 }
 
 /** 제목 화면의 자혼 배지 — 지닌 자혼이 있을 때만 선다. */
@@ -237,28 +303,50 @@ export function refreshSoulBadge(): void {
   badge.hidden = total <= 0;
 }
 
+/**
+ * 새김 연출 — 인장이 찍히고 새 성어의 음이 떠오른다.
+ *
+ * 자혼 넷은 되돌릴 수 없이 사라진다. 그 무게에 견주면 토스트 한 줄은 너무
+ * 가볍다 — 무엇이 태워졌고 무엇이 남았는지 한 박자 머물러 보여 준다.
+ * 차분한 화면·동작 줄이기에서는 움직임 없이 글자만 남는다(CSS 게이트).
+ */
+function playForgeFx(idiom: CustomIdiom): void {
+  const fx = must<HTMLElement>("#soul-forge-fx");
+  must<HTMLElement>("#soul-forge-fx-chars").textContent = [...idiom.chars].join(" ");
+  must<HTMLElement>("#soul-forge-fx-reading").textContent = idiom.reading;
+  fx.hidden = false;
+  // 재생 중에 또 새기면 애니메이션이 이어붙지 않도록 한 번 되감는다.
+  fx.classList.remove("is-playing");
+  void fx.offsetWidth;
+  fx.classList.add("is-playing");
+  window.setTimeout(() => {
+    fx.classList.remove("is-playing");
+    fx.hidden = true;
+  }, 1_400);
+}
+
 function forge(): void {
   const chars = draft.join("");
   const meaning = must<HTMLInputElement>("#soul-meaning-input").value;
-  let message = "";
-  updateSoulArchive((archive) => {
-    /*
-     * 굴림은 여기서 난수를 만들어 넘긴다. 규칙 모듈이 난수를 모르게 두면
-     * 시험이 값을 직접 정할 수 있고, 그래서 확률표와 실제 굴림이 어긋나지
-     * 않는다는 것을 시험으로 못박을 수 있다.
-     */
-    const result = createCustomIdiom(archive, {
-      chars,
-      meaning,
-      axisRoll: Math.random(),
-      valueRoll: Math.random(),
-      id: `custom-${Date.now().toString(36)}-${Math.floor(Math.random() * 1e6).toString(36)}`,
-      now: Date.now()
-    });
-    message = result.message;
-    return result.archive;
+  /*
+   * 굴림은 여기서 난수를 만들어 넘긴다. 규칙 모듈이 난수를 모르게 두면
+   * 시험이 값을 직접 정할 수 있고, 그래서 확률표와 실제 굴림이 어긋나지
+   * 않는다는 것을 시험으로 못박을 수 있다.
+   */
+  const result = createCustomIdiom(soulArchive(), {
+    chars,
+    meaning,
+    axisRoll: Math.random(),
+    valueRoll: Math.random(),
+    id: `custom-${Date.now().toString(36)}-${Math.floor(Math.random() * 1e6).toString(36)}`,
+    now: Date.now()
   });
-  showToast(message);
+  setSoulArchive(result.archive);
+  if (result.idiom) {
+    freshIdiomId = result.idiom.id;
+    playForgeFx(result.idiom);
+  }
+  showToast(result.message);
   draft = [];
   must<HTMLInputElement>("#soul-meaning-input").value = "";
   renderSoulArchive();
@@ -322,6 +410,109 @@ export function openSoulArchive(): void {
   renderSoulArchive();
 }
 
+/* ── 디버그 갈피 ──────────────────────────────────────────────
+   개발자 모드(백틱 5회)에서만 선다. 보관소는 판 밖의 장부라 런이 없어도
+   손댈 수 있다 — 집자소를 열어 보려고 매번 우두머리를 열 번 잡을 수는 없다.
+   ────────────────────────────────────────────────────────── */
+
+/** 이 판(또는 지역)에서 뽑을 수 있는 글자들. 런이 없으면 지역 기본 풀을 쓴다. */
+function devPool(): readonly string[] {
+  const pool = ctx.engine.summonDefinitions();
+  if (pool.length > 0) return pool.map((definition) => definition.char);
+  return [...ctx.engine.catalog.activePool].map((definition) => definition.char);
+}
+
+function devGrant(): void {
+  const char = [...must<HTMLInputElement>("#soul-dev-char").value.trim()][0] ?? "";
+  const amount = Math.max(1, Math.min(99, Number(must<HTMLInputElement>("#soul-dev-amount").value) || 1));
+  if (!char) {
+    showToast("지급할 한자 1자를 적으세요");
+    return;
+  }
+  updateSoulArchive((archive) => gainSoul(archive, char, amount));
+  refreshSoulBadge();
+  showToast(`${char} 자혼 +${amount}`);
+}
+
+function devRandom(): void {
+  const pool = devPool();
+  if (pool.length === 0) {
+    showToast("소환 풀이 비어 있습니다");
+    return;
+  }
+  const chars: string[] = [];
+  while (chars.length < 8 && chars.length < pool.length) {
+    const pick = pool[Math.floor(Math.random() * pool.length)];
+    if (pick && !chars.includes(pick)) chars.push(pick);
+  }
+  updateSoulArchive((archive) => chars.reduce((next, char) => gainSoul(next, char, 3), archive));
+  refreshSoulBadge();
+  showToast(`자혼 ${chars.join("")} 각 3개`);
+}
+
+function devPoolGrant(): void {
+  const chars = devPool().slice(0, 40);
+  if (chars.length === 0) {
+    showToast("소환 풀이 비어 있습니다");
+    return;
+  }
+  updateSoulArchive((archive) => chars.reduce((next, char) => gainSoul(next, char, 2), archive));
+  refreshSoulBadge();
+  showToast(`앞 ${chars.length}자 각 2개`);
+}
+
+/** 지닌 자혼에서 넷을 골라 바로 한 구 새긴다. 연출도 그대로 탄다. */
+function devForge(): void {
+  const archive = soulArchive();
+  const available: string[] = [];
+  for (const [char, count] of Object.entries(archive.souls)) {
+    for (let index = 0; index < count; index += 1) available.push(char);
+  }
+  if (available.length < CUSTOM_IDIOM_LENGTH) {
+    showToast("자혼이 넷 이상 있어야 합니다");
+    return;
+  }
+  const picked: string[] = [];
+  const pool = [...available];
+  while (picked.length < CUSTOM_IDIOM_LENGTH) {
+    picked.push(...pool.splice(Math.floor(Math.random() * pool.length), 1));
+  }
+  const result = createCustomIdiom(archive, {
+    chars: picked.join(""),
+    meaning: "",
+    axisRoll: Math.random(),
+    valueRoll: Math.random(),
+    id: `custom-${Date.now().toString(36)}-${Math.floor(Math.random() * 1e6).toString(36)}`,
+    now: Date.now()
+  });
+  setSoulArchive(result.archive);
+  if (result.idiom) {
+    freshIdiomId = result.idiom.id;
+    playForgeFx(result.idiom);
+  }
+  showToast(result.message);
+  refreshSoulBadge();
+}
+
+/** 빈 자리가 차는 데까지 장착한다. */
+function devEquipAll(): void {
+  updateSoulArchive((archive) =>
+    archive.idioms.reduce((next, idiom) => equipCustomIdiom(next, idiom.id), archive)
+  );
+  showToast("빈 자리까지 장착했습니다");
+}
+
+function devClearIdioms(): void {
+  updateSoulArchive((archive) => ({ ...archive, idioms: [], equipped: [] }));
+  showToast("새긴 성어를 비웠습니다");
+}
+
+function devClearAll(): void {
+  setSoulArchive(EMPTY_SOUL_ARCHIVE);
+  refreshSoulBadge();
+  showToast("보관소를 전부 비웠습니다");
+}
+
 export function bindSoulArchive(): void {
   if (bound) return;
   bound = true;
@@ -330,6 +521,33 @@ export function bindSoulArchive(): void {
   box.addEventListener("click", handleClick);
   must<HTMLButtonElement>("#soul-close").addEventListener("click", () => box.close());
   must<HTMLButtonElement>("#soul-forge-button").addEventListener("click", forge);
+
+  for (const tab of document.querySelectorAll<HTMLButtonElement>("[data-soul-tab]")) {
+    tab.addEventListener("click", () => {
+      setTab(tab.dataset.soulTab as "forge" | "equip" | "dev");
+      renderSoulArchive();
+    });
+  }
+  must<HTMLSelectElement>("#soul-sort").addEventListener("change", (event) => {
+    shelfSort = (event.target as HTMLSelectElement).value as typeof shelfSort;
+    renderSoulArchive();
+  });
+
+  must<HTMLButtonElement>("#soul-dev-grant").addEventListener("click", devGrant);
+  must<HTMLButtonElement>("#soul-dev-random").addEventListener("click", devRandom);
+  must<HTMLButtonElement>("#soul-dev-pool").addEventListener("click", devPoolGrant);
+  must<HTMLButtonElement>("#soul-dev-forge").addEventListener("click", devForge);
+  must<HTMLButtonElement>("#soul-dev-equip-all").addEventListener("click", devEquipAll);
+  must<HTMLButtonElement>("#soul-dev-clear-idioms").addEventListener("click", devClearIdioms);
+  must<HTMLButtonElement>("#soul-dev-clear").addEventListener("click", devClearAll);
+
+  /*
+   * 개발자 모드는 창 밖(백틱 5회)에서 켜진다. 창이 열려 있는 동안 켜도
+   * 갈피가 그 자리에서 서야 하므로, 같은 키를 여기서도 듣고 다시 그린다.
+   */
+  window.addEventListener("keydown", (event) => {
+    if (event.code === "Backquote" && dialog().open) window.setTimeout(syncDevTab, 0);
+  });
   // 새김대를 비운 채 닫으면 다음에 열었을 때 남은 글자에 놀라지 않는다.
   box.addEventListener("close", () => {
     draft = [];

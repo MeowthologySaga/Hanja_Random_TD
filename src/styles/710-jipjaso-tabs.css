@@ -1,0 +1,413 @@
+/*
+ * 집자소 — 갈피 구조와 그 안의 살결.
+ *
+ * 680 이 대화상자의 바탕과 카드를 맡고, 이 파일은 그 위에 얹힌 **갈피**와
+ * 갈피마다 달라지는 짜임을 맡는다. 파일을 가른 이유는 680 이 이미 길고,
+ * 갈피는 나중에 하나 더 늘 수 있기 때문이다.
+ *
+ * 선택자는 전부 `.soul-dialog` 로 묶는다 — 060 의 `.codex-dialog p`(0,1,1)가
+ * 맨 클래스 규칙을 이겨 글자색을 먹색으로 눌러 버린다(680 머리말 참조).
+ */
+
+/* ══════════════════════════════════════════════════════════════════
+   갈피 — 만드는 일과 고르는 일을 가른다.
+
+   세 칸을 한 화면에 밀어 넣었을 때는 어느 쪽도 제 폭을 못 가졌다. 재료
+   격자가 좁아 훈음이 안 들어갔고, 성어 카드는 한 줄에 하나씩만 섰다.
+   ══════════════════════════════════════════════════════════════════ */
+
+.soul-dialog .soul-tabs {
+  display: flex;
+  gap: 4px;
+  margin: var(--sp-2) 0 var(--sp-3);
+  border-bottom: 1px solid rgba(122, 90, 42, 0.35);
+}
+
+/*
+ * `hidden` 은 브라우저 기본 `display: none` 으로 감추는데, 아래 `display: grid`
+ * 가 그것을 이긴다. 이 파일에서 display 를 주는 요소는 감추는 규칙을 반드시
+ * 짝으로 둔다 — 연출 막에서 한 번 당한 실수다.
+ */
+.soul-dialog .soul-tab[hidden] {
+  display: none;
+}
+
+.soul-dialog .soul-tab {
+  display: grid;
+  gap: 1px;
+  padding: 6px 16px 7px;
+  border: 1px solid transparent;
+  border-bottom: 0;
+  border-radius: var(--r-sm) var(--r-sm) 0 0;
+  background: transparent;
+  color: var(--text-300);
+  cursor: pointer;
+  text-align: left;
+}
+
+.soul-dialog .soul-tab b {
+  font-size: var(--fs-sm);
+  font-weight: 700;
+}
+
+.soul-dialog .soul-tab small {
+  color: var(--text-400);
+  font-size: var(--fs-2xs);
+  font-variant-numeric: tabular-nums;
+}
+
+.soul-dialog .soul-tab:hover:not(.is-active) {
+  color: var(--text-100);
+}
+
+/* 고른 갈피는 종이 한 겹이 앞으로 나온 것처럼 — 아래 선을 덮어 이어 붙인다. */
+.soul-dialog .soul-tab.is-active {
+  margin-bottom: -1px;
+  padding-bottom: 8px;
+  border-color: rgba(122, 90, 42, 0.35);
+  background: rgba(255, 252, 242, 0.75);
+  color: var(--text-100);
+}
+
+.soul-dialog .soul-tab.is-active b {
+  color: var(--gold-200);
+}
+
+/* 디버그 갈피는 제 것이 아님을 색으로 알린다. */
+.soul-dialog .soul-tab--dev b {
+  color: #96301f;
+}
+
+.soul-dialog .soul-view[hidden] {
+  display: none;
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   새기기 갈피
+   ══════════════════════════════════════════════════════════════════ */
+
+.soul-dialog .soul-forge-layout {
+  display: grid;
+  /* 재료가 넓어야 훈음이 들어간다. 새김대는 확률표를 안고 있어 그다음이다. */
+  grid-template-columns: minmax(300px, 1.15fr) minmax(280px, 1fr);
+  gap: var(--sp-4);
+  align-items: start;
+}
+
+/* 새김대는 스크롤하되 [새기기]는 따라다니지 않는다. */
+.soul-dialog .soul-col--forge {
+  display: grid;
+  grid-template-rows: 1fr auto;
+  max-height: 430px;
+  overflow: hidden;
+}
+
+.soul-dialog .soul-forge-scroll {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+/*
+ * 확률표를 끝까지 읽어도 [새기기]가 손 닿는 자리에 그대로 있어야 한다.
+ * 스크롤 밖 고정 행으로 두고, 위에 그림자를 한 줄 깔아 "여기서 스크롤이
+ * 끝난다"를 눈에 알린다.
+ */
+.soul-dialog .soul-forge-foot {
+  display: grid;
+  gap: 4px;
+  padding-top: var(--sp-2);
+  border-top: 1px solid rgba(122, 90, 42, 0.28);
+  box-shadow: 0 -8px 10px -10px rgba(60, 44, 20, 0.5);
+}
+
+/* 자혼 조각 — 글자 · 훈음 · 남은 수 */
+.soul-dialog .soul-grid {
+  grid-template-columns: repeat(auto-fill, minmax(88px, 1fr));
+}
+
+.soul-dialog .soul-chip {
+  gap: 1px;
+  padding: 7px 4px 5px;
+}
+
+/*
+ * 새김대가 다 차면 조각이 전부 잠긴다. 그때 원래 잠금 흐림(0.35)을 그대로
+ * 쓰면 보관함이 통째로 사라진 것처럼 보여, 무엇을 지녔는지 읽을 수가 없다.
+ * 「지금 못 누른다」와 「글자를 읽을 수 있다」는 다른 일이라 흐림을 나눈다.
+ */
+.soul-dialog .soul-chip:disabled {
+  opacity: 0.72;
+}
+
+/* 정말 다 쓴 글자(남은 0)는 더 눌러 둔다 — 이건 재료가 없다는 뜻이다. */
+.soul-dialog .soul-chip.is-empty:disabled {
+  opacity: 0.34;
+}
+
+.soul-dialog .soul-chip small {
+  /* 훈음이 길어도 조각이 들쭉날쭉해지지 않게 두 줄에서 자른다. */
+  display: -webkit-box;
+  overflow: hidden;
+  color: var(--text-400);
+  font-size: 10.5px;
+  line-height: 1.25;
+  text-align: center;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+/* 새김대 자리에도 훈음을 적어, 올려 둔 채로도 읽을 수 있게 한다. */
+.soul-dialog .soul-slot {
+  display: grid;
+  align-content: center;
+  gap: 2px;
+  aspect-ratio: auto;
+  min-height: 74px;
+  padding: 4px 2px;
+}
+
+.soul-dialog .soul-slot b {
+  font-size: var(--fs-2xl);
+  line-height: 1;
+}
+
+.soul-dialog .soul-slot small {
+  color: var(--text-400);
+  font-size: 10.5px;
+  line-height: 1.2;
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   장착 갈피
+   ══════════════════════════════════════════════════════════════════ */
+
+.soul-dialog .soul-equip-bar {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  margin-bottom: var(--sp-2);
+}
+
+.soul-dialog .soul-sort {
+  color: var(--gold-500);
+  font-size: var(--fs-2xs);
+  letter-spacing: 0.14em;
+}
+
+.soul-dialog .soul-sort select {
+  margin-left: 6px;
+  padding: 3px 6px;
+  border: 1px solid rgba(122, 90, 42, 0.45);
+  border-radius: var(--r-sm);
+  background: rgba(255, 252, 242, 0.9);
+  color: var(--text-200);
+  font: inherit;
+  font-size: var(--fs-2xs);
+  letter-spacing: 0;
+}
+
+/* 카드가 한 줄에 하나씩 서던 것을 격자로 편다 — 열다섯 구를 한눈에 훑는다. */
+.soul-dialog .soul-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(232px, 1fr));
+  gap: 8px;
+  max-height: 430px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+/* 갓 새긴 구는 한 번 도드라진다 — 갈피를 옮겨도 어느 것이 새 것인지 안다. */
+.soul-dialog .soul-card.is-fresh {
+  animation: soul-card-fresh 1.6s ease-out;
+}
+
+@keyframes soul-card-fresh {
+  0% {
+    box-shadow: 0 0 0 2px rgba(107, 74, 156, 0.75), 0 0 18px rgba(107, 74, 156, 0.4);
+  }
+
+  100% {
+    box-shadow: 0 0 0 2px transparent, 0 0 18px transparent;
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   디버그 갈피 — 개발자 모드에서만 선다.
+   ══════════════════════════════════════════════════════════════════ */
+
+.soul-dialog .soul-dev-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: var(--sp-3);
+}
+
+.soul-dialog .soul-dev-card {
+  display: grid;
+  gap: 6px;
+  align-content: start;
+  padding: 12px 14px 14px;
+  border: 1px dashed rgba(150, 48, 31, 0.4);
+  border-radius: var(--r-sm);
+  background: rgba(255, 252, 242, 0.6);
+}
+
+.soul-dialog .soul-dev-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.soul-dialog .soul-dev-row input {
+  flex: 1 1 60px;
+  min-width: 0;
+  padding: 5px 8px;
+  border: 1px solid rgba(122, 90, 42, 0.45);
+  border-radius: var(--r-sm);
+  background: rgba(255, 252, 242, 0.95);
+  color: var(--text-100);
+  font: inherit;
+  font-size: var(--fs-sm);
+}
+
+.soul-dialog .soul-dev-row button {
+  flex: 1 1 auto;
+  padding: 5px 10px;
+  border: 1px solid rgba(122, 90, 42, 0.5);
+  border-radius: var(--r-sm);
+  background: rgba(247, 240, 221, 0.95);
+  color: var(--text-200);
+  font-size: var(--fs-2xs);
+  cursor: pointer;
+}
+
+.soul-dialog .soul-dev-row button:hover {
+  border-color: var(--gold-300);
+  color: var(--text-100);
+}
+
+.soul-dialog .soul-dev-danger {
+  border-color: rgba(150, 48, 31, 0.5) !important;
+  color: #96301f !important;
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   새김 연출 — 인장이 찍히고 새 성어의 음이 떠오른다.
+
+   자혼 넷은 되돌릴 수 없이 사라진다. 그 무게에 견주면 토스트 한 줄은 너무
+   가볍다. 한 박자 머물러 무엇이 남았는지 보여 준다.
+   ══════════════════════════════════════════════════════════════════ */
+
+/*
+ * `hidden` 속성은 브라우저 기본 `display: none` 으로 감추는데, 아래 규칙이
+ * `display: grid` 로 그것을 이긴다 — 그래서 연출이 끝나도 막이 안 걷혀
+ * 뒤 화면이 계속 뿌옇게 남았다. 감추는 규칙을 명시해 둔다.
+ */
+.soul-dialog .soul-forge-fx[hidden] {
+  display: none;
+}
+
+.soul-dialog .soul-forge-fx {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 6px;
+  background: radial-gradient(ellipse at center, rgba(247, 240, 221, 0.94) 0%, rgba(247, 240, 221, 0.7) 45%, transparent 72%);
+  pointer-events: none;
+}
+
+.soul-dialog .soul-forge-fx b {
+  color: var(--text-100);
+  font-size: 46px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+}
+
+.soul-dialog .soul-forge-fx em {
+  color: #59397f;
+  font-style: normal;
+  font-size: var(--fs-lg);
+  letter-spacing: 0.18em;
+}
+
+.soul-dialog .soul-forge-fx-seal {
+  position: absolute;
+  top: 26%;
+  right: 22%;
+  display: grid;
+  place-items: center;
+  width: 54px;
+  height: 54px;
+  border-radius: 6px;
+  background: #9f2f23;
+  color: #f6ecd4;
+  font-style: normal;
+  font-size: 30px;
+  font-weight: 900;
+  opacity: 0;
+}
+
+.soul-dialog .soul-forge-fx.is-playing b {
+  animation: soul-fx-chars 1.4s ease-out both;
+}
+
+.soul-dialog .soul-forge-fx.is-playing em {
+  animation: soul-fx-reading 1.4s ease-out both;
+}
+
+.soul-dialog .soul-forge-fx.is-playing .soul-forge-fx-seal {
+  animation: soul-fx-seal 1.4s cubic-bezier(0.2, 1.4, 0.4, 1) both;
+}
+
+@keyframes soul-fx-chars {
+  0% { opacity: 0; transform: scale(1.4); letter-spacing: 0.5em; }
+  28% { opacity: 1; transform: scale(1); letter-spacing: 0.12em; }
+  78% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+@keyframes soul-fx-reading {
+  0%, 24% { opacity: 0; transform: translateY(6px); }
+  46% { opacity: 1; transform: translateY(0); }
+  78% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+@keyframes soul-fx-seal {
+  0%, 40% { opacity: 0; transform: scale(2.2) rotate(-14deg); }
+  56% { opacity: 0.95; transform: scale(1) rotate(-8deg); }
+  80% { opacity: 0.95; }
+  100% { opacity: 0; }
+}
+
+/* 차분한 화면·동작 줄이기 — 움직임은 걷고 글자는 남긴다(정보는 더 오래). */
+.game-shell[data-calm-screen="1"] .soul-dialog .soul-forge-fx.is-playing b,
+.game-shell[data-calm-screen="1"] .soul-dialog .soul-forge-fx.is-playing em,
+.game-shell[data-calm-screen="1"] .soul-dialog .soul-forge-fx.is-playing .soul-forge-fx-seal {
+  animation: soul-fx-hold 1.4s linear both;
+}
+
+@keyframes soul-fx-hold {
+  0%, 88% { opacity: 1; transform: none; }
+  100% { opacity: 0; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .soul-dialog .soul-forge-fx.is-playing b,
+  .soul-dialog .soul-forge-fx.is-playing em,
+  .soul-dialog .soul-forge-fx.is-playing .soul-forge-fx-seal {
+    animation: soul-fx-hold 1.4s linear both;
+  }
+
+  .soul-dialog .soul-card.is-fresh {
+    animation: none;
+    box-shadow: 0 0 0 2px rgba(107, 74, 156, 0.6);
+  }
+}
