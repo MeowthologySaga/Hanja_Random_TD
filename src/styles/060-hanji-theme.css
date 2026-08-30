@@ -1416,20 +1416,16 @@ select option {
 }
 
 /*
- * 상태 띠 둘만은 34절의 깔기를 그대로 둔다.
+ * `.shop-help-strip` 과 `.synergy-strip` 의 규칙은 여기 없다.
  *
- * 700-nineslice.css 가 되살린 것은 자원 레일·웨이브 쪽지·기능군 레일·패널
- * 바닥 넷이고, 이 띠는 거기 없다. 여기서 걷으면 띠가 맨 배경으로 돌아간다 —
- * 사진 대조에서 화면 아래 3,800화소가 바뀌어 잡혔다. 9슬라이스로 옮기는 건
- * 별도 과제다.
+ * 이 둘은 **어떤 마크업에도 없다** — 아홉 파일에 걸쳐 68줄이 남아 있지만
+ * 화면에 서는 요소가 없다. 한 번 되살렸다가 도로 걷은 자리인데, 처음에는
+ * 사진 대조에서 화면 아래 3,800화소가 바뀌기에 살아 있는 줄 알았다. 그 차이는
+ * 애니메이션을 멈추지 않고 찍어서 생긴 전장 배너의 위상 차이였다.
+ *
+ * 나머지 죽은 규칙을 걷는 일은 별도 과제로 남긴다 — 여러 파일에 흩어져 있고,
+ * 다른 선택자와 묶인 규칙도 있어 한 번에 손대면 살아 있는 줄까지 벤다.
  */
-.shop-help-strip,
-.synergy-strip {
-  padding: 3px 8px;
-  background:
-    url("/assets/ui/frames/status-strip-v1.webp") center / 100% 100% no-repeat !important;
-  box-shadow: none !important;
-}
 
 .synergy-strip span {
   background: rgba(28, 25, 21, 0.8) !important;
