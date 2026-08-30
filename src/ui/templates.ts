@@ -150,6 +150,15 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
     </section>
 
     <aside class="control-panel" aria-label="합성과 수비 조작 패널">
+      <!--
+        패널에서 한 일의 결과는 **패널에서** 알린다.
+
+        무대 토스트는 아래 가운데(640, 700)에 뜨는데, 부적을 쓰는 사람의 눈은
+        오른쪽 패널의 종이(≈1080, 330)에 있다. 450px 떨어진 자리는 시야에 안
+        들어와서 「자령이 응답했다」가 나온 줄도 모른다. 그래서 패널에서
+        시작한 일은 여기에 띄운다.
+      -->
+      <div id="panel-toast" class="panel-toast" role="status" aria-live="polite" hidden></div>
       <header class="brand-row">
         <div><p class="eyebrow">오행 자령 디펜스</p><h1>천자진</h1></div>
         <div class="header-actions">

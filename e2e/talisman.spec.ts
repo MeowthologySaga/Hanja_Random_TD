@@ -123,7 +123,8 @@ test("the default-on talisman tab turns a submitted trace into a jaryeong reward
   const rewardShownAt = Date.now();
   await expect(page.locator("#talisman-status")).toContainText("부적 완성");
   await expect(page.locator("#talisman-seal")).toBeVisible();
-  await expect(page.locator("#toast")).toContainText("자령이 응답했습니다");
+  // 보상 알림은 무대가 아니라 **패널**에 뜬다 — 부적을 쓰는 눈이 거기 있다.
+  await expect(page.locator("#panel-toast")).toContainText("자령이 응답했습니다");
   // 그 글자의 자령이 부적지 위로 내려와 보상 꾸러미를 놓는다.
   await expect(page.locator(".talisman-visit")).toHaveCount(1);
   await expect(page.locator(".talisman-visit-name")).toContainText("자령");
@@ -134,7 +135,30 @@ test("the default-on talisman tab turns a submitted trace into a jaryeong reward
    */
   const spokenLine = (await page.locator(".talisman-visit-line").textContent())?.trim() ?? "";
   expect(spokenLine.length).toBeGreaterThan(0);
-  await expect(page.locator("#toast")).toContainText(spokenLine);
+  /*
+   * 알림은 **패널 안**에 뜬다.
+   *
+   * 부적을 쓰는 동안 사람의 눈은 오른쪽 패널의 종이에 있다. 무대 토스트는
+   * 아래 가운데(640, 700)라 450px 떨어져 있어 나온 줄도 모른다. 그리고 그
+   * 알림이 기능군 탭을 덮어서도 안 된다 — 시선을 끌어온 값을 도로 무는 셈이다.
+   */
+  await expect(page.locator("#panel-toast")).toContainText(spokenLine);
+  const gaze = await page.evaluate(() => {
+    const toast = document.querySelector("#panel-toast")!.getBoundingClientRect();
+    const paper = document.querySelector("#talisman-paper")!.getBoundingClientRect();
+    const tabs = document.querySelector(".panel-tabs")!.getBoundingClientRect();
+    const stageToast = document.querySelector("#toast")!.getBoundingClientRect();
+    const gap = (a: DOMRect, b: DOMRect) => Math.hypot(
+      (a.x + a.width / 2) - (b.x + b.width / 2),
+      (a.y + a.height / 2) - (b.y + b.height / 2)
+    );
+    return {
+      coversTabs: toast.bottom > tabs.top + 1,
+      nearerThanStage: gap(toast, paper) < gap(stageToast, paper)
+    };
+  });
+  expect(gaze.coversTabs).toBe(false);
+  expect(gaze.nearerThanStage).toBe(true);
   // 말줄은 발치 꾸러미를 덮지 않는다 — 자령 머리 위에 선다.
   const lineBox = await page.locator(".talisman-visit-line").boundingBox();
   const giftBox = await page.locator(".talisman-gift").first().boundingBox();

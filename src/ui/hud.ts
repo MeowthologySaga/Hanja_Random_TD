@@ -346,7 +346,47 @@ function renderToastMessage(message: string): void {
   });
 }
 
-export function showToast(message: string, warning = false): void {
+/**
+ * 알림이 뜰 자리.
+ *
+ *  · stage — 무대 아래 가운데. 웨이브·보스처럼 **전장에서 일어난** 일.
+ *  · panel — 오른쪽 조작 패널 안. 부적·합성·농축처럼 **패널에서 한** 일.
+ *
+ * 사람은 자기가 손댄 곳을 본다. 부적을 쓰는 동안 눈은 종이에 있는데 알림이
+ * 무대 아래 가운데(450px 떨어진 곳)에 뜨면 나온 줄도 모른다.
+ */
+export type ToastWhere = "stage" | "panel";
+
+let panelToastTimer = 0;
+
+/**
+ * 패널 안 알림.
+ *
+ * 무대 토스트보다 오래 남긴다(3.4초). 패널 일은 손이 바쁜 중에 일어나서,
+ * 눈이 종이에서 알림으로 옮겨 오는 데 시간이 더 걸린다.
+ */
+export function showPanelToast(message: string, warning = false): void {
+  const box = document.getElementById("panel-toast");
+  if (!box) return;
+  box.textContent = message;
+  box.classList.toggle("panel-toast--warning", warning);
+  box.hidden = false;
+  // 재생 중에 또 뜨면 애니메이션이 이어붙지 않도록 한 번 되감는다.
+  box.classList.remove("is-live");
+  void box.offsetWidth;
+  box.classList.add("is-live");
+  window.clearTimeout(panelToastTimer);
+  panelToastTimer = window.setTimeout(() => {
+    box.classList.remove("is-live");
+    box.hidden = true;
+  }, 3_400);
+}
+
+export function showToast(message: string, warning = false, where: ToastWhere = "stage"): void {
+  if (where === "panel") {
+    showPanelToast(message, warning);
+    return;
+  }
   renderToastMessage(message);
   toast.classList.toggle("toast--warning", warning);
   toast.classList.remove("toast--visible");

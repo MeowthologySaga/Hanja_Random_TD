@@ -414,11 +414,11 @@ function runActive(): boolean {
  */
 function grantReward(): void {
   if (!runActive()) {
-    showToast("부적 완성! 자령이 깃들 봉인구가 늘었습니다");
+    showToast("부적 완성! 자령이 깃들 봉인구가 늘었습니다", false, "panel");
     return;
   }
   if (talismanCharges() <= 0) {
-    showToast(`부적 완성! 남은 장수가 없습니다 — 다음 웨이브에 ${CHARGES_PER_WAVE}장이 더 옵니다`);
+    showToast(`부적 완성! 남은 장수가 없습니다 — 다음 웨이브에 ${CHARGES_PER_WAVE}장이 더 옵니다`, false, "panel");
     return;
   }
   if (!currentDefinition) return;
@@ -447,7 +447,11 @@ function grantReward(): void {
   // 말은 한 번만 뽑아 말풍선과 토스트가 같은 말을 하게 한다. 강림 연출은
   // 통째로 aria-hidden 이라, 이 말이 소리로 닿는 길은 토스트뿐이다.
   const line = pickTalismanVisitLine(grants[0]?.kind ?? "gold");
-  showToast(`${char} 자령이 응답했습니다 — "${line}" · ${summary}`);
+  /*
+   * 부적을 쓰는 동안 눈은 오른쪽 패널의 종이에 있다. 무대 아래 가운데에
+   * 띄우면 450px 떨어져 있어 나온 줄도 모른다 — 패널에서 알린다.
+   */
+  showToast(`${char} 자령이 응답했습니다 — "${line}" · ${summary}`, false, "panel");
   playTalismanRewardVisit(char, wuxing, grants, goldBefore, line);
 }
 
