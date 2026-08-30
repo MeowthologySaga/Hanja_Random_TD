@@ -1311,16 +1311,13 @@ select option {
   padding: 2px 6px;
 }
 
-/* 자원 4칸 레일 */
-.resource-grid {
-  border-style: solid;
-  border-width: 15px 18px;
-  border-image: url("/assets/ui/frames/resource-rail-v1.webp") 15 18 fill stretch;
-  background: none;
-  padding: 0 2px;
-  gap: 0;
-}
-
+/*
+ * 자원 레일·웨이브 쪽지·기능군 레일·상태 띠의 9슬라이스는 여기 없다.
+ *
+ * 바로 아래 34절이 `border-image: none !important` 로 넷을 통째로 껐던 자리다.
+ * 지금은 700-nineslice.css 가 **가상 요소**에 다시 걸어, 테두리 두께가
+ * 레이아웃을 밀지 않는다. 여기 남아 있던 규칙은 한 줄도 화면에 닿지 않았다.
+ */
 .resource-grid div {
   background: none !important;
   box-shadow: inset -1px 0 0 rgba(122, 90, 42, 0.28) !important;
@@ -1329,24 +1326,6 @@ select option {
 
 .resource-grid div:last-child {
   box-shadow: none !important;
-}
-
-/* 웨이브 브리핑 — 우측 먹 인장이 고정 영역에 있다 */
-.wave-card {
-  border-style: solid;
-  border-width: 15px 24px 15px 18px;
-  border-image: url("/assets/ui/frames/briefing-card-v1.webp") 15 24 15 18 fill stretch;
-  background: none !important;
-  box-shadow: var(--lift-1) !important;
-}
-
-/* 하단 기능군 레일 — 자체 분할선 때문에 늘리지 않는다 */
-.panel-tabs {
-  border-style: solid;
-  border-width: 10px 14px;
-  border-image: url("/assets/ui/frames/nav-rail-v1.webp") 10 14 fill stretch;
-  background: none;
-  box-shadow: none;
 }
 
 /* 화면 제목 구획선 */
@@ -1360,16 +1339,6 @@ select option {
   background-repeat: no-repeat;
   background-position: center bottom;
   background-size: 100% 8px;
-}
-
-/* 상태 띠 */
-.shop-help-strip,
-.synergy-strip {
-  border-style: solid;
-  border-width: 10px 14px;
-  border-image: url("/assets/ui/frames/status-strip-v1.webp") 10 14 fill stretch;
-  background: none !important;
-  box-shadow: none !important;
 }
 
 .synergy-strip span {
@@ -1419,27 +1388,41 @@ select option {
   border-image: none !important;
 }
 
+/*
+ * 34절이 넷에 깔았던 `background: … 100% 100%` 는 지웠다.
+ *
+ * 그 깔기가 그림을 9등분하지 않고 가로세로 다른 배율로 늘려 최악 1.87배까지
+ * 찌그러뜨린 원인이었다. 700-nineslice.css 가 `background-image: none
+ * !important` 로 걷고 가상 요소에 9슬라이스를 다시 걸었으니, 여기 남겨 두면
+ * 「지금 화면이 무엇으로 그려지는가」를 읽는 사람만 헷갈린다.
+ *
+ * 여백과 그림자만 남긴다 — 이 둘은 아직 화면에 닿는다(사진 대조로 확인).
+ */
 .resource-grid {
   padding: 3px 5px;
-  background:
-    url("/assets/ui/frames/resource-rail-v1.webp") center / 100% 100% no-repeat !important;
+  /* 칸 사이를 붙인다 — 벌리면 레일 그림의 칸막이와 칸 경계가 어긋난다. */
+  gap: 0;
   box-shadow: var(--lift-1);
 }
 
 .wave-card {
   padding: 6px 12px 6px 10px;
-  background:
-    url("/assets/ui/frames/briefing-card-v1.webp") center / 100% 100% no-repeat !important;
   box-shadow: var(--lift-1) !important;
 }
 
 .panel-tabs {
   padding: 4px 6px;
-  background:
-    url("/assets/ui/frames/nav-rail-v1.webp") center / 100% 100% no-repeat !important;
   box-shadow: none !important;
 }
 
+/*
+ * 상태 띠 둘만은 34절의 깔기를 그대로 둔다.
+ *
+ * 700-nineslice.css 가 되살린 것은 자원 레일·웨이브 쪽지·기능군 레일·패널
+ * 바닥 넷이고, 이 띠는 거기 없다. 여기서 걷으면 띠가 맨 배경으로 돌아간다 —
+ * 사진 대조에서 화면 아래 3,800화소가 바뀌어 잡혔다. 9슬라이스로 옮기는 건
+ * 별도 과제다.
+ */
 .shop-help-strip,
 .synergy-strip {
   padding: 3px 8px;
