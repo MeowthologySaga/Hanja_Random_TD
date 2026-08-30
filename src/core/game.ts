@@ -265,7 +265,16 @@ const BASE_IDIOM_BONUS_CAPS: Partial<Record<IdiomBonusKind, number>> = {
   damage: 0.15,
   range: 36,
   enemySlow: 0.1,
-  evolutionGold: 8
+  evolutionGold: 8,
+  /*
+   * 뜻에서 힘을 끌어내면서(idiom-effects.ts) 지역 성어도 이 세 축을 쓴다.
+   * 상한이 없으면 `cap === undefined` 로 무제한이 되어, 한 축으로 몰린 구를
+   * 여럿 세우는 순간 판이 무너진다. 커스텀 통(아래)보다 낮게 잡는다 —
+   * 지역 성어는 거저 얻는 것이고 커스텀은 자혼을 태워 만든 것이다.
+   */
+  killEssence: 3,
+  waveGold: 24,
+  weaknessDamage: 0.24
 };
 
 /**
@@ -1061,7 +1070,7 @@ export class GameEngine {
     if (synergy) damage *= 1 + GAME_CONFIG.synergyBonus + (profile.role === "support" ? 0.08 : 0);
     // 커스텀 성어의 「약점 오행 적에게 피해 +N%」는 약점 배수 위에 곱한다 —
     // 약점을 찔렀을 때만 붙는 힘이라야 축의 이름과 실제가 같다.
-    if (weakness) damage *= GAME_CONFIG.weaknessMultiplier * (1 + this.customIdiomBonus("weaknessDamage"));
+    if (weakness) damage *= GAME_CONFIG.weaknessMultiplier * (1 + this.totalIdiomBonus("weaknessDamage"));
     // [SKILL-V1] 상극 각인: 낙인이 남은 동안 같은 오행 공격이 주는 피해가 커진다.
     // 약점 배율과 같은 층에서 곱해, 이 공격에서 파생되는 확산·연쇄·독도 함께 강해진다.
     if ((target.brandUntil ?? 0) > this.state.elapsed && target.brandWuxing === tower.wuxing) {
@@ -1435,7 +1444,7 @@ export class GameEngine {
      * 뜻이고, 웨이브마다 약점이 바뀌므로 다섯 오행에 고루 돈다. 소수점은
      * 누적분에 담아 두고 1 이 될 때 넘긴다(0.4 짜리가 버려지지 않게).
      */
-    const essenceGain = this.customIdiomBonus("killEssence");
+    const essenceGain = this.totalIdiomBonus("killEssence");
     if (essenceGain > 0) {
       this.killEssenceCarry += essenceGain;
       const whole = Math.floor(this.killEssenceCarry);
@@ -1560,7 +1569,7 @@ export class GameEngine {
     this.state.waveChar = this.rollWildChar();
     // 커스텀 성어의 「웨이브가 시작될 때 엽전 +N」. 웨이브가 서는 이 한 지점에서만
     // 준다 — 미리 시작하든 기다리든 같은 값이라 조기 출전과 셈이 겹치지 않는다.
-    const waveGold = Math.floor(this.customIdiomBonus("waveGold"));
+    const waveGold = Math.floor(this.totalIdiomBonus("waveGold"));
     if (waveGold > 0) this.state.gold += waveGold;
     this.currentPlan = this.planForWave(nextWave);
     this.state.phase = "combat";
