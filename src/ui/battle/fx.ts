@@ -93,7 +93,7 @@ export function pushRasterBurst(image: HTMLImageElement, at: Point, size: number
 }
 
 /**
- * 봉인 발동 파문 — 코덱스 파문 마스크를 성어 색으로 물들여 네 칸에 한 번씩 띄운다.
+ * 성어 발동 파문 — 코덱스 파문 마스크를 성어 색으로 물들여 네 칸에 한 번씩 띄운다.
  * `delay` 로 1번 칸부터 차례로 터뜨려 "이 넷이 이 순서"라는 사실을 한 번 더 말한다.
  */
 export interface IdiomRippleFx {

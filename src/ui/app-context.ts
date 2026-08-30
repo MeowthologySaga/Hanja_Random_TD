@@ -414,7 +414,7 @@ class AppContext {
   activeIdiomsRenderKey = "init";
   idiomPlacementGuide: IdiomPlacementGuide | null = null;
   /**
-   * 발동 중인 봉인에 참여한 자령 id → 그 성어의 색 — R18 자리 고정 표식용.
+   * 발동 중인 성어에 참여한 자령 id → 그 성어의 색 — R18 자리 고정 표식용.
    * 명패는 자령 수만큼 그려지므로 프레임마다 한 번만 계산해 두고 나눠 읽는다.
    */
   sealedIdiomTowerMarks: ReadonlyMap<number, string> = new Map<number, string>();

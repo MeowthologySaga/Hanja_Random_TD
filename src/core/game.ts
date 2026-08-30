@@ -2232,13 +2232,13 @@ export class GameEngine {
 
   /**
    * 목표 서책의 추적 체크 토글. 최대 3개·최소 1개 — "성어가 곧 목표"라
-   * 추적이 완전히 비는 상태는 두지 않는다(비면 어차피 첫 미봉인 목표 성어가
+   * 추적이 완전히 비는 상태는 두지 않는다(비면 어차피 첫 미발동 목표 성어가
    * 승계된다). 승계로만 존재하던 기본 추적도 토글 순간 상태로 굳힌다.
    */
   setIdiomTracking(id: string, tracked: boolean): ActionResult {
     const idiom = this.lookupIdiom(id);
     if (!idiom) return { ok: false, message: "이 지역에서 사용할 수 없는 성어입니다." };
-    if (this.state.idiomSeals.some((seal) => seal.idiomId === id)) return { ok: false, message: `${idiom.reading}은 이미 봉인했습니다.` };
+    if (this.state.idiomSeals.some((seal) => seal.idiomId === id)) return { ok: false, message: `${idiom.reading}은 이미 발동한 성어입니다.` };
     const current = this.trackedIdioms().map((entry) => entry.id);
     if (tracked) {
       if (current.includes(id)) return { ok: true, message: `${idiom.reading}은 이미 추적 중입니다.` };
@@ -2260,8 +2260,8 @@ export class GameEngine {
   }
 
   /**
-   * 추적 중 성어 정의 목록. 봉인 완료·미존재 id 는 걸러 내고, 목록이 비면
-   * 예전 currentIdiomTarget 규칙 그대로 첫 미봉인 목표 성어 하나를 승계한다
+   * 추적 중 성어 정의 목록. 발동 완료·미존재 id 는 걸러 내고, 목록이 비면
+   * 예전 currentIdiomTarget 규칙 그대로 첫 미발동 목표 성어 하나를 승계한다
    * — 봇과 기존 화면이 이 승계에 기대므로 기본 동작이 바뀌지 않는다.
    */
   trackedIdioms(): readonly IdiomDefinition[] {
@@ -3163,7 +3163,7 @@ export class GameEngine {
 
   /**
    * 지금 이 순간 줄을 지키고 있는 봉인들. 전투 보너스·발광·자리 고정의 기준이다.
-   * 기록(한 번이라도 봉인했는가)은 state.idiomSeals 전체를 그대로 보면 된다.
+   * 기록(한 번이라도 발동했는가)은 state.idiomSeals 전체를 그대로 보면 된다.
    */
   activeIdiomSeals(): readonly IdiomSeal[] {
     return this.state.idiomSeals.filter((seal) => seal.active);
@@ -3378,7 +3378,7 @@ export class GameEngine {
    * 유지형 규칙이라 이 함수는 "새로 성립한 성어를 켠다"만이 아니라 세 갈래를 본다.
    *  - 아직 기록이 없는 성어가 줄을 이루면 첫 발동(rejoined=false).
    *  - 흩어졌던 기록이 다시 줄을 이루면 재발동(rejoined=true) — 연출만 가볍다.
-   *  - 활성 봉인의 줄이 깨졌으면 비활성으로 내리고 idiomBroken 을 띄운다.
+   *  - 발동 중인 줄이 깨졌으면 비활성으로 내리고 idiomBroken 을 띄운다.
    * 돌려주는 수는 이번 호출에서 새로 켜진 봉인 수(첫 발동 + 재발동)다.
    */
   resolveIdiomFormations(): number {
@@ -3431,7 +3431,7 @@ export class GameEngine {
   private activateIdiom(idiom: IdiomDefinition, cells: readonly number[]): void {
     this.state.idiomSeals.push({ idiomId: idiom.id, cells: [...cells], completedAt: this.state.elapsed, active: true });
     // 발동한 성어는 목표에서 은퇴한다. 목록이 비면 trackedIdioms() 가
-    // 다음 미봉인 목표 성어를 승계하므로 진행이 끊기지 않는다.
+    // 다음 미발동 목표 성어를 승계하므로 진행이 끊기지 않는다.
     this.state.trackedIdiomIds = this.state.trackedIdiomIds.filter((id) => id !== idiom.id);
     this.announceIdiom(idiom, cells, false);
     this.runSummonPool = this.buildRunSummonPool();

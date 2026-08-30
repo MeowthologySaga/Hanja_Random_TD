@@ -304,7 +304,7 @@ describe("regional recipe defense run", () => {
     expect(engine.trackedIdioms().map((idiom) => idiom.id)).toEqual([second]);
     expect(engine.currentIdiomTarget()?.id).toBe(second);
     // 발동한 성어는 다시 추적할 수 없다.
-    expect(engine.setIdiomTracking(first as string, true)).toMatchObject({ ok: false, message: expect.stringContaining("봉인") });
+    expect(engine.setIdiomTracking(first as string, true)).toMatchObject({ ok: false, message: expect.stringContaining("발동") });
   });
 
   it("feeds the union of tracked idioms' missing characters into forced lineage summons (Track B)", () => {
