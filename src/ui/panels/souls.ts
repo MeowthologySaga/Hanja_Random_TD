@@ -35,6 +35,7 @@ import {
 import { defaultNotationForRegion } from "../../core/notation";
 import { learningInfoForNotation } from "../../core/learning";
 import { ctx, must, shell } from "../app-context";
+import { spiritPortraitMarkup } from "../format";
 import { showToast } from "../hud";
 import { bindSoulReroll, closeSoulReroll, openSoulReroll } from "./soul-reroll";
 import { onSoulArchiveChange, setSoulArchive, soulArchive, updateSoulArchive } from "../souls";
@@ -125,7 +126,18 @@ function renderHoldings(archive: SoulArchive): void {
       button.disabled = left <= 0 || draft.length >= CUSTOM_IDIOM_LENGTH;
       const reading = readingOf(char);
       button.setAttribute("aria-label", `${char} ${reading.short} · 자혼 ${count}개 — 새김대에 올리기`);
-      button.innerHTML = `<b>${char}</b><small>${reading.short}</small><em>${left}<i>/${count}</i></em>`;
+      /*
+       * 조각에 **그 글자의 자령 초상**을 얹는다.
+       *
+       * 자혼은 봉인한 자령이 남긴 것이다. 글자만 적어 두면 목록이 사전처럼
+       * 보이는데, 초상이 붙으면 "내가 잡은 그 자령"이 된다 — 화면이 게임의
+       * 살결을 되찾는 가장 싼 길이고, 전장에서 만난 그림과 짝이 맞는다.
+       */
+      const definition = ctx.engine.catalog.definitions.get(char);
+      const portrait = definition
+        ? spiritPortraitMarkup(definition.char, definition.wuxing, "workbench-spirit--soul")
+        : "";
+      button.innerHTML = `${portrait}<b>${char}</b><small>${reading.short}</small><em>${left}<i>/${count}</i></em>`;
       return button;
     })
   );
@@ -146,7 +158,14 @@ function renderSlots(): void {
         "aria-label",
         char ? `${index + 1}번째 자리 ${char} ${reading?.short ?? ""} — 내리기` : `${index + 1}번째 빈 자리`
       );
-      button.innerHTML = char ? `<b>${char}</b><small>${reading?.short ?? ""}</small>` : "";
+      const slotDefinition = char ? ctx.engine.catalog.definitions.get(char) : undefined;
+      const slotPortrait = slotDefinition
+        ? spiritPortraitMarkup(slotDefinition.char, slotDefinition.wuxing, "workbench-spirit--slot")
+        : "";
+      // 자리마다 순번 인장을 찍는다 — 성어는 1→2→3→4 차례로 놓아야 발동한다.
+      button.innerHTML = char
+        ? `<u aria-hidden="true">${index + 1}</u>${slotPortrait}<b>${char}</b><small>${reading?.short ?? ""}</small>`
+        : `<u aria-hidden="true">${index + 1}</u>`;
       return button;
     })
   );
