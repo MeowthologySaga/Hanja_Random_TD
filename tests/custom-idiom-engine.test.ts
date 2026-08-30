@@ -34,7 +34,7 @@ function seal(engine: GameEngine, idiomId: string, firstCell: number): void {
 /**
  * 첫 웨이브를 세우고 그때 들어온 엽전을 잰다.
  *
- * `update()` 를 태우지 않는다 — 갱신은 줄이 흩어진 봉인을 정리하므로, 손으로
+ * `update()` 를 태우지 않는다 — 갱신은 줄이 흩어진 발동을 정리하므로, 손으로
  * 세운 시험용 봉인이 그 자리에서 꺼진다. 재려는 것은 웨이브가 설 때의 지급
  * 하나이므로 웨이브만 세운다.
  */
@@ -132,8 +132,8 @@ describe("커스텀 성어가 판에 들어간다", () => {
   });
 });
 
-describe("장착한 커스텀 성어는 명단에서 밀려나지 않는다", () => {
-  it("아무 성어나 추적해도 장착분이 명단에 남는다", () => {
+describe("성어 발동에는 상한이 없다", () => {
+  it("이 판의 명단은 지역 성어 전부 + 장착한 커스텀이다", () => {
     const mine = [
       customIdiom("mine-1", "damage", 0.1),
       customIdiom("mine-2", "range", 12),
@@ -143,18 +143,24 @@ describe("장착한 커스텀 성어는 명단에서 밀려나지 않는다", ()
     engine.begin();
 
     /*
-     * 명단 자리를 다섯으로 고정해 두면, 지역 성어 하나를 추적하는 순간
-     * 커스텀 셋이 뒤로 밀려 판에서 사라졌다. 자리 수는 다섯 + 장착 수다.
+     * 예전에는 다섯 자리를 두고 서로 밀어냈고, 그 밀어냄이 장착 커스텀을 판에서
+     * 조용히 지웠다. 이제 자리 다툼 자체가 없다 — 지역 성어가 전부 들어 있고
+     * 장착분이 그 뒤에 붙는다.
      */
-    const outsider = engine
-      .allIdioms()
-      .find((idiom) => idiom.source !== "custom" && !engine.state.featuredIdiomIds.includes(idiom.id));
-    expect(outsider).toBeDefined();
-    engine.setIdiomTarget(outsider!.id);
-
+    const regionCount = engine.allIdioms().filter((idiom) => idiom.source !== "custom").length;
+    expect(engine.state.featuredIdiomIds).toHaveLength(regionCount + mine.length);
     for (const idiom of mine) {
       expect(engine.state.featuredIdiomIds).toContain(idiom.id);
     }
-    expect(engine.state.featuredIdiomIds).toContain(outsider!.id);
+
+    // 아무 구나 목표로 세워도 명단은 그대로다.
+    const anyRegionIdiom = engine.allIdioms().find((idiom) => idiom.source !== "custom");
+    expect(anyRegionIdiom).toBeDefined();
+    engine.setIdiomTarget(anyRegionIdiom!.id);
+
+    expect(engine.state.featuredIdiomIds).toHaveLength(regionCount + mine.length);
+    for (const idiom of mine) {
+      expect(engine.state.featuredIdiomIds).toContain(idiom.id);
+    }
   });
 });

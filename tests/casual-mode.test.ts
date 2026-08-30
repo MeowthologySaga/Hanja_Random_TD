@@ -249,7 +249,7 @@ describe("casual eight-star mode", () => {
     locked.locked = true;
     concentrated.concentration = 2;
     concentrated.concentrationPath = "swift";
-    // 2·3번 칸을 쓰는 성어 봉인은 그 자리 자령을 그대로 묶어 둔다.
+    // 2·3번 칸을 쓰는 성어 발동은 그 자리 자령을 그대로 묶어 둔다.
     engine.state.idiomSeals.push({ idiomId: "sealed-fixture", cells: [2, 3], completedAt: 0, active: true });
 
     expect(engine.casualMaterialProtection(locked.id)).toBe("잠금 자령");

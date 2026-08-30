@@ -134,7 +134,7 @@ describe("idiom wish summon (성어 기원)", () => {
 
   it("stays casual-only: standard mode keeps the pool contract but refuses the purchase", () => {
     // 실측(짝시드 90런): 자형연성에서 이 상품은 승률 0.556→0.733 으로 새고
-    // 성어 봉인은 오히려 줄었다 — 부족 글자가 곧 합성 재료라 "반드시 유용한
+    // 성어 발동은 오히려 줄었다 — 부족 글자가 곧 합성 재료라 "반드시 유용한
     // 소환"이 진화 루프(전투력)로 직결된다. 그래서 상품은 별승급 전용이다.
     const engine = engineOf("wish-standard", "standard");
     expect(engine.setIdiomTarget("heart")).toMatchObject({ ok: true });

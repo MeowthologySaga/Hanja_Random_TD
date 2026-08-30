@@ -303,7 +303,7 @@ describe("regional recipe defense run", () => {
     // 추적 목록의 봉인 구는 걸러지고, 비면 다음 미봉인 목표 성어가 승계된다.
     expect(engine.trackedIdioms().map((idiom) => idiom.id)).toEqual([second]);
     expect(engine.currentIdiomTarget()?.id).toBe(second);
-    // 봉인한 성어는 다시 추적할 수 없다.
+    // 발동한 성어는 다시 추적할 수 없다.
     expect(engine.setIdiomTracking(first as string, true)).toMatchObject({ ok: false, message: expect.stringContaining("봉인") });
   });
 

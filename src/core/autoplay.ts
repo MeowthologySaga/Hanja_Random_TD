@@ -291,7 +291,7 @@ function autoplayEvolutionOption(engine: GameEngine): EvolutionOption | undefine
   const sealedIds = engine.sealedIdiomTowerIds();
   const options = engine.availableEvolutions()
     .filter((option) => !option.materialTowerIds.some((id) => sealedIds.has(id)));
-  // 아직 줄이 없는(혹은 흩어진) 성어의 글자도 지킨다 — 재봉인 재료다.
+  // 아직 줄이 없는(혹은 흩어진) 성어의 글자도 지킨다 — 재발동 재료다.
   const pendingIdioms = engine.idioms().filter((candidate) => !engine.isIdiomSealActive(candidate.id));
   if (pendingIdioms.length === 0) return options.find((candidate) => candidate.onTargetPath) ?? options[0];
   const exactChars = new Set(pendingIdioms.flatMap((candidate) => [...candidate.chars]));
@@ -339,7 +339,7 @@ function autoplayIdiomLine(engine: GameEngine, pinnedCells: ReadonlySet<number>)
 function arrangeAvailableAutoplayIdioms(engine: GameEngine): void {
   for (let guard = 0; guard < engine.idioms().length; guard += 1) {
     // 유지형 규칙: 이미 발동 중인 봉인의 네 자령은 봇도 건드리지 않는다.
-    // 흩어진 기록(비활성 봉인)도 다시 세울 대상이다 — 재봉인하면 보너스가 돌아온다.
+    // 흩어진 기록(비활성 봉인)도 다시 세울 대상이다 — 재발동하면 보너스가 돌아온다.
     // 첫 성어의 글자가 모자라도 뒤 성어는 세울 수 있으므로 하나씩 전부 시도한다.
     const pinned = engine.sealedIdiomTowerIds();
     const pinnedCells = new Set(engine.state.towers.filter((tower) => pinned.has(tower.id)).map((tower) => tower.cell));

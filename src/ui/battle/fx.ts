@@ -70,7 +70,7 @@ export const abilityBurstPool: AbilityBurstFx[] = [];
 export const towerAbilityPopups = new Map<number, TowerAbilityPopup>();
 
 /**
- * p1-p2-polish-assets-pack-v1 의 일회성 래스터 연출(별승급 고리·사자성어 봉인).
+ * p1-p2-polish-assets-pack-v1 의 일회성 래스터 연출(별승급 고리·사자성어 발동).
  * 순수 피드백이라 승급·봉인 규칙이나 수치에는 관여하지 않는다. 에셋이 없으면
  * 이 연출만 건너뛰고 상태 전이는 그대로 진행된다.
  */

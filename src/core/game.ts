@@ -282,9 +282,6 @@ const CUSTOM_IDIOM_BONUS_CAPS: Record<IdiomBonusKind, number> = {
   formationAttack: 0.4
 };
 
-/** 이 판의 지역 성어 명단 자리 수. 장착한 커스텀 성어는 이 위에 얹힌다. */
-const FEATURED_IDIOM_SLOTS = 5;
-
 export class GameEngine {
   readonly state: GameState;
   readonly catalog: HanziCatalog;
@@ -338,13 +335,18 @@ export class GameEngine {
     this.goalOrder = mode === "casual" ? casualGoalOrder(this.catalog) : this.catalog.goalOrder;
     const targetChar = this.goalOrder[0] ?? this.catalog.activePool[0]?.char ?? "";
     /*
-     * 이 판의 성어 명단 = 지역에서 고른 다섯 구 + 장착한 커스텀 전부.
+     * 이 판의 성어 명단 = **지역 성어 전부** + 장착한 커스텀 전부.
      *
-     * 커스텀은 "뽑히길 바라는" 것이 아니라 사람이 골라 장착한 것이라 무조건
-     * 들어간다. 다섯이라는 수는 애초에 화면 자리 때문이었고, 그 제한은 걷혔다.
+     * 다섯 구 제한을 걷었다. 그 수는 애초에 화면 자리 때문이었는데, 사람은
+     * 그것을 "성어는 다섯 개까지"로 읽었고 실제로도 다섯을 다 발동시키면 더
+     * 세울 성어가 없어 후반에 성어가 할 일이 사라졌다. 성어 발동에는 상한이
+     * 없다 — 판에 세울 수 있는 만큼 세운다.
+     *
+     * 명단 순서는 여전히 featuredIdiomsForRun 이 정한다(시드로 섞은 순서).
+     * 첫 목표가 그 순서의 첫 구이므로, 순서가 바뀌면 시드 재현이 깨진다.
      */
     const featuredIdiomIds = [
-      ...featuredIdiomsForRun(region, seed, FEATURED_IDIOM_SLOTS).map((idiom) => idiom.id),
+      ...featuredIdiomsForRun(region, seed, Number.POSITIVE_INFINITY).map((idiom) => idiom.id),
       ...(options.customIdioms ?? []).map((idiom) => idiom.id)
     ];
     this.state = {
@@ -376,6 +378,7 @@ export class GameEngine {
       elapsed: 0,
       waveElapsed: 0,
       spawned: 0,
+      waveChar: "",
       spawnCooldown: 0,
       nextWaveRemaining: null,
       bossDefeated: false,
@@ -437,6 +440,7 @@ export class GameEngine {
       elapsed: 0,
       waveElapsed: 0,
       spawned: 0,
+      waveChar: "",
       spawnCooldown: 0,
       nextWaveRemaining: null,
       bossDefeated: false,
@@ -563,9 +567,9 @@ export class GameEngine {
     this.state.enemies.push({
       id: this.nextEnemyId++,
       wave: plan.wave,
-      // 야생 자령이 이고 나오는 글자 — 이 판 소환 풀에서 고른다. 봉인하면 그
-      // 글자의 자혼이 남으므로, 오늘 만난 글자가 내일의 재료가 된다.
-      char: this.rollWildChar(),
+      // 이번 웨이브의 글자. 한 웨이브는 한 글자의 자령 떼로 온다 —
+      // 적마다 따로 굴리면 화면이 글자 잡탕이 되어 무엇을 만났는지 안 남는다.
+      char: this.state.waveChar,
       hp,
       maxHp: hp,
       // Bosses keep circulating; the explicit boss clock is their deadline.
@@ -1032,7 +1036,7 @@ export class GameEngine {
     damage *= 1 + concentration * (concentrationPath === "potent" ? 0.12 : 0.055);
     damage *= 1 + this.combinedUpgradeBonus(tower.wuxing, "damage");
     damage *= 1 + this.totalIdiomBonus("damage");
-    // 봉인한 성어 수만큼 판 전체가 세진다. 걷어낸 「가호」(진 단위 증폭)의 몫을
+    // 발동한 성어 수만큼 판 전체가 세진다. 걷어낸 「가호」(진 단위 증폭)의 몫을
     // 기획 결정대로 **판 전체** 축 하나로 돌려준 것이다 — 실측에서 가호를 걷자
     // 성어를 실제로 발동하는 지역(JP·CN, 발동 중앙값 4구)이 그대로 주저앉았다.
     damage *= 1 + this.idiomSealAttackBonus();
@@ -1546,6 +1550,8 @@ export class GameEngine {
   private startNextWave(): void {
     const nextWave = this.state.wave + 1;
     this.state.wave = nextWave;
+    // 이번 물결이 이고 올 글자. 웨이브당 한 번만 굴린다.
+    this.state.waveChar = this.rollWildChar();
     // 커스텀 성어의 「웨이브가 시작될 때 엽전 +N」. 웨이브가 서는 이 한 지점에서만
     // 준다 — 미리 시작하든 기다리든 같은 값이라 조기 출전과 셈이 겹치지 않는다.
     const waveGold = Math.floor(this.customIdiomBonus("waveGold"));
@@ -2184,35 +2190,15 @@ export class GameEngine {
   }
 
   /**
-   * 성어를 이번 런 명단에 편입시킨다. 추적(발동 판정·자동배치 후보)의 전제
-   * 조건이라 setIdiomTarget/setIdiomTracking 이 함께 쓴다.
+   * 성어를 이번 런 명단에 편입시킨다.
    *
-   * 명단은 지역 성어 다섯 자리 + 장착한 커스텀 전부다. 커스텀은 뽑힌 것이
-   * 아니라 사람이 골라 장착한 것이라 **자리 다툼에 끼지 않는다** — 다섯 자리는
-   * 지역 성어끼리만 겨루고, 장착분은 언제나 그 뒤에 그대로 붙는다.
-   * (자리 수만 늘려서는 부족했다. 새 구가 들어오는 순간 늘어난 자리도 함께
-   *  차서, 맨 뒤에 있던 장착 커스텀이 그대로 밀려났다.)
+   * 명단에 상한이 없어진 뒤로 할 일이 하나뿐이다 — 없으면 더한다. 예전에는
+   * 다섯 자리를 두고 새 추적 > 기존 추적 > 발동 이력 > 나머지 순으로 밀어냈고,
+   * 그 밀어냄이 장착 커스텀을 판에서 조용히 지우는 결함을 낳았다.
    */
   private ensureFeaturedIdiom(id: string): void {
-    const equipped = new Set(this.customIdioms.map((idiom) => idiom.id));
-    const rest = this.state.featuredIdiomIds
-      .filter((candidate) => candidate !== id && !equipped.has(candidate));
-    const sealedIds = rest.filter((candidate) => this.state.idiomSeals.some((seal) => seal.idiomId === candidate));
-    const trackedIds = rest.filter((candidate) => !sealedIds.includes(candidate) && this.state.trackedIdiomIds.includes(candidate));
-    const pendingIds = rest.filter((candidate) => !sealedIds.includes(candidate) && !trackedIds.includes(candidate));
-    /*
-     * 자리 정리 우선순위: 새 추적 > 기존 추적 > 봉인 이력 > 나머지.
-     * 봉인 이력이 자리에서 밀려도 발동·해제 판정은 idiomSeals 목록이 따로
-     * 지키므로(resolveIdiomFormations) 효과는 끊기지 않는다 — 반대로 추적 중인
-     * 구가 밀리면 봉인 자체가 성립하지 않으니 추적이 앞선다.
-     */
-    const region = [id, ...trackedIds, ...sealedIds, ...pendingIds].slice(0, FEATURED_IDIOM_SLOTS);
-    // 장착분은 명단 순서를 흔들지 않도록 늘 뒤에 붙인다(id 가 장착분이면 여기서
-    // 한 번만 실린다 — 위 filter 가 앞 목록에서 걷어 낸다).
-    this.state.featuredIdiomIds = [
-      ...region.filter((candidate) => !equipped.has(candidate)),
-      ...this.customIdioms.map((idiom) => idiom.id)
-    ];
+    if (this.state.featuredIdiomIds.includes(id)) return;
+    this.state.featuredIdiomIds = [...this.state.featuredIdiomIds, id];
   }
 
   /** 이 성어를 1순위 추적 목표로 세운다(수련장·"목표로 지정" 경로). */
@@ -2653,11 +2639,15 @@ export class GameEngine {
       this.state.towers.push(tower);
     }
 
-    // 발동 중인 봉인의 네 자령은 자리 고정이다. 새 봉인을 하나 세울 때마다
+    // 발동 중인 성어의 네 자령은 자리 고정이다. 새로 하나 발동시킬 때마다
     // 고정 집합이 늘어나므로 매 바퀴 다시 읽는다.
+    //
+    // 명단은 이제 지역 성어 전부(KR 104구)라 바퀴마다 다시 만들면 값이 크다.
+    // 명단 자체는 이 루프 동안 바뀌지 않으므로 한 번만 뜬다.
+    const roster = this.idioms();
     let pinned = this.sealedIdiomTowerIds();
-    for (let guard = 0; guard < this.idioms().length; guard += 1) {
-      const idiom = this.idioms().find((candidate) =>
+    for (let guard = 0; guard < roster.length; guard += 1) {
+      const idiom = roster.find((candidate) =>
         !this.isIdiomSealActive(candidate.id)
         && this.towersForIdiom(candidate, pinned) !== null
       );
@@ -2793,10 +2783,15 @@ export class GameEngine {
     const counts = new Map<string, number>();
     for (const tower of all) counts.set(tower.char, (counts.get(tower.char) ?? 0) + 1);
     const targetPath = this.state.mode === "casual" ? new Set([this.state.targetChar]) : this.evolution.getTargetPath(this.state.targetChar);
+    /*
+     * 「미완성 성어 재료」 보호는 **추적 중인** 성어만 본다.
+     *
+     * 명단이 지역 성어 전부로 열리면서 이 집합이 로스터 전체가 됐다 — 그러면
+     * 모든 자령이 성어 재료로 보호돼 정리·판매가 통째로 마비된다. 보호가
+     * 뜻을 가지려면 "지금 만들고 있는 성어"의 글자여야 한다.
+     */
     const unfinishedIdiomChars = new Set(
-      this.idioms()
-        .filter((idiom) => !this.state.idiomSeals.some((seal) => seal.idiomId === idiom.id))
-        .flatMap((idiom) => [...idiom.chars])
+      this.trackedIdioms().flatMap((idiom) => [...idiom.chars])
     );
     const readyMaterialIds = new Set(this.availableEvolutions().flatMap((option) => option.materialTowerIds));
 
@@ -2935,7 +2930,7 @@ export class GameEngine {
   /**
    * 성어 줄을 지키고 있는 자령인가.
    *
-   * 봉인의 네 자리 중 하나에 서 있으면 그렇다. 흩어진 봉인(active=false)은
+   * 봉인의 네 자리 중 하나에 서 있으면 그렇다. 흩어진 발동(active=false)은
    * 세지 않는다 — 지금 줄을 지키는 값을 치르는 것이기 때문이다.
    */
   isTowerHoldingIdiom(towerId: number): boolean {
@@ -3151,7 +3146,7 @@ export class GameEngine {
    * 성어가 아무 일도 하지 않는다(custom-idioms.ts 머리말).
    */
   idiomBonus(kind: IdiomBonusKind): number {
-    // 유지형 규칙: 흩어진 봉인은 기록에만 남고 보너스는 내지 않는다.
+    // 유지형 규칙: 흩어진 발동은 기록에만 남고 보너스는 내지 않는다.
     const total = this.state.idiomSeals.reduce((sum, seal) => {
       if (!seal.active) return sum;
       const idiom = this.lookupIdiom(seal.idiomId);
@@ -3248,7 +3243,7 @@ export class GameEngine {
    *
    * 별승급(캐주얼) 전용이다. 자형연성에서는 부족 글자가 곧 합성 재료라
    * "반드시 유용한 소환"이 진화 루프(전투력)로 직결된다 — 45런 짝시드 실험
-   * 2회에서 승률 +24.5pp/+11.1pp(합산 0.556→0.733)가 재현됐고 성어 봉인은
+   * 2회에서 승률 +24.5pp/+11.1pp(합산 0.556→0.733)가 재현됐고 성어 발동은
    * 오히려 줄었다(0.16→0.13, 0.27→0.16). 성어 가중 3배 기각과 같은 결이라
    * 자형연성은 기존 계보 소환(확률 가중)에 남긴다.
    */
@@ -3326,10 +3321,10 @@ export class GameEngine {
    * 봉인 상태를 판 위 배치와 다시 맞춘다. 자령이 놓이고·옮겨지고·사라진 뒤마다 부른다.
    *
    * 유지형 규칙이라 이 함수는 "새로 성립한 성어를 켠다"만이 아니라 세 갈래를 본다.
-   *  - 아직 기록이 없는 성어가 줄을 이루면 첫 봉인(rejoined=false).
-   *  - 흩어졌던 기록이 다시 줄을 이루면 재봉인(rejoined=true) — 연출만 가볍다.
+   *  - 아직 기록이 없는 성어가 줄을 이루면 첫 발동(rejoined=false).
+   *  - 흩어졌던 기록이 다시 줄을 이루면 재발동(rejoined=true) — 연출만 가볍다.
    *  - 활성 봉인의 줄이 깨졌으면 비활성으로 내리고 idiomBroken 을 띄운다.
-   * 돌려주는 수는 이번 호출에서 새로 켜진 봉인 수(첫 봉인 + 재봉인)다.
+   * 돌려주는 수는 이번 호출에서 새로 켜진 봉인 수(첫 발동 + 재발동)다.
    */
   resolveIdiomFormations(): number {
     if (!this.isRunActive()) return 0;
@@ -3380,7 +3375,7 @@ export class GameEngine {
 
   private activateIdiom(idiom: IdiomDefinition, cells: readonly number[]): void {
     this.state.idiomSeals.push({ idiomId: idiom.id, cells: [...cells], completedAt: this.state.elapsed, active: true });
-    // 봉인한 성어는 목표에서 은퇴한다. 목록이 비면 trackedIdioms() 가
+    // 발동한 성어는 목표에서 은퇴한다. 목록이 비면 trackedIdioms() 가
     // 다음 미봉인 목표 성어를 승계하므로 진행이 끊기지 않는다.
     this.state.trackedIdiomIds = this.state.trackedIdiomIds.filter((id) => id !== idiom.id);
     this.announceIdiom(idiom, cells, false);

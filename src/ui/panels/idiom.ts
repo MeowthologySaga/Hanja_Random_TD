@@ -110,7 +110,7 @@ export function renderIdiomHud(): void {
   /*
    * [2차 감사] 열쇠에 표기 축이 빠져 있었다. 이 HUD 는 성어의 읽기와 자령
    * 훈음을 그리는데(idiomReadingInfoForNotation · notationBadgeText), 표기를
-   * 바꿔도 봉인 상태·목표·보유 글자가 그대로면 열쇠가 같아 옛 읽기가 남았다.
+   * 바꿔도 발동 상태·목표·보유 글자가 그대로면 열쇠가 같아 옛 읽기가 남았다.
    * 발동 중 성어 스택(renderActiveIdioms)은 이미 넣고 있었다 — 같은 줄에 세운다.
    */
   const key = sealSignature + "|" + (target?.id ?? "done") + "|" + ownedSignature + "|" + ctx.engine.state.notation;
@@ -123,7 +123,7 @@ export function renderIdiomHud(): void {
    * 게다가 장착한 커스텀만큼 명단이 길어지므로 분모는 판마다 달라져
    * 기준으로도 쓸모가 없다.
    *
-   * 카운트는 "이 런에서 봉인해 본" 달성 기록이다. 지금 몇 구가 살아 있는지는
+   * 카운트는 "이 런에서 발동해 본" 달성 기록이다. 지금 몇 구가 살아 있는지는
    * 아래 상태 줄이 따로 말한다.
    */
   must<HTMLElement>("#idiom-count").textContent = String(ctx.engine.state.idiomSeals.length) + "구";
@@ -133,11 +133,19 @@ export function renderIdiomHud(): void {
   if (!target) {
     const activeCount = ctx.engine.activeIdiomSeals().length;
     hud.classList.add("idiom-hud--complete");
-    must<HTMLElement>("#idiom-glyphs").innerHTML = ctx.engine.idioms().map((idiom) => `<i class="${ctx.engine.isIdiomSealActive(idiom.id) ? "is-owned" : ""}" style="--idiom:${idiom.color}">四</i>`).join("");
+    /*
+     * 명단이 지역 성어 전부(KR 104구)로 열렸다. 네모를 다 그리면 줄이 넘치므로
+     * **발동한 구만** 그린다 — 이 자리는 애초에 "지금 무엇이 서 있나"를 보는 곳이다.
+     */
+    const active = ctx.engine.idioms().filter((idiom) => ctx.engine.isIdiomSealActive(idiom.id));
+    must<HTMLElement>("#idiom-glyphs").innerHTML = active
+      .map((idiom) => `<i class="is-owned" style="--idiom:${idiom.color}">四</i>`)
+      .join("");
     must<HTMLElement>("#idiom-name").textContent = "사자성어 전서 완성";
     must<HTMLElement>("#idiom-meaning").textContent = "각 성구의 보너스는 네 자령이 그 줄을 지키는 동안만 발동합니다.";
-    must<HTMLElement>("#idiom-bonus").textContent = `발동 중 ${activeCount} / ${ctx.engine.idioms().length}구`;
-    must<HTMLElement>("#idiom-hint").textContent = activeCount === ctx.engine.idioms().length ? "四句成陣 · 모든 성어 발동 중" : "흩어진 줄을 다시 세우면 재발동합니다";
+    // 발동에는 상한이 없다 — 분모를 적으면 다시 "여기까지"로 읽힌다.
+    must<HTMLElement>("#idiom-bonus").textContent = `발동 중 ${activeCount}구`;
+    must<HTMLElement>("#idiom-hint").textContent = "흩어진 줄을 다시 세우면 재발동합니다";
     return;
   }
   hud.classList.remove("idiom-hud--complete");
@@ -169,10 +177,10 @@ export function renderIdiomHud(): void {
 }
 
 /**
- * 성어 탭 봉인 상태 줄 — R18.
+ * 성어 탭 발동 상태 줄 — R18.
  *
- * 유지형 규칙에서는 "봉인했다"와 "지금 효과가 산다"가 다른 말이 됐다. 탭 위쪽
- * 카운트는 달성 기록을 세므로, 한 번이라도 봉인한 성구마다 지금 상태를 한 줄로
+ * 유지형 규칙에서는 "발동했다"와 "지금 효과가 산다"가 다른 말이 됐다. 탭 위쪽
+ * 카운트는 달성 기록을 세므로, 한 번이라도 발동한 성구마다 지금 상태를 한 줄로
  * 덧붙인다. 금박은 발동 중, 회갈은 기록만 남고 줄이 흩어진 상태다.
  */
 function renderIdiomSealStatus(): void {
@@ -225,7 +233,7 @@ function idiomSealReading(idiom: IdiomDefinition): { short: string; reading: str
   return { ...info, short: info.reading };
 }
 
-/** 봉인된 네 칸에 실제로 선 자령 — 없으면 성어 글자로 대신 채운다(해제 직전 한 프레임). */
+/** 발동한 네 칸에 실제로 선 자령 — 없으면 성어 글자로 대신 채운다(해제 직전 한 프레임). */
 function sealParticipants(idiom: IdiomDefinition, seal: IdiomSeal): Array<{ char: string; info: LearningInfo }> {
   const chars = [...idiom.chars];
   const notation = ctx.engine.state.notation;
@@ -265,7 +273,7 @@ function activeIdiomPopHtml(idiom: IdiomDefinition, seal: IdiomSeal, reading: st
 }
 
 export function renderActiveIdioms(): void {
-  // R18: 스택은 "지금 발동 중"만 센다. 흩어진 봉인은 기록으로만 남아 성어 탭에 보인다.
+  // R18: 스택은 "지금 발동 중"만 센다. 흩어진 발동은 기록으로만 남아 성어 탭에 보인다.
   const seals = ctx.engine.activeIdiomSeals();
   // 팝오버가 참여 자령 4자를 읽으므로 칸·표기가 바뀌면 다시 그려야 한다.
   const key = seals.map((seal) => `${seal.idiomId}@${seal.cells.join("-")}`).join(",") + "|" + ctx.engine.state.notation;

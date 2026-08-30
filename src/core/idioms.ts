@@ -101,6 +101,14 @@ export function idiomById(region: RegionCode, id: string): IdiomDefinition | und
   return IDIOMS[region].find((idiom) => idiom.id === id);
 }
 
+/**
+ * 이 판의 성어 명단 — 시드로 섞은 순서.
+ *
+ * count 를 넘기지 않으면 예전처럼 다섯 구만 고른다(시험·도구용). 엔진은
+ * Infinity 를 넘겨 **전부** 받는다 — 성어 발동에는 상한이 없다. 그래도 이
+ * 함수가 남는 이유는 **순서** 때문이다: 첫 구가 그 판의 첫 목표가 되므로
+ * 순서가 시드로 고정돼야 같은 시드가 같은 판을 만든다.
+ */
 export function featuredIdiomsForRun(region: RegionCode, seed: string, count = 5): readonly IdiomDefinition[] {
   const all = idiomsForRegion(region);
   if (all.length <= count) return all;

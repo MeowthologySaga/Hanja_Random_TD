@@ -13,7 +13,7 @@ import {
 } from "../../core/content";
 import { definitionForTower, ELEMENT_STYLES } from "../../core/hanzi";
 import { idiomById, partialIdiomChain } from "../../core/idioms";
-import { enemyJaryeongVisualFor } from "../../core/jaryeongs";
+import { enemyJaryeongVisualFor, jaryeongFrameLayout, jaryeongVisualFor } from "../../core/jaryeongs";
 import { learningInfoForNotation } from "../../core/learning";
 import { type Enemy, type Point, type Tower } from "../../core/types";
 import { abilityZoneSpriteLayout, deterministicZoneRotation } from "../combat-fx-layout";
@@ -1072,7 +1072,7 @@ function pointAlongPolyline(points: readonly Point[], t: number): Point | null {
  * 칸마다 순번 인장이 박힌다. 모션 감소에서는 펄스 없이 정적 60% 밝기만 쓴다.
  */
 function drawIdiomSeals(): void {
-  // R18: 줄이 흩어진 봉인은 지킬 칸이 없다. 발광은 발동 중인 봉인만 낸다.
+  // R18: 줄이 흩어진 발동은 지킬 칸이 없다. 발광은 발동 중인 봉인만 낸다.
   for (const seal of ctx.engine.activeIdiomSeals()) {
     const idiom = idiomById(ctx.engine.state.region, seal.idiomId);
     if (!idiom) continue;
@@ -1151,7 +1151,7 @@ function drawIdiomSeals(): void {
 /**
  * 발동 순간의 파문 링 — 스펙 6라운드 C3.
  *
- * 코덱스 파문 마스크를 성어 색으로 물들여 봉인된 네 칸에서 1→4 차례로 터뜨린다.
+ * 코덱스 파문 마스크를 성어 색으로 물들여 발동한 네 칸에서 1→4 차례로 터뜨린다.
  * 마스크가 아직 안 실렸으면 같은 리듬의 절차 원호로 대신한다. 월드 좌표계에서
  * 부르므로 updateAndDrawFx 안에서만 호출한다.
  */
@@ -1190,7 +1190,7 @@ export function drawIdiomRipples(): void {
 /**
  * 성어 4자 대형 플래시 — 스펙 6라운드 C3.
  *
- * 봉인된 네 칸 위에 뜨되, 카메라가 그 칸을 벗어나 있어도 무엇이 발동했는지는
+ * 발동한 네 칸 위에 뜨되, 카메라가 그 칸을 벗어나 있어도 무엇이 발동했는지는
  * 알아야 하므로 화면 좌표로 그리고 전장 안으로 clamp 한다. 그래서 월드 변환을
  * 되돌린 뒤(drawWorld 의 restore 이후)에 호출한다.
  */
@@ -1308,10 +1308,23 @@ function drawEnemy(enemy: Enemy, point = positionOnPath(enemy.progress)): void {
   const colors: Record<Enemy["archetype"], string> = { normal: "#7770d9", swarm: "#bd78e8", swift: "#5bcde1", armored: "#b69b76", regenerator: "#64c489", boss: "#ff627d" };
   const color = colors[enemy.archetype];
   const weaknessColor = ELEMENT_STYLES[enemy.weakness].color;
-  const visual = enemyJaryeongVisualFor(enemy.archetype, enemy.id + enemy.wave);
-  // 적 전용 1×2 시트를 우선 쓰고, 로드 실패·크기 불일치일 때만 아군 자령 2×2 시트로
-  // 되돌아간다. 둘 다 없으면 아래 원형+한자 폴백이 남는다.
-  const sheetReady = isEnemySheetReady(enemy.archetype);
+  /*
+   * 적은 **그 글자의 자령**으로 나온다.
+   *
+   * 정본이 그렇게 적혀 있다 — 자령은 야생으로 존재하고, 부적술사가 그 한자를
+   * 적은 부적을 붙여 강시로 부린다. 그러니 아군과 적은 같은 존재의 두 상태이고,
+   * 그림도 같아야 한다. 다른 것은 부적의 유무이며, 적대감은 붉은 윤곽·발밑
+   * 먹자국·톱니 고리가 맡는다(아래 그대로 남는다).
+   *
+   * 글자의 오행을 알아야 초상을 고를 수 있다. 소환 풀 밖의 글자(로스터에 없는
+   * 경우)는 정의가 없으므로, 그때만 예전 아키타입 초상으로 되돌아간다.
+   */
+  const definition = enemy.char ? ctx.engine.catalog.definitions.get(enemy.char) : undefined;
+  const visual = definition
+    ? jaryeongVisualFor(definition.char, definition.wuxing, ctx.engine.state.region)
+    : enemyJaryeongVisualFor(enemy.archetype, enemy.id + enemy.wave);
+  // 자령 초상은 2×2 시트라 아키타입 전용 1×2 시트와 자르는 법이 다르다.
+  const sheetReady = definition === undefined && isEnemySheetReady(enemy.archetype);
   const image = sheetReady ? enemySheetImage(enemy.archetype) : jaryeongSpriteImage(visual);
   const drawSize = enemy.boss ? 70 : enemy.archetype === "swarm" ? 32 : enemy.archetype === "armored" ? 46 : 40;
   // 스프라이트 프레임 위쪽 투명 여백을 보정해 HP 바를 그림 윗변에 붙인다.
@@ -1363,10 +1376,19 @@ function drawEnemy(enemy: Enemy, point = positionOnPath(enemy.progress)): void {
   context.restore();
 
   if (image.complete && image.naturalWidth > 0 && image.naturalHeight > 0) {
-    const frame = reducedMotion ? 0 : Math.floor((ctx.engine.state.elapsed * 2.2 + enemy.id * 0.37)) % 2;
+    /*
+     * 자령 초상은 낱장(1프레임)일 수도 2×2 일 수도 있다.
+     *
+     * 천자문 런타임 자령 932자가 낱장(256×256)인데 이것을 2프레임으로 자르면
+     * **윗 1/4 만 확대되어** 초당 2.2회로 두 크롭 사이를 튄다. 빈 칸이 뜨는 게
+     * 아니라 그럴듯한 그림이 나와서 오히려 알아채기 어렵다. 아군 자령을 그리는
+     * draw-tower.ts 가 이미 같은 분기를 두고 있어 그 관행을 그대로 따른다.
+     */
+    const single = !sheetReady && jaryeongFrameLayout(visual) === "single";
+    const frame = single || reducedMotion ? 0 : Math.floor((ctx.engine.state.elapsed * 2.2 + enemy.id * 0.37)) % 2;
     // 적 전용 시트는 1행 2열이라 세로를 자르지 않는다. 아군 폴백 시트만 2×2다.
-    const frameWidth = sheetReady ? ENEMY_FRAME_SIZE : image.naturalWidth / 2;
-    const frameHeight = sheetReady ? ENEMY_FRAME_SIZE : image.naturalHeight / 2;
+    const frameWidth = sheetReady ? ENEMY_FRAME_SIZE : single ? image.naturalWidth : image.naturalWidth / 2;
+    const frameHeight = sheetReady ? ENEMY_FRAME_SIZE : single ? image.naturalHeight : image.naturalHeight / 2;
     // 적대 윤곽은 진사(cinnabar) 계열 광원으로만 알린다. 원본을 재착색하지 않는다.
     context.shadowColor = enemy.boss ? "#c4392a" : "#9f2f23";
     // FB6: 주홍 윤곽 발광 16/8 → 12/6 (-25%).
@@ -1379,11 +1401,12 @@ function drawEnemy(enemy: Enemy, point = positionOnPath(enemy.progress)): void {
     context.beginPath();
     context.arc(0, 0, drawSize * 0.28, 0, Math.PI * 2);
     context.fill();
+    // 글자는 아래 명패가 적는다 — 여기서 또 찍으면 두 겹으로 포개진다.
     context.fillStyle = "#071019";
     context.font = '900 ' + String(enemy.boss ? 24 : 15) + 'px "Malgun Gothic", serif';
     context.textAlign = "center";
     context.textBaseline = "middle";
-    context.fillText(visual.hanja, 0, 1);
+    if (!enemy.char) context.fillText(visual.hanja, 0, 1);
   }
 
   /*
@@ -1397,9 +1420,11 @@ function drawEnemy(enemy: Enemy, point = positionOnPath(enemy.progress)): void {
    * 우두머리는 반드시 혼을 남기므로 더 또렷하게 적는다.
    */
   if (enemy.char) {
-    const plate = enemy.boss ? 17 : 11;
-    const y = drawSize * 0.07;
-    context.globalAlpha = enemy.boss ? 0.95 : 0.72;
+    // 초상이 이미 그 글자의 자령이지만 글자도 함께 적는다 — 그림과 글자가
+    // 짝이라는 것이 이 게임의 학습 알맹이다. 몸을 가리지 않게 발치로 내린다.
+    const plate = enemy.boss ? 15 : 10;
+    const y = drawSize * 0.34;
+    context.globalAlpha = enemy.boss ? 0.95 : 0.78;
     context.fillStyle = "rgba(10, 7, 5, 0.82)";
     context.beginPath();
     context.arc(0, y, plate, 0, Math.PI * 2);
@@ -1408,7 +1433,7 @@ function drawEnemy(enemy: Enemy, point = positionOnPath(enemy.progress)): void {
     context.strokeStyle = enemy.boss ? "#c9a8ff" : "rgba(201, 168, 255, 0.55)";
     context.stroke();
     context.fillStyle = enemy.boss ? "#e6d8ff" : "#cfc0e8";
-    context.font = '900 ' + String(enemy.boss ? 20 : 13) + 'px "Malgun Gothic", serif';
+    context.font = '900 ' + String(enemy.boss ? 18 : 12) + 'px "Malgun Gothic", serif';
     context.textAlign = "center";
     context.textBaseline = "middle";
     context.fillText(enemy.char, 0, y + 1);

@@ -239,15 +239,24 @@ function renderCodex(query = ""): void {
 
   if (ctx.codexMode === "idioms") {
     renderCodexSynthesisFilters([], new Map(), new Set());
-    const activeIds = new Set(ctx.engine.idioms().map((idiom) => idiom.id));
+    /*
+     * 「이번 런」 표식은 이제 **추적 중**을 가리킨다.
+     *
+     * 성어 발동에 상한이 없어지며 명단이 지역 성어 전부가 됐다. 그러면 104구가
+     * 모두 「이번 런」이라 표식이 아무 것도 가르지 않는다. 지금 쫓고 있는 구를
+     * 짚는 쪽이 도감에서 실제로 쓸모가 있다.
+     */
+    const activeIds = new Set(ctx.engine.trackedIdioms().map((idiom) => idiom.id));
     const idioms = ctx.engine.allIdioms().filter((idiom) => !normalized || [idiom.chars, idiom.reading, idiom.meaning, idiom.bonus.label].join(" ").includes(normalized));
-    must<HTMLElement>("#codex-summary").textContent = `성어 ${codexCount(idioms.length)}/${codexCount(ctx.engine.allIdioms().length)} · 이번 런 목표 ${codexCount(ctx.engine.idioms().length)}개`;
+    // 명단에 상한이 없어진 뒤로 "이번 런 목표 104개"는 아무 말도 아니다.
+    // 지금 쫓고 있는 구가 몇인지를 적는다.
+    must<HTMLElement>("#codex-summary").textContent = `성어 ${codexCount(idioms.length)}/${codexCount(ctx.engine.allIdioms().length)} · 추적 중 ${codexCount(ctx.engine.trackedIdioms().length)}구`;
     list.className = "codex-list codex-list--idioms";
     list.innerHTML = idioms.map((idiom) => {
       const sealed = ctx.engine.state.idiomSeals.some((seal) => seal.idiomId === idiom.id);
       const active = activeIds.has(idiom.id);
       const selected = idiom.id === ctx.selectedCodexIdiomId;
-      return `<button type="button" data-codex-idiom="${idiom.id}" class="codex-idiom-card ${sealed ? "is-discovered" : ""} ${active ? "is-featured" : ""} ${selected ? "is-selected" : ""}" style="--codex:${idiom.color}" aria-current="${String(selected)}"><b>${idiom.chars}</b><span>${notationShortHtml(codexIdiomReading(idiom), ctx.engine.state.notation, "idiom")}</span><small>${active ? "이번 런 · " : ""}${idiom.bonus.label}</small></button>`;
+      return `<button type="button" data-codex-idiom="${idiom.id}" class="codex-idiom-card ${sealed ? "is-discovered" : ""} ${active ? "is-featured" : ""} ${selected ? "is-selected" : ""}" style="--codex:${idiom.color}" aria-current="${String(selected)}"><b>${idiom.chars}</b><span>${notationShortHtml(codexIdiomReading(idiom), ctx.engine.state.notation, "idiom")}</span><small>${active ? "추적 중 · " : ""}${idiom.bonus.label}</small></button>`;
     }).join("") || '<p class="codex-empty">검색 결과가 없습니다.</p>';
     // 상세에 뜬 성어와 목록의 선택 표시를 항상 같은 것으로 맞춘다.
     const shown = idioms.find((idiom) => idiom.id === ctx.selectedCodexIdiomId) ?? idioms[0];
@@ -490,16 +499,16 @@ function renderIdiomCodexDetail(idiom: ReturnType<GameEngine["idioms"]>[number] 
   }
   const sealed = ctx.engine.state.idiomSeals.some((seal) => seal.idiomId === idiom.id);
   const live = ctx.engine.isIdiomSealActive(idiom.id);
-  const featured = ctx.engine.idioms().some((candidate) => candidate.id === idiom.id);
+  const tracked = ctx.engine.trackedIdioms().some((candidate) => candidate.id === idiom.id);
   const sourceLabel = idiom.source === "cheonjamun" ? `천자문 제${idiom.sourceOrder}구` : "상용 사자성어";
-  const stateLabel = live ? "이번 런 발동 중" : sealed ? "발동 이력 · 지금은 흩어짐" : featured ? "이번 런 목표" : "도감 수록";
+  const stateLabel = live ? "이번 런 발동 중" : sealed ? "발동 이력 · 지금은 흩어짐" : tracked ? "추적 중" : "도감 수록";
   detail.innerHTML = `
     <div class="idiom-codex-glyphs" style="--codex:${idiom.color}">${[...idiom.chars].map((char, index) =>
       // 트랙 N: 이 숫자가 곧 전장 명패의 순번 인장이라는 말을 호버에 붙인다.
       `<span title="${IDIOM_ORDER_SEALS[index] ?? String(index + 1)} ${index + 1}번째 글자 — 전장에서 이 글자를 가진 자령에 같은 순번 인장이 붙습니다"><b>${char}</b><small>${index + 1}</small></span>`).join("")}</div>
     <p class="eyebrow">${sourceLabel} · ${stateLabel}</p>
     <h3>${notationHeadingHtml(codexIdiomReading(idiom), ctx.engine.state.notation, "idiom")}</h3>
-    <article class="idiom-strategy" style="--codex:${idiom.color}"><b>${idiom.bonus.label}</b><span>${idiom.meaning}</span><small>${featured ? "같은 진의 한 줄(가로·세로·대각선)에 네 글자를 1→2→3→4 순서로 놓으면 자동 발동하며, 효과는 네 자령이 그 줄을 유지하는 동안만 발동합니다. 줄이 흩어지면 달성 기록만 남고, 다시 세우면 재발동합니다. 역순으로 놓아도 인정합니다." : "이번 런 목표에는 포함되지 않았습니다. 다음 시드에서 목표 성구로 등장할 수 있습니다."}</small></article>
+    <article class="idiom-strategy" style="--codex:${idiom.color}"><b>${idiom.bonus.label}</b><span>${idiom.meaning}</span><small>같은 진의 한 줄(가로·세로·대각선)에 네 글자를 1→2→3→4 순서로 놓으면 자동 발동하며, 효과는 네 자령이 그 줄을 유지하는 동안만 발동합니다. 줄이 흩어지면 달성 기록만 남고, 다시 세우면 재발동합니다. 역순으로 놓아도 인정합니다.</small></article>
     <section class="idiom-material-guide"><h4>필요 한자와 획득법</h4>${[...idiom.chars].map((char) => {
       const definition = ctx.engine.catalog.definitions.get(char);
       const learning = learningInfoForNotation(ctx.engine.state.notation, char);

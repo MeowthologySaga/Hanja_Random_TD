@@ -78,7 +78,7 @@ describe("농축에는 상한이 없다", () => {
     expect(engine.concentrationQuote(tower!.id, "potent")?.essenceCost).toBe(5);
   });
 
-  it("흩어진 봉인은 감면하지 않는다 — 지금 줄을 지키는 값이다", () => {
+  it("흩어진 발동은 감면하지 않는다 — 지금 줄을 지키는 값이다", () => {
     const engine = new GameEngine("concentration-seal-broken", "KR");
     engine.begin();
     engine.summon();

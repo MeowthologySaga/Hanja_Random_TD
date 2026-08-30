@@ -384,9 +384,9 @@ export function showWaveBanner(): void {
 }
 
 /**
- * 첫 봉인 축하 — 스펙 6라운드 E3.
+ * 첫 발동 축하 — 스펙 6라운드 E3.
  *
- * 첫 봉인은 "뭔가 터졌다"로만 남고 그 효과가 어디에 남는지는 알려 주지 않았다.
+ * 첫 발동은 "뭔가 터졌다"로만 남고 그 효과가 어디에 남는지는 알려 주지 않았다.
  * 웨이브 배너를 한 번 빌려 전장 왼쪽 스택을 가리킨다. 런마다 처음 한 번뿐이다.
  */
 export function firstSealCelebration(reading: string): void {

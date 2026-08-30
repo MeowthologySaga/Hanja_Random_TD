@@ -6,7 +6,7 @@
  *
  * 옻칠 버튼·카드 프레임·서책 프레임·재질 타일은 DOM 이라 `ui-skin.css` 82절이
  * 맡거나 판단상 보류했다(보고서 참조). 여기 있는 넷만 캔버스 몫이다.
- *   출구 인장 2상태 · 별승급 고리 1~8 · 사자성어 봉인 인장 · 진 접지 그림자
+ *   출구 인장 2상태 · 별승급 고리 1~8 · 사자성어 발동 인장 · 진 접지 그림자
  *
  * 전부 장식이다. 좌표·히트영역·전투 수치·진행 규칙에 손대지 않는다.
  */
@@ -21,7 +21,7 @@ export type StarLevel = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
 export const EXIT_SEAL_SIZE = 28;
 /** 별승급 고리 표시 크기. 원본 720×720. */
 export const STAR_RING_SIZE = 240;
-/** 사자성어 봉인 인장 표시 크기. 원본 600×600. */
+/** 사자성어 발동 인장 표시 크기. 원본 600×600. */
 export const IDIOM_SEAL_SIZE = 200;
 
 const images = new Map<string, HTMLImageElement>();

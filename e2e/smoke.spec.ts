@@ -669,7 +669,7 @@ test("starts a KR run and exposes the finished core loop at 1280x720", async ({ 
   await expect(page.locator("#speed-button")).toHaveText("3×");
   await page.locator("#speed-button").click();
   await expect(page.locator("#speed-button")).toHaveText("1×");
-  // 성어 봉인 수는 성어 패널이 센다 — 자원칸에서 걷었다. 한자 목표 카드도 은퇴했다.
+  // 성어 발동 수는 성어 패널이 센다 — 자원칸에서 걷었다. 한자 목표 카드도 은퇴했다.
   await expect(page.locator("#idiom-tab-count")).toHaveText("0");
   await expect(page.locator("#goal-glyph")).toHaveCount(0);
   await openShop(page);
@@ -988,7 +988,9 @@ test("shows synthesis branches, highlights board materials, protects locked Jary
   await expect(page.locator("#codex-detail .recipe-guide")).toContainText("조합표");
   await page.getByRole("tab", { name: "사자성어" }).click();
   await expect(page.locator("#codex-summary")).toContainText("성어 104/104");
-  await expect(page.locator("#codex-summary")).toContainText("이번 런 목표 5개");
+  // 성어 발동에는 상한이 없다 — 명단은 지역 성어 전부다. 그래서 도감 요약은
+  // "이번 런 목표 N개"(이제 늘 104) 대신 지금 쫓고 있는 구를 적는다.
+  await expect(page.locator("#codex-summary")).toContainText("추적 중 1구");
   await expect(page.locator("#codex-detail .idiom-strategy")).toContainText("자동 발동");
   await expect(page.locator("#codex-detail .idiom-material-guide")).toContainText("필요 한자와 획득법");
   await page.screenshot({ path: "artifacts/progression-codex-1280x720.png", fullPage: true });
@@ -1203,9 +1205,12 @@ test("automatically seals four correctly placed towers with readable feedback", 
   await page.locator("#codex-button").click();
   await page.getByRole("tab", { name: "사자성어" }).click();
   await expect(page.locator("#codex-summary")).toContainText("104/104");
-  await expect(page.locator("#codex-summary")).toContainText("이번 런 목표 5개");
+  // 성어 발동에는 상한이 없다 — 명단은 지역 성어 전부다. 그래서 도감 요약은
+  // "이번 런 목표 N개"(이제 늘 104) 대신 지금 쫓고 있는 구를 적는다.
+  await expect(page.locator("#codex-summary")).toContainText("추적 중 1구");
   await expect(page.locator(".codex-idiom-card")).toHaveCount(104);
-  await expect(page.locator(".codex-idiom-card.is-featured")).toHaveCount(5);
+  // 명단이 지역 성어 전부가 된 뒤로 「이번 런」 표식은 추적 중인 구를 가리킨다.
+  await expect(page.locator(".codex-idiom-card.is-featured")).toHaveCount(1);
   await page.locator("#codex-search").fill("천지현황");
   await expect(page.locator(".codex-idiom-card")).toHaveCount(1);
   await page.locator(".codex-idiom-card").click();
