@@ -232,9 +232,27 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
                 <b>강화 탭</b><small id="element-upgrade-total">총 0단계</small>
               </button>
             </div>
-            <button id="auto-arrange-button" class="action-button action-button--auto-arrange" type="button" data-testid="auto-arrange-button" title="완성 가능한 사자성어를 발동하고 오행진 공명을 최적화합니다">
-              <b>자동배치</b><small>성어·오행 최적화</small>
-            </button>
+            <!--
+              자동배치는 편하지만 남의 손이다. 잠가 둔 자령을 옮기고, 가방을
+              비우고, 세워 둔 줄을 흩는다 — 무엇을 건드려도 되는지를 사람이
+              정할 수 있게 톱니를 붙인다. 기본값은 여태 동작 그대로다.
+            -->
+            <div class="auto-arrange-row">
+              <button id="auto-arrange-button" class="action-button action-button--auto-arrange" type="button" data-testid="auto-arrange-button" title="완성 가능한 사자성어를 발동하고 오행진 공명을 최적화합니다">
+                <b>자동배치</b><small>성어·오행 최적화</small>
+              </button>
+              <button id="arrange-policy-button" class="arrange-policy-button" type="button" data-testid="arrange-policy" aria-haspopup="dialog" aria-expanded="false" title="자동배치가 무엇을 건드릴지 고릅니다">
+                <i aria-hidden="true">⚙</i><em id="arrange-policy-badge" hidden>0</em>
+              </button>
+            </div>
+            <div id="arrange-policy-panel" class="arrange-policy-panel" role="dialog" aria-label="자동배치 옵션" hidden>
+              <p class="eyebrow">자동배치가 건드릴 것</p>
+              <div id="arrange-policy-list" class="arrange-policy-list"></div>
+              <div class="arrange-policy-foot">
+                <button id="arrange-policy-reset" type="button" data-testid="arrange-policy-reset">기본값으로</button>
+                <button id="arrange-policy-close" type="button" data-testid="arrange-policy-close">닫기</button>
+              </div>
+            </div>
           </div>
         </section>
 

@@ -10,6 +10,7 @@ import { buildSynthesisDepths, buildUncombinableStageOneChars } from "./codex-sy
 import { customIdiomToDefinition } from "../core/custom-idioms";
 import { equippedCustomIdioms } from "../core/soul-archive";
 import { soulArchive } from "./souls";
+import { syncArrangePolicy } from "./panels/arrange-policy";
 import { openSoulArchive, refreshSoulBadge } from "./panels/souls";
 import {
   applySavedUiState,
@@ -193,6 +194,8 @@ export function startRun(useNewSeed = false, options: StartRunOptions = {}): voi
     ctx.selectedRegion = ctx.engine.state.region;
     ctx.selectedGameMode = ctx.engine.state.mode;
   }
+  // 새 엔진에는 정책이 안 꽂혀 있다 — 설정이라 판을 넘어 살아야 한다.
+  syncArrangePolicy();
   shell.dataset.gameMode = ctx.engine.state.mode;
   ctx.mapSynthesisDepths = buildSynthesisDepths(ctx.engine.catalog.definitions.values());
   ctx.mapUncombinableStageOne = buildUncombinableStageOneChars(ctx.engine.catalog.definitions.values());

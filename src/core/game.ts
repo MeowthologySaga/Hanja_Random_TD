@@ -54,6 +54,7 @@ import {
   fuseCasual as runFuseCasual,
   type CasualFusionContext
 } from "./casual-fusion";
+import { DEFAULT_ARRANGE_POLICY, type ArrangePolicy } from "./arrange-policy";
 import {
   BOARD_CELLS,
   BOARD_FORMATIONS,
@@ -312,6 +313,11 @@ export class GameEngine {
   private readonly customIdioms: readonly IdiomDefinition[];
   /** 처치 문기의 소수점 나머지. 판이 끝나면 사라지는 잔돈이라 상태에 담지 않는다. */
   private killEssenceCarry = 0;
+  /**
+   * 자동배치 정책. 설정이라 런 저장본이 아니라 화면이 꽂아 준다 —
+   * 시뮬 봇은 꽂지 않으므로 기본값(= 여태 동작)으로 돈다.
+   */
+  private arrangePolicy: ArrangePolicy = DEFAULT_ARRANGE_POLICY;
   private readonly enemyPositions = new Map<number, Point>();
   private readonly targetCandidates: Enemy[] = [];
   private readonly combatCharCounts = new Map<string, number>();
@@ -2627,12 +2633,28 @@ export class GameEngine {
     if (!this.isRunActive()) return { ok: false, message: "진행 중인 수비전이 없습니다." };
     if (this.state.towers.length === 0 && this.state.inventoryTowers.length === 0) return { ok: false, message: "자동배치할 자령이 없습니다." };
 
+    const policy = this.arrangePolicy;
     const originalCells = new Map([...this.state.towers, ...this.state.inventoryTowers].map((tower) => [tower.id, tower.cell]));
     const sealedBefore = this.activeIdiomSeals().length;
     const resonanceBefore = BOARD_FORMATIONS.reduce((sum, _, index) => sum + this.formationResonance(index).tier, 0);
     const occupiedCells = new Set(this.state.towers.map((tower) => tower.cell));
     const emptyCells = BOARD_CELLS.map((_, index) => index).filter((cell) => this.isCellUnlocked(cell) && !occupiedCells.has(cell));
-    const deployed = this.state.inventoryTowers.splice(0, emptyCells.length);
+
+    /*
+     * 가방에서 꺼내 빈 칸을 채운다.
+     *
+     * 「남는 칸은 약점 오행부터」를 켜면 이번 웨이브 약점 오행 자령을 앞으로
+     * 당겨 내보낸다 — 그 오행은 이번 물결에 피해가 배로 들어간다. 정렬은
+     * 안정 정렬이라 나머지 순서는 가방에 담긴 차례 그대로다.
+     */
+    const bag = policy.deployFromInventory ? this.state.inventoryTowers : [];
+    if (policy.weaknessFirst && bag.length > 0) {
+      const weakness = this.currentPlan?.weakness;
+      if (weakness) {
+        bag.sort((left, right) => Number(right.wuxing === weakness) - Number(left.wuxing === weakness));
+      }
+    }
+    const deployed = policy.deployFromInventory ? this.state.inventoryTowers.splice(0, emptyCells.length) : [];
     for (let index = 0; index < deployed.length; index += 1) {
       const tower = deployed[index] as Tower;
       tower.cell = emptyCells[index] as number;
@@ -2644,8 +2666,18 @@ export class GameEngine {
     //
     // 명단은 이제 지역 성어 전부(KR 104구)라 바퀴마다 다시 만들면 값이 크다.
     // 명단 자체는 이 루프 동안 바뀌지 않으므로 한 번만 뜬다.
-    const roster = this.idioms();
-    let pinned = this.sealedIdiomTowerIds();
+    /*
+     * 「잠근 자령은 그 자리에」를 켜면 자물쇠를 채운 자령을 고정 집합에 함께
+     * 넣는다. 고정 집합은 성어 줄 세우기와 공명 최적화 둘 다가 존중하므로,
+     * 한 자리에 넣어 두면 두 곳이 저절로 같은 규칙을 따른다.
+     */
+    const lockedIds = policy.keepLocked
+      ? this.state.towers.filter((tower) => tower.locked).map((tower) => tower.id)
+      : [];
+    const withLocked = (ids: ReadonlySet<number>): Set<number> => new Set([...ids, ...lockedIds]);
+
+    const roster = policy.idiomFirst ? this.idioms() : [];
+    let pinned = withLocked(this.sealedIdiomTowerIds());
     for (let guard = 0; guard < roster.length; guard += 1) {
       const idiom = roster.find((candidate) =>
         !this.isIdiomSealActive(candidate.id)
@@ -2656,10 +2688,15 @@ export class GameEngine {
       if (!chosen) break;
       this.placeIdiomTowers(chosen, pinned);
       if (this.resolveIdiomFormations() === 0) break;
-      pinned = this.sealedIdiomTowerIds();
+      pinned = withLocked(this.sealedIdiomTowerIds());
     }
 
-    this.optimizeFormationCells(pinned);
+    /*
+     * 「전장 자령도 옮기기」를 끄면 공명 최적화를 건너뛴다 — 그것이 이미 선
+     * 자령을 옮기는 유일한 자리다. 가방에서 꺼내 빈 칸을 채우는 일은 그대로
+     * 남으므로, 끈 채로도 자동배치가 아무 일도 안 하지는 않는다.
+     */
+    if (policy.rearrangeBoard) this.optimizeFormationCells(pinned);
     this.resolveIdiomFormations();
 
     const sealed = this.activeIdiomSeals().length - sealedBefore;
@@ -3145,6 +3182,15 @@ export class GameEngine {
    * 이 통은 두 구면 상한에 닿으므로, 커스텀까지 같은 통에 넣으면 애써 새긴
    * 성어가 아무 일도 하지 않는다(custom-idioms.ts 머리말).
    */
+  /** 자동배치 정책을 갈아 끼운다. */
+  setArrangePolicy(policy: ArrangePolicy): void {
+    this.arrangePolicy = policy;
+  }
+
+  getArrangePolicy(): ArrangePolicy {
+    return this.arrangePolicy;
+  }
+
   idiomBonus(kind: IdiomBonusKind): number {
     // 유지형 규칙: 흩어진 발동은 기록에만 남고 보너스는 내지 않는다.
     const total = this.state.idiomSeals.reduce((sum, seal) => {

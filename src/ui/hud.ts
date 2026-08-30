@@ -40,6 +40,7 @@ import {
 import { formatTime, phaseLabel } from "./format";
 import { renderConcentration } from "./panels/concentration";
 import { renderEvolutions } from "./panels/evolution";
+import { bindArrangePolicy } from "./panels/arrange-policy";
 import { renderGoal } from "./panels/goal";
 import { renderGrowth } from "./panels/growth";
 import { renderActiveIdioms, renderIdiomHud } from "./panels/idiom";
@@ -537,6 +538,7 @@ export function wireHud2(): void {
   must<HTMLButtonElement>("#evolve-button").addEventListener("click", () => setPanelTab("evolution"));
   must<HTMLButtonElement>("#research-button").addEventListener("click", () => { sound.unlock(); handleAction(ctx.engine.upgradeResearch()); });
   must<HTMLButtonElement>("#auto-arrange-button").addEventListener("click", () => { sound.unlock(); handleAction(ctx.engine.autoArrangeTowers()); });
+  bindArrangePolicy();
   must<HTMLButtonElement>("#element-upgrade-button").addEventListener("click", () => setPanelTab("growth"));
   // 집중 프레임 여닫기 — dim 클릭 · [닫기] · Esc. 게임은 멈추지 않는다.
   must<HTMLElement>("#focus-dim").addEventListener("click", () => setFocusFrame(null));
