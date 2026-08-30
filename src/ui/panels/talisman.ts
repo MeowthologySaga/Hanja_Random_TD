@@ -47,6 +47,7 @@ import { setPanelTab, showToast } from "../hud";
 import { pickTalismanVisitLine } from "../talisman-lines";
 import { playTalismanImpact, playTalismanRewardVisit, type TalismanRewardGrant } from "../talisman-reward";
 import { rasterizeImageAlpha, scoreTalismanDrawing, TALISMAN_THRESHOLDS, type TalismanCellGrid, type TalismanScore } from "./talisman-score";
+import { StrokeGuide } from "./stroke-guide";
 
 /**
  * 부적지(한지 세로 카드) 캔버스 크기.
@@ -68,6 +69,12 @@ const GLYPH_CENTER_Y = 130;
 
 /** 채점 칸 크기. 칸 양자화 + 1칸 팽창이 손떨림 허용치다(talisman-score.ts). */
 const CELL_SIZE = 8;
+
+/*
+ * 획순 안내(선택 항목)의 상태. 꺼져 있으면 `available` 이 false 로 남아
+ * 아래 분기가 전부 예전 길로 흐른다 — 기본 화면은 한 획도 달라지지 않는다.
+ */
+const strokeGuide = new StrokeGuide();
 
 /** 먹 붓 굵기. */
 const BRUSH_WIDTH = 11;
@@ -303,6 +310,23 @@ function drawGlyph(context: CanvasRenderingContext2D, char: string, style: strin
   context.restore();
 }
 
+/**
+ * 안내 캔버스 — 반투명 글자 한 장, 그 위에 (켰다면) 지금 그을 획.
+ *
+ * 획순 안내가 꺼져 있거나 그 글자에 자료가 없으면 덧그릴 것이 없어, 화면은
+ * 여태와 완전히 같다.
+ */
+function paintGuide(char: string): void {
+  if (!guideContext) return;
+  drawGlyph(guideContext, char, "rgba(34, 26, 16, 0.2)");
+  strokeGuide.paint(guideContext);
+}
+
+/** 획순 안내가 서 있는 동안의 상태 줄 — 몇 번째 획인지가 먼저다. */
+function strokeStatus(): string {
+  return `${strokeGuide.current + 1}번째 획 · 모두 ${strokeGuide.total}획 — 붉은 점선을 따라 그으세요`;
+}
+
 /** 글자 마스크 준비 — 채점 원본(maskData)과 QA 따라쓰기용 격자(maskGrid). */
 function prepareMask(char: string): void {
   const offscreen = document.createElement("canvas");
@@ -320,6 +344,11 @@ function clearInk(): void {
   inkContext.clearRect(0, 0, PAPER_WIDTH, PAPER_HEIGHT);
   drawing = false;
   strokesDrawn = 0;
+  // 먹을 지웠으면 안내도 첫 획으로 되감는다 — 남아 있으면 종이와 안내가 어긋난다.
+  if (strokeGuide.available) {
+    strokeGuide.reset();
+    if (currentDefinition) paintGuide(currentDefinition.char);
+  }
 }
 
 /**
@@ -382,12 +411,14 @@ function presentDefinition(definition: HanziDefinition): void {
   currentDefinition = definition;
   sealed = false;
   prepareMask(definition.char);
-  if (guideContext) drawGlyph(guideContext, definition.char, "rgba(34, 26, 16, 0.2)");
+  // 채점용 마스크를 그대로 자로 쓴다 — 안내선이 화면의 먹 위에 정확히 앉는다.
+  strokeGuide.begin(ctx.strokeOrderGuide ? definition.char : "", maskData, PAPER_WIDTH, PAPER_HEIGHT);
+  paintGuide(definition.char);
   clearInk();
   must<HTMLCanvasElement>("#talisman-ink").classList.remove("is-sealed");
   hideSeal();
   syncTalismanReading();
-  setStatus("반투명 글자를 따라 쓰고 [부적 완성]");
+  setStatus(strokeGuide.available ? strokeStatus() : "반투명 글자를 따라 쓰고 [부적 완성]");
   must<HTMLButtonElement>("#talisman-redraw").textContent = "다시 뽑기";
   syncSubmitButton(false);
   setControlsEnabled(true);
@@ -489,6 +520,34 @@ function completeTalisman(score: TalismanScore): void {
 }
 
 /**
+ * 방금 뗀 한 획을 안내와 견줘 다음 획으로 넘긴다(획순 안내를 켠 경우).
+ *
+ * 틀렸다고 먹선을 지우지는 않는다 — 지우면 무엇을 그렸는지가 사라져 왜 안
+ * 넘어갔는지 알 길이 없다. 안내만 제자리에 두고 다시 그을 기회를 준다.
+ *
+ * 완성 판정에는 손대지 않는다. 획을 다 안 그어도 마스크 채점이 통과하면
+ * [부적 완성]은 눌린다 — 안내는 안내지 관문이 아니다.
+ */
+function advanceStrokeGuide(): void {
+  if (!strokeGuide.available || sealed) return;
+  const result = strokeGuide.penUp();
+  if (!currentDefinition) return;
+  paintGuide(currentDefinition.char);
+  if (!result) return;
+  if (!result.advanced) {
+    setStatus(`${strokeGuide.current + 1}번째 획을 붉은 점선을 따라 끝까지 그으세요`, "hint");
+    return;
+  }
+  if (result.done) {
+    setStatus(`${strokeGuide.total}획을 모두 그었습니다 — [부적 완성]`, "pass");
+    return;
+  }
+  setStatus(result.reversed
+    ? `방향이 거꾸로였습니다 — 다음은 ${strokeGuide.current + 1}번째 획`
+    : strokeStatus(), result.reversed ? "hint" : "plain");
+}
+
+/**
  * 지금 먹선을 채점해 상태 줄과 [부적 완성] 활성 여부를 맞춘다.
  * 판정(완성 처리)은 하지 않는다 — 그것은 제출 버튼만의 권한이다.
  */
@@ -498,7 +557,11 @@ function refreshScore(): TalismanScore | null {
   const score = scoreTalismanDrawing(maskData, data, PAPER_WIDTH, PAPER_HEIGHT);
   if (!sealed) {
     syncSubmitButton(score.inkPixels > 0);
-    if (score.inkPixels === 0) setStatus("반투명 글자를 따라 쓰고 [부적 완성]");
+    if (score.inkPixels === 0) {
+      setStatus(strokeGuide.available && !strokeGuide.finished
+        ? strokeStatus()
+        : "반투명 글자를 따라 쓰고 [부적 완성]");
+    }
     else setStatus(`정확 ${Math.round(score.insideRatio * 100)}% · 덮음 ${Math.round(score.coverageRatio * 100)}%`);
   }
   return score;
@@ -625,12 +688,14 @@ function wireDrawing(ink: HTMLCanvasElement): void {
       // 캡처 없이도 canvas 위 move/up 만으로 그리기는 성립한다.
     }
     lastPoint = canvasPoint(ink, event);
+    strokeGuide.penDown(lastPoint);
     strokeSegment(lastPoint, lastPoint);
     event.preventDefault();
   });
   ink.addEventListener("pointermove", (event) => {
     if (!drawing || sealed) return;
     const point = canvasPoint(ink, event);
+    strokeGuide.penMove(point);
     strokeSegment(lastPoint, point);
     lastPoint = point;
   });
@@ -639,6 +704,8 @@ function wireDrawing(ink: HTMLCanvasElement): void {
     drawing = false;
     // 획을 뗄 때 갱신되는 것은 상태 줄과 제출 활성뿐 — 완성 판정은 하지 않는다.
     refreshScore();
+    // 안내가 마지막에 말한다. 먼저 부르면 채점 문구가 안내를 덮어쓴다.
+    advanceStrokeGuide();
   };
   ink.addEventListener("pointerup", finish);
   ink.addEventListener("pointercancel", finish);
@@ -869,6 +936,46 @@ export function wireTalisman1(): void {
           const definition = ctx.engine.catalog.definitions.get(char);
           if (definition) presentDefinition(definition);
           return definition !== undefined;
+        },
+        /* ── 획순 안내(선택 항목) ── */
+        strokeGuide: () => ({
+          available: strokeGuide.available,
+          current: strokeGuide.current,
+          total: strokeGuide.total,
+          finished: strokeGuide.finished
+        }),
+        /**
+         * 지금 획을 그 중앙선 그대로 한 번 긋는다.
+         *
+         * 사람이 손으로 긋는 것과 같은 포인터 이벤트를 합성한다 — 판정 경로를
+         * 우회하면 "안내가 실제로 넘어가는가"를 못 지킨다.
+         */
+        traceStroke: () => {
+          const ink = document.querySelector<HTMLCanvasElement>("#talisman-ink");
+          const path = strokeGuide.currentPath();
+          if (!ink || path.length === 0 || sealed) return false;
+          const rect = ink.getBoundingClientRect();
+          const send = (type: string, point: { x: number; y: number }): void => {
+            ink.dispatchEvent(new PointerEvent(type, {
+              clientX: rect.left + point.x * (rect.width / PAPER_WIDTH),
+              clientY: rect.top + point.y * (rect.height / PAPER_HEIGHT),
+              pointerId: 9,
+              bubbles: true,
+              cancelable: true
+            }));
+          };
+          // 중앙선 점 사이를 잘게 나눠 실제 붓질처럼 촘촘한 점렬을 만든다.
+          send("pointerdown", path[0]!);
+          for (let index = 1; index < path.length; index += 1) {
+            const from = path[index - 1]!;
+            const to = path[index]!;
+            for (let step = 1; step <= 6; step += 1) {
+              const t = step / 6;
+              send("pointermove", { x: from.x + (to.x - from.x) * t, y: from.y + (to.y - from.y) * t });
+            }
+          }
+          send("pointerup", path[path.length - 1]!);
+          return true;
         }
       }
     });

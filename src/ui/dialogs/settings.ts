@@ -4,7 +4,8 @@
 import { type GameMode } from "../../core/types";
 import { type DisplayMode, saveDisplayMode } from "../display-mode";
 import { saveAutoPlaceSummons } from "../summon-placement";
-import { CALM_SCREEN_STORAGE_KEY, ctx, HOVER_GLYPH_STORAGE_KEY, must, reducedMotion, settingsDialog, shell, sound } from "../app-context";
+import { CALM_SCREEN_STORAGE_KEY, ctx, HOVER_GLYPH_STORAGE_KEY, must, reducedMotion, settingsDialog, shell, sound, STROKE_ORDER_STORAGE_KEY } from "../app-context";
+import { loadStrokeMedians } from "../../core/stroke-order";
 import { startCoach } from "../coach";
 import { handleAction, showToast } from "../hud";
 import { openStandardModeNotice } from "./s13";
@@ -50,6 +51,39 @@ function syncCalmScreenControl(): void {
   button.classList.toggle("is-on", ctx.calmScreen);
   button.setAttribute("aria-checked", String(ctx.calmScreen));
   must<HTMLElement>("#calm-screen-toggle i em").textContent = ctx.calmScreen ? "ON" : "OFF";
+}
+
+/*
+ * 획순 안내 — 켤 때만 자료를 받는다.
+ *
+ * 2.5MB 라 끈 사람에게는 요청 자체를 보내지 않는다. 받아 두는 일은 여기서
+ * 한 번만 하고, 실패하면 조용히 예전 방식으로 돌아간다 — 부적을 쓰는 도중에
+ * 오류 창이 뜨는 것보다 안내가 안 서는 편이 낫다.
+ */
+function syncStrokeOrderControl(): void {
+  const button = must<HTMLButtonElement>("#stroke-order-toggle");
+  button.classList.toggle("is-on", ctx.strokeOrderGuide);
+  button.setAttribute("aria-checked", String(ctx.strokeOrderGuide));
+  must<HTMLElement>("#stroke-order-toggle i em").textContent = ctx.strokeOrderGuide ? "ON" : "OFF";
+}
+
+export function setStrokeOrderGuide(enabled: boolean): void {
+  ctx.strokeOrderGuide = enabled;
+  try {
+    window.localStorage.setItem(STROKE_ORDER_STORAGE_KEY, String(enabled));
+  } catch {
+    // 사생활 보호 모드 등에서 저장이 막혀도 이번 세션 선택은 살린다.
+  }
+  syncStrokeOrderControl();
+  if (!enabled) {
+    showToast("획순 안내 OFF · 글자 한 장을 통째로 보여 줍니다");
+    return;
+  }
+  void loadStrokeMedians().then((medians) => {
+    showToast(medians
+      ? "획순 안내 ON · 따라 쓰기 판에서 획을 하나씩 짚어 줍니다"
+      : "획순 자료를 받지 못했습니다 — 글자 한 장을 통째로 보여 줍니다", medians === null);
+  });
 }
 
 /** 선택(설정 > OS)을 실효값으로 굳혀 셸 게이트에 새긴다. */
@@ -126,6 +160,7 @@ export function wireSettings1(): void {
     syncAutoPlaceControl();
     syncHoverGlyphControl();
     syncCalmScreenControl();
+    syncStrokeOrderControl();
     syncAudioControls();
     settingsDialog.showModal();
   });
@@ -133,6 +168,8 @@ export function wireSettings1(): void {
   syncHoverGlyphControl();
   // FB6: 저장된 선택(또는 OS 동작 줄이기)이 첫 그림부터 게이트에 실리게 한다.
   applyCalmScreen();
+  // 켜 둔 채로 새로 연 판에서도 첫 부적지부터 안내가 서게 미리 받아 둔다.
+  if (ctx.strokeOrderGuide) void loadStrokeMedians();
 }
 
 /** main.ts 가 원래 순서대로 부르는 배선 묶음. */
@@ -143,6 +180,7 @@ export function wireSettings2(): void {
     syncAutoPlaceControl();
     syncHoverGlyphControl();
     syncCalmScreenControl();
+    syncStrokeOrderControl();
     syncAudioControls();
     settingsDialog.showModal();
   });
@@ -154,6 +192,11 @@ export function wireSettings2(): void {
   must<HTMLButtonElement>("#calm-screen-toggle").addEventListener("click", () => {
     sound.unlock();
     setCalmScreen(!ctx.calmScreen);
+    sound.playUiConfirm();
+  });
+  must<HTMLButtonElement>("#stroke-order-toggle").addEventListener("click", () => {
+    sound.unlock();
+    setStrokeOrderGuide(!ctx.strokeOrderGuide);
     sound.playUiConfirm();
   });
   must<HTMLButtonElement>("#settings-close").addEventListener("click", () => settingsDialog.close());

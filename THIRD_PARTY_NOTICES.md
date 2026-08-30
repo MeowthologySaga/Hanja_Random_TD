@@ -29,6 +29,18 @@ Permission is hereby granted, free of charge, to any person obtaining a copy of 
 
 The data files and software are provided “as is”, without warranty of any kind. See the linked Unicode License v3 for the complete terms and disclaimer.
 
+## Make Me A Hanzi stroke medians
+
+`public/data/hanzi-stroke-medians-v1.json` is generated from the `medians` field of Make Me A Hanzi's `graphics.txt`, trimmed to this game's character roster. It is fetched only when a player turns on the optional stroke-order guide (설정 → 학습 모드 · 획순 안내), which is **off by default**. Stroke outlines are not used or redistributed — only the skeleton polylines needed to point at one stroke at a time. Coordinates are rounded to integers; no other modification is made.
+
+- Source: https://github.com/skishore/makemeahanzi/blob/master/graphics.txt
+- Source SHA-256: `a28c478b5178e98f67f510b2d52fde08a69dc664654ef43498253b9b764d46ee` (fetched 2026-08-30)
+- Build script: `npm run generate:medians -- <graphics.txt>` (`scripts/build-stroke-medians.mjs`, which verifies the hash above)
+- Project code license: MIT — https://github.com/skishore/makemeahanzi/blob/master/LICENSE.txt
+- Character data license: Arphic Public License, inherited from the Arphic 文鼎 fonts the graphics were derived from — https://github.com/skishore/makemeahanzi/blob/master/APLL.txt
+
+The Arphic Public License permits copying and distribution of the font data and derived works provided this notice and the license accompany them, and that changes are documented. The change made here is documented above: the outline paths are dropped, only the medians are kept, and coordinates are rounded to integers.
+
 ## libhangul Korean Hanja dictionary
 
 Korean hun-eum fields in `src/data/learning-readings.json` are generated from libhangul's `data/hanja/hanja.txt`, pinned to commit `a34aef73378c0992316861bbf13fc914ee7577d9`.

@@ -210,6 +210,15 @@ export const DISMANTLE_UNIQUE_STORAGE_KEY = "hanja-td:dismantle-protect-unique";
  */
 export const TALISMAN_MODE_STORAGE_KEY = "hanja-td:talisman-mode";
 
+/**
+ * 획순 안내 — **기본 꺼짐**.
+ *
+ * "옵션으로 부가적으로 만들어두고 기본요소는 그대로 둬. 원하는사람만 하게
+ * 할거야"(사용자). 꺼져 있으면 따라 쓰기 판은 여태 그대로 반투명 글자 한
+ * 장이고, 2.5MB 짜리 획순 자료도 아예 받지 않는다.
+ */
+export const STROKE_ORDER_STORAGE_KEY = "hanja-td:stroke-order-guide";
+
 export const MIN_MAP_ZOOM = 0.72;
 
 export const BASE_MAP_ZOOM = 2.6;
@@ -374,6 +383,17 @@ class AppContext {
       return window.localStorage.getItem(TALISMAN_MODE_STORAGE_KEY) !== "false";
     } catch {
       return true;
+    }
+  })();
+  /**
+   * 획순 안내 켬/끔. 기본 꺼짐이라 저장된 값이 "true" 일 때만 켜진다 —
+   * 부적 모드(기본 켜짐)와 판정 방향이 반대인 것에 주의.
+   */
+  strokeOrderGuide = ((): boolean => {
+    try {
+      return window.localStorage.getItem(STROKE_ORDER_STORAGE_KEY) === "true";
+    } catch {
+      return false;
     }
   })();
   /** 부적 보상으로 얻은 기본 소환 무료권. 코어 무수정 — UI 층에서만 산다. */

@@ -25,8 +25,9 @@
  */
 import { rerollCustomIdiom, type SoulArchive } from "../../core/soul-archive";
 import type { CustomIdiom } from "../../core/custom-idioms";
-import { must } from "../app-context";
+import { ctx, must } from "../app-context";
 import { rasterizeImageAlpha, scoreTalismanDrawing, TALISMAN_THRESHOLDS, type TalismanCellGrid } from "./talisman-score";
+import { StrokeGuide } from "./stroke-guide";
 
 /** 종이 크기 — 부적 패널과 같은 비례로 두어 손 감각이 이어진다. */
 const PAPER_WIDTH = 196;
@@ -58,6 +59,12 @@ let session: RerollSession | null = null;
 let guideContext: CanvasRenderingContext2D | null = null;
 let inkContext: CanvasRenderingContext2D | null = null;
 let maskData: Uint8ClampedArray | null = null;
+
+/** 획순 안내(선택 항목) — 꺼져 있으면 available 이 false 로 남는다. */
+const strokeGuide = new StrokeGuide();
+
+/** 이어 그리기용 직전 점. 없으면 빠르게 끌 때 먹선이 점선으로 끊긴다. */
+let lastPoint = { x: 0, y: 0 };
 let maskGrid: TalismanCellGrid | null = null;
 let drawing = false;
 let bound = false;
@@ -98,12 +105,39 @@ function prepareMask(char: string): void {
 
 function clearInk(): void {
   inkContext?.clearRect(0, 0, PAPER_WIDTH, PAPER_HEIGHT);
+  // 먹을 지웠으면 안내도 첫 획으로 — 남아 있으면 종이와 안내가 어긋난다.
+  if (strokeGuide.available) {
+    strokeGuide.reset();
+    paintGuide(currentChar());
+  }
   drawing = false;
   refreshScore();
 }
 
 function setStatus(text: string): void {
   must<HTMLElement>("#soul-reroll-status").textContent = text;
+}
+
+/**
+ * 방금 뗀 한 획을 안내와 견줘 다음 획으로 넘긴다(획순 안내를 켠 경우).
+ * 판정에는 손대지 않는다 — 안내는 안내지 관문이 아니다.
+ */
+function advanceStrokeGuide(): void {
+  if (!strokeGuide.available) return;
+  const result = strokeGuide.penUp();
+  paintGuide(currentChar());
+  if (!result) return;
+  if (!result.advanced) {
+    setStatus(`${strokeGuide.current + 1}번째 획을 붉은 점선을 따라 끝까지 그으세요`);
+    return;
+  }
+  if (result.done) {
+    setStatus(`${strokeGuide.total}획을 모두 그었습니다 — [이 글자 완성]`);
+    return;
+  }
+  setStatus(result.reversed
+    ? `방향이 거꾸로였습니다 — 다음은 ${strokeGuide.current + 1}번째 획`
+    : `${strokeGuide.current + 1}번째 획 · 모두 ${strokeGuide.total}획 — 붉은 점선을 따라 그으세요`);
 }
 
 /**
@@ -118,7 +152,9 @@ function refreshScore(): { inside: number; coverage: number; ink: number } | nul
   const score = scoreTalismanDrawing(maskData, data, PAPER_WIDTH, PAPER_HEIGHT);
   const submit = must<HTMLButtonElement>("#soul-reroll-submit");
   submit.disabled = score.inkPixels === 0;
-  if (score.inkPixels === 0) {
+  if (score.inkPixels === 0 && strokeGuide.available && !strokeGuide.finished) {
+    setStatus(`${strokeGuide.current + 1}번째 획 · 모두 ${strokeGuide.total}획 — 붉은 점선을 따라 그으세요`);
+  } else if (score.inkPixels === 0) {
     setStatus(
       `반투명 글자를 따라 쓰고 [다시 굴리기] · 정확 ${Math.round(TALISMAN_THRESHOLDS.inside * 100)}%`
       + ` · 덮음 ${Math.round(TALISMAN_THRESHOLDS.coverage * 100)}% 이면 통과합니다`
@@ -152,6 +188,16 @@ function strokeSegment(from: { x: number; y: number }, to: { x: number; y: numbe
   inkContext.lineTo(to.x + 0.01, to.y + 0.01);
   inkContext.stroke();
   inkContext.restore();
+}
+
+/**
+ * 안내 캔버스 — 반투명 글자 한 장, 그 위에 (켰다면) 지금 그을 획.
+ * 부적 판과 같은 처방이다(panels/talisman.ts).
+ */
+function paintGuide(char: string): void {
+  if (!guideContext) return;
+  drawGlyph(guideContext, char, "rgba(34, 26, 16, 0.2)");
+  strokeGuide.paint(guideContext);
 }
 
 /** 지금 쓰는 자리의 글자. */
@@ -196,7 +242,9 @@ function useIndex(index: number): void {
   session.index = index;
   const char = currentChar();
   prepareMask(char);
-  if (guideContext) drawGlyph(guideContext, char, "rgba(34, 26, 16, 0.2)");
+  // 채점용 마스크를 자로 써서 안내선을 화면의 먹 위에 앉힌다(stroke-guide.ts).
+  strokeGuide.begin(ctx.strokeOrderGuide ? char : "", maskData, PAPER_WIDTH, PAPER_HEIGHT);
+  paintGuide(char);
   clearInk();
   renderChoices();
   syncActions();
@@ -284,20 +332,29 @@ export function bindSoulReroll(hooks: SoulRerollHooks): void {
     } catch {
       /* 무시 */
     }
-    const point = canvasPoint(ink, event);
-    strokeSegment(point, point);
+    lastPoint = canvasPoint(ink, event);
+    strokeGuide.penDown(lastPoint);
+    strokeSegment(lastPoint, lastPoint);
     refreshScore();
   });
   ink.addEventListener("pointermove", (event) => {
     if (!drawing) return;
     const point = canvasPoint(ink, event);
-    strokeSegment(point, point);
+    strokeGuide.penMove(point);
+    /*
+     * 직전 점에서 이어 긋는다. 여기서 점 하나만 찍으면(예전 코드) 빠르게 끄는
+     * 붓이 점선으로 끊겨, 성실히 쓴 글자가 덮음 미달로 퇴짜를 맞는다.
+     */
+    strokeSegment(lastPoint, point);
+    lastPoint = point;
   });
   for (const type of ["pointerup", "pointercancel", "pointerleave"] as const) {
     ink.addEventListener(type, () => {
       if (!drawing) return;
       drawing = false;
       refreshScore();
+      // 안내가 마지막에 말한다 — 먼저 부르면 채점 문구가 덮어쓴다.
+      advanceStrokeGuide();
     });
   }
 
