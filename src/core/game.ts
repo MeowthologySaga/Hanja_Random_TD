@@ -1427,7 +1427,7 @@ export class GameEngine {
     if (!this.demiseSpreading && (enemy.brandBlastRadius ?? 0) > 0 && (enemy.brandUntil ?? 0) > this.state.elapsed) {
       enemy.brandStored = (enemy.brandStored ?? 0) + amount * DEMISE_STORE_RATIO;
     }
-    if (amount >= 1.5) this.events.push({ type: "damage", at: this.enemyPoint(enemy), amount, critical, weakness });
+    if (amount >= 1.5) this.events.push({ type: "damage", at: this.enemyPoint(enemy), enemyId: enemy.id, amount, critical, weakness });
     if (enemy.hp > 0) return;
     const at = this.enemyPoint(enemy);
     this.state.enemies = this.state.enemies.filter((candidate) => candidate.id !== enemy.id);

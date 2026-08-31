@@ -51,6 +51,7 @@ import { casualStarOf } from "../format";
 import { drawHoveredTowerCard, drawTower, flushTowerPlaques } from "./draw-tower";
 import { type IdiomRippleFx, idiomRipples, pushPooled, ringPool, rings, takeRing, updateAndDrawFx } from "./fx";
 import { clampScreenBox, placeStageLabel, resetStageLabels } from "./stage-labels";
+import { advanceEnemyHealth, enemyHealthTrail, healthTrailColor } from "./enemy-health";
 
 export function drawWorld(delta: number): void {
   // [S/P-12] 부동 라벨의 자리 잡기는 프레임 단위다 — 지난 프레임의 점유는 잊는다.
@@ -87,6 +88,8 @@ export function drawWorld(delta: number): void {
   drawCompositionMaterialLinks();
   drawIdiomSeals();
   drawSelection();
+  // 체력바의 뒤따르는 띠를 게임 시각에 맞춰 옮기고, 죽은 적의 자국을 잊는다.
+  advanceEnemyHealth(state.elapsed);
   for (const enemy of state.enemies) {
     const point = positionOnPath(enemy.progress);
     if (isWorldPointVisible(point, enemy.boss ? 90 : 55)) drawEnemy(enemy, point);
@@ -1492,12 +1495,27 @@ function drawEnemy(enemy: Enemy, point = positionOnPath(enemy.progress)): void {
   }
   context.restore();
   const width = enemy.boss ? 64 : Math.max(30, drawSize * 0.7);
+  const left = point.x - width / 2;
   context.fillStyle = "rgba(6, 4, 3, 0.86)";
-  context.fillRect(point.x - width / 2 - 1, top - 7, width + 2, 6);
+  context.fillRect(left - 1, top - 7, width + 2, 6);
   context.fillStyle = "rgba(10, 7, 5, 0.9)";
-  context.fillRect(point.x - width / 2, top - 6, width, 4);
+  context.fillRect(left, top - 6, width, 4);
+  /*
+   * 뒤따르는 띠 — 방금 깎인 만큼.
+   *
+   * 피해 수치를 글자로 띄우던 것을 걷고(events.ts) 그 몫을 여기로 옮겼다.
+   * 앞 띠는 곧바로 줄고 이 띠가 잠깐 머물렀다 따라 내려오므로, 얼마나 깎였는지가
+   * 두 띠의 간격으로 읽힌다. 색은 그 타격의 결이다 — 약점은 푸른빛, 치명은
+   * 금빛(enemy-health.ts).
+   */
+  const ratio = Math.max(0, enemy.hp / enemy.maxHp);
+  const trail = enemyHealthTrail(enemy.id, ratio);
+  if (trail.value > ratio) {
+    context.fillStyle = healthTrailColor(trail.tone);
+    context.fillRect(left + width * ratio, top - 6, width * (trail.value - ratio), 4);
+  }
   context.fillStyle = enemy.poisonUntil > ctx.engine.state.elapsed ? "#62db8a" : color;
-  context.fillRect(point.x - width / 2, top - 6, width * Math.max(0, enemy.hp / enemy.maxHp), 4);
+  context.fillRect(left, top - 6, width * ratio, 4);
   context.fillStyle = weaknessColor;
   context.font = '900 11px "Malgun Gothic", sans-serif';
   context.textAlign = "center";

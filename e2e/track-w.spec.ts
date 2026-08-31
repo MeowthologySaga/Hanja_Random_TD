@@ -71,12 +71,21 @@ async function stageDenseBoard(page: import("@playwright/test").Page): Promise<v
 }
 
 /*
- * ── 트랙 W #1 · 피해 수치가 명패·능력 배너를 덮는다 ────────────────
- * 1차 수술은 자리 등록(occupied.push)을 `avoidOverlap` 안에 두어, 그 옵션을
- * 넘기는 피해 플로터만 자리를 잡았다. 명패·능력 배너·오행진 이름표는 등록도
- * 회피도 없어 피해 수치가 그 위에 그대로 얹혔다(피해 수치가 더 위층이다).
+ * ── 트랙 W #1 · 전장 라벨이 서로를 덮지 않는다 ────────────────────
+ *
+ * 본래 이 시험은 **피해 수치**가 명패·능력 배너·진 이름표를 덮던 것을 지켰다.
+ * 그런데 피해 수치 자체를 걷었다 — 웨이브 약점 오행에 맞춰 짓는 것이 정석이라
+ * 사실상 모든 타격이 「눈에 띄는 타격」 조건에 걸려 화면이 숫자 벽이 됐고
+ * ("데미지 문구 너무 눈 아파서" — 사용자), 그 몫은 적 체력바의 뒤따르는 띠가
+ * 대신한다(battle/enemy-health.ts).
+ *
+ * 그래서 이 시험이 지키는 것을 둘로 고쳐 잡는다.
+ *   ① 피해 수치가 **다시 살아나지 않는다** — 걷은 것이 조용히 돌아오면 같은
+ *      화면 오염이 되풀이된다.
+ *   ② 남은 라벨끼리도 서로를 덮지 않는다 — 본래 겨누던 것이 이쪽이었고,
+ *      정적 라벨끼리의 겹침은 예전 시험이 아예 보지 않던 자리다.
  */
-test("lifts damage numbers clear of nameplates, ability banners and zone labels", async ({ page }) => {
+test("keeps stage labels clear of one another and no damage numbers return", async ({ page }) => {
   await stageDenseBoard(page);
 
   const report = await page.evaluate(async () => {
@@ -94,46 +103,47 @@ test("lifts damage numbers clear of nameplates, ability banners and zone labels"
     });
     const hit = (a: { left: number; top: number; right: number; bottom: number }, b: typeof a): boolean =>
       a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top;
-    let damageOverStatic = 0;
-    let damageOverDamage = 0;
     let peakBoxes = 0;
     let plaqueFrames = 0;
-    let damageFrames = 0;
     let damageBoxes = 0;
-    let dirtyDamageBoxes = 0;
     let peakPlaques = 0;
+    let staticOverStatic = 0;
     for (const boxes of frames) {
       peakBoxes = Math.max(peakBoxes, boxes.length);
-      const damage = boxes.filter((box) => box.kind === "damage");
+      damageBoxes += boxes.filter((box) => box.kind === "damage").length;
       const statics = boxes.filter((box) => box.kind !== "damage");
       peakPlaques = Math.max(peakPlaques, statics.filter((box) => box.kind === "plaque").length);
       if (statics.some((box) => box.kind === "plaque")) plaqueFrames += 1;
-      if (damage.length > 0) damageFrames += 1;
-      damageBoxes += damage.length;
-      for (let index = 0; index < damage.length; index += 1) {
-        const box = damage[index]!;
-        let dirty = false;
-        for (const other of statics) if (hit(box, other)) { damageOverStatic += 1; dirty = true; }
-        for (let other = index + 1; other < damage.length; other += 1) if (hit(box, damage[other]!)) damageOverDamage += 1;
-        if (dirty) dirtyDamageBoxes += 1;
+      for (let index = 0; index < statics.length; index += 1) {
+        for (let other = index + 1; other < statics.length; other += 1) {
+          if (hit(statics[index]!, statics[other]!)) staticOverStatic += 1;
+        }
       }
     }
-    return { frames: frames.length, plaqueFrames, damageFrames, peakBoxes, peakPlaques, damageBoxes, dirtyDamageBoxes, damageOverStatic, damageOverDamage };
+    return { frames: frames.length, plaqueFrames, peakBoxes, peakPlaques, damageBoxes, staticOverStatic };
   });
 
-  // 실측 기록(트랙 W). 옛 규칙을 같은 판에서 되돌려 잰 값:
-  //   피해 수치 1,758개 중 1,224개(69.6%)가 명패·배너·진 이름표 위에 앉았고
-  //   정적 라벨 겹침은 1,747건, 피해 수치끼리 겹침은 143건이었다.
+  /*
+   * 실측 기록. 옛 규칙(피해 수치가 뜨던 시절)을 같은 판에서 되돌려 잰 값:
+   * 피해 수치 1,758개 중 1,224개(69.6%)가 명패·배너·진 이름표 위에 앉았다.
+   * 지금은 피해 수치 자체가 없어 그 겹침이 0 이고, 남은 것은 정적 라벨끼리다.
+   */
   console.log("[track-w#1]", JSON.stringify(report));
   await page.screenshot({ path: ".claude/uiux/track-w/01-dense-labels-after.png" });
 
   // 측정이 실제로 밀집 판을 봤는지부터 확인한다 — 0/0 은 증거가 아니다.
   expect(report.plaqueFrames).toBeGreaterThan(200);
-  expect(report.damageFrames).toBeGreaterThan(100);
   expect(report.peakPlaques).toBeGreaterThanOrEqual(16);
-  expect(report.damageBoxes).toBeGreaterThan(600);
-  expect(report.damageOverStatic).toBe(0);
-  expect(report.damageOverDamage).toBe(0);
+  // ① 걷어 낸 피해 수치가 조용히 돌아오지 않는다.
+  expect(report.damageBoxes).toBe(0);
+  /*
+   * ② 정적 라벨끼리의 겹침은 **아직 0 이 아니다** — 같은 판에서 56건이 잡힌다.
+   *
+   * 옛 시험은 이 짝을 아예 보지 않았다(피해 수치 대 정적 라벨만 봤다). 여기서
+   * 0 을 요구하면 없던 요건을 새로 세우는 셈이라, 지금은 **더 나빠지지 않는
+   * 것**만 지킨다. 명패가 서로 겹치는 것을 푸는 일은 따로 다룰 몫이다.
+   */
+  expect(report.staticOverStatic).toBeLessThanOrEqual(120);
 });
 
 /*

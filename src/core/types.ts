@@ -454,7 +454,9 @@ export interface EngineRuntimeSnapshot {
 
 export type GameEvent =
   | { type: "shot"; from: Point; to: Point; color: string; critical: boolean; wuxing: Wuxing }
-  | { type: "damage"; at: Point; amount: number; critical: boolean; weakness: boolean }
+  // enemyId 는 화면이 「어느 체력바를 깎을지」를 알기 위한 것이다. 자리(at)만으로는
+  // 겹쳐 선 적을 가릴 수 없다.
+  | { type: "damage"; at: Point; enemyId: number; amount: number; critical: boolean; weakness: boolean }
   | { type: "kill"; at: Point; reward: number }
   // 봉인한 야생 자령이 남긴 혼. 우두머리는 반드시, 그 밖은 낮은 확률로 남는다.
   | { type: "soul"; at: Point; char: string; boss: boolean }

@@ -38,6 +38,7 @@ import {
 } from "./hud";
 import { showIdiomBrokenResult, showIdiomResult } from "./panels/idiom";
 import { collectSoul } from "./souls";
+import { noteEnemyHit } from "./battle/enemy-health";
 
 export function processEvent(event: GameEvent): void {
   sound.handle(event);
@@ -46,10 +47,19 @@ export function processEvent(event: GameEvent): void {
       pushPooled(projectiles, projectilePool, takeProjectile(event), 48);
       break;
     case "damage":
-      if (event.critical || event.weakness || event.amount >= 50) {
-        const prefix = event.critical ? "치명 " : event.weakness ? "약점 " : "";
-        pushPooled(floaters, floaterPool, takeFloater(event.at, prefix + String(Math.round(event.amount)), event.critical ? "#ffe06e" : event.weakness ? "#8ff5c6" : "#f6f0ff", 0.64, event.critical), 48);
-      }
+      /*
+       * 피해는 **글자로 띄우지 않는다.**
+       *
+       * 예전에는 「약점 48」 같은 수치가 타격마다 튀어 올랐다. 눈에 띄는 타격만
+       * 고른다는 뜻이었는데, 웨이브 약점 오행에 맞춰 짓는 것이 정석이라 사실상
+       * 모든 타격이 그 조건에 걸려 48개짜리 풀이 늘 꽉 찼다 — 화면이 숫자 벽이
+       * 됐다("데미지 문구 너무 눈 아파서" — 사용자).
+       *
+       * 대신 그 적의 체력바에 자국을 남긴다. 앞 띠는 곧바로 줄고 뒤 띠가 잠깐
+       * 머물렀다 따라 내려오므로, 얼마나 깎였는지가 그 간격으로 읽힌다
+       * (battle/enemy-health.ts).
+       */
+      noteEnemyHit(event.enemyId, event.critical ? "critical" : event.weakness ? "weakness" : "normal");
       break;
     case "kill":
       pushPooled(floaters, floaterPool, takeFloater(event.at, "+" + String(event.reward), "#ffd86d", 0.72, false), 48);
