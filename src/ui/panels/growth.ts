@@ -19,7 +19,7 @@ import {
 import { type Tower, type UpgradeStat, type Wuxing } from "../../core/types";
 import { ctx, DISMANTLE_UNIQUE_STORAGE_KEY, dismantleSelection, must, reducedMotion, sound } from "../app-context";
 import { openConfirm } from "../dialogs/confirm";
-import { formatStatBonus, upgradeStateSignature } from "../dialogs/element-upgrade";
+import { formatStatBonus } from "../dialogs/element-upgrade";
 import {
   casualStarOf,
   escapeHtml,
@@ -37,12 +37,69 @@ export function dismantleOptions(): { protectUnique: boolean } {
   return { protectUnique: ctx.dismantleProtectsUnique };
 }
 
+/**
+ * **뼈대**가 바뀌었는가 — 다시 그릴지를 정하는 열쇠.
+ *
+ * 여기에 엽전·문기를 넣으면 안 된다. 교전 중에는 그 둘이 매 프레임 바뀌어서
+ * 목록이 통째로 다시 그려졌고, 그러면 `mousedown` 을 받은 버튼 노드가 `mouseup`
+ * 전에 사라져 **`click` 이 아예 안 났다**("강화 버튼이 잘 안눌려" — 사용자).
+ * 스크롤이 맨 위로 되감기던 것도 같은 뿌리다(tutorial.ts 주석).
+ *
+ * 값만 바뀐 프레임은 아래 `syncGrowthAffordability` 가 노드를 살려 둔 채
+ * 손본다.
+ */
 function growthStateSignature(): string {
+  const globalLevels = UPGRADE_STAT_ORDER.map((stat) => ctx.engine.state.globalUpgrades[stat]).join(",");
+  const elementLevels = WUXING_ORDER
+    .map((wuxing) => UPGRADE_STAT_ORDER.map((stat) => ctx.engine.state.elementUpgrades[wuxing][stat]).join(","))
+    .join("|");
   const inventory = ctx.engine.state.inventoryTowers.map((tower) => `${tower.id}:${tower.char}:${tower.wuxing}:${tower.stage}:${tower.casualStar ?? 0}:${tower.locked ? 1 : 0}:${tower.concentration ?? 0}`).join("|");
   const traits = WUXING_ORDER.map((wuxing) => ctx.engine.state.elementTraits[wuxing].join(",")).join("|");
   const scores = WUXING_ORDER.map((wuxing) => ctx.engine.state.elementDismantleScore[wuxing]).join(",");
   const filters = `${must<HTMLSelectElement>("#dismantle-element-filter").value}:${must<HTMLSelectElement>("#dismantle-stage-filter").value}:${must<HTMLSelectElement>("#dismantle-status-filter").value}`;
-  return `${ctx.engine.state.mode}:${upgradeStateSignature()}:${inventory}:${traits}:${scores}:${filters}:U${ctx.dismantleProtectsUnique ? 1 : 0}:${[...dismantleSelection].sort((a, b) => a - b).join(",")}:${ctx.growthElement}`;
+  return `${ctx.engine.state.mode}:${ctx.engine.state.phase}:${globalLevels}:${elementLevels}:${inventory}:${traits}:${scores}:${filters}:U${ctx.dismantleProtectsUnique ? 1 : 0}:${[...dismantleSelection].sort((a, b) => a - b).join(",")}:${ctx.growthElement}`;
+}
+
+/**
+ * 값만 손본다 — 노드는 하나도 갈아 끼우지 않는다.
+ *
+ * 엽전·문기가 바뀌어 달라지는 것은 셋뿐이다. 「살 수 있는가」(disabled),
+ * 「최대」가 몇 단계인가(그 버튼의 글자), 그리고 그 투자가 이정표를 지나는가.
+ * 나머지(단계·설명·이정표 안내)는 뼈대 열쇠에 들어 있어 여기서 볼 일이 없다.
+ *
+ * 글자는 요소를 지우지 않고 **텍스트만** 갈아 끼운다 — 그래야 누르는 도중에도
+ * 버튼과 그 안의 조각이 살아 있어 클릭이 성립한다.
+ */
+export function syncGrowthAffordability(): void {
+  const list = document.querySelector<HTMLElement>("#growth-upgrade-list");
+  if (!list) return;
+  const active = ctx.engine.state.phase === "prep" || ctx.engine.state.phase === "combat";
+  for (const button of list.querySelectorAll<HTMLButtonElement>("[data-growth-upgrade-scope]")) {
+    const scope = button.dataset.growthUpgradeScope as "global" | "element" | "trait";
+    const amountRaw = button.dataset.growthAmount ?? "1";
+    const amount: number | "max" = amountRaw === "max" ? "max" : Number(amountRaw);
+    const stat = button.dataset.growthStat as UpgradeStat | undefined;
+    const traitIndex = Number(button.dataset.growthTrait);
+    const quote = scope === "global" && stat
+      ? ctx.engine.quoteGlobalUpgrade(stat, amount)
+      : scope === "element" && stat
+        ? ctx.engine.quoteElementUpgrade(ctx.growthElement, stat, amount)
+        : ctx.engine.quoteElementTraitUpgrade(ctx.growthElement, traitIndex, amount);
+    const locked = button.dataset.growthLocked === "1";
+    button.disabled = !active || locked || quote.levels <= 0 || !quote.affordable;
+    const label = button.querySelector<HTMLElement>(".growth-amount");
+    if (label) label.textContent = upgradeAmountLabel(scope, stat ?? null, Number.isNaN(traitIndex) ? null : traitIndex, amount);
+    const flag = button.querySelector<HTMLElement>(".growth-milestone-flag");
+    if (flag) {
+      flag.hidden = !(quote.levels > 0 && upgradeMilestoneCount(quote.toLevel) > upgradeMilestoneCount(quote.fromLevel));
+    }
+  }
+  // 오행 갈피의 문기 수도 값이다 — 탭을 다시 그리지 않고 숫자만 고친다.
+  for (const tab of document.querySelectorAll<HTMLElement>("#growth-element-tabs [data-growth-element]")) {
+    const wuxing = tab.dataset.growthElement as Wuxing | undefined;
+    const essence = tab.querySelector<HTMLElement>(".growth-tab-essence");
+    if (wuxing && essence) essence.textContent = `문기 ${ctx.engine.state.elementEssence[wuxing]}`;
+  }
 }
 
 function syncDismantleUniqueControl(): void {
@@ -155,7 +212,7 @@ export function renderGrowth(): void {
   must<HTMLElement>("#dismantle-gain-summary").textContent = gainLabel ? `${gainLabel}${scoreLabel ? ` · ${scoreLabel}` : ""}` : "예상 문기 없음";
   must<HTMLButtonElement>("#dismantle-confirm-button").disabled = !active || quote.ids.length === 0 || quote.blocked.length > 0;
 
-  must<HTMLElement>("#growth-element-tabs").innerHTML = WUXING_ORDER.map((wuxing) => `<button type="button" data-growth-element="${wuxing}" class="${ctx.growthElement === wuxing ? "is-selected" : ""}" style="--element:${ELEMENT_STYLES[wuxing].color}"><b>${wuxing}</b><span>문기 ${ctx.engine.state.elementEssence[wuxing]}</span><small>분해 점수 ${ctx.engine.state.elementDismantleScore[wuxing]}</small></button>`).join("");
+  must<HTMLElement>("#growth-element-tabs").innerHTML = WUXING_ORDER.map((wuxing) => `<button type="button" data-growth-element="${wuxing}" class="${ctx.growthElement === wuxing ? "is-selected" : ""}" style="--element:${ELEMENT_STYLES[wuxing].color}"><b>${wuxing}</b><span class="growth-tab-essence">문기 ${ctx.engine.state.elementEssence[wuxing]}</span><small>분해 점수 ${ctx.engine.state.elementDismantleScore[wuxing]}</small></button>`).join("");
 
   const batchButtons = (scope: "global" | "element", stat: UpgradeStat): string => ([1, 5, "max"] as const).map((amount) => {
     const quoteForAmount = scope === "global" ? ctx.engine.quoteGlobalUpgrade(stat, amount) : ctx.engine.quoteElementUpgrade(ctx.growthElement, stat, amount);
@@ -167,7 +224,9 @@ export function renderGrowth(): void {
     // 앞의 공백을 그냥 두면 91px 버튼에서 里 만 셋째 줄로 떨어져 나가, 깨진
     // 글자 한 자처럼 읽혔다("최대 +48 · / 5922 엽전 / 里"). 화폐 낱말에 붙인다.
     const crossesMilestone = quoteForAmount.levels > 0 && upgradeMilestoneCount(quoteForAmount.toLevel) > upgradeMilestoneCount(quoteForAmount.fromLevel);
-    return `<button type="button" data-growth-upgrade-scope="${scope}" data-growth-stat="${stat}" data-growth-amount="${amount}" ${!active || quoteForAmount.levels <= 0 || !quoteForAmount.affordable ? "disabled" : ""}>${label}<span class="growth-cost-tail">${currency}${crossesMilestone ? `&nbsp;<i class="growth-milestone-flag" title="10단계 이정표 도달 · 추가 보너스">里</i>` : ""}</span></button>`;
+    // 글자를 조각으로 나눠 둔다 — 값이 바뀔 때 요소를 지우지 않고 텍스트만
+    // 갈아 끼워야 누르는 도중에도 클릭이 성립한다(syncGrowthAffordability).
+    return `<button type="button" data-growth-upgrade-scope="${scope}" data-growth-stat="${stat}" data-growth-amount="${amount}" ${!active || quoteForAmount.levels <= 0 || !quoteForAmount.affordable ? "disabled" : ""}><b class="growth-amount">${label}</b><span class="growth-cost-tail">${currency}&nbsp;<i class="growth-milestone-flag" title="10단계 이정표 도달 · 추가 보너스" ${crossesMilestone ? "" : "hidden"}>里</i></span></button>`;
   }).join("");
   // FB7-강화: 10단계 이정표마다 4단계치 보너스가 더 붙는다. 행마다 이정표
   // 누적과 다음 이정표까지 남은 단계를 함께 적어 "후반에도 오를 이유"를 보인다.
@@ -198,7 +257,7 @@ export function renderGrowth(): void {
     const buttons = ([1, 5, "max"] as const).map((amount) => {
       const traitQuote = ctx.engine.quoteElementTraitUpgrade(ctx.growthElement, traitIndex, amount);
       const label = upgradeAmountLabel("trait", null, traitIndex, amount);
-      return `<button type="button" data-growth-upgrade-scope="trait" data-growth-trait="${traitIndex}" data-growth-amount="${amount}" ${!active || !unlocked || traitQuote.levels <= 0 || !traitQuote.affordable ? "disabled" : ""}>${label}${label === UPGRADE_UNAVAILABLE_LABEL ? "" : ` ${ctx.growthElement} 문기`}</button>`;
+      return `<button type="button" data-growth-upgrade-scope="trait" data-growth-trait="${traitIndex}" data-growth-amount="${amount}" data-growth-locked="${unlocked ? "0" : "1"}" ${!active || !unlocked || traitQuote.levels <= 0 || !traitQuote.affordable ? "disabled" : ""}><b class="growth-amount">${label}</b><span class="growth-cost-tail">${label === UPGRADE_UNAVAILABLE_LABEL ? "" : ` ${ctx.growthElement} 문기`}</span></button>`;
     }).join("");
     return `<article class="growth-trait-row ${unlocked ? "is-unlocked" : "is-locked"}" style="--element:${ELEMENT_STYLES[ctx.growthElement].color}"><div class="trait-seal"><b>${traitIndex + 1}</b><small>${unlocked ? "개방" : `${unlockScore}점`}</small></div><div><strong>${trait.name} <em>Lv.${level}/${ELEMENT_TRAIT_MAX_LEVEL}</em></strong><span>${trait.summary} +${trait.perLevel}${trait.unit}/단계${trait.milestone ? ` · ${trait.milestone}` : ""}</span><small>${unlocked ? `다음 비용 ${elementTraitUpgradeCost(level) ?? "최고"} 문기` : `분해 점수 ${ctx.engine.state.elementDismantleScore[ctx.growthElement]}/${unlockScore}`}</small></div><nav>${buttons}</nav></article>`;
   }).join("");

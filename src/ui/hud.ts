@@ -42,7 +42,7 @@ import { renderConcentration } from "./panels/concentration";
 import { renderEvolutions } from "./panels/evolution";
 import { bindArrangePolicy } from "./panels/arrange-policy";
 import { renderGoal } from "./panels/goal";
-import { renderGrowth } from "./panels/growth";
+import { renderGrowth, syncGrowthAffordability } from "./panels/growth";
 import { renderActiveIdioms, renderIdiomHud } from "./panels/idiom";
 import { renderRunInventory, setRunInventoryBulkMode } from "./panels/inventory";
 import { closeCompositionDrawer, renderCompositionDrawer, renderSelected } from "./panels/selected";
@@ -567,7 +567,12 @@ export function syncPanel(): void {
   renderCompositionDrawer();
   renderRunInventory();
   if (ctx.activePanelTab === "concentration") renderConcentration();
-  if (ctx.activePanelTab === "growth") renderGrowth();
+  if (ctx.activePanelTab === "growth") {
+    renderGrowth();
+    // 뼈대는 위에서 필요할 때만 다시 그리고, 엽전·문기로 달라지는 값은
+    // 노드를 살려 둔 채 여기서 손본다 — 그래야 누르는 도중 버튼이 안 사라진다.
+    syncGrowthAffordability();
+  }
   if (ctx.activePanelTab === "talisman") syncTalismanPanel();
   renderIdiomHud();
   renderActiveIdioms();
