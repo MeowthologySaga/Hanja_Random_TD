@@ -27,6 +27,13 @@ interface TalismanQaWindow {
 }
 
 test.beforeEach(async ({ page }) => {
+  /*
+   * 이 스펙은 **장수·보상·시각**을 지키는 자리다. 그리기는 QA 자동 따라쓰기로
+   * 결정론화하는데, 그건 마스크의 가로줄을 훑을 뿐 획순을 따르지 않는다.
+   * 획순 안내(기본 켜짐)를 그대로 두면 그 붓질이 판정에 떨어져 스스로 걷히므로
+   * 여기서는 안내를 끈다 — 안내를 켠 흐름은 stroke-order·ink-strokes 스펙이 맡는다.
+   */
+  await page.addInitScript((key) => window.localStorage.setItem(key, "false"), "hanja-td:stroke-order-guide");
   await page.addInitScript((key) => window.localStorage.setItem(key, "1"), COACH_STORAGE_KEY);
   await page.addInitScript((key) => window.localStorage.setItem(key, "1"), "hanja-td:early-hint-v1");
   await page.addInitScript((keys: string[]) => {

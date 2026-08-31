@@ -49,7 +49,7 @@ import { playTalismanImpact, playTalismanRewardVisit, type TalismanRewardGrant }
 import { rasterizeImageAlpha, scoreTalismanDrawing, TALISMAN_THRESHOLDS, type TalismanCellGrid, type TalismanScore } from "./talisman-score";
 import { StrokeGuide } from "./stroke-guide";
 import { InkBoard, paintInk } from "./ink-strokes";
-import { paperBoxFor, strokeGlyphFor } from "../../core/stroke-order";
+import { loadStrokeGlyphs, paperBoxFor, strokeGlyphFor } from "../../core/stroke-order";
 
 /**
  * 부적지(한지 세로 카드) 캔버스 크기.
@@ -146,16 +146,6 @@ let currentDefinition: HanziDefinition | null = null;
 let sealed = false;
 
 let drawing = false;
-
-/**
- * 이번 종이에 뗐다 붙인 획의 수.
- *
- * 픽셀 채점(정확·덮음)만으로는 낙서가 걸러지지 않는다 — 획이 촘촘한 글자에서는
- * 가로줄 서너 개로도 정확 0.8·덮음 1.0 이 나온다(QA 실측: 24회 중 6회 즉시
- * 통과). 그런데 부적은 "글자를 따라 쓰는" 자리다. 그래서 획을 몇 번 나눠
- * 그었는가를 함께 본다 — 낙서와 따라쓰기를 가르는 가장 싼 신호다.
- */
-let strokesDrawn = 0;
 
 let lastPoint = { x: 0, y: 0 };
 
@@ -312,8 +302,21 @@ function refreshCharges(): void {
  * HUD 렌더 틱이 부른다 — 부적 탭이 열려 있는 동안에만 장수 상태를 맞춘다.
  * 웨이브 전환을 이 자리에서 잡아 새 종이를 자동으로 연다.
  */
+/**
+ * 획순 자료를 **따라 쓰기 판을 처음 열 때** 받는다.
+ *
+ * 부팅에서 받으면 부적을 한 번도 안 여는 사람까지 gzip 2.4MB 를 끌게 된다.
+ * 기본값이 켜짐이 되면서 그 값이 모두에게 붙으므로, 자리를 여기로 옮겼다.
+ * 두 번째부터는 `loadStrokeGlyphs` 가 받아 둔 것을 바로 돌려준다.
+ */
+export function preloadStrokeGuide(): void {
+  if (!ctx.strokeOrderGuide) return;
+  void loadStrokeGlyphs().then(() => refreshStrokeGuideSheet(false));
+}
+
 export function syncTalismanPanel(): void {
   if (ctx.activePanelTab !== "talisman") return;
+  preloadStrokeGuide();
   if (!document.querySelector("#talisman-panel")) return;
   refreshCharges();
   // 표기 전환은 이 탭을 다시 그리지 않는다 — 읽기 줄만 따로 따라오게 한다.
@@ -418,7 +421,6 @@ function clearInk(): void {
   board.clear();
   inkContext.clearRect(0, 0, PAPER_WIDTH, PAPER_HEIGHT);
   drawing = false;
-  strokesDrawn = 0;
   syncUndoButton();
   // 먹을 지웠으면 안내도 첫 획으로 되감는다 — 남아 있으면 종이와 안내가 어긋난다.
   if (strokeGuide.available) {
@@ -779,8 +781,16 @@ function submitTalisman(): void {
   const score = refreshScore();
   if (!score || score.inkPixels === 0) return;
   const needed = requiredStrokeCount();
-  if (needed !== null && strokesDrawn < needed) {
-    setStatus(`획을 나눠 써 보세요 — ${needed}획 이상 필요 (지금 ${strokesDrawn}획)`, "hint");
+  /*
+   * 종이에 **남아 있는** 획을 센다.
+   *
+   * 예전에는 붓을 댄 횟수를 따로 세었는데, 되돌리기와 실패 걷기가 생기며 그
+   * 수가 종이와 어긋났다 — 다섯 번 실패하고 두 획만 남겨도 일곱 획으로 셌다.
+   * 목록 길이가 곧 종이 위의 획이라 어긋날 여지가 없다.
+   */
+  const strokesOnPaper = board.count;
+  if (needed !== null && strokesOnPaper < needed) {
+    setStatus(`획을 나눠 써 보세요 — ${needed}획 이상 필요 (지금 ${strokesOnPaper}획)`, "hint");
     sound.playActionOutcome(false);
     return;
   }
@@ -820,7 +830,6 @@ function wireDrawing(ink: HTMLCanvasElement): void {
   ink.addEventListener("pointerdown", (event) => {
     if (sealed || event.button > 0) return;
     drawing = true;
-    strokesDrawn += 1;
     // 합성 이벤트(QA 자동 따라쓰기)는 활성 포인터가 없어 캡처가 거부될 수 있다.
     try {
       ink.setPointerCapture(event.pointerId);

@@ -211,11 +211,14 @@ export const DISMANTLE_UNIQUE_STORAGE_KEY = "hanja-td:dismantle-protect-unique";
 export const TALISMAN_MODE_STORAGE_KEY = "hanja-td:talisman-mode";
 
 /**
- * 획순 안내 — **기본 꺼짐**.
+ * 획순 안내 — **기본 켜짐**.
  *
- * "옵션으로 부가적으로 만들어두고 기본요소는 그대로 둬. 원하는사람만 하게
- * 할거야"(사용자). 꺼져 있으면 따라 쓰기 판은 여태 그대로 반투명 글자 한
- * 장이고, 2.5MB 짜리 획순 자료도 아예 받지 않는다.
+ * 처음에는 선택 항목으로 넣었다("원하는사람만 하게 할거야"). 만들어 놓고 써 본
+ * 뒤 기본으로 올렸다("지금방식 마음에 드는데 기본값으로 설정하자" — 사용자).
+ * 한자를 가르치겠다는 게임에서 획순은 곁가지가 아니라 본문이라는 판단이다.
+ *
+ * 끄면 따라 쓰기 판은 예전 그대로 반투명 바탕체 글자 한 장이고, 획순 자료도
+ * 받지 않는다.
  */
 export const STROKE_ORDER_STORAGE_KEY = "hanja-td:stroke-order-guide";
 
@@ -385,15 +388,12 @@ class AppContext {
       return true;
     }
   })();
-  /**
-   * 획순 안내 켬/끔. 기본 꺼짐이라 저장된 값이 "true" 일 때만 켜진다 —
-   * 부적 모드(기본 켜짐)와 판정 방향이 반대인 것에 주의.
-   */
+  /** 획순 안내 켬/끔. 기본 켜짐이라 저장된 값이 "false" 일 때만 꺼진다. */
   strokeOrderGuide = ((): boolean => {
     try {
-      return window.localStorage.getItem(STROKE_ORDER_STORAGE_KEY) === "true";
+      return window.localStorage.getItem(STROKE_ORDER_STORAGE_KEY) !== "false";
     } catch {
-      return false;
+      return true;
     }
   })();
   /** 부적 보상으로 얻은 기본 소환 무료권. 코어 무수정 — UI 층에서만 산다. */

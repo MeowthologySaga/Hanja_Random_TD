@@ -186,8 +186,13 @@ export function wireSettings1(): void {
   syncHoverGlyphControl();
   // FB6: 저장된 선택(또는 OS 동작 줄이기)이 첫 그림부터 게이트에 실리게 한다.
   applyCalmScreen();
-  // 켜 둔 채로 새로 연 판에서도 첫 부적지부터 안내가 서게 미리 받아 둔다.
-  if (ctx.strokeOrderGuide) void loadStrokeGlyphs().then(() => applyStrokeGuideToOpenSheets(false));
+  /*
+   * 여기서 미리 받지 않는다.
+   *
+   * 기본값이 켜짐이 되면서, 부팅에서 받으면 부적을 한 번도 안 여는 사람까지
+   * gzip 2.4MB 를 끌게 된다. 자료는 따라 쓰기 판을 처음 열 때 받는다
+   * (panels/talisman.ts 의 preloadStrokeGuide, panels/soul-reroll.ts 의 열기).
+   */
 }
 
 /** main.ts 가 원래 순서대로 부르는 배선 묶음. */

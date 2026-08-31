@@ -929,9 +929,9 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
         획순 안내는 부적 탭 안쪽이 아니라 설정에 둔다 — 부적을 끄고 자혼
         다시 굴리기만 쓰는 사람에게도 같은 갈래이기 때문이다.
       -->
-      <button id="stroke-order-toggle" class="settings-toggle" type="button" role="switch" aria-checked="false" data-testid="stroke-order-toggle">
-        <span><b>학습 모드 · 획순 안내</b><small>따라 쓰기 판에서 획을 <b>순서대로 한 획씩</b> 짚어 줍니다. 지금 그을 획만 붉은 점선과 화살표로 서고, 제대로 그으면 다음 획으로 넘어갑니다. 획순 자료가 있는 글자에서만 서며(명단의 94%), 없는 글자는 여태처럼 글자 한 장을 통째로 보여 줍니다. 켤 때 획순 자료를 한 번 내려받습니다(약 2.5MB).</small></span>
-        <i aria-hidden="true"><em>OFF</em></i>
+      <button id="stroke-order-toggle" class="settings-toggle" type="button" role="switch" aria-checked="true" data-testid="stroke-order-toggle">
+        <span><b>학습 모드 · 획순 안내</b><small>따라 쓰기 판에서 획을 <b>순서대로 한 획씩</b> 짚어 줍니다. 지금 그을 획만 붉은 점선과 화살표로 서고, 제대로 그으면 그 획이 <b>정본 모양으로 정리</b>되어 종이가 깨끗하게 쌓입니다. 빗나간 붓질은 잠깐 붉게 비친 뒤 스스로 걷힙니다. 획순 자료가 있는 글자에서만 서며(명단의 94%), 없는 글자는 글자 한 장을 통째로 보여 줍니다. 처음 따라 쓰기 판을 열 때 획순 자료를 한 번 내려받습니다(약 2.5MB).</small></span>
+        <i aria-hidden="true"><em>ON</em></i>
       </button>
       <section class="audio-settings" aria-labelledby="audio-settings-title">
         <div class="audio-settings-heading"><b id="audio-settings-title">오디오 믹스</b><small>첫 조작 뒤 재생 · 선택은 브라우저에 저장</small></div>

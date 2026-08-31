@@ -101,3 +101,34 @@ test("안내는 관문이 아니다 — 획을 다 안 그어도 채점만 통�
   expect(after.current).toBeLessThan(state.total);
   await expect(page.locator("#talisman-submit")).toBeEnabled();
 });
+
+/*
+ * 기본값이 켜짐이 되면서(사용자 결정), 아무 설정도 손대지 않은 사람이 보는
+ * 화면이 곧 안내가 선 화면이다. 그 기본 흐름이 보상까지 이어지는지 지킨다 —
+ * 안내가 관문이 아니라는 규칙이 기본 경로에서도 살아 있어야 한다.
+ */
+test("기본값 — 아무것도 안 건드려도 안내가 서고, 획을 다 그으면 부적이 완성된다", async ({ page }) => {
+  await page.addInitScript((key) => window.localStorage.setItem(key as string, "1"), COACH_KEY);
+  await page.goto("/?seed=DEFAULT-GUIDE&mode=standard");
+  await page.getByTestId("start-run").click();
+  await expect(page.locator(".resource-grid")).toBeVisible();
+  await page.locator("#talisman-tab").click();
+  await expect(page.locator("#talisman-paper")).toBeVisible();
+  await page.waitForTimeout(2500);
+
+  const state = await findGuidedChar(page);
+  expect(state.available).toBe(true);
+  await expect(page.locator("#talisman-status")).toContainText(`모두 ${state.total}획`);
+
+  // 획순대로 끝까지 긋는다.
+  for (let stroke = 0; stroke < state.total; stroke += 1) {
+    await page.evaluate(() => (window as unknown as {
+      __HANJA_TALISMAN_QA__: { traceStroke: () => boolean };
+    }).__HANJA_TALISMAN_QA__.traceStroke());
+  }
+  expect((await guideState(page)).finished).toBe(true);
+  await expect(page.locator("#talisman-submit")).toBeEnabled();
+
+  await page.locator("#talisman-submit").click();
+  await expect(page.locator("#talisman-status")).toContainText("부적 완성");
+});

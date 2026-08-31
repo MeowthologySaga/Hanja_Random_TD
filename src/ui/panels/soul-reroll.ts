@@ -29,7 +29,7 @@ import { ctx, must } from "../app-context";
 import { rasterizeImageAlpha, scoreTalismanDrawing, TALISMAN_THRESHOLDS, type TalismanCellGrid } from "./talisman-score";
 import { StrokeGuide } from "./stroke-guide";
 import { InkBoard, paintInk } from "./ink-strokes";
-import { paperBoxFor, strokeGlyphFor } from "../../core/stroke-order";
+import { loadStrokeGlyphs, paperBoxFor, strokeGlyphFor } from "../../core/stroke-order";
 
 /** 종이 크기 — 부적 패널과 같은 비례로 두어 손 감각이 이어진다. */
 const PAPER_WIDTH = 196;
@@ -453,6 +453,8 @@ export function bindSoulReroll(hooks: SoulRerollHooks): void {
 }
 
 export function openSoulReroll(idiom: CustomIdiom): void {
+  // 부적을 한 번도 안 열고 여기로 온 사람도 안내를 받게 — 자료는 한 번만 받는다.
+  if (ctx.strokeOrderGuide) void loadStrokeGlyphs().then(() => refreshSoulStrokeGuide(false));
   session = { idiom, index: 0, written: [...idiom.chars].map(() => false) };
   must<HTMLElement>("#soul-reroll-title").textContent = `${idiom.reading} 다시 굴리기`;
   must<HTMLElement>("#soul-reroll-current").textContent = idiom.bonus.label;
@@ -513,7 +515,46 @@ if (import.meta.env.DEV) {
       submit,
       roll,
       currentChar: () => (session ? currentChar() : null),
-      isOpen: isSoulRerollOpen
+      isOpen: isSoulRerollOpen,
+      /* ── 획순 안내 ── */
+      strokeGuide: () => ({
+        available: strokeGuide.available,
+        current: strokeGuide.current,
+        total: strokeGuide.total,
+        finished: strokeGuide.finished
+      }),
+      /**
+       * 지금 획을 그 중앙선 그대로 한 번 긋는다.
+       *
+       * 부적 판과 같은 처방 — 사람이 손으로 긋는 것과 같은 포인터 이벤트를
+       * 합성한다. 판정 경로를 우회하면 "안내가 실제로 넘어가는가"를 못 지킨다.
+       */
+      traceStroke: () => {
+        const ink = document.querySelector<HTMLCanvasElement>("#soul-reroll-ink");
+        const path = strokeGuide.currentPath();
+        if (!ink || path.length === 0) return false;
+        const rect = ink.getBoundingClientRect();
+        const send = (type: string, point: { x: number; y: number }): void => {
+          ink.dispatchEvent(new PointerEvent(type, {
+            clientX: rect.left + point.x * (rect.width / PAPER_WIDTH),
+            clientY: rect.top + point.y * (rect.height / PAPER_HEIGHT),
+            pointerId: 9,
+            bubbles: true,
+            cancelable: true
+          }));
+        };
+        send("pointerdown", path[0]!);
+        for (let index = 1; index < path.length; index += 1) {
+          const from = path[index - 1]!;
+          const to = path[index]!;
+          for (let step = 1; step <= 6; step += 1) {
+            const t = step / 6;
+            send("pointermove", { x: from.x + (to.x - from.x) * t, y: from.y + (to.y - from.y) * t });
+          }
+        }
+        send("pointerup", path[path.length - 1]!);
+        return true;
+      }
     }
   });
 }

@@ -21,6 +21,13 @@ function seededArchive(): string {
 }
 
 test.beforeEach(async ({ page }) => {
+  /*
+   * 이 스펙은 **집자소의 흐름**(새기기·장착·다시 굴리기)을 지킨다. 그리기는 QA
+   * 자동 따라쓰기로 결정론화하는데, 그건 마스크의 가로줄을 훑을 뿐 획순을
+   * 따르지 않는다. 획순 안내(기본 켜짐)를 그대로 두면 그 붓질이 판정에 떨어져
+   * 스스로 걷히므로 여기서는 끈다 — 안내를 켠 자혼 판은 아래 따로 지킨다.
+   */
+  await page.addInitScript((key) => window.localStorage.setItem(key, "false"), "hanja-td:stroke-order-guide");
   await page.addInitScript((key) => window.localStorage.setItem(key, "1"), COACH_STORAGE_KEY);
   // 새로고침에도 다시 심으면 "판을 넘어 남는가"를 잴 수 없다 — 처음 한 번만
   // 앉히고, 그 뒤로는 게임이 적어 둔 것을 그대로 쓴다.
@@ -278,4 +285,68 @@ test("한자를 써서 성어 능력을 다시 굴리고, 새김 연출이 무�
   expect(after?.reading).toBe("천지현황");
   expect(after?.meaning).toBe("하늘과 땅");
   expect(after?.bonus.label.length ?? 0).toBeGreaterThan(0);
+});
+
+/*
+ * 자혼 판의 획순 안내.
+ *
+ * 부적 판과 코드는 나뉘어 있다 — 저마다 제 화선지·제 획 목록·제 판정 배선을
+ * 쥔다. 한쪽만 고치고 다른 쪽을 잊는 일이 실제로 있었으므로(먹선이 점선으로
+ * 끊기던 자리), 여기서도 안내가 서는지·되돌리기가 도는지를 따로 못 박는다.
+ */
+test("자혼 판도 획순 안내가 서고, 되돌리기가 안내를 함께 물린다", async ({ page }) => {
+  await page.addInitScript(
+    ([key, value]: string[]) => window.localStorage.setItem(key as string, value as string),
+    [
+      ARCHIVE_KEY,
+      JSON.stringify({
+        version: 1,
+        souls: { 天: 4, 地: 4, 玄: 4, 黃: 4 },
+        idioms: [{
+          id: "demo",
+          chars: "天地玄黃",
+          reading: "천지현황",
+          meaning: "하늘과 땅",
+          bonus: { kind: "damage", value: 0.08, label: "모든 자령 피해 +8%" },
+          createdAt: 1
+        }],
+        equipped: []
+      })
+    ]
+  );
+  // 이 시험만은 안내를 켠다 — 위 beforeEach 가 꺼 둔 것을 되돌린다.
+  await page.addInitScript((key) => window.localStorage.setItem(key, "true"), "hanja-td:stroke-order-guide");
+
+  await page.goto("/?seed=SOULS-GUIDE-E2E");
+  await page.getByTestId("soul-archive-open").click();
+  await page.getByTestId("soul-tab-equip").click();
+  await page.locator("[data-soul-reroll]").click();
+  await expect(page.locator("#soul-reroll")).toBeVisible();
+  await page.waitForTimeout(2500);
+
+  type Guide = { available: boolean; current: number; total: number; finished: boolean };
+  const guide = (): Promise<Guide> => page.evaluate(() => (window as unknown as {
+    __HANJA_SOUL_QA__: { strokeGuide: () => Guide };
+  }).__HANJA_SOUL_QA__.strokeGuide());
+  const trace = (): Promise<boolean> => page.evaluate(() => (window as unknown as {
+    __HANJA_SOUL_QA__: { traceStroke: () => boolean };
+  }).__HANJA_SOUL_QA__.traceStroke());
+
+  // 天 은 4획이다.
+  const opened = await guide();
+  expect(opened.available).toBe(true);
+  expect(opened.total).toBe(4);
+  await expect(page.locator("#soul-reroll-status")).toContainText("모두 4획");
+  await expect(page.getByTestId("soul-reroll-undo")).toBeDisabled();
+
+  expect(await trace()).toBe(true);
+  await page.waitForTimeout(120);
+  expect((await guide()).current).toBe(1);
+  await expect(page.getByTestId("soul-reroll-undo")).toBeEnabled();
+
+  // 되돌리면 안내도 함께 물러야 다음 지시가 종이와 맞는다.
+  await page.getByTestId("soul-reroll-undo").click();
+  await page.waitForTimeout(120);
+  expect((await guide()).current).toBe(0);
+  await expect(page.getByTestId("soul-reroll-undo")).toBeDisabled();
 });
