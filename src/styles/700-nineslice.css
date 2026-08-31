@@ -1,0 +1,229 @@
+/*
+ * 9슬라이스 교정 — 프레임 그림이 잘리거나 찌그러지던 것을 바로잡는다.
+ *
+ * ── 무엇이 잘못돼 있었나
+ *
+ * 이 게임의 액자·띠·쪽지는 전부 9슬라이스용으로 그린 그림이다(모서리는 고정,
+ * 변만 늘어나야 한다). 그런데 화면에서는 두 가지 이유로 그렇게 안 그려졌다.
+ *
+ *  ① **잘림** — `clip-path` 로 준 대각 절단과 `border-radius` 가 네모난 프레임
+ *     그림의 귀퉁이를 그대로 베어 냈다. 하필 그 자리가 압정·찢긴 종이·리본
+ *     꼬리처럼 **장식이 그려진 곳**이라, 사람 눈에는 "UI 모서리가 잘렸다"로
+ *     읽힌다. 실측 네 곳: .stage-chip(7px) · .wave-card(7px) ·
+ *     .boss-banner(10px) · .panel-tabs(둥근 5px).
+ *
+ *  ② **찌그러짐** — 060-hanji-theme.css 34절이 border-image 를 통째로 끄고
+ *     `background: center / 100% 100%` 로 갈아탔다. 그 이유는 정당했다 —
+ *     border-image 의 border-width 가 상자를 키워 행 높이가 고정된 패널
+ *     격자를 밀어냈기 때문이다. 대신 그림이 9등분되지 않고 통째로 늘어난다.
+ *     실측 왜곡(가로 배율 ÷ 세로 배율):
+ *       .panel-footer   333×43 → 376×28   1.73배
+ *       .resource-grid  333×82 → 376×54   1.71배
+ *       .wave-card      333×86 → 376×82   1.18배
+ *       .panel-tabs     381×89 → 376×76   1.16배
+ *
+ * ── 어떻게 고치나
+ *
+ * 상자를 키우지 않고 9슬라이스를 그리려면, border-image 를 요소 자신이 아니라
+ * **절대 위치 가상 요소**에 건다. `position:absolute; inset:0` 인 상자는
+ * 테두리가 아무리 두꺼워도 부모의 레이아웃을 밀지 않는다(실측 확인:
+ * 자원 띠 높이 50px 그대로).
+ *
+ * 그리는 두께는 `border-image-width` 로 따로 정하되 **가로세로 같은 배율**로
+ * 잡는다. 그래야 모서리 장식이 원본 비례를 지킨다. 예: 슬라이스 15/18 을
+ * 0.40 배로 그리면 6px / 7.2px 이 되고, 두 축의 배율이 정확히 같다.
+ *
+ * 배율은 요소마다 **지금 그려지던 세로 두께를 그대로 잡는다**. 두께가 같으면
+ * 글과 틀의 겹침 정도가 달라지지 않아 배치가 안 흔들리고, 고치는 것이
+ * 찌그러짐 하나로 좁혀진다. 예외는 자원 띠 하나다 — 거기서는 칸에 제 테두리가
+ * 있어 겹침이 그대로 보이므로, 칸이 틀을 밟지 않는 두께까지 낮췄다.
+ */
+
+/* ══════════════════════════════════════════════════════════════════
+   ① 잘림 — 9슬라이스를 쓰는 곳에서는 실루엣을 그림이 정한다.
+
+   CSS 절단은 단색 배경 시절의 장치였다. 프레임 그림이 제 모서리를 이미
+   그리고 있으므로, 그 위에 또 절단을 씌우면 장식만 베어 낸다.
+   ══════════════════════════════════════════════════════════════════ */
+
+/* 전장 HUD 쪽지 — 잘려 나간 7px 삼각형 자리가 바로 압정과 찢긴 가장자리다. */
+.stage-chip {
+  clip-path: none;
+}
+
+/*
+ * 쪽지의 모서리 배율도 함께 바로잡는다.
+ *
+ * 슬라이스는 원본 13/16/12/24px 인데 border-width 가 11/13/10/18px 이라,
+ * border-image-width 기본값(=border-width)을 타고 모서리 조각이 비균일하게
+ * 눌렸다(좌상 24×13 → 18×11, 두 축 배율이 0.750 대 0.846 으로 12.8% 어긋남).
+ * border-image-width 를 원본 슬라이스로 명시하면 모서리가 1.0배로 그려지고,
+ * 이 속성은 border-width 와 달리 **레이아웃을 밀지 않는다**.
+ */
+.stage-chip {
+  border-image-width: 13px 16px 12px 24px;
+}
+
+/* 웨이브 브리핑 카드 — 절단이 배경뿐 아니라 바깥 그림자까지 두 귀퉁이에서 끊었다. */
+.wave-card {
+  clip-path: none;
+}
+
+/* 보스 경보 리본 — 10px 절단이 살아 있는 9슬라이스의 리본 꼬리를 베었다. */
+.boss-banner {
+  clip-path: none;
+}
+
+/* 하단 기능군 레일 — 둥근 5px 이 네모난 레일 그림의 네 귀퉁이를 깎았다.
+   같은 계열인 .resource-grid 는 이미 border-radius: 0 이라 규범을 맞추는 셈이다. */
+.panel-tabs {
+  border-radius: 0;
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   ② 찌그러짐 — 늘린 배경을 걷고 9슬라이스를 되살린다.
+
+   각 요소는 (a) 배경 그림을 끄고 (b) position: relative 를 얻고
+   (c) ::before 오버레이로 틀을 그리고 (d) 내용이 그 틀을 밟지 않도록
+   padding 을 그려진 두께에 맞춘다.
+
+   ::before 에 `position: absolute` 를 빠뜨리면 flex/grid 부모에서 그것이
+   곧바로 아이템이 되어 내용을 밀어낸다 — 34절이 겪은 사고가 다른 경로로
+   재발하는 길이라, 이 파일에서는 예외 없이 첫 줄에 못박는다.
+   ══════════════════════════════════════════════════════════════════ */
+
+.resource-grid,
+.wave-card,
+.panel-tabs,
+.panel-footer {
+  position: relative;
+}
+
+.resource-grid::before,
+.wave-card::before,
+.panel-tabs::before,
+.panel-footer::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-style: solid;
+  /* 틀은 내용 아래에 깔린다. 가운데를 채우므로(fill) 배경 노릇까지 겸한다. */
+  z-index: 0;
+  pointer-events: none;
+}
+
+/* 내용은 틀 위로 올린다. 안 그러면 fill 로 채운 가운데가 글자를 덮는다. */
+.resource-grid > div,
+.wave-card > *,
+.panel-tabs > *,
+.panel-footer > * {
+  position: relative;
+  z-index: 1;
+}
+
+/*
+ * 자원 띠 — 자산 333×82, 슬라이스 15/18, 렌더 376×54.
+ *
+ * 지금 그려지던 세로 두께는 15 × 54/82 = 9.9px 인데 칸은 가장자리에서 3px
+ * 밖에 안 떨어져 있었다 — 칸의 제 테두리가 틀 그림 위로 7px 올라타 있었고,
+ * 그게 "삐져나온다"의 정체다. 두께를 9px 로 두고 여백도 9px 로 맞추면
+ * 안쪽이 정확히 38px 이라 칸(16 + 1 + 19 에 줄 높이 반올림이 붙어 38px)이
+ * 딱 들어간다. 배율 0.533 → 8px / 9.6px.
+ */
+.resource-grid {
+  padding: 8px 10px !important;
+  background-image: none !important;
+}
+
+/* 칸의 세로 여백은 띠가 맡는다 — 칸이 또 여백을 가지면 그만큼 틀을 밟는다. */
+.resource-grid > div {
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
+.resource-grid::before {
+  border-width: 8px 9.6px;
+  border-image: url("/assets/ui/frames/resource-rail-v1.webp") 15 18 fill stretch;
+  border-image-width: 8px 9.6px;
+}
+
+/*
+ * 웨이브 브리핑 카드 — 자산 333×86, 렌더 376×82.
+ *
+ * 이 그림은 **두 판**이다. 자산을 픽셀로 뜯어 보면 왼쪽 글판이 x=0~229,
+ * 분리선이 229~230, 오른쪽 먹·인장판이 230~333(103px)이다. 그런데 CSS 는
+ * 오른쪽 슬라이스를 24px 로 잡고 있었다 — 그러면 늘어나는 가운데 구간에
+ * **분리선과 먹 자국이 통째로 들어가** 카드 폭을 따라 함께 늘어난다.
+ * 스펙(SPRITE_SPEC.md)이 "우측 먹 인장은 고정"이라 적어 둔 그 고정이
+ * 실제로는 하나도 지켜지지 않고 있었다.
+ *
+ * 오른쪽 슬라이스를 판 전체인 103px 로 잡으면 그 판이 **원본 크기 그대로**
+ * 그려지고, 늘어나는 것은 왼쪽 글판의 종이뿐이다. 가로는 18+103=121 이
+ * 자연 크기로 서고 가운데 212px 만 255px 로 늘어난다. 세로도 15px 씩
+ * 자연 크기라 모서리 배율이 정확히 1.0 이다 — 찌그러짐이 0 이 된다.
+ *
+ * 내용 여백은 손대지 않는다. 고치는 것은 그림이 그려지는 방식이지 배치가
+ * 아니다(오버레이라 레이아웃에 닿지도 않는다).
+ */
+.wave-card {
+  background-image: none !important;
+}
+
+.wave-card::before {
+  border-width: 15px 103px 15px 18px;
+  border-image: url("/assets/ui/frames/briefing-card-v1.webp") 15 103 15 18 fill stretch;
+  border-image-width: 15px 103px 15px 18px;
+}
+
+/*
+ * 하단 기능군 레일 — 자산 381×89, 슬라이스 10/14, 렌더 376×76.
+ * 가로는 이미 0.987 배라 손댈 것이 없고 세로만 눌렸다. 지금 그려지던
+ * 세로 두께(10 × 76/89 = 8.5)를 그대로 잡는다 — k = 0.854 → 8.5 / 12.0.
+ */
+.panel-tabs {
+  background-image: none !important;
+}
+
+.panel-tabs::before {
+  border-width: 8.5px 12px;
+  border-image: url("/assets/ui/p0-v1/rails/nav-rail-empty-381x89-v2.webp") 10 14 fill stretch;
+  border-image-width: 8.5px 12px;
+}
+
+/*
+ * 바닥 상태 띠 — 자산 333×43, 슬라이스 10/14, 렌더 376×28.
+ * 가장 심하게 눌리던 곳이다(가로 1.129 · 세로 0.651 → 1.73배).
+ * 지금 그려지던 세로 두께(10 × 28/43 = 6.5)를 그대로 잡는다 —
+ * k = 0.651 → 6.5 / 9.1.
+ */
+.panel-footer {
+  background-image: none !important;
+}
+
+.panel-footer::before {
+  border-width: 6.5px 9.1px;
+  border-image: url("/assets/ui/p0-v1/rails/status-strip-empty-333x43-v2.webp") 10 14 fill stretch;
+  border-image-width: 6.5px 9.1px;
+}
+
+/*
+ * 자원 띠의 첫 칸(엽전)이 두르던 제 테두리를 걷는다.
+ *
+ * 4배 확대로 보고서야 알았다 — 삐져나온다고 보이던 것은 칸이 틀을 넘은 것이
+ * 아니라, **틀의 띠와 칸의 테두리가 두 겹으로 나란히** 서 있는 것이었다.
+ * 엽전 칸만 1px 금색 고리(box-shadow inset)와 둥근 3px 모서리로 카드 하나를
+ * 더 그리고 있었고, 그 카드가 틀 안쪽 선에 딱 붙어 경계가 둘로 읽혔다.
+ *
+ * 그 고리는 자원칸이 네 칸이던 시절, 띠에 제대로 된 틀이 없을 때 엽전을
+ * 도드라지게 하려고 둔 것이다. 이제 띠 자체가 9슬라이스 틀을 갖췄으므로
+ * 칸이 또 액자를 두를 이유가 없다 — 문기 칸처럼 종이 위에 그냥 앉는다.
+ * 엽전이 첫째라는 것은 글자 크기(19px)가 이미 말한다.
+ */
+.resource-grid > div:first-child {
+  border-radius: 0;
+  /* 위아래 실선 한 줄씩만 남겨 둘째 칸과 결을 맞춘다(고리는 걷는다).
+     070-panel-repairs.css:545 가 !important 로 금색 고리를 그리므로 같은 무게가 필요하다. */
+  box-shadow:
+    inset 0 1px 0 rgba(255, 250, 235, 0.4),
+    inset 0 -1px 0 rgba(96, 76, 40, 0.22) !important;
+}

@@ -12,7 +12,7 @@
  * 자동 전개("이 글자는 이 부품들로").
  */
 import { casualNaturalStar, casualStrokeCount } from "../../core/casual";
-import { MAX_TRACKED_IDIOMS } from "../../core/game";
+import { GameEngine, MAX_TRACKED_IDIOMS } from "../../core/game";
 import { ELEMENT_STYLES, maxSummonStageForWave, STAGE_NAMES, summonStageUnlockWave } from "../../core/hanzi";
 import { type IdiomDefinition } from "../../core/idioms";
 import { learningInfoForNotation } from "../../core/learning";
@@ -77,7 +77,7 @@ export function renderGoal(): void {
   // 갈피 이름은 "목표" + 이 배지다 — 여기에 "성어"를 넣으면 옆 「성어」 갈피와
   // 접근명이 겹친다(실증: 역할 선택이 두 갈피에 걸렸다).
   badge.setAttribute("aria-label", `준비도 ${percent}%`);
-  must<HTMLElement>("#goal-owned-summary").innerHTML = `<b>추적 ${tracked.length}/${MAX_TRACKED_IDIOMS}구</b><span>발동 ${seals}/${engine.idioms().length}</span>`;
+  must<HTMLElement>("#goal-owned-summary").innerHTML = `<b>추적 ${tracked.length}/${MAX_TRACKED_IDIOMS}구</b><span>발동 ${seals}구</span>`;
   const summary = must<HTMLElement>("#goal-panel-summary");
   summary.innerHTML = `추적 중 성어 <b>${tracked.length}구</b> · 최고 준비도 <b>${percent}%</b>`;
   summary.title = READINESS_NOTE;
@@ -103,11 +103,21 @@ function ownedIdiomGlyphMarkup(chars: string, ownedCounts: ReadonlyMap<string, n
   }).join("");
 }
 
+/**
+ * 성어 카드 격자 — 내가 새긴 구를 먼저, 따로.
+ *
+ * 여태는 107구를 한 통에 넣고 점수순으로 28장만 잘라 보여 줬다. 새긴 지 얼마
+ * 안 된 구는 보유 글자가 없어 점수가 낮으니 잘려 나갔고, 그래서 "커스텀 성어가
+ * 안보여"가 됐다. 내가 만든 것이 남이 준 것 사이에 묻히는 것도 이상하다.
+ *
+ * 그래서 갈피를 갈라 세운다. 위는 **내가 새긴 성어 전부**(장착 상한이 열다섯
+ * 이라 잘라 낼 이유가 없다), 아래는 지역 명단이다.
+ */
 function renderIdiomCards(ownedCounts: ReadonlyMap<string, number>, trackedIds: readonly string[], selectedId: string): string {
   const engine = ctx.engine;
   const query = ctx.goalSearchQuery.trim().toLowerCase();
   const sealedIds = new Set(engine.state.idiomSeals.map((seal) => seal.idiomId));
-  const rows = engine.allIdioms()
+  const all = engine.allIdioms()
     .map((idiom, order) => {
       const progress = engine.idiomProgress(idiom.id);
       const trackedIndex = trackedIds.indexOf(idiom.id);
@@ -121,22 +131,53 @@ function renderIdiomCards(ownedCounts: ReadonlyMap<string, number>, trackedIds: 
         - order / 10_000;
       return { idiom, progress, trackedIndex, sealed, live, searchText, score };
     })
-    .filter((row) => !query || row.searchText.includes(query))
+    .filter((row) => !query || row.searchText.includes(query));
+
+  const mine = all.filter((row) => row.idiom.source === "custom").sort((left, right) => right.score - left.score);
+  const region = all.filter((row) => row.idiom.source !== "custom")
     .sort((left, right) => right.score - left.score)
     .slice(0, query ? 72 : 28);
 
-  if (rows.length === 0) return `<div class="goal-selector-empty"><b>검색 결과가 없습니다</b><span>네 글자나 성어 읽기를 다시 입력해 보세요.</span></div>`;
+  if (mine.length === 0 && region.length === 0) {
+    return `<div class="goal-selector-empty"><b>검색 결과가 없습니다</b><span>네 글자나 성어 읽기를 다시 입력해 보세요.</span></div>`;
+  }
+  // 내가 새긴 구가 없으면 갈피 이름을 붙이지 않는다 — 나눌 것이 없는데 줄만 는다.
+  const grouped = mine.length > 0;
+  const heading = (text: string, note: string): string =>
+    `<div class="goal-group-heading"><b>${escapeHtml(text)}</b><small>${escapeHtml(note)}</small></div>`;
+  return [
+    grouped ? heading(`집자소 · 내가 새긴 성어 ${mine.length}구`, "자혼으로 새겨 장착한 구") : "",
+    renderCardRows(mine, ownedCounts, selectedId),
+    grouped ? heading("지역 성어", "이 지역 명단에서 고릅니다") : "",
+    renderCardRows(region, ownedCounts, selectedId)
+  ].join("");
+}
+
+interface IdiomCardRow {
+  readonly idiom: IdiomDefinition;
+  readonly progress: ReturnType<GameEngine["idiomProgress"]>;
+  readonly trackedIndex: number;
+  readonly sealed: boolean;
+  readonly live: boolean;
+}
+
+function renderCardRows(rows: readonly IdiomCardRow[], ownedCounts: ReadonlyMap<string, number>, selectedId: string): string {
   return rows.map(({ idiom, progress, trackedIndex, sealed, live }) => {
     const isTracked = trackedIndex >= 0;
     const selected = idiom.id === selectedId;
     const ownedPercent = Math.round(progress.owned / Math.max(1, progress.total) * 100);
-    const status = sealed
-      ? live ? "발동 중" : "발동 이력 · 흩어짐"
-      : isTracked
-        ? `추적 ${trackedIndex + 1}순위`
-        : progress.owned === progress.total ? "배치 준비" : `${progress.owned}/${progress.total}자`;
+    const standable = ctx.engine.idiomStandable(idiom.id);
+    const status = !standable
+      ? "이 지역 밖 글자"
+      : sealed
+        ? live ? "발동 중" : "발동 이력 · 흩어짐"
+        : isTracked
+          ? `추적 ${trackedIndex + 1}순위`
+          : progress.owned === progress.total ? "배치 준비" : `${progress.owned}/${progress.total}자`;
     const classes = [
       "goal-idiom-card",
+      idiom.source === "custom" ? "is-custom" : "",
+      standable ? "" : "is-foreign",
       selected ? "is-selected" : "",
       isTracked ? "is-tracked" : "",
       sealed ? "is-sealed" : "",
@@ -146,7 +187,7 @@ function renderIdiomCards(ownedCounts: ReadonlyMap<string, number>, trackedIds: 
       <span class="goal-idiom-glyphs">${ownedIdiomGlyphMarkup(idiom.chars, ownedCounts)}</span>
       <span class="goal-idiom-copy"><strong>${escapeHtml(idiom.reading)}</strong><small>${escapeHtml(idiom.meaning)}</small></span>
       <span class="goal-idiom-progress" title="${OWNED_NOTE}" aria-label="보유 ${progress.owned}/${progress.total}자"><i style="width:${ownedPercent}%"></i><em>${progress.owned}/${progress.total}자 보유</em></span>
-      <button type="button" class="goal-idiom-track" data-goal-track="${escapeHtml(idiom.id)}" aria-pressed="${String(isTracked)}" ${sealed ? "disabled" : ""}>${sealed ? "발동 완료" : isTracked ? "추적 중 ✓" : "추적"}</button>
+      <button type="button" class="goal-idiom-track" data-goal-track="${escapeHtml(idiom.id)}" aria-pressed="${String(isTracked)}" ${sealed || !standable ? "disabled" : ""}>${sealed ? "발동 완료" : !standable ? "추적 불가" : isTracked ? "추적 중 ✓" : "추적"}</button>
       <mark>${escapeHtml(status)}</mark>
     </div>`;
   }).join("");
@@ -159,9 +200,16 @@ function renderIdiomDetail(selectedId: string, ownedCounts: ReadonlyMap<string, 
   const sealed = engine.state.idiomSeals.some((seal) => seal.idiomId === idiom.id);
   const live = engine.isIdiomSealActive(idiom.id);
   const trackedIndex = trackedIds.indexOf(idiom.id);
-  const sourceLabel = idiom.source === "cheonjamun" ? `천자문 제${idiom.sourceOrder}구` : "상용 사자성어";
-  const stateLabel = live ? "발동 중" : sealed ? "발동 이력 · 지금은 흩어짐" : trackedIndex >= 0 ? `추적 ${trackedIndex + 1}순위` : "서책 수록";
-  const trackButton = sealed
+  const sourceLabel = idiom.source === "custom"
+    ? "집자소 · 내가 새긴 구"
+    : idiom.source === "cheonjamun" ? `천자문 제${idiom.sourceOrder}구` : "상용 사자성어";
+  const standable = engine.idiomStandable(idiom.id);
+  const stateLabel = !standable
+    ? "이 지역 명단 밖 — 이번 판에서는 세울 수 없습니다"
+    : live ? "발동 중" : sealed ? "발동 이력 · 지금은 흩어짐" : trackedIndex >= 0 ? `추적 ${trackedIndex + 1}순위` : "서책 수록";
+  const trackButton = !standable
+    ? `<button type="button" class="goal-detail-track is-sealed" disabled>이 지역 명단 밖 — 추적 불가</button>`
+    : sealed
     ? `<button type="button" class="goal-detail-track is-sealed" disabled>발동 완료 — 목표에서 은퇴</button>`
     : trackedIndex >= 0
       ? `<button type="button" class="goal-detail-track is-on" data-goal-track="${escapeHtml(idiom.id)}" aria-pressed="true">추적 해제</button>`

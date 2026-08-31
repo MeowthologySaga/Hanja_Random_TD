@@ -359,7 +359,7 @@ describe("sustained idiom seals", () => {
 
     engine.selectTower(4);
     engine.relocateSelectedToCell(20);
-    // 흩어져도 "이미 봉인해 본 성어"라 목표는 되돌아오지 않고, 통계 수치도 1 그대로다.
+    // 흩어져도 "이미 발동해 본 성어"라 목표는 되돌아오지 않고, 통계 수치도 1 그대로다.
     expect(engine.currentIdiomTarget()?.id).toBe(nextTarget?.id);
     expect(engine.state.idiomSeals).toHaveLength(1);
     expect(engine.setIdiomTarget("heart")).toMatchObject({ ok: false });
@@ -403,7 +403,8 @@ describe("regional idiom reachability and learning labels", () => {
       const catalog = getCatalog(region);
       const engine = new GameEngine(`featured-${region}`, region);
       const active = new Set(engine.summonDefinitions().map((definition) => definition.char));
-      expect(engine.idioms()).toHaveLength(region === "KR" ? 5 : 4);
+      // 성어 발동에는 상한이 없다 — 이 판의 명단은 지역 성어 전부다.
+      expect(engine.idioms()).toHaveLength(idiomsForRegion(region).length);
       for (const idiom of idiomsForRegion(region)) {
         expect([...idiom.chars]).toHaveLength(4);
         for (const char of idiom.chars) expect(catalog.definitions.has(char)).toBe(true);
@@ -425,12 +426,21 @@ describe("regional idiom reachability and learning labels", () => {
     expect(idiomsForRegion("KR").find((idiom) => idiom.chars === "辰宿列張")?.reading).toBe("진수열장");
   });
 
-  it("selects a deterministic five-clause run set with all four effect families", () => {
+  it("keeps the run roster whole and its order seed-stable", () => {
+    /*
+     * 다섯 구 제한은 걷혔다. 그 수는 화면 자리 때문이었는데 사람은 "성어는
+     * 다섯 개까지"로 읽었고, 실제로도 다섯을 다 발동시키면 더 세울 성어가
+     * 없어 후반에 성어가 할 일이 사라졌다.
+     *
+     * 명단이 전부가 된 뒤에도 **순서**는 시드로 고정돼야 한다 — 첫 구가 그
+     * 판의 첫 목표이므로, 순서가 흔들리면 같은 시드가 다른 판을 만든다.
+     */
     const first = new GameEngine("featured-balance", "KR");
     const replay = new GameEngine("featured-balance", "KR");
     expect(first.idioms().map((idiom) => idiom.id)).toEqual(replay.idioms().map((idiom) => idiom.id));
-    expect(first.idioms()).toHaveLength(5);
-    expect(new Set(first.idioms().map((idiom) => idiom.bonus.kind))).toHaveLength(4);
+    expect(first.idioms()).toHaveLength(idiomsForRegion("KR").length);
+    // 네 효과 갈래가 앞자리에 고루 서는 것은 그대로다(첫 다섯 구로 확인).
+    expect(new Set(first.idioms().slice(0, 5).map((idiom) => idiom.bonus.kind))).toHaveLength(4);
     expect(first.idioms()[0]?.id).toBe("heart");
   });
 

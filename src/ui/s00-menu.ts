@@ -7,6 +7,11 @@ import { restoreRun, type RunSave } from "../core/run-save";
 import { type AutomationMode, type GameMode, type RegionCode } from "../core/types";
 import { battleAssetProgress, isBattleAssetsReady, whenBattleAssetsReady } from "./asset-loader";
 import { buildSynthesisDepths, buildUncombinableStageOneChars } from "./codex-synthesis";
+import { customIdiomToDefinition } from "../core/custom-idioms";
+import { equippedCustomIdioms } from "../core/soul-archive";
+import { soulArchive } from "./souls";
+import { syncArrangePolicy } from "./panels/arrange-policy";
+import { openSoulArchive, refreshSoulBadge } from "./panels/souls";
 import {
   applySavedUiState,
   autoSaveRun,
@@ -158,6 +163,14 @@ export function startRun(useNewSeed = false, options: StartRunOptions = {}): voi
   // 판이 실제로 서는 이 지점에서만 3D 서재를 걷는다(위 menu3dHandle 주석 참조).
   menu3dHandle?.dispose();
   menu3dHandle = null;
+  /*
+   * 부적 보상으로 받은 무료 소환권은 그 판의 자원이다. 엔진에 딸린 값이 아니라
+   * ctx 에 얹혀 있어(app-context) 판이 끝나도 그대로 남았다 — 게임오버 뒤
+   * [다시 도전]을 누르면 지난 판의 권이 새 판으로 따라왔다(사용자 제보).
+   * 부적 장부는 엔진이 바뀌면 스스로 리셋되는데(panels/talisman) 이 값만 빠져
+   * 있었다. 이어하기는 이 뒤에 저장본을 얹으므로(applySavedUiState) 영향 없다.
+   */
+  ctx.talismanFreeSummonTokens = 0;
   const seed = useNewSeed ? createRunSeed() : seedInput.value.trim() || createRunSeed();
   ctx.engine = options.createEngine
     ? options.createEngine()
@@ -167,7 +180,10 @@ export function startRun(useNewSeed = false, options: StartRunOptions = {}): voi
     // 도중에 토글을 만져도 그 런의 적 체력이 흔들리지 않는다.
     : new GameEngine(seed, ctx.selectedRegion, ctx.selectedGameMode, {
       ...(ctx.selectedNotation ? { notation: ctx.selectedNotation } : {}),
-      talismanMode: ctx.talismanMode
+      talismanMode: ctx.talismanMode,
+      // 장착한 커스텀 성어도 런이 설 때 굳힌다 — 판 도중에 서재에서 갈아 끼워도
+      // 굴러가는 판의 성어 명단이 흔들리지 않게. 부적 모드와 같은 규칙이다.
+      customIdioms: equippedCustomIdioms(soulArchive()).map(customIdiomToDefinition)
     });
   seedInput.value = ctx.engine.state.seed;
   if (options.resume) {
@@ -178,6 +194,8 @@ export function startRun(useNewSeed = false, options: StartRunOptions = {}): voi
     ctx.selectedRegion = ctx.engine.state.region;
     ctx.selectedGameMode = ctx.engine.state.mode;
   }
+  // 새 엔진에는 정책이 안 꽂혀 있다 — 설정이라 판을 넘어 살아야 한다.
+  syncArrangePolicy();
   shell.dataset.gameMode = ctx.engine.state.mode;
   ctx.mapSynthesisDepths = buildSynthesisDepths(ctx.engine.catalog.definitions.values());
   ctx.mapUncombinableStageOne = buildUncombinableStageOneChars(ctx.engine.catalog.definitions.values());
@@ -282,7 +300,7 @@ function resumeSavedRun(): void {
   // 장부는 자기가 어느 엔진의 것인지 도장을 찍어 두고 판이 갈리면 스스로 리셋한다.
   // 그래서 startRun 앞에서 얹으면 옛 엔진 도장이 찍혀, 새 엔진이 들어오는 순간
   // 통째로 무효가 되고 다시 3장으로 돌아간다 — 이어하기가 매번 부적 3장이던 사고.
-  startRun(false, { createEngine: () => restoreRun(save), resume: true, skipCoach: true });
+  startRun(false, { createEngine: () => restoreRun(save, equippedCustomIdioms(soulArchive()).map(customIdiomToDefinition)), resume: true, skipCoach: true });
   applySavedUiState(save);
   syncPanel();
 }
@@ -322,6 +340,12 @@ export function wireS00Menu1(): void {
     seedInput.value = createRunSeed();
     sound.playUiConfirm();
   });
+  must<HTMLButtonElement>("#s00-souls-button").addEventListener("click", () => {
+    openSoulArchive();
+  });
+  // 제목 화면이 서는 이 지점에서 자혼 배지를 한 번 맞춘다 — 지난 판에서 거둔
+  // 수확이 돌아오자마자 눈에 들어와야 서재로 걸어 들어갈 이유가 생긴다.
+  refreshSoulBadge();
   must<HTMLButtonElement>("#s00-codex-button").addEventListener("click", () => {
     must<HTMLButtonElement>("#codex-button").click();
   });

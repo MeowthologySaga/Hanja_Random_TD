@@ -67,6 +67,42 @@ test("dev tools panel stages the tracked idiom and fires the seal", async ({ pag
   await expect(page.locator("#message-value")).toContainText("자동 발동");
   await page.screenshot({ path: "artifacts/dev-tools-idiom-fired-1280x720.png", fullPage: true });
 
+  /*
+   * 자혼 지급 — 집자소를 손보려고 우두머리를 열 번 잡을 수는 없다.
+   *
+   * 보관소는 판 밖의 장부라 즉시 localStorage 에 남고, 제목 화면 배지도
+   * 그 자리에서 따라 오른다.
+   */
+  // 안내 문장은 매 프레임 엔진 문장에 덮이므로, 말이 아니라 **장부**를 잰다.
+  await page.locator("#dev-shard-char").fill("天");
+  await page.getByTestId("dev-shard-grant").click();
+  await expect
+    .poll(async () => page.evaluate(() => {
+      const raw = window.localStorage.getItem("hanja-td:soul-archive-v1");
+      const parsed = raw ? (JSON.parse(raw) as { souls?: Record<string, number> }) : {};
+      return (parsed.souls ?? {})["天"] ?? 0;
+    }))
+    .toBe(1);
+  await page.getByTestId("dev-shard-random").click();
+
+  const archive = await page.evaluate(() => {
+    const raw = window.localStorage.getItem("hanja-td:soul-archive-v1");
+    const parsed = raw ? (JSON.parse(raw) as { souls?: Record<string, number> }) : {};
+    const souls = parsed.souls ?? {};
+    return { chars: Object.keys(souls).length, total: Object.values(souls).reduce((sum, n) => sum + n, 0) };
+  });
+  expect(archive.chars).toBeGreaterThan(1);
+  expect(archive.total).toBeGreaterThan(1);
+
+  // 비우기는 되돌릴 수 없는 손잡이라 장부가 실제로 비는지까지 본다.
+  await page.getByTestId("dev-shard-clear").click();
+  const cleared = await page.evaluate(() => {
+    const raw = window.localStorage.getItem("hanja-td:soul-archive-v1");
+    const parsed = raw ? (JSON.parse(raw) as { souls?: Record<string, number> }) : {};
+    return Object.keys(parsed.souls ?? {}).length;
+  });
+  expect(cleared).toBe(0);
+
   // 개발자 모드를 끄면 버튼·패널이 즉시 소멸한다.
   // (패널 안은 키 입력을 삼키므로, 먼저 닫아 포커스를 문서로 되돌린다)
   await page.locator("#dev-tools-close").click();

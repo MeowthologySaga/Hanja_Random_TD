@@ -70,7 +70,7 @@ export const abilityBurstPool: AbilityBurstFx[] = [];
 export const towerAbilityPopups = new Map<number, TowerAbilityPopup>();
 
 /**
- * p1-p2-polish-assets-pack-v1 의 일회성 래스터 연출(별승급 고리·사자성어 봉인).
+ * p1-p2-polish-assets-pack-v1 의 일회성 래스터 연출(별승급 고리·사자성어 발동).
  * 순수 피드백이라 승급·봉인 규칙이나 수치에는 관여하지 않는다. 에셋이 없으면
  * 이 연출만 건너뛰고 상태 전이는 그대로 진행된다.
  */
@@ -93,7 +93,7 @@ export function pushRasterBurst(image: HTMLImageElement, at: Point, size: number
 }
 
 /**
- * 봉인 발동 파문 — 코덱스 파문 마스크를 성어 색으로 물들여 네 칸에 한 번씩 띄운다.
+ * 성어 발동 파문 — 코덱스 파문 마스크를 성어 색으로 물들여 네 칸에 한 번씩 띄운다.
  * `delay` 로 1번 칸부터 차례로 터뜨려 "이 넷이 이 순서"라는 사실을 한 번 더 말한다.
  */
 export interface IdiomRippleFx {

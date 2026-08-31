@@ -4,7 +4,10 @@
 import { type GameMode } from "../../core/types";
 import { type DisplayMode, saveDisplayMode } from "../display-mode";
 import { saveAutoPlaceSummons } from "../summon-placement";
-import { CALM_SCREEN_STORAGE_KEY, ctx, HOVER_GLYPH_STORAGE_KEY, must, reducedMotion, settingsDialog, shell, sound } from "../app-context";
+import { CALM_SCREEN_STORAGE_KEY, ctx, HOVER_GLYPH_STORAGE_KEY, must, reducedMotion, settingsDialog, shell, sound, STROKE_ORDER_STORAGE_KEY } from "../app-context";
+import { loadStrokeGlyphs } from "../../core/stroke-order";
+import { refreshStrokeGuideSheet } from "../panels/talisman";
+import { refreshSoulStrokeGuide } from "../panels/soul-reroll";
 import { startCoach } from "../coach";
 import { handleAction, showToast } from "../hud";
 import { openStandardModeNotice } from "./s13";
@@ -50,6 +53,55 @@ function syncCalmScreenControl(): void {
   button.classList.toggle("is-on", ctx.calmScreen);
   button.setAttribute("aria-checked", String(ctx.calmScreen));
   must<HTMLElement>("#calm-screen-toggle i em").textContent = ctx.calmScreen ? "ON" : "OFF";
+}
+
+/*
+ * 획순 안내 — 켤 때만 자료를 받는다.
+ *
+ * 2.5MB 라 끈 사람에게는 요청 자체를 보내지 않는다. 받아 두는 일은 여기서
+ * 한 번만 하고, 실패하면 조용히 예전 방식으로 돌아간다 — 부적을 쓰는 도중에
+ * 오류 창이 뜨는 것보다 안내가 안 서는 편이 낫다.
+ */
+function syncStrokeOrderControl(): void {
+  const button = must<HTMLButtonElement>("#stroke-order-toggle");
+  button.classList.toggle("is-on", ctx.strokeOrderGuide);
+  button.setAttribute("aria-checked", String(ctx.strokeOrderGuide));
+  must<HTMLElement>("#stroke-order-toggle i em").textContent = ctx.strokeOrderGuide ? "ON" : "OFF";
+}
+
+/**
+ * 펴 둔 따라 쓰기 판 둘에 지금 설정을 얹는다.
+ *
+ * 판이 안 열려 있으면 두 함수 모두 조용히 돌아간다 — 여기서 열려 있는지 묻지
+ * 않는 이유는, 그 판단이 각 판의 몫이기 때문이다(무엇이 「지금 글자」인지는
+ * 그쪽만 안다).
+ */
+function applyStrokeGuideToOpenSheets(force: boolean): void {
+  refreshStrokeGuideSheet(force);
+  refreshSoulStrokeGuide(force);
+}
+
+export function setStrokeOrderGuide(enabled: boolean): void {
+  ctx.strokeOrderGuide = enabled;
+  try {
+    window.localStorage.setItem(STROKE_ORDER_STORAGE_KEY, String(enabled));
+  } catch {
+    // 사생활 보호 모드 등에서 저장이 막혀도 이번 세션 선택은 살린다.
+  }
+  syncStrokeOrderControl();
+  // 지금 펴 둔 종이에 곧바로 반영한다 — 켰는데 안 바뀌면 껐는지 켰는지 모른다.
+  applyStrokeGuideToOpenSheets(true);
+  if (!enabled) {
+    showToast("획순 안내 OFF · 글자 한 장을 통째로 보여 줍니다");
+    return;
+  }
+  void loadStrokeGlyphs().then((glyphs) => {
+    // 자료가 늦게 와도 지금 종이에 세운다. 이미 쓰기 시작했으면 건드리지 않는다.
+    applyStrokeGuideToOpenSheets(false);
+    showToast(glyphs
+      ? "획순 안내 ON · 따라 쓰기 판에서 획을 하나씩 짚어 줍니다"
+      : "획순 자료를 받지 못했습니다 — 글자 한 장을 통째로 보여 줍니다", glyphs === null);
+  });
 }
 
 /** 선택(설정 > OS)을 실효값으로 굳혀 셸 게이트에 새긴다. */
@@ -126,6 +178,7 @@ export function wireSettings1(): void {
     syncAutoPlaceControl();
     syncHoverGlyphControl();
     syncCalmScreenControl();
+    syncStrokeOrderControl();
     syncAudioControls();
     settingsDialog.showModal();
   });
@@ -133,6 +186,13 @@ export function wireSettings1(): void {
   syncHoverGlyphControl();
   // FB6: 저장된 선택(또는 OS 동작 줄이기)이 첫 그림부터 게이트에 실리게 한다.
   applyCalmScreen();
+  /*
+   * 여기서 미리 받지 않는다.
+   *
+   * 기본값이 켜짐이 되면서, 부팅에서 받으면 부적을 한 번도 안 여는 사람까지
+   * gzip 2.4MB 를 끌게 된다. 자료는 따라 쓰기 판을 처음 열 때 받는다
+   * (panels/talisman.ts 의 preloadStrokeGuide, panels/soul-reroll.ts 의 열기).
+   */
 }
 
 /** main.ts 가 원래 순서대로 부르는 배선 묶음. */
@@ -143,6 +203,7 @@ export function wireSettings2(): void {
     syncAutoPlaceControl();
     syncHoverGlyphControl();
     syncCalmScreenControl();
+    syncStrokeOrderControl();
     syncAudioControls();
     settingsDialog.showModal();
   });
@@ -154,6 +215,11 @@ export function wireSettings2(): void {
   must<HTMLButtonElement>("#calm-screen-toggle").addEventListener("click", () => {
     sound.unlock();
     setCalmScreen(!ctx.calmScreen);
+    sound.playUiConfirm();
+  });
+  must<HTMLButtonElement>("#stroke-order-toggle").addEventListener("click", () => {
+    sound.unlock();
+    setStrokeOrderGuide(!ctx.strokeOrderGuide);
     sound.playUiConfirm();
   });
   must<HTMLButtonElement>("#settings-close").addEventListener("click", () => settingsDialog.close());

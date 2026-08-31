@@ -267,7 +267,7 @@ describe("safe dismantle, concentration, and element growth", () => {
     const definition = engine.catalog.activePool.find((candidate) => candidate.wuxing === "水") as HanziDefinition;
     const tower = towerFor(definition, 300, 0);
     const enemy: Enemy = {
-      id: 1, wave: 1, hp: 100, maxHp: 100, speed: 1, progress: 0.3, reward: 1, boss: false,
+      id: 1, wave: 1, char: "天", hp: 100, maxHp: 100, speed: 1, progress: 0.3, reward: 1, boss: false,
       archetype: "normal", weakness: "木", armor: 0, regenPerSecond: 0, slowFactor: 1, slowUntil: 0,
       stunnedUntil: 0, poisonDps: 0, poisonUntil: 0, flash: 0
     };

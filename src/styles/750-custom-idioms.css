@@ -1,0 +1,220 @@
+/*
+ * 내가 새긴 성어를 따로 세운다.
+ *
+ * "목표랑 성어 패널에서 커스텀 성어가 분리된 느낌으로 들어가있으면 좋겠어.
+ * 현재는 커스텀 성어가 안보여"(사용자). 실제로 보이지 않았다 — 성어 패널에는
+ * 명단 자체가 없었고, 목표 서책에서는 107구를 점수순 28장으로 자르는 통에
+ * 갓 새긴 구가 잘려 나갔다.
+ *
+ * 갈라 세우는 표시는 **집자소의 시각 언어**를 빌린다. 붉은 인장 색과 족자
+ * 느낌의 테두리라, 「이건 내가 만든 것」이 글을 안 읽어도 읽힌다
+ * (740-jipjaso-skin.css 와 같은 결).
+ */
+
+/* ══════════════════════════════════════════════════════════════════
+   성어 패널 — 「집자소 · 내가 새긴 성어」 갈피
+   ══════════════════════════════════════════════════════════════════ */
+
+.idiom-custom {
+  display: grid;
+  gap: 5px;
+  margin: 8px 0 2px;
+  padding: 8px 9px 9px;
+  border-radius: var(--r-sm);
+  background: rgba(255, 250, 236, 0.66);
+  /* 왼쪽 인장색 띠 — 이 갈피가 남의 명단이 아니라는 표시다. */
+  box-shadow: inset 0 0 0 1px rgba(122, 90, 42, 0.3), inset 3px 0 0 rgba(159, 47, 35, 0.75);
+}
+
+.idiom-custom-heading {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.idiom-custom-heading span {
+  color: var(--gold-500);
+  font-size: var(--fs-2xs);
+  font-weight: 700;
+  letter-spacing: 0.1em;
+}
+
+.idiom-custom-heading b {
+  color: var(--text-300);
+  font-size: var(--fs-2xs);
+  font-variant-numeric: tabular-nums;
+}
+
+.idiom-custom-list {
+  display: grid;
+  gap: 3px;
+}
+
+.idiom-custom-empty {
+  margin: 0;
+  color: var(--text-400);
+  font-size: var(--fs-2xs);
+  line-height: 1.45;
+}
+
+/*
+ * 한 줄에 넉 자 · 읽기 · 효과 · 상태.
+ *
+ * 효과 칸만 늘어나게 두고 나머지는 제 폭을 지킨다 — 상태 배지가 줄바꿈으로
+ * 밀려나면 「지금 서 있는가」를 훑을 수 없다.
+ */
+.idiom-custom-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, auto) minmax(0, 1fr) auto;
+  gap: 6px;
+  align-items: center;
+  padding: 4px 6px;
+  border-radius: var(--r-sm);
+  background: rgba(250, 244, 228, 0.9);
+  box-shadow: inset 0 0 0 1px rgba(122, 90, 42, 0.22), inset 2px 0 0 var(--idiom, #d8c58c);
+}
+
+.idiom-custom-row b {
+  color: var(--text-100);
+  font-size: var(--fs-xs);
+  letter-spacing: 0.06em;
+}
+
+.idiom-custom-row span {
+  overflow: hidden;
+  color: #59397f;
+  font-size: 10.5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.idiom-custom-row em {
+  overflow: hidden;
+  color: var(--text-300);
+  font-size: 10.5px;
+  font-style: normal;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.idiom-custom-row mark {
+  flex: 0 0 auto;
+  padding: 1px 5px;
+  border-radius: 8px;
+  background: rgba(122, 90, 42, 0.14);
+  color: var(--text-300);
+  font-size: 10px;
+  white-space: nowrap;
+}
+
+/* 발동 중인 구는 금빛으로 — 목록을 훑을 때 지금 사는 것만 골라진다. */
+.idiom-custom-row.is-live {
+  background: rgba(255, 250, 232, 0.98);
+  box-shadow: inset 0 0 0 1px var(--gold-300), inset 2px 0 0 var(--idiom, #d8c58c);
+}
+
+.idiom-custom-row.is-live mark {
+  background: var(--gold-500);
+  color: #fbf5e6;
+  font-weight: 700;
+}
+
+.idiom-custom-row.is-ready mark {
+  background: rgba(107, 74, 156, 0.16);
+  color: #59397f;
+  font-weight: 700;
+}
+
+.idiom-custom-row.is-scattered {
+  opacity: 0.66;
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   목표 서책 — 갈피 이름표와 내가 새긴 카드
+   ══════════════════════════════════════════════════════════════════ */
+
+/* 격자가 2열이라 이름표는 두 열을 가로지른다. */
+#goal-codex-layout .goal-group-heading {
+  display: flex;
+  grid-column: 1 / -1;
+  gap: 8px;
+  align-items: baseline;
+  margin: 2px 0 0;
+  padding-bottom: 3px;
+  border-bottom: 1px solid rgba(122, 90, 42, 0.28);
+}
+
+/* 첫 이름표는 위 여백을 걷는다 — 검색줄 바로 아래라 이미 떨어져 있다. */
+#goal-codex-layout .goal-group-heading:first-child {
+  margin-top: 0;
+}
+
+#goal-codex-layout .goal-group-heading b {
+  color: var(--gold-500);
+  font-size: var(--fs-2xs);
+  letter-spacing: 0.1em;
+}
+
+#goal-codex-layout .goal-group-heading small {
+  color: var(--text-400);
+  font-size: 10.5px;
+}
+
+/*
+ * 내가 새긴 카드에는 붉은 인장을 찍는다.
+ *
+ * 왼쪽 띠(--goal-accent)는 성어마다 색이 달라 「내 것」을 말하지 못한다.
+ * 인장 하나가 그 몫이다 — 집자소의 순번 인장과 같은 붉은색이라 어디서 온
+ * 물건인지가 이어진다.
+ */
+.goal-idiom-card.is-custom {
+  background: linear-gradient(180deg, #fdf6e4 0%, #f0e2c1 100%);
+}
+
+.goal-idiom-card.is-custom::after {
+  content: "刻";
+  position: absolute;
+  top: 5px;
+  right: 6px;
+  display: grid;
+  place-items: center;
+  width: 15px;
+  height: 15px;
+  border-radius: 3px;
+  background: rgba(159, 47, 35, 0.88);
+  color: #f6ecd4;
+  font-size: 9.5px;
+  font-weight: 900;
+  pointer-events: none;
+}
+
+/* 인장이 상태 배지와 겹치지 않게 배지를 왼쪽으로 물린다. */
+.goal-idiom-card.is-custom > mark {
+  margin-right: 18px;
+}
+
+/*
+ * 이 지역 명단 밖 글자로 새긴 구.
+ *
+ * 자혼 서재는 지역을 넘어 남는다 — 중국 지역에서 새긴 구를 한국 판에 들고 오면
+ * 그 글자가 이 지역에 아예 없을 수 있다. 감추지 않고 「세울 수 없다」고 적는다.
+ * 감추면 "내가 만든 게 왜 없지"가 되고, 그냥 두면 모을 수 없는 것을 쫓는다.
+ */
+.idiom-custom-row.is-foreign {
+  opacity: 0.55;
+}
+
+.idiom-custom-row.is-foreign mark {
+  background: rgba(159, 47, 35, 0.16);
+  color: #7a2f23;
+}
+
+.goal-idiom-card.is-foreign {
+  opacity: 0.6;
+}
+
+.goal-idiom-card.is-foreign > mark {
+  background: rgba(159, 47, 35, 0.16);
+  color: #7a2f23;
+}

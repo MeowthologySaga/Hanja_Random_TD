@@ -36,6 +36,7 @@ function enemy(id: number): Enemy {
   return {
     id,
     wave: 1,
+    char: "天",
     hp: 10,
     maxHp: 10,
     speed: 0,
@@ -106,10 +107,20 @@ describe("regional recipe defense run", () => {
     expect(manual.state.towers).toHaveLength(0);
     expect(manual.state.inventoryTowers).toHaveLength(10);
 
-    const locked = new GameEngine("ten-summon-locked", "KR");
-    locked.begin();
-    locked.state.gold = 70;
-    expect(locked.summonMany(10)).toMatchObject({ ok: false, message: expect.stringContaining("10웨이브") });
+    /*
+     * 10연의 웨이브 자물쇠는 걷었다 — 값이 이미 문지기다(시작 42엽전 · 10연 70).
+     * 첫 웨이브에도 값만 치르면 통하고, 막히는 사유는 엽전 부족 하나뿐이다.
+     */
+    const early = new GameEngine("ten-summon-early", "KR");
+    early.begin();
+    early.state.gold = 70;
+    expect(early.state.wave).toBeLessThan(10);
+    expect(early.summonMany(10)).toMatchObject({ ok: true });
+
+    const broke = new GameEngine("ten-summon-broke", "KR");
+    broke.begin();
+    broke.state.gold = 0;
+    expect(broke.summonMany(10)).toMatchObject({ ok: false, message: expect.stringContaining("엽전") });
   });
 
   it("opens summon stages and lineage research only at their 100-wave milestones", () => {
@@ -292,8 +303,8 @@ describe("regional recipe defense run", () => {
     // 추적 목록의 봉인 구는 걸러지고, 비면 다음 미봉인 목표 성어가 승계된다.
     expect(engine.trackedIdioms().map((idiom) => idiom.id)).toEqual([second]);
     expect(engine.currentIdiomTarget()?.id).toBe(second);
-    // 봉인한 성어는 다시 추적할 수 없다.
-    expect(engine.setIdiomTracking(first as string, true)).toMatchObject({ ok: false, message: expect.stringContaining("봉인") });
+    // 발동한 성어는 다시 추적할 수 없다.
+    expect(engine.setIdiomTracking(first as string, true)).toMatchObject({ ok: false, message: expect.stringContaining("발동") });
   });
 
   it("feeds the union of tracked idioms' missing characters into forced lineage summons (Track B)", () => {

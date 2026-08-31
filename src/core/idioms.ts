@@ -1,6 +1,7 @@
 import type { GameMode, HanziCatalog, IdiomBonusKind, RegionCode, Tower } from "./types";
 import { BOARD_CELLS, CELLS_PER_FORMATION, FORMATION_COLUMNS, FORMATION_ROWS } from "./content";
 import { CHEONJAMUN_PHRASES } from "../data/cheonjamun-phrases";
+import { idiomEffectFor } from "./idiom-effects";
 import { SeededRng } from "./rng";
 
 /**
@@ -19,7 +20,7 @@ export interface IdiomDefinition {
   reading: string;
   meaning: string;
   color: string;
-  source: "common" | "cheonjamun";
+  source: "common" | "cheonjamun" | "custom";
   sourceOrder: number | null;
   bonus: {
     kind: IdiomBonusKind;
@@ -49,15 +50,16 @@ const COMMON_IDIOMS: Record<RegionCode, readonly IdiomDefinition[]> = {
   ]
 };
 
-const CHEONJAMUN_EFFECTS: ReadonlyArray<{ kind: IdiomBonusKind; value: number; label: string; color: string }> = [
-  { kind: "damage", value: 0.12, label: "모든 자령 피해 +12%", color: "#ffb06b" },
-  { kind: "range", value: 12, label: "모든 자령 사거리 +12", color: "#74dcff" },
-  { kind: "enemySlow", value: 0.08, label: "모든 적 이동 속도 -8%", color: "#bca1ff" },
-  { kind: "evolutionGold", value: 4, label: "합성할 때마다 엽전 +4", color: "#9de58c" }
-];
-
+/*
+ * 천자문 구의 힘은 **뜻에서** 나온다.
+ *
+ * 여태는 `index % 4` 로 피해·사거리·감속·엽전을 돌려 붙였다. 그래서 「가을에
+ * 거두고 겨울에 저장한다」에 사거리가 붙고 「이슬이 맺혀 서리가 된다」에 엽전이
+ * 붙었다. 성어를 외우게 하려는 게임에서 뜻과 힘이 따로 노는 것은 가르치는 값을
+ * 통째로 버리는 짓이라, 규칙을 idiom-effects.ts 로 옮겼다.
+ */
 const CHEONJAMUN_IDIOMS: readonly IdiomDefinition[] = CHEONJAMUN_PHRASES.map((phrase, index) => {
-  const effect = CHEONJAMUN_EFFECTS[index % CHEONJAMUN_EFFECTS.length] as (typeof CHEONJAMUN_EFFECTS)[number];
+  const effect = idiomEffectFor(phrase.meaning, phrase.chars);
   return createIdiom(
     `cheonjamun-${String(index + 1).padStart(3, "0")}`,
     phrase.chars,
@@ -101,6 +103,14 @@ export function idiomById(region: RegionCode, id: string): IdiomDefinition | und
   return IDIOMS[region].find((idiom) => idiom.id === id);
 }
 
+/**
+ * 이 판의 성어 명단 — 시드로 섞은 순서.
+ *
+ * count 를 넘기지 않으면 예전처럼 다섯 구만 고른다(시험·도구용). 엔진은
+ * Infinity 를 넘겨 **전부** 받는다 — 성어 발동에는 상한이 없다. 그래도 이
+ * 함수가 남는 이유는 **순서** 때문이다: 첫 구가 그 판의 첫 목표가 되므로
+ * 순서가 시드로 고정돼야 같은 시드가 같은 판을 만든다.
+ */
 export function featuredIdiomsForRun(region: RegionCode, seed: string, count = 5): readonly IdiomDefinition[] {
   const all = idiomsForRegion(region);
   if (all.length <= count) return all;

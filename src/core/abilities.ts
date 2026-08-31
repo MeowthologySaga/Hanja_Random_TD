@@ -477,15 +477,13 @@ export const GWICHEON_ABILITY: AbilitySpec = {
   color: "#ffe1a8"
 };
 
-/** 성어의 가호: 발동 중 성어와 같은 진의 자령 전원 공격 증폭. */
-export const IDIOM_BLESSING_BASE = 0.1;
-export const IDIOM_BLESSING_PER_EXTRA = 0.05;
-
-/** 같은 진에 선 발동 중 성어 수 → 가호 배율(첫 구 +10%, 추가 구당 +5%p). */
-export function idiomBlessingBonus(activeSealsInFormation: number): number {
-  if (activeSealsInFormation <= 0) return 0;
-  return IDIOM_BLESSING_BASE + (activeSealsInFormation - 1) * IDIOM_BLESSING_PER_EXTRA;
-}
+/*
+ * 성어의 가호(진 단위 공격 증폭)는 걷었다.
+ *
+ * 기획 의도는 처음부터 "성어는 판 전체에 붙는 힘 하나"였고 진 단위 증폭은
+ * 요구된 적이 없다. 게다가 화면에 수치가 뜨지 않아 만든 사람도 있는 줄 몰랐다.
+ * 성어를 여러 개 만들 값어치는 앞으로 커스텀 성어가 진다.
+ */
 
 /** 테스트·검증용: 의미 계열 글자군 조회(사본 반환). */
 export function semanticCharGroup(family: Exclude<SemanticFamily, "general">): ReadonlySet<string> {

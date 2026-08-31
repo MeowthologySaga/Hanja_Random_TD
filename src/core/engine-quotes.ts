@@ -157,6 +157,8 @@ export interface CasualAutoFusionReport extends ActionResult {
   } | null;
 }
 
+import type { IdiomDefinition } from "./idioms";
+
 /** 엔진 생성 옵션. */
 export interface GameEngineOptions {
   /** 수련장 완화·각본 지급 허용 스위치. */
@@ -173,4 +175,10 @@ export interface GameEngineOptions {
    * 시뮬 봇은 이 옵션을 넘기지 않으므로 게이트 수치가 흔들리지 않는다.
    */
   readonly talismanMode?: boolean;
+  /**
+   * 이 판에 들고 들어온 커스텀 성어(자혼으로 새겨 장착한 것). 판을 넘어 남는
+   * 유일한 힘이라 엔진 밖에서 넘겨받는다 — 시뮬 봇은 넘기지 않으므로 게이트
+   * 수치가 흔들리지 않는다.
+   */
+  readonly customIdioms?: readonly IdiomDefinition[];
 }

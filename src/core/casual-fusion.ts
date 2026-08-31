@@ -96,7 +96,7 @@ export function casualResultPool(
 /*
  * v3 는 3기 전부를 보호 대상에서 빼므로 보호 범위가 곧 "승급이 되느냐"다.
  * 일반 모드 합성식은 캐주얼에서 보호하지 않고, 미완성 성어는 추적 중인 것만
- * 지킨다. 잠금·농축·목표 글자·봉인 완료 성어 보호는 그대로 유지한다.
+ * 지킨다. 잠금·농축·목표 글자·발동 중인 성어 보호는 그대로 유지한다.
  */
 function casualProtectionContext(context: CasualFusionContext): CasualProtectionContext {
   const casual = context.state.mode === "casual";

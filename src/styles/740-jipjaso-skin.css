@@ -1,0 +1,230 @@
+/*
+ * 집자소를 게임의 살결로 입힌다.
+ *
+ * "집자소 UI가 현재 게임 같지가 않아"(사용자). 맞는 말이었다 — 이 화면만
+ * 맨 사각형과 기본 input 으로 되어 있어 문서처럼 보였다. 다른 화면은 목판
+ * 액자·인장·먹·자령 초상으로 서 있는데 여기만 흰 종이였다.
+ *
+ * 재료는 이미 저장소에 있었다. handoff 로 들어온 p1-p2 폴리시 팩의 서책 액자·
+ * 카드 프레임 4종·한지/옻칠/창호 타일·금 걸쇠가 **참조 0건**으로 잠들어 있었다
+ * (조사에서 확인). 새 자산을 만들 필요 없이 그것을 깨워 입힌다.
+ *
+ * 규범 둘을 지킨다.
+ *  · 9슬라이스는 **가상 요소**에 건다(700-nineslice.css). .soul-dialog 는
+ *    치수가 고정 px 라 border-width 가 상자를 키우면 안쪽 격자가 통째로 밀린다.
+ *  · 이음매 타일에 background-size: cover 를 쓰지 않는다 — 이음매가 깨진다.
+ *    repeat 로 원본 배율이나 정수 축소만 쓴다(팩 스펙).
+ */
+
+/* ══════════════════════════════════════════════════════════════════
+   서책 액자 — 집자소는 「책」이다.
+   ══════════════════════════════════════════════════════════════════ */
+
+/*
+ * .codex-dialog 가 물려주는 대각 절단을 끈다. 액자 그림이 제 모서리(금 걸쇠)를
+ * 이미 그리므로, 그 위에 CSS 절단을 씌우면 걸쇠만 베어 낸다 —
+ * .stage-chip·.wave-card 에서 이미 겪은 사고다.
+ */
+.soul-dialog {
+  clip-path: none;
+  position: relative;
+  /* 액자 테두리 안쪽으로 내용을 들인다(아래 오버레이 두께와 같은 값). */
+  padding: 30px 34px 32px;
+}
+
+.soul-dialog::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  border-style: solid;
+  /*
+   * 자산 2360×1280, 9슬라이스 사방 56px. 두 축을 같은 배율(0.4)로 그려
+   * 모서리 걸쇠가 원본 비례를 지킨다 — 56 × 0.4 = 22.4px.
+   */
+  border-width: 22.4px;
+  border-image: url("/assets/ui/polish-v1/modals/codex-book-frame-2360x1280-v1.webp") 56 fill stretch;
+  border-image-width: 22.4px;
+  pointer-events: none;
+}
+
+/* 내용은 액자 위로 올린다 — fill 로 채운 가운데가 글을 덮지 않게. */
+.soul-dialog > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   재질 — 종이와 판을 결로 가른다.
+   ══════════════════════════════════════════════════════════════════ */
+
+/* 자혼 조각은 한지 위에 앉은 목패다. */
+.soul-dialog .soul-chip {
+  background:
+    url("/assets/ui/polish-v1/materials/hanji-seamless-tile-512-v1.webp") repeat,
+    linear-gradient(180deg, rgba(255, 252, 242, 0.86), rgba(236, 224, 198, 0.86));
+  background-size: 128px 128px, auto;
+  box-shadow: inset 0 1px 0 rgba(255, 250, 235, 0.7), 0 1px 2px rgba(60, 44, 20, 0.18);
+}
+
+.soul-dialog .soul-chip:hover:not(:disabled) {
+  box-shadow: inset 0 0 0 1px var(--gold-300), 0 2px 5px rgba(60, 44, 20, 0.25);
+}
+
+/* 자혼 조각의 자령 초상 — 글자만 있으면 사전이고, 초상이 붙으면 내가 잡은 놈이다. */
+.soul-dialog .workbench-spirit--soul {
+  display: block;
+  width: 46px;
+  height: 46px;
+  margin: 0 auto 1px;
+}
+
+.soul-dialog .workbench-spirit--slot {
+  display: block;
+  width: 42px;
+  height: 42px;
+  margin: 0 auto;
+}
+
+/*
+ * 새김대는 **옻칠 판**이다. 종이(보관함)와 판(새김대)을 재질로 가르면
+ * "여기서 무엇을 하는가"가 글을 안 읽어도 손에 들어온다.
+ */
+.soul-dialog .soul-slots {
+  position: relative;
+  padding: 10px;
+  background:
+    url("/assets/ui/polish-v1/materials/lacquer-wood-seamless-tile-512-v1.webp") repeat;
+  background-size: 170px 170px;
+  box-shadow: inset 0 0 0 1px rgba(20, 14, 8, 0.55), inset 0 2px 8px rgba(0, 0, 0, 0.35);
+}
+
+/* 판 네 귀퉁이에 금 걸쇠 — 하나를 90도씩 돌려 넷을 만든다(팩 스펙). */
+.soul-dialog .soul-slots::before,
+.soul-dialog .soul-slots::after {
+  content: "";
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  background: url("/assets/ui/polish-v1/materials/gold-corner-bracket-48-v1.webp") no-repeat center / contain;
+  pointer-events: none;
+}
+
+.soul-dialog .soul-slots::before {
+  top: 2px;
+  left: 2px;
+}
+
+.soul-dialog .soul-slots::after {
+  right: 2px;
+  bottom: 2px;
+  transform: rotate(180deg);
+}
+
+/* 판에 판 홈 — 자리는 옻칠 위에 파인 자국이다. */
+.soul-dialog .soul-slot {
+  position: relative;
+  border-color: rgba(20, 14, 8, 0.5);
+  background: linear-gradient(180deg, rgba(28, 21, 12, 0.55), rgba(16, 12, 7, 0.55));
+  box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.5);
+  color: #f0e4c6;
+}
+
+.soul-dialog .soul-slot b,
+.soul-dialog .soul-slot small {
+  color: #f0e4c6;
+}
+
+.soul-dialog .soul-slot small {
+  color: rgba(226, 210, 176, 0.8);
+}
+
+.soul-dialog .soul-slot.is-filled {
+  border-color: var(--gold-300);
+  background: linear-gradient(180deg, rgba(58, 44, 24, 0.72), rgba(32, 24, 13, 0.72));
+}
+
+/* 자리 순번 — 성어는 1→2→3→4 차례로 놓아야 발동한다. 전장 명패와 같은 문법이다. */
+.soul-dialog .soul-slot u {
+  position: absolute;
+  top: 3px;
+  left: 4px;
+  display: grid;
+  place-items: center;
+  width: 15px;
+  height: 15px;
+  border-radius: 3px;
+  background: rgba(159, 47, 35, 0.9);
+  color: #f6ecd4;
+  font-size: 10px;
+  font-weight: 900;
+  text-decoration: none;
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   성어 카드 — 족자.
+   ══════════════════════════════════════════════════════════════════ */
+
+/*
+ * 팩 문서는 이 그림을 「9슬라이스 24px」이라 적어 두었지만, 그림을 뜯어 보면
+ * 아니다. 좌우가 **세로로 통으로 선 축**이고 그 중간에 붉은 매듭이 감겨 있다.
+ * 9슬라이스로 늘리면 가운데 조각인 매듭이 위아래로 죽 번진다 — 웨이브 카드에서
+ * 같은 함정에 한 번 빠졌었다(700-nineslice.css).
+ *
+ * 그러니 이건 액자가 아니라 **한 장의 그림**으로 쓴다. 카드 비율(≈1.6)이
+ * 원본(1.5)과 가까워 통으로 늘려도 축이 굵어지지 않는다.
+ */
+.soul-dialog .soul-card {
+  border: 0;
+  border-radius: 0;
+  /* 축(폭의 6.5%)과 매듭을 피해 글을 안쪽으로 들인다. */
+  padding: 13px 26px 15px;
+  background: url("/assets/ui/polish-v1/card-frames/card-frame-default-600x400-v1.webp") no-repeat center / 100% 100%;
+}
+
+/* 장착한 구는 금테 족자로 갈아입는다 — 왼쪽 띠보다 액자가 더 멀리서 읽힌다. */
+.soul-dialog .soul-card.is-equipped {
+  border-color: transparent;
+  box-shadow: none;
+  background-image: url("/assets/ui/polish-v1/card-frames/card-frame-selected-600x400-v1.webp");
+}
+
+/* 족자가 축만큼 자리를 먹으니 종이 폭을 그만큼 벌려 준다. */
+.soul-dialog .soul-list {
+  grid-template-columns: repeat(auto-fill, minmax(258px, 1fr));
+  gap: 10px;
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   단추 — 게임의 목판 살결로.
+   ══════════════════════════════════════════════════════════════════ */
+
+.soul-dialog .soul-card-actions button,
+.soul-dialog .soul-reroll-actions button,
+.soul-dialog .arrange-policy-foot button {
+  background:
+    url("/assets/ui/polish-v1/materials/hanji-seamless-tile-512-v1.webp") repeat,
+    linear-gradient(180deg, rgba(250, 243, 224, 0.92), rgba(232, 220, 190, 0.92));
+  background-size: 128px 128px, auto;
+}
+
+/* 새기기·다시 굴리기는 판을 가르는 단추라 목판 결을 준다. */
+.soul-dialog .soul-forge-button {
+  background:
+    url("/assets/ui/polish-v1/materials/lacquer-wood-seamless-tile-512-v1.webp") repeat,
+    linear-gradient(180deg, #8a6620, #6b4d1d);
+  background-size: 190px 190px, auto;
+  background-blend-mode: overlay, normal;
+  box-shadow: inset 0 1px 0 rgba(255, 240, 200, 0.3), 0 2px 6px rgba(40, 28, 10, 0.35);
+}
+
+/*
+ * 확률표 줄 — 창호살을 얹어 봤다가 걷었다.
+ *
+ * 무늬가 글자만큼 진해서 표가 통째로 안 읽혔다. 결은 바탕이 되어야지 글과
+ * 다투면 안 된다 — 이 줄은 값을 읽는 자리라 종이 그대로가 낫다.
+ */
+.soul-dialog .soul-odds-row {
+  background: rgba(255, 252, 242, 0.78);
+  box-shadow: inset 0 0 0 1px rgba(122, 90, 42, 0.16);
+}

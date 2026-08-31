@@ -15,7 +15,6 @@
  */
 import {
   GameEngine,
-  MAX_CONCENTRATION_LEVEL,
   autoConcentrationPath,
   runAutoplay
 } from "../src/core/game";
@@ -327,8 +326,8 @@ function probeAutoplay(seed: string, options: ProbeOptions, maxSeconds = 5_400):
       engine.setAutoPlaceSummons(true);
       engine.setSummonIntent(options.intent);
 
+      // 농축 상한이 없어졌다 — 중복 재료가 있는 자령이면 몇 단계든 더 올린다.
       const concentrationTarget = [...engine.state.towers]
-        .filter((tower) => (tower.concentration ?? 0) < MAX_CONCENTRATION_LEVEL)
         .filter((tower) => engine.state.inventoryTowers.some((candidate) => candidate.char === tower.char && !candidate.locked))
         .sort((left, right) => right.stage - left.stage || left.id - right.id)[0];
       if (concentrationTarget) {

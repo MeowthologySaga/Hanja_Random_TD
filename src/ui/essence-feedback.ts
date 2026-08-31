@@ -45,9 +45,9 @@ export function essenceRefundSuffix(before: Record<Wuxing, number>): string {
     .join("");
 }
 
-/** 자원칸 요약 중 지금 화면에 실제로 보이는 것 — 없으면 상단 자원 4칸. */
+/** 문기가 적힌 곳 중 지금 화면에 실제로 보이는 것. 상단 자원칸이 첫 자리다. */
 function floaterAnchor(): HTMLElement | null {
-  for (const selector of ["#essence-summary", "#growth-resource-summary", ".resource-grid"]) {
+  for (const selector of ["#essence-total-value", "#essence-summary", "#growth-resource-summary", ".resource-grid"]) {
     const element = document.querySelector<HTMLElement>(selector);
     if (!element) continue;
     if (typeof element.checkVisibility === "function" && !element.checkVisibility()) continue;
@@ -90,7 +90,7 @@ function spawnFloater(wuxing: Wuxing, amount: number, stackIndex: number): void 
 
 function flashSummaries(): void {
   window.clearTimeout(flashTimer);
-  const summaries = document.querySelectorAll<HTMLElement>("#essence-summary, #growth-resource-summary");
+  const summaries = document.querySelectorAll<HTMLElement>("#essence-total-value, #essence-summary, #growth-resource-summary");
   for (const summary of summaries) {
     summary.classList.remove("is-essence-flash");
     // 연속 획득에도 반짝이 매번 다시 서도록 강제 리플로 후 재부착.

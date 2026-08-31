@@ -210,6 +210,18 @@ export const DISMANTLE_UNIQUE_STORAGE_KEY = "hanja-td:dismantle-protect-unique";
  */
 export const TALISMAN_MODE_STORAGE_KEY = "hanja-td:talisman-mode";
 
+/**
+ * 획순 안내 — **기본 켜짐**.
+ *
+ * 처음에는 선택 항목으로 넣었다("원하는사람만 하게 할거야"). 만들어 놓고 써 본
+ * 뒤 기본으로 올렸다("지금방식 마음에 드는데 기본값으로 설정하자" — 사용자).
+ * 한자를 가르치겠다는 게임에서 획순은 곁가지가 아니라 본문이라는 판단이다.
+ *
+ * 끄면 따라 쓰기 판은 예전 그대로 반투명 바탕체 글자 한 장이고, 획순 자료도
+ * 받지 않는다.
+ */
+export const STROKE_ORDER_STORAGE_KEY = "hanja-td:stroke-order-guide";
+
 export const MIN_MAP_ZOOM = 0.72;
 
 export const BASE_MAP_ZOOM = 2.6;
@@ -376,6 +388,14 @@ class AppContext {
       return true;
     }
   })();
+  /** 획순 안내 켬/끔. 기본 켜짐이라 저장된 값이 "false" 일 때만 꺼진다. */
+  strokeOrderGuide = ((): boolean => {
+    try {
+      return window.localStorage.getItem(STROKE_ORDER_STORAGE_KEY) !== "false";
+    } catch {
+      return true;
+    }
+  })();
   /** 부적 보상으로 얻은 기본 소환 무료권. 코어 무수정 — UI 층에서만 산다. */
   talismanFreeSummonTokens = 0;
   mapZoom = DEFAULT_MAP_ZOOM;
@@ -387,14 +407,14 @@ class AppContext {
   /**
    * 발동 중 성어 스택 — 스펙 6라운드 D.
    *
-   * 봉인한 성어의 효과는 런 내내 남는데, 지금까지 그 사실은 성어 탭을 열어야만
+   * 발동한 성어의 효과는 런 내내 남는데, 지금까지 그 사실은 성어 탭을 열어야만
    * 보였다. 전장 좌측에 상시 배지로 세워 두고, 배지를 누르면 그 네 칸으로
    * 카메라를 옮겨 "어디에 있는 무엇인지"까지 이어 준다.
    */
   activeIdiomsRenderKey = "init";
   idiomPlacementGuide: IdiomPlacementGuide | null = null;
   /**
-   * 발동 중인 봉인에 참여한 자령 id → 그 성어의 색 — R18 자리 고정 표식용.
+   * 발동 중인 성어에 참여한 자령 id → 그 성어의 색 — R18 자리 고정 표식용.
    * 명패는 자령 수만큼 그려지므로 프레임마다 한 번만 계산해 두고 나눠 읽는다.
    */
   sealedIdiomTowerMarks: ReadonlyMap<number, string> = new Map<number, string>();

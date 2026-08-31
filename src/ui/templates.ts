@@ -150,6 +150,15 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
     </section>
 
     <aside class="control-panel" aria-label="합성과 수비 조작 패널">
+      <!--
+        패널에서 한 일의 결과는 **패널에서** 알린다.
+
+        무대 토스트는 아래 가운데(640, 700)에 뜨는데, 부적을 쓰는 사람의 눈은
+        오른쪽 패널의 종이(≈1080, 330)에 있다. 450px 떨어진 자리는 시야에 안
+        들어와서 「자령이 응답했다」가 나온 줄도 모른다. 그래서 패널에서
+        시작한 일은 여기에 띄운다.
+      -->
+      <div id="panel-toast" class="panel-toast" role="status" aria-live="polite" hidden></div>
       <header class="brand-row">
         <div><p class="eyebrow">오행 자령 디펜스</p><h1>천자진</h1></div>
         <div class="header-actions">
@@ -162,16 +171,18 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
         </div>
       </header>
 
+      <!--
+        자원 칸은 **쓸 수 있는 것** 둘만 센다 — 엽전과 문기.
+
+        전에는 네 칸이었다. 「엽전 이자 +2」에 이자가 세들어 있었고, 그 옆에
+        적 상한(런 내내 80 고정)·배치(0 / 16)·성어 발동(0 / 5)이 붙어 있었다.
+        셋 다 같은 화면 다른 곳에 이미 있다 — 적 상한은 전장 상단 [적 한계]
+        칩의 분모에, 성어 발동은 성어 패널 머리글에. 배치 수는 진을 보면 안다.
+        자원이 아닌 것을 자원칸에 두면 정작 쓸 것 둘이 눈에 안 들어온다.
+      -->
       <section class="resource-grid" aria-label="현재 자원">
-        <div><span>엽전 <em id="interest-preview">이자 +2</em></span><strong id="gold-value">${GAME_CONFIG.startingGold}</strong></div>
-        <!--
-          [S/P-11] 여기와 전장 상단 칩이 둘 다 "적 한계"였다. 칩은 "5 / 80"(현재/상한),
-          이 칸은 "80체"(상한만) — 같은 낱말이 한 화면에서 두 뜻으로 읽혔다.
-          한 낱말 한 뜻으로 가른다: 칩이 「적 한계」(차오르는 눈금), 이 칸이 「적 상한」(그 눈금의 끝).
-        -->
-        <div title="이 판이 버티는 적 수의 끝 — 전장 상단 [적 한계] 눈금이 이 수에 닿으면 수비 실패입니다"><span>적 상한</span><strong id="enemy-cap-value">${MAX_ENEMIES}체</strong></div>
-        <div title="전장에 배치된 자령 수 / 열린 진의 칸 수"><span>배치</span><strong id="tower-count-value">0 / 16</strong></div>
-        <div title="이번 런에 발동한 성어 수 / 이번 런 성어 목표 수"><span>성어 발동</span><strong id="goal-count-value">0 / 5</strong></div>
+        <div title="지금 지닌 엽전 — 소환과 진 해금에 쓴다"><span>엽전</span><strong id="gold-value">${GAME_CONFIG.startingGold}</strong></div>
+        <div title="오행별로 쌓인 문기 — 농축과 강화는 그 오행의 문기를 쓴다"><span>문기</span><strong id="essence-total-value"></strong></div>
       </section>
 
       <section class="wave-card">
@@ -230,9 +241,27 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
                 <b>강화 탭</b><small id="element-upgrade-total">총 0단계</small>
               </button>
             </div>
-            <button id="auto-arrange-button" class="action-button action-button--auto-arrange" type="button" data-testid="auto-arrange-button" title="완성 가능한 사자성어를 발동하고 오행진 공명을 최적화합니다">
-              <b>자동배치</b><small>성어·오행 최적화</small>
-            </button>
+            <!--
+              자동배치는 편하지만 남의 손이다. 잠가 둔 자령을 옮기고, 가방을
+              비우고, 세워 둔 줄을 흩는다 — 무엇을 건드려도 되는지를 사람이
+              정할 수 있게 톱니를 붙인다. 기본값은 여태 동작 그대로다.
+            -->
+            <div class="auto-arrange-row">
+              <button id="auto-arrange-button" class="action-button action-button--auto-arrange" type="button" data-testid="auto-arrange-button" title="완성 가능한 사자성어를 발동하고 오행진 공명을 최적화합니다">
+                <b>자동배치</b><small>성어·오행 최적화</small>
+              </button>
+              <button id="arrange-policy-button" class="arrange-policy-button" type="button" data-testid="arrange-policy" aria-haspopup="dialog" aria-expanded="false" title="자동배치가 무엇을 건드릴지 고릅니다">
+                <i aria-hidden="true">⚙</i><em id="arrange-policy-badge" hidden>0</em>
+              </button>
+            </div>
+            <div id="arrange-policy-panel" class="arrange-policy-panel" role="dialog" aria-label="자동배치 옵션" hidden>
+              <p class="eyebrow">자동배치가 건드릴 것</p>
+              <div id="arrange-policy-list" class="arrange-policy-list"></div>
+              <div class="arrange-policy-foot">
+                <button id="arrange-policy-reset" type="button" data-testid="arrange-policy-reset">기본값으로</button>
+                <button id="arrange-policy-close" type="button" data-testid="arrange-policy-close">닫기</button>
+              </div>
+            </div>
           </div>
         </section>
 
@@ -267,7 +296,7 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
             <!-- 지금 상태(추적 성어 · 최근 감지)가 먼저, 규칙 도식은 그 아래로.
                  스크롤 한 화면에 남는 것이 45웨이브에 필요한 쪽이어야 한다. -->
             <div id="idiom-hud" class="idiom-hud">
-              <div class="idiom-heading"><span>四字成語 진법</span><b id="idiom-count">0 / 4</b></div>
+              <div class="idiom-heading"><span>四字成語 진법</span><b id="idiom-count">0구</b></div>
               <div id="idiom-glyphs" class="idiom-glyphs"></div>
               <strong id="idiom-name">이심전심</strong>
               <p id="idiom-meaning">말하지 않아도 서로 마음이 통함</p>
@@ -283,6 +312,17 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
               </span>
               <mark id="idiom-result-bonus">자동 판정</mark>
             </div>
+            <!--
+              내가 새긴 성어는 지역 명단에 없다 — 그래서 이 패널 어디에도
+              안 보였다. 갈피를 따로 세워, 장착한 구가 지금 어떤 상태인지
+              (발동 중인지, 몇 자를 모았는지) 한자리에서 읽히게 한다.
+            -->
+            <section id="idiom-custom" class="idiom-custom" aria-label="내가 새긴 성어">
+              <div class="idiom-custom-heading">
+                <span>집자소 · 내가 새긴 성어</span><b id="idiom-custom-count"></b>
+              </div>
+              <div id="idiom-custom-list" class="idiom-custom-list"></div>
+            </section>
             <section class="idiom-rule-guide" aria-label="성어 발동 규칙">
               <div class="idiom-rule-figures" aria-hidden="true">
                 <figure class="idiom-rule-figure idiom-rule-figure--row">
@@ -305,8 +345,6 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
                 아래에서 두 표시를 한 줄로 이어 준다.
               -->
               <p class="idiom-rule-legend"><i aria-hidden="true">③</i>전장 인장 = <b>성어의 몇 번째 글자</b> · 점선 칸이 다음 차례</p>
-              <!-- [SKILL-V1] 성어의 가호 한 줄 규칙 안내 -->
-              <p>성어의 가호 — 발동 중 성어와 같은 진의 자령 전원 공격 +10%, 같은 진의 추가 발동 성어당 +5%p. 줄이 흩어지면 즉시 사라집니다.</p>
             </section>
           </div>
           <div id="idiom-seal-status" class="idiom-seal-status" aria-label="발동 상태" hidden></div>
@@ -423,7 +461,7 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
         <i class="tab-divider" aria-hidden="true"></i>
         <!-- [S/P-09] 배지는 「준비도」 — 카드의 「N/4자 보유」와 다른 셈이다. 문구는 goal.ts 가 채운다. -->
         <button id="goal-tab" type="button" data-panel-tab="goal" role="tab" aria-selected="false">목표 <small id="goal-tab-progress">준비 0%</small></button>
-        <button id="idiom-tab" type="button" data-panel-tab="idiom" role="tab" aria-selected="false">성어 <small id="idiom-tab-count">0/5</small></button>
+        <button id="idiom-tab" type="button" data-panel-tab="idiom" role="tab" aria-selected="false">성어 <small id="idiom-tab-count">0</small></button>
       </nav>
 
 
@@ -532,6 +570,7 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
 
         <nav class="s00-utility" aria-label="보조 메뉴">
           <button id="s00-codex-button" type="button"><i class="s00-skin" aria-hidden="true"></i><b>冊</b><span>도감</span></button>
+          <button id="s00-souls-button" type="button" data-testid="soul-archive-open" aria-label="집자소. 모은 자혼으로 나만의 성어를 새기고 장착합니다"><i class="s00-skin" aria-hidden="true"></i><b>集</b><span>집자소</span><em id="s00-souls-badge" class="s00-souls-badge" hidden>0</em></button>
           <button id="title-settings-button" type="button" aria-label="화면 모드 설정"><i class="s00-skin" aria-hidden="true"></i><b>⚙</b><span>설정</span></button>
           <button id="title-help-button" type="button"><i class="s00-skin" aria-hidden="true"></i><b>?</b><span>도움말</span></button>
         </nav>
@@ -841,8 +880,6 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
               <div><span class="help-cell is-next" aria-hidden="true">④</span><div><b>다음 칸 점선</b><span>다음 글자를 놓을 수 있는 빈 칸을 금색 점선 테와 순번으로 표시합니다.</span></div></div>
             </div>
             <p class="help-note">직접 선을 그을 필요는 없습니다. 순서가 맞는 순간 자동으로 발동하고, <b>보너스는 네 자령이 그 줄을 지키는 동안만</b> 발동합니다. 한 기라도 자리를 뜨면 발동이 풀리고, 줄을 다시 세우면 재발동합니다. 역순으로 읽어도 인정합니다.</p>
-            <!-- [SKILL-V1] 성어의 가호 안내 -->
-            <p class="help-note"><b>성어의 가호</b> — 발동 중인 성어와 같은 진에 배치된 자령 전원의 공격이 +10% 강해지고, 같은 진에 성어가 하나 더 발동할 때마다 +5%p 씩 더해집니다. 성어가 흩어지면 가호도 즉시 사라집니다.</p>
             <p class="help-note">발동 중인 네 자령은 명패에 <b>금색 鎖</b> 표식이 붙고 자동배치가 건드리지 않습니다. 손으로 옮기는 것은 언제든 가능합니다.</p>
             <h3 class="help-subhead">글자 익히기</h3>
             <div class="help-cards help-cards--tight">
@@ -887,6 +924,14 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
       <button id="talisman-mode-toggle" class="settings-toggle" type="button" role="switch" aria-checked="false" data-testid="talisman-mode-toggle">
         <span><b>학습 모드 · 부적 만들기</b><small>패널에 「부적」 탭이 섭니다. 부적지의 한자를 따라 쓰고 [부적 완성]을 누르면 그 글자의 자령이 보상을 두고 갑니다 — 웨이브마다 3장이 더해지고 쓰지 않은 장수는 최대 30장까지 그대로 쌓입니다. 부적 모드에서는 적이 5% 강해집니다. 그 대신 부적 보상을 얻습니다.</small></span>
         <i aria-hidden="true"><em>OFF</em></i>
+      </button>
+      <!--
+        획순 안내는 부적 탭 안쪽이 아니라 설정에 둔다 — 부적을 끄고 자혼
+        다시 굴리기만 쓰는 사람에게도 같은 갈래이기 때문이다.
+      -->
+      <button id="stroke-order-toggle" class="settings-toggle" type="button" role="switch" aria-checked="true" data-testid="stroke-order-toggle">
+        <span><b>학습 모드 · 획순 안내</b><small>따라 쓰기 판에서 획을 <b>순서대로 한 획씩</b> 짚어 줍니다. 지금 그을 획만 붉은 점선과 화살표로 서고, 제대로 그으면 그 획이 <b>정본 모양으로 정리</b>되어 종이가 깨끗하게 쌓입니다. 빗나간 붓질은 잠깐 붉게 비친 뒤 스스로 걷힙니다. 획순 자료가 있는 글자에서만 서며(명단의 94%), 없는 글자는 글자 한 장을 통째로 보여 줍니다. 처음 따라 쓰기 판을 열 때 획순 자료를 한 번 내려받습니다(약 2.5MB).</small></span>
+        <i aria-hidden="true"><em>ON</em></i>
       </button>
       <section class="audio-settings" aria-labelledby="audio-settings-title">
         <div class="audio-settings-heading"><b id="audio-settings-title">오디오 믹스</b><small>첫 조작 뒤 재생 · 선택은 브라우저에 저장</small></div>
@@ -979,6 +1024,176 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
       </div>
       <p id="codex-note" class="codex-note">훈음의 낯선 옛말은 오늘말 뜻풀이와 용례로 풀어 표시합니다. 별 등급, 독립 자령, 조합 경로는 서로 다른 표식으로 구분합니다.</p>
     </dialog>
+
+    <!--
+      집자소 — 자혼을 모아 내 성어를 새기고 고르는 곳.
+
+      일이 둘이라 탭으로 가른다. **새기기**는 재료를 보며 만드는 자리이고,
+      **장착**은 만든 것 중에서 판에 세울 열다섯을 고르는 자리다. 세 칸을 한
+      화면에 밀어 넣었을 때는 어느 쪽도 제 폭을 못 가졌다 — 재료 격자는 좁아
+      훈음이 안 들어갔고, 성어 카드는 한 줄에 하나씩만 섰다.
+
+      디버그 탭은 개발자 모드(백틱 5회)에서만 선다.
+    -->
+    <dialog id="soul-dialog" class="codex-dialog soul-dialog" aria-labelledby="soul-heading">
+      <div class="dialog-heading soul-heading">
+        <div><p class="eyebrow">집자소</p><h2 id="soul-heading">나만의 성어를 새깁니다</h2></div>
+        <button id="soul-close" type="button" aria-label="집자소 닫기">×</button>
+      </div>
+
+      <div class="soul-tabs" role="tablist" aria-label="집자소 갈피">
+        <button type="button" class="soul-tab is-active" data-soul-tab="forge" role="tab" aria-selected="true" data-testid="soul-tab-forge">
+          <b>새기기</b><small id="soul-tab-forge-note">자혼 0</small>
+        </button>
+        <button type="button" class="soul-tab" data-soul-tab="equip" role="tab" aria-selected="false" data-testid="soul-tab-equip">
+          <b>장착</b><small id="soul-tab-equip-note">0 / 15</small>
+        </button>
+        <button type="button" class="soul-tab soul-tab--dev" data-soul-tab="dev" role="tab" aria-selected="false" data-testid="soul-tab-dev" hidden>
+          <b>디버그</b><small>개발자</small>
+        </button>
+      </div>
+
+      <!-- ── 새기기 ─────────────────────────────────────────── -->
+      <div class="soul-view" data-soul-view="forge">
+        <p class="soul-lede">
+          봉인한 자령이 남긴 <b>자혼</b> 넷을 이어 성어 한 구를 새깁니다.
+          음은 한자 음 그대로 붙고 <b>뜻만</b> 직접 적습니다.
+        </p>
+        <div class="soul-forge-layout">
+          <section class="soul-col soul-col--holdings" aria-label="지닌 자혼">
+            <p class="eyebrow">지닌 자혼 <em id="soul-holdings-count">0</em></p>
+            <!--
+              원하는 음으로 성어를 만들려면 글자를 찾아야 하는데, 자혼은 수백
+              자로 불어난다. 한자·훈·음 어느 쪽으로 쳐도 걸리게 한다 —
+              "천"을 치면 天도 千도 泉도 나오고, "하늘"을 쳐도 天이 나온다.
+            -->
+            <input id="soul-search" class="soul-search" type="search" maxlength="20"
+              placeholder="한자 · 훈 · 음으로 찾기 (예 · 천, 하늘, 天)" aria-label="자혼 찾기" />
+            <div id="soul-grid" class="soul-grid" role="list"></div>
+            <p id="soul-holdings-empty" class="soul-empty">아직 자혼이 없습니다. 우두머리를 봉인하면 반드시 하나를 남기고, 그 밖의 자령도 드물게 남깁니다.</p>
+          </section>
+          <section class="soul-col soul-col--forge" aria-label="새김대">
+            <div class="soul-forge-scroll">
+              <p class="eyebrow">새김대</p>
+              <div id="soul-slots" class="soul-slots"></div>
+              <p class="soul-reading"><span>음</span><b id="soul-reading">····</b></p>
+              <label class="soul-meaning-label" for="soul-meaning-input">뜻 <small>내가 적습니다</small></label>
+              <input id="soul-meaning-input" type="text" maxlength="40" placeholder="예 · 하늘과 땅이 열리다" />
+              <p class="eyebrow soul-odds-title">확률표 <small>태우기 전에 봅니다</small></p>
+              <div id="soul-odds" class="soul-odds"></div>
+              <p id="soul-odds-hint" class="soul-odds-hint"></p>
+            </div>
+            <!-- 새기기는 스크롤을 따라다니지 않는다 — 확률표를 끝까지 읽어도
+                 손이 닿는 자리에 그대로 있어야 한다. -->
+            <div class="soul-forge-foot">
+              <p id="soul-forge-note" class="soul-note"></p>
+              <button id="soul-forge-button" class="soul-forge-button" type="button" data-testid="soul-forge" disabled>새기기</button>
+            </div>
+          </section>
+        </div>
+      </div>
+
+      <!-- ── 장착 ───────────────────────────────────────────── -->
+      <div class="soul-view" data-soul-view="equip" hidden>
+        <p class="soul-lede">
+          장착한 성어만 다음 판에 함께 섭니다. <b>열다섯 구</b>까지 고를 수 있고,
+          만드는 데는 상한이 없습니다 — 모으는 재미와 고르는 재미를 갈라 둡니다.
+        </p>
+        <div class="soul-equip-bar">
+          <p class="eyebrow">내 성어 <em id="soul-equip-count">0/15</em></p>
+          <div class="soul-equip-actions">
+            <label class="soul-sort" for="soul-sort">정렬
+              <select id="soul-sort">
+                <option value="equipped">장착 먼저</option>
+                <option value="recent">새긴 순서</option>
+                <option value="axis">능력 종류</option>
+              </select>
+            </label>
+          </div>
+        </div>
+        <div id="soul-list" class="soul-list"></div>
+        <p id="soul-list-empty" class="soul-empty">새긴 성어가 여기에 쌓입니다. 장착한 구만 판에 섭니다.</p>
+      </div>
+
+      <!-- ── 디버그 ─────────────────────────────────────────── -->
+      <div class="soul-view soul-view--dev" data-soul-view="dev" hidden>
+        <p class="soul-lede">
+          개발자 모드에서만 서는 갈피입니다. 집자소를 손보려고 우두머리를 열 번
+          잡을 수는 없으니, 여기서 재료를 바로 채웁니다.
+        </p>
+        <div class="soul-dev-grid">
+          <section class="soul-dev-card">
+            <p class="eyebrow">자혼 얻기</p>
+            <div class="soul-dev-row">
+              <input id="soul-dev-char" type="text" maxlength="2" placeholder="天" aria-label="지급할 자혼 한자 1자" />
+              <input id="soul-dev-amount" type="number" min="1" max="99" value="1" aria-label="지급 개수" />
+              <button id="soul-dev-grant" type="button" data-testid="soul-dev-grant">지급</button>
+            </div>
+            <div class="soul-dev-row">
+              <button id="soul-dev-random" type="button" data-testid="soul-dev-random">무작위 8자 ×3</button>
+              <button id="soul-dev-pool" type="button" data-testid="soul-dev-pool">이 지역 앞 40자 ×2</button>
+            </div>
+          </section>
+          <section class="soul-dev-card">
+            <p class="eyebrow">성어 만들기</p>
+            <div class="soul-dev-row">
+              <button id="soul-dev-forge" type="button" data-testid="soul-dev-forge">무작위로 한 구 새기기</button>
+            </div>
+            <div class="soul-dev-row">
+              <button id="soul-dev-equip-all" type="button" data-testid="soul-dev-equip-all">가능한 만큼 장착</button>
+            </div>
+          </section>
+          <section class="soul-dev-card">
+            <p class="eyebrow">비우기</p>
+            <div class="soul-dev-row">
+              <button id="soul-dev-clear-idioms" type="button" data-testid="soul-dev-clear-idioms">성어만 비우기</button>
+              <button id="soul-dev-clear" class="soul-dev-danger" type="button" data-testid="soul-dev-clear">보관소 전부 비우기</button>
+            </div>
+            <p class="soul-note">되돌릴 수 없습니다.</p>
+          </section>
+        </div>
+      </div>
+
+      <!--
+        다시 굴리기 — 그 성어의 글자 하나를 부적에 써 내면 능력을 한 번 다시
+        굴린다. 값이 엽전도 자혼도 아니라 「글자를 쓸 줄 아는가」라서,
+        다시 굴릴수록 그 글자를 손이 외운다.
+      -->
+      <div id="soul-reroll" class="soul-reroll" hidden>
+        <div class="soul-reroll-sheet" role="dialog" aria-labelledby="soul-reroll-title">
+          <p class="eyebrow">한자를 써서 다시 굴립니다</p>
+          <h3 id="soul-reroll-title">다시 굴리기</h3>
+          <p class="soul-reroll-current">지금 능력 · <b id="soul-reroll-current"></b></p>
+          <p class="soul-reroll-cost">네 글자를 모두 써야 <b>한 번</b> 다시 굴립니다.</p>
+          <p class="soul-reroll-progress"><span>다 쓴 글자</span><b id="soul-reroll-progress">0 / 4자</b></p>
+          <div id="soul-reroll-chars" class="soul-reroll-chars" role="group" aria-label="쓸 글자 고르기"></div>
+          <div class="soul-reroll-paper">
+            <canvas id="soul-reroll-guide" width="196" height="232" aria-hidden="true"></canvas>
+            <canvas id="soul-reroll-ink" width="196" height="232" aria-label="다시 굴리기 따라쓰기 화선지"></canvas>
+          </div>
+          <p id="soul-reroll-status" class="soul-note" role="status" aria-live="polite"></p>
+          <div class="soul-reroll-actions">
+            <button id="soul-reroll-cancel" type="button" data-testid="soul-reroll-cancel">그만두기</button>
+            <button id="soul-reroll-undo" type="button" data-testid="soul-reroll-undo" disabled>되돌리기</button>
+            <button id="soul-reroll-clear" type="button" data-testid="soul-reroll-clear">지우기</button>
+            <button id="soul-reroll-submit" class="soul-forge-button" type="button" data-testid="soul-reroll-submit" disabled>이 글자 완성</button>
+            <!-- 넷을 다 써야 나온다. 쓰는 동안 함께 보이면 "지금 눌러도 되나"를 매번 판단하게 된다. -->
+            <button id="soul-reroll-roll" class="soul-forge-button soul-reroll-roll" type="button" data-testid="soul-reroll-roll" hidden>다시 굴리기</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 새김 연출 — 인장이 찍히고 새 성어의 음이 떠오른다. -->
+      <div id="soul-forge-fx" class="soul-forge-fx" aria-hidden="true" hidden>
+        <b id="soul-forge-fx-chars"></b>
+        <em id="soul-forge-fx-reading"></em>
+        <!-- 무엇이 나왔는지가 이 연출의 요점이다. 음만 띄우면 "새겨졌다"까지만
+             알고 "무엇을 얻었나"는 토스트를 놓치면 끝내 모른다. -->
+        <s id="soul-forge-fx-bonus"></s>
+        <i class="soul-forge-fx-seal">刻</i>
+      </div>
+    </dialog>
+
   </main>
 `;
 }

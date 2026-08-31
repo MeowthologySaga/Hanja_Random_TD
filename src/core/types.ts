@@ -24,7 +24,12 @@ export type AutomationMode = "manual" | "semi" | "goal";
 // 소프트 — 그 위 별도 가파른 꼬리 확률로 나온다(engine-tuning.CASUAL_STAR_TAIL_DECAY).
 export type SummonIntent = "balanced" | "discovery" | "lineage" | "concentration" | "midstar" | "highstar";
 export type ConcentrationPath = "swift" | "potent";
-export type ConcentrationLevel = 0 | 1 | 2 | 3;
+/*
+ * 농축 단계. 상한이 없다 — 성어 줄에 세우려 고른 낮은 등급 글자도 끝까지
+ * 자랄 수 있어야 "성어 때문에 손해"가 되지 않는다(2026-08-28 결정).
+ * 무한을 여는 대신 값이 기하급수로 오르고, 힘은 단계마다 덜 붙는다.
+ */
+export type ConcentrationLevel = number;
 export type ConcentrationPayment =
   | { kind: "duplicate"; towerId: number }
   | { kind: "essence" };
@@ -62,7 +67,21 @@ export type SemanticFamily =
 export type TargetPriority = "front" | "strongest" | "fastest" | "armored" | "cluster" | "valuable";
 export type EnemyArchetype = "normal" | "swarm" | "swift" | "armored" | "regenerator" | "boss";
 export type AbilityCategory = "element" | "semantic" | "role" | "graph" | "lineage";
-export type IdiomBonusKind = "range" | "damage" | "evolutionGold" | "enemySlow";
+/*
+ * 성어 능력 축. 앞 넷은 기존 성어(104구)가 쓰고, 뒤 넷은 커스텀 성어만 굴린다.
+ * 한 타입으로 합친 이유는 성어가 결국 한 종류의 물건이기 때문이다 — 엔진의
+ * 발동 판정·줄 세우기·화면 표시가 전부 같은 길을 탄다. 다만 **합산 통은
+ * 다르다**(custom-idioms.ts 머리말 참조).
+ */
+export type IdiomBonusKind =
+  | "range"
+  | "damage"
+  | "evolutionGold"
+  | "enemySlow"
+  | "killEssence"
+  | "waveGold"
+  | "weaknessDamage"
+  | "formationAttack";
 export type AbilityFxKind =
   | "poison"
   | "blast"
@@ -218,6 +237,15 @@ export interface Tower {
 export interface Enemy {
   id: number;
   wave: number;
+  /**
+   * 이 적이 이고 나온 한자.
+   *
+   * 정본 세계관: 자령은 야생으로 존재하고, 부적술사가 그 한자를 적은 부적을
+   * 붙여 강시로 부린다. 그래서 내 편은 머리에 부적이 있고 야생(적)은 맨머리다 —
+   * 구분은 생김새가 아니라 부적의 유무다(2026-08-28 기획 결정).
+   * 봉인하면 이 글자의 자혼이 남아 커스텀 성어의 재료가 된다.
+   */
+  char: string;
   hp: number;
   maxHp: number;
   speed: number;
@@ -324,9 +352,9 @@ export interface GoalProgress {
 }
 
 /**
- * 한 번이라도 봉인한 성어의 자취. 기록과 활성은 나뉘어 있다.
+ * 한 번이라도 발동한 성어의 자취. 기록과 활성은 나뉘어 있다.
  *
- * - 배열에 남아 있다는 것 자체가 "이 런에서 봉인해 본 적이 있다"는 달성 기록이다.
+ * - 배열에 남아 있다는 것 자체가 "이 런에서 발동해 본 적이 있다"는 달성 기록이다.
  *   도감·목표 진행·게임오버 통계는 이 기록을 센다.
  * - `active` 는 지금 이 순간 네 자령이 그 줄을 지키고 있느냐다. 전투 보너스는
  *   오직 활성 봉인만 낸다. 줄이 흩어지면 기록은 남고 보너스만 꺼진다.
@@ -369,6 +397,15 @@ export interface GameState {
   elapsed: number;
   waveElapsed: number;
   spawned: number;
+  /**
+   * 이번 웨이브의 글자 — 한 웨이브는 **한 글자의 자령 떼**로 온다.
+   *
+   * 적마다 따로 굴리면 화면이 글자 잡탕이 되어 무엇을 만났는지 남지 않는다.
+   * 웨이브로 묶으면 "이번 물결은 天 이었다"가 기억에 남고, 자혼도 그 글자로
+   * 모이므로 성어를 겨냥해 모으는 일이 성립한다. 빈 문자열이면 아직 웨이브가
+   * 서지 않았거나 소환 풀이 비었다는 뜻이다.
+   */
+  waveChar: string;
   spawnCooldown: number;
   nextWaveRemaining: number | null;
   bossDefeated: boolean;
@@ -381,7 +418,7 @@ export interface GameState {
   /**
    * 목표 서책에서 추적 중인 성어(최대 3, 최소 1 — "성어가 곧 목표").
    * 소환 가중·인연 연구 가중·소모 보호가 이 목록의 부족 글자 합집합을 본다.
-   * 봉인에 성공한 성어는 목록에서 빠지고, 비면 다음 미봉인 목표 성어를 승계한다.
+   * 발동한 성어는 목록에서 빠지고, 비면 다음 미발동 목표 성어를 승계한다.
    */
   trackedIdiomIds: string[];
   discoveredChars: string[];
@@ -419,6 +456,8 @@ export type GameEvent =
   | { type: "shot"; from: Point; to: Point; color: string; critical: boolean; wuxing: Wuxing }
   | { type: "damage"; at: Point; amount: number; critical: boolean; weakness: boolean }
   | { type: "kill"; at: Point; reward: number }
+  // 봉인한 야생 자령이 남긴 혼. 우두머리는 반드시, 그 밖은 낮은 확률로 남는다.
+  | { type: "soul"; at: Point; char: string; boss: boolean }
   | { type: "interest"; amount: number; gold: number }
   // jackpot = 캐주얼 밴드의 소프트 상한 위 별이 꼬리 확률로 나온 순간(공개 카드가 강조한다).
   | { type: "summon"; at: Point; tower: Tower; stored: boolean; helpful: boolean; helpfulReason: "goal" | "idiom" | "both" | null; newDiscovery: boolean; utility: "new" | "synthesis" | "concentration" | "replacement"; jackpot: boolean }

@@ -1,7 +1,7 @@
 ﻿/*
  * 사자성어 패널과 발동 배지.
  */
-import { idiomById, IDIOM_ORDER_SEALS, type IdiomDefinition } from "../../core/idioms";
+import { IDIOM_ORDER_SEALS, type IdiomDefinition } from "../../core/idioms";
 import { learningInfoForNotation, type LearningInfo } from "../../core/learning";
 import { idiomReadingInfoForNotation } from "../../core/notation";
 import { notationBadgeText, notationShortHtml } from "../notation-substitute";
@@ -110,26 +110,44 @@ export function renderIdiomHud(): void {
   /*
    * [2차 감사] 열쇠에 표기 축이 빠져 있었다. 이 HUD 는 성어의 읽기와 자령
    * 훈음을 그리는데(idiomReadingInfoForNotation · notationBadgeText), 표기를
-   * 바꿔도 봉인 상태·목표·보유 글자가 그대로면 열쇠가 같아 옛 읽기가 남았다.
+   * 바꿔도 발동 상태·목표·보유 글자가 그대로면 열쇠가 같아 옛 읽기가 남았다.
    * 발동 중 성어 스택(renderActiveIdioms)은 이미 넣고 있었다 — 같은 줄에 세운다.
    */
-  const key = sealSignature + "|" + (target?.id ?? "done") + "|" + ownedSignature + "|" + ctx.engine.state.notation;
+  const customSignature = ctx.engine.allIdioms().filter((idiom) => idiom.source === "custom").map((idiom) => idiom.id).join(",");
+  const key = sealSignature + "|" + (target?.id ?? "done") + "|" + ownedSignature + "|" + ctx.engine.state.notation + "|" + customSignature;
   if (key === ctx.idiomRenderKey) return;
   ctx.idiomRenderKey = key;
   maybeShowIdiomHint(target);
-  // 카운트는 "이 런에서 봉인해 본" 달성 기록이다. 지금 몇 구가 살아 있는지는 상태 줄이 말한다.
-  must<HTMLElement>("#idiom-count").textContent = String(ctx.engine.state.idiomSeals.length) + " / " + String(ctx.engine.idioms().length);
-  must<HTMLElement>("#idiom-tab-count").textContent = String(ctx.engine.state.idiomSeals.length) + "/" + String(ctx.engine.idioms().length);
+  /*
+   * 분모를 걷었다. 「0 / 5」의 5는 상한이 아니라 이 판 명단의 크기였는데,
+   * 사람은 그것을 "다섯 구까지만 된다"로 읽었다. 성어에는 상한이 없다.
+   * 게다가 장착한 커스텀만큼 명단이 길어지므로 분모는 판마다 달라져
+   * 기준으로도 쓸모가 없다.
+   *
+   * 카운트는 "이 런에서 발동해 본" 달성 기록이다. 지금 몇 구가 살아 있는지는
+   * 아래 상태 줄이 따로 말한다.
+   */
+  must<HTMLElement>("#idiom-count").textContent = String(ctx.engine.state.idiomSeals.length) + "구";
+  must<HTMLElement>("#idiom-tab-count").textContent = String(ctx.engine.state.idiomSeals.length);
   renderIdiomSealStatus();
+  renderCustomIdioms();
   const hud = must<HTMLElement>("#idiom-hud");
   if (!target) {
     const activeCount = ctx.engine.activeIdiomSeals().length;
     hud.classList.add("idiom-hud--complete");
-    must<HTMLElement>("#idiom-glyphs").innerHTML = ctx.engine.idioms().map((idiom) => `<i class="${ctx.engine.isIdiomSealActive(idiom.id) ? "is-owned" : ""}" style="--idiom:${idiom.color}">四</i>`).join("");
+    /*
+     * 명단이 지역 성어 전부(KR 104구)로 열렸다. 네모를 다 그리면 줄이 넘치므로
+     * **발동한 구만** 그린다 — 이 자리는 애초에 "지금 무엇이 서 있나"를 보는 곳이다.
+     */
+    const active = ctx.engine.idioms().filter((idiom) => ctx.engine.isIdiomSealActive(idiom.id));
+    must<HTMLElement>("#idiom-glyphs").innerHTML = active
+      .map((idiom) => `<i class="is-owned" style="--idiom:${idiom.color}">四</i>`)
+      .join("");
     must<HTMLElement>("#idiom-name").textContent = "사자성어 전서 완성";
     must<HTMLElement>("#idiom-meaning").textContent = "각 성구의 보너스는 네 자령이 그 줄을 지키는 동안만 발동합니다.";
-    must<HTMLElement>("#idiom-bonus").textContent = `발동 중 ${activeCount} / ${ctx.engine.idioms().length}구`;
-    must<HTMLElement>("#idiom-hint").textContent = activeCount === ctx.engine.idioms().length ? "四句成陣 · 모든 성어 발동 중" : "흩어진 줄을 다시 세우면 재발동합니다";
+    // 발동에는 상한이 없다 — 분모를 적으면 다시 "여기까지"로 읽힌다.
+    must<HTMLElement>("#idiom-bonus").textContent = `발동 중 ${activeCount}구`;
+    must<HTMLElement>("#idiom-hint").textContent = "흩어진 줄을 다시 세우면 재발동합니다";
     return;
   }
   hud.classList.remove("idiom-hud--complete");
@@ -161,12 +179,62 @@ export function renderIdiomHud(): void {
 }
 
 /**
- * 성어 탭 봉인 상태 줄 — R18.
+ * 성어 탭 발동 상태 줄 — R18.
  *
- * 유지형 규칙에서는 "봉인했다"와 "지금 효과가 산다"가 다른 말이 됐다. 탭 위쪽
- * 카운트는 달성 기록을 세므로, 한 번이라도 봉인한 성구마다 지금 상태를 한 줄로
+ * 유지형 규칙에서는 "발동했다"와 "지금 효과가 산다"가 다른 말이 됐다. 탭 위쪽
+ * 카운트는 달성 기록을 세므로, 한 번이라도 발동한 성구마다 지금 상태를 한 줄로
  * 덧붙인다. 금박은 발동 중, 회갈은 기록만 남고 줄이 흩어진 상태다.
  */
+/**
+ * 「집자소 · 내가 새긴 성어」 갈피.
+ *
+ * 이 패널은 여태 **지금 추적 중인 한 구**와 규칙 도식만 보여 줬다. 내가 새긴
+ * 성어는 지역 명단에 없으니 어디에도 안 떴고, 목표 서책에서도 104구 사이에
+ * 섞여 잘려 나갔다("현재는 커스텀 성어가 안보여" — 사용자).
+ *
+ * 여기서는 **장착한 구 전부**를 자른 데 없이 세운다. 열다섯이 상한이라 길어야
+ * 열다섯 줄이고, 그 줄들이 곧 "내가 이 판에 들고 온 것"이다.
+ */
+function renderCustomIdioms(): void {
+  const engine = ctx.engine;
+  const customs = engine.allIdioms().filter((idiom) => idiom.source === "custom");
+  const list = must<HTMLElement>("#idiom-custom-list");
+  const count = must<HTMLElement>("#idiom-custom-count");
+
+  if (customs.length === 0) {
+    // 아예 숨기지 않는다 — 이런 것이 있다는 사실 자체를 여기서 배운다.
+    count.textContent = "";
+    list.innerHTML = `<p class="idiom-custom-empty">집자소에서 자혼 넷을 이어 새기고 장착하면, 그 구가 이 판의 성어 명단에 함께 오릅니다.</p>`;
+    return;
+  }
+
+  const live = customs.filter((idiom) => engine.isIdiomSealActive(idiom.id)).length;
+  count.textContent = `${live}/${customs.length}구 발동`;
+  list.innerHTML = customs.map((idiom) => {
+    const progress = engine.idiomProgress(idiom.id);
+    const sealed = engine.state.idiomSeals.some((seal) => seal.idiomId === idiom.id);
+    const active = engine.isIdiomSealActive(idiom.id);
+    const standable = engine.idiomStandable(idiom.id);
+    const state = !standable
+      ? "이 지역 밖 글자"
+      : active
+        ? "발동 중"
+        : sealed
+          ? "흩어짐"
+          : progress.owned >= progress.total ? "배치 준비" : `${progress.owned}/${progress.total}자`;
+    const tone = !standable
+      ? "is-foreign"
+      : active ? "is-live" : sealed ? "is-scattered" : progress.owned >= progress.total ? "is-ready" : "";
+    const title = standable ? "" : ` title="이 구의 글자 가운데 이 지역 명단에 없는 것이 있어, 이번 판에서는 세울 수 없습니다."`;
+    return `<div class="idiom-custom-row ${tone}" style="--idiom:${idiom.color}"${title}>
+      <b>${escapeHtml(idiom.chars)}</b>
+      <span>${notationShortHtml(idiomSealReading(idiom), engine.state.notation, "idiom")}</span>
+      <em>${escapeHtml(shortIdiomBonusLabel(idiom.bonus.label))}</em>
+      <mark>${escapeHtml(state)}</mark>
+    </div>`;
+  }).join("");
+}
+
 function renderIdiomSealStatus(): void {
   const status = must<HTMLElement>("#idiom-seal-status");
   const seals = ctx.engine.state.idiomSeals;
@@ -177,7 +245,12 @@ function renderIdiomSealStatus(): void {
   }
   status.innerHTML = seals
     .map((seal) => {
-      const idiom = idiomById(ctx.engine.state.region, seal.idiomId);
+      /*
+       * 지역 명단만 뒤지면 안 된다 — 커스텀 성어는 거기 없어서, 발동해도
+       * 줄이 빈 문자열이 되어 조용히 사라졌다. allIdioms 는 장착한 커스텀까지
+       * 함께 본다.
+       */
+      const idiom = ctx.engine.allIdioms().find((candidate) => candidate.id === seal.idiomId);
       if (!idiom) return "";
       const label = seal.active ? "발동 중" : "발동 이력 · 지금은 흩어짐";
       return `<div class="idiom-seal-row ${seal.active ? "is-live" : "is-scattered"}" style="--idiom:${idiom.color}"><b>${escapeHtml(idiom.chars)}</b><span>${notationShortHtml(idiomSealReading(idiom), ctx.engine.state.notation, "idiom")}</span><em>${escapeHtml(shortIdiomBonusLabel(idiom.bonus.label))}</em><mark>${label}</mark></div>`;
@@ -217,7 +290,7 @@ function idiomSealReading(idiom: IdiomDefinition): { short: string; reading: str
   return { ...info, short: info.reading };
 }
 
-/** 봉인된 네 칸에 실제로 선 자령 — 없으면 성어 글자로 대신 채운다(해제 직전 한 프레임). */
+/** 발동한 네 칸에 실제로 선 자령 — 없으면 성어 글자로 대신 채운다(해제 직전 한 프레임). */
 function sealParticipants(idiom: IdiomDefinition, seal: IdiomSeal): Array<{ char: string; info: LearningInfo }> {
   const chars = [...idiom.chars];
   const notation = ctx.engine.state.notation;
@@ -257,18 +330,20 @@ function activeIdiomPopHtml(idiom: IdiomDefinition, seal: IdiomSeal, reading: st
 }
 
 export function renderActiveIdioms(): void {
-  // R18: 스택은 "지금 발동 중"만 센다. 흩어진 봉인은 기록으로만 남아 성어 탭에 보인다.
+  // R18: 스택은 "지금 발동 중"만 센다. 흩어진 발동은 기록으로만 남아 성어 탭에 보인다.
   const seals = ctx.engine.activeIdiomSeals();
   // 팝오버가 참여 자령 4자를 읽으므로 칸·표기가 바뀌면 다시 그려야 한다.
   const key = seals.map((seal) => `${seal.idiomId}@${seal.cells.join("-")}`).join(",") + "|" + ctx.engine.state.notation;
   if (key === ctx.activeIdiomsRenderKey) return;
   ctx.activeIdiomsRenderKey = key;
   const stack = must<HTMLElement>("#active-idioms");
-  // 성어 목표는 다섯이라 그 이상은 생길 수 없지만, 전장을 덮지 않도록 못을 박는다.
+  // 발동 수에는 상한이 없다. 다섯을 넘겨도 전장을 덮지 않도록 여기서만 자른다.
   const visible = seals.slice(0, 5);
+  const roster = ctx.engine.allIdioms();
   stack.innerHTML = visible
     .map((seal) => {
-      const idiom = idiomById(ctx.engine.state.region, seal.idiomId);
+      // 지역 명단만 뒤지면 커스텀 성어의 배지가 조용히 사라진다(발동 줄과 같은 함정).
+      const idiom = roster.find((candidate) => candidate.id === seal.idiomId);
       if (!idiom) return "";
       const bonus = splitIdiomBonus(shortIdiomBonusLabel(idiom.bonus.label));
       const readingInfo = idiomSealReading(idiom);

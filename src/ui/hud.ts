@@ -2,7 +2,7 @@
  * 상단 띠·패널 탭·집중 프레임·토스트 등 상시 HUD.
  */
 import { bossTimeLimitForWave, composeWaveBriefing, MAX_ENEMIES, WAVE_REINFORCEMENT_DELAY, wavePlan } from "../core/content";
-import { FIRST_PREP_SECONDS, type GameEngine, interestForGold } from "../core/game";
+import { FIRST_PREP_SECONDS, type GameEngine } from "../core/game";
 import {
   ELEMENT_STYLES,
   GAME_CONFIG,
@@ -11,7 +11,7 @@ import {
   researchUnlockWave,
   WUXING_ORDER
 } from "../core/hanzi";
-import { type ActionResult, type Wuxing } from "../core/types";
+import { type ActionResult, type GameState, type Wuxing } from "../core/types";
 import {
   abilityGuideDialog,
   bossBanner,
@@ -40,6 +40,7 @@ import {
 import { formatTime, phaseLabel } from "./format";
 import { renderConcentration } from "./panels/concentration";
 import { renderEvolutions } from "./panels/evolution";
+import { bindArrangePolicy } from "./panels/arrange-policy";
 import { renderGoal } from "./panels/goal";
 import { renderGrowth } from "./panels/growth";
 import { renderActiveIdioms, renderIdiomHud } from "./panels/idiom";
@@ -345,7 +346,47 @@ function renderToastMessage(message: string): void {
   });
 }
 
-export function showToast(message: string, warning = false): void {
+/**
+ * 알림이 뜰 자리.
+ *
+ *  · stage — 무대 아래 가운데. 웨이브·보스처럼 **전장에서 일어난** 일.
+ *  · panel — 오른쪽 조작 패널 안. 부적·합성·농축처럼 **패널에서 한** 일.
+ *
+ * 사람은 자기가 손댄 곳을 본다. 부적을 쓰는 동안 눈은 종이에 있는데 알림이
+ * 무대 아래 가운데(450px 떨어진 곳)에 뜨면 나온 줄도 모른다.
+ */
+export type ToastWhere = "stage" | "panel";
+
+let panelToastTimer = 0;
+
+/**
+ * 패널 안 알림.
+ *
+ * 무대 토스트보다 오래 남긴다(3.4초). 패널 일은 손이 바쁜 중에 일어나서,
+ * 눈이 종이에서 알림으로 옮겨 오는 데 시간이 더 걸린다.
+ */
+export function showPanelToast(message: string, warning = false): void {
+  const box = document.getElementById("panel-toast");
+  if (!box) return;
+  box.textContent = message;
+  box.classList.toggle("panel-toast--warning", warning);
+  box.hidden = false;
+  // 재생 중에 또 뜨면 애니메이션이 이어붙지 않도록 한 번 되감는다.
+  box.classList.remove("is-live");
+  void box.offsetWidth;
+  box.classList.add("is-live");
+  window.clearTimeout(panelToastTimer);
+  panelToastTimer = window.setTimeout(() => {
+    box.classList.remove("is-live");
+    box.hidden = true;
+  }, 3_400);
+}
+
+export function showToast(message: string, warning = false, where: ToastWhere = "stage"): void {
+  if (where === "panel") {
+    showPanelToast(message, warning);
+    return;
+  }
   renderToastMessage(message);
   toast.classList.toggle("toast--warning", warning);
   toast.classList.remove("toast--visible");
@@ -384,9 +425,9 @@ export function showWaveBanner(): void {
 }
 
 /**
- * 첫 봉인 축하 — 스펙 6라운드 E3.
+ * 첫 발동 축하 — 스펙 6라운드 E3.
  *
- * 첫 봉인은 "뭔가 터졌다"로만 남고 그 효과가 어디에 남는지는 알려 주지 않았다.
+ * 첫 발동은 "뭔가 터졌다"로만 남고 그 효과가 어디에 남는지는 알려 주지 않았다.
  * 웨이브 배너를 한 번 빌려 전장 왼쪽 스택을 가리킨다. 런마다 처음 한 번뿐이다.
  */
 export function firstSealCelebration(reading: string): void {
@@ -401,6 +442,16 @@ export function showTowerAbilityPopup(towerId: number, glyph: string, name: stri
   // Frequent procs still happen mechanically, but the same tower cannot flood the screen.
   if (current && current.age < 0.8) return;
   towerAbilityPopups.set(towerId, { text: glyph + " " + name, color, age: 0, duration: 0.82 });
+}
+
+/**
+ * 다섯 오행에 쌓인 문기의 합.
+ *
+ * 자원칸은 이 한 수만 적는다. 오행별 잔량은 강화 탭·오행 강화 창이 따로
+ * 적으므로, 좁은 칸에 다섯 수를 밀어 넣어 접히게 만들 이유가 없다.
+ */
+export function totalEssenceOf(state: GameState): number {
+  return WUXING_ORDER.reduce((sum, wuxing) => sum + state.elementEssence[wuxing], 0);
 }
 
 export function syncPanel(): void {
@@ -420,11 +471,22 @@ export function syncPanel(): void {
   // 트랙 C2: 부적 보상이 자원칸에 꽂히는 순간에만 숫자가 굴러간다. 굴리는 중이
   // 아니거나 다른 수입·지출이 끼어들면 즉시 실제 보유량으로 돌아온다.
   must<HTMLElement>("#gold-value").textContent = String(talismanGoldRoll(state.gold) ?? state.gold);
-  must<HTMLElement>("#interest-preview").textContent = "이자 +" + String(interestForGold(state.gold));
-  must<HTMLElement>("#enemy-cap-value").textContent = String(MAX_ENEMIES) + "체";
-  must<HTMLElement>("#tower-count-value").textContent = String(state.towers.length) + " / " + String(ctx.engine.deployedTowerCapacity());
-  // 트랙 B: 자원칸 목표 카운터는 한자 사다리(내부 보상은 유지) 대신 성어 봉인 수를 센다.
-  must<HTMLElement>("#goal-count-value").textContent = String(state.idiomSeals.length) + " / " + String(ctx.engine.idioms().length);
+  /*
+   * 문기는 오행별로 적는다.
+   *
+   * 합계 한 수로는 쓸 수 있는지를 못 판단한다 — 농축도 강화도 **그 오행의**
+   * 문기를 요구하므로, 합이 20이어도 필요한 오행이 0이면 아무것도 못 한다.
+   * 다섯 수를 오행색으로 나란히 두면 좁은 칸에서도 어느 쪽이 마른지 한눈에 든다.
+   * 소리로는 합까지 함께 읽히도록 접근명에 적는다.
+   */
+  const essenceCell = must<HTMLElement>("#essence-total-value");
+  essenceCell.innerHTML = WUXING_ORDER
+    .map((wuxing) => `<i style="--element:${ELEMENT_STYLES[wuxing].color}">${wuxing}${state.elementEssence[wuxing]}</i>`)
+    .join("");
+  essenceCell.setAttribute(
+    "aria-label",
+    `문기 합 ${totalEssenceOf(state)} · ` + WUXING_ORDER.map((wuxing) => `${wuxing} ${state.elementEssence[wuxing]}`).join(" · ")
+  );
   must<HTMLElement>("#seed-value").textContent = state.seed;
   // [S/P-26] UI 가 늘린 문장이 살아 있으면 그것을, 엔진이 다음 문장을 쓰면 그것을.
   syncFooterMessage(footerMessage !== null && footerMessage.base === state.lastMessage
@@ -516,6 +578,7 @@ export function wireHud2(): void {
   must<HTMLButtonElement>("#evolve-button").addEventListener("click", () => setPanelTab("evolution"));
   must<HTMLButtonElement>("#research-button").addEventListener("click", () => { sound.unlock(); handleAction(ctx.engine.upgradeResearch()); });
   must<HTMLButtonElement>("#auto-arrange-button").addEventListener("click", () => { sound.unlock(); handleAction(ctx.engine.autoArrangeTowers()); });
+  bindArrangePolicy();
   must<HTMLButtonElement>("#element-upgrade-button").addEventListener("click", () => setPanelTab("growth"));
   // 집중 프레임 여닫기 — dim 클릭 · [닫기] · Esc. 게임은 멈추지 않는다.
   must<HTMLElement>("#focus-dim").addEventListener("click", () => setFocusFrame(null));

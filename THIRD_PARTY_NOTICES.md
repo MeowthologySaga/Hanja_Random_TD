@@ -29,6 +29,20 @@ Permission is hereby granted, free of charge, to any person obtaining a copy of 
 
 The data files and software are provided “as is”, without warranty of any kind. See the linked Unicode License v3 for the complete terms and disclaimer.
 
+## Make Me A Hanzi stroke graphics
+
+`public/data/hanzi-stroke-glyphs-v1.json` is generated from the `strokes` (outline paths) and `medians` (skeleton polylines) fields of Make Me A Hanzi's `graphics.txt`, trimmed to this game's character roster. It is fetched only when a player turns on the optional stroke-order guide (설정 → 학습 모드 · 획순 안내), which is **off by default**. When that guide is on, the outlines draw the character being traced and the medians point at one stroke at a time, so both come from the same source and align exactly.
+
+Two modifications are made, both purely for size: coordinates are rounded to a 4-unit grid on the source's 1024-unit em (0.68px at the size the game draws), and the absolute-coordinate path strings are rewritten with relative coordinates and no separator spaces. No shape is altered beyond that rounding. Characters outside this game's roster are omitted.
+
+- Source: https://github.com/skishore/makemeahanzi/blob/master/graphics.txt
+- Source SHA-256: `a28c478b5178e98f67f510b2d52fde08a69dc664654ef43498253b9b764d46ee` (fetched 2026-08-30)
+- Build script: `npm run generate:glyphs -- <graphics.txt>` (`scripts/build-stroke-glyphs.mjs`, which verifies the hash above)
+- Project code license: MIT — https://github.com/skishore/makemeahanzi/blob/master/LICENSE.txt
+- Character data license: Arphic Public License, inherited from the Arphic 文鼎 fonts the graphics were derived from — https://github.com/skishore/makemeahanzi/blob/master/APLL.txt
+
+The Arphic Public License permits copying and distribution of the font data and derived works provided this notice and the license accompany them, and that changes are documented. The changes made here are documented above: the roster is trimmed, coordinates are rounded to a 4-unit grid, and paths are re-encoded with relative coordinates.
+
 ## libhangul Korean Hanja dictionary
 
 Korean hun-eum fields in `src/data/learning-readings.json` are generated from libhangul's `data/hanja/hanja.txt`, pinned to commit `a34aef73378c0992316861bbf13fc914ee7577d9`.

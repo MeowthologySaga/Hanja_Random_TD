@@ -1,0 +1,244 @@
+/*
+ * 자동배치 옵션 — 톱니와 그 판.
+ *
+ * 자동배치 단추는 판 안에서 가장 자주 눌리는 것 중 하나라, 톱니가 그 옆에서
+ * 자리를 빼앗으면 안 된다. 톱니는 좁게 붙이고, 손댄 갈래가 있을 때만 배지로
+ * 알린다 — 「왜 이렇게 놓였지」를 되짚을 실마리가 화면에 남아야 한다.
+ */
+
+.auto-arrange-row {
+  display: flex;
+  gap: 4px;
+  align-items: stretch;
+}
+
+.auto-arrange-row .action-button--auto-arrange {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.arrange-policy-button {
+  position: relative;
+  flex: 0 0 auto;
+  width: 34px;
+  border: 1px solid rgba(122, 90, 42, 0.5);
+  border-radius: var(--r-sm);
+  background: rgba(247, 240, 221, 0.9);
+  color: var(--text-200);
+  font-size: 15px;
+  cursor: pointer;
+}
+
+.arrange-policy-button:hover {
+  border-color: var(--gold-300);
+  color: var(--text-100);
+}
+
+.arrange-policy-button em {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  min-width: 16px;
+  padding: 0 4px;
+  border-radius: 8px;
+  background: var(--gold-500);
+  color: #fbf5e6;
+  font-style: normal;
+  font-size: 10px;
+  line-height: 16px;
+  font-variant-numeric: tabular-nums;
+}
+
+.arrange-policy-button em[hidden] {
+  display: none;
+}
+
+/* 판은 단추 위로 떠오른다 — 아래는 패널 바닥이라 자리가 없다. */
+.arrange-policy-panel {
+  position: absolute;
+  right: 8px;
+  bottom: 92px;
+  z-index: 30;
+  display: grid;
+  gap: 8px;
+  width: 268px;
+  padding: 12px 14px 12px;
+  border: 1px solid rgba(122, 90, 42, 0.55);
+  border-radius: var(--r-sm);
+  background: linear-gradient(180deg, #f7f0dd 0%, #ece0c6 100%);
+  box-shadow: 0 18px 40px -18px rgba(28, 20, 8, 0.8);
+}
+
+.arrange-policy-panel[hidden] {
+  display: none;
+}
+
+.arrange-policy-panel .eyebrow {
+  margin: 0;
+  color: var(--gold-500);
+  font-size: var(--fs-2xs);
+  letter-spacing: 0.14em;
+}
+
+.arrange-policy-list {
+  display: grid;
+  gap: 4px;
+}
+
+.arrange-policy-row {
+  display: grid;
+  grid-template-columns: 26px 1fr;
+  gap: 8px;
+  align-items: center;
+  padding: 6px 8px;
+  border: 1px solid rgba(122, 90, 42, 0.3);
+  border-radius: var(--r-sm);
+  background: rgba(255, 252, 242, 0.7);
+  color: var(--text-300);
+  text-align: left;
+  cursor: pointer;
+}
+
+.arrange-policy-row b {
+  display: block;
+  color: var(--text-200);
+  font-size: var(--fs-2xs);
+  font-weight: 700;
+}
+
+.arrange-policy-row small {
+  display: block;
+  color: var(--text-400);
+  font-size: 10.5px;
+  line-height: 1.35;
+}
+
+/* 켬/끔은 색이 아니라 **모양**으로 가른다 — 색만으로는 못 읽는 사람이 있다. */
+.arrange-policy-row i {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 16px;
+  border: 1px solid rgba(122, 90, 42, 0.5);
+  border-radius: 9px;
+  background: rgba(232, 222, 196, 0.9);
+}
+
+.arrange-policy-row i::before {
+  content: "";
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: rgba(90, 80, 68, 0.55);
+  transform: translateX(-5px);
+  transition: transform 0.12s ease-out, background 0.12s ease-out;
+}
+
+.arrange-policy-row.is-on {
+  border-color: var(--gold-300);
+  background: rgba(255, 250, 232, 0.95);
+}
+
+.arrange-policy-row.is-on b {
+  color: var(--text-100);
+}
+
+.arrange-policy-row.is-on i {
+  border-color: var(--gold-300);
+  background: linear-gradient(180deg, #e6d3a0, #d3bd83);
+}
+
+.arrange-policy-row.is-on i::before {
+  background: #4a3714;
+  transform: translateX(5px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .arrange-policy-row i::before {
+    transition: none;
+  }
+}
+
+.arrange-policy-foot {
+  display: flex;
+  gap: 6px;
+}
+
+.arrange-policy-foot button {
+  flex: 1 1 auto;
+  padding: 5px 8px;
+  border: 1px solid rgba(122, 90, 42, 0.5);
+  border-radius: var(--r-sm);
+  background: rgba(247, 240, 221, 0.95);
+  color: var(--text-200);
+  font-size: var(--fs-2xs);
+  cursor: pointer;
+}
+
+.arrange-policy-foot button:hover {
+  border-color: var(--gold-300);
+  color: var(--text-100);
+}
+
+/*
+ * 패널 안 알림 — 「시선 자리」.
+ *
+ * 사람은 자기가 손댄 곳을 본다. 부적을 쓰는 동안 눈은 오른쪽 패널의 종이에
+ * 있는데, 무대 토스트는 아래 가운데(640, 700)에 뜬다. 450px 떨어진 자리는
+ * 시야에 안 들어와서 「자령이 응답했다」가 나온 줄도 모른다.
+ *
+ * 자리는 작업대 아래·기능군 레일 **위**다. 실측(설계 좌표): 레일 윗변이
+ * 패널 아래에서 150px, 부적 종이 아랫변이 219px 이라 그 사이가 비어 있다.
+ * 처음에 74px 로 뒀다가 레일을 통째로 덮어 탭이 안 보였다 — 알림이 조작을
+ * 가리면 시선을 끌어온 값을 도로 무는 셈이다.
+ */
+.panel-toast {
+  position: absolute;
+  right: 10px;
+  bottom: 156px;
+  left: 10px;
+  z-index: 24;
+  padding: 8px 12px;
+  border: 1px solid rgba(122, 90, 42, 0.55);
+  border-radius: var(--r-sm);
+  background: linear-gradient(180deg, #f7f0dd 0%, #e6d8b6 100%);
+  box-shadow: 0 12px 28px -14px rgba(28, 20, 8, 0.75);
+  color: var(--text-100);
+  font-size: var(--fs-2xs);
+  font-weight: 700;
+  line-height: 1.45;
+  text-align: center;
+  pointer-events: none;
+}
+
+.panel-toast[hidden] {
+  display: none;
+}
+
+.panel-toast--warning {
+  border-color: rgba(159, 47, 35, 0.6);
+  background: linear-gradient(180deg, #f6e2d8 0%, #e8c6ba 100%);
+}
+
+/* 무대 토스트보다 오래 남긴다 — 눈이 종이에서 옮겨 오는 데 시간이 걸린다. */
+.panel-toast.is-live {
+  animation: panel-toast-in 3.4s ease-out both;
+}
+
+@keyframes panel-toast-in {
+  0% { opacity: 0; transform: translateY(6px); }
+  6% { opacity: 1; transform: translateY(0); }
+  88% { opacity: 1; transform: translateY(0); }
+  100% { opacity: 0; transform: translateY(-4px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .panel-toast.is-live {
+    animation: panel-toast-hold 3.4s linear both;
+  }
+
+  @keyframes panel-toast-hold {
+    0%, 92% { opacity: 1; }
+    100% { opacity: 0; }
+  }
+}

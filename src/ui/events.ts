@@ -37,6 +37,7 @@ import {
   showWaveBanner
 } from "./hud";
 import { showIdiomBrokenResult, showIdiomResult } from "./panels/idiom";
+import { collectSoul } from "./souls";
 
 export function processEvent(event: GameEvent): void {
   sound.handle(event);
@@ -54,6 +55,19 @@ export function processEvent(event: GameEvent): void {
       pushPooled(floaters, floaterPool, takeFloater(event.at, "+" + String(event.reward), "#ffd86d", 0.72, false), 48);
       // 처치 순간에 먹이 튀는 고리를 남겨 "정리됐다"가 화면에서 읽히게 한다.
       pushPooled(rings, ringPool, takeRing(event.at, "#241d16", 0.42), 32);
+      break;
+    case "soul":
+      // 자혼은 판이 끝나도 남는 유일한 수확이다. 우두머리의 혼은 크게,
+      // 야생의 혼은 작게 띄워 "드물게 떨어지는 것"이 화면에서도 드물게 보이게 한다.
+      collectSoul(event.char);
+      pushPooled(rings, ringPool, takeRing(event.at, "#c9a8ff", event.boss ? 1.1 : 0.6), 32);
+      pushPooled(
+        floaters,
+        floaterPool,
+        takeFloater(event.at, `${event.char} 자혼`, "#c9a8ff", event.boss ? 1.15 : 0.8, event.boss),
+        48
+      );
+      if (event.boss) showToast(`${event.char} 자혼을 얻었습니다 — 자혼 넷을 모으면 나만의 성어를 새깁니다`);
       break;
     case "interest":
       showToast("은행 이자 +" + String(event.amount) + "엽전");
@@ -103,7 +117,7 @@ export function processEvent(event: GameEvent): void {
       const points = event.cells.map((cell) => BOARD_CELLS[cell] as Point);
       const center = points.reduce((total, point) => ({ x: total.x + point.x / points.length, y: total.y + point.y / points.length }), { x: 0, y: 0 });
       if (event.rejoined) {
-        // 재발동은 첫 봉인보다 가볍게 — 파문·인장·대형 플래시 없이 발광과 스택 복귀만.
+        // 재발동은 첫 발동보다 가볍게 — 파문·인장·대형 플래시 없이 발광과 스택 복귀만.
         ctx.idiomRenderKey = "";
         showIdiomResult(event.reading, event.meaning, event.bonus, event.color, true);
         showToast(`『${event.reading}』 재발동 — 줄이 다시 섰습니다`);
@@ -112,7 +126,7 @@ export function processEvent(event: GameEvent): void {
       for (const point of points) pushPooled(rings, ringPool, takeRing(point, event.color, 1.05), 32);
       // 코덱스 봉인 인장(래스터) + 네 칸 파문 + 4자 플래시를 함께 띄운다.
       pushRasterBurst(idiomCompletionSealImage(), center, IDIOM_SEAL_SIZE);
-      // 봉인된 네 칸에서 1→4 순서로 성어 색 파문이 퍼지고, 그 위에 4자가 크게 뜬다.
+      // 발동한 네 칸에서 1→4 순서로 성어 색 파문이 퍼지고, 그 위에 4자가 크게 뜬다.
       idiomRipples.length = 0;
       for (let index = 0; index < points.length; index += 1) {
         const point = points[index] as Point;

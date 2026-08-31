@@ -27,6 +27,13 @@ interface TalismanQaWindow {
 }
 
 test.beforeEach(async ({ page }) => {
+  /*
+   * 이 스펙은 **장수·보상·시각**을 지키는 자리다. 그리기는 QA 자동 따라쓰기로
+   * 결정론화하는데, 그건 마스크의 가로줄을 훑을 뿐 획순을 따르지 않는다.
+   * 획순 안내(기본 켜짐)를 그대로 두면 그 붓질이 판정에 떨어져 스스로 걷히므로
+   * 여기서는 안내를 끈다 — 안내를 켠 흐름은 stroke-order·ink-strokes 스펙이 맡는다.
+   */
+  await page.addInitScript((key) => window.localStorage.setItem(key, "false"), "hanja-td:stroke-order-guide");
   await page.addInitScript((key) => window.localStorage.setItem(key, "1"), COACH_STORAGE_KEY);
   await page.addInitScript((key) => window.localStorage.setItem(key, "1"), "hanja-td:early-hint-v1");
   await page.addInitScript((keys: string[]) => {
@@ -123,10 +130,46 @@ test("the default-on talisman tab turns a submitted trace into a jaryeong reward
   const rewardShownAt = Date.now();
   await expect(page.locator("#talisman-status")).toContainText("부적 완성");
   await expect(page.locator("#talisman-seal")).toBeVisible();
-  await expect(page.locator("#toast")).toContainText("자령이 응답했습니다");
+  // 보상 알림은 무대가 아니라 **패널**에 뜬다 — 부적을 쓰는 눈이 거기 있다.
+  await expect(page.locator("#panel-toast")).toContainText("자령이 응답했습니다");
   // 그 글자의 자령이 부적지 위로 내려와 보상 꾸러미를 놓는다.
   await expect(page.locator(".talisman-visit")).toHaveCount(1);
   await expect(page.locator(".talisman-visit-name")).toContainText("자령");
+  /*
+   * 자령이 말을 한다 — "왜 이 자령이 나에게 보상을 주는가"의 당위를 세우는
+   * 한 줄이다. 강림 연출은 통째로 aria-hidden 이라 소리로 닿는 길은 토스트뿐이고,
+   * 그래서 말풍선과 토스트는 **같은 줄**을 말해야 한다.
+   */
+  const spokenLine = (await page.locator(".talisman-visit-line").textContent())?.trim() ?? "";
+  expect(spokenLine.length).toBeGreaterThan(0);
+  /*
+   * 알림은 **패널 안**에 뜬다.
+   *
+   * 부적을 쓰는 동안 사람의 눈은 오른쪽 패널의 종이에 있다. 무대 토스트는
+   * 아래 가운데(640, 700)라 450px 떨어져 있어 나온 줄도 모른다. 그리고 그
+   * 알림이 기능군 탭을 덮어서도 안 된다 — 시선을 끌어온 값을 도로 무는 셈이다.
+   */
+  await expect(page.locator("#panel-toast")).toContainText(spokenLine);
+  const gaze = await page.evaluate(() => {
+    const toast = document.querySelector("#panel-toast")!.getBoundingClientRect();
+    const paper = document.querySelector("#talisman-paper")!.getBoundingClientRect();
+    const tabs = document.querySelector(".panel-tabs")!.getBoundingClientRect();
+    const stageToast = document.querySelector("#toast")!.getBoundingClientRect();
+    const gap = (a: DOMRect, b: DOMRect) => Math.hypot(
+      (a.x + a.width / 2) - (b.x + b.width / 2),
+      (a.y + a.height / 2) - (b.y + b.height / 2)
+    );
+    return {
+      coversTabs: toast.bottom > tabs.top + 1,
+      nearerThanStage: gap(toast, paper) < gap(stageToast, paper)
+    };
+  });
+  expect(gaze.coversTabs).toBe(false);
+  expect(gaze.nearerThanStage).toBe(true);
+  // 말줄은 발치 꾸러미를 덮지 않는다 — 자령 머리 위에 선다.
+  const lineBox = await page.locator(".talisman-visit-line").boundingBox();
+  const giftBox = await page.locator(".talisman-gift").first().boundingBox();
+  expect(lineBox && giftBox && lineBox.y + lineBox.height <= giftBox.y).toBe(true);
   await expect(page.locator(".talisman-gift")).toHaveCount(1);
   // 트랙 C3 ④: 무엇을 받았는지 글자로 남는다 — 숫자만 날아가면 알 수 없다.
   await expect(page.locator(".talisman-gift > em"))
@@ -190,4 +233,37 @@ test("the default-on talisman tab turns a submitted trace into a jaryeong reward
   await page.reload();
   await expect(page.locator("#talisman-tab")).toHaveCount(0);
   await expect(page.locator(".panel-tabs > button")).toHaveCount(8);
+});
+
+test("게임오버 뒤 다시 도전하면 지난 판의 무료 소환권이 따라오지 않는다", async ({ page }) => {
+  await page.goto("/?seed=TALISMAN-TOKEN-E2E&mode=casual");
+  await page.getByTestId("start-run").click();
+  await expect(page.locator(".game-shell")).toHaveAttribute("data-phase", "prep");
+
+  /*
+   * 무료 소환권은 부적 보상이 주는 그 판의 자원인데, 엔진이 아니라 ctx 에 얹혀
+   * 있어 판이 끝나도 남았다 — [다시 도전]이 지난 판의 권을 새 판으로 데려왔다
+   * (사용자 제보). 보상을 실제로 타는 대신 같은 자리에 값을 넣어 경로만 잰다.
+   */
+  await page.evaluate(() => {
+    (window as unknown as { __HANJA_CTX_QA__: { talismanFreeSummonTokens: number } })
+      .__HANJA_CTX_QA__.talismanFreeSummonTokens = 3;
+  });
+
+  // 판을 끝낸다(적 한계 초과 패배).
+  await page.evaluate(() => {
+    const qa = (window as unknown as {
+      __HANJA_CTX_QA__: { engine: { state: { phase: string; defeatCause: string | null; lastMessage: string } } };
+    }).__HANJA_CTX_QA__;
+    qa.engine.state.phase = "defeat";
+    qa.engine.state.defeatCause = "enemy-limit";
+    qa.engine.state.lastMessage = "테스트 종료";
+  });
+  await expect(page.locator("#end-overlay")).toHaveClass(/modal-layer--visible/u);
+
+  await page.locator("#new-seed-button").click();
+  await expect(page.locator(".game-shell")).toHaveAttribute("data-phase", "prep");
+  expect(await page.evaluate(() => (window as unknown as {
+    __HANJA_CTX_QA__: { talismanFreeSummonTokens: number };
+  }).__HANJA_CTX_QA__.talismanFreeSummonTokens)).toBe(0);
 });

@@ -1,0 +1,352 @@
+/*
+ * 집자소 — 판을 넘어 남는 첫 장부.
+ *
+ * 여기서 못박는 규칙 넷.
+ *   ① 자혼 넷을 올리면 **음이 한자 음 그대로** 붙는다(사람이 고치지 못한다).
+ *   ② 새기면 그만큼 자혼이 줄고, 성어 한 구가 남는다.
+ *   ③ 장착은 15구까지다.
+ *   ④ 새긴 성어와 남은 자혼은 창을 닫았다 열어도 그대로다 — 판과 달리
+ *      보관소는 지워지지 않는다.
+ */
+import { expect, test } from "@playwright/test";
+
+const COACH_STORAGE_KEY = "hanja-td:coach-seen-v1";
+const ARCHIVE_KEY = "hanja-td:soul-archive-v1";
+
+/** 서재를 열어 보려면 재료가 있어야 한다. 판을 돌리는 대신 장부를 미리 앉힌다. */
+function seededArchive(): string {
+  const souls: Record<string, number> = {};
+  for (const char of ["天", "地", "玄", "黃", "宇", "宙", "洪", "荒"]) souls[char] = 4;
+  return JSON.stringify({ version: 1, souls, idioms: [], equipped: [] });
+}
+
+test.beforeEach(async ({ page }) => {
+  /*
+   * 이 스펙은 **집자소의 흐름**(새기기·장착·다시 굴리기)을 지킨다. 그리기는 QA
+   * 자동 따라쓰기로 결정론화하는데, 그건 마스크의 가로줄을 훑을 뿐 획순을
+   * 따르지 않는다. 획순 안내(기본 켜짐)를 그대로 두면 그 붓질이 판정에 떨어져
+   * 스스로 걷히므로 여기서는 끈다 — 안내를 켠 자혼 판은 아래 따로 지킨다.
+   */
+  await page.addInitScript((key) => window.localStorage.setItem(key, "false"), "hanja-td:stroke-order-guide");
+  await page.addInitScript((key) => window.localStorage.setItem(key, "1"), COACH_STORAGE_KEY);
+  // 새로고침에도 다시 심으면 "판을 넘어 남는가"를 잴 수 없다 — 처음 한 번만
+  // 앉히고, 그 뒤로는 게임이 적어 둔 것을 그대로 쓴다.
+  await page.addInitScript(
+    ([key, value]: string[]) => {
+      if (window.localStorage.getItem(key as string) === null) {
+        window.localStorage.setItem(key as string, value as string);
+      }
+    },
+    [ARCHIVE_KEY, seededArchive()]
+  );
+});
+
+test("자혼 넷을 새겨 나만의 성어를 만들고 장착한다", async ({ page }) => {
+  await page.goto("/?seed=SOULS-E2E");
+
+  // 제목 화면의 자혼 배지가 지닌 수를 센다(여덟 글자 × 4).
+  await expect(page.locator("#s00-souls-badge")).toHaveText("32");
+
+  await page.getByTestId("soul-archive-open").click();
+  await expect(page.locator("#soul-dialog")).toBeVisible();
+  // 집자소는 갈피 둘로 갈렸다 — 만드는 자리(새기기)와 고르는 자리(장착).
+  await expect(page.getByTestId("soul-tab-forge")).toHaveClass(/is-active/);
+  await expect(page.locator("#soul-holdings-count")).toHaveText("32");
+
+  // 넉 자를 올리기 전에는 새기지 못한다.
+  await expect(page.getByTestId("soul-forge")).toBeDisabled();
+
+  for (const char of ["天", "地", "玄", "黃"]) {
+    await page.locator(`.soul-chip[data-soul-char="${char}"]`).click();
+  }
+
+  // ① 음은 한자 음 그대로 — 뜻에 무엇을 적든 음은 바뀌지 않는다.
+  await expect(page.locator("#soul-reading")).toHaveText("천지현황");
+  await page.locator("#soul-meaning-input").fill("하늘과 땅이 열리다");
+  await expect(page.locator("#soul-reading")).toHaveText("천지현황");
+
+  /*
+   * 새김 연출 — 자혼 넷은 되돌릴 수 없이 사라진다. 그 무게에 견주면 토스트
+   * 한 줄은 너무 가벼워, 인장이 찍히고 새 성어의 음이 한 박자 머문다.
+   */
+  await page.getByTestId("soul-forge").click();
+  await expect(page.locator("#soul-forge-fx")).toBeVisible();
+  await expect(page.locator("#soul-forge-fx-reading")).toHaveText("천지현황");
+  // 연출은 스스로 걷힌다 — 막이 남으면 뒤 화면이 계속 뿌옇다.
+  await expect(page.locator("#soul-forge-fx")).toBeHidden({ timeout: 3_000 });
+
+  // ② 자혼 넷이 줄고 성어 한 구가 남는다.
+  await expect(page.locator("#soul-holdings-count")).toHaveText("28");
+  await expect(page.locator(".soul-card")).toHaveCount(1);
+  await expect(page.locator(".soul-card-reading")).toHaveText("천지현황");
+  await expect(page.locator(".soul-card-meaning")).toHaveText("하늘과 땅이 열리다");
+  // 능력은 무작위로 굴리므로 값이 아니라 "한 문장이 적혀 있는가"를 본다.
+  await expect(page.locator(".soul-card-bonus")).not.toBeEmpty();
+
+  // 만든 성어는 장착 갈피에서 고른다.
+  await page.getByTestId("soul-tab-equip").click();
+  await expect(page.locator("#soul-equip-count")).toHaveText("0/15");
+  await page.locator(".soul-card button[data-soul-equip]").click();
+  await expect(page.locator("#soul-equip-count")).toHaveText("1/15");
+  await expect(page.locator(".soul-card")).toHaveClass(/is-equipped/);
+
+  // ④ 창을 닫았다 열어도 그대로다.
+  await page.locator("#soul-close").click();
+  await expect(page.locator("#soul-dialog")).toBeHidden();
+  await page.reload();
+  await page.getByTestId("soul-archive-open").click();
+  await page.getByTestId("soul-tab-equip").click();
+  await expect(page.locator(".soul-card")).toHaveCount(1);
+  await expect(page.locator("#soul-equip-count")).toHaveText("1/15");
+  await expect(page.locator("#soul-holdings-count")).toHaveText("28");
+});
+
+test("장착은 15구에서 멈춘다", async ({ page }) => {
+  test.setTimeout(60_000);
+  // 16구를 미리 새겨 둔 장부로 시작한다 — 화면에서 열여섯 번 새기는 것은
+  // 시험이 재려는 규칙(장착 상한)과 상관없는 시간이다.
+  await page.addInitScript(
+    ([key, value]: string[]) => window.localStorage.setItem(key as string, value as string),
+    [
+      ARCHIVE_KEY,
+      JSON.stringify({
+        version: 1,
+        souls: {},
+        idioms: Array.from({ length: 16 }, (_, index) => ({
+          id: `made-${index}`,
+          chars: "天地玄黃",
+          reading: "천지현황",
+          meaning: "",
+          bonus: { kind: "damage", value: 0.08, label: "모든 자령 피해 +8%" },
+          createdAt: index
+        })),
+        equipped: []
+      })
+    ]
+  );
+  await page.goto("/?seed=SOULS-LIMIT-E2E");
+  await page.getByTestId("soul-archive-open").click();
+  await page.getByTestId("soul-tab-equip").click();
+  await expect(page.locator(".soul-card")).toHaveCount(16);
+
+  for (let index = 0; index < 15; index += 1) {
+    await page.locator(".soul-card:not(.is-equipped) button[data-soul-equip]").first().click();
+  }
+  await expect(page.locator("#soul-equip-count")).toHaveText("15/15");
+
+  // 열여섯째는 장착 단추가 잠긴다 — 무엇을 뺄지는 사람이 고른다.
+  await expect(page.locator(".soul-card:not(.is-equipped) button[data-soul-equip]").first()).toBeDisabled();
+});
+
+test("훈·독이 자혼 옆에 서고, 새기기는 스크롤에 안 가리며, 디버그는 개발자 모드에서만 선다", async ({ page }) => {
+  await page.goto("/?seed=SOULS-UX-E2E");
+  await page.getByTestId("soul-archive-open").click();
+  await expect(page.locator("#soul-dialog")).toBeVisible();
+
+  /*
+   * ① 자혼에 훈·독을 적는다.
+   *
+   * 글자만 덩그러니 있으면 모으기가 수집이지 학습이 아니다. 재료를 고르는
+   * 동안 그 글자를 읽을 수 있어야 "오늘 만난 글자"가 내일의 재료로 남는다.
+   */
+  const chip = page.locator('.soul-chip[data-soul-char="天"]');
+  await expect(chip.locator("small")).toHaveText("하늘 천");
+  await chip.click();
+  // 새김대에 올려 둔 채로도 읽힌다.
+  await expect(page.locator(".soul-slot.is-filled small").first()).toHaveText("하늘 천");
+
+  /*
+   * ② [새기기]는 스크롤을 따라다니지 않는다.
+   *
+   * 확률표가 길어 새김대 칸은 스크롤한다. 끝까지 읽고 나서 단추를 찾아
+   * 되돌아가야 한다면 그 스크롤이 벌이 된다 — 단추는 스크롤 밖 고정 행에 있다.
+   */
+  const scroller = page.locator(".soul-forge-scroll");
+  const before = (await page.getByTestId("soul-forge").boundingBox())!;
+  await scroller.evaluate((element) => { element.scrollTop = element.scrollHeight; });
+  await page.waitForTimeout(120);
+  const after = (await page.getByTestId("soul-forge").boundingBox())!;
+  expect(Math.round(after.y)).toBe(Math.round(before.y));
+  expect(await scroller.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
+
+  /*
+   * ③ 디버그 갈피는 개발자 모드(백틱 5회)에서만 선다.
+   */
+  await expect(page.getByTestId("soul-tab-dev")).toBeHidden();
+  for (let press = 0; press < 5; press += 1) await page.keyboard.press("Backquote");
+  await expect(page.getByTestId("soul-tab-dev")).toBeVisible();
+
+  await page.getByTestId("soul-tab-dev").click();
+  await page.locator("#soul-dev-char").fill("宇");
+  await page.locator("#soul-dev-amount").fill("7");
+  await page.getByTestId("soul-dev-grant").click();
+  await expect
+    .poll(async () => page.evaluate(() => {
+      const raw = window.localStorage.getItem("hanja-td:soul-archive-v1");
+      const parsed = raw ? (JSON.parse(raw) as { souls?: Record<string, number> }) : {};
+      return (parsed.souls ?? {})["宇"] ?? 0;
+    }))
+    .toBe(4 + 7);
+});
+
+interface SoulQaWindow {
+  __HANJA_SOUL_QA__: { autoTrace(): void; currentChar(): string | null; isOpen(): boolean };
+}
+
+test("한자를 써서 성어 능력을 다시 굴리고, 새김 연출이 무엇이 나왔는지 말한다", async ({ page }) => {
+  await page.addInitScript(
+    ([key, value]: string[]) => window.localStorage.setItem(key as string, value as string),
+    [
+      ARCHIVE_KEY,
+      JSON.stringify({
+        version: 1,
+        souls: { 天: 4, 地: 4, 玄: 4, 黃: 4 },
+        idioms: [{
+          id: "demo",
+          chars: "天地玄黃",
+          reading: "천지현황",
+          meaning: "하늘과 땅",
+          bonus: { kind: "damage", value: 0.08, label: "모든 자령 피해 +8%" },
+          createdAt: 1
+        }],
+        equipped: []
+      })
+    ]
+  );
+  await page.goto("/?seed=SOULS-REROLL-E2E");
+  await page.getByTestId("soul-archive-open").click();
+
+  /*
+   * ① 찾기 — 원하는 음으로 만들려면 글자를 먼저 찾아야 한다. 한자·훈·음
+   *    어느 쪽으로 쳐도 걸린다.
+   */
+  await expect(page.locator(".soul-chip")).toHaveCount(4);
+  await page.locator("#soul-search").fill("하늘");
+  await expect(page.locator(".soul-chip")).toHaveCount(1);
+  await expect(page.locator('.soul-chip[data-soul-char="天"]')).toBeVisible();
+  await page.locator("#soul-search").fill("天");
+  await expect(page.locator(".soul-chip")).toHaveCount(1);
+  await page.locator("#soul-search").fill("없는글자");
+  await expect(page.locator(".soul-chip")).toHaveCount(0);
+  await expect(page.locator("#soul-holdings-empty")).toContainText("걸리는 자혼이 없습니다");
+  await page.locator("#soul-search").fill("");
+
+  /*
+   * ② 다시 굴리기 — 그 성어의 글자 하나를 부적에 써 내면 능력을 한 번 다시
+   *    굴린다. 값이 엽전도 자혼도 아니라 「글자를 쓸 줄 아는가」다.
+   *    손그림 채점은 글꼴 렌더링에 좌우돼 불안정하므로, 부적과 같은 처방으로
+   *    개발 전용 자동 따라쓰기(실제 포인터 이벤트 합성)로 결정론화한다.
+   */
+  await page.getByTestId("soul-tab-equip").click();
+  await expect(page.locator(".soul-card-bonus")).toHaveText("모든 자령 피해 +8%");
+  await page.locator("[data-soul-reroll]").click();
+  await expect(page.locator("#soul-reroll")).toBeVisible();
+  await expect(page.locator("#soul-reroll-title")).toHaveText("천지현황 다시 굴리기");
+  await expect(page.locator(".soul-reroll-char")).toHaveCount(4);
+  // 쓰기 전에는 제출이 잠겨 있다 — 획을 떼도 저절로 통과하지 않는다는 규칙.
+  await expect(page.getByTestId("soul-reroll-submit")).toBeDisabled();
+
+  /*
+   * 값은 **네 글자 전부**다. 자혼 넷을 태워 만든 것이니 다시 굴리는 값도
+   * 넷이어야 무게가 맞는다 — 한 글자면 마음에 들 때까지 돌리는 손잡이가 된다.
+   * 그래서 다 쓰기 전에는 [다시 굴리기]가 아예 서지 않는다.
+   */
+  for (let written = 1; written <= 4; written += 1) {
+    await expect(page.getByTestId("soul-reroll-roll")).toBeHidden();
+    await page.evaluate(() => (window as unknown as SoulQaWindow).__HANJA_SOUL_QA__.autoTrace());
+    await expect(page.getByTestId("soul-reroll-submit")).toBeEnabled();
+    await page.getByTestId("soul-reroll-submit").click();
+    await expect(page.locator("#soul-reroll-progress")).toHaveText(`${written} / 4자`);
+    await expect(page.locator(".soul-reroll-char.is-done")).toHaveCount(written);
+  }
+
+  // 넷을 다 쓰면 그때 딱 한 번 나온다.
+  await expect(page.getByTestId("soul-reroll-submit")).toBeHidden();
+  await expect(page.getByTestId("soul-reroll-roll")).toBeVisible();
+  await page.getByTestId("soul-reroll-roll").click();
+
+  // 판이 닫히고, 다시 굴린 결과가 연출로 온다.
+  await expect(page.locator("#soul-reroll")).toBeHidden();
+  await expect(page.locator("#soul-forge-fx")).toBeVisible();
+  await expect(page.locator("#soul-forge-fx-reading")).toHaveText("천지현황");
+  /*
+   * ③ 연출은 **무엇이 나왔는지**를 말한다. 음만 띄우면 "새겨졌다"까지만 알고
+   *    무엇을 얻었는지는 토스트를 놓치면 끝내 모른다.
+   */
+  await expect(page.locator("#soul-forge-fx-bonus")).not.toBeEmpty();
+  await expect(page.locator("#soul-forge-fx")).toBeHidden({ timeout: 4_000 });
+
+  // 능력이 실제로 다시 굴려져 장부에 남는다(음·뜻·글자는 그대로다).
+  const after = await page.evaluate(() => {
+    const raw = window.localStorage.getItem("hanja-td:soul-archive-v1");
+    const parsed = raw ? (JSON.parse(raw) as { idioms?: Array<{ reading: string; meaning: string; bonus: { label: string } }> }) : {};
+    return parsed.idioms?.[0];
+  });
+  expect(after?.reading).toBe("천지현황");
+  expect(after?.meaning).toBe("하늘과 땅");
+  expect(after?.bonus.label.length ?? 0).toBeGreaterThan(0);
+});
+
+/*
+ * 자혼 판의 획순 안내.
+ *
+ * 부적 판과 코드는 나뉘어 있다 — 저마다 제 화선지·제 획 목록·제 판정 배선을
+ * 쥔다. 한쪽만 고치고 다른 쪽을 잊는 일이 실제로 있었으므로(먹선이 점선으로
+ * 끊기던 자리), 여기서도 안내가 서는지·되돌리기가 도는지를 따로 못 박는다.
+ */
+test("자혼 판도 획순 안내가 서고, 되돌리기가 안내를 함께 물린다", async ({ page }) => {
+  await page.addInitScript(
+    ([key, value]: string[]) => window.localStorage.setItem(key as string, value as string),
+    [
+      ARCHIVE_KEY,
+      JSON.stringify({
+        version: 1,
+        souls: { 天: 4, 地: 4, 玄: 4, 黃: 4 },
+        idioms: [{
+          id: "demo",
+          chars: "天地玄黃",
+          reading: "천지현황",
+          meaning: "하늘과 땅",
+          bonus: { kind: "damage", value: 0.08, label: "모든 자령 피해 +8%" },
+          createdAt: 1
+        }],
+        equipped: []
+      })
+    ]
+  );
+  // 이 시험만은 안내를 켠다 — 위 beforeEach 가 꺼 둔 것을 되돌린다.
+  await page.addInitScript((key) => window.localStorage.setItem(key, "true"), "hanja-td:stroke-order-guide");
+
+  await page.goto("/?seed=SOULS-GUIDE-E2E");
+  await page.getByTestId("soul-archive-open").click();
+  await page.getByTestId("soul-tab-equip").click();
+  await page.locator("[data-soul-reroll]").click();
+  await expect(page.locator("#soul-reroll")).toBeVisible();
+  await page.waitForTimeout(2500);
+
+  type Guide = { available: boolean; current: number; total: number; finished: boolean };
+  const guide = (): Promise<Guide> => page.evaluate(() => (window as unknown as {
+    __HANJA_SOUL_QA__: { strokeGuide: () => Guide };
+  }).__HANJA_SOUL_QA__.strokeGuide());
+  const trace = (): Promise<boolean> => page.evaluate(() => (window as unknown as {
+    __HANJA_SOUL_QA__: { traceStroke: () => boolean };
+  }).__HANJA_SOUL_QA__.traceStroke());
+
+  // 天 은 4획이다.
+  const opened = await guide();
+  expect(opened.available).toBe(true);
+  expect(opened.total).toBe(4);
+  await expect(page.locator("#soul-reroll-status")).toContainText("모두 4획");
+  await expect(page.getByTestId("soul-reroll-undo")).toBeDisabled();
+
+  expect(await trace()).toBe(true);
+  await page.waitForTimeout(120);
+  expect((await guide()).current).toBe(1);
+  await expect(page.getByTestId("soul-reroll-undo")).toBeEnabled();
+
+  // 되돌리면 안내도 함께 물러야 다음 지시가 종이와 맞는다.
+  await page.getByTestId("soul-reroll-undo").click();
+  await page.waitForTimeout(120);
+  expect((await guide()).current).toBe(0);
+  await expect(page.getByTestId("soul-reroll-undo")).toBeDisabled();
+});

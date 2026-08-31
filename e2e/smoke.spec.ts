@@ -4,6 +4,22 @@
 // R5 를 병합한 뒤 선택자와 문안을 다시 맞춰야 한다.
 import { expect, test, type Page } from "@playwright/test";
 
+/*
+ * 배치 수 탐침.
+ *
+ * 상단 자원칸이 [엽전][문기] 둘로 줄면서 「배치 0 / 16」 칸이 사라졌다.
+ * 그 칸을 눈금 삼아 "자령이 반에 섰는가"를 재던 검사들은 이제 엔진 상태를
+ * 직접 읽는다 — 화면 문자열이 아니라 사실을 재는 쪽이 원래 옳기도 하다.
+ */
+async function deployed(page: Page): Promise<{ placed: number; capacity: number }> {
+  return page.evaluate(() => {
+    const qa = (window as unknown as {
+      __HANJA_CTX_QA__: { engine: { state: { towers: unknown[] }; deployedTowerCapacity(): number } };
+    }).__HANJA_CTX_QA__;
+    return { placed: qa.engine.state.towers.length, capacity: qa.engine.deployedTowerCapacity() };
+  });
+}
+
 /** 첫 방문 온보딩 코치를 이미 본 것으로 표시하는 앱 자체 저장 키. */
 const COACH_STORAGE_KEY = "hanja-td:coach-seen-v1";
 /** 코치를 실제로 띄우는 스펙에 붙이는 태그. 이 태그가 붙은 스펙만 첫 방문 상태로 시작한다. */
@@ -148,8 +164,12 @@ test("shows a readable single summon reveal and explains the ten-pull milestone"
   await page.reload();
   await page.getByTestId("start-run").click();
   await openShop(page);
-  // 10연은 이제 상품 카드다. 가격 자리에 개방 조건을 그대로 적는다.
-  await expect(page.locator('[data-summon-product="multi"] em')).toHaveText("10W 개방");
+  /*
+   * 10연은 상품 카드이고, 웨이브 자물쇠는 걷었다 — 값이 이미 문지기다
+   * (시작 42엽전 · 10연 70이라 실제로 낼 수 있는 시점이 W7~9 근처다).
+   * 그래서 가격 자리에는 언제나 값이 적히고, 잠기는 사유는 엽전 부족뿐이다.
+   */
+  await expect(page.locator('[data-summon-product="multi"] em')).toHaveText(/\d+ 엽전/);
   await expect(page.getByTestId("multi-summon-button")).toBeDisabled();
   await page.screenshot({ path: "artifacts/summon-ten-locked-1280x720.png", fullPage: true });
 });
@@ -210,7 +230,7 @@ test("freezes the opening until the first summon opens its matching formation", 
   await expect(page.locator("#formation-unlock-dialog")).toBeHidden();
   await expect(page.locator("#message-value")).toContainText("해금");
   await expect(page.locator("#gold-value")).toHaveText("17");
-  await expect(page.locator("#tower-count-value")).toHaveText("1 / 32");
+  expect(await deployed(page)).toEqual({ placed: 1, capacity: 32 });
   await page.screenshot({ path: "artifacts/formation-coin-unlock-1280x720.png", fullPage: true });
 });
 
@@ -397,7 +417,7 @@ test("dismantles a deployed jaryeong straight from the selected card", async ({ 
   // 회수량은 오행 문기 칩으로 붙는다(트랙 J 단위 표기).
   await expect(dismantle).toContainText("분해");
   await expect(dismantle).toContainText(/[木火土金水]\s*문기\s*\+\d+/u);
-  await expect(page.locator("#tower-count-value")).toHaveText("1 / 16");
+  expect(await deployed(page)).toEqual({ placed: 1, capacity: 16 });
   // [S/P-08] 확인은 이제 게임 서책 창이다 — OS 창이 아니라 DOM 이라 자동화가 읽는다.
   await dismantle.click();
   const confirmDialog = page.getByTestId("confirm-dialog");
@@ -407,15 +427,30 @@ test("dismantles a deployed jaryeong straight from the selected card", async ({ 
   // 취소하면 아무 일도 없다.
   await page.getByTestId("confirm-dialog-cancel").click();
   await expect(confirmDialog).toBeHidden();
-  await expect(page.locator("#tower-count-value")).toHaveText("1 / 16");
+  expect(await deployed(page)).toEqual({ placed: 1, capacity: 16 });
   await dismantle.click();
   await expect(confirmDialog).toBeVisible();
   await page.getByTestId("confirm-dialog-accept").click();
   await expect(confirmDialog).toBeHidden();
   await expect(page.locator("#message-value")).toContainText("분해 완료");
-  await expect(page.locator("#tower-count-value")).toHaveText("0 / 16");
+  expect(await deployed(page)).toEqual({ placed: 0, capacity: 16 });
   // A-2: 획득 순간 오행색 "+N 문기" 플로팅이 자원칸 근처에 선다.
   await expect(page.locator(".essence-floater")).toHaveText(/\+\d+ 문기/u);
+  /*
+   * 자원칸의 문기 칸은 다섯 오행을 **따로** 적는다. 합계 한 수로는 "쓸 수
+   * 있는가"를 못 판단하기 때문이다 — 농축도 강화도 그 오행의 문기를 쓴다.
+   * 화면 문자열과 엔진 상태가 같은 말을 하는지 본다.
+   */
+  const essence = await page.evaluate(() => {
+    const state = (window as unknown as {
+      __HANJA_CTX_QA__: { engine: { state: { elementEssence: Record<string, number> } } };
+    }).__HANJA_CTX_QA__.engine.state;
+    return (["木", "火", "土", "金", "水"] as const).map((wuxing) => `${wuxing}${state.elementEssence[wuxing]}`);
+  });
+  expect(essence.some((chip) => !chip.endsWith("0"))).toBe(true);
+  await expect(page.locator("#essence-total-value")).toHaveText(essence.join(""));
+  // 소리로는 합까지 함께 읽힌다.
+  await expect(page.locator("#essence-total-value")).toHaveAttribute("aria-label", /문기 합 \d+/u);
 });
 
 test("opens the idiom goal codex frame and summons from all one thousand Cheonjamun sprites", async ({ page }) => {
@@ -577,9 +612,43 @@ test("starts a KR run and exposes the finished core loop at 1280x720", async ({ 
 
   await page.getByTestId("start-run").click();
   await expect(page.locator("#barrier-value")).toHaveCount(0);
-  await expect(page.locator("#enemy-cap-value")).toHaveText("80체");
+  /*
+   * 자원 칸은 **쓸 수 있는 것** 둘만 센다 — 엽전과 문기.
+   * 이자 칩·적 상한·배치·성어 발동은 자원이 아니라서 걷었다. 같은 정보가
+   * 전장 상단 [적 한계] 칩과 성어 패널에 이미 있다.
+   */
+  await expect(page.locator(".resource-grid > div")).toHaveCount(2);
+  await expect(page.locator("#interest-preview")).toHaveCount(0);
+  await expect(page.locator("#enemy-cap-value")).toHaveCount(0);
+  await expect(page.locator("#tower-count-value")).toHaveCount(0);
+  await expect(page.locator("#goal-count-value")).toHaveCount(0);
   await expect(page.locator("#gold-value")).toHaveText("42");
-  await expect(page.locator("#interest-preview")).toHaveText("이자 +2");
+  await expect(page.locator("#essence-total-value")).toHaveText("木0火0土0金0水0");
+  /*
+   * 두 칸은 띠의 **그려진 틀 안에** 앉아야 한다.
+   *
+   * 이 띠의 테두리는 border 가 아니라 배경 그림을 늘려 그린 것이라, 칸이
+   * 조금만 커도 그림 위로 그대로 올라탄다 — 칸 내용이 48px 인데 틀 안쪽이
+   * 44px 이라 실제로 삐져나온 적이 있다. 넘침이 아니라 **자리**를 잰다.
+   */
+  const railFit = await page.locator(".resource-grid").evaluate((rail) => {
+    const box = rail.getBoundingClientRect();
+    return [...rail.children].map((cell) => {
+      const r = cell.getBoundingClientRect();
+      return {
+        top: Math.round(r.top - box.top),
+        bottom: Math.round(box.bottom - r.bottom),
+        left: Math.round(r.left - box.left),
+        right: Math.round(box.right - r.right)
+      };
+    });
+  });
+  for (const gap of railFit) {
+    expect(gap.top).toBeGreaterThan(0);
+    expect(gap.bottom).toBeGreaterThan(0);
+    expect(gap.left).toBeGreaterThanOrEqual(0);
+    expect(gap.right).toBeGreaterThanOrEqual(0);
+  }
   await expect(page.locator(".game-shell")).toHaveAttribute("data-game-speed", "1");
   // 기본 카메라는 100%(=2.60) 가 아니라 전장이 한눈에 들어오는 77%(=2.00) 에서 시작한다.
   // 100% 는 기준 배율일 뿐 시작 배율이 아니다.
@@ -600,12 +669,12 @@ test("starts a KR run and exposes the finished core loop at 1280x720", async ({ 
   await expect(page.locator("#speed-button")).toHaveText("3×");
   await page.locator("#speed-button").click();
   await expect(page.locator("#speed-button")).toHaveText("1×");
-  // 트랙 B: 자원칸 목표 카운터는 성어 봉인 수를 센다. 한자 목표 카드는 은퇴했다.
-  await expect(page.locator("#goal-count-value")).toHaveText("0 / 5");
+  // 성어 발동 수는 성어 패널이 센다 — 자원칸에서 걷었다. 한자 목표 카드도 은퇴했다.
+  await expect(page.locator("#idiom-tab-count")).toHaveText("0");
   await expect(page.locator("#goal-glyph")).toHaveCount(0);
   await openShop(page);
   for (let index = 0; index < 4; index += 1) await page.getByTestId("summon-button").click();
-  await expect(page.locator("#tower-count-value")).toHaveText("4 / 16");
+  expect(await deployed(page)).toEqual({ placed: 4, capacity: 16 });
   await expect(page.locator("#battle-canvas")).not.toHaveAttribute("data-selected-tower-id", "");
   await expect(page.locator("#battle-canvas")).toHaveAttribute("data-selected-synthesis-tier", /^[1-5]$/u);
   await page.locator("#summon-reveal-close").click();
@@ -616,7 +685,6 @@ test("starts a KR run and exposes the finished core loop at 1280x720", async ({ 
   await page.screenshot({ path: "artifacts/selected-tier-emphasis-off-1280x720.png", fullPage: true });
   await page.keyboard.press("Space");
   await expect(page.locator("#gold-value")).toHaveText("14");
-  await expect(page.locator("#interest-preview")).toHaveText("이자 +0");
   await expect(page.locator("#seed-value")).toHaveText("E2E-FIXED-01");
   await expect(page.locator("#selected-card .ability-pills--locked")).toBeVisible();
   await expect(page.locator("#selected-card .ability-pills--locked")).toContainText("기본 공격");
@@ -676,7 +744,7 @@ test("starts a KR run and exposes the finished core loop at 1280x720", async ({ 
   await expect(page.getByTestId("auto-arrange-button")).toBeEnabled();
   await page.getByTestId("auto-arrange-button").click();
   await expect(page.locator("#message-value")).toContainText("자동배치");
-  await expect(page.locator("#tower-count-value")).toHaveText("4 / 16");
+  expect(await deployed(page)).toEqual({ placed: 4, capacity: 16 });
   await page.screenshot({ path: "artifacts/auto-arrange-1280x720.png", fullPage: true });
 
   await page.getByTestId("early-wave").click({ force: true }); // 맥동(early-beacon) 이 stable 판정을 막는다
@@ -765,7 +833,7 @@ test("stores manual summons in the run inventory, deploys them, and returns boar
 
   await openShop(page);
   await page.getByTestId("summon-button").click();
-  await expect(page.locator("#tower-count-value")).toHaveText("0 / 16");
+  expect(await deployed(page)).toEqual({ placed: 0, capacity: 16 });
   await expect(page.locator("#run-inventory-count")).toHaveText("1");
   // R14: 인벤 탭 진입 = 보관고 집중 프레임 자동 오픈. 목록은 격자로 프레임
   // 본문에 얹혀 있고, 패널에는 요약 + [보관고 열기] 만 남는다.
@@ -818,19 +886,19 @@ test("stores manual summons in the run inventory, deploys them, and returns boar
     const candidate = await canvasPositionForWorld(page, center.x - 66, center.y - 66);
     await page.locator("#battle-canvas").click({ position: candidate });
     await dismissFormationUnlock(page);
-    if ((await page.locator("#tower-count-value").textContent()) === "1 / 16") {
+    if ((await deployed(page)).placed === 1) {
       deploymentCell = candidate;
       break;
     }
   }
   if (!deploymentCell) throw new Error("first summon did not open a formation");
-  await expect(page.locator("#tower-count-value")).toHaveText("1 / 16");
+  expect(await deployed(page)).toEqual({ placed: 1, capacity: 16 });
   await expect(page.locator("#run-inventory-count")).toHaveText("0");
 
   await page.locator("#battle-canvas").click({ position: deploymentCell });
   await expect(page.getByTestId("store-tower")).toBeVisible();
   await page.getByTestId("store-tower").click();
-  await expect(page.locator("#tower-count-value")).toHaveText("0 / 16");
+  expect(await deployed(page)).toEqual({ placed: 0, capacity: 16 });
   await expect(page.locator("#run-inventory-count")).toHaveText("1");
   await expect(page.locator("#run-inventory-panel")).toBeVisible();
   // [보관] 은 탭 재진입이라 집중 프레임이 자동으로 열리고, 프레임이 열린
@@ -920,7 +988,9 @@ test("shows synthesis branches, highlights board materials, protects locked Jary
   await expect(page.locator("#codex-detail .recipe-guide")).toContainText("조합표");
   await page.getByRole("tab", { name: "사자성어" }).click();
   await expect(page.locator("#codex-summary")).toContainText("성어 104/104");
-  await expect(page.locator("#codex-summary")).toContainText("이번 런 목표 5개");
+  // 성어 발동에는 상한이 없다 — 명단은 지역 성어 전부다. 그래서 도감 요약은
+  // "이번 런 목표 N개"(이제 늘 104) 대신 지금 쫓고 있는 구를 적는다.
+  await expect(page.locator("#codex-summary")).toContainText("추적 중 1구");
   await expect(page.locator("#codex-detail .idiom-strategy")).toContainText("자동 발동");
   await expect(page.locator("#codex-detail .idiom-material-guide")).toContainText("필요 한자와 획득법");
   await page.screenshot({ path: "artifacts/progression-codex-1280x720.png", fullPage: true });
@@ -941,7 +1011,7 @@ test("keeps CN glyphs regional and opens the complete codex", async ({ page }) =
   await page.getByTestId("start-run").click();
   await expect(page.locator("#stage-region")).toHaveText("중국");
   // 트랙 B: 한자 목표 카드는 은퇴했다 — 내부 목표 사다리는 CN 첫 목표(刘)로 남는다.
-  await expect(page.locator("#goal-count-value")).toHaveText("0 / 4");
+  await expect(page.locator("#idiom-tab-count")).toHaveText("0");
   expect(await page.evaluate(() => (window as unknown as { __HANJA_CTX_QA__: { engine: { state: { targetChar: string } } } }).__HANJA_CTX_QA__.engine.state.targetChar)).toBe("刘");
 
   await openCodex(page);
@@ -1037,12 +1107,17 @@ test("automatically seals four correctly placed towers with readable feedback", 
   await expect(page.locator(".battle-stage #idiom-hud, .battle-stage #idiom-result")).toHaveCount(0);
   await openShop(page);
   for (let index = 0; index < 3; index += 1) await page.locator('button[data-summon-product="lineage"]').click();
-  await expect(page.locator("#idiom-count")).toHaveText("0 / 5");
+  await expect(page.locator("#idiom-count")).toHaveText("0구");
   await expect(page.locator("#idiom-glyphs .is-owned")).toHaveCount(3);
   await page.locator('button[data-summon-product="lineage"]').click();
-  await expect(page.locator("#idiom-count")).toHaveText("1 / 5");
+  /*
+   * 분모를 걷었다 — 「N / 5」의 5는 상한이 아니라 이 판 명단의 크기였는데
+   * 사람은 "다섯 구까지"로 읽었다. 성어에는 상한이 없고, 커스텀을 장착하면
+   * 명단이 판마다 길어져 분모는 기준으로도 쓸모가 없다.
+   */
+  await expect(page.locator("#idiom-count")).toHaveText("1구");
   await expect(page.locator("#idiom-name")).not.toHaveText("이심전심");
-  await expect(page.locator("#idiom-tab-count")).toHaveText("1/5");
+  await expect(page.locator("#idiom-tab-count")).toHaveText("1");
   await page.getByRole("tab", { name: /성어/ }).click();
   await expect(page.locator("#idiom-panel")).toBeVisible();
   await expect(page.locator("#idiom-result-name")).toHaveText("이심전심 자동 발동");
@@ -1115,8 +1190,8 @@ test("automatically seals four correctly placed towers with readable feedback", 
   await expect(page.locator("#idiom-seal-status .idiom-seal-row.is-scattered")).toHaveCount(1);
   await expect(page.locator("#idiom-seal-status")).toContainText("발동 이력 · 지금은 흩어짐");
   await expect(page.locator("#idiom-result-name")).toHaveText("이심전심 발동 해제");
-  // 달성 기록은 그대로다 — 카운트는 여전히 1/5 이고 도감도 발동 이력을 지우지 않는다.
-  await expect(page.locator("#idiom-count")).toHaveText("1 / 5");
+  // 달성 기록은 그대로다 — 카운트는 여전히 1구이고 도감도 발동 이력을 지우지 않는다.
+  await expect(page.locator("#idiom-count")).toHaveText("1구");
   await page.screenshot({ path: "artifacts/idiom-hold-broken-1280x720.png", fullPage: true });
 
   await page.locator("#battle-canvas").click({ position: await canvasPositionForWorld(page, ...worldXY(parkCell)) });
@@ -1124,15 +1199,18 @@ test("automatically seals four correctly placed towers with readable feedback", 
   await expect(page.locator("#active-idioms .active-idiom")).toHaveCount(1);
   await expect(page.locator("#idiom-seal-status .idiom-seal-row.is-live")).toHaveCount(1);
   await expect(page.locator("#idiom-result-name")).toHaveText("이심전심 재발동");
-  await expect(page.locator("#idiom-count")).toHaveText("1 / 5");
+  await expect(page.locator("#idiom-count")).toHaveText("1구");
   await page.screenshot({ path: "artifacts/idiom-hold-rejoined-1280x720.png", fullPage: true });
 
   await page.locator("#codex-button").click();
   await page.getByRole("tab", { name: "사자성어" }).click();
   await expect(page.locator("#codex-summary")).toContainText("104/104");
-  await expect(page.locator("#codex-summary")).toContainText("이번 런 목표 5개");
+  // 성어 발동에는 상한이 없다 — 명단은 지역 성어 전부다. 그래서 도감 요약은
+  // "이번 런 목표 N개"(이제 늘 104) 대신 지금 쫓고 있는 구를 적는다.
+  await expect(page.locator("#codex-summary")).toContainText("추적 중 1구");
   await expect(page.locator(".codex-idiom-card")).toHaveCount(104);
-  await expect(page.locator(".codex-idiom-card.is-featured")).toHaveCount(5);
+  // 명단이 지역 성어 전부가 된 뒤로 「이번 런」 표식은 추적 중인 구를 가리킨다.
+  await expect(page.locator(".codex-idiom-card.is-featured")).toHaveCount(1);
   await page.locator("#codex-search").fill("천지현황");
   await expect(page.locator(".codex-idiom-card")).toHaveCount(1);
   await page.locator(".codex-idiom-card").click();
@@ -1227,8 +1305,33 @@ test("scales Jaryeong labels and the selected reading cleanly at 1600x900", asyn
 
 test("opens the rules and exposes synthesis keyboard guidance", async ({ page }) => {
   await page.goto("/");
-  // S00 보조 메뉴는 아이콘+짧은 이름(冊 도감 / ⚙ 설정 / ? 도움말)으로 압축됐다.
-  await expect(page.locator(".s00-utility > button")).toHaveCount(3);
+  // S00 보조 메뉴는 아이콘+짧은 이름으로 압축돼 있다.
+  // (魂 자혼 / 冊 도감 / ⚙ 설정 / ? 도움말 — 집자소가 넷째로 붙었다.)
+  await expect(page.locator(".s00-utility > button")).toHaveCount(4);
+  await expect(page.getByTestId("soul-archive-open")).toBeVisible();
+  /*
+   * 넷은 한 줄에 서야 한다.
+   *
+   * 자혼 단추를 넣을 때 `.s00-utility button { position: relative; }` 한 줄이
+   * `.s00-stage button` 의 절대 위치를 특이도 동점·배럴 순서 우위로 덮어써서,
+   * 메달리온 넷이 통째로 흐름으로 되돌아가 계단처럼 흘러내린 적이 있다.
+   * 좌표를 안 준 단추가 무대 좌상단(0,0)에 붙는 것도 같은 실패의 얼굴이다.
+   * 그래서 개수가 아니라 **자리**를 잰다.
+   */
+  const utilityRow = await page.locator(".s00-utility").evaluate((nav) => {
+    const boxes = [...nav.children].map((child) => child.getBoundingClientRect());
+    return {
+      positions: [...nav.children].map((child) => getComputedStyle(child).position),
+      distinctTops: new Set(boxes.map((box) => Math.round(box.top))).size,
+      minLeft: Math.round(Math.min(...boxes.map((box) => box.left))),
+      gaps: boxes.slice(1).map((box, index) => Math.round(box.left - (boxes[index] as DOMRect).left))
+    };
+  });
+  expect(utilityRow.positions).toEqual(["absolute", "absolute", "absolute", "absolute"]);
+  expect(utilityRow.distinctTops).toBe(1);
+  expect(utilityRow.gaps).toEqual([74, 74, 74]);
+  // 무대 좌상단에 붙어 제호 현판을 덮는 단추가 없어야 한다.
+  expect(utilityRow.minLeft).toBeGreaterThan(600);
   await page.locator("#title-help-button").click();
   await expect(page.getByRole("heading", { name: "봉인술 입문" })).toBeVisible();
 

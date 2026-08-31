@@ -6,7 +6,6 @@ import {
   autoConcentrationPath,
   concentrationEssenceCost,
   concentrationPathLabel,
-  MAX_CONCENTRATION_LEVEL
 } from "../../core/game";
 import { ELEMENT_STYLES, ROLE_LABELS, WUXING_ORDER } from "../../core/hanzi";
 import { type Tower } from "../../core/types";
@@ -57,18 +56,22 @@ export function renderConcentration(): void {
   const rows = allTowers.map((tower) => {
     const level = tower.concentration ?? 0;
     const duplicateCount = ctx.engine.state.inventoryTowers.filter((candidate) => candidate.id !== tower.id && candidate.char === tower.char && !candidate.locked).length;
-    const cost = concentrationEssenceCost(level);
-    const maxed = level >= MAX_CONCENTRATION_LEVEL;
-    const actionable = !maxed && (duplicateCount > 0 || ctx.engine.state.elementEssence[tower.wuxing] >= cost);
-    return { tower, level, duplicateCount, cost, maxed, actionable, rank: maxed ? 2 : actionable ? 0 : 1 };
+    // 화면이 적는 값도 감면을 반영해야 한다 — 목록에 원가를 적고 상세에서
+    // 반값을 적으면 사람이 두 수를 보고 어느 쪽이 참인지 모른다.
+    const holding = ctx.engine.isTowerHoldingIdiom(tower.id);
+    const cost = holding ? Math.max(1, Math.ceil(concentrationEssenceCost(level) / 2)) : concentrationEssenceCost(level);
+    // 농축에는 상한이 없다 — 「완성」이라는 상태 자체가 사라졌다. 남은 구분은
+    // 지금 재료가 되느냐뿐이다.
+    const actionable = duplicateCount > 0 || ctx.engine.state.elementEssence[tower.wuxing] >= cost;
+    return { tower, level, duplicateCount, cost, holding, actionable, rank: actionable ? 0 : 1 };
   }).sort((left, right) => left.rank - right.rank || right.level - left.level || casualStarOf(right.tower) - casualStarOf(left.tower) || right.tower.stage - left.tower.stage || left.tower.id - right.tower.id);
 
   must<HTMLElement>("#concentration-target-summary").textContent = `${rows.filter((row) => row.actionable).length}기 가능 · 총 ${rows.length}기`;
   must<HTMLElement>("#concentration-panel-summary").textContent = `농축 가능 ${rows.filter((row) => row.actionable).length}기 · 총 ${rows.length}기`;
-  must<HTMLElement>("#concentration-target-list").innerHTML = rows.length > 0 ? rows.map(({ tower, level, duplicateCount, cost, maxed, actionable }) => {
-    const stateLabel = maxed ? "최대 단계" : actionable ? "농축 가능" : "재료 부족";
+  must<HTMLElement>("#concentration-target-list").innerHTML = rows.length > 0 ? rows.map(({ tower, level, duplicateCount, cost, holding, actionable }) => {
+    const stateLabel = actionable ? "농축 가능" : "재료 부족";
     return `<button type="button" data-concentration-target="${tower.id}" class="${tower.id === ctx.concentrationTargetId ? "is-selected" : ""} ${actionable ? "is-ready" : ""}" style="--element:${ELEMENT_STYLES[tower.wuxing].color}">
-      ${spiritPortraitMarkup(tower.char, tower.wuxing, "workbench-spirit--target")}<b>${escapeHtml(tower.char)}</b><span><strong>${tower.wuxing}행 · ${towerProgressionLabel(tower)} · 濃 ${level}/3</strong><small>${tower.cell < 0 ? "가방" : `${BOARD_FORMATIONS[Math.floor(tower.cell / CELLS_PER_FORMATION)]?.label ?? "전장"} 배치`} · ${duplicateCount > 0 ? `중복 ${duplicateCount}기` : `문기 ${cost}`}</small></span><em>${stateLabel}</em>
+      ${spiritPortraitMarkup(tower.char, tower.wuxing, "workbench-spirit--target")}<b>${escapeHtml(tower.char)}</b><span><strong>${tower.wuxing}행 · ${towerProgressionLabel(tower)} · 濃 ${level}</strong><small>${tower.cell < 0 ? "가방" : `${BOARD_FORMATIONS[Math.floor(tower.cell / CELLS_PER_FORMATION)]?.label ?? "전장"} 배치`} · ${duplicateCount > 0 ? `중복 ${duplicateCount}기` : `문기 ${cost}${holding ? " (성어 감면)" : ""}`}</small></span><em>${stateLabel}</em>
     </button>`;
   }).join("") : `<div class="workbench-empty"><b>농축할 자령이 없습니다</b><span>상점에서 자령을 먼저 소환하세요.</span></div>`;
 
@@ -91,7 +94,8 @@ export function renderConcentration(): void {
   }
   const currentLevel = target.concentration ?? 0;
   if (!quote) {
-    detail.innerHTML = `<article class="concentration-max-card" style="--element:${ELEMENT_STYLES[target.wuxing].color}"><b>${escapeHtml(target.char)}</b><div><span>${target.wuxing}행 · ${towerProgressionLabel(target)}</span><strong>濃 ${currentLevel}/3 · ${concentrationPathLabel(path)} 완성</strong><small>더 이상 재료를 소모하지 않습니다.</small></div></article>`;
+    // 상한이 없으니 견적이 없다는 것은 방향이 어긋났다는 뜻뿐이다.
+    detail.innerHTML = `<article class="concentration-max-card" style="--element:${ELEMENT_STYLES[target.wuxing].color}"><b>${escapeHtml(target.char)}</b><div><span>${target.wuxing}행 · ${towerProgressionLabel(target)}</span><strong>濃 ${currentLevel} · ${concentrationPathLabel(path)} 고정</strong><small>이 자령의 농축 방향은 이미 정해져 있습니다.</small></div></article>`;
     return;
   }
   const essenceAvailable = ctx.engine.state.elementEssence[target.wuxing] >= quote.essenceCost;

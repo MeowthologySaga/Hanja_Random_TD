@@ -5,11 +5,8 @@ import { CASUAL_POLARIS_AURA, CASUAL_STAR_COLORS, CASUAL_STAR_NAMES, casualStrok
 // [SKILL-V1] 귀천 카드·게이지 스펙. [SKILL-V3] 획수 공명·회향 카드·칩 스펙.
 import { ECHO_ABILITY, GWICHEON_ABILITY, STROKE_RESONANCE_ABILITY, STROKE_RESONANCE_MAX_STACKS } from "../../core/abilities";
 import {
-  autoConcentrationPath,
   concentrationEssenceCost,
   concentrationEssenceRefund,
-  concentrationPathLabel,
-  MAX_CONCENTRATION_LEVEL
 } from "../../core/game";
 import {
   definitionForTower,
@@ -179,8 +176,8 @@ export function renderSelected(): void {
   if (!definition) return;
   const style = ELEMENT_STYLES[tower.wuxing];
   const concentrationDamage = 1 + concentration * (concentrationPath === "potent" ? 0.12 : 0.055);
-  const damage = Math.round(definition.combat.baseDamage * ctx.engine.towerPowerMultiplier(tower) * definition.combat.budgetMultiplier * (1 + ctx.engine.idiomBonus("damage")) * (1 + ctx.engine.combinedUpgradeBonus(tower.wuxing, "damage")) * concentrationDamage * ctx.engine.casualPolarisDamageMultiplier(tower.wuxing));
-  const range = definition.combat.range + ctx.engine.towerRangeBonus(tower) + ctx.engine.idiomBonus("range") + concentration * 4 + ctx.engine.combinedUpgradeBonus(tower.wuxing, "range");
+  const damage = Math.round(definition.combat.baseDamage * ctx.engine.towerPowerMultiplier(tower) * definition.combat.budgetMultiplier * (1 + ctx.engine.totalIdiomBonus("damage")) * (1 + ctx.engine.combinedUpgradeBonus(tower.wuxing, "damage")) * concentrationDamage * ctx.engine.casualPolarisDamageMultiplier(tower.wuxing));
+  const range = definition.combat.range + ctx.engine.towerRangeBonus(tower) + ctx.engine.totalIdiomBonus("range") + concentration * 4 + ctx.engine.combinedUpgradeBonus(tower.wuxing, "range");
   const attacksPerSecond = 1 / ctx.engine.towerAttackCooldown(tower);
   const learning = learningInfoForNotation(ctx.engine.state.notation, tower.char);
   const abilities = definition.combat.abilities;
@@ -202,9 +199,10 @@ export function renderSelected(): void {
   const charge = chargeStep / abilities.tuning.signatureEvery;
   const remaining = abilities.tuning.signatureEvery - chargeStep;
   const nextEssenceCost = concentrationEssenceCost(concentration);
-  const concentrationStatus = concentration >= MAX_CONCENTRATION_LEVEL
-    ? `濃 3/3 완성 · ${concentrationPathLabel(concentrationPath ?? autoConcentrationPath(tower))}`
-    : duplicateCount > 0 ? `중복 ${duplicateCount}기 사용 가능` : `${tower.wuxing} 문기 ${ctx.engine.state.elementEssence[tower.wuxing]}/${nextEssenceCost}`;
+  // 농축에는 상한이 없다 — 「완성」 상태가 사라졌으니 늘 다음 값을 적는다.
+  const concentrationStatus = duplicateCount > 0
+    ? `중복 ${duplicateCount}기 사용 가능`
+    : `${tower.wuxing} 문기 ${ctx.engine.state.elementEssence[tower.wuxing]}/${nextEssenceCost}`;
   // [J-2] 보호 판정은 분해 경로와 같은 옵션(유일 자령 보호 토글)으로 읽어야
   // 한 화면 안에서 "여기선 보호, 저기선 분해 가능" 같은 어긋남이 안 생긴다.
   const cleanup = ctx.engine.cleanupAssessments(dismantleOptions()).find((assessment) => assessment.towerId === tower.id);
@@ -264,7 +262,7 @@ export function renderSelected(): void {
       <button id="dismantle-button" type="button" data-testid="dismantle-tower" class="${dismantleBlocked ? "is-blocked" : ""}" title="${escapeHtml(dismantleBlocked ? dismantleBlockNote(cleanup?.protectedReasons ?? []) : `${tower.char}를 분해해 ${essenceAmountLabel(tower.wuxing, dismantleEssence)} 회수 — 확인 한 번 뒤 즉시 분해, 되돌릴 수 없습니다`)}" ${dismantleBlocked ? "disabled" : ""}>${dismantleBlocked
         ? `분해 불가<small class="action-price">${escapeHtml(dismantleUnlockable(cleanup?.protectedReasons ?? []) ? "제련소에서 보호 끄기 ›" : `${protectionShortLabel(cleanup?.protectedReasons ?? [])} 보호`)}</small>`
         : `분해<small class="action-price">${essenceAmountChip(tower.wuxing, dismantleEssence)}</small>`}</button>
-      <button id="open-concentration-button" type="button" title="농축 공방 탭으로 이동" ${concentration >= MAX_CONCENTRATION_LEVEL ? "disabled" : ""}>농축 ›</button>
+      <button id="open-concentration-button" type="button" title="농축 공방 탭으로 이동">농축 ›</button>
       <button id="sell-button" type="button" title="${escapeHtml(`${goldAmountLabel(sellGold)}${sellEssence > 0 ? ` · ${essenceAmountLabel(tower.wuxing, sellEssence)}` : ""}을 받고 즉시 제거 — 되돌릴 수 없음`)}" ${tower.locked ? "disabled" : ""}>판매<small class="action-price">${goldAmountLabel(sellGold, true)}${sellEssence > 0 ? ` · ${essenceAmountChip(tower.wuxing, sellEssence)}` : ""}</small></button>
     </div>
     <button type="button" class="selected-ability-summary" data-ability-guide><b>${activeSkills ? `技 기술 ${abilityLoadout.length}개 · 모두 자동 판정` : "技 기술 해금 전"}</b><span>${activeSkills ? `주기 ${periodicAbilities.length} · 공격 연동 1 · 조건 적용 1` : "현재 기본 공격 · 2단 합성 필요"}</span><em>설명 ›</em></button>
