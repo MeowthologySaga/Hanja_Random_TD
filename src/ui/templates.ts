@@ -312,6 +312,17 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
               </span>
               <mark id="idiom-result-bonus">자동 판정</mark>
             </div>
+            <!--
+              내가 새긴 성어는 지역 명단에 없다 — 그래서 이 패널 어디에도
+              안 보였다. 갈피를 따로 세워, 장착한 구가 지금 어떤 상태인지
+              (발동 중인지, 몇 자를 모았는지) 한자리에서 읽히게 한다.
+            -->
+            <section id="idiom-custom" class="idiom-custom" aria-label="내가 새긴 성어">
+              <div class="idiom-custom-heading">
+                <span>집자소 · 내가 새긴 성어</span><b id="idiom-custom-count"></b>
+              </div>
+              <div id="idiom-custom-list" class="idiom-custom-list"></div>
+            </section>
             <section class="idiom-rule-guide" aria-label="성어 발동 규칙">
               <div class="idiom-rule-figures" aria-hidden="true">
                 <figure class="idiom-rule-figure idiom-rule-figure--row">

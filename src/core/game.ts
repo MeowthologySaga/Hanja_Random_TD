@@ -2292,6 +2292,20 @@ export class GameEngine {
     return chars;
   }
 
+  /**
+   * 이 성어를 이 지역에서 세울 수 있는가.
+   *
+   * 자혼 서재는 판과 **지역을 넘어** 남는다. 중국 지역에서 새긴 구를 장착한 채
+   * 한국 판을 열면, 그 구의 글자가 이 지역 명단에 아예 없을 수 있다. 그런
+   * 구는 모아서 세울 길이 없으므로 화면이 그렇다고 말해 줘야 한다.
+   */
+  idiomStandable(id: string): boolean {
+    const idiom = this.lookupIdiom(id);
+    if (!idiom) return false;
+    for (const char of idiom.chars) if (!this.catalog.definitions.has(char)) return false;
+    return true;
+  }
+
   idiomProgress(id: string): { owned: number; total: number; readiness: number; missingChars: string[] } {
     const idiom = this.lookupIdiom(id);
     if (!idiom) return { owned: 0, total: 4, readiness: 0, missingChars: [] };
@@ -2310,6 +2324,15 @@ export class GameEngine {
         readiness += 1;
       } else {
         missingChars.push(char);
+        /*
+         * 이 지역 명단에 없는 글자는 진척을 물을 데가 없다.
+         *
+         * 자혼 서재는 지역을 넘어 남으므로, 중국 지역에서 새긴 구를 한국 판에
+         * 들고 오면 여기서 「Unknown goal character」로 터졌다 — 성어 패널과
+         * 목표 서책이 통째로 안 그려졌다. 없는 글자는 진척 0 으로 두고 부족
+         * 글자에만 남긴다(세울 수 있는지는 idiomStandable 이 따로 말한다).
+         */
+        if (!this.catalog.definitions.has(char)) continue;
         readiness += this.evolution.getGoalProgress([...this.state.towers, ...this.state.inventoryTowers], char).progress;
       }
     }

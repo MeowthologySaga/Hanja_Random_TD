@@ -164,3 +164,45 @@ describe("성어 발동에는 상한이 없다", () => {
     }
   });
 });
+
+/*
+ * 지역을 넘어온 구.
+ *
+ * 자혼 서재는 판과 **지역을 넘어** 남는다. 중국 지역에서 새긴 구를 장착한 채
+ * 한국 판을 열면 그 구의 글자가 이 지역 명단에 아예 없을 수 있는데, 그때
+ * `idiomProgress` 가 「Unknown goal character」로 던져 성어 패널과 목표 서책이
+ * 통째로 안 그려졌다. 실제로 화면이 빈 채로 남았던 사고다.
+ */
+describe("이 지역 명단 밖 글자로 새긴 구", () => {
+  /** 龍虎風雲 — 虎 는 한국 천자문 명단에 없다. */
+  const foreign = customIdiom("foreign", "damage", 0.1, "龍虎風雲");
+
+  it("진척을 물어도 던지지 않는다", () => {
+    const engine = engineWith(foreign);
+    expect(() => engine.idiomProgress("foreign")).not.toThrow();
+  });
+
+  it("없는 글자는 진척 0 으로 두고 부족 글자에 남긴다", () => {
+    const engine = engineWith(foreign);
+    const progress = engine.idiomProgress("foreign");
+    expect(progress.owned).toBe(0);
+    expect(progress.total).toBe(4);
+    expect(progress.readiness).toBe(0);
+    expect(progress.missingChars).toContain("虎");
+  });
+
+  it("세울 수 없다고 답한다", () => {
+    const engine = engineWith(foreign);
+    expect(engine.idiomStandable("foreign")).toBe(false);
+  });
+
+  it("명단 안 글자로 새긴 구는 세울 수 있다", () => {
+    const engine = engineWith(customIdiom("home", "damage", 0.1, "天地玄黃"));
+    expect(engine.idiomStandable("home")).toBe(true);
+    expect(engine.idiomProgress("home").total).toBe(4);
+  });
+
+  it("없는 성어는 세울 수 없다고 답한다", () => {
+    expect(engineWith().idiomStandable("없는-구")).toBe(false);
+  });
+});
