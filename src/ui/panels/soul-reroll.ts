@@ -28,7 +28,8 @@ import type { CustomIdiom } from "../../core/custom-idioms";
 import { ctx, must } from "../app-context";
 import { rasterizeImageAlpha, scoreTalismanDrawing, TALISMAN_THRESHOLDS, type TalismanCellGrid } from "./talisman-score";
 import { StrokeGuide } from "./stroke-guide";
-import { paperBoxFor } from "../../core/stroke-order";
+import { InkBoard, paintInk } from "./ink-strokes";
+import { paperBoxFor, strokeGlyphFor } from "../../core/stroke-order";
 
 /** 종이 크기 — 부적 패널과 같은 비례로 두어 손 감각이 이어진다. */
 const PAPER_WIDTH = 196;
@@ -69,6 +70,15 @@ const GLYPH_BOX = paperBoxFor(161, GLYPH_CENTER_X, GLYPH_CENTER_Y);
 
 /** 이어 그리기용 직전 점. 없으면 빠르게 끌 때 먹선이 점선으로 끊긴다. */
 let lastPoint = { x: 0, y: 0 };
+
+/** 먹을 획 목록으로 — 되돌리기와 자동 정리가 같은 구조에서 나온다(ink-strokes.ts). */
+const board = new InkBoard();
+
+/** 판정에 떨어진 붓질을 붉게 비추는 중인가. */
+let warnTimer = 0;
+
+const WARN_INK_STYLE = "rgba(159, 47, 35, 0.8)";
+const WARN_HOLD_MS = 620;
 let maskGrid: TalismanCellGrid | null = null;
 let drawing = false;
 let bound = false;
@@ -110,7 +120,10 @@ function prepareMask(char: string): void {
 }
 
 function clearInk(): void {
+  cancelWarn();
+  board.clear();
   inkContext?.clearRect(0, 0, PAPER_WIDTH, PAPER_HEIGHT);
+  syncUndoButton();
   // 먹을 지웠으면 안내도 첫 획으로 — 남아 있으면 종이와 안내가 어긋난다.
   if (strokeGuide.available) {
     strokeGuide.reset();
@@ -134,9 +147,24 @@ function advanceStrokeGuide(): void {
   paintGuide(currentChar());
   if (!result) return;
   if (!result.advanced) {
+    // 떨어진 붓질은 붉게 비췄다가 스스로 걷는다(부적 판과 같은 처방).
+    repaintInk(true);
+    cancelWarn();
+    warnTimer = window.setTimeout(() => {
+      warnTimer = 0;
+      dropWarnedStroke();
+      if (strokeGuide.available && !strokeGuide.finished) {
+        setStatus(`${strokeGuide.current + 1}번째 획 · 모두 ${strokeGuide.total}획 — 붉은 점선을 따라 그으세요`);
+      }
+    }, WARN_HOLD_MS);
     setStatus(`${strokeGuide.current + 1}번째 획을 붉은 점선을 따라 끝까지 그으세요`);
     return;
   }
+  // 제대로 그은 획은 정본 획으로 갈아 끼운다 — 종이가 깨끗하게 쌓인다.
+  board.replaceLastWithGlyph(strokeGuide.current - 1);
+  repaintInk();
+  syncUndoButton();
+  refreshScore();
   if (result.done) {
     setStatus(`${strokeGuide.total}획을 모두 그었습니다 — [이 글자 완성]`);
     return;
@@ -181,19 +209,48 @@ function canvasPoint(canvas: HTMLCanvasElement, event: PointerEvent): { x: numbe
   };
 }
 
-function strokeSegment(from: { x: number; y: number }, to: { x: number; y: number }): void {
+
+function repaintInk(warnLast = false): void {
   if (!inkContext) return;
-  inkContext.save();
-  inkContext.strokeStyle = INK_STYLE;
-  inkContext.lineWidth = BRUSH_WIDTH;
-  inkContext.lineCap = "round";
-  inkContext.lineJoin = "round";
-  inkContext.beginPath();
-  inkContext.moveTo(from.x, from.y);
-  // 제자리 클릭도 점 하나로 남게 미세 오프셋을 준다(부적 패널과 같은 처방).
-  inkContext.lineTo(to.x + 0.01, to.y + 0.01);
-  inkContext.stroke();
-  inkContext.restore();
+  paintInk(inkContext, board, PAPER_WIDTH, PAPER_HEIGHT, {
+    brush: BRUSH_WIDTH,
+    style: INK_STYLE,
+    warnStyle: WARN_INK_STYLE,
+    warnLast,
+    drawGlyphStroke: (context, index, style) => strokeGuide.paintStroke(context, index, style)
+  });
+}
+
+function cancelWarn(): void {
+  if (warnTimer === 0) return;
+  window.clearTimeout(warnTimer);
+  warnTimer = 0;
+}
+
+function syncUndoButton(): void {
+  const undo = document.querySelector<HTMLButtonElement>("#soul-reroll-undo");
+  if (undo) undo.disabled = board.count === 0;
+}
+
+/** 마지막 획을 무른다 — 안내 모드에서는 안내도 한 획 뒤로 물린다. */
+function undoStroke(): void {
+  if (board.count === 0) return;
+  cancelWarn();
+  const removed = board.undo();
+  if (removed?.kind === "glyph" && strokeGuide.available) strokeGuide.stepBack();
+  repaintInk();
+  syncUndoButton();
+  paintGuide(currentChar());
+  refreshScore();
+}
+
+/** 비추던 실패 붓질을 걷는다. */
+function dropWarnedStroke(): void {
+  cancelWarn();
+  board.undo();
+  repaintInk();
+  syncUndoButton();
+  refreshScore();
 }
 
 /**
@@ -245,6 +302,16 @@ function renderChoices(): void {
   );
   must<HTMLElement>("#soul-reroll-progress").textContent =
     `${session.written.filter(Boolean).length} / ${session.written.length}자`;
+}
+
+/** 부적 판과 같은 처방 — 설정이 바뀌면 지금 쓰던 글자를 다시 편다. */
+export function refreshSoulStrokeGuide(force: boolean): void {
+  if (!session) return;
+  const char = currentChar();
+  const wanted = ctx.strokeOrderGuide && strokeGlyphFor(char) !== null;
+  if (wanted === strokeGuide.available) return;
+  if (!force && !board.isEmpty) return;
+  useIndex(session.index);
 }
 
 function useIndex(index: number): void {
@@ -343,25 +410,27 @@ export function bindSoulReroll(hooks: SoulRerollHooks): void {
       /* 무시 */
     }
     lastPoint = canvasPoint(ink, event);
+    if (warnTimer !== 0) dropWarnedStroke();
+    board.begin(lastPoint);
     strokeGuide.penDown(lastPoint);
-    strokeSegment(lastPoint, lastPoint);
+    repaintInk();
     refreshScore();
   });
   ink.addEventListener("pointermove", (event) => {
     if (!drawing) return;
     const point = canvasPoint(ink, event);
+    board.extend(point);
     strokeGuide.penMove(point);
-    /*
-     * 직전 점에서 이어 긋는다. 여기서 점 하나만 찍으면(예전 코드) 빠르게 끄는
-     * 붓이 점선으로 끊겨, 성실히 쓴 글자가 덮음 미달로 퇴짜를 맞는다.
-     */
-    strokeSegment(lastPoint, point);
+    // 목록에서 통째로 다시 칠한다 — 부적 판과 같은 처방(래스터를 하나로).
+    repaintInk();
     lastPoint = point;
   });
   for (const type of ["pointerup", "pointercancel", "pointerleave"] as const) {
     ink.addEventListener(type, () => {
       if (!drawing) return;
       drawing = false;
+      board.commit();
+      syncUndoButton();
       refreshScore();
       // 안내가 마지막에 말한다 — 먼저 부르면 채점 문구가 덮어쓴다.
       advanceStrokeGuide();
@@ -376,6 +445,7 @@ export function bindSoulReroll(hooks: SoulRerollHooks): void {
     if (session?.written[index] === true) return;
     useIndex(index);
   });
+  must<HTMLButtonElement>("#soul-reroll-undo").addEventListener("click", undoStroke);
   must<HTMLButtonElement>("#soul-reroll-clear").addEventListener("click", clearInk);
   must<HTMLButtonElement>("#soul-reroll-submit").addEventListener("click", submit);
   must<HTMLButtonElement>("#soul-reroll-roll").addEventListener("click", roll);

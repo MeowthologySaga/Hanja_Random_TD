@@ -83,8 +83,14 @@ export interface StrokeMatchOptions {
   /**
    * 중앙선에서 이만큼(px) 벗어나도 그 획으로 친다.
    *
-   * 손가락·마우스로 8~10px 붓을 끄는 일이라 넉넉해야 한다. 좁히면 성실히
-   * 그은 획이 자꾸 퇴짜를 맞아, 가르치려던 획순이 오히려 방해가 된다.
+   * 처음에 34px 로 잡았다가 16px 로 좁혔다. 34px 은 **이웃 획까지 품어서**,
+   * 순서를 어겨 다른 획을 그어도 통과했다 — 4,306자 전수로 재 보니 「지금 그을
+   * 획」 자리의 **75.3%** 에서 다른 획이 통과했고, 그런 자리가 하나라도 있는
+   * 글자가 94.7% 였다. 획순을 가르치겠다는 기능이 순서를 안 보고 있었다.
+   *
+   * 좁혀도 성실한 붓질은 잃지 않는다. 옆으로 9px 쏠리고 점마다 4px 흔들리며
+   * 앞뒤로 8% 씩 모자란 붓질까지 16px 에서 100% 통과한다(같은 실측). 12px 은
+   * 더 깨끗하지만(0.6%) 크게 흔들리는 손을 47.6% 로 떨어뜨려 여기서 멈췄다.
    */
   readonly tolerance?: number;
   /** 중앙선 길이 가운데 이만큼은 지나야 한 획을 그었다고 본다. */
@@ -101,7 +107,7 @@ export interface StrokeMatch {
   readonly pass: boolean;
 }
 
-const DEFAULTS = { tolerance: 34, minCoverage: 0.62 } as const;
+const DEFAULTS = { tolerance: 16, minCoverage: 0.62 } as const;
 
 function distanceToSegment(
   px: number,

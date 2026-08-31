@@ -6,6 +6,8 @@ import { type DisplayMode, saveDisplayMode } from "../display-mode";
 import { saveAutoPlaceSummons } from "../summon-placement";
 import { CALM_SCREEN_STORAGE_KEY, ctx, HOVER_GLYPH_STORAGE_KEY, must, reducedMotion, settingsDialog, shell, sound, STROKE_ORDER_STORAGE_KEY } from "../app-context";
 import { loadStrokeGlyphs } from "../../core/stroke-order";
+import { refreshStrokeGuideSheet } from "../panels/talisman";
+import { refreshSoulStrokeGuide } from "../panels/soul-reroll";
 import { startCoach } from "../coach";
 import { handleAction, showToast } from "../hud";
 import { openStandardModeNotice } from "./s13";
@@ -67,6 +69,18 @@ function syncStrokeOrderControl(): void {
   must<HTMLElement>("#stroke-order-toggle i em").textContent = ctx.strokeOrderGuide ? "ON" : "OFF";
 }
 
+/**
+ * 펴 둔 따라 쓰기 판 둘에 지금 설정을 얹는다.
+ *
+ * 판이 안 열려 있으면 두 함수 모두 조용히 돌아간다 — 여기서 열려 있는지 묻지
+ * 않는 이유는, 그 판단이 각 판의 몫이기 때문이다(무엇이 「지금 글자」인지는
+ * 그쪽만 안다).
+ */
+function applyStrokeGuideToOpenSheets(force: boolean): void {
+  refreshStrokeGuideSheet(force);
+  refreshSoulStrokeGuide(force);
+}
+
 export function setStrokeOrderGuide(enabled: boolean): void {
   ctx.strokeOrderGuide = enabled;
   try {
@@ -75,11 +89,15 @@ export function setStrokeOrderGuide(enabled: boolean): void {
     // 사생활 보호 모드 등에서 저장이 막혀도 이번 세션 선택은 살린다.
   }
   syncStrokeOrderControl();
+  // 지금 펴 둔 종이에 곧바로 반영한다 — 켰는데 안 바뀌면 껐는지 켰는지 모른다.
+  applyStrokeGuideToOpenSheets(true);
   if (!enabled) {
     showToast("획순 안내 OFF · 글자 한 장을 통째로 보여 줍니다");
     return;
   }
   void loadStrokeGlyphs().then((glyphs) => {
+    // 자료가 늦게 와도 지금 종이에 세운다. 이미 쓰기 시작했으면 건드리지 않는다.
+    applyStrokeGuideToOpenSheets(false);
     showToast(glyphs
       ? "획순 안내 ON · 따라 쓰기 판에서 획을 하나씩 짚어 줍니다"
       : "획순 자료를 받지 못했습니다 — 글자 한 장을 통째로 보여 줍니다", glyphs === null);
@@ -169,7 +187,7 @@ export function wireSettings1(): void {
   // FB6: 저장된 선택(또는 OS 동작 줄이기)이 첫 그림부터 게이트에 실리게 한다.
   applyCalmScreen();
   // 켜 둔 채로 새로 연 판에서도 첫 부적지부터 안내가 서게 미리 받아 둔다.
-  if (ctx.strokeOrderGuide) void loadStrokeGlyphs();
+  if (ctx.strokeOrderGuide) void loadStrokeGlyphs().then(() => applyStrokeGuideToOpenSheets(false));
 }
 
 /** main.ts 가 원래 순서대로 부르는 배선 묶음. */

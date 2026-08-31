@@ -65,17 +65,26 @@
   100% { opacity: 1; }
 }
 
+/*
+ * 단추 넷을 한 줄에 — [되돌리기][지우기][다시 뽑기][부적 완성].
+ *
+ * 되돌리기가 붙으며 셋이 넷이 됐다. 그냥 늘렸더니 줄이 접혀 패널 세로 예산을
+ * 26px 넘겼다(기존 스펙이 잡았다). 무르기·지우기는 짧은 말이라 좁혀도 읽히므로
+ * 그 둘을 줄이고, 주행동인 [부적 완성]의 몫은 지킨다.
+ */
 .talisman-actions {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.35fr);
-  gap: 5px;
+  grid-template-columns: minmax(0, 0.86fr) minmax(0, 0.74fr) minmax(0, 0.96fr) minmax(0, 1.3fr);
+  gap: 4px;
 }
 
 .talisman-actions > .small-button {
   min-width: 0;
   height: 24px;
   min-height: 0;
-  padding: 0 4px;
+  padding: 0 2px;
+  font-size: 11px;
+  letter-spacing: -0.02em;
   line-height: 1;
 }
 

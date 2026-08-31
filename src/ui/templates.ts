@@ -1171,9 +1171,10 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
             <canvas id="soul-reroll-guide" width="196" height="232" aria-hidden="true"></canvas>
             <canvas id="soul-reroll-ink" width="196" height="232" aria-label="다시 굴리기 따라쓰기 화선지"></canvas>
           </div>
-          <p id="soul-reroll-status" class="soul-note"></p>
+          <p id="soul-reroll-status" class="soul-note" role="status" aria-live="polite"></p>
           <div class="soul-reroll-actions">
             <button id="soul-reroll-cancel" type="button" data-testid="soul-reroll-cancel">그만두기</button>
+            <button id="soul-reroll-undo" type="button" data-testid="soul-reroll-undo" disabled>되돌리기</button>
             <button id="soul-reroll-clear" type="button" data-testid="soul-reroll-clear">지우기</button>
             <button id="soul-reroll-submit" class="soul-forge-button" type="button" data-testid="soul-reroll-submit" disabled>이 글자 완성</button>
             <!-- 넷을 다 써야 나온다. 쓰는 동안 함께 보이면 "지금 눌러도 되나"를 매번 판단하게 된다. -->

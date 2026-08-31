@@ -82,6 +82,12 @@ export class StrokeGuide {
     return this.paths[this.index] ?? [];
   }
 
+  /** 한 획 뒤로 물린다 — [되돌리기] 와 짝이다. */
+  stepBack(): void {
+    if (this.index > 0) this.index -= 1;
+    this.pen = [];
+  }
+
   /** 처음 획으로 되감는다 — [지우기] 와 짝이다. */
   reset(): void {
     this.index = 0;
@@ -126,7 +132,33 @@ export class StrokeGuide {
     context.save();
     applyGlyphTransform(context, this.box);
     context.fillStyle = style;
-    for (const outline of this.glyph.outlines) context.fill(new Path2D(outline));
+    /*
+     * 획을 하나씩 칠하지 않고 **한 번에** 칠한다.
+     *
+     * 반투명(0.2)으로 하나씩 칠하면 교차부에서 알파가 겹쳐 쌓여, 획이 만나는
+     * 자리가 최대 2.4배 진해진다(실측: 天 최대 123 대 51). 글자가 얼룩덜룩해
+     * 보이는 원인이었다. 경로를 합쳐 한 번 칠하면 농도가 고르다.
+     */
+    const path = new Path2D();
+    for (const outline of this.glyph.outlines) path.addPath(new Path2D(outline));
+    context.fill(path);
+    context.restore();
+    return true;
+  }
+
+  /**
+   * 정본 자형의 한 획만 칠한다 — 안내 모드의 「자동 정리」가 쓴다.
+   *
+   * 사람이 그은 삐뚤한 붓질을 이 모양으로 갈아 끼우면, 종이가 붓글씨처럼
+   * 쌓이고 지저분해지지 않는다.
+   */
+  paintStroke(context: CanvasRenderingContext2D, index: number, style: string): boolean {
+    const outline = this.glyph?.outlines[index];
+    if (!outline || !this.box) return false;
+    context.save();
+    applyGlyphTransform(context, this.box);
+    context.fillStyle = style;
+    context.fill(new Path2D(outline));
     context.restore();
     return true;
   }
