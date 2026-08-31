@@ -2,19 +2,26 @@
  * 획순 안내 — 따라 쓰기 판 위에 한 획씩 짚어 준다.
  *
  * **선택 항목**이다. 꺼져 있으면 이 파일의 코드는 한 줄도 화면에 닿지 않고,
- * 판은 여태 그대로 반투명 글자 한 장을 통째로 보여 준다. 켠 사람만 획을
+ * 판은 여태 그대로 바탕체 글자 한 장을 통째로 보여 준다. 켠 사람만 획을
  * 순서대로 안내받는다("원하는사람만 하게 할거야" — 사용자).
  *
- * 자료가 없는 글자(명단의 5.6%)도 조용히 예전 방식으로 돌아간다. 안내가 못
+ * 켠 사람의 판에서는 **빈 한자까지 획순 자료로 그린다.** 바탕체 위에 얹으면
+ * 자형이 달라 안내선이 뜬다(실측 평균 2.55px, 400자 중 44자는 4px 초과).
+ * 같은 자료에서 글자와 안내선을 함께 뽑으면 그 어긋남이 원리상 0 이다. 대신
+ * 글자 모양이 바탕체에서 해서체로 바뀌므로 **채점 마스크도 같은 글자**로
+ * 만들어야 한다 — 보고 그린 것과 채점하는 것이 다르면 성실히 쓴 사람이
+ * 퇴짜를 맞는다.
+ *
+ * 자료가 없는 글자(명단의 5.6%)는 조용히 예전 방식으로 돌아간다. 안내가 못
  * 서는 것과 판이 망가지는 것은 다른 일이다.
  */
 import {
-  inkBounds,
+  applyGlyphTransform,
   matchStroke,
-  medianBounds,
   medianToPaper,
-  strokeMediansFor,
-  type StrokeMedian
+  strokeGlyphFor,
+  type PaperBox,
+  type StrokeGlyph
 } from "../../core/stroke-order";
 
 export interface StrokeGuideResult {
@@ -33,17 +40,18 @@ const START_STYLE = "rgba(159, 47, 35, 1)";
 /**
  * 한 글자의 획순 상태.
  *
- * 「지금 몇 번째 획인가」와 「이번 붓질의 점들」만 들고 있다. 채점(부적 완성
- * 판정)은 건드리지 않는다 — 안내는 안내고, 통과는 여태 쓰던 마스크 채점이
+ * 「지금 몇 번째 획인가」와 「이번 붓질의 점들」만 들고 있다. 통과 판정(부적
+ * 완성)은 건드리지 않는다 — 안내는 안내고, 통과는 여태 쓰던 마스크 채점이
  * 그대로 정한다.
  */
 export class StrokeGuide {
-  private medians: readonly StrokeMedian[] = [];
+  private glyph: StrokeGlyph | null = null;
+  private box: PaperBox | null = null;
   private paths: { x: number; y: number }[][] = [];
   private index = 0;
   private pen: { x: number; y: number }[] = [];
 
-  /** 이 글자에 획순 자료가 있는가. */
+  /** 이 글자에 획순 자료가 있는가 — 있으면 글자도 이 자료로 그린다. */
   get available(): boolean {
     return this.paths.length > 0;
   }
@@ -60,28 +68,13 @@ export class StrokeGuide {
     return this.paths.length > 0 && this.index >= this.paths.length;
   }
 
-  /**
-   * 글자를 갈아 끼운다. 자료가 없으면 `available` 이 false 로 남는다.
-   *
-   * 안내선은 **화면에 그려진 먹의 범위**에 맞춰 앉힌다. 자형 상자를 통째로
-   * 비례만 맞추면 안 된다 — 우리 화면은 바탕체로 그리는데 획순 자료는 다른
-   * 글꼴에서 왔고, 같은 邑 이라도 아래 巴 가 더 넓게 벌어지는 식으로 자형이
-   * 다르다. 그대로 얹었더니 안내선이 먹에서 20px 씩 떠 있었다(실측).
-   *
-   * `mask` 는 그 글자를 검게 그려 둔 RGBA 다 — 부적 판이 채점용으로 이미
-   * 만들어 두는 것을 그대로 쓴다.
-   */
-  begin(char: string, mask: ArrayLike<number> | null, width: number, height: number): void {
-    this.medians = char ? strokeMediansFor(char) ?? [] : [];
+  /** 글자를 갈아 끼운다. 자료가 없으면 `available` 이 false 로 남는다. */
+  begin(char: string, box: PaperBox): void {
+    this.glyph = char ? strokeGlyphFor(char) : null;
+    this.box = box;
+    this.paths = this.glyph ? this.glyph.medians.map((median) => medianToPaper(median, box)) : [];
     this.index = 0;
     this.pen = [];
-    const source = medianBounds(this.medians);
-    const target = mask ? inkBounds(mask, width, height) : null;
-    if (!source || !target) {
-      this.paths = [];
-      return;
-    }
-    this.paths = this.medians.map((median) => medianToPaper(median, target, source));
   }
 
   /** 지금 그을 획의 화면 좌표. 없으면 빈 배열. */
@@ -122,10 +115,26 @@ export class StrokeGuide {
   }
 
   /**
+   * 빈 한자를 획순 자료의 글꼴로 그린다.
+   *
+   * 자료가 없으면 false 를 돌려주고 아무것도 그리지 않는다 — 부르는 쪽이
+   * 예전대로 바탕체로 그리면 된다. 채점 마스크도 이 함수로 그려야 화면과
+   * 채점이 같은 글자를 본다.
+   */
+  paintGlyph(context: CanvasRenderingContext2D, style: string): boolean {
+    if (!this.glyph || !this.box) return false;
+    context.save();
+    applyGlyphTransform(context, this.box);
+    context.fillStyle = style;
+    for (const outline of this.glyph.outlines) context.fill(new Path2D(outline));
+    context.restore();
+    return true;
+  }
+
+  /**
    * 안내 캔버스에 덧그린다 — 이미 그은 획은 가라앉히고, 이번 획만 세운다.
    *
-   * 반투명 글자 한 장 위에 「지금 여기」를 얹는 것이라, 글자 자체는 부르는
-   * 쪽이 먼저 그려 둔다. 순서를 바꾸면 안내가 글자 밑에 깔린다.
+   * 글자는 부르는 쪽이 먼저 그려 둔다. 순서를 바꾸면 안내가 글자 밑에 깔린다.
    */
   paint(context: CanvasRenderingContext2D): void {
     if (this.paths.length === 0) return;
@@ -198,4 +207,3 @@ function drawArrow(
   context.closePath();
   context.fill();
 }
-

@@ -4,19 +4,25 @@
  * 이 판정이 헐거우면 아무렇게나 칠해도 넘어가 가르치는 값이 사라지고,
  * 빡빡하면 성실히 그은 획이 자꾸 퇴짜를 맞아 방해만 된다. 그 두 실패를
  * 각각 못 박아 둔다.
+ *
+ * 좌표 쪽에서 지키는 것은 하나다 — **글자와 안내선이 같은 자리에 떨어지는가.**
+ * 빈 한자는 캔버스 변환(applyGlyphTransform)으로 그리고 안내선은 점 단위
+ * 변환(medianPointToPaper)으로 그리는데, 둘이 어긋나면 이 기능의 존재 이유가
+ * 통째로 사라진다.
  */
 import { describe, expect, it } from "vitest";
 import {
+  applyGlyphTransform,
   distanceToPolyline,
-  inkBounds,
+  expandMedian,
   matchStroke,
-  medianBounds,
   medianPointToPaper,
   medianToPaper,
+  paperBoxFor,
   MEDIAN_VIEWBOX
 } from "../src/core/stroke-order";
 
-const BOX = { x: 0, y: 0, width: 200, height: 200 } as const;
+const BOX = { x: 0, y: 0, size: 200 } as const;
 
 describe("좌표 옮기기", () => {
   it("세로를 뒤집는다 — 원본은 위가 크고 화면은 아래가 크다", () => {
@@ -28,7 +34,7 @@ describe("좌표 옮기기", () => {
   });
 
   it("상자를 옮기면 그만큼 따라간다", () => {
-    const moved = medianPointToPaper([0, MEDIAN_VIEWBOX.top], { x: 30, y: 40, width: 200, height: 200 });
+    const moved = medianPointToPaper([0, MEDIAN_VIEWBOX.top], { x: 30, y: 40, size: 200 });
     expect(moved.x).toBeCloseTo(30, 5);
     expect(moved.y).toBeCloseTo(40, 5);
   });
@@ -41,41 +47,62 @@ describe("좌표 옮기기", () => {
     expect(paper[1]!.y).toBeCloseTo(200, 5);
   });
 
-  /*
-   * 글꼴이 달라 자형이 어긋나는 것을 잡는 대목이다. 원본 쪽 네모를 「획이
-   * 실제로 차지한 범위」로 좁혀 화면의 먹 범위에 맞추면, 자형 상자를 통째로
-   * 비례만 맞출 때 생기던 어긋남이 사라진다.
-   */
-  it("획이 실제로 차지한 범위를 화면 먹 범위에 맞춘다", () => {
-    const medians = [[[200, 700], [800, 700]], [[200, 100], [800, 100]]] as const;
-    const source = medianBounds(medians)!;
-    expect(source).toEqual({ x: 200, y: 100, width: 600, height: 600 });
-    const target = { x: 10, y: 20, width: 120, height: 120 };
-    const fitted = medianToPaper(medians[0], target, source);
-    expect(fitted[0]).toEqual({ x: 10, y: 20 });
-    expect(fitted[1]!.x).toBeCloseTo(130, 5);
-    expect(fitted[1]!.y).toBeCloseTo(20, 5);
+  it("가운데를 주면 그 둘레로 정사각형을 잡는다", () => {
+    const box = paperBoxFor(174, 98, 130);
+    expect(box).toEqual({ x: 98 - 87, y: 130 - 87, size: 174 });
   });
 
-  it("획이 없으면 범위도 없다", () => {
-    expect(medianBounds([])).toBeNull();
+  /*
+   * 이 게임의 핵심 계약이다 — 글자를 그리는 변환과 안내선을 그리는 변환이
+   * 같은 점을 같은 자리로 보내야 한다. 캔버스의 변환 행렬을 직접 재서,
+   * 한쪽만 고쳤을 때 시험이 터지게 한다.
+   */
+  it("글자 변환과 안내선 변환이 같은 자리로 떨어진다", () => {
+    const box = paperBoxFor(174, 98, 130);
+    const calls: Array<[string, number[]]> = [];
+    const fake = {
+      translate: (x: number, y: number) => calls.push(["translate", [x, y]]),
+      scale: (x: number, y: number) => calls.push(["scale", [x, y]])
+    } as unknown as CanvasRenderingContext2D;
+    applyGlyphTransform(fake, box);
+
+    /** 위 호출들을 그대로 적용해 한 점을 옮겨 본다. */
+    const through = (px: number, py: number): { x: number; y: number } => {
+      let x = px;
+      let y = py;
+      for (let index = calls.length - 1; index >= 0; index -= 1) {
+        const [kind, args] = calls[index]!;
+        if (kind === "translate") {
+          x += args[0]!;
+          y += args[1]!;
+        } else {
+          x *= args[0]!;
+          y *= args[1]!;
+        }
+      }
+      return { x, y };
+    };
+
+    for (const point of [[0, 900], [1024, -124], [512, 388], [304, 757]] as const) {
+      const viaGlyph = through(point[0], point[1]);
+      const viaMedian = medianPointToPaper(point, box);
+      expect(viaGlyph.x).toBeCloseTo(viaMedian.x, 6);
+      expect(viaGlyph.y).toBeCloseTo(viaMedian.y, 6);
+    }
   });
 });
 
-describe("화면 먹 범위", () => {
-  /** 4×3 화선지 한가운데 2×1 만 칠한 RGBA. */
-  function mask(): Uint8ClampedArray {
-    const data = new Uint8ClampedArray(4 * 3 * 4);
-    for (const [x, y] of [[1, 1], [2, 1]]) data[(y * 4 + x) * 4 + 3] = 255;
-    return data;
-  }
-
-  it("칠해진 화소의 네모를 잰다", () => {
-    expect(inkBounds(mask(), 4, 3)).toEqual({ x: 1, y: 1, width: 1, height: 1 });
+describe("접어 둔 중앙선 되펴기", () => {
+  it("상대 좌표를 절대 좌표로 되돌린다", () => {
+    expect(expandMedian([10, 20, 5, -5, -3, 8])).toEqual([[10, 20], [15, 15], [12, 23]]);
   });
 
-  it("빈 화선지는 범위가 없다 — 안내가 서지 않는다", () => {
-    expect(inkBounds(new Uint8ClampedArray(4 * 3 * 4), 4, 3)).toBeNull();
+  it("빈 줄은 빈 점렬이다", () => {
+    expect(expandMedian([])).toEqual([]);
+  });
+
+  it("짝이 안 맞는 꼬리는 버린다 — 잘린 자료가 좌표를 어긋내지 않게", () => {
+    expect(expandMedian([10, 20, 5])).toEqual([[10, 20]]);
   });
 });
 

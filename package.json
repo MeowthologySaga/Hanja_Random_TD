@@ -13,7 +13,7 @@
     "generate:learning": "node scripts/build-learning-readings.mjs",
     "generate:radicals": "node scripts/build-hanzi-radicals.mjs",
     "generate:strokes": "node scripts/build-hanzi-strokes.mjs",
-    "generate:medians": "node scripts/build-stroke-medians.mjs",
+    "generate:glyphs": "node scripts/build-stroke-glyphs.mjs",
     "integrate:jaryeongs": "tsx scripts/integrate-generated-jaryeongs.ts",
     "simulate": "tsx scripts/simulate.ts",
     "verify:run-save": "tsx scripts/verify-run-save.ts",

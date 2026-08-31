@@ -57,8 +57,8 @@ async function findGuidedChar(page: Page): Promise<GuideState> {
 
 test("꺼 두면 부적지는 여태 그대로다", async ({ page }) => {
   await openTalisman(page, false);
-  // 안내 자료를 아예 받지 않는다 — 2.5MB 를 끈 사람에게 지울 이유가 없다.
-  const requested = page.waitForRequest(/hanzi-stroke-medians/u, { timeout: 1500 }).catch(() => null);
+  // 안내 자료를 아예 받지 않는다 — gzip 2.3MB 를 끈 사람에게 지울 이유가 없다.
+  const requested = page.waitForRequest(/hanzi-stroke-glyphs/u, { timeout: 1500 }).catch(() => null);
   await page.waitForTimeout(900);
   expect(await requested).toBeNull();
   expect((await guideState(page)).available).toBe(false);

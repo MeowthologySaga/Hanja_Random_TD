@@ -28,6 +28,7 @@ import type { CustomIdiom } from "../../core/custom-idioms";
 import { ctx, must } from "../app-context";
 import { rasterizeImageAlpha, scoreTalismanDrawing, TALISMAN_THRESHOLDS, type TalismanCellGrid } from "./talisman-score";
 import { StrokeGuide } from "./stroke-guide";
+import { paperBoxFor } from "../../core/stroke-order";
 
 /** 종이 크기 — 부적 패널과 같은 비례로 두어 손 감각이 이어진다. */
 const PAPER_WIDTH = 196;
@@ -62,6 +63,9 @@ let maskData: Uint8ClampedArray | null = null;
 
 /** 획순 안내(선택 항목) — 꺼져 있으면 available 이 false 로 남는다. */
 const strokeGuide = new StrokeGuide();
+
+/** 붓 글자가 앉을 정사각형 — 바탕체 172px 글자가 차지하던 자리에 맞췄다. */
+const GLYPH_BOX = paperBoxFor(161, GLYPH_CENTER_X, GLYPH_CENTER_Y);
 
 /** 이어 그리기용 직전 점. 없으면 빠르게 끌 때 먹선이 점선으로 끊긴다. */
 let lastPoint = { x: 0, y: 0 };
@@ -98,7 +102,9 @@ function prepareMask(char: string): void {
   offscreen.height = PAPER_HEIGHT;
   const context = offscreen.getContext("2d", { willReadFrequently: true });
   if (!context) throw new Error("집자소 채점 캔버스를 열 수 없습니다.");
-  drawGlyph(context, char, "#000");
+  context.clearRect(0, 0, PAPER_WIDTH, PAPER_HEIGHT);
+  // 획순 안내가 서 있으면 그 자료의 글자로 채점한다 — 보고 그린 것과 같아야 한다.
+  if (!strokeGuide.paintGlyph(context, "#000")) drawGlyph(context, char, "#000");
   maskData = context.getImageData(0, 0, PAPER_WIDTH, PAPER_HEIGHT).data;
   maskGrid = rasterizeImageAlpha(maskData, PAPER_WIDTH, PAPER_HEIGHT, CELL_SIZE, 120);
 }
@@ -196,7 +202,11 @@ function strokeSegment(from: { x: number; y: number }, to: { x: number; y: numbe
  */
 function paintGuide(char: string): void {
   if (!guideContext) return;
-  drawGlyph(guideContext, char, "rgba(34, 26, 16, 0.2)");
+  guideContext.clearRect(0, 0, PAPER_WIDTH, PAPER_HEIGHT);
+  // 안내가 서면 글자도 그 자료로 — 그래야 점선이 먹 위에 정확히 앉는다.
+  if (!strokeGuide.paintGlyph(guideContext, "rgba(34, 26, 16, 0.2)")) {
+    drawGlyph(guideContext, char, "rgba(34, 26, 16, 0.2)");
+  }
   strokeGuide.paint(guideContext);
 }
 
@@ -241,9 +251,9 @@ function useIndex(index: number): void {
   if (!session) return;
   session.index = index;
   const char = currentChar();
+  // 안내를 먼저 세운 뒤 마스크를 만든다 — 마스크가 안내의 글자를 따라야 한다.
+  strokeGuide.begin(ctx.strokeOrderGuide ? char : "", GLYPH_BOX);
   prepareMask(char);
-  // 채점용 마스크를 자로 써서 안내선을 화면의 먹 위에 앉힌다(stroke-guide.ts).
-  strokeGuide.begin(ctx.strokeOrderGuide ? char : "", maskData, PAPER_WIDTH, PAPER_HEIGHT);
   paintGuide(char);
   clearInk();
   renderChoices();

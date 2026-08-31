@@ -5,9 +5,15 @@
  * 어디로 가는지는 없어서, 따라 쓰기 판은 반투명 글자 한 장을 통째로 보여 주고
  * 아무 데나 그리게 두었다.
  *
- * 획순 자료는 무겁고(추린 뒤에도 2.5MB) 넉넉잡아 열에 아홉 글자만 덮는다.
+ * 자료는 무겁고(추린 뒤에도 gzip 2.3MB) 넉넉잡아 열에 아홉 글자만 덮는다.
  * 그래서 **선택 항목**으로 둔다 — 켠 사람만 받고, 끈 사람의 화면은 한 획도
  * 달라지지 않는다. 자료가 없는 글자는 조용히 예전 방식으로 돌아간다.
+ *
+ * **빈 한자도 이 자료로 그린다.** 처음에는 중앙선만 받아 바탕체 글자 위에
+ * 얹었는데, 자형이 다른 글꼴이라 안내선이 먹에서 평균 2.55px 떠 있었다. 획마다
+ * 밀어 붙여 1.32px 까지 줄여 봤지만 讀·德처럼 자형 자체가 다른 글자는 남았다.
+ * 글자와 안내선을 **같은 자료**에서 뽑으면 그 어긋남이 원리상 0 이 된다
+ * (세 방식 대조판을 보고 내린 결정).
  *
  * 좌표계 주의. 원본(Make Me A Hanzi)은 가로 0..1024, 세로 -124..900 이고
  * **위로 갈수록 세로값이 크다**. 화면은 반대다. 뒤집는 일은 여기 한 곳에서만
@@ -17,105 +23,58 @@
 /** 원본 자형 상자. 가로 0..1024, 세로 -124..900(위가 큼). */
 export const MEDIAN_VIEWBOX = Object.freeze({ left: 0, right: 1024, bottom: -124, top: 900 });
 
+/** 자형 상자 한 변 — 가로세로가 같다(1024 × 1024). */
+export const VIEWBOX_SPAN = MEDIAN_VIEWBOX.top - MEDIAN_VIEWBOX.bottom;
+
 /** 한 획의 중앙선 — 원본 좌표계의 점렬. */
 export type StrokeMedian = readonly (readonly [number, number])[];
 
-export interface StrokeMedianData {
-  readonly schema: "hanzi-stroke-medians-v1";
-  readonly medians: Readonly<Record<string, readonly StrokeMedian[]>>;
-}
-
-/** 화선지 위의 네모 — 획순 중앙선을 여기에 맞춰 앉힌다. */
+/** 화선지 위의 정사각형 — 자형 상자를 여기에 놓는다. */
 export interface PaperBox {
   readonly x: number;
   readonly y: number;
-  readonly width: number;
-  readonly height: number;
+  /** 한 변(px). 자형 상자가 정사각형이라 한 값이면 된다. */
+  readonly size: number;
 }
 
 /**
- * 원본 좌표 한 점을 화선지 좌표로 옮긴다.
+ * 붓 글자가 앉을 정사각형.
  *
- * `source` 는 자를 원본 쪽 네모, `target` 은 화선지 쪽 네모다. 둘을 따로
- * 받는 이유는 아래 `fitMediansToInk` 때문이다 — 글꼴이 달라 자형이 어긋날 때
- * 원본 쪽 네모를 「이 글자의 획이 실제로 차지한 범위」로 좁혀 맞춘다.
+ * 화선지 어디에 놓을지는 부르는 쪽이 정한다 — 부적 판은 위 훈음 띠와 아래
+ * 인장 자리를 남기려고 중심을 살짝 위에 두고, 자혼 판은 종이 한가운데다.
  */
+export function paperBoxFor(size: number, centerX: number, centerY: number): PaperBox {
+  return { x: centerX - size / 2, y: centerY - size / 2, size };
+}
+
+/** 원본 좌표 한 점을 화선지 좌표로. 세로만 뒤집는다. */
 export function medianPointToPaper(
   point: readonly [number, number],
-  target: PaperBox,
-  source: PaperBox = FULL_VIEWBOX
+  box: PaperBox
 ): { readonly x: number; readonly y: number } {
   return {
-    x: target.x + ((point[0] - source.x) / source.width) * target.width,
-    // 세로만 뒤집는다 — 원본은 위가 크고 화면은 아래가 크다.
-    y: target.y + ((source.y + source.height - point[1]) / source.height) * target.height
+    x: box.x + ((point[0] - MEDIAN_VIEWBOX.left) / VIEWBOX_SPAN) * box.size,
+    y: box.y + ((MEDIAN_VIEWBOX.top - point[1]) / VIEWBOX_SPAN) * box.size
   };
 }
 
-/** 자형 상자 전체를 원본 쪽 네모로 쓴 값(세로는 아래가 bottom). */
-export const FULL_VIEWBOX: PaperBox = Object.freeze({
-  x: MEDIAN_VIEWBOX.left,
-  y: MEDIAN_VIEWBOX.bottom,
-  width: MEDIAN_VIEWBOX.right - MEDIAN_VIEWBOX.left,
-  height: MEDIAN_VIEWBOX.top - MEDIAN_VIEWBOX.bottom
-});
-
-export function medianToPaper(
-  median: StrokeMedian,
-  target: PaperBox,
-  source: PaperBox = FULL_VIEWBOX
-): { x: number; y: number }[] {
-  return median.map((point) => medianPointToPaper(point, target, source));
-}
-
-/** 획들이 실제로 차지한 원본 쪽 범위. */
-export function medianBounds(medians: readonly StrokeMedian[]): PaperBox | null {
-  let minX = Number.POSITIVE_INFINITY;
-  let minY = Number.POSITIVE_INFINITY;
-  let maxX = Number.NEGATIVE_INFINITY;
-  let maxY = Number.NEGATIVE_INFINITY;
-  for (const stroke of medians) {
-    for (const [x, y] of stroke) {
-      if (x < minX) minX = x;
-      if (x > maxX) maxX = x;
-      if (y < minY) minY = y;
-      if (y > maxY) maxY = y;
-    }
-  }
-  if (minX > maxX) return null;
-  return { x: minX, y: minY, width: Math.max(1, maxX - minX), height: Math.max(1, maxY - minY) };
+export function medianToPaper(median: StrokeMedian, box: PaperBox): { x: number; y: number }[] {
+  return median.map((point) => medianPointToPaper(point, box));
 }
 
 /**
- * 화면에 그려진 먹의 실제 범위(알파 > 0 인 화소의 네모).
+ * 자형 상자를 화선지 정사각형에 앉히는 캔버스 변환.
  *
- * 안내선이 글자 위에 정확히 앉으려면 이게 있어야 한다. 우리 화면은 바탕체로
- * 글자를 그리는데 획순 자료는 다른 글꼴에서 왔다 — 같은 邑 이라도 아래 巴 가
- * 더 넓게 벌어지는 식으로 자형이 다르다. 자형 상자를 통째로 비례만 맞추면
- * 안내선이 먹에서 20px 씩 떠 버린다(실측). 각 글자의 먹 범위끼리 맞추면
- * 그 어긋남이 대부분 사라진다.
+ * 세로 배율이 음수인 것은 뒤집기 때문이고, 이어 붙는 `translate(0, -top)` 은
+ * 뒤집은 뒤 상자의 윗변(y = 900)이 상자 위쪽에 오게 하는 몫이다. 위
+ * `medianPointToPaper` 와 **같은 자리**로 떨어져야 한다 — 하나는 글자를,
+ * 하나는 안내선을 그리는데 둘이 어긋나면 이 기능의 존재 이유가 사라진다.
  */
-export function inkBounds(
-  data: ArrayLike<number>,
-  width: number,
-  height: number,
-  alphaThreshold = 24
-): PaperBox | null {
-  let minX = width;
-  let minY = height;
-  let maxX = -1;
-  let maxY = -1;
-  for (let y = 0; y < height; y += 1) {
-    for (let x = 0; x < width; x += 1) {
-      if ((data[(y * width + x) * 4 + 3] ?? 0) <= alphaThreshold) continue;
-      if (x < minX) minX = x;
-      if (x > maxX) maxX = x;
-      if (y < minY) minY = y;
-      if (y > maxY) maxY = y;
-    }
-  }
-  if (maxX < 0) return null;
-  return { x: minX, y: minY, width: Math.max(1, maxX - minX), height: Math.max(1, maxY - minY) };
+export function applyGlyphTransform(context: CanvasRenderingContext2D, box: PaperBox): void {
+  const scale = box.size / VIEWBOX_SPAN;
+  context.translate(box.x, box.y);
+  context.scale(scale, -scale);
+  context.translate(0, -MEDIAN_VIEWBOX.top);
 }
 
 /* ── 그린 획이 이 획인가 ─────────────────────────────────────── */
@@ -228,38 +187,75 @@ export function matchStroke(
 
 /* ── 자료 불러오기 ───────────────────────────────────────────── */
 
-let cache: Readonly<Record<string, readonly StrokeMedian[]>> | null = null;
-let pending: Promise<Readonly<Record<string, readonly StrokeMedian[]>> | null> | null = null;
+/** 한 글자의 자형 — 획 윤곽선(SVG 경로)과 중앙선. 둘의 길이는 같다. */
+export interface StrokeGlyph {
+  readonly outlines: readonly string[];
+  readonly medians: readonly StrokeMedian[];
+}
+
+interface GlyphFile {
+  readonly schema: "hanzi-stroke-glyphs-v1";
+  readonly strokes: Readonly<Record<string, readonly string[]>>;
+  readonly medians: Readonly<Record<string, readonly number[][]>>;
+}
 
 /**
- * 획순 자료를 받아 둔다 — 처음 필요할 때 한 번만.
+ * 중앙선을 되편다 — 저장본은 상대 좌표 한 줄이다.
  *
- * 2.5MB 라 켜지 않은 사람에게 지울 이유가 없다. 실패하면 null 을 남기고
- * 조용히 예전 방식으로 돌아간다 — 부적을 쓰는 도중에 오류 창이 뜨는 것보다
- * 낫다.
+ * 무게를 줄이려고 `[[x,y],[x,y]…]` 를 `[dx,dy,dx,dy…]` 로 접어 두었다
+ * (scripts/build-stroke-glyphs.mjs). 되편 값은 원본과 같은 절대 좌표다.
  */
-export function loadStrokeMedians(
-  fetchImpl: typeof fetch = fetch
-): Promise<Readonly<Record<string, readonly StrokeMedian[]>> | null> {
+export function expandMedian(flat: readonly number[]): StrokeMedian {
+  const points: [number, number][] = [];
+  let x = 0;
+  let y = 0;
+  for (let index = 0; index + 1 < flat.length; index += 2) {
+    x += flat[index]!;
+    y += flat[index + 1]!;
+    points.push([x, y]);
+  }
+  return points;
+}
+
+let cache: Map<string, StrokeGlyph> | null = null;
+let pending: Promise<Map<string, StrokeGlyph> | null> | null = null;
+
+/**
+ * 획순 자형을 받아 둔다 — 처음 필요할 때 한 번만.
+ *
+ * gzip 2.3MB 라 켜지 않은 사람에게 지울 이유가 없다. 실패하면 null 을 남기고
+ * 조용히 예전 방식으로 돌아간다 — 부적을 쓰는 도중에 오류 창이 뜨는 것보다
+ * 안내가 안 서는 편이 낫다.
+ */
+export function loadStrokeGlyphs(fetchImpl: typeof fetch = fetch): Promise<Map<string, StrokeGlyph> | null> {
   if (cache) return Promise.resolve(cache);
-  pending ??= fetchImpl("data/hanzi-stroke-medians-v1.json")
+  pending ??= fetchImpl("data/hanzi-stroke-glyphs-v1.json")
     .then((response) => (response.ok ? response.json() : null))
-    .then((data: StrokeMedianData | null) => {
-      if (!data || data.schema !== "hanzi-stroke-medians-v1") return null;
-      cache = data.medians;
+    .then((data: GlyphFile | null) => {
+      if (!data || data.schema !== "hanzi-stroke-glyphs-v1") return null;
+      const map = new Map<string, StrokeGlyph>();
+      for (const [char, outlines] of Object.entries(data.strokes)) {
+        const flat = data.medians[char];
+        // 윤곽선과 중앙선의 개수가 어긋난 글자는 버린다 — 「몇 번째 획」이
+        // 어긋나면 안내가 거짓말을 한다. 빌드 스크립트가 이미 걸러 두지만,
+        // 자료를 갈아 끼울 때를 대비해 여기서도 지킨다.
+        if (!flat || flat.length !== outlines.length) continue;
+        map.set(char, { outlines, medians: flat.map(expandMedian) });
+      }
+      cache = map;
       return cache;
     })
     .catch(() => null);
   return pending;
 }
 
-/** 받아 둔 자료에서 한 글자의 획을 꺼낸다. 아직 안 받았으면 null. */
-export function strokeMediansFor(char: string): readonly StrokeMedian[] | null {
-  return cache?.[char] ?? null;
+/** 받아 둔 자료에서 한 글자의 자형을 꺼낸다. 아직 안 받았으면 null. */
+export function strokeGlyphFor(char: string): StrokeGlyph | null {
+  return cache?.get(char) ?? null;
 }
 
 /** 시험용 — 받아 둔 자료를 지운다. */
-export function resetStrokeMedians(): void {
+export function resetStrokeGlyphs(): void {
   cache = null;
   pending = null;
 }

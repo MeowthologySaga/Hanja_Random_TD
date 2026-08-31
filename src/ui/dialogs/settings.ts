@@ -5,7 +5,7 @@ import { type GameMode } from "../../core/types";
 import { type DisplayMode, saveDisplayMode } from "../display-mode";
 import { saveAutoPlaceSummons } from "../summon-placement";
 import { CALM_SCREEN_STORAGE_KEY, ctx, HOVER_GLYPH_STORAGE_KEY, must, reducedMotion, settingsDialog, shell, sound, STROKE_ORDER_STORAGE_KEY } from "../app-context";
-import { loadStrokeMedians } from "../../core/stroke-order";
+import { loadStrokeGlyphs } from "../../core/stroke-order";
 import { startCoach } from "../coach";
 import { handleAction, showToast } from "../hud";
 import { openStandardModeNotice } from "./s13";
@@ -79,10 +79,10 @@ export function setStrokeOrderGuide(enabled: boolean): void {
     showToast("획순 안내 OFF · 글자 한 장을 통째로 보여 줍니다");
     return;
   }
-  void loadStrokeMedians().then((medians) => {
-    showToast(medians
+  void loadStrokeGlyphs().then((glyphs) => {
+    showToast(glyphs
       ? "획순 안내 ON · 따라 쓰기 판에서 획을 하나씩 짚어 줍니다"
-      : "획순 자료를 받지 못했습니다 — 글자 한 장을 통째로 보여 줍니다", medians === null);
+      : "획순 자료를 받지 못했습니다 — 글자 한 장을 통째로 보여 줍니다", glyphs === null);
   });
 }
 
@@ -169,7 +169,7 @@ export function wireSettings1(): void {
   // FB6: 저장된 선택(또는 OS 동작 줄이기)이 첫 그림부터 게이트에 실리게 한다.
   applyCalmScreen();
   // 켜 둔 채로 새로 연 판에서도 첫 부적지부터 안내가 서게 미리 받아 둔다.
-  if (ctx.strokeOrderGuide) void loadStrokeMedians();
+  if (ctx.strokeOrderGuide) void loadStrokeGlyphs();
 }
 
 /** main.ts 가 원래 순서대로 부르는 배선 묶음. */
