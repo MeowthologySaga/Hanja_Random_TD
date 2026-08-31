@@ -1466,6 +1466,15 @@ test("teaches summon tiers and the stroke-to-star rule with one-shot hints", { t
 // FB4 — 표준(자형연성) 전용 안내 2종. 웨이브 10 인연 연구 개방과 문기 첫 획득은
 // 실플레이로는 분 단위라, 개발 전용 손잡이(__HANJA_CTX_QA__)로 상태만 재현한다.
 test("hints research unlock and first Munki once in standard mode", { tag: HINT_TAG }, async ({ page }) => {
+  /*
+   * 부적 안내만 미리 본 것으로 둔다.
+   *
+   * 그 안내는 「부적 모드가 켜져 있는가」만 보므로 판이 서는 순간 조건이 이미
+   * 참이다. 그래서 탭이 자리를 잡는 시각과 아래 「개시 직후엔 안내가 없다」
+   * 단언이 경쟁했다 — 실측으로 다섯 번에 두 번 떨어졌다. 이 시험이 보려는
+   * 것은 인연 연구·문기 안내이므로 부적 안내는 무대에서 비킨다.
+   */
+  await page.addInitScript((key) => window.localStorage.setItem(key as string, "1"), "hanja-td:hint:talisman:v1");
   await page.goto("/?seed=HINT-E2E-02&mode=standard");
   await page.getByTestId("start-run").click();
   await expect(page.locator("#shop-panel")).toBeVisible();

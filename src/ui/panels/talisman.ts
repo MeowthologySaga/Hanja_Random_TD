@@ -49,7 +49,7 @@ import { playTalismanImpact, playTalismanRewardVisit, type TalismanRewardGrant }
 import { rasterizeImageAlpha, scoreTalismanDrawing, TALISMAN_THRESHOLDS, type TalismanCellGrid, type TalismanScore } from "./talisman-score";
 import { StrokeGuide } from "./stroke-guide";
 import { InkBoard, paintInk } from "./ink-strokes";
-import { loadStrokeGlyphs, paperBoxFor, strokeGlyphFor } from "../../core/stroke-order";
+import { loadStrokeGlyphs, paperBoxFor, strokeGlyphFor, strokeGlyphStatus } from "../../core/stroke-order";
 
 /**
  * 부적지(한지 세로 카드) 캔버스 크기.
@@ -160,6 +160,9 @@ const board = new InkBoard();
 
 /** 판정에 떨어진 붓질을 붉게 비추는 중인가 — 비춘 뒤 스스로 걷는다. */
 let warnTimer = 0;
+
+/** 「안내가 준비됐다」는 알림을 이 종이에서 이미 띄웠는가 — 한 장에 한 번만. */
+let guideReadyNoticeShown = false;
 
 /** 장수 적립 장부. 엔진 교체(재도전)면 처음부터 다시 센다. */
 let chargeEngine: GameEngine | null = null;
@@ -329,11 +332,22 @@ function pickDefinition(): HanziDefinition | null {
   const pool = catalog.activePool.length > 0 ? catalog.activePool : [...catalog.definitions.values()];
   if (pool.length === 0) return null;
   if (pool.length === 1) return pool[0] ?? null;
-  for (let attempt = 0; attempt < 8; attempt += 1) {
+  /*
+   * 안내를 켰으면 **획순 자료가 있는 글자**를 고른다.
+   *
+   * 한국 명단 1000자 가운데 20자(2%)는 자료가 없어 안내가 못 선다. 쉰 장에 한
+   * 번꼴이라 사람 눈에는 "가끔 획순이 안 나온다"는 버그로 읽혔다(사용자 제보).
+   * 자료가 아직 안 왔으면 가릴 수 없으므로 예전처럼 아무나 고른다.
+   */
+  const preferGuided = ctx.strokeOrderGuide && strokeGlyphStatus() === "ready";
+  let fallback: HanziDefinition | null = null;
+  for (let attempt = 0; attempt < 12; attempt += 1) {
     const candidate = pool[Math.floor(Math.random() * pool.length)] ?? null;
-    if (candidate && candidate.char !== currentDefinition?.char) return candidate;
+    if (!candidate || candidate.char === currentDefinition?.char) continue;
+    if (!preferGuided || strokeGlyphFor(candidate.char) !== null) return candidate;
+    fallback ??= candidate;
   }
-  return pool[0] ?? null;
+  return fallback ?? pool[0] ?? null;
 }
 
 function drawGlyph(context: CanvasRenderingContext2D, char: string, style: string): void {
@@ -366,6 +380,45 @@ function paintGuide(char: string): void {
 /** 획순 안내가 서 있는 동안의 상태 줄 — 몇 번째 획인지가 먼저다. */
 function strokeStatus(): string {
   return `${strokeGuide.current + 1}번째 획 · 모두 ${strokeGuide.total}획 — 붉은 점선을 따라 그으세요`;
+}
+
+/**
+ * 안내를 켰는데 안 서 있을 때, **왜 안 서는지**를 말한다.
+ *
+ * 까닭이 셋인데(아직 받는 중 / 이 글자에 자료가 없음 / 준비됐지만 먹이 이미
+ * 있음) 화면에는 셋 다 「반투명 글자 한 장」으로만 보였다. 느린 회선에서 안내가
+ * 안 서는 것이 사람에게는 버그로 읽힌 까닭이 이것이다(사용자 제보).
+ */
+/**
+ * 아무것도 안 쓴 종이의 상태 줄 — 안내가 섰으면 몇 번째 획인지, 아니면 그 까닭.
+ *
+ * 이 결정이 세 곳(제시·채점·지우기)에 흩어져 있었고, [지우기] 만 문구를 박아
+ * 두고 있었다. 그래서 자료가 온 뒤 비워도 「반투명 글자를 따라 쓰고」가 덮어써
+ * 안내가 선 것을 말하지 못했다. 한 군데로 모은다.
+ */
+function setIdleStatus(): void {
+  setStatus(strokeGuide.available && !strokeGuide.finished ? strokeStatus() : plainSheetNote());
+}
+
+function plainSheetNote(): string {
+  if (!ctx.strokeOrderGuide) return "반투명 글자를 따라 쓰고 [부적 완성]";
+  const char = currentDefinition?.char;
+  if (char !== undefined && strokeGlyphStatus() === "ready" && strokeGlyphFor(char) === null) {
+    return "이 글자는 획순 자료가 없습니다 — 글자 한 장을 통째로 따라 쓰세요";
+  }
+  switch (strokeGlyphStatus()) {
+    case "loading":
+      return "획순 자료를 받는 중입니다 — 오는 대로 한 획씩 짚어 드립니다";
+    case "failed":
+      return "획순 자료를 받지 못했습니다 — 글자 한 장을 통째로 따라 쓰세요";
+    case "ready":
+      // 자료도 글자도 있는데 안 서 있다면, 먹이 이미 있어 종이를 못 갈아 끼운 것이다.
+      return board.isEmpty
+        ? "반투명 글자를 따라 쓰고 [부적 완성]"
+        : "획순 안내가 준비됐습니다 — [지우기]를 누르면 한 획씩 짚어 드립니다";
+    default:
+      return "반투명 글자를 따라 쓰고 [부적 완성]";
+  }
 }
 
 /**
@@ -427,6 +480,15 @@ function clearInk(): void {
     strokeGuide.reset();
     if (currentDefinition) paintGuide(currentDefinition.char);
   }
+  /*
+   * 종이를 비운 김에 자료가 그새 왔는지 다시 본다.
+   *
+   * 자료를 받는 동안 한 획이라도 쓰면 그 종이는 갈아 끼울 수 없다(쓴 것을
+   * 지울 수 없으니). 그래서 예전에는 자료가 와도 그 장은 끝까지 맨 종이였다 —
+   * 사람 눈에는 "안내가 안 온다"로 보였다. 비운 뒤에는 갈아 끼워도 잃을 것이
+   * 없으므로 여기서 집어 올린다.
+   */
+  refreshStrokeGuideSheet(false);
 }
 
 /**
@@ -506,6 +568,7 @@ function syncTalismanReading(): void {
 function presentDefinition(definition: HanziDefinition): void {
   currentDefinition = definition;
   sealed = false;
+  guideReadyNoticeShown = false;
   // 안내를 먼저 세운 뒤 마스크를 만든다 — 마스크가 안내의 글자를 따라야 한다.
   strokeGuide.begin(ctx.strokeOrderGuide ? definition.char : "", GLYPH_BOX);
   prepareMask(definition.char);
@@ -514,7 +577,7 @@ function presentDefinition(definition: HanziDefinition): void {
   must<HTMLCanvasElement>("#talisman-ink").classList.remove("is-sealed");
   hideSeal();
   syncTalismanReading();
-  setStatus(strokeGuide.available ? strokeStatus() : "반투명 글자를 따라 쓰고 [부적 완성]");
+  setIdleStatus();
   must<HTMLButtonElement>("#talisman-redraw").textContent = "다시 뽑기";
   syncSubmitButton(false);
   setControlsEnabled(true);
@@ -536,7 +599,18 @@ export function refreshStrokeGuideSheet(force: boolean): void {
   if (!currentDefinition || sealed) return;
   const wanted = ctx.strokeOrderGuide && strokeGlyphFor(currentDefinition.char) !== null;
   if (wanted === strokeGuide.available) return;
-  if (!force && !board.isEmpty) return;
+  if (!force && !board.isEmpty) {
+    /*
+     * 쓴 것을 지우면서까지 갈아 끼우지는 않는다. 대신 **준비됐다고 알린다** —
+     * 말해 주지 않으면 그 장은 끝까지 맨 종이로 남고, 사람은 안내가 영영 안
+     * 온다고 읽는다. 알림은 눈이 있는 자리(패널 안)에 띄우고 한 장에 한 번만.
+     */
+    if (wanted && !guideReadyNoticeShown) {
+      guideReadyNoticeShown = true;
+      showToast("획순 안내가 준비됐습니다 — [지우기]를 누르면 한 획씩 짚어 드립니다", false, "panel");
+    }
+    return;
+  }
   presentDefinition(currentDefinition);
 }
 
@@ -713,9 +787,7 @@ function refreshScore(): TalismanScore | null {
   if (!sealed) {
     syncSubmitButton(score.inkPixels > 0);
     if (score.inkPixels === 0) {
-      setStatus(strokeGuide.available && !strokeGuide.finished
-        ? strokeStatus()
-        : "반투명 글자를 따라 쓰고 [부적 완성]");
+      setIdleStatus();
     }
     else setStatus(`정확 ${Math.round(score.insideRatio * 100)}% · 덮음 ${Math.round(score.coverageRatio * 100)}%`);
   }
@@ -1031,7 +1103,7 @@ function mountTalismanPanel(): void {
       return;
     }
     clearInk();
-    setStatus("반투명 글자를 따라 쓰고 [부적 완성]");
+    setIdleStatus();
     syncSubmitButton(false);
   });
   must<HTMLButtonElement>("#talisman-redraw").addEventListener("click", () => {

@@ -29,7 +29,7 @@ import { ctx, must } from "../app-context";
 import { rasterizeImageAlpha, scoreTalismanDrawing, TALISMAN_THRESHOLDS, type TalismanCellGrid } from "./talisman-score";
 import { StrokeGuide } from "./stroke-guide";
 import { InkBoard, paintInk } from "./ink-strokes";
-import { loadStrokeGlyphs, paperBoxFor, strokeGlyphFor } from "../../core/stroke-order";
+import { loadStrokeGlyphs, paperBoxFor, strokeGlyphFor, strokeGlyphStatus } from "../../core/stroke-order";
 
 /** 종이 크기 — 부적 패널과 같은 비례로 두어 손 감각이 이어진다. */
 const PAPER_WIDTH = 196;
@@ -129,6 +129,8 @@ function clearInk(): void {
     strokeGuide.reset();
     paintGuide(currentChar());
   }
+  // 비운 김에 자료가 그새 왔는지 본다(부적 판과 같은 처방).
+  refreshSoulStrokeGuide(false);
   drawing = false;
   refreshScore();
 }
@@ -189,10 +191,7 @@ function refreshScore(): { inside: number; coverage: number; ink: number } | nul
   if (score.inkPixels === 0 && strokeGuide.available && !strokeGuide.finished) {
     setStatus(`${strokeGuide.current + 1}번째 획 · 모두 ${strokeGuide.total}획 — 붉은 점선을 따라 그으세요`);
   } else if (score.inkPixels === 0) {
-    setStatus(
-      `반투명 글자를 따라 쓰고 [다시 굴리기] · 정확 ${Math.round(TALISMAN_THRESHOLDS.inside * 100)}%`
-      + ` · 덮음 ${Math.round(TALISMAN_THRESHOLDS.coverage * 100)}% 이면 통과합니다`
-    );
+    setStatus(plainSheetNote());
   } else {
     setStatus(
       `정확 ${Math.round(score.insideRatio * 100)}% · 덮음 ${Math.round(score.coverageRatio * 100)}%`
@@ -209,6 +208,25 @@ function canvasPoint(canvas: HTMLCanvasElement, event: PointerEvent): { x: numbe
   };
 }
 
+
+/**
+ * 안내를 켰는데 안 서 있을 때 그 까닭을 말한다(부적 판과 같은 처방).
+ *
+ * 여기서는 글자를 고를 수 없다 — 성어의 네 글자가 정해져 있다. 그래서 자료가
+ * 없는 글자를 만나면 그렇다고 적는 수밖에 없다.
+ */
+function plainSheetNote(): string {
+  const base = `반투명 글자를 따라 쓰고 [이 글자 완성] · 정확 ${Math.round(TALISMAN_THRESHOLDS.inside * 100)}%`
+    + ` · 덮음 ${Math.round(TALISMAN_THRESHOLDS.coverage * 100)}% 이면 통과합니다`;
+  if (!ctx.strokeOrderGuide) return base;
+  const char = currentChar();
+  if (strokeGlyphStatus() === "ready" && strokeGlyphFor(char) === null) {
+    return "이 글자는 획순 자료가 없습니다 — 글자 한 장을 통째로 따라 쓰세요";
+  }
+  if (strokeGlyphStatus() === "loading") return "획순 자료를 받는 중입니다 — 오는 대로 한 획씩 짚어 드립니다";
+  if (strokeGlyphStatus() === "failed") return "획순 자료를 받지 못했습니다 — 글자 한 장을 통째로 따라 쓰세요";
+  return board.isEmpty ? base : "획순 안내가 준비됐습니다 — [지우기]를 누르면 한 획씩 짚어 드립니다";
+}
 
 function repaintInk(warnLast = false): void {
   if (!inkContext) return;

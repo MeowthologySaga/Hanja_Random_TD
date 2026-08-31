@@ -187,12 +187,23 @@ export function wireSettings1(): void {
   // FB6: 저장된 선택(또는 OS 동작 줄이기)이 첫 그림부터 게이트에 실리게 한다.
   applyCalmScreen();
   /*
-   * 여기서 미리 받지 않는다.
+   * 획순 자료를 **한가할 때** 미리 받는다.
    *
-   * 기본값이 켜짐이 되면서, 부팅에서 받으면 부적을 한 번도 안 여는 사람까지
-   * gzip 2.4MB 를 끌게 된다. 자료는 따라 쓰기 판을 처음 열 때 받는다
-   * (panels/talisman.ts 의 preloadStrokeGuide, panels/soul-reroll.ts 의 열기).
+   * 부적 탭을 처음 열 때만 받게 두었더니, 느린 회선에서는 그 사이 종이가 맨
+   * 종이로 서서 "획순 모드가 아닌 것"으로 보였다(사용자 제보). 그렇다고 부팅
+   * 경로에서 곧바로 끌면 자령 그림들과 대역폭을 다툰다 — 브라우저가 한가하다고
+   * 할 때 시작해, 사람이 부적을 열 즈음에는 와 있게 한다. 꺼 둔 사람은 받지
+   * 않는다.
    */
+  if (ctx.strokeOrderGuide) {
+    const kick = (): void => {
+      void loadStrokeGlyphs().then(() => applyStrokeGuideToOpenSheets(false));
+    };
+    const idle = (window as Window & { requestIdleCallback?: (cb: () => void, options?: { timeout: number }) => number })
+      .requestIdleCallback;
+    if (idle) idle(kick, { timeout: 5_000 });
+    else window.setTimeout(kick, 2_500);
+  }
 }
 
 /** main.ts 가 원래 순서대로 부르는 배선 묶음. */

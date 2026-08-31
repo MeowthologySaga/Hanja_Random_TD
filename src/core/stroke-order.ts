@@ -235,10 +235,14 @@ let pending: Promise<Map<string, StrokeGlyph> | null> | null = null;
  */
 export function loadStrokeGlyphs(fetchImpl: typeof fetch = fetch): Promise<Map<string, StrokeGlyph> | null> {
   if (cache) return Promise.resolve(cache);
+  if (status === "idle" || status === "failed") status = "loading";
   pending ??= fetchImpl("data/hanzi-stroke-glyphs-v1.json")
     .then((response) => (response.ok ? response.json() : null))
     .then((data: GlyphFile | null) => {
-      if (!data || data.schema !== "hanzi-stroke-glyphs-v1") return null;
+      if (!data || data.schema !== "hanzi-stroke-glyphs-v1") {
+        status = "failed";
+        return null;
+      }
       const map = new Map<string, StrokeGlyph>();
       for (const [char, outlines] of Object.entries(data.strokes)) {
         const flat = data.medians[char];
@@ -249,10 +253,29 @@ export function loadStrokeGlyphs(fetchImpl: typeof fetch = fetch): Promise<Map<s
         map.set(char, { outlines, medians: flat.map(expandMedian) });
       }
       cache = map;
+      status = "ready";
       return cache;
     })
-    .catch(() => null);
+    .catch(() => {
+      status = "failed";
+      return null;
+    });
   return pending;
+}
+
+/**
+ * 자료가 지금 어떤 상태인가 — 화면이 이유를 말할 수 있어야 한다.
+ *
+ * 안내가 안 서는 까닭은 셋인데(아직 받는 중 / 이 글자에 자료가 없음 / 꺼 둠)
+ * 화면에는 셋 다 「글자 한 장」으로만 보였다. 그래서 느린 회선에서 안내가 안
+ * 서는 것이 사람에게는 버그로 읽혔다.
+ */
+export type StrokeGlyphStatus = "idle" | "loading" | "ready" | "failed";
+
+let status: StrokeGlyphStatus = "idle";
+
+export function strokeGlyphStatus(): StrokeGlyphStatus {
+  return status;
 }
 
 /** 받아 둔 자료에서 한 글자의 자형을 꺼낸다. 아직 안 받았으면 null. */
@@ -264,4 +287,5 @@ export function strokeGlyphFor(char: string): StrokeGlyph | null {
 export function resetStrokeGlyphs(): void {
   cache = null;
   pending = null;
+  status = "idle";
 }
