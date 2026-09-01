@@ -32,6 +32,15 @@ import {
 export interface AutoplayOptions {
   /** 성어 기원 상품을 봇이 사게 한다(승률 비영향 계측용 실험 정책). */
   idiomWish?: boolean;
+  /**
+   * 매 틱마다 불리는 관측자 — 계측 전용(scripts/combat-tempo.ts).
+   *
+   * 봇의 **판단에는 관여하지 않는다.** 넘기지 않으면 아무 일도 없으므로 게이트
+   * 시뮬(--runs=135/45)의 시드 결정성은 그대로다. 교전 템포처럼 결과가 아니라
+   * 과정에서만 보이는 것을 재려면 판을 실제로 굴리는 이 봇 안에서 봐야 한다 —
+   * 밖에서 흉내 낸 판은 자령을 덜 세워 템포가 딴판이 된다(실측).
+   */
+  observe?: (engine: GameEngine, delta: number) => void;
 }
 
 export function runAutoplay(seed: string, region: RegionCode = "KR", maxSeconds = 5_400, mode: GameMode = "standard", options: AutoplayOptions = {}): SimulationResult {
@@ -66,6 +75,7 @@ export function runAutoplay(seed: string, region: RegionCode = "KR", maxSeconds 
 
   while (engine.state.elapsed < maxSeconds && engine.state.phase !== "victory" && engine.state.phase !== "defeat") {
     engine.update(0.1);
+    options.observe?.(engine, 0.1);
     if (engine.state.phase === "prep") captureCheckpoint(engine.state.wave);
     decisionCooldown -= 0.1;
     if (decisionCooldown > 0) continue;

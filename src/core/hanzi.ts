@@ -225,6 +225,28 @@ function chooseCombatRole(char: string, graphRole: GraphRole): CombatRole {
   return roles[hash % roles.length] as CombatRole;
 }
 
+/**
+ * 투사체를 **묵직하게** — 발사 주기와 피해에 함께 곱한다.
+ *
+ * "투사체 데미지를 높히고 발사주기 좀 느리게해"(사용자). 둘을 같은 수로 곱하면
+ * 초당 피해(DPS)는 그대로고 **한 발의 무게만** 커진다 — 밸런스를 흔들지 않고
+ * 화면의 결만 바꾸는 축이다. 실측(현행): 한 마리를 봉인하는 데 27.1발이 들어
+ * 화면이 잔탄으로 덮였다(scripts/combat-tempo.ts).
+ *
+ * 대기시간 하한(game.ts towerAttackCooldown 의 0.28초)은 이 배수 위에서도 그대로
+ * 걸린다 — 하한에 눌린 자령은 피해만 오르므로 그 구간에서는 DPS 중립이 깨진다.
+ * 지금 값에서는 하한에 닿는 자령이 없다.
+ */
+export const PROJECTILE_WEIGHT = 1;
+
+/**
+ * 사거리 배수.
+ *
+ * "초반부터 너무강해 ... 투사체 발사속도, 범위 부터"(사용자). 사거리는 실효
+ * 화력을 가장 크게 좌우하는 축이라(닿는 자령 수가 곱으로 늘어난다) 따로 뺀다.
+ */
+export const TOWER_RANGE_SCALE = 1;
+
 function buildCombatProfile(
   char: string,
   wuxing: Wuxing,
@@ -247,9 +269,9 @@ function buildCombatProfile(
   const activeSkills = stage > 1 || childCount === 0;
   return {
     role,
-    baseDamage: (17 + (hash % 5)) * roleDamage[role],
-    range: roleRange[role] + (hash % 13),
-    cooldown: roleCooldown[role],
+    baseDamage: (17 + (hash % 5)) * roleDamage[role] * PROJECTILE_WEIGHT,
+    range: (roleRange[role] + (hash % 13)) * TOWER_RANGE_SCALE,
+    cooldown: roleCooldown[role] * PROJECTILE_WEIGHT,
     budgetMultiplier,
     effectLabel: activeSkills ? style.effectLabel : "기본 타격",
     roleLabel: ROLE_LABELS[role],

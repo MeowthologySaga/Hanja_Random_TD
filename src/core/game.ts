@@ -3702,6 +3702,16 @@ export class GameEngine {
   }
 
   /**
+   * 지금 쌓인 이벤트를 **걷지 않고** 들여다본다 — 계측 전용.
+   *
+   * 계측이 `consumeEvents` 를 부르면 화면(또는 봇)이 볼 이벤트를 가로채는 셈이라
+   * 판이 달라진다. 재는 일이 재는 대상을 바꾸면 안 된다.
+   */
+  peekEvents(): readonly GameEvent[] {
+    return this.events;
+  }
+
+  /**
    * [트랙 V] `GameState` 밖에 있는 엔진 내부 상태 — 런 저장이 함께 담아야
    * 이어 돌린 판이 쭉 돌린 판과 같아진다.
    *
