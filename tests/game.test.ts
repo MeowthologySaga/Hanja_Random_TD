@@ -748,17 +748,56 @@ describe("regional recipe defense run", () => {
     expect(engine.consumeEvents()).toContainEqual({ type: "interest", amount: 5, gold: 108 });
   });
 
-  it("ends a boss wave when the boss timer expires", () => {
+  it("우두머리 제한시간은 벽이 아니라 문턱이다 — 넘기면 다음 웨이브가 합류한다", () => {
+    /*
+     * 예전에는 시계가 다하면 그 자리에서 졌다. 보스가 진에 한 번도 안 들어오면
+     * 손 쓸 방법이 없는데도 지는 것이 답답함의 정체였다(v035 ③). 이제는 벌이
+     * 「합류」로 바뀐다 — 적이 쌓이되 만회할 여지가 남는다.
+     */
     const engine = new GameEngine("boss-timeout", "KR");
     engine.begin();
     enableWaveStart(engine);
     engine.state.wave = 9;
     expect(engine.startWaveEarly()).toMatchObject({ ok: true });
     expect(engine.bossTimeRemaining()).toBe(72);
+    // 우두머리가 실제로 전장에 서야 한다 — 빈 전장은 그냥 웨이브가 끝난다.
+    const count = engine.getCurrentPlan()?.count ?? 0;
+    for (let step = 0; step < 400 && engine.state.spawned < count; step += 1) engine.update(0.1);
+    expect(engine.state.enemies.some((enemy) => enemy.boss)).toBe(true);
     engine.state.waveElapsed = 71.95;
     engine.update(0.1);
+
+    expect(engine.state.phase).toBe("combat");
+    expect(engine.bossOvertime()).toBe(true);
+    // 시계는 화면에서 물러나고 합류 시계가 대신 선다.
+    expect(engine.bossTimeRemaining()).toBeNull();
+    expect(engine.state.nextWaveRemaining).not.toBeNull();
+
+    // 합류 시계가 다하면 다음 웨이브가 우두머리 위로 겹쳐 온다.
+    for (let step = 0; step < 300 && engine.state.wave === 10; step += 1) engine.update(0.1);
+    expect(engine.state.wave).toBe(11);
+    expect(engine.state.phase).toBe("combat");
+  });
+
+  it("마지막 우두머리만은 벽이 그대로다 — 안 잡고 버티기로 끝낼 수 없다", () => {
+    /*
+     * 100웨이브에는 합류시킬 다음 웨이브가 없다. 문턱으로 두면 벌이 성립하지
+     * 않고, 버티기만 해도 판이 끝나 버린다 — 마지막 봉인은 잡아야 열린다.
+     */
+    const engine = new GameEngine("last-boss-timeout", "KR");
+    engine.begin();
+    enableWaveStart(engine);
+    engine.state.wave = 99;
+    expect(engine.startWaveEarly()).toMatchObject({ ok: true });
+    expect(engine.state.wave).toBe(100);
+    const lastCount = engine.getCurrentPlan()?.count ?? 0;
+    for (let step = 0; step < 600 && engine.state.spawned < lastCount; step += 1) engine.update(0.1);
+    expect(engine.state.enemies.some((enemy) => enemy.boss)).toBe(true);
+    engine.state.waveElapsed = 125.95;
+    engine.update(0.1);
     expect(engine.state.phase).toBe("defeat");
-    expect(engine.state.lastMessage).toContain("72초");
+    expect(engine.state.lastMessage).toContain("126초");
+    expect(engine.state.lastMessage).toContain("마지막 우두머리");
     expect(engine.state.defeatCause).toBe("boss-timeout");
   });
 

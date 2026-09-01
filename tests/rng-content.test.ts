@@ -6,6 +6,7 @@ import {
   ENEMY_PATH_POINTS,
   ENEMY_SPAWN_PROGRESS,
   BOSS_PORTAL_INDEX_BY_FORMATION,
+  bossPortalForFormations,
   bossSpawnProgress,
   bossTimeLimitForWave,
   isFormationUnlocked,
@@ -41,13 +42,35 @@ describe("regional catalog and wave content", () => {
     expect(getCatalog("KR").activePool.length).toBeGreaterThanOrEqual(12);
   });
 
-  it("spawns bosses at the starting formation's nearest portal and keeps rotation otherwise", () => {
+  it("spawns bosses at the nearest portal among opened formations and keeps rotation otherwise", () => {
     // 수술 9 「관문 보정」: 실측 최적 관문(수#0·금#3·토#0·목#1·화#2)이 고정돼야 한다.
     expect([...BOSS_PORTAL_INDEX_BY_FORMATION]).toEqual([0, 3, 0, 1, 2]);
-    // 시작 진이 있으면 그 진의 관문, 없으면 기존 회전 규칙 그대로.
-    expect(bossSpawnProgress(3, 2)).toBe(ENEMY_SPAWN_PROGRESS[1]);
-    expect(bossSpawnProgress(null, 2)).toBe(spawnProgressForEnemy(2));
-    expect(bossSpawnProgress(99, 2)).toBe(spawnProgressForEnemy(2));
+    // 진이 하나면 그 진의 관문, 하나도 없으면 기존 회전 규칙 그대로.
+    expect(bossSpawnProgress([3], 2)).toBe(ENEMY_SPAWN_PROGRESS[1]);
+    expect(bossSpawnProgress([], 2)).toBe(spawnProgressForEnemy(2));
+    expect(bossSpawnProgress([99], 2)).toBe(spawnProgressForEnemy(2));
+
+    /*
+     * v035 ③: 진이 여럿이면 그 가운데 **가장 빨리 만나는** 관문을 고른다.
+     * 판을 넓힌 보람이 보스전에서도 보여야 한다 — 첫 진만 보던 예전 규칙은
+     * 나중에 연 진 쪽으로는 보스를 데려오지 못했다.
+     */
+    for (const [left, right] of [[0, 3], [1, 4], [2, 3], [0, 1], [3, 4]] as const) {
+      /*
+       * 「둘 중 하나라도 가장 빨리 만나는 관문」이므로 답은 반드시 두 진의 단독
+       * 최적 관문 가운데 하나다 — 더 빨리 만나는 쪽의 것. 표를 밖으로 꺼내지
+       * 않고도 이 성질로 규칙을 붙잡을 수 있다.
+       */
+      expect([BOSS_PORTAL_INDEX_BY_FORMATION[left], BOSS_PORTAL_INDEX_BY_FORMATION[right]])
+        .toContain(bossPortalForFormations([left, right]));
+      // 순서를 바꿔도 같은 답이다 — 진 목록의 차례가 결과를 흔들면 안 된다.
+      expect(bossPortalForFormations([right, left])).toBe(bossPortalForFormations([left, right]));
+    }
+    // 진 하나만 넣으면 그 진의 단독 최적 관문 그대로다.
+    for (let formation = 0; formation < BOSS_PORTAL_INDEX_BY_FORMATION.length; formation += 1) {
+      expect(bossPortalForFormations([formation])).toBe(BOSS_PORTAL_INDEX_BY_FORMATION[formation]);
+    }
+    expect(bossPortalForFormations([])).toBeNull();
   });
 
   it("accelerates circulation only on waves 1-3 to shorten the opening lap", () => {

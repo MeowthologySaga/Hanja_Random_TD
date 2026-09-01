@@ -254,7 +254,12 @@ export function positionOnPath(progress: number): Point {
  */
 const BOSS_PORTAL_REFERENCE_RANGE = 220;
 
-export const BOSS_PORTAL_INDEX_BY_FORMATION: readonly number[] = BOARD_FORMATIONS.map((formation) => {
+/**
+ * 진 × 관문 도달 걸음 표 — 그 관문에서 나선 보스가 그 진의 사거리 안에 들기까지.
+ *
+ * 정적으로 한 번만 접는다(경로도 진도 런 중에 안 움직인다).
+ */
+const BOSS_PORTAL_STEPS: readonly (readonly number[])[] = BOARD_FORMATIONS.map((formation) => {
   const cells = Array.from({ length: CELLS_PER_FORMATION }, (_, offset) => BOARD_CELLS[formation.startCell + offset] as Point);
   const coverageSteps = (portalProgress: number): number => {
     for (let step = 0; step <= 1000; step += 1) {
@@ -263,18 +268,51 @@ export const BOSS_PORTAL_INDEX_BY_FORMATION: readonly number[] = BOARD_FORMATION
     }
     return Number.POSITIVE_INFINITY;
   };
-  return ENEMY_SPAWN_PROGRESS
-    .map((portalProgress, portalIndex) => ({ portalIndex, steps: coverageSteps(portalProgress) }))
-    .sort((left, right) => left.steps - right.steps || left.portalIndex - right.portalIndex)[0]?.portalIndex ?? 0;
+  return ENEMY_SPAWN_PROGRESS.map(coverageSteps);
 });
 
+export const BOSS_PORTAL_INDEX_BY_FORMATION: readonly number[] = BOSS_PORTAL_STEPS.map((steps) =>
+  steps
+    .map((value, portalIndex) => ({ portalIndex, steps: value }))
+    .sort((left, right) => left.steps - right.steps || left.portalIndex - right.portalIndex)[0]?.portalIndex ?? 0
+);
+
 /**
- * 보스의 스폰 지점. 시작 진이 정해져 있으면 그 진의 최적 관문, 아니면
- * 기존 회전 규칙 그대로다. 일반 적은 계속 4관문을 순환한다.
+ * 여러 진이 섰을 때의 보스 관문 — **가장 먼저 닿는 진** 기준으로 고른다.
+ *
+ * 수술 9 는 시작 진 하나만 봤다. 그때는 그것이 판의 전부였기 때문이다. 그런데
+ * 진이 둘·셋 열린 뒤로도 보스는 여전히 **첫 진**의 최적 관문에서 나왔다 —
+ * 그동안 애써 세운 다른 진 쪽으로는 늦게 돌아오거나 아예 스치지 않는다.
+ * "보스가 ... 피가 안 다는 모습은 뭔가 답답한데"(v035 ③)의 한 갈래가 여기다.
+ *
+ * 열린 진 가운데 **하나라도** 가장 빨리 만나는 관문을 고른다. 판을 넓힌 만큼
+ * 보스가 일찍 사거리에 들어온다 — 넓힌 보람이 보스전에서도 보이게 하는 것이
+ * 요점이다. 동점이면 낮은 관문 번호로 갈라 결과를 결정론으로 묶는다.
  */
-export function bossSpawnProgress(startingFormationIndex: number | null, spawnIndex: number): number {
-  const portalIndex = startingFormationIndex === null ? undefined : BOSS_PORTAL_INDEX_BY_FORMATION[startingFormationIndex];
-  return portalIndex === undefined ? spawnProgressForEnemy(spawnIndex) : (ENEMY_SPAWN_PROGRESS[portalIndex] as number);
+export function bossPortalForFormations(formations: readonly number[]): number | null {
+  const rows = formations
+    .map((formationIndex) => BOSS_PORTAL_STEPS[formationIndex])
+    .filter((row): row is readonly number[] => row !== undefined);
+  if (rows.length === 0) return null;
+  let best = 0;
+  let bestSteps = Number.POSITIVE_INFINITY;
+  for (let portalIndex = 0; portalIndex < ENEMY_SPAWN_PROGRESS.length; portalIndex += 1) {
+    const steps = Math.min(...rows.map((row) => row[portalIndex] ?? Number.POSITIVE_INFINITY));
+    if (steps < bestSteps) {
+      bestSteps = steps;
+      best = portalIndex;
+    }
+  }
+  return bestSteps === Number.POSITIVE_INFINITY ? null : best;
+}
+
+/**
+ * 보스의 스폰 지점. 열린 진이 있으면 그 가운데 가장 빨리 만나는 관문, 하나도
+ * 없으면 기존 회전 규칙 그대로다. 일반 적은 계속 4관문을 순환한다.
+ */
+export function bossSpawnProgress(openFormations: readonly number[], spawnIndex: number): number {
+  const portalIndex = bossPortalForFormations(openFormations);
+  return portalIndex === null ? spawnProgressForEnemy(spawnIndex) : (ENEMY_SPAWN_PROGRESS[portalIndex] as number);
 }
 
 /**

@@ -527,13 +527,19 @@ export function syncPanel(): void {
     step.classList.toggle("is-complete", state.wave > 0 || index < openingStep);
   });
   const bossRemaining = ctx.engine.bossTimeRemaining();
+  // 제한시간을 넘겨도 판은 안 끝난다(v035 ③) — 그 자리를 화면이 말해 줘야 한다.
+  const bossOvertime = ctx.engine.bossOvertime();
   const nextWaveRemaining = state.phase === "combat" ? state.nextWaveRemaining : null;
   const previewBossLimit = preview?.boss ? bossTimeLimitForWave(preview.wave) : null;
-  must<HTMLElement>(".wave-card").classList.toggle("is-boss", bossRemaining !== null || previewBossLimit !== null);
+  must<HTMLElement>(".wave-card").classList.toggle("is-boss", bossRemaining !== null || bossOvertime || previewBossLimit !== null);
   must<HTMLElement>("#wave-kicker").textContent = state.phase === "prep"
     ? state.summonCount === 0 ? "첫 소환 전 · 시간 정지" : previewBossLimit !== null ? "우두머리전 · 제한 " + String(previewBossLimit) + "초" : "준비 " + state.prepRemaining.toFixed(1) + "초"
     : bossRemaining !== null
       ? "우두머리 제한 " + bossRemaining.toFixed(1) + "초"
+      : bossOvertime
+        ? nextWaveRemaining !== null
+          ? "제한 초과 · 잔존 합류 " + nextWaveRemaining.toFixed(1) + "초"
+          : "제한 초과 · 다음 웨이브가 합류합니다"
       : nextWaveRemaining !== null
         ? "다음 웨이브 " + nextWaveRemaining.toFixed(1) + "초"
         : state.phase === "combat" ? formatTime(state.waveElapsed) + " 경과" : "봉인전 종료";

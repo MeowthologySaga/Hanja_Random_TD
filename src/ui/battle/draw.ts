@@ -1516,6 +1516,32 @@ function drawEnemy(enemy: Enemy, point = positionOnPath(enemy.progress)): void {
   }
   context.fillStyle = enemy.poisonUntil > ctx.engine.state.elapsed ? "#62db8a" : color;
   context.fillRect(left, top - 6, width * ratio, 4);
+  /*
+   * 우두머리의 약점은 크게 박는다(v035 ③).
+   *
+   * 11px 글자는 몸집 70짜리 우두머리 아래 붙으면 안 읽힌다. 그런데 우두머리전에서
+   * 가장 급한 정보가 바로 그것이다 — 어느 오행으로 때려야 하는가. 못 읽어서
+   * 엉뚱한 자령으로 때리다 시계를 태우는 것이 "피가 안 단다"의 한 갈래였다.
+   * 판에 깔린 다른 글자와 다투지 않게 어두운 판을 깔고 그 위에 올린다.
+   */
+  if (enemy.boss) {
+    const markY = point.y + drawSize * 0.4 + 19;
+    context.save();
+    context.beginPath();
+    context.arc(point.x, markY, 14, 0, Math.PI * 2);
+    context.fillStyle = "rgba(8, 5, 4, 0.84)";
+    context.fill();
+    context.lineWidth = 2;
+    context.strokeStyle = weaknessColor;
+    context.stroke();
+    context.fillStyle = weaknessColor;
+    context.font = '900 19px "Malgun Gothic", serif';
+    context.textAlign = "center";
+    context.textBaseline = "middle";
+    context.fillText(enemy.weakness, point.x, markY + 1);
+    context.restore();
+    return;
+  }
   context.fillStyle = weaknessColor;
   context.font = '900 11px "Malgun Gothic", sans-serif';
   context.textAlign = "center";

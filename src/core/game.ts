@@ -535,13 +535,27 @@ export class GameEngine {
     this.updateAbilityZones(delta);
     if (this.state.phase !== "combat") return;
     this.updateTowers(delta);
+    /*
+     * 보스 제한시간은 **벽이 아니라 문턱**이다(v035 ③).
+     *
+     * 예전에는 시계가 다하면 그 자리에서 판이 끝났다. 잘못한 것이 없어도 —
+     * 보스가 노선을 도는 동안 진에 한 번도 안 들어오면 손 쓸 방법이 없는데도 —
+     * 갑자기 지는 것이 답답함의 정체였다. 이제는 지는 대신 **다음 웨이브가
+     * 합류한다.** 벌은 그대로지만(적이 쌓인다) 실력으로 만회할 여지가 남고,
+     * 끝내 못 버티면 「적 80체」라는 이 게임의 본래 실패 조건으로 진다.
+     *
+     * 마지막 웨이브만 예외로 벽을 남긴다. 합류시킬 다음 웨이브가 없어 벌이
+     * 성립하지 않고, 그대로 두면 마지막 우두머리를 안 잡고 버티기만 해도
+     * 판이 끝나 버린다 — 마지막 봉인은 잡아야 열린다.
+     */
     const bossLimit = bossTimeLimitForWave(plan.wave);
-    if (bossLimit !== null && !this.state.bossDefeated && this.state.waveElapsed >= bossLimit) {
-      this.endRun("defeat", `제한시간 ${bossLimit}초 안에 보스를 처치하지 못했습니다.`, "boss-timeout");
+    const bossOvertime = bossLimit !== null && !this.state.bossDefeated && this.state.waveElapsed >= bossLimit;
+    if (bossOvertime && plan.wave >= this.state.maxWaves) {
+      this.endRun("defeat", `제한시간 ${bossLimit}초 안에 마지막 우두머리를 처치하지 못했습니다.`, "boss-timeout");
       return;
     }
     const allSpawned = this.state.spawned >= plan.count;
-    const deadlineUnlocked = !plan.boss || this.state.bossDefeated;
+    const deadlineUnlocked = !plan.boss || this.state.bossDefeated || bossOvertime;
     if (allSpawned && this.state.enemies.length === 0) {
       this.finishWave();
       return;
@@ -570,6 +584,20 @@ export class GameEngine {
     return pool[Math.min(pool.length - 1, index)]?.char ?? "";
   }
 
+  /**
+   * 보스가 향할 진들 — 자령이 실제로 서 있는 진을 먼저 본다.
+   *
+   * 사 두기만 하고 비워 둔 진으로 보스를 끌어오면 "일찍 만난다"가 뜻을 잃는다.
+   * 한 기도 없으면 열린 진으로, 그마저 없으면(첫 소환 전) 회전 규칙으로 물러난다.
+   */
+  private bossFacingFormations(): readonly number[] {
+    const manned = new Set<number>();
+    for (const tower of this.state.towers) {
+      if (tower.cell >= 0) manned.add(Math.floor(tower.cell / CELLS_PER_FORMATION));
+    }
+    return manned.size > 0 ? [...manned].sort((left, right) => left - right) : this.state.unlockedFormations;
+  }
+
   private spawnEnemy(plan: WavePlan): void {
     const isBoss = plan.boss && this.state.spawned === plan.count - 1;
     const bossFactor = bossHpFactorForWave(plan.wave);
@@ -591,10 +619,11 @@ export class GameEngine {
       maxHp: hp,
       // Bosses keep circulating; the explicit boss clock is their deadline.
       speed: plan.speed * (isBoss ? 0.34 : 0.92 + this.rng.next() * 0.16),
-      // 수술 9: 보스만 시작 진의 최적 관문에서 등장한다 — 느린 보스가 제한시간을
-      // 이동에 다 태우는 시작 진 복불복을 걷는다. 일반 적은 4관문 순환 그대로.
+      // 수술 9(+v035 ③): 보스만 **열린 진 전체**에서 가장 빨리 닿는 관문으로
+      // 나온다 — 느린 보스가 제한시간을 이동에 다 태우는 복불복을 걷는다.
+      // 일반 적은 4관문 순환 그대로.
       progress: isBoss
-        ? bossSpawnProgress(this.state.startingFormationIndex, this.state.spawned)
+        ? bossSpawnProgress(this.bossFacingFormations(), this.state.spawned)
         : spawnProgressForEnemy(this.state.spawned),
       reward: isBoss ? plan.reward : plan.boss ? 1 + Math.floor((plan.wave - 1) / 25) : plan.reward,
       boss: isBoss,
@@ -3236,7 +3265,21 @@ export class GameEngine {
   bossTimeRemaining(): number | null {
     if (this.state.phase !== "combat" || !this.currentPlan?.boss || this.state.bossDefeated) return null;
     const limit = bossTimeLimitForWave(this.currentPlan.wave);
-    return limit === null ? null : Math.max(0, limit - this.state.waveElapsed);
+    // 넘긴 뒤에는 시계가 아니라 합류가 화면을 말한다 — 0 을 붙들고 있으면
+    // 무엇이 벌인지 안 읽힌다.
+    return limit === null || this.state.waveElapsed >= limit ? null : limit - this.state.waveElapsed;
+  }
+
+  /**
+   * 제한시간을 넘긴 채 우두머리가 아직 서 있는가.
+   *
+   * 그 시계는 이제 벽이 아니라 문턱이라(v035 ③), 넘겨도 판은 안 끝나고 다음
+   * 웨이브가 합류한다. 화면이 그 사실을 말해야 해서 밖으로 낸다.
+   */
+  bossOvertime(): boolean {
+    if (this.state.phase !== "combat" || !this.currentPlan?.boss || this.state.bossDefeated) return false;
+    const limit = bossTimeLimitForWave(this.currentPlan.wave);
+    return limit !== null && this.state.waveElapsed >= limit;
   }
 
   idioms(): readonly IdiomDefinition[] {
