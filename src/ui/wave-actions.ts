@@ -38,6 +38,14 @@ export interface PanelAction {
 export function pickPanelActions(): PanelAction[] {
   const state = ctx.engine.state;
   if (state.phase !== "prep" && state.phase !== "combat") return [];
+  /*
+   * 첫 소환 전에는 아무것도 안 권한다.
+   *
+   * 그 순간 할 일은 하나뿐이고, 개문 안내(#opening-guide)가 이미 「① 상점에서
+   * 첫 자령을 소환하세요」라고 말한다. 같은 말을 한 줄 더 얹으면 그건 도움이
+   * 아니라 소음이다.
+   */
+  if (state.summonCount === 0) return [];
   const picks: PanelAction[] = [];
 
   /*

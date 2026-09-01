@@ -422,8 +422,13 @@ function pickTalismanCue(): TalismanCue | null {
    *
    * 다만 [지금 시작]은 여기서 걷지 않는다. 패널 위 카드에는 전용 단추가 있지만
    * 부적을 쓰는 동안 눈은 종이에 있어 그 단추가 안 보인다 — 이 줄이 그 자리다.
+   *
+   * 그리고 **급한 것만** 가져온다(tone !== "note"). 카드에는 자리가 셋이라
+   * 「소환 7엽전」 같은 권유도 담을 수 있지만, 이 줄은 부적지 아래 한 줄이라
+   * 늘 서 있으면 종이를 밀어낸다 — 실제로 늘 세워 봤더니 작업 영역이 27px
+   * 넘쳤다(e2e/talisman.spec.ts 의 무넘침 단언이 잡았다).
    */
-  const [first] = pickPanelActions();
+  const first = pickPanelActions().find((pick) => pick.tone !== "note");
   if (first) return { label: first.label, tone: first.tone, action: first.action, title: first.title };
 
   // 목록이 비었을 때만 「기다린다」를 알린다 — 권할 것이 있으면 그쪽이 먼저다.
