@@ -107,11 +107,14 @@ const WARN_HOLD_MS = 620;
 /**
  * 웨이브마다 적립되는 부적 장수. 쓰지 않으면 소멸하지 않고 그대로 쌓인다.
  *
- * 셋에서 둘로 줄였다. "현재 부적에 시간을 많이 써서 생각보다 타워 경영에 힘을
- * 쓸 시간이 부족해"(사용자) — 웨이브마다 세 글자를 쓰면 준비 시간이 통째로
- * 사라졌다. 총량은 아래 농축이 되돌려 준다.
+ * 셋 → 둘 → **하나**로 줄였다. 둘로 줄인 뒤에도 "여전히 부적 만드느라
+ * 바쁘다"(사용자)였다. 준비 11초에 두 글자는 애초에 안 되는 셈이라 나머지 한
+ * 장이 늘 교전 시간을 잡아먹었다 — 웨이브마다 **한 장**이면 준비 시간 안에
+ * 끝나고, 그 이상 쓰고 싶은 사람은 쌓아 둔 장수를 몰아 쓰면 된다(상한 30장).
+ *
+ * 의무는 반이 되고 총량은 그대로다 — 아래 농축이 그만큼 되돌려 준다.
  */
-const CHARGES_PER_WAVE = 2;
+const CHARGES_PER_WAVE = 1;
 
 /**
  * 쌓아 둘 수 있는 최대 장수 = 10웨이브(한 봉인장)치 적립.
@@ -143,11 +146,12 @@ const REWARD_GOLD_MAX = 14;
  * 장수를 3장에서 2장으로 줄인 만큼 한 장을 값지게 한다.
  *
  * 총량을 **늘리는** 개편이 아니다 — 같은 총량을 덜 자주 주는 개편이다.
- * 2장 × 1.35 ≈ 3장이 되도록 잡았다. 여기서 총량이 커지면 시뮬 게이트가
- * 못 잡는 자리에서 경제가 부푼다(부적 보상은 UI 층이 엔진을 직접 만져
- * 시뮬에 안 잡힌다 — 그래서 설계로 지켜야 한다).
+ * 처음엔 2장 × 1.35 ≈ 3장이었고, 장수를 하나로 다시 줄이면서 1장 × 2.7 ≈ 3장이
+ * 되도록 맞췄다. 여기서 총량이 커지면 시뮬 게이트가 못 잡는 자리에서 경제가
+ * 부푼다(부적 보상은 UI 층이 엔진을 직접 만져 시뮬에 안 잡힌다 — 그래서 설계로
+ * 지켜야 한다).
  */
-const REWARD_DENSITY = 1.35;
+const REWARD_DENSITY = 2.7;
 
 /**
  * 획이 많을수록 후하다.
@@ -1432,6 +1436,18 @@ export function wireTalisman1(): void {
         submit: submitTalisman,
         currentChar: () => currentDefinition?.char ?? null,
         isSealed: () => sealed,
+        /**
+         * 장수를 채운다 — 한 스펙에서 여러 장을 이어 쓰려면 필요하다.
+         *
+         * 웨이브당 한 장이 된 뒤로(v036) 「두 글자를 견주는」 시험은 판을 두 번
+         * 굴리지 않고는 못 서는데, 그건 재려는 것과 상관없는 시간이다.
+         */
+        grantCharges: (count: number) => {
+          charges = Math.max(0, Math.min(CHARGE_CAP, charges + Math.floor(count)));
+          outOfCharges = charges <= 0;
+          syncRewardNote();
+          return charges;
+        },
         /** 특정 글자를 강제 제시 — 최밀 글자 채점 검증·스크린샷 재현용. */
         present: (char: string) => {
           const definition = ctx.engine.catalog.definitions.get(char);

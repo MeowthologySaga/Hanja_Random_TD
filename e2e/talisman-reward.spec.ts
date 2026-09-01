@@ -6,7 +6,7 @@
  * 추가해보자"(사용자).
  *
  * 이 스펙이 지키는 것 셋.
- *  ① 한 웨이브에 오는 장수는 **2장**이다.
+ *  ① 한 웨이브에 오는 장수는 **1장**이다(셋 → 둘 → 하나로 두 번 줄였다).
  *  ② 같은 주사위를 굴려도 **획이 많은 글자가 더 많이 준다**.
  *  ③ 경제 밖 보상이 실제로 **화면에서** 벌어진다 — 준비 시간이 늘고, 적이 맞는다.
  *
@@ -21,6 +21,7 @@ interface RewardQaWindow {
     autoTrace(): void;
     submit(): void;
     present(char: string): boolean;
+    grantCharges(count: number): number;
   };
   __HANJA_CTX_QA__: { engine: { state: { gold: number; phase: string; prepRemaining: number; enemies: unknown[] } } };
   __REAL_RANDOM__?: () => number;
@@ -61,6 +62,10 @@ async function openTalisman(page: Page, seed: string): Promise<void> {
 
 /** 주사위를 고정한 채 한 장을 써 보상을 받는다. 고정은 제출 동안만이다. */
 async function submitWithRoll(page: Page, char: string, roll: number): Promise<void> {
+  // 웨이브당 한 장이므로(v036) 이어 쓰려면 채워 준다 — 재려는 것은 장수가 아니다.
+  await page.evaluate(() => {
+    (window as unknown as RewardQaWindow).__HANJA_TALISMAN_QA__.grantCharges(1);
+  });
   const presented = await page.evaluate((wanted) => {
     const qa = (window as unknown as RewardQaWindow).__HANJA_TALISMAN_QA__;
     return qa.present(wanted);
@@ -83,11 +88,15 @@ async function submitWithRoll(page: Page, char: string, roll: number): Promise<v
   await expect(page.locator("#panel-toast")).toContainText("자령이 응답했습니다");
 }
 
-test("한 웨이브에 오는 부적은 두 장이다", async ({ page }) => {
+test("한 웨이브에 오는 부적은 한 장이다", async ({ page }) => {
   await openTalisman(page, "REWARD-COUNT");
-  // 장수를 줄인 것이 이 개편의 뼈대다 — 부적에 쓰는 시간을 깎아 경영에 돌린다.
-  await expect(page.getByTestId("talisman-charge-count")).toContainText("2장");
-  await expect(page.locator("#talisman-charge-credit")).toContainText("+2");
+  /*
+   * 장수를 줄인 것이 이 개편의 뼈대다 — 부적에 쓰는 시간을 깎아 경영에 돌린다.
+   * 셋 → 둘 → 하나로 두 번 줄였다. 둘일 때도 "여전히 부적 만드느라 바쁘다"
+   * (사용자)였고, 준비 11초에 두 글자는 애초에 안 되는 셈이었다.
+   */
+  await expect(page.getByTestId("talisman-charge-count")).toContainText("1장");
+  await expect(page.locator("#talisman-charge-credit")).toContainText("+1");
 });
 
 test("획이 많은 글자가 같은 주사위에도 더 많이 준다", async ({ page }) => {

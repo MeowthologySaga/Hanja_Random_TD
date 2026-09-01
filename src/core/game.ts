@@ -760,6 +760,22 @@ export class GameEngine {
     }
   }
 
+  /**
+   * 한 발의 피해를 **초당 효과**로 환산할 때 쓰는 값.
+   *
+   * 장판·독처럼 시간에 걸쳐 도는 것들은 「그 발의 피해 × 비율」을 초당 피해로
+   * 삼는데, 지속 시간은 발수와 무관하게 고정이다. 그래서 투사체 무게를 올려
+   * 발수를 줄이고 한 발을 키우면 **초당 피해가 통째로 그 배수만큼 올라간다** —
+   * 무게 축이 「DPS 중립」이 아니었던 진짜 까닭이 여기다(실측: 무게 1.4배에서
+   * 135판 승률 0.556 → 0.807).
+   *
+   * 무게로 나눠 두면 지속 효과는 무게와 무관해진다. 눈에 보이는 탄만 무거워지고
+   * 장판의 세기는 그대로다 — 그것이 애초에 바꾸려던 것이다.
+   */
+  private sustainedDamage(damage: number): number {
+    return damage / PROJECTILE_WEIGHT;
+  }
+
   private deployElementZone(tower: Tower, target: Enemy, damage: number, potency: number, abilityPower: number): { label: string; duration: number; damagePerSecond: number } {
     const spec = ELEMENT_ZONE_SPECS[tower.wuxing];
     const durationMultiplier = tower.wuxing === "木" ? 1 + this.elementTraitLevel("木", 1) * 0.02 : 1;
@@ -769,7 +785,7 @@ export class GameEngine {
     const progressionRank = this.state.mode === "casual" ? tower.casualStar ?? tower.naturalStar ?? 1 : tower.stage;
     const duration = (spec.duration + progressionRank * 0.22) * durationMultiplier;
     const radius = (spec.radius + progressionRank * 5) * radiusMultiplier;
-    const damagePerSecond = damage * spec.damageRatio * potency * abilityPower * damageMultiplier;
+    const damagePerSecond = this.sustainedDamage(damage) * spec.damageRatio * potency * abilityPower * damageMultiplier;
     const existing = this.state.abilityZones.find((zone) => zone.towerId === tower.id);
     const zone: AbilityZone = {
       id: existing?.id ?? this.nextAbilityZoneId++,
@@ -836,7 +852,7 @@ export class GameEngine {
       wuxing: tower.wuxing,
       progress: target.progress,
       radius: MIRE_ZONE_RADIUS * this.casualSplashRadiusScale(tower),
-      damagePerSecond: damage * spec.damageRatio * potency * abilityPower,
+      damagePerSecond: this.sustainedDamage(damage) * spec.damageRatio * potency * abilityPower,
       expiresAt: this.state.elapsed + MIRE_ZONE_SECONDS,
       color: "#c2a06a"
     };

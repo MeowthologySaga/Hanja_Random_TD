@@ -8,7 +8,7 @@
  *   ① 획을 떼도 저절로 완성되지 않는다 — 판정은 제출 버튼만의 권한이다.
  *   ② 미달 제출은 벌이 없다 — 안내만 남고 그린 먹선은 그대로 살아 있다.
  * C3 가 더한 두 가지도 함께 본다.
- *   ③ 화면은 소진율(n / 2)이 아니라 **남은 장수**를 센다. 잠금은 0장일 때뿐이다.
+ *   ③ 화면은 소진율(n / 1)이 아니라 **남은 장수**를 센다. 잠금은 0장일 때뿐이다.
  *   ④ 보상 연출은 2.4초 이상 머물고, 무엇을 받았는지 글자로 읽힌다.
  * 손그림 채점은 글꼴 렌더링에 좌우돼 불안정하므로, 임계 통과선까지의 그리기는
  * 개발 전용 QA 자동 따라쓰기(__HANJA_TALISMAN_QA__.autoTrace — 실제 포인터
@@ -88,11 +88,11 @@ test("the default-on talisman tab turns a submitted trace into a jaryeong reward
   await expect(page.locator("#talisman-reading")).not.toHaveText("글자를 준비하는 중");
   /*
    * 머리글은 남은 장수를 센다 — 소진율(n / 2)이 아니다(트랙 C3).
-   * 장수는 v035 ① 에서 3장에서 2장으로 줄었다: 부적에 쓰는 시간을 깎아
-   * 타워 경영에 돌리고, 줄인 만큼 한 장을 값지게 한다.
+   * 장수는 셋 → 둘 → 하나로 두 번 줄었다: 부적에 쓰는 시간을 깎아 타워 경영에
+   * 돌리고, 줄인 만큼 한 장을 값지게 한다(농축 2.7배).
    */
-  await expect(page.locator("#talisman-charge-count")).toHaveText("남은 부적 2장");
-  await expect(page.locator("#talisman-charge-credit")).toContainText("+2 적립");
+  await expect(page.locator("#talisman-charge-count")).toHaveText("남은 부적 1장");
+  await expect(page.locator("#talisman-charge-credit")).toContainText("+1 적립");
   await expect(page.locator("#talisman-recent-reward")).toContainText("아직 없음");
   await expect(page.locator("#talisman-economy-note")).toContainText("적이 5% 강해집니다");
   // 패널 세로 예산 — 부적지·바닥줄이 작업 영역을 넘겨 스크롤을 만들면 안 된다.
@@ -199,13 +199,13 @@ test("the default-on talisman tab turns a submitted trace into a jaryeong reward
   expect(Date.now() - rewardShownAt).toBeGreaterThanOrEqual(2_400);
   // 연출이 지나가도 "최근 보상" 줄에 누적이 남는다.
   await expect(page.locator("#talisman-recent-reward")).not.toContainText("아직 없음");
-  // 한 장을 썼으니 남은 장수가 하나 줄어든다.
-  await expect(page.locator("#talisman-charge-count")).toHaveText("남은 부적 1장");
+  // 한 장을 썼으니 남은 장수가 없다 — 웨이브당 한 장이다.
+  await expect(page.locator("#talisman-charge-count")).toHaveText("남은 부적 0장");
   await page.screenshot({ path: "artifacts/talisman-sealed-1280x720.png", fullPage: true });
 
   // ⑤ 남은 장수 — 완성하면 종이가 저절로 넘어가 다음 글자가 차오르고,
   //    **0장이 될 때만** 종이가 잠긴 채 다음 웨이브 적립을 기다린다.
-  for (const left of [0]) {
+  for (const left of [] as number[]) {
     // 손대지 않아도 다음 장이 온다(인장이 걷히고 빈 종이가 선다).
     await expect(page.locator("#talisman-seal")).toBeHidden({ timeout: 8_000 });
     await expect(page.getByTestId("talisman-submit")).toBeDisabled();
@@ -213,7 +213,7 @@ test("the default-on talisman tab turns a submitted trace into a jaryeong reward
     await page.getByTestId("talisman-submit").click();
     await expect(page.locator("#talisman-charge-count")).toHaveText(`남은 부적 ${left}장`);
   }
-  await expect(page.locator("#talisman-status")).toContainText("다음 웨이브에 2장이 더 옵니다", { timeout: 8_000 });
+  await expect(page.locator("#talisman-status")).toContainText("다음 웨이브에 1장이 더 옵니다", { timeout: 8_000 });
   await expect(page.getByTestId("talisman-submit")).toBeDisabled();
   await expect(page.getByTestId("talisman-redraw")).toBeDisabled();
   await page.screenshot({ path: "artifacts/talisman-out-of-charges-1280x720.png", fullPage: true });
