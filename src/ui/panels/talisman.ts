@@ -424,15 +424,15 @@ function pickTalismanCue(): TalismanCue | null {
    * 다른 것을 급하다고 말하는 셈이 된다. 이 줄은 그 목록의 **첫 줄**만 가져다
    * 쓴다 — 부적지 아래는 한 줄뿐이라(760절) 가장 급한 하나만 설 수 있다.
    *
-   * 다만 [지금 시작]은 여기서 걷지 않는다. 패널 위 카드에는 전용 단추가 있지만
-   * 부적을 쓰는 동안 눈은 종이에 있어 그 단추가 안 보인다 — 이 줄이 그 자리다.
+   * 가져오는 것은 **가장 급한 것 하나**뿐이다(tone === "urgent").
    *
-   * 그리고 **급한 것만** 가져온다(tone !== "note"). 카드에는 자리가 셋이라
-   * 「소환 7엽전」 같은 권유도 담을 수 있지만, 이 줄은 부적지 아래 한 줄이라
-   * 늘 서 있으면 종이를 밀어낸다 — 실제로 늘 세워 봤더니 작업 영역이 27px
-   * 넘쳤다(e2e/talisman.spec.ts 의 무넘침 단언이 잡았다).
+   * 처음엔 권유(tone "offer")까지 가져왔더니 [지금 시작]이 이 줄과 위 카드에
+   * 나란히 서서 같은 말을 두 번 했다 — 두 자리가 400px 도 안 떨어져 있어
+   * 소음이었다. 권유는 카드가 맡고(자리가 셋이다), 이 줄은 **판이 끝날 수도
+   * 있는 일**만 말한다. 부적지 아래 한 줄은 늘 서 있으면 종이를 밀어내므로
+   * (작업 영역 27px 초과 전례) 비어 있는 것이 기본값이어야 한다.
    */
-  const first = pickPanelActions().find((pick) => pick.tone !== "note");
+  const first = pickPanelActions().find((pick) => pick.tone === "urgent");
   if (first) return { label: first.label, tone: first.tone, action: first.action, title: first.title };
 
   // 목록이 비었을 때만 「기다린다」를 알린다 — 권할 것이 있으면 그쪽이 먼저다.

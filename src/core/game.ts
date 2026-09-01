@@ -1084,7 +1084,19 @@ export class GameEngine {
     const activeSkills = this.towerHasActiveSkills(tower);
     const abilityPower = 1 + this.combinedUpgradeBonus(tower.wuxing, "abilityPower");
     const statusPower = 1 + this.combinedUpgradeBonus(tower.wuxing, "statusPower");
-    const semanticEvery = Math.max(7, tuning.semanticEvery - (concentration >= 3 ? 1 : 0));
+    /*
+     * 기술 주기는 발수로 세지만, 뜻은 **시간**이다.
+     *
+     * 투사체 무게를 올리면 발수가 그 배수만큼 줄어든다. 주기를 발수 그대로 두면
+     * 기술도 그만큼 뜸해져, 「한 발만 무겁게」가 아니라 「기술이 반으로 줄어드는」
+     * 개편이 된다. 주기를 함께 나눠 **초당 발동 횟수**를 지킨다.
+     *
+     * 실측이 이 자리를 가리켰다: 무게 1.5배에서 지속 효과만 무게로 나눴더니
+     * 승률이 0.556 → 0.400 으로 떨어졌고(너무 어려움), 안 나눴을 때는 0.807
+     * 이었다(너무 쉬움). 나눈 쪽이 옳되 발동 빈도가 함께 줄어든 몫이 과했던 것이다.
+     */
+    const weightedEvery = (every: number): number => Math.max(1, Math.round(every / PROJECTILE_WEIGHT));
+    const semanticEvery = Math.max(weightedEvery(7), weightedEvery(tuning.semanticEvery) - (concentration >= 3 ? 1 : 0));
     const semanticTrigger = activeSkills && tower.shotCount % semanticEvery === 0
       // [SKILL-V1] 파죽(momentum)은 별도 발동 주기가 없는 패시브라 주기 기술에서 뺀다.
       && abilities.semanticFamily !== "momentum"
@@ -1097,9 +1109,9 @@ export class GameEngine {
       // [SKILL-V3] 진흙밭은 길이 붐빌 때만 깐다 — 비구름 강하와 같은 충전 조건.
       && (abilities.semanticFamily !== "mire" || this.state.enemies.length >= MIRE_MIN_ENEMIES);
     // At most one active skill may resolve from a tower on the same attack.
-    const signature = activeSkills && !semanticTrigger && tower.shotCount % tuning.signatureEvery === 0;
+    const signature = activeSkills && !semanticTrigger && tower.shotCount % weightedEvery(tuning.signatureEvery) === 0;
     const lineageTrigger = activeSkills && !semanticTrigger && !signature
-      && Boolean(abilities.lineage && tower.shotCount % tuning.lineageEvery === 0);
+      && Boolean(abilities.lineage && tower.shotCount % weightedEvery(tuning.lineageEvery) === 0);
     const signatureControlBonus = signature && profile.role === "control" ? tuning.roleControlBonus : 0;
     let damage = profile.baseDamage * this.towerPowerMultiplier(tower) * profile.budgetMultiplier;
     damage *= 1 + concentration * (concentrationPath === "potent" ? 0.12 : 0.055);

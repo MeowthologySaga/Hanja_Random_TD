@@ -147,7 +147,8 @@ test("경제 밖 보상 — 전장에 적이 있으면 내리친다", async ({ p
   await page.locator('.panel-tabs button[data-panel-tab="shop"]').click();
   await page.getByTestId("summon-button").click();
   await page.locator("#talisman-tab").click();
-  await page.getByTestId("talisman-cue").click();
+  // 웨이브를 여는 손은 패널 카드에 있다(v036) — 부적지 아래 줄은 급한 것만 맡는다.
+  await page.locator("#wave-action-row #early-button").click({ force: true });
   await expect.poll(async () => (await qaState(page)).phase).toBe("combat");
 
   // 개발 손잡이로 전장을 채운다 — 내리칠 것이 있어야 내리치는지 본다.

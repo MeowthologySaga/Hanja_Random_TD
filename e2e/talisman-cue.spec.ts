@@ -48,22 +48,29 @@ test("첫 소환 전에는 세울 것이 없어 자리를 비운다", async ({ p
   await expect(page.locator("#talisman-cue")).toBeHidden();
 });
 
-test("준비 시간에는 [지금 시작]이 서고, 누르면 엽전을 받고 웨이브가 열린다", async ({ page }) => {
+test("준비 시간의 [지금 시작]은 패널 카드가 맡는다 — 이 줄은 비어 있다", async ({ page }) => {
+  /*
+   * v036 에서 자리를 갈랐다. 권유([지금 시작]·소환·강화)는 패널 위 **행동
+   * 카드**가 맡고(자리가 셋이다), 부적지 아래 이 한 줄은 **판이 끝날 수도 있는
+   * 일**만 말한다. 둘 다 세워 봤더니 400px 도 안 떨어진 자리에서 같은 말을
+   * 두 번 해 소음이었고, 한 줄이 늘 서 있으면 종이를 밀어냈다.
+   */
   await openTalisman(page);
-  // 자령을 한 기 세워 오행진을 연다 — 그래야 웨이브를 열 수 있다.
   await page.locator('.panel-tabs button[data-panel-tab="shop"]').click();
   await page.getByTestId("summon-button").click();
+  await page.keyboard.press("Escape");
   await page.locator("#talisman-tab").click();
+  await page.waitForTimeout(300);
 
-  const cue = page.getByTestId("talisman-cue");
-  await expect(cue).toBeVisible();
-  await expect(cue).toContainText("지금 시작");
-  await expect(page.locator("#talisman-cue")).toHaveAttribute("data-tone", "offer");
+  await expect(page.locator("#talisman-cue")).toBeHidden();
+  // 웨이브를 여는 손은 카드에 있다.
+  const start = page.locator("#wave-action-row #early-button");
+  await expect(start).toBeVisible();
+  await expect(start).toContainText("시작");
 
   const before = await qa(page);
   expect(before.engine.state.phase).toBe("prep");
-  await cue.click();
-
+  await start.click({ force: true });
   await expect.poll(async () => (await qa(page)).engine.state.phase).toBe("combat");
   expect((await qa(page)).engine.state.gold).toBeGreaterThanOrEqual(before.engine.state.gold);
 });
@@ -72,11 +79,10 @@ test("적 한계가 차오르면 그것이 먼저 선다", async ({ page }) => {
   await openTalisman(page);
   await page.locator('.panel-tabs button[data-panel-tab="shop"]').click();
   await page.getByTestId("summon-button").click();
+  await page.keyboard.press("Escape");
   await page.locator("#talisman-tab").click();
-  // 준비 시간이라 지금은 [지금 시작]이 서 있다.
-  await expect(page.getByTestId("talisman-cue")).toContainText("지금 시작");
-  // 그 줄을 눌러 웨이브를 연다 — 준비 단계에는 적이 안 나오므로 채울 수도 없다.
-  await page.getByTestId("talisman-cue").click();
+  // 준비 단계에는 적이 안 나오므로 먼저 웨이브를 연다 — 여는 손은 카드에 있다.
+  await page.locator("#wave-action-row #early-button").click({ force: true });
   await expect.poll(async () => (await qa(page)).engine.state.phase).toBe("combat");
 
   // 개발 손잡이로 전장을 채운다 — 적 한계는 무엇보다 급한 신호다.
