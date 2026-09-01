@@ -233,11 +233,20 @@ function chooseCombatRole(char: string, graphRole: GraphRole): CombatRole {
  * 화면의 결만 바꾸는 축이다. 실측(현행): 한 마리를 봉인하는 데 27.1발이 들어
  * 화면이 잔탄으로 덮였다(scripts/combat-tempo.ts).
  *
- * 대기시간 하한(game.ts towerAttackCooldown 의 0.28초)은 이 배수 위에서도 그대로
- * 걸린다 — 하한에 눌린 자령은 피해만 오르므로 그 구간에서는 DPS 중립이 깨진다.
- * 지금 값에서는 하한에 닿는 자령이 없다.
+ * 대기시간 하한(TOWER_COOLDOWN_FLOOR)도 이 배수를 함께 탄다. 안 그러면 하한에
+ * 눌린 자령만 공짜로 세진다 — 실측: 하한을 고정해 둔 채 무게 1.4배를 걸었더니
+ * 135판 승률이 0.556 에서 **0.807** 로 뛰었다. 「DPS 중립」이라는 전제가 강화·농축을
+ * 부은 자령에서 통째로 깨진 것이다.
  */
 export const PROJECTILE_WEIGHT = 1;
+
+/**
+ * 공격 대기시간의 하한(초).
+ *
+ * 초당 3.6발을 넘는 난사를 막으려고 둔 바닥이다. PROJECTILE_WEIGHT 를 함께 곱해
+ * 쓰므로(game.ts towerAttackCooldown), 무게를 올리면 이 바닥도 같이 내려앉는다.
+ */
+export const TOWER_COOLDOWN_FLOOR = 0.28;
 
 /**
  * 사거리 배수.

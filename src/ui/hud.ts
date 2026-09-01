@@ -38,6 +38,7 @@ import {
   upgradeStateSignature
 } from "./dialogs/element-upgrade";
 import { formatTime, phaseLabel } from "./format";
+import { syncWaveActions } from "./wave-actions";
 import { renderConcentration } from "./panels/concentration";
 import { renderEvolutions } from "./panels/evolution";
 import { bindArrangePolicy } from "./panels/arrange-policy";
@@ -461,9 +462,7 @@ export function syncPanel(): void {
   shell.dataset.phase = state.phase;
   shell.dataset.gameMode = state.mode;
   must<HTMLElement>("#stage-wave").textContent = String(state.wave) + " / " + String(state.maxWaves);
-  const displayWave = Math.max(1, Math.min(state.maxWaves, state.phase === "prep" ? state.wave + 1 : state.wave));
-  const chapter = Math.ceil(displayWave / 10);
-  must<HTMLElement>("#stage-chapter").textContent = `${chapter} / 10`;
+  // 「장 N / 10」 칩은 걷었다(v036) — 웨이브 칩과 브리핑이 이미 같은 말을 한다.
   must<HTMLElement>("#stage-region").textContent = `${REGION_META[state.region].title.split(" · ")[0] ?? state.region}${state.mode === "casual" ? " · 8성" : ""}`;
   must<HTMLElement>("#stage-phase").textContent = phaseLabel(state.phase);
   must<HTMLElement>("#stage-enemies").textContent = String(state.enemies.length) + " / " + String(MAX_ENEMIES);
@@ -513,8 +512,15 @@ export function syncPanel(): void {
   if (elementUpgradeDialog.open && ctx.elementUpgradeRenderKey !== nextElementUpgradeRenderKey) renderElementUpgrades();
   const earlyButton = must<HTMLButtonElement>("#early-button");
   earlyButton.disabled = state.phase !== "prep" || state.summonCount === 0;
+  /*
+   * 액수는 엔진이 센다(earlyStartBonus).
+   *
+   * 예전에는 여기서 `floor(prepRemaining / 2)` 를 따로 셌는데, 값이 매겨지는
+   * 창이 예전 시계에 묶인 뒤로(v035 ②) 그 셈은 실제로 받는 액수보다 커졌다 —
+   * 준비 11초에 화면은 5엽전이라 적고 실제로는 4엽전이 들어왔다.
+   */
   earlyButton.textContent = state.phase === "prep"
-    ? state.summonCount === 0 ? "첫 소환 필요" : "시작 +" + String(Math.floor(state.prepRemaining / 2)) + "엽전"
+    ? state.summonCount === 0 ? "첫 소환 필요" : "시작 +" + String(ctx.engine.earlyStartBonus()) + "엽전"
     : "교전 중";
   if (earlyButton.disabled) hideEarlyHint();
   else maybeShowEarlyHint();
@@ -551,10 +557,20 @@ export function syncPanel(): void {
     : preview
       ? composeWaveBriefing(preview.briefing, preview.wave, previewBossLimit !== null, nextWaveRemaining !== null ? state.enemies.length : null)
       : "적 " + String(MAX_ENEMIES) + "체 도달 시 즉시 게임오버";
+  // 패널 행동 자리 — 탭과 무관하게 늘 서 있으므로 여기서 갱신한다(v036).
+  syncWaveActions();
   const briefingElement = must<HTMLElement>("#wave-briefing");
   briefingElement.textContent = briefing;
-  // 조판이 밀려 그래도 잘리는 날을 대비한 안전망 — 호버·스크린리더는 전문을 본다.
+  /*
+   * 전문은 줄 전체의 title 이 받는다.
+   *
+   * 시계와 설명이 한 줄에 붙어(v036) 말줄임이 줄 단위로 걸리므로, 짚었을 때
+   * 나와야 하는 것도 줄 전체다 — 설명만 title 에 두면 잘린 시계는 어디서도
+   * 못 읽는다.
+   */
   briefingElement.title = briefing;
+  const statusLine = document.querySelector<HTMLElement>("#wave-status-line");
+  if (statusLine) statusLine.title = `${must<HTMLElement>("#wave-kicker").textContent ?? ""} · ${briefing}`;
   const weakness = preview?.weakness ?? "木";
   const weaknessElement = must<HTMLElement>("#wave-weakness");
   weaknessElement.textContent = weakness;

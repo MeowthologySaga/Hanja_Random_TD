@@ -100,9 +100,19 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
       <div class="stage-topbar" aria-live="polite">
         <div class="stage-chip"><span>웨이브</span><strong id="stage-wave">0 / ${GAME_CONFIG.maxWaves}</strong></div>
         <div class="stage-chip stage-chip--region"><span>지역</span><strong id="stage-region">한국</strong></div>
-        <div class="stage-chip stage-chip--chapter" title="10웨이브마다 우두머리가 오는 장(章) 진행"><span>장</span><strong id="stage-chapter">1 / 10</strong></div>
+        <!--
+          「장 N / 10」 칩은 걷었다(v036).
+
+          같은 말을 화면이 두 번 했다 — 웨이브 칩의 분자만 봐도 장은 나오고,
+          브리핑 문자열도 「제N장 · 우두머리 N0웨이브」라고 이미 말한다. 그
+          95px 자리를 **무엇이 오는가**에 내준다. 눈이 오른쪽 부적지에 가 있는
+          동안에도 전장 위 한 줄이 다음 적을 알려 준다(사용자 지적).
+        -->
+        <div class="stage-chip stage-chip--wave-info">
+          <b id="wave-label">소환진을 준비하세요</b>
+          <span class="stage-weakness-seal">약점 <b id="wave-weakness">木</b></span>
+        </div>
         <div class="stage-chip stage-chip--phase"><i id="phase-dot"></i><strong id="stage-phase">준비 전</strong></div>
-        <button id="early-button" class="early-start" type="button" data-testid="early-wave">시작 보너스</button>
         <div id="enemy-limit-chip" class="stage-chip" title="지금 전장에 남은 적 수 / 적 상한 ${MAX_ENEMIES}체 — 상한에 닿으면 수비 실패입니다"><span>적 한계</span><strong id="stage-enemies">0 / ${MAX_ENEMIES}</strong></div>
       </div>
       <div id="active-idioms" class="active-idioms" aria-label="발동 중 사자성어" aria-live="polite"></div>
@@ -185,9 +195,37 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
         <div title="오행별로 쌓인 문기 — 농축과 강화는 그 오행의 문기를 쓴다"><span>문기</span><strong id="essence-total-value"></strong></div>
       </section>
 
-      <section class="wave-card">
-        <div><span id="wave-kicker">첫 웨이브 대기</span><strong id="wave-label">소환진을 준비하세요</strong><small id="wave-briefing">다음 적 정보를 확인하세요.</small></div>
-        <div class="weakness-seal"><span>약점</span><b id="wave-weakness">木</b></div>
+      <!--
+        웨이브 카드가 **행동 자리**가 됐다(v036).
+
+        "부적 집중하는동안 그곳 패널 밖에 신경 못쓰니까 다음웨이브 진행 버튼등
+        패널쪽에 배치하라"(사용자). 여태 이 카드는 「무엇이 오는가」를 읽어 주기만
+        했고, 정작 눌러야 할 것들은 전부 전장 쪽에 있었다. 읽을 것은 전장 상단
+        띠로 올리고 이 자리에는 **누를 것**만 남긴다.
+
+        상자 크기(376x82)와 9슬라이스 테는 그대로 둔다 — 같은 자리에 같은 틀로
+        서는 카드라 자산과 조판 실측(e2e/nineslice.spec.ts)을 다시 잴 까닭이 없다.
+        그래서 겉 클래스 이름도 wave-card 를 그대로 지킨다.
+      -->
+      <section class="wave-card wave-actions" aria-label="지금 할 수 있는 것">
+        <!--
+          시계와 설명을 한 줄에 붙인다.
+
+          따로 두면 줄이 셋이 되어 카드 안쪽 66px 을 넘고, 단추 줄과 겹친다
+          (실측: 시계 16 + 단추 30 + 설명 30 = 82 > 66). 설명을 전장 띠 칩의
+          둘째 줄로도 올려 봤지만 그 칩이 형제 칩들까지 늘려 띠가 41px 에서
+          62px 이 됐다 — 그것도 물렀다. 한 줄에 붙이고 넘치는 만큼은 말줄임,
+          전문은 title 이 받는다.
+        -->
+        <p class="wave-actions-clock" id="wave-status-line">
+          <b id="wave-kicker">첫 웨이브 대기</b>
+          <span id="wave-briefing">다음 적 정보를 확인하세요.</span>
+        </p>
+        <div id="wave-action-row" class="wave-action-row">
+          <button id="early-button" class="early-start" type="button" data-testid="early-wave">시작 보너스</button>
+          <button id="wave-action-a" class="wave-action" type="button" data-testid="wave-action-a" hidden></button>
+          <button id="wave-action-b" class="wave-action" type="button" data-testid="wave-action-b" hidden></button>
+        </div>
       </section>
 
       <div class="context-deck">

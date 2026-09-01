@@ -156,6 +156,8 @@ import {
   goalRewardForWave,
   isTierSummonIntent,
   MAX_UPGRADE_LEVEL,
+  PROJECTILE_WEIGHT,
+  TOWER_COOLDOWN_FLOOR,
   maxSummonStageForWave,
   MIN_TIER_POOL_SIZE,
   researchConnectionBonus,
@@ -1641,6 +1643,18 @@ export class GameEngine {
     return Math.max(0, Math.min(this.state.prepRemaining - (clock - window), window));
   }
 
+  /**
+   * 지금 누르면 받을 엽전 — 화면이 같은 셈을 따로 두지 않게 밖으로 낸다.
+   *
+   * 예전에는 화면이 `floor(prepRemaining / 2)` 를 스스로 셌다. 그 셈이 「값이
+   * 매겨지는 창」으로 바뀐 뒤로도 화면은 옛 셈을 들고 있어 실제로 받는 액수와
+   * 어긋났다(v035 ② 이후). 한 곳에서만 센다.
+   */
+  earlyStartBonus(): number {
+    if (this.state.phase !== "prep") return 0;
+    return Math.floor(this.earlyStartPaidSeconds() / 2);
+  }
+
   startWaveEarly(): ActionResult {
     if (this.state.phase !== "prep") return { ok: false, message: "준비 시간에만 시작할 수 있습니다." };
     if (this.state.summonCount === 0) return { ok: false, message: "첫 자령을 소환하면 오행진이 열리고 웨이브를 시작할 수 있습니다." };
@@ -1651,7 +1665,7 @@ export class GameEngine {
      * 「문기의 숨」이 얹은 시간에도 값이 안 붙는다(창을 넘는다): 시간을 늘려 주는
      * 보상이 보너스까지 불리면 한 장으로 두 번 받는 셈이 된다.
      */
-    const bonus = Math.floor(this.earlyStartPaidSeconds() / 2);
+    const bonus = this.earlyStartBonus();
     this.state.gold += bonus;
     this.startNextWave();
     return { ok: true, message: bonus > 0 ? "조기 출전 보너스 " + String(bonus) + "엽전" : "웨이브 시작" };
@@ -2600,7 +2614,21 @@ export class GameEngine {
       : (tower.stage - 1) * 0.035;
     // [SKILL-V3] 획수 공명: 같은 진에 선 동급 자령 1기당 공격 대기 −4%(4중첩 상한).
     const resonanceScale = strokeResonanceCooldownScale(this.strokeResonanceStacks(tower));
-    return Math.max(0.28, profile.cooldown * (1 - progressionHaste) * (1 - concentrationHaste) * resonanceScale / (1 + upgradeHaste));
+    /*
+     * 하한도 투사체 무게를 탄다.
+     *
+     * 하한이 0.28초로 고정이면 무게를 올릴 때 **하한에 눌린 자령만 공짜로
+     * 세진다** — 대기시간은 이미 바닥이라 안 늘고 피해만 배로 오르기 때문이다.
+     * 실측이 그걸 잡아냈다: 무게 1.4배에서 135판 승률이 0.556 → **0.807**,
+     * 1.8배에서 0.911 로 뛰었다(v036 밸런스 사냥). 「DPS 중립」이라는 이 축의
+     * 전제가 강화·농축을 부은 자령에서 통째로 깨진 것이다.
+     *
+     * 하한을 함께 밀면 그 구간에서도 초당 피해가 유지된다 — 발수만 줄고 한 발이
+     * 무거워진다. 하한의 본뜻(초당 3.6발을 넘는 난사를 막는다)도 무게에 맞춰
+     * 같은 뜻으로 옮겨 간다.
+     */
+    const floor = TOWER_COOLDOWN_FLOOR * PROJECTILE_WEIGHT;
+    return Math.max(floor, profile.cooldown * (1 - progressionHaste) * (1 - concentrationHaste) * resonanceScale / (1 + upgradeHaste));
   }
 
   /** [SKILL-V3] 이 자령의 별. 별승급 진법에서만 뜻이 있다. */

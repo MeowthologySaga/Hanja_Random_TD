@@ -1,0 +1,162 @@
+/* ══════════════════════════════════════════════════════
+   790. 읽을 것은 전장 위로, 누를 것은 패널로 (v036)
+   ══════════════════════════════════════════════════════
+
+   "부적 집중하는동안 그곳 패널 밖에 신경 못쓰니까 다음웨이브 진행 버튼등
+    패널쪽에 배치하라고 했는데 안했어"(사용자).
+
+   여태 배치가 정확히 반대였다. **읽을 것**(무엇이 오는가·약점·설명)이 오른쪽
+   패널 위쪽 카드에 있었고, **누를 것**([시작 보너스])은 전장 위에 있었다.
+   부적을 쓰는 동안 눈은 패널에 있으니, 읽을 것은 흘려도 되지만 누를 것을 놓치면
+   웨이브가 저절로 흘러간다.
+
+   그래서 자리를 맞바꾼다.
+    · 전장 상단 띠 — 걷어 낸 「장 N/10」 칩 자리에 **무엇이 오는가**를 세운다.
+    · 패널 카드 — 상자와 9슬라이스 테는 그대로 두고 속만 **누를 것**으로 간다.
+      (틀을 지키므로 e2e/nineslice.spec.ts 의 376x82 실측이 그대로 산다.) */
+
+/* ── 전장 상단: 무엇이 오는가 ─────────────────────────────────── */
+
+.stage-chip--wave-info {
+  /*
+     남는 가로를 이 칩이 먹는다. 실측(1280x720): 띠 예산 852px 중 웨이브 127.5 ·
+     지역 95.0 · 진행 110.9 · 적 한계 123.6 = 457px + gap 28px 이라 367px 이 남고,
+     그 자리가 통째로 여기 온다(.stage-chip--phase 의 margin-left:auto 앞).
+     min-width 는 짧은 이름에서도 칩이 오그라들지 않게 잡는다. */
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 366px;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.stage-chip--wave-info > b {
+  min-width: 0;
+  overflow: hidden;
+  color: #f2e2bb;
+  font-size: 15px;
+  font-weight: 800;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.stage-weakness-seal {
+  color: #93a3b9;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.stage-weakness-seal > b {
+  font-size: 15px;
+  font-weight: 900;
+}
+
+
+
+/* ── 패널: 지금 누를 것 ───────────────────────────────────────── */
+
+.wave-card.wave-actions {
+  /*
+     카드 틀(376x82)은 그대로. 속은 두 줄이다 — 시계(16) · 단추(30).
+     안쪽 66px 에 여유가 남아, 나중에 단추 줄을 하나 더 얹을 자리가 있다. */
+  grid-template-columns: minmax(0, 1fr) !important;
+  align-content: center;
+  row-gap: 3px;
+}
+
+/*
+   전용 [시작] 단추는 제 크기(.early-start)를 들고 온다 — 행동 줄 안에서는
+   형제들과 같은 키로 선다. 안 맞추면 41px 단추 하나가 줄 높이를 밀어 올려
+   잔글씨가 카드 밖으로 밀린다(실측: 30 vs 41). */
+.wave-action-row > #early-button.early-start {
+  height: 30px;
+  min-height: 0;
+  padding: 0 8px;
+  margin: 0;
+  font-size: 11.5px;
+  line-height: 1;
+}
+
+.wave-actions-clock {
+  margin: 0;
+  min-width: 0;
+  color: #7f90a6;
+  font-size: 11.5px;
+  line-height: 1.3;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.wave-actions-clock > b {
+  color: #cfdcec;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+/*
+   설명은 이 줄의 꼬리다.
+
+   100-readability.css:1096 이 이 id 를 두 줄 상자로 펴 두었다 — 폭 284px 짜리
+   카드에 있던 시절의 처방이라, 한 줄에 붙인 지금은 도로 접어야 부모의
+   말줄임이 걸린다. */
+.wave-actions-clock > #wave-briefing {
+  display: inline !important;
+  font-size: inherit !important;
+  white-space: inherit !important;
+}
+
+.wave-actions-clock > #wave-briefing::before {
+  content: " · ";
+  color: #5d6c80;
+}
+
+.wave-action-row {
+  display: flex;
+  gap: 6px;
+  min-width: 0;
+}
+
+/*
+   단추 셋이 한 줄에 선다(전용 [시작] + 자리 둘). 셋 다 서는 때가 실제로 있으므로
+   폭을 나눠 갖되, 글자가 잘리면 뜻이 사라지므로 말줄임을 건다. */
+.wave-action-row > button {
+  flex: 1 1 0;
+  min-width: 0;
+  height: 30px;
+  padding: 0 8px;
+  overflow: hidden;
+  font-size: 11.5px;
+  font-weight: 800;
+  line-height: 1;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.wave-action-row > button[hidden] {
+  display: none;
+}
+
+/*
+   결 셋. 급한 것은 진홍, 권하는 것은 금박, 나머지는 종이 그대로 —
+   760절(부적지 아래 줄)과 같은 규칙을 쓴다. 두 자리가 같은 말을 다른 색으로
+   하면 무엇이 급한지가 흐려진다. */
+.wave-action-row > button[data-tone="urgent"] {
+  border-color: rgba(214, 84, 61, 0.72);
+  background: linear-gradient(180deg, rgba(92, 32, 24, 0.94), rgba(52, 18, 14, 0.94));
+  color: #ffd7c6;
+}
+
+.wave-action-row > button[data-tone="note"] {
+  border-color: rgba(146, 169, 199, 0.28);
+  background: rgba(9, 18, 29, 0.9);
+  color: #c3d0de;
+}
+
+.wave-action-row > button:not(:disabled):hover {
+  border-color: rgba(221, 177, 76, 0.6);
+  color: #ffe3a0;
+}

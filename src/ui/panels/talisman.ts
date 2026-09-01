@@ -38,13 +38,13 @@ import { TALISMAN_MODE_ENEMY_HP_SCALE } from "../../core/engine-tuning";
 import { type GameEngine } from "../../core/game";
 import { summonCost } from "../../core/engine-tuning";
 import { WUXING_ORDER } from "../../core/hanzi";
-import { MAX_ENEMIES } from "../../core/content";
 import { learningInfoForNotation } from "../../core/learning";
 import { notationBadgeText } from "../notation-substitute";
 import { type HanziDefinition, type Wuxing } from "../../core/types";
 import { calmBattlefield, ctx, must, TALISMAN_MODE_STORAGE_KEY, sound } from "../app-context";
 import { summonAndFocus } from "../battle/camera";
-import { handleAction, setPanelTab, showToast } from "../hud";
+import { setPanelTab, showToast } from "../hud";
+import { pickPanelActions } from "../wave-actions";
 import { pickTalismanVisitLine } from "../talisman-lines";
 import { playTalismanImpact, playTalismanRewardVisit, type TalismanRewardGrant } from "../talisman-reward";
 import { rasterizeImageAlpha, scoreTalismanDrawing, TALISMAN_THRESHOLDS, type TalismanCellGrid, type TalismanScore } from "./talisman-score";
@@ -413,43 +413,20 @@ interface TalismanCue {
 
 /** 급한 것이 위다 — 첫 번째로 걸리는 것 하나만 돌려준다. */
 function pickTalismanCue(): TalismanCue | null {
-  const state = ctx.engine.state;
-  if (state.phase !== "prep" && state.phase !== "combat") return null;
+  /*
+   * 고르는 규칙은 패널 행동 자리와 **한 곳에서** 정한다(ui/wave-actions.ts).
+   *
+   * 여기와 저기가 서로 다른 순서로 다른 말을 하면, 같은 순간에 화면 두 곳이
+   * 다른 것을 급하다고 말하는 셈이 된다. 이 줄은 그 목록의 **첫 줄**만 가져다
+   * 쓴다 — 부적지 아래는 한 줄뿐이라(760절) 가장 급한 하나만 설 수 있다.
+   *
+   * 다만 [지금 시작]은 여기서 걷지 않는다. 패널 위 카드에는 전용 단추가 있지만
+   * 부적을 쓰는 동안 눈은 종이에 있어 그 단추가 안 보인다 — 이 줄이 그 자리다.
+   */
+  const [first] = pickPanelActions();
+  if (first) return { label: first.label, tone: first.tone, action: first.action, title: first.title };
 
-  // ① 적 한계 — 지면 판이 끝난다. 무엇보다 급하다.
-  const filled = state.enemies.length / MAX_ENEMIES;
-  if (filled >= 0.7) {
-    return {
-      label: `적 한계 ${state.enemies.length}/${MAX_ENEMIES} — 전장을 보세요`,
-      tone: "urgent",
-      action: () => setPanelTab("unit"),
-      title: "적이 상한에 닿으면 판이 끝납니다."
-    };
-  }
-
-  // ② 준비 시간이 남아 있다 — 남은 초가 곧 엽전이다.
-  if (state.phase === "prep" && state.summonCount > 0) {
-    const bonus = Math.floor(state.prepRemaining / 2);
-    return {
-      label: `지금 시작 · 엽전 +${bonus}`,
-      tone: "offer",
-      action: () => handleAction(ctx.engine.startWaveEarly()),
-      title: "남은 준비 시간의 절반을 엽전으로 받고 웨이브를 엽니다."
-    };
-  }
-
-  // ③ 합성이 기다린다 — 부적을 쓰다 놓치기 쉬운 자리다.
-  const ready = Number(document.querySelector("#evolve-ready-count")?.textContent ?? "0");
-  if (ready > 0) {
-    return {
-      label: `합성 ${ready}건 대기`,
-      tone: "note",
-      action: () => setPanelTab("evolution"),
-      title: "지금 만들 수 있는 조합이 있습니다."
-    };
-  }
-
-  // ④ 장수가 없다 — 다음 웨이브를 기다린다는 사실만 알린다.
+  // 목록이 비었을 때만 「기다린다」를 알린다 — 권할 것이 있으면 그쪽이 먼저다.
   if (talismanCharges() <= 0) {
     return { label: `다음 웨이브에 부적 ${CHARGES_PER_WAVE}장`, tone: "note", action: null };
   }
