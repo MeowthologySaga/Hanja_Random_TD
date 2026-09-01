@@ -175,9 +175,15 @@ test("the default-on talisman tab turns a submitted trace into a jaryeong reward
   const giftBox = await page.locator(".talisman-gift").first().boundingBox();
   expect(lineBox && giftBox && lineBox.y + lineBox.height <= giftBox.y).toBe(true);
   await expect(page.locator(".talisman-gift")).toHaveCount(1);
-  // 트랙 C3 ④: 무엇을 받았는지 글자로 남는다 — 숫자만 날아가면 알 수 없다.
+  /*
+   * 트랙 C3 ④: 무엇을 받았는지 글자로 남는다 — 숫자만 날아가면 알 수 없다.
+   *
+   * v035 ① 로 경제 밖 보상 셋(자령 강림·봉인의 손·문기의 숨)이 더 붙었다.
+   * 어느 갈래가 걸릴지는 굴림이 정하므로 둘 다 받는다. 여기서 지키는 것은
+   * 「무엇을 얼마나」가 **글자로 읽힌다**는 것이지 갈래가 아니다.
+   */
   await expect(page.locator(".talisman-gift > em"))
-    .toHaveText(/^(엽전|[金木水火土] 문기|무료 소환권) \+\d+$/);
+    .toHaveText(/^((엽전|[金木水火土] 문기|무료 소환권) \+\d+|(자령 강림|봉인의 손) · \d+체 (타격|묶음)|문기의 숨 · 준비 \+\d+초)$/);
   // 연출 중에도 전투 조작은 살아 있어야 한다 — 포인터가 전부 통과한다.
   for (const selector of [".talisman-visit", ".talisman-gift-fly", ".talisman-gift"]) {
     const pointerEvents = await page.locator(selector)
@@ -263,6 +269,11 @@ test("게임오버 뒤 다시 도전하면 지난 판의 무료 소환권이 따
     qa.engine.state.defeatCause = "enemy-limit";
     qa.engine.state.lastMessage = "테스트 종료";
   });
+  /*
+   * v035 ⑤: 진 자리에는 부활 부적지가 먼저 선다. 이 스펙이 보려는 것은 그
+   * 다음이므로 한 장을 접고 결과로 간다 — 안 접으면 20초를 기다리게 된다.
+   */
+  await page.locator("#revival-give-up").click();
   await expect(page.locator("#end-overlay")).toHaveClass(/modal-layer--visible/u);
 
   await page.locator("#new-seed-button").click();

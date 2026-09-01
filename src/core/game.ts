@@ -110,6 +110,7 @@ import {
   emptyStatUpgrades,
   EARLY_START_BOSS_PAID_SECONDS,
   EARLY_START_PAID_SECONDS,
+  REVIVAL_BOSS_SECONDS,
   FIRST_PREP_SECONDS,
   FORMATION_ROUTE_COVERAGE_MULTIPLIER,
   GATE_OPENING_WARD,
@@ -374,6 +375,8 @@ export class GameEngine {
       mode,
       phase: "title",
       defeatCause: null,
+      revivalUsed: false,
+      bossTimeGrant: 0,
       wave: 0,
       maxWaves: GAME_CONFIG.maxWaves,
       gold: GAME_CONFIG.startingGold,
@@ -437,6 +440,8 @@ export class GameEngine {
     Object.assign(this.state, {
       phase: "prep",
       defeatCause: null,
+      revivalUsed: false,
+      bossTimeGrant: 0,
       wave: 0,
       gold: GAME_CONFIG.startingGold,
       researchLevel: 0,
@@ -548,7 +553,7 @@ export class GameEngine {
      * 성립하지 않고, 그대로 두면 마지막 우두머리를 안 잡고 버티기만 해도
      * 판이 끝나 버린다 — 마지막 봉인은 잡아야 열린다.
      */
-    const bossLimit = bossTimeLimitForWave(plan.wave);
+    const bossLimit = this.bossTimeLimit(plan.wave);
     const bossOvertime = bossLimit !== null && !this.state.bossDefeated && this.state.waveElapsed >= bossLimit;
     if (bossOvertime && plan.wave >= this.state.maxWaves) {
       this.endRun("defeat", `제한시간 ${bossLimit}초 안에 마지막 우두머리를 처치하지 못했습니다.`, "boss-timeout");
@@ -3262,9 +3267,20 @@ export class GameEngine {
     return { ok: true, message: this.state.lastMessage };
   }
 
+  /**
+   * 이 판에서 실제로 적용되는 우두머리 제한시간 — 정해진 값에 부활분을 얹는다.
+   *
+   * 세 자리(교전 판정·남은 시간·초과 여부)가 같은 셈을 봐야 한다. 한 곳만
+   * 부활분을 잊으면 화면과 판정이 다른 말을 한다.
+   */
+  bossTimeLimit(wave: number): number | null {
+    const base = bossTimeLimitForWave(wave);
+    return base === null ? null : base + this.state.bossTimeGrant;
+  }
+
   bossTimeRemaining(): number | null {
     if (this.state.phase !== "combat" || !this.currentPlan?.boss || this.state.bossDefeated) return null;
-    const limit = bossTimeLimitForWave(this.currentPlan.wave);
+    const limit = this.bossTimeLimit(this.currentPlan.wave);
     // 넘긴 뒤에는 시계가 아니라 합류가 화면을 말한다 — 0 을 붙들고 있으면
     // 무엇이 벌인지 안 읽힌다.
     return limit === null || this.state.waveElapsed >= limit ? null : limit - this.state.waveElapsed;
@@ -3278,8 +3294,51 @@ export class GameEngine {
    */
   bossOvertime(): boolean {
     if (this.state.phase !== "combat" || !this.currentPlan?.boss || this.state.bossDefeated) return false;
-    const limit = bossTimeLimitForWave(this.currentPlan.wave);
+    const limit = this.bossTimeLimit(this.currentPlan.wave);
     return limit !== null && this.state.waveElapsed >= limit;
+  }
+
+  /**
+   * 부활 부적을 세울 수 있는가 — 진 **직후** 한 번(v035 ⑤).
+   *
+   * 수련장은 뺀다: 각본이 「지면 다시」로 짜여 있어 부활이 걸음을 흐린다.
+   */
+  canRevive(): boolean {
+    return this.state.phase === "defeat" && !this.state.revivalUsed && !this.tutorial && this.state.defeatCause !== null;
+  }
+
+  /**
+   * 부활 — 진 자리에서 판을 되돌린다.
+   *
+   * 벌은 남긴다: 봉인한 적에게는 **보상을 주지 않는다.** 죽는 것이 이득이면
+   * 일부러 죽는 길이 열린다.
+   */
+  revive(): ActionResult {
+    if (!this.canRevive()) return { ok: false, message: "지금은 부활할 수 없습니다." };
+    const cause = this.state.defeatCause;
+    this.state.revivalUsed = true;
+    this.state.defeatCause = null;
+    this.state.phase = "combat";
+    let message: string;
+    if (cause === "boss-timeout") {
+      this.state.bossTimeGrant += REVIVAL_BOSS_SECONDS;
+      message = `부활 · 우두머리 제한시간 ${REVIVAL_BOSS_SECONDS}초를 더 얻었습니다`;
+    } else {
+      // 앞선 적부터 걷는다 — 뒤에 오는 적을 걷어 봐야 당장의 위험이 안 준다.
+      const doomed = Math.floor(this.state.enemies.length / 2);
+      const swept = new Set(
+        [...this.state.enemies]
+          .sort((left, right) => right.progress - left.progress)
+          .slice(0, doomed)
+          .map((enemy) => enemy.id)
+      );
+      this.state.enemies = this.state.enemies.filter((enemy) => !swept.has(enemy.id));
+      for (const id of swept) this.enemyPositions.delete(id);
+      message = `부활 · 전장의 적 ${doomed}체를 봉인했습니다`;
+    }
+    this.state.lastMessage = message;
+    this.events.push({ type: "phase", phase: "combat" });
+    return { ok: true, message };
   }
 
   idioms(): readonly IdiomDefinition[] {

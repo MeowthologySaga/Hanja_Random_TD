@@ -196,6 +196,14 @@ let lastPoint = { x: 0, y: 0 };
  * 처음부터 다시 써야 했다. 목록이 있으면 되돌리기도, 성공한 획을 정본으로
  * 갈아 끼우는 일도 같은 구조로 풀린다(ink-strokes.ts).
  */
+/**
+ * 지금 편 종이가 **부활 부적**이면 완성이 이리로 흐른다(v035 ⑤).
+ *
+ * 평소 흐름(보상 → 장수 차감 → 다음 장)과 갈라 두는 까닭은 그 종이가 판이
+ * 끝나는 자리에서 딱 한 번만 서기 때문이다.
+ */
+let revivalHandler: ((score: TalismanScore) => void) | null = null;
+
 const board = new InkBoard();
 
 /** 판정에 떨어진 붓질을 붉게 비추는 중인가 — 비춘 뒤 스스로 걷는다. */
@@ -889,6 +897,18 @@ function completeTalisman(score: TalismanScore): void {
   must<HTMLButtonElement>("#talisman-redraw").textContent = "새 부적 쓰기";
   syncSubmitButton(false);
   setControlsEnabled(false);
+  /*
+   * 마지막 보루로 세운 장(v035 ⑤)은 보상 대신 판을 되돌린다.
+   *
+   * 장수를 세지 않고 다음 장도 안 넘긴다 — 이 종이는 판이 끝나는 자리에서
+   * 딱 한 번 서는 것이라, 평소의 「보상 → 다음 장」 흐름에 얹으면 안 된다.
+   */
+  if (revivalHandler) {
+    const finish = revivalHandler;
+    revivalHandler = null;
+    finish(score);
+    return;
+  }
   grantReward();
   syncRewardNote();
   // 보상 연출이 끝나는 대로 다음 장이 차오른다. 남은 장수가 0일 때만 잠근다.
@@ -898,6 +918,44 @@ function completeTalisman(score: TalismanScore): void {
     if (runActive() && talismanCharges() <= 0) lockOutOfCharges();
     else turnToNextSheet();
   }, NEXT_SHEET_DELAY_MS);
+}
+
+/**
+ * 부활 부적지를 편다 — 그 판에서 **가장 어려운 글자**로.
+ *
+ * "글자는 그 판에서 가장 어려운(획수 많은) 글자로 — 마지막 한 번이니 값이
+ * 있어야 한다"(기획안 v035 ⑤). 획순 안내가 서 있으면 자료가 있는 글자로
+ * 좁힌다 — 마지막 한 장을 맨 종이로 주면 도와주려다 되레 가로막는다.
+ *
+ * 되돌려주는 것은 종이 조각이다. 부르는 쪽이 그 조각을 제 대화창으로 옮겨
+ * 갔다가 끝나면 제자리에 돌려놓는다 — 화선지와 붓 배선을 통째로 다시 만들지
+ * 않으려는 것이고, "같은 종이"라는 감각도 그 편이 맞다.
+ */
+export function beginRevivalSheet(onSealed: (score: TalismanScore) => void): HTMLElement | null {
+  const catalog = ctx.engine.catalog;
+  const pool = catalog.activePool.length > 0 ? catalog.activePool : [...catalog.definitions.values()];
+  const guided = ctx.strokeOrderGuide && strokeGlyphStatus() === "ready";
+  const reachable = guided ? pool.filter((entry) => strokeGlyphFor(entry.char) !== null) : pool;
+  const candidates = reachable.length > 0 ? reachable : pool;
+  if (candidates.length === 0) return null;
+  const hardest = candidates.reduce((best, entry) =>
+    (casualStrokeCount(entry.char) ?? 0) > (casualStrokeCount(best.char) ?? 0) ? entry : best
+  );
+  cancelAdvance();
+  revivalHandler = onSealed;
+  presentDefinition(hardest);
+  setStatus(`${hardest.char} — 이 한 장이 마지막 보루입니다`, "hint");
+  return document.querySelector<HTMLElement>("#talisman-paper");
+}
+
+/** 부활 부적지를 접는다 — 다 썼든 안 썼든 평소 흐름으로 되돌린다. */
+export function endRevivalSheet(): void {
+  revivalHandler = null;
+  clearInk();
+  hideSeal();
+  must<HTMLCanvasElement>("#talisman-ink").classList.remove("is-sealed");
+  setControlsEnabled(true);
+  setIdleStatus();
 }
 
 /**

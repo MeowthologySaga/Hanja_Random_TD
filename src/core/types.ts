@@ -376,6 +376,15 @@ export interface GameState {
   phase: RunPhase;
   /** phase 가 "defeat" 일 때만 채워진다. 그 외에는 null. */
   defeatCause: DefeatCause | null;
+  /**
+   * 부활 부적을 이미 썼는가 — **판당 한 번**(v035 ⑤).
+   *
+   * 저장본에 남는다. 그러지 않으면 진 웨이브 직전으로 이어하기를 반복해
+   * 부활을 무한히 쓸 수 있다 — 이어하기가 아니라 무르기가 된다.
+   */
+  revivalUsed: boolean;
+  /** 부활로 더 얻은 우두머리 제한시간(초). 판이 끝날 때까지 남는다. */
+  bossTimeGrant: number;
   wave: number;
   maxWaves: number;
   gold: number;

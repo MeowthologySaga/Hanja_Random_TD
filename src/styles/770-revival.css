@@ -1,0 +1,104 @@
+/* ══════════════════════════════════════════════════════
+   770. 부활 부적 — 판이 끝나는 자리에 서는 마지막 한 장 (v035 ⑤)
+   ══════════════════════════════════════════════════════
+
+   종료 화면(#end-overlay)과 같은 층에 서지만 결이 다르다. 결과를 알리는
+   화면이 아니라 **아직 안 끝났다**고 말하는 화면이라, 붉은 인주 쪽으로
+   기울이고 종이를 화면 한가운데에 놓는다.
+
+   화선지(#talisman-paper)와 조작 줄(.talisman-footer)은 부적 패널에서
+   그대로 옮겨 온다 — 여기 규칙은 그 조각들이 이 카드 안에서 어떻게 앉을지만
+   정하고, 종이 자체의 생김새는 470·540절이 계속 맡는다. */
+
+.revival-overlay {
+  background:
+    radial-gradient(ellipse 60% 45% at 50% 30%, rgba(159, 47, 35, 0.28), transparent 70%),
+    var(--grain),
+    rgba(6, 4, 3, 0.93);
+}
+
+.revival-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  width: 340px;
+  padding: 20px 24px 18px;
+  clip-path: var(--clip-cut);
+  background:
+    var(--grain),
+    linear-gradient(180deg, #2a1d17 0%, #1b1310 48%, #100b09 100%);
+  box-shadow:
+    inset 0 0 0 1px rgba(214, 168, 106, 0.22),
+    0 26px 70px rgba(0, 0, 0, 0.68);
+  text-align: center;
+}
+
+.revival-card .eyebrow {
+  margin: 0;
+  color: #d98a72;
+  letter-spacing: 0.24em;
+}
+
+.revival-card h2 {
+  margin: 0;
+  font-size: 21px;
+  color: #f4e3c2;
+}
+
+#revival-message {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: #c2ae92;
+}
+
+.revival-paper-slot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+
+/*
+   옮겨 온 조작 줄에서 이 자리에 뜻이 없는 것들을 접는다.
+
+   [다시 뽑기]는 특히 접어야 한다 — 「그 판에서 가장 어려운 글자」로 세운
+   장인데 다시 뽑게 두면 쉬운 글자로 갈아탈 수 있어, 값을 매긴 뜻이 사라진다.
+   시선 자리 행동 줄과 경제 안내는 판이 도는 동안의 이야기라 여기서는 소음이다. */
+.revival-paper-slot .talisman-footer {
+  width: 100%;
+  gap: 8px;
+}
+
+.revival-paper-slot #talisman-redraw,
+.revival-paper-slot #talisman-cue,
+.revival-paper-slot #talisman-economy-note {
+  display: none;
+}
+
+.revival-paper-slot #talisman-status {
+  min-height: 32px;
+}
+
+.revival-status {
+  margin: 0;
+  font-size: 12px;
+  color: #b9a68a;
+}
+
+.revival-status b {
+  color: #f0c98a;
+  font-variant-numeric: tabular-nums;
+}
+
+.revival-actions {
+  display: flex;
+  justify-content: center;
+}
+
+.revival-actions .secondary-button {
+  font-size: 12px;
+  padding: 6px 14px;
+}

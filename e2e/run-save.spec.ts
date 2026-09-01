@@ -240,6 +240,11 @@ test("판이 끝나면 저장은 사라진다 — 패배를 무를 수 없다", 
     qa.engine.state.defeatCause = "enemy-limit";
     qa.engine.state.lastMessage = "테스트 종료";
   });
+  /*
+   * v035 ⑤: 진 자리에는 부활 부적지가 먼저 선다. 이 스펙이 보려는 것은 그
+   * 다음이므로 한 장을 접고 결과로 간다 — 안 접으면 20초를 기다리게 된다.
+   */
+  await page.locator("#revival-give-up").click();
   await expect(page.locator("#end-overlay")).toHaveClass(/modal-layer--visible/u);
   expect(await page.evaluate((key) => window.localStorage.getItem(key), RUN_SAVE_KEY)).toBeNull();
 

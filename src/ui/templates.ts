@@ -704,6 +704,26 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
       </dialog>
     </section>
 
+    <!--
+      부활 부적(v035 ⑤) — 종료 화면보다 먼저 서는 마지막 한 장.
+      종이(#talisman-paper)와 조작 줄(.talisman-footer)은 부적 패널에서
+      옮겨 와 아래 자리에 담고, 닫을 때 제자리로 돌려놓는다.
+    -->
+    <section id="revival-overlay" class="modal-layer revival-overlay" aria-labelledby="revival-heading">
+      <div class="revival-card">
+        <p class="eyebrow">마지막 보루</p>
+        <h2 id="revival-heading">부적 한 장이 남았습니다</h2>
+        <p id="revival-message"></p>
+        <div id="revival-paper-slot" class="revival-paper-slot"></div>
+        <p id="revival-status" class="revival-status" role="status" aria-live="polite">
+          남은 시간 <b id="revival-countdown">20.0초</b>
+        </p>
+        <div class="revival-actions">
+          <button id="revival-give-up" class="secondary-button" type="button">포기하고 결과 보기</button>
+        </div>
+      </div>
+    </section>
+
     <section id="end-overlay" class="modal-layer" aria-labelledby="end-heading">
       <div class="end-card">
         <p id="end-kicker" class="eyebrow">봉인 결과</p>

@@ -6,6 +6,7 @@ import { canvas, ctx, must, shell, sound, summonReveal } from "./app-context";
 import { drawWorld } from "./battle/draw";
 import { syncCoachProgress } from "./coach";
 import { showEndScreen } from "./dialogs/end";
+import { showRevivalSheet } from "./dialogs/revival";
 import { syncEssenceFeedback } from "./essence-feedback";
 import { processEvent } from "./events";
 import { syncOneShotHints } from "./hint";
@@ -91,7 +92,14 @@ export function frame(now: number): void {
   syncEssenceFeedback();
   if (ctx.engine.state.phase !== ctx.previousPhase) {
     ctx.previousPhase = ctx.engine.state.phase;
-    if (ctx.previousPhase === "victory" || ctx.previousPhase === "defeat") showEndScreen(ctx.previousPhase);
+    if (ctx.previousPhase === "victory") showEndScreen("victory");
+    else if (ctx.previousPhase === "defeat") {
+      /*
+       * 진 자리에서 부적 한 장을 먼저 세운다(v035 ⑤). 세울 수 없는 자리면
+       * (이미 썼거나·수련장이거나) 곧바로 평소의 종료 화면으로 간다.
+       */
+      if (!showRevivalSheet(() => showEndScreen("defeat"))) showEndScreen("defeat");
+    }
   }
   // Simulation respects the selected speed, while visual feedback keeps a
   // stable real-time duration so 2x/3x does not make projectiles and skill
