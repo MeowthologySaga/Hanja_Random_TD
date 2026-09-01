@@ -214,6 +214,19 @@ async function runParallel(runs: number, workers: number, mode: GameMode, region
   return (await Promise.all(jobs)).flat();
 }
 
+/**
+ * 승률 목표대.
+ *
+ * 오래도록 0.45~0.60 이었다. v036 에서 상한을 0.70 으로 올렸다 — 사용자가
+ * "초반부터 너무 강해. 아군도 적도"라며 판을 한 뼘 눅이기로 정했고, 투사체를
+ * 무겁게 하는 손질(PROJECTILE_WEIGHT 1.5)이 승률을 0.556 에서 0.667 로
+ * 올리기 때문이다. 상한을 안 올리면 이 게이트가 「사용자가 원한 방향」을
+ * 실패로 부른다.
+ *
+ * 하한은 안 건드렸다. 너무 어려운 쪽은 여전히 사고다.
+ */
+const VICTORY_RATE_BAND = Object.freeze({ min: 0.45, max: 0.70 });
+
 async function main(): Promise<void> {
   const runs = readRuns();
   const workers = readWorkers(runs);
@@ -257,7 +270,7 @@ async function main(): Promise<void> {
     gates: {
       noTimeouts: timeouts === 0,
       medianRunMinutesInTargetBand: medianElapsedMinutes >= 43 && medianElapsedMinutes <= 50,
-      victoryRateInTargetBand: victoryRate >= 0.45 && victoryRate <= 0.60,
+      victoryRateInTargetBand: victoryRate >= VICTORY_RATE_BAND.min && victoryRate <= VICTORY_RATE_BAND.max,
       regionVictoryGapAtMost15Points: regionVictoryGap <= 0.15,
       startingElementVictoryHomogeneous: startingElement.homogeneous,
       victoryEssenceSpendRateMedianAtLeast70Percent: victoryEssenceSpendRateMedian >= 0.70
@@ -276,7 +289,7 @@ async function main(): Promise<void> {
     },
     pass: timeouts === 0
       && medianElapsedMinutes >= 43 && medianElapsedMinutes <= 50
-      && victoryRate >= 0.45 && victoryRate <= 0.60
+      && victoryRate >= VICTORY_RATE_BAND.min && victoryRate <= VICTORY_RATE_BAND.max
       && regionVictoryGap <= 0.15
       && startingElement.homogeneous
       && victoryEssenceSpendRateMedian >= 0.70

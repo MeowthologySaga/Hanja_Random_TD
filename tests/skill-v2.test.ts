@@ -28,6 +28,7 @@ import { BOARD_CELLS, positionOnPath } from "../src/core/content";
 import { GameEngine } from "../src/core/game";
 import { getCatalog } from "../src/core/hanzi";
 import type { Enemy, EnemyArchetype, HanziDefinition, SemanticFamily, Tower } from "../src/core/types";
+import { weightedAbilityPeriod } from "../src/core/hanzi";
 
 function makeTower(definition: HanziDefinition, id: number, overrides: Partial<Tower> = {}): Tower {
   return {
@@ -246,13 +247,13 @@ describe("[SKILL-V2] 참명 (斬命)", () => {
     // 주기 발동 — 우두머리에게 현재 체력 3% 고정 참격이 들어간다.
     const engine2 = new GameEngine("skill-reaper-chip", "KR");
     const { tower: tower2, enemy: boss2 } = arrangeDuel(engine2, definition, {
-      shotCount: definition.combat.abilities.tuning.semanticEvery - 1
+      shotCount: weightedAbilityPeriod(definition.combat.abilities.tuning.semanticEvery) - 1
     });
     boss2.boss = true;
     boss2.archetype = "boss";
     const hpBefore = boss2.hp;
     engine2.update(0.02);
-    expect(tower2.shotCount % definition.combat.abilities.tuning.semanticEvery).toBe(0);
+    expect(tower2.shotCount % weightedAbilityPeriod(definition.combat.abilities.tuning.semanticEvery)).toBe(0);
     const chipEvent = engine2.consumeEvents().some((event) => event.type === "ability" && event.effect.includes("참격"));
     expect(chipEvent).toBe(true);
     // 최소한 참격분(현재 체력 3% 언저리)은 깎였어야 한다.
@@ -277,7 +278,7 @@ describe("[SKILL-V2] 호령 (號令)", () => {
     engine.begin();
     const commandTower = makeTower(commander, 9500, {
       cell: 0,
-      shotCount: commander.combat.abilities.tuning.semanticEvery - 1
+      shotCount: weightedAbilityPeriod(commander.combat.abilities.tuning.semanticEvery) - 1
     });
     const allyTower = makeTower(ally, 9501, { cell: 1, cooldownLeft: 999 });
     engine.state.towers = [commandTower, allyTower];
@@ -293,7 +294,7 @@ describe("[SKILL-V2] 호령 (號令)", () => {
     engine.state.enemies = [strongest, front];
     engine.state.spawned = 9999;
     engine.update(0.02);
-    expect(commandTower.shotCount % commander.combat.abilities.tuning.semanticEvery).toBe(0);
+    expect(commandTower.shotCount % weightedAbilityPeriod(commander.combat.abilities.tuning.semanticEvery)).toBe(0);
     const rally = engine.commandRallyAt(0);
     expect(rally?.targetId).toBe(strongest.id);
     // 다른 진에는 집중 명령이 없다.

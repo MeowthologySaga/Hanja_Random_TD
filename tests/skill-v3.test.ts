@@ -43,6 +43,7 @@ import { BOARD_CELLS, CELLS_PER_FORMATION, positionOnPath, wavePlan } from "../s
 import { GameEngine } from "../src/core/game";
 import { getCatalog } from "../src/core/hanzi";
 import type { CasualStar, Enemy, EnemyArchetype, GameEvent, HanziDefinition, SemanticFamily, Tower, Wuxing } from "../src/core/types";
+import { weightedAbilityPeriod } from "../src/core/hanzi";
 
 const REGIONS = ["KR", "JP", "CN"] as const;
 
@@ -259,10 +260,10 @@ describe("[SKILL-V3] 유폭 낙인 (同歸)", () => {
     const definition = familyDefinition("KR", "demise");
     const engine = new GameEngine("skill-demise-brand", "KR");
     const { tower, enemy } = arrangeDuel(engine, definition, {
-      shotCount: definition.combat.abilities.tuning.semanticEvery - 1
+      shotCount: weightedAbilityPeriod(definition.combat.abilities.tuning.semanticEvery) - 1
     });
     engine.update(0.02);
-    expect(tower.shotCount % definition.combat.abilities.tuning.semanticEvery).toBe(0);
+    expect(tower.shotCount % weightedAbilityPeriod(definition.combat.abilities.tuning.semanticEvery)).toBe(0);
     expect(enemy.brandWuxing).toBe(tower.wuxing);
     expect(enemy.brandUntil ?? 0).toBeCloseTo(engine.state.elapsed + WARFARE_BRAND_DURATION, 2);
     expect(enemy.brandPower ?? 0).toBeGreaterThan(0);
@@ -278,7 +279,7 @@ describe("[SKILL-V3] 유폭 낙인 (同歸)", () => {
     const definition = familyDefinition("KR", "warfare");
     const engine = new GameEngine("skill-demise-overwrite", "KR");
     const { tower, enemy } = arrangeDuel(engine, definition, {
-      shotCount: definition.combat.abilities.tuning.semanticEvery - 1
+      shotCount: weightedAbilityPeriod(definition.combat.abilities.tuning.semanticEvery) - 1
     });
     enemy.brandBlastRadius = 140;
     enemy.brandStored = 5000;
@@ -292,7 +293,7 @@ describe("[SKILL-V3] 유폭 낙인 (同歸)", () => {
     const definition = soloDemiseDefinition("KR");
     const engine = new GameEngine("skill-demise-spread", "KR");
     const { tower, enemy } = arrangeDuel(engine, definition, {
-      shotCount: definition.combat.abilities.tuning.semanticEvery - 1
+      shotCount: weightedAbilityPeriod(definition.combat.abilities.tuning.semanticEvery) - 1
     });
     const radius = demiseSpreadRadius(null);
     // 유폭 자령은 `strongest` 를 노린다 — 낙인 대상이 항상 유일한 최강자가 되게
@@ -338,7 +339,7 @@ describe("[SKILL-V3] 유폭 낙인 (同歸)", () => {
     const definition = soloDemiseDefinition("KR");
     const engine = new GameEngine("skill-demise-cap", "KR");
     const { tower, enemy } = arrangeDuel(engine, definition, {
-      shotCount: definition.combat.abilities.tuning.semanticEvery - 1
+      shotCount: weightedAbilityPeriod(definition.combat.abilities.tuning.semanticEvery) - 1
     });
     const radius = demiseSpreadRadius(null);
     // 반경 안에 상한보다 많은 이웃을 세운다. 체력을 낮춰 낙인 대상이 유일한
@@ -381,7 +382,7 @@ describe("[SKILL-V3] 유폭 낙인 (同歸)", () => {
     const definition = soloDemiseDefinition("KR");
     const engine = new GameEngine("skill-demise-store", "KR");
     const { tower, enemy } = arrangeDuel(engine, definition, {
-      shotCount: definition.combat.abilities.tuning.semanticEvery - 1
+      shotCount: weightedAbilityPeriod(definition.combat.abilities.tuning.semanticEvery) - 1
     });
     engine.update(0.02);
     const hpBefore = enemy.hp;
@@ -429,7 +430,7 @@ describe("[SKILL-V3] 진흙밭 (泥田)", () => {
     const definition = familyDefinition("KR", "mire");
     const engine = new GameEngine("skill-mire-zone", "KR");
     const { tower, enemy } = arrangeDuel(engine, definition, {
-      shotCount: definition.combat.abilities.tuning.semanticEvery - 1
+      shotCount: weightedAbilityPeriod(definition.combat.abilities.tuning.semanticEvery) - 1
     });
     // 충전 조건을 채운다 — 붐빌 때만 깔린다.
     const crowd = Array.from({ length: MIRE_MIN_ENEMIES }, (_, index) =>
@@ -558,12 +559,12 @@ describe("[SKILL-V3] 진흙밭 (泥田)", () => {
     const definition = familyDefinition("KR", "mire");
     const engine = new GameEngine("skill-mire-threshold", "KR");
     const { tower, enemy } = arrangeDuel(engine, definition, {
-      shotCount: definition.combat.abilities.tuning.semanticEvery - 1
+      shotCount: weightedAbilityPeriod(definition.combat.abilities.tuning.semanticEvery) - 1
     });
     // 적 1기 — 충전 조건(3기) 미달이라 주기가 와도 아무 지대도 생기지 않는다.
     engine.state.enemies = [enemy];
     engine.update(0.02);
-    expect(tower.shotCount % definition.combat.abilities.tuning.semanticEvery).toBe(0);
+    expect(tower.shotCount % weightedAbilityPeriod(definition.combat.abilities.tuning.semanticEvery)).toBe(0);
     expect(engine.state.abilityZones).toHaveLength(0);
     expect(engine.enemyTraitsSuppressed(enemy)).toBe(false);
     expect(definition.combat.abilities.semantic.trigger).toContain(`적 ${MIRE_MIN_ENEMIES}기 이상`);

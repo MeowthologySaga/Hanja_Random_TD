@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { ELEMENT_ABILITY_TABLE, GRAPH_ABILITY_TABLE, ROLE_ABILITY_TABLE, SEMANTIC_ABILITY_TABLE, composeAbilityLoadout, hasActiveSkills } from "../src/core/abilities";
 import { GameEngine, elementZoneKind } from "../src/core/game";
 import { getCatalog } from "../src/core/hanzi";
+import { weightedAbilityPeriod } from "../src/core/hanzi";
 
 describe("combinatorial Hanzi ability table", () => {
   it("defines every element, combat role, and graph role axis", () => {
@@ -85,7 +86,7 @@ describe("combinatorial Hanzi ability table", () => {
       cell: 0,
       cooldownLeft: 0,
       pulse: 0,
-      shotCount: definition.combat.abilities.tuning.semanticEvery - 1,
+      shotCount: weightedAbilityPeriod(definition.combat.abilities.tuning.semanticEvery) - 1,
       abilityFlash: 0,
       locked: false
     }];
@@ -132,7 +133,7 @@ describe("combinatorial Hanzi ability table", () => {
       cell: 0,
       cooldownLeft: 0,
       pulse: 0,
-      shotCount: definition.combat.abilities.tuning.semanticEvery - 1,
+      shotCount: weightedAbilityPeriod(definition.combat.abilities.tuning.semanticEvery) - 1,
       abilityFlash: 0,
       locked: false
     }];

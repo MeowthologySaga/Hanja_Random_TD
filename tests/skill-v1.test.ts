@@ -26,6 +26,7 @@ import { BOARD_CELLS, positionOnPath } from "../src/core/content";
 import { GameEngine } from "../src/core/game";
 import { getCatalog } from "../src/core/hanzi";
 import type { Enemy, EnemyArchetype, HanziDefinition, SemanticFamily, Tower } from "../src/core/types";
+import { weightedAbilityPeriod } from "../src/core/hanzi";
 
 function makeTower(definition: HanziDefinition, id: number, overrides: Partial<Tower> = {}): Tower {
   return {
@@ -155,10 +156,10 @@ describe("[SKILL-V1] 상극 각인 (克印)", () => {
     const definition = familyDefinition("KR", "warfare");
     const engine = new GameEngine("skill-warfare", "KR");
     const { tower, enemy } = arrangeDuel(engine, definition, {
-      shotCount: definition.combat.abilities.tuning.semanticEvery - 1
+      shotCount: weightedAbilityPeriod(definition.combat.abilities.tuning.semanticEvery) - 1
     });
     engine.update(0.02);
-    expect(tower.shotCount % definition.combat.abilities.tuning.semanticEvery).toBe(0);
+    expect(tower.shotCount % weightedAbilityPeriod(definition.combat.abilities.tuning.semanticEvery)).toBe(0);
     expect(enemy.brandWuxing).toBe(tower.wuxing);
     expect(enemy.brandPower).toBeCloseTo(0.18, 6);
     expect(enemy.brandUntil).toBeGreaterThan(engine.state.elapsed);
@@ -261,7 +262,7 @@ describe("[SKILL-V1] 서리길 (霜路)", () => {
     const definition = familyDefinition("KR", "frost");
     const engine = new GameEngine("skill-frost", "KR");
     const { tower, enemy } = arrangeDuel(engine, definition, {
-      shotCount: definition.combat.abilities.tuning.semanticEvery - 1
+      shotCount: weightedAbilityPeriod(definition.combat.abilities.tuning.semanticEvery) - 1
     });
     const progressBefore = enemy.progress;
     engine.update(0.02);

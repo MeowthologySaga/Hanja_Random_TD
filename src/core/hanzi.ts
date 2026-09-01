@@ -233,12 +233,20 @@ function chooseCombatRole(char: string, graphRole: GraphRole): CombatRole {
  * 화면의 결만 바꾸는 축이다. 실측(현행): 한 마리를 봉인하는 데 27.1발이 들어
  * 화면이 잔탄으로 덮였다(scripts/combat-tempo.ts).
  *
- * 대기시간 하한(TOWER_COOLDOWN_FLOOR)도 이 배수를 함께 탄다. 안 그러면 하한에
- * 눌린 자령만 공짜로 세진다 — 실측: 하한을 고정해 둔 채 무게 1.4배를 걸었더니
- * 135판 승률이 0.556 에서 **0.807** 로 뛰었다. 「DPS 중립」이라는 전제가 강화·농축을
- * 부은 자령에서 통째로 깨진 것이다.
+ * 중립을 지키려면 세 곳이 함께 따라와야 한다. 하나만 빠져도 축이 「공짜 강화」나
+ * 「공짜 약화」가 된다 — 셋 다 실측으로 찾았다.
+ *  ① 대기시간 하한(TOWER_COOLDOWN_FLOOR)도 이 배수를 탄다. 안 그러면 하한에
+ *     눌린 자령만 피해가 배로 오른다(무게 1.4배에 승률 0.556 → 0.807).
+ *  ② 지속 효과는 이 배수를 도로 나눈다(game.ts sustainedDamage) — 장판의 초당
+ *     피해가 「그 발의 피해」에서 나오는데 지속 시간은 발수와 무관하기 때문이다.
+ *  ③ 기술 주기도 이 배수로 나눈다 — 주기의 뜻은 발수가 아니라 시간이다.
+ *     안 나누면 반대로 너무 어려워진다(0.400).
+ *
+ * 값 1.5 는 사용자가 고른 것이다. 봉인당 발수가 27.1 → 18.4 로 줄고 승률은
+ * 0.556 → 0.667 로 오른다 — 그만큼 판이 눅어지는데, "초반부터 너무 강해"가
+ * 바로 그 방향이라 밴드 상한을 0.70 으로 함께 올렸다(scripts/simulate.ts).
  */
-export const PROJECTILE_WEIGHT = 1;
+export const PROJECTILE_WEIGHT = 1.5;
 
 /**
  * 공격 대기시간의 하한(초).
@@ -247,6 +255,20 @@ export const PROJECTILE_WEIGHT = 1;
  * 쓰므로(game.ts towerAttackCooldown), 무게를 올리면 이 바닥도 같이 내려앉는다.
  */
 export const TOWER_COOLDOWN_FLOOR = 0.28;
+
+/**
+ * 기술 주기를 무게에 맞춰 다시 센다.
+ *
+ * 의미·서명·계보 기술은 「N번째 공격마다」로 적혀 있지만 뜻은 **시간**이다.
+ * 무게를 올려 발수가 줄면 주기도 함께 줄여야 초당 발동 횟수가 유지된다.
+ * 안 그러면 「한 발만 무겁게」가 「기술이 반으로 줄어드는」 개편이 된다
+ * (실측: 무게 1.5에 주기를 안 맞추면 승률 0.556 → 0.400).
+ *
+ * 엔진과 시험이 같은 셈을 봐야 하므로 여기 한 곳에 둔다.
+ */
+export function weightedAbilityPeriod(every: number): number {
+  return Math.max(1, Math.round(every / PROJECTILE_WEIGHT));
+}
 
 /**
  * 자령 화력 전체의 배수 — **세기**를 정하는 축.
