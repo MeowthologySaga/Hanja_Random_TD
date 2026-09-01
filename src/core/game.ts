@@ -108,6 +108,8 @@ import {
   emptyElementEssence,
   emptyElementUpgrades,
   emptyStatUpgrades,
+  EARLY_START_BOSS_PAID_SECONDS,
+  EARLY_START_PAID_SECONDS,
   FIRST_PREP_SECONDS,
   FORMATION_ROUTE_COVERAGE_MULTIPLIER,
   GATE_OPENING_WARD,
@@ -1589,10 +1591,33 @@ export class GameEngine {
     return amount;
   }
 
+  /**
+   * 조기 출전으로 값이 붙는 시간(초).
+   *
+   * 준비 시계(clock)와 값이 매겨지는 창(window)을 나란히 세운다. `finishWave` 가
+   * 시계를 앉히는 규칙을 그대로 되짚는 자리라, 저쪽을 고치면 이쪽도 같이 고쳐야 한다.
+   */
+  private earlyStartPaidSeconds(): number {
+    const first = this.state.wave === 0;
+    const boss = !first && this.state.wave % 10 === 0;
+    // 첫 준비 15초는 늘린 적이 없어 시계와 창이 같다 — 꼬리가 0 이다.
+    const clock = first ? FIRST_PREP_SECONDS : boss ? GAME_CONFIG.bossPrepSeconds : GAME_CONFIG.prepSeconds;
+    const window = first ? FIRST_PREP_SECONDS : boss ? EARLY_START_BOSS_PAID_SECONDS : EARLY_START_PAID_SECONDS;
+    // 꼬리를 뺀 나머지에 값이 붙고, 창을 넘는 시간에는 안 붙는다.
+    return Math.max(0, Math.min(this.state.prepRemaining - (clock - window), window));
+  }
+
   startWaveEarly(): ActionResult {
     if (this.state.phase !== "prep") return { ok: false, message: "준비 시간에만 시작할 수 있습니다." };
     if (this.state.summonCount === 0) return { ok: false, message: "첫 자령을 소환하면 오행진이 열리고 웨이브를 시작할 수 있습니다." };
-    const bonus = Math.floor(this.state.prepRemaining / 2);
+    /*
+     * 까닭은 engine-tuning 의 EARLY_START_PAID_SECONDS 주석에 적었다 — 준비
+     * 시계를 늘려도 어느 순간에 누르든 예전과 같은 액수가 나오게 하려는 것이다.
+     *
+     * 「문기의 숨」이 얹은 시간에도 값이 안 붙는다(창을 넘는다): 시간을 늘려 주는
+     * 보상이 보너스까지 불리면 한 장으로 두 번 받는 셈이 된다.
+     */
+    const bonus = Math.floor(this.earlyStartPaidSeconds() / 2);
     this.state.gold += bonus;
     this.startNextWave();
     return { ok: true, message: bonus > 0 ? "조기 출전 보너스 " + String(bonus) + "엽전" : "웨이브 시작" };

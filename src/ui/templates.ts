@@ -734,7 +734,7 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
             <ol class="help-flow" aria-label="처음 세 걸음">
               <li><i aria-hidden="true">①</i><b>자령 소환</b><span>상점의 <em>기본 소환</em>(<kbd>1</kbd>)으로 한 기를 뽑습니다. 첫 자령이 시작 오행을 정합니다.</span></li>
               <li><i aria-hidden="true">②</i><b>첫 진 자동 개방</b><span>그 오행의 진 하나가 무료로 열리고 빈 칸에 바로 놓입니다. 추가 소환 2기를 권합니다.</span></li>
-              <li><i aria-hidden="true">③</i><b>웨이브 시작</b><span>첫 소환 뒤 준비 15초가 흐릅니다. 전장 위 <em>시작</em> 버튼을 누르면 남은 준비 시간만큼 엽전을 더 받습니다.</span></li>
+              <li><i aria-hidden="true">③</i><b>웨이브 시작</b><span>첫 소환 뒤 준비 15초가 흐릅니다. 전장 위 <em>시작</em> 버튼을 일찍 누를수록 엽전을 더 받고, 준비의 마지막 몇 초는 값이 없어 부적을 마저 쓸 수 있습니다.</span></li>
             </ol>
             <h3 class="help-subhead">꼭 알아 둘 여섯 낱말</h3>
             <div class="help-term-grid">

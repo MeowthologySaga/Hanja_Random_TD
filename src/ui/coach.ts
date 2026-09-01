@@ -52,7 +52,7 @@ const COACH_STEPS: readonly CoachStep[] = [
   {
     target: "#early-button",
     title: "준비되면 웨이브를 시작합니다",
-    body: "즉시 시작하면 남은 준비 시간만큼 엽전을 더 받습니다.",
+    body: "일찍 시작할수록 엽전을 더 받습니다. 준비의 마지막 몇 초는 값이 없으니 부적을 마저 써도 됩니다.",
     control: "click",
     satisfied: () => ctx.engine.state.wave >= 1,
     /*
@@ -68,7 +68,7 @@ const COACH_STEPS: readonly CoachStep[] = [
     fallback: {
       target: ".wave-card",
       title: "웨이브는 첫 자령이 선 뒤에 열립니다",
-      body: "지금은 시간이 멈춰 있습니다. 자령이 한 기라도 서면 전장 위에 [시작 보너스]가 나타나고, 일찍 누를수록 남은 준비 시간만큼 엽전을 더 받습니다."
+      body: "지금은 시간이 멈춰 있습니다. 자령이 한 기라도 서면 전장 위에 [시작 보너스]가 나타나고, 일찍 누를수록 엽전을 더 받습니다."
     }
   }
 ];

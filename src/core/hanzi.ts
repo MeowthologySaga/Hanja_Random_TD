@@ -151,8 +151,20 @@ export const GAME_CONFIG = {
   maxTowerCount: 80,
   maxWaves: 100,
   startingGold: 42,
-  prepSeconds: 8,
-  bossPrepSeconds: 12,
+  /*
+   * 웨이브 사이 준비 시간. 8초는 부적 한 장을 쓰기에도 빠듯했다 —
+   * "부적 쓸동안 웨이브 시간이 부족해. 웨이브의 템포를 좀 늦추고 싶어"(v035 ②).
+   * 리필이 2장이 된 ① 과 맞물려 「한 웨이브 = 부적 두 장 + 배치 한 번」이
+   * 한 호흡이 되도록 11초로 잡았다.
+   *
+   * 이 값이 시뮬 런 길이를 늘리지 않는다는 것을 재어 확인했다: 자동 판정은
+   * 매 웨이브 곧바로 [지금 시작]을 눌러 준비 시간을 아예 쓰지 않는다(60초로
+   * 부풀려도 중앙 런이 45.2분에서 42.5분으로 오히려 줄었다). 그러니 이 시계는
+   * **사람의 시간**만 늘린다. 대신 조기 출전 보너스를 시계에서 떼어 냈다 —
+   * engine-tuning 의 EARLY_START_POT 을 보라.
+   */
+  prepSeconds: 11,
+  bossPrepSeconds: 15,
   goalReward: 18,
   goalRewardPerChapter: 4,
   synergyBonus: 0.1,
