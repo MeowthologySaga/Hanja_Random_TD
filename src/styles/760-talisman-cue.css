@@ -1,0 +1,65 @@
+/*
+ * 시선 자리 행동 줄.
+ *
+ * 부적을 쓰는 동안 눈은 이 패널의 종이에 있다. 그런데 그 시간에 손이 가야 할
+ * 것들은 전부 전장 쪽에 있었다 — [시작 보너스]도, 적 한계 눈금도. 「패널에서
+ * 한 일은 패널에서 알린다」(730절 panel-toast)를 **행동**까지 넓힌 자리다.
+ *
+ * 한 줄만 쓴다. 패널 세로 예산이 빠듯해서 — 단추 넷이 줄을 접어 26px 을 넘긴
+ * 전례가 있다(기존 스펙이 잡았다) — 조건이 없을 때는 자리를 아예 비운다.
+ */
+
+.talisman-cue {
+  display: grid;
+  margin: 4px 0 0;
+}
+
+.talisman-cue[hidden] {
+  display: none;
+}
+
+.talisman-cue button {
+  width: 100%;
+  min-height: 0;
+  height: 24px;
+  padding: 0 8px;
+  border: 1px solid rgba(122, 90, 42, 0.5);
+  border-radius: var(--r-sm);
+  background: linear-gradient(180deg, #f8f1de 0%, #eadcbc 100%);
+  color: var(--text-200);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.talisman-cue button:hover:not(:disabled) {
+  border-color: var(--gold-300);
+  color: var(--text-100);
+}
+
+/* 누를 것이 아니라 알리기만 하는 줄 — 눌리지 않는 것이 모양으로 읽혀야 한다. */
+.talisman-cue button:disabled {
+  background: rgba(240, 232, 210, 0.72);
+  color: var(--text-400);
+  cursor: default;
+}
+
+/*
+ * 급함을 색으로 가른다.
+ *  · urgent — 적 한계. 지면 판이 끝난다.
+ *  · offer  — 지금 누르면 값을 받는다.
+ *  · note   — 알리기만.
+ */
+.talisman-cue[data-tone="urgent"] button {
+  border-color: rgba(159, 47, 35, 0.7);
+  background: linear-gradient(180deg, #f7ded4 0%, #eec3b6 100%);
+  color: #7a2f23;
+}
+
+.talisman-cue[data-tone="offer"] button {
+  border-color: var(--gold-300);
+  background: linear-gradient(180deg, #fff6dd 0%, #f0dfae 100%);
+  color: #5a4212;
+}

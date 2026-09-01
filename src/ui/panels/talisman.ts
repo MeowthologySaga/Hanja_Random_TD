@@ -38,12 +38,13 @@ import { TALISMAN_MODE_ENEMY_HP_SCALE } from "../../core/engine-tuning";
 import { type GameEngine } from "../../core/game";
 import { summonCost } from "../../core/engine-tuning";
 import { WUXING_ORDER } from "../../core/hanzi";
+import { MAX_ENEMIES } from "../../core/content";
 import { learningInfoForNotation } from "../../core/learning";
 import { notationBadgeText } from "../notation-substitute";
 import { type HanziDefinition, type Wuxing } from "../../core/types";
 import { calmBattlefield, ctx, must, TALISMAN_MODE_STORAGE_KEY, sound } from "../app-context";
 import { summonAndFocus } from "../battle/camera";
-import { setPanelTab, showToast } from "../hud";
+import { handleAction, setPanelTab, showToast } from "../hud";
 import { pickTalismanVisitLine } from "../talisman-lines";
 import { playTalismanImpact, playTalismanRewardVisit, type TalismanRewardGrant } from "../talisman-reward";
 import { rasterizeImageAlpha, scoreTalismanDrawing, TALISMAN_THRESHOLDS, type TalismanCellGrid, type TalismanScore } from "./talisman-score";
@@ -317,9 +318,92 @@ export function preloadStrokeGuide(): void {
   void loadStrokeGlyphs().then(() => refreshStrokeGuideSheet(false));
 }
 
+/**
+ * 시선 자리 행동 줄 — 지금 눌러야 할 것 **하나**.
+ *
+ * 부적을 쓰는 동안 눈은 이 패널에 있다. 그때 정작 손이 가야 할 것들은 전장
+ * 쪽에 있었다 — 준비 시간이 흐르는데 [시작 보너스]는 전장 위에 있고, 적 한계가
+ * 차오르는데 그 눈금도 저쪽이다. 「패널에서 한 일은 패널에서 알린다」를 행동까지
+ * 넓힌다.
+ *
+ * 급한 순서로 **하나만** 세운다. 여럿을 늘어놓으면 그 자체가 소음이고, 패널
+ * 세로 예산도 빠듯하다.
+ */
+function syncTalismanCue(): void {
+  const row = must<HTMLElement>("#talisman-cue");
+  const button = must<HTMLButtonElement>("#talisman-cue-button");
+  const state = ctx.engine.state;
+  const cue = pickTalismanCue();
+  if (!cue) {
+    row.hidden = true;
+    button.onclick = null;
+    return;
+  }
+  row.hidden = false;
+  row.dataset.tone = cue.tone;
+  button.textContent = cue.label;
+  button.disabled = cue.action === null;
+  button.onclick = cue.action;
+  button.title = cue.title ?? "";
+  void state;
+}
+
+interface TalismanCue {
+  readonly label: string;
+  readonly tone: "urgent" | "offer" | "note";
+  readonly action: (() => void) | null;
+  readonly title?: string;
+}
+
+/** 급한 것이 위다 — 첫 번째로 걸리는 것 하나만 돌려준다. */
+function pickTalismanCue(): TalismanCue | null {
+  const state = ctx.engine.state;
+  if (state.phase !== "prep" && state.phase !== "combat") return null;
+
+  // ① 적 한계 — 지면 판이 끝난다. 무엇보다 급하다.
+  const filled = state.enemies.length / MAX_ENEMIES;
+  if (filled >= 0.7) {
+    return {
+      label: `적 한계 ${state.enemies.length}/${MAX_ENEMIES} — 전장을 보세요`,
+      tone: "urgent",
+      action: () => setPanelTab("unit"),
+      title: "적이 상한에 닿으면 판이 끝납니다."
+    };
+  }
+
+  // ② 준비 시간이 남아 있다 — 남은 초가 곧 엽전이다.
+  if (state.phase === "prep" && state.summonCount > 0) {
+    const bonus = Math.floor(state.prepRemaining / 2);
+    return {
+      label: `지금 시작 · 엽전 +${bonus}`,
+      tone: "offer",
+      action: () => handleAction(ctx.engine.startWaveEarly()),
+      title: "남은 준비 시간의 절반을 엽전으로 받고 웨이브를 엽니다."
+    };
+  }
+
+  // ③ 합성이 기다린다 — 부적을 쓰다 놓치기 쉬운 자리다.
+  const ready = Number(document.querySelector("#evolve-ready-count")?.textContent ?? "0");
+  if (ready > 0) {
+    return {
+      label: `합성 ${ready}건 대기`,
+      tone: "note",
+      action: () => setPanelTab("evolution"),
+      title: "지금 만들 수 있는 조합이 있습니다."
+    };
+  }
+
+  // ④ 장수가 없다 — 다음 웨이브를 기다린다는 사실만 알린다.
+  if (talismanCharges() <= 0) {
+    return { label: `다음 웨이브에 부적 ${CHARGES_PER_WAVE}장`, tone: "note", action: null };
+  }
+  return null;
+}
+
 export function syncTalismanPanel(): void {
   if (ctx.activePanelTab !== "talisman") return;
   preloadStrokeGuide();
+  syncTalismanCue();
   if (!document.querySelector("#talisman-panel")) return;
   refreshCharges();
   // 표기 전환은 이 탭을 다시 그리지 않는다 — 읽기 줄만 따로 따라오게 한다.
@@ -1070,6 +1154,20 @@ const PANEL_MARKUP = `
       <button id="talisman-clear" class="small-button" type="button" data-testid="talisman-clear">지우기</button>
       <button id="talisman-redraw" class="small-button" type="button" data-testid="talisman-redraw">다시 뽑기</button>
       <button id="talisman-submit" class="small-button talisman-submit" type="button" data-testid="talisman-submit" disabled>부적 완성</button>
+    </div>
+    <!--
+      시선 자리 행동 줄.
+
+      부적을 쓰는 동안 눈은 오른쪽 패널의 종이에 있는데, 그 시간에 눌러야 할
+      것들은 전부 전장 쪽에 있었다 — [시작 보너스]도, 적 한계 눈금도. 「패널에서
+      한 일은 패널에서 알린다」는 규범을 **행동**에도 넓힌다.
+
+      늘 서 있지 않는다. 조건이 찬 것 가운데 **가장 급한 하나만** 뜬다 — 늘 있는
+      줄은 곧 소음이 되고, 패널 세로 예산도 빠듯하다(단추 넷이 줄을 접어 26px을
+      넘긴 전례가 있다).
+    -->
+    <div id="talisman-cue" class="talisman-cue" hidden>
+      <button id="talisman-cue-button" type="button" data-testid="talisman-cue"></button>
     </div>
     <p id="talisman-economy-note" class="talisman-economy-note">부적 모드에서는 적이 ${Math.round((TALISMAN_MODE_ENEMY_HP_SCALE - 1) * 100)}% 강해집니다 — 그 대신 부적 보상을 얻습니다 · 설정에서 학습부적을 켜고 끌 수 있습니다</p>
   </div>`;
