@@ -249,6 +249,24 @@ export const PROJECTILE_WEIGHT = 1;
 export const TOWER_COOLDOWN_FLOOR = 0.28;
 
 /**
+ * 자령 화력 전체의 배수 — **세기**를 정하는 축.
+ *
+ * 무게(PROJECTILE_WEIGHT)와 갈라 둔 까닭이 있다. 무게는 「초당 피해는 그대로,
+ * 한 발만 무겁게」를 노린 축이었는데, 실측해 보니 그 전제가 안 지켜졌다 —
+ * 워크트리 여덟 벌로 재니 무게 1.4배에서 135판 승률이 0.556 → 0.807, 1.6배에서
+ * 0.896, 2.0배에서 0.985 로 갔다. 대기시간 하한을 함께 밀어도 그대로였다.
+ * 한 발이 커지면 지속 효과(오행 장판의 초당 피해는 그 발의 피해에서 나온다)와
+ * 처치 속도가 함께 따라 올라, 화력이 실제로 세진다.
+ *
+ * 그래서 축을 둘로 나눈다. **무게는 결을, 이 값은 세기를** 맡는다. 결을 바꾸면
+ * 세진 만큼을 여기서 되돌려 밴드(0.45~0.60)에 다시 앉힌다 — 사용자가 바란 것은
+ * "아군도 적도 초반부터 너무 강하다"는 쪽이었으므로 되돌리는 방향이 맞다.
+ *
+ * 피해에만 곱한다. 대기시간에는 안 곱한다 — 곱하면 무게와 같은 축이 된다.
+ */
+export const TOWER_POWER_SCALE = 1;
+
+/**
  * 사거리 배수.
  *
  * "초반부터 너무강해 ... 투사체 발사속도, 범위 부터"(사용자). 사거리는 실효
@@ -278,7 +296,7 @@ function buildCombatProfile(
   const activeSkills = stage > 1 || childCount === 0;
   return {
     role,
-    baseDamage: (17 + (hash % 5)) * roleDamage[role] * PROJECTILE_WEIGHT,
+    baseDamage: (17 + (hash % 5)) * roleDamage[role] * PROJECTILE_WEIGHT * TOWER_POWER_SCALE,
     range: (roleRange[role] + (hash % 13)) * TOWER_RANGE_SCALE,
     cooldown: roleCooldown[role] * PROJECTILE_WEIGHT,
     budgetMultiplier,

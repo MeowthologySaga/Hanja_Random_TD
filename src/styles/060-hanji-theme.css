@@ -366,6 +366,9 @@ body {
 .growth-trait-row button,
 .dismantle-toolbar button,
 .formation-unlock-list button,
+/* 패널 행동 자리(v036)도 같은 놋쇠다 — 바로 위 카드 안에 서는 단추라
+   결이 다르면 딴 데서 온 조각처럼 뜬다. */
+.wave-action-row > button,
 .ability-overview > button,
 .summon-reveal > header button,
 .codex-dialog > header button {
@@ -380,6 +383,7 @@ body {
 .growth-stat-row button:hover:not(:disabled),
 .growth-trait-row button:hover:not(:disabled),
 .dismantle-toolbar button:hover:not(:disabled),
+.wave-action-row > button:hover:not(:disabled),
 .formation-unlock-list button:hover:not(:disabled) {
   background: var(--mat-brass-hot) !important;
 }
