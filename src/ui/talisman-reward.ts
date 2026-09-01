@@ -35,7 +35,13 @@ import { type Wuxing } from "../core/types";
 import { calmBattlefield, ctx, shell } from "./app-context";
 import { spiritPortraitMarkup } from "./format";
 
-export type TalismanRewardKind = "gold" | "essence" | "token";
+/**
+ * 부적 보상의 갈래.
+ *
+ * 앞 셋은 경제고 뒤 셋은 **화면에서 벌어지는 일**이다. 경제만 있던 시절에는
+ * 쓴 보람이 숫자로만 남아 "썼다"는 감각이 약했다(기획안 v035 ①).
+ */
+export type TalismanRewardKind = "gold" | "essence" | "token" | "strike" | "bind" | "breath";
 
 export interface TalismanRewardGrant {
   readonly kind: TalismanRewardKind;
@@ -91,7 +97,11 @@ const ARC_LIFT = 46;
 const GIFT_TINTS: Record<TalismanRewardKind, string> = {
   gold: "#e0b84f",
   essence: "#9fd3c7",
-  token: "#d9a3e0"
+  token: "#d9a3e0",
+  // 화면에서 벌어지는 보상 셋 — 치는 것은 잉걸, 묶는 것은 인주, 숨은 푸른빛.
+  strike: "#ff8a5c",
+  bind: "#d9605a",
+  breath: "#8fd0e8"
 };
 
 interface ShellPoint {
@@ -133,6 +143,9 @@ function firstVisible(selectors: readonly string[]): HTMLElement | null {
 function rewardAnchor(kind: TalismanRewardKind): HTMLElement | null {
   if (kind === "gold") return firstVisible(["#gold-value", ".resource-grid"]);
   if (kind === "essence") return firstVisible(["#essence-summary", "#growth-resource-summary", ".resource-grid"]);
+  // 화면에서 벌어지는 보상은 전장을 가리킨다 — 값이 그쪽에서 쓰였다.
+  if (kind === "strike" || kind === "bind") return firstVisible(["#battle-canvas", ".battle-stage"]);
+  if (kind === "breath") return firstVisible(["#wave-label", ".wave-card", ".resource-grid"]);
   return firstVisible(["#shop-tab", ".resource-grid"]);
 }
 

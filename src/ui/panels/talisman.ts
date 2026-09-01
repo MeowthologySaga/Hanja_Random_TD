@@ -20,8 +20,8 @@
  * 트랙 C3 ④: 장수는 이월된다 — 시간에 쫓기지 않는다.
  *   예전에는 웨이브당 3장을 주고 안 쓰면 웨이브 전환에 소멸시켰다. "라운드당
  *   3장 계속 쌓이게 해서 유저가 시간에 쫓길 일 없게 하자"(사용자 실황).
- *   이제 웨이브마다 3장이 **더해지고** 남은 장수는 계속 쌓인다(웨이브 3까지
- *   한 장도 안 썼으면 9장). 무한 누적만 막으려고 상한 30장을 둔다
+ *   이제 웨이브마다 장수가 **더해지고** 남은 장수는 계속 쌓인다. 무한 누적만
+ *   막으려고 상한 30장을 둔다
  *   (engine-tuning.ts 「부적 모드 경제」의 상한 근거).
  *   완성하면 보상 연출이 끝나는 대로 종이가 넘어가 다음 글자가 차오르고,
  *   남은 장수가 0이 될 때만 종이가 잠긴 채 다음 웨이브를 기다린다.
@@ -104,8 +104,14 @@ const WARN_INK_STYLE = "rgba(159, 47, 35, 0.8)";
  */
 const WARN_HOLD_MS = 620;
 
-/** 웨이브마다 적립되는 부적 장수. 쓰지 않으면 소멸하지 않고 그대로 쌓인다. */
-const CHARGES_PER_WAVE = 3;
+/**
+ * 웨이브마다 적립되는 부적 장수. 쓰지 않으면 소멸하지 않고 그대로 쌓인다.
+ *
+ * 셋에서 둘로 줄였다. "현재 부적에 시간을 많이 써서 생각보다 타워 경영에 힘을
+ * 쓸 시간이 부족해"(사용자) — 웨이브마다 세 글자를 쓰면 준비 시간이 통째로
+ * 사라졌다. 총량은 아래 농축이 되돌려 준다.
+ */
+const CHARGES_PER_WAVE = 2;
 
 /**
  * 쌓아 둘 수 있는 최대 장수 = 10웨이브(한 봉인장)치 적립.
@@ -124,7 +130,7 @@ const NEXT_SHEET_DELAY_MS = 2_800;
 /** 종이 넘김 — 절반 지점에서 새 글자를 앉힌다. 540절의 애니메이션 길이와 맞춘다. */
 const PAGE_TURN_MS = 350;
 
-/** 보상 가중 — 엽전 60% / 해당 한자 오행 문기 30% / 기본 소환 무료권 10%. */
+/** 경제 보상 안에서의 가중 — 엽전 60% / 해당 한자 오행 문기 30% / 무료권 10%. */
 const REWARD_GOLD_WEIGHT = 0.6;
 
 const REWARD_ESSENCE_WEIGHT = 0.3;
@@ -132,6 +138,39 @@ const REWARD_ESSENCE_WEIGHT = 0.3;
 const REWARD_GOLD_MIN = 6;
 
 const REWARD_GOLD_MAX = 14;
+
+/**
+ * 장수를 3장에서 2장으로 줄인 만큼 한 장을 값지게 한다.
+ *
+ * 총량을 **늘리는** 개편이 아니다 — 같은 총량을 덜 자주 주는 개편이다.
+ * 2장 × 1.35 ≈ 3장이 되도록 잡았다. 여기서 총량이 커지면 시뮬 게이트가
+ * 못 잡는 자리에서 경제가 부푼다(부적 보상은 UI 층이 엔진을 직접 만져
+ * 시뮬에 안 잡힌다 — 그래서 설계로 지켜야 한다).
+ */
+const REWARD_DENSITY = 1.35;
+
+/**
+ * 획이 많을수록 후하다.
+ *
+ * 一(1획)과 鬱(29획)의 보상이 같은 것은 한자를 가르치겠다는 게임에서 아깝다.
+ * 어려운 글자를 쓸 이유가 보상에 있어야 한다. 6획을 기준으로 획마다 6% 씩,
+ * 0.7~2.4배 사이로 자른다.
+ */
+function rewardScale(char: string): number {
+  const strokes = casualStrokeCount(char) ?? 6;
+  return Math.max(0.7, Math.min(2.4, 1 + (strokes - 6) * 0.06));
+}
+
+/**
+ * 경제 밖 보상이 나올 확률.
+ *
+ * 획이 많을수록 화면에서 무슨 일이 벌어질 확률이 오른다(6획 10% → 20획 35%).
+ * 어려운 글자를 쓰면 화면이 반응한다는 규칙 자체가 학습 유인이 된다.
+ */
+function eventChance(char: string): number {
+  const strokes = casualStrokeCount(char) ?? 6;
+  return Math.max(0.08, Math.min(0.35, 0.1 + (strokes - 6) * 0.018));
+}
 
 let guideContext: CanvasRenderingContext2D | null = null;
 
@@ -716,6 +755,59 @@ function runActive(): boolean {
  * 지급이 끝나면 그 글자의 자령이 부적지 위로 내려와 받은 것을 자원칸에 놓고
  * 떠난다(talisman-reward.ts). 자령은 방문객일 뿐이라 엔진에는 남지 않는다.
  */
+/**
+ * 경제 밖 보상 — 화면에서 무슨 일이 벌어지게 한다.
+ *
+ * 여태 부적 보상은 엽전·문기·소환권뿐이라 **화면에서 아무 일도 안 벌어졌다.**
+ * 쓴 보람이 숫자로만 남으니 "썼다"는 감각이 약했다(기획안 v035 ①).
+ *
+ * 지금 쓸 수 있는 것 가운데 하나를 고른다. 하나도 못 쓰면 false 를 돌려주고
+ * 부르는 쪽이 경제 보상으로 돌아간다 — 아무 일도 안 일어나는 보상은 없어야 한다.
+ */
+function grantTalismanEvent(scale: number, wuxing: Wuxing, grants: TalismanRewardGrant[]): boolean {
+  const state = ctx.engine.state;
+  const options: Array<() => TalismanRewardGrant | null> = [];
+
+  // 자령 강림 · 일격 — 전장 전체를 한 번 내리친다.
+  if (state.enemies.length > 0) {
+    options.push(() => {
+      const struck = ctx.engine.talismanStrike(0.09 * scale, 6 * scale, wuxing);
+      if (struck === 0) return null;
+      return { kind: "strike", amount: struck, wuxing, glyph: "擊", label: `자령 강림 · ${struck}체 타격` };
+    });
+  }
+
+  // 봉인의 손 — 앞선 적을 잠깐 묶는다.
+  if (state.enemies.length > 0) {
+    options.push(() => {
+      const count = Math.max(2, Math.round(3 * scale));
+      const bound = ctx.engine.talismanBind(count, 1.6 + scale * 0.6);
+      if (bound === 0) return null;
+      return { kind: "bind", amount: bound, glyph: "封", label: `봉인의 손 · ${bound}체 묶음` };
+    });
+  }
+
+  // 문기의 숨 — 준비 시간을 늘린다. 준비 중일 때만 뜻이 있다.
+  if (state.phase === "prep") {
+    options.push(() => {
+      const seconds = Math.max(2, Math.round(3 * scale));
+      if (!ctx.engine.talismanBreath(seconds)) return null;
+      return { kind: "breath", amount: seconds, glyph: "息", label: `문기의 숨 · 준비 +${seconds}초` };
+    });
+  }
+
+  for (let attempt = options.length; attempt > 0; attempt -= 1) {
+    const index = Math.floor(Math.random() * options.length);
+    const [pick] = options.splice(index, 1);
+    const grant = pick?.();
+    if (grant) {
+      grants.push(grant);
+      return true;
+    }
+  }
+  return false;
+}
+
 function grantReward(): void {
   if (!runActive()) {
     showToast("부적 완성! 자령이 깃들 봉인구가 늘었습니다", false, "panel");
@@ -731,21 +823,37 @@ function grantReward(): void {
   const goldBefore = state.gold;
   const { char, wuxing } = currentDefinition;
   const grants: TalismanRewardGrant[] = [];
-  const roll = Math.random();
-  if (roll < REWARD_GOLD_WEIGHT) {
-    const amount = REWARD_GOLD_MIN + Math.floor(Math.random() * (REWARD_GOLD_MAX - REWARD_GOLD_MIN + 1));
-    state.gold += amount;
-    recentRewards.gold += amount;
-    grants.push({ kind: "gold", amount, glyph: "錢", label: `엽전 +${amount}` });
-  } else if (roll < REWARD_GOLD_WEIGHT + REWARD_ESSENCE_WEIGHT) {
-    state.elementEssence[wuxing] += 1;
-    state.elementEssenceGenerated[wuxing] += 1;
-    recentRewards.essence[wuxing] = (recentRewards.essence[wuxing] ?? 0) + 1;
-    grants.push({ kind: "essence", amount: 1, wuxing, glyph: wuxing, label: `${wuxing} 문기 +1` });
+  const scale = rewardScale(char);
+  /*
+   * 획이 많으면 화면에서 무슨 일이 벌어질 확률이 오른다.
+   *
+   * 경제 밖 보상을 못 쓰는 자리도 있다(전장에 적이 없거나 교전 중이라 준비
+   * 시간을 못 늘리거나). 그럴 때는 조용히 경제 보상으로 돌아간다 — 아무 일도
+   * 안 일어나는 보상은 없어야 한다.
+   */
+  const wantsEvent = Math.random() < eventChance(char);
+  if (wantsEvent && grantTalismanEvent(scale, wuxing, grants)) {
+    // 경제 밖 보상이 실제로 걸렸다.
   } else {
-    ctx.talismanFreeSummonTokens += 1;
-    recentRewards.tokens += 1;
-    grants.push({ kind: "token", amount: 1, glyph: "券", label: "무료 소환권 +1" });
+    const roll = Math.random();
+    if (roll < REWARD_GOLD_WEIGHT) {
+      const base = REWARD_GOLD_MIN + Math.floor(Math.random() * (REWARD_GOLD_MAX - REWARD_GOLD_MIN + 1));
+      const amount = Math.max(1, Math.round(base * scale * REWARD_DENSITY));
+      state.gold += amount;
+      recentRewards.gold += amount;
+      grants.push({ kind: "gold", amount, glyph: "錢", label: `엽전 +${amount}` });
+    } else if (roll < REWARD_GOLD_WEIGHT + REWARD_ESSENCE_WEIGHT) {
+      // 문기는 낱개라 배수를 못 쓴다 — 획이 열둘을 넘으면 하나를 더 얹는다.
+      const amount = (casualStrokeCount(char) ?? 6) >= 12 ? 2 : 1;
+      state.elementEssence[wuxing] += amount;
+      state.elementEssenceGenerated[wuxing] += amount;
+      recentRewards.essence[wuxing] = (recentRewards.essence[wuxing] ?? 0) + amount;
+      grants.push({ kind: "essence", amount, wuxing, glyph: wuxing, label: `${wuxing} 문기 +${amount}` });
+    } else {
+      ctx.talismanFreeSummonTokens += 1;
+      recentRewards.tokens += 1;
+      grants.push({ kind: "token", amount: 1, glyph: "券", label: "무료 소환권 +1" });
+    }
   }
   const summary = grants.map((grant) => grant.label).join(" · ");
   // 말은 한 번만 뽑아 말풍선과 토스트가 같은 말을 하게 한다. 강림 연출은

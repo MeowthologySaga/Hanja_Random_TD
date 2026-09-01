@@ -922,7 +922,7 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
         <i aria-hidden="true"><em>OFF</em></i>
       </button>
       <button id="talisman-mode-toggle" class="settings-toggle" type="button" role="switch" aria-checked="false" data-testid="talisman-mode-toggle">
-        <span><b>학습 모드 · 부적 만들기</b><small>패널에 「부적」 탭이 섭니다. 부적지의 한자를 따라 쓰고 [부적 완성]을 누르면 그 글자의 자령이 보상을 두고 갑니다 — 웨이브마다 3장이 더해지고 쓰지 않은 장수는 최대 30장까지 그대로 쌓입니다. 부적 모드에서는 적이 5% 강해집니다. 그 대신 부적 보상을 얻습니다.</small></span>
+        <span><b>학습 모드 · 부적 만들기</b><small>패널에 「부적」 탭이 섭니다. 부적지의 한자를 따라 쓰고 [부적 완성]을 누르면 그 글자의 자령이 보상을 두고 갑니다 — 웨이브마다 2장이 더해지고 쓰지 않은 장수는 최대 30장까지 그대로 쌓입니다. 획이 많은 글자일수록 보상이 후하고, 이따금 엽전 대신 자령이 전장에 손을 씁니다. 부적 모드에서는 적이 5% 강해집니다. 그 대신 부적 보상을 얻습니다.</small></span>
         <i aria-hidden="true"><em>OFF</em></i>
       </button>
       <!--

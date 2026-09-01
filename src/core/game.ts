@@ -1414,6 +1414,57 @@ export class GameEngine {
     });
   }
 
+  /**
+   * 부적 보상의 「자령 강림 · 일격」 — 전장 전체에 한 번 내리치는 피해.
+   *
+   * 부적 보상은 여태 엽전·문기·소환권뿐이라 **화면에서 아무 일도 안 벌어졌다**.
+   * 쓴 보람이 숫자로만 남으니 "썼다"는 감각이 약했다(기획안 v035 ①).
+   *
+   * 정상 피해 경로를 그대로 탄다 — 처치·보상·자혼·성어 보너스가 모두 제자리에서
+   * 돈다. UI 가 hp 를 직접 깎으면 0 이 된 적이 살아남거나 보상이 새므로, 이
+   * 문 하나만 열어 준다.
+   */
+  talismanStrike(share: number, flat: number, wuxing: Wuxing): number {
+    if (this.state.phase !== "combat" && this.state.phase !== "prep") return 0;
+    let struck = 0;
+    // 원본을 복사해 돈다 — damageEnemy 가 처치 시 목록을 갈아 끼운다.
+    for (const enemy of [...this.state.enemies]) {
+      const amount = enemy.maxHp * share + flat;
+      const weakness = enemy.weakness === wuxing;
+      this.damageEnemy(enemy, weakness ? amount * GAME_CONFIG.weaknessMultiplier : amount, false, weakness);
+      struck += 1;
+    }
+    return struck;
+  }
+
+  /**
+   * 부적 보상의 「봉인의 손」 — 가장 앞선 적 몇을 잠깐 묶는다.
+   *
+   * 앞선 순서로 고르는 이유는 그쪽이 급하기 때문이다. 뒤에 오는 적을 묶어 봐야
+   * 위험이 줄지 않는다.
+   */
+  talismanBind(count: number, seconds: number): number {
+    const targets = [...this.state.enemies]
+      .sort((left, right) => right.progress - left.progress)
+      .slice(0, Math.max(0, count));
+    for (const enemy of targets) {
+      enemy.stunnedUntil = Math.max(enemy.stunnedUntil, this.state.elapsed + seconds);
+    }
+    return targets.length;
+  }
+
+  /**
+   * 부적 보상의 「문기의 숨」 — 준비 시간을 늘린다.
+   *
+   * 준비 중일 때만 뜻이 있다. 교전 중에 늘려 두면 다음 웨이브가 시작될 때
+   * 덮어써져 아무 일도 안 일어난다(startNextWave 가 다시 앉힌다).
+   */
+  talismanBreath(seconds: number): boolean {
+    if (this.state.phase !== "prep") return false;
+    this.state.prepRemaining += seconds;
+    return true;
+  }
+
   private damageEnemy(enemy: Enemy, rawAmount: number, critical: boolean, weakness: boolean, armorPenetration = 0, source?: Tower): void {
     if (!this.state.enemies.includes(enemy)) return;
     // [SKILL-V3] 진흙밭을 밟는 동안에는 장갑 특성이 무효다 — 관통 계산 이전에
