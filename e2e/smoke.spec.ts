@@ -582,15 +582,26 @@ test("opens the dedicated growth tab with batch upgrade controls", async ({ page
   await page.getByTestId("element-upgrade-button").click();
   await expect(page.locator("#growth-panel")).toBeVisible();
   await expect(page.locator("#growth-element-tabs > button")).toHaveCount(5);
-  await expect(page.locator(".growth-stat-row")).toHaveCount(10);
-  await expect(page.locator(".growth-trait-row")).toHaveCount(3);
+  /*
+   * v035 ④-b: 세 구획을 한 번에 하나씩 편다(다섯 화면짜리 스크롤을 잘랐다).
+   * 그래서 세는 자리도 구획마다 따로다 — 공용 5줄 · 오행 5줄 · 특성 3줄.
+   */
+  await expect(page.locator("#growth-section-tabs > button")).toHaveCount(3);
+  await expect(page.locator(".growth-stat-row")).toHaveCount(5);
   const commonDamage = page.locator('[data-growth-upgrade-scope="global"][data-growth-stat="damage"][data-growth-amount="1"]');
   await expect(commonDamage).toContainText("16 엽전");
   await commonDamage.click();
   await expect(page.locator("#gold-value")).toHaveText("26");
   await expect(commonDamage).toContainText("19 엽전");
-  await expect(page.locator('[data-growth-upgrade-scope="element"][data-growth-stat="damage"][data-growth-amount="1"]')).toBeDisabled();
   await page.screenshot({ path: "artifacts/element-upgrades-1280x720.png", fullPage: true });
+
+  await page.locator('[data-growth-section-tab="element"]').click();
+  await expect(page.locator(".growth-stat-row")).toHaveCount(5);
+  await expect(page.locator('[data-growth-upgrade-scope="element"][data-growth-stat="damage"][data-growth-amount="1"]')).toBeDisabled();
+
+  await page.locator('[data-growth-section-tab="trait"]').click();
+  await expect(page.locator(".growth-trait-row")).toHaveCount(3);
+  await page.locator('[data-growth-section-tab="global"]').click();
   await expect(page.locator("#element-upgrade-total")).toHaveText("총 1단계");
 });
 

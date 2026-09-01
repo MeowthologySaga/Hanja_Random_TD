@@ -111,12 +111,11 @@ const GROWTH_UPGRADE_TARGET = '#growth-upgrade-list [data-growth-upgrade-scope="
 /**
  * 링 대상이 목록의 보이는 자리 안에 있게 지킨다.
  *
- * 제련소 목록은 공용 강화가 먼저라 오행 강화 구획이 스크롤 아래에 있고,
- * renderGrowth 가 innerHTML 을 통째로 갈아 끼울 때마다(교전 중 엽전·문기가
- * 바뀌면 매번이다) 스크롤이 맨 위로 되돌아간다. 진입 시 한 번만 굴려서는
- * 곧 링만 남고 대상은 화면 밖으로 밀린다 — 그래서 매 프레임 "지금 보이나"를
- * 확인하고 어긋났을 때만 다시 굴린다(이미 보이면 아무 것도 하지 않아 스크롤이
- * 요동하지 않는다).
+ * 예전에는 공용·오행·특성이 한 두루마리에 이어져 있어 오행 구획이 스크롤 한참
+ * 아래였고, 목록을 다시 그릴 때마다 스크롤이 맨 위로 되돌아가 링만 남고 대상은
+ * 화면 밖으로 밀렸다. 구획이 갈린 뒤로는 오행 구획만 펴 두면 되지만(enter 가
+ * 맞춰 둔다), 사람이 갈피를 다른 데로 옮겼다 돌아오는 길도 있어 이 지킴이는
+ * 그대로 둔다 — 이미 보이면 아무 것도 안 하므로 스크롤이 요동하지 않는다.
  */
 function keepGrowthTargetInView(): void {
   if (ctx.activePanelTab !== "growth") return;
@@ -386,6 +385,13 @@ const STEPS: readonly TutorialStep[] = [
       ctx.engine.tutorialGrantEssence(runtime.growthWuxing, 12);
       // 제련소가 열리면 바로 그 오행 갈피가 보이게 맞춰 둔다.
       ctx.growthElement = runtime.growthWuxing;
+      /*
+       * 구획도 오행 쪽으로 열어 둔다(v035 ④-b).
+       *
+       * 제련소가 한 번에 한 구획만 펴게 된 뒤로, 기본값(공용)으로 열면 이 걸음이
+       * 가리키는 [1회] 버튼이 **화면에 아예 없다** — 링만 남고 대상이 없는 셈이다.
+       */
+      ctx.growthSection = "element";
       ctx.growthRenderKey = "";
       showToast(`수련 지원 — ${runtime.growthWuxing} 문기 12를 드렸어요`);
     },

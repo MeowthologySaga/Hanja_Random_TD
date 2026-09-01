@@ -239,6 +239,9 @@ body {
 .idiom-glyphs i,
 .idiom-codex-glyphs i,
 .growth-element-tabs button,
+/* 구획 갈피(v035 ④-b)도 오행 갈피와 같은 종이·같은 결이다 — 바로 위아래에
+   붙어 서는 두 줄이라, 결이 다르면 아래 줄이 꺼진 단추처럼 읽힌다. */
+.growth-section-tabs button,
 .canvas-tip i,
 #summon-reveal-summary > b,
 #summon-reveal-summary > span,
@@ -276,6 +279,7 @@ body {
 .codex-toolbar button.is-active,
 .codex-synthesis-filters button.is-active,
 .growth-element-tabs button.is-selected,
+.growth-section-tabs button.is-selected,
 .synergy-strip span.is-active {
   color: var(--gold-100) !important;
   background: linear-gradient(180deg, #fdf7e6 0%, #f0e5c9 100%) !important;

@@ -429,6 +429,8 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
             <section class="element-growth-workbench">
               <div class="subheading"><b>② 오행 강화</b><small>문기로 그 오행 자령 전원의 능력치를 올립니다</small></div>
               <div id="growth-element-tabs" class="growth-element-tabs"></div>
+              <!-- 구획 갈피(v035 ④-b) — 공용·오행·특성을 한 번에 하나만 편다. -->
+              <div id="growth-section-tabs" class="growth-section-tabs" role="tablist" aria-label="강화 구획"></div>
               <div id="growth-upgrade-list" class="growth-upgrade-list"></div>
             </section>
           </div>

@@ -332,6 +332,13 @@ class AppContext {
   concentrationTargetId: number | null = null;
   concentrationPayment: "essence" | number = "essence";
   growthElement: Wuxing = "木";
+  /**
+   * 제련소에서 지금 펴 놓은 구획(v035 ④-b).
+   *
+   * 셋을 한 두루마리에 이어 붙였더니 스크롤이 다섯 화면이었다 —
+   * "현재 스크롤이 너무 긴 구조야"(사용자). 한 번에 한 구획만 편다.
+   */
+  growthSection: "global" | "element" | "trait" = "global";
   casualFusionSelection: number[] = [];
   casualManualOpen = false;
   pendingCasualFusion: PendingCasualFusion | null = null;

@@ -57,7 +57,7 @@ function growthStateSignature(): string {
   const traits = WUXING_ORDER.map((wuxing) => ctx.engine.state.elementTraits[wuxing].join(",")).join("|");
   const scores = WUXING_ORDER.map((wuxing) => ctx.engine.state.elementDismantleScore[wuxing]).join(",");
   const filters = `${must<HTMLSelectElement>("#dismantle-element-filter").value}:${must<HTMLSelectElement>("#dismantle-stage-filter").value}:${must<HTMLSelectElement>("#dismantle-status-filter").value}`;
-  return `${ctx.engine.state.mode}:${ctx.engine.state.phase}:${globalLevels}:${elementLevels}:${inventory}:${traits}:${scores}:${filters}:U${ctx.dismantleProtectsUnique ? 1 : 0}:${[...dismantleSelection].sort((a, b) => a - b).join(",")}:${ctx.growthElement}`;
+  return `${ctx.engine.state.mode}:${ctx.engine.state.phase}:${globalLevels}:${elementLevels}:${inventory}:${traits}:${scores}:${filters}:U${ctx.dismantleProtectsUnique ? 1 : 0}:${[...dismantleSelection].sort((a, b) => a - b).join(",")}:${ctx.growthElement}:${ctx.growthSection}`;
 }
 
 /**
@@ -241,14 +241,21 @@ export function renderGrowth(): void {
   const globalRows = UPGRADE_STAT_ORDER.map((stat) => {
     const meta = UPGRADE_STAT_META[stat];
     const level = ctx.engine.state.globalUpgrades[stat];
-    const note = `${meta.description} · 현재 ${formatStatBonus(stat, ctx.engine.globalUpgradeBonus(stat))} · ${milestoneNote(stat, level, meta.globalPerLevel)}`;
-    return `<article class="growth-stat-row"><i>${meta.glyph}</i><div><b>공용 ${meta.label} <em>Lv.${level}/99</em></b><small title="${escapeHtml(note)}">${note}</small></div><span>${batchButtons("global", stat)}</span></article>`;
+    /*
+     * 설명(meta.description)은 다섯 줄 내내 같은 자리에서 같은 말을 되풀이한다 —
+     * 「공격력은 공격에 붙는다」는 것은 한 번 알면 되는 말이다. 그것 때문에 줄이
+     * 한 줄씩 길어져 목록이 다섯 화면이 됐다(v035 ④-b 실측). 눈앞에서는 걷고
+     * 전문은 title 에 남긴다 — 처음 보는 사람은 짚어 보면 읽을 수 있다.
+     */
+    const shown = `현재 ${formatStatBonus(stat, ctx.engine.globalUpgradeBonus(stat))} · ${milestoneNote(stat, level, meta.globalPerLevel)}`;
+    const note = `${meta.description} · ${shown}`;
+    return `<article class="growth-stat-row" data-growth-stat-row="${stat}"><i>${meta.glyph}</i><div><b>공용 ${meta.label} <em>Lv.${level}/99</em></b><small title="${escapeHtml(note)}">${shown}</small></div><span>${batchButtons("global", stat)}</span></article>`;
   }).join("");
   const elementRows = UPGRADE_STAT_ORDER.map((stat) => {
     const meta = UPGRADE_STAT_META[stat];
     const level = ctx.engine.state.elementUpgrades[ctx.growthElement][stat];
     const note = `현재 ${formatStatBonus(stat, ctx.engine.elementUpgradeBonus(ctx.growthElement, stat))} · 단계당 ${formatStatBonus(stat, meta.elementPerLevel)} · ${milestoneNote(stat, level, meta.elementPerLevel)}`;
-    return `<article class="growth-stat-row is-element" style="--element:${ELEMENT_STYLES[ctx.growthElement].color}"><i>${meta.glyph}</i><div><b>${ctx.growthElement}행 ${meta.label} <em>Lv.${level}/99</em></b><small title="${escapeHtml(note)}">${note}</small></div><span>${batchButtons("element", stat)}</span></article>`;
+    return `<article class="growth-stat-row is-element" data-growth-stat-row="${stat}" style="--element:${ELEMENT_STYLES[ctx.growthElement].color}"><i>${meta.glyph}</i><div><b>${ctx.growthElement}행 ${meta.label} <em>Lv.${level}/99</em></b><small title="${escapeHtml(note)}">${note}</small></div><span>${batchButtons("element", stat)}</span></article>`;
   }).join("");
   const traitRows = ELEMENT_TRAITS[ctx.growthElement].map((trait, traitIndex) => {
     const level = ctx.engine.elementTraitLevel(ctx.growthElement, traitIndex);
@@ -261,7 +268,37 @@ export function renderGrowth(): void {
     }).join("");
     return `<article class="growth-trait-row ${unlocked ? "is-unlocked" : "is-locked"}" style="--element:${ELEMENT_STYLES[ctx.growthElement].color}"><div class="trait-seal"><b>${traitIndex + 1}</b><small>${unlocked ? "개방" : `${unlockScore}점`}</small></div><div><strong>${trait.name} <em>Lv.${level}/${ELEMENT_TRAIT_MAX_LEVEL}</em></strong><span>${trait.summary} +${trait.perLevel}${trait.unit}/단계${trait.milestone ? ` · ${trait.milestone}` : ""}</span><small>${unlocked ? `다음 비용 ${elementTraitUpgradeCost(level) ?? "최고"} 문기` : `분해 점수 ${ctx.engine.state.elementDismantleScore[ctx.growthElement]}/${unlockScore}`}</small></div><nav>${buttons}</nav></article>`;
   }).join("");
-  must<HTMLElement>("#growth-upgrade-list").innerHTML = `<section class="growth-upgrade-section"><header><b>공용 능력 강화</b><small>엽전 투자 · 5능력치×99단계</small></header>${globalRows}</section><section class="growth-upgrade-section"><header data-growth-section="${ctx.growthElement}"><b>${ctx.growthElement}행 능력 강화</b><small>문기 투자 · 1회·5회·최대</small></header>${elementRows}</section><section class="growth-upgrade-section"><header><b>${ctx.growthElement}행 고유 특성</b><small>분해 점수 5·15·30 순차 개방</small></header>${traitRows}</section>`;
+  /*
+   * 한 번에 한 구획만 편다(v035 ④-b).
+   *
+   * 셋을 이어 붙이면 내용이 1624px 인데 보이는 자리는 324px 이라 **다섯 화면**을
+   * 굴려야 했다(실측). 세 구획은 쓰는 화폐도 다르고(엽전·문기·분해 점수) 고르는
+   * 때도 다르다 — 늘 함께 보여야 할 까닭이 없다.
+   *
+   * 「살 수 없는 항목을 접는다」는 갈래는 접었다. 여력은 교전 중 매 프레임
+   * 바뀌므로 그걸로 줄을 여닫으면 **누르는 도중에 줄이 사라진다** — "강화 버튼이
+   * 잘 안눌려"(사용자)의 뿌리였던 바로 그 사고다.
+   */
+  const sections = {
+    global: { title: "공용 능력 강화", note: "엽전 투자 · 5능력치×99단계", rows: globalRows, anchor: "" },
+    element: { title: `${ctx.growthElement}행 능력 강화`, note: "문기 투자 · 1회·5회·최대", rows: elementRows, anchor: ctx.growthElement },
+    trait: { title: `${ctx.growthElement}행 고유 특성`, note: "분해 점수 5·15·30 순차 개방", rows: traitRows, anchor: "" }
+  } as const;
+  const open = sections[ctx.growthSection];
+  must<HTMLElement>("#growth-section-tabs").innerHTML = (["global", "element", "trait"] as const)
+    .map((key) => {
+      const selected = key === ctx.growthSection;
+      const label = key === "global" ? "공용" : key === "element" ? `${ctx.growthElement}행` : "고유 특성";
+      /*
+       * 화폐는 갈피에 안 적는다 — 바로 아래 구획 머리글이 이미 「엽전 투자」·
+       * 「문기 투자」·「분해 점수 순차 개방」이라고 말한다. 두 줄짜리 갈피는
+       * 보이는 자리를 45px 먹어, 줄여 준 스크롤을 도로 까먹는다.
+       */
+      return `<button type="button" role="tab" aria-selected="${selected}" data-growth-section-tab="${key}" class="${selected ? "is-selected" : ""}"><b>${label}</b></button>`;
+    })
+    .join("");
+  must<HTMLElement>("#growth-upgrade-list").innerHTML =
+    `<section class="growth-upgrade-section is-${ctx.growthSection}"><header ${open.anchor ? `data-growth-section="${open.anchor}"` : ""}><b>${open.title}</b><small>${open.note}</small></header>${open.rows}</section>`;
 }
 
 /** main.ts 가 원래 순서대로 부르는 배선 묶음. */
@@ -343,10 +380,30 @@ export function wireGrowth2(): void {
     ctx.growthElement = wuxing;
     ctx.growthRenderKey = "";
     renderGrowth();
-    // 탭만 바뀌고 화면은 그대로라 "눌렀는데 아무 일도 없다"로 읽혔다 — 해당 오행 섹션으로 데려간다.
-    // 조상까지 미는 scrollIntoView 는 무대를 통째로 밀어 올린 전례가 있다.
+    /*
+     * 탭만 바뀌고 화면은 그대로라 "눌렀는데 아무 일도 없다"로 읽혔다.
+     * 구획이 갈린 뒤로는 스크롤로 데려갈 자리가 없다 — 공용 구획을 보고 있었다면
+     * 그 오행 구획으로 **갈피를 옮겨** 준다. 고유 특성을 보고 있었다면 그대로
+     * 둔다(그것도 그 오행의 것이다).
+     */
+    if (ctx.growthSection === "global") {
+      ctx.growthSection = "element";
+      ctx.growthRenderKey = "";
+      renderGrowth();
+    }
     const list = must<HTMLElement>("#growth-upgrade-list");
     scrollIntoContainer(list.querySelector<HTMLElement>(`[data-growth-section='${wuxing}']`), list, { block: "start", smooth: !reducedMotion });
+  });
+  must<HTMLElement>("#growth-section-tabs").addEventListener("click", (event) => {
+    const key = (event.target as HTMLElement).closest<HTMLButtonElement>("[data-growth-section-tab]")?.dataset.growthSectionTab;
+    if (key !== "global" && key !== "element" && key !== "trait") return;
+    sound.unlock();
+    ctx.growthSection = key;
+    ctx.growthRenderKey = "";
+    renderGrowth();
+    // 구획을 바꾸면 그 구획의 첫 줄부터 본다 — 지난 구획의 스크롤 자리는 뜻이 없다.
+    must<HTMLElement>("#growth-upgrade-list").scrollTop = 0;
+    sound.playUiConfirm();
   });
   must<HTMLElement>("#growth-upgrade-list").addEventListener("click", (event) => {
     const button = (event.target as HTMLElement).closest<HTMLButtonElement>("[data-growth-upgrade-scope]");

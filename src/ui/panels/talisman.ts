@@ -232,10 +232,18 @@ interface RecentRewardTally {
   gold: number;
   essence: Partial<Record<Wuxing, number>>;
   tokens: number;
+  /**
+   * 경제 밖 보상이 몇 번 걸렸나(v035 ①).
+   *
+   * 이것들은 화면에서 벌어지고 끝나 남는 숫자가 없다. 세지 않으면 자령 강림을
+   * 받고도 이 줄이 "아직 없음"이라고 말한다 — 받은 사람에게 못 받았다고 하는
+   * 셈이다. 무엇이었는지는 지나갔으니 **몇 번**만 적는다.
+   */
+  events: number;
 }
 
 function emptyTally(): RecentRewardTally {
-  return { gold: 0, essence: {}, tokens: 0 };
+  return { gold: 0, essence: {}, tokens: 0, events: 0 };
 }
 
 let recentRewards: RecentRewardTally = emptyTally();
@@ -307,6 +315,7 @@ function recentRewardText(): string {
     if (amount > 0) parts.push(`${wuxing} 문기 +${amount}`);
   }
   if (recentRewards.tokens > 0) parts.push(`무료권 +${recentRewards.tokens}`);
+  if (recentRewards.events > 0) parts.push(`자령 응답 ${recentRewards.events}회`);
   return parts.join(" · ");
 }
 
@@ -841,7 +850,8 @@ function grantReward(): void {
    */
   const wantsEvent = Math.random() < eventChance(char);
   if (wantsEvent && grantTalismanEvent(scale, wuxing, grants)) {
-    // 경제 밖 보상이 실제로 걸렸다.
+    // 경제 밖 보상이 실제로 걸렸다 — 남는 숫자가 없으므로 횟수로 적어 둔다.
+    recentRewards.events += 1;
   } else {
     const roll = Math.random();
     if (roll < REWARD_GOLD_WEIGHT) {

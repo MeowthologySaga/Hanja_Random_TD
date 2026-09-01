@@ -88,3 +88,62 @@ test("값이 바뀌어도 스크롤이 맨 위로 되감기지 않는다", async
   await jitterGold(page, 12);
   expect(await list.evaluate((element) => element.scrollTop)).toBe(parked);
 });
+
+/*
+ * ── 구획 갈피(v035 ④-b) ─────────────────────────────────────────
+ *
+ * "강화 상점의 ui가 좀 별로고 다 비슷비슷해서 구분되지도 않아 ... 현재 스크롤이
+ * 너무 긴 구조야"(사용자). 셋을 한 두루마리에 이어 붙여 내용 1624px / 보이는
+ * 자리 324px — 다섯 화면이었다(실측). 한 번에 한 구획만 편다.
+ */
+test("한 번에 한 구획만 편다 — 다섯 화면짜리 두루마리를 자른다", async ({ page }) => {
+  await openForge(page);
+  // 펼친 구획은 언제나 하나다.
+  await expect(page.locator("#growth-upgrade-list .growth-upgrade-section")).toHaveCount(1);
+  await expect(page.locator("#growth-section-tabs button")).toHaveCount(3);
+
+  const screens = async (): Promise<number> =>
+    page.locator("#growth-upgrade-list").evaluate((list) => list.scrollHeight / list.clientHeight);
+  // 두 화면 안쪽이면 훑어볼 만하다 — 다섯 화면은 훑는 게 아니라 여행이었다.
+  expect(await screens()).toBeLessThan(2.6);
+
+  // 갈피를 옮기면 그 구획이 선다.
+  await page.locator('[data-growth-section-tab="trait"]').click();
+  await expect(page.locator("#growth-upgrade-list .growth-upgrade-section")).toHaveCount(1);
+  await expect(page.locator("#growth-upgrade-list header b")).toContainText("고유 특성");
+  await expect(page.locator("#growth-upgrade-list .growth-trait-row")).toHaveCount(3);
+  await expect(page.locator("#growth-upgrade-list .growth-stat-row")).toHaveCount(0);
+  expect(await screens()).toBeLessThan(2.6);
+
+  await page.locator('[data-growth-section-tab="global"]').click();
+  await expect(page.locator("#growth-upgrade-list .growth-stat-row")).toHaveCount(5);
+});
+
+test("능력치는 기호와 색으로 갈린다 — 읽지 않고 훑어도 갈리게", async ({ page }) => {
+  await openForge(page);
+  const tints = await page.locator("#growth-upgrade-list .growth-stat-row > i").evaluateAll(
+    (nodes) => nodes.map((node) => getComputedStyle(node).color)
+  );
+  expect(tints).toHaveLength(5);
+  // 다섯이 모두 다른 색이어야 한다 — 같은 금빛 다섯 줄은 읽어야만 갈렸다.
+  expect(new Set(tints).size).toBe(5);
+});
+
+/*
+ * 「살 수 없는 항목은 접는다」는 기획 갈래를 **접은** 자리를 지킨다.
+ *
+ * 여력은 교전 중 매 프레임 바뀐다. 그걸로 줄을 여닫으면 누르는 도중에 줄이
+ * 사라진다 — 이 파일 맨 위가 고친 바로 그 사고다. 못 사는 줄은 자리를 지키고
+ * 단추만 꺼진다.
+ */
+test("살 수 없어도 줄은 자리를 지킨다", async ({ page }) => {
+  await openForge(page);
+  await page.evaluate(() => {
+    const handle = (window as unknown as { __HANJA_CTX_QA__: unknown }).__HANJA_CTX_QA__;
+    const ctx = (typeof handle === "function" ? (handle as () => QaHandle)() : handle) as QaHandle;
+    ctx.engine.state.gold = 0;
+  });
+  await page.waitForTimeout(200);
+  await expect(page.locator("#growth-upgrade-list .growth-stat-row")).toHaveCount(5);
+  await expect(page.locator('#growth-upgrade-list [data-growth-upgrade-scope="global"]').first()).toBeDisabled();
+});

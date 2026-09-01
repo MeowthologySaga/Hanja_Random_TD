@@ -1,0 +1,85 @@
+/* ══════════════════════════════════════════════════════
+   780. 제련소 — 구획 갈피와 능력치 기호 (v035 ④-b)
+   ══════════════════════════════════════════════════════
+
+   "강화 상점의 ui가 좀 별로고 다 비슷비슷해서 구분되지도 않아 ...
+    현재 스크롤이 너무 긴 구조야"(사용자).
+
+   실측(1280×720, 강화 프레임): 목록 내용 1624px / 보이는 자리 324px —
+   **다섯 화면**이었다. 세 구획(공용·오행·고유 특성)을 한 두루마리에 이어 붙인
+   탓이다. 셋은 쓰는 화폐도 다르고(엽전·문기·분해 점수) 고르는 때도 다르니
+   늘 함께 보일 까닭이 없다. 한 번에 하나만 편다.
+
+   구분은 두 갈래로 준다.
+    ① **구획**은 갈피가 가른다 — 지금 어디에 있는지가 갈피에 서 있다.
+    ② **능력치**는 기호와 색이 가른다 — 다섯 줄이 같은 금빛 글자로 서 있으면
+       읽어야만 갈리지만, 색이 다르면 훑기만 해도 갈린다. */
+
+.growth-section-tabs {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 4px;
+  margin-bottom: 5px;
+}
+
+.growth-section-tabs button {
+  padding: 5px 2px;
+  /* 단추 제 글자 크기를 안 잡으면 상속받은 16px 이 줄 높이를 정해 33px 이 된다. */
+  font-size: 9px;
+  line-height: 1.15;
+  border: 1px solid rgba(146, 169, 199, 0.22);
+  border-radius: 6px;
+  background: rgba(6, 12, 20, 0.86);
+  color: #9fb0c7;
+  cursor: pointer;
+}
+
+.growth-section-tabs button b {
+  font-size: 9px;
+  font-weight: 800;
+}
+
+.growth-section-tabs button:hover {
+  border-color: rgba(221, 177, 76, 0.5);
+  color: #ffe3a0;
+}
+
+/*
+   고른 갈피는 한지 결(060절)이 종이색으로 바꿔 준다. 여기서는 그 위에
+   「지금 여기」만 한 획 더 얹는다 — 두 줄로 붙어 선 갈피라 종이색만으로는
+   위 줄(오행)과 아래 줄(구획) 중 어느 쪽을 고른 건지 헷갈린다.
+*/
+.growth-section-tabs button.is-selected {
+  font-weight: 900;
+}
+
+/* ── 능력치 기호 ──────────────────────────────────────────────
+   전장에서 이미 쓰는 글자(攻·速·遠·術·持)를 그대로 세우되, 다섯을 색으로
+   가른다. 다섯 줄이 같은 빛깔로 서 있으면 읽어야만 갈리지만, 색이 다르면
+   훑기만 해도 갈린다.
+
+   `!important` 를 쓰는 까닭: 한지 결(060절 1103)이 `.growth-workbench :is(… i …)`
+   로 이 자리의 글자색을 통째로 잡아 둔다. 그 규칙은 「종이 위에서는 먹색」이라는
+   옳은 규범이라 걷을 수 없고, 여기만 예외로 비켜선다 — 기호는 글이 아니라
+   **표식**이다.
+
+   색은 종이(크림) 위에서 읽히도록 어둡게 잡았다. 오행 색과도 겹치지 않게
+   골랐다 — 오행 줄은 테두리가 이미 오행 색이라, 기호까지 같은 색이면 둘이
+   한 덩어리로 뭉친다. */
+.growth-stat-row > i {
+  font-size: 17px;
+  font-weight: 800;
+  border-radius: 5px;
+  background: color-mix(in srgb, var(--stat-tint, #7a5a2a) 16%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--stat-tint, #7a5a2a) 32%, transparent);
+}
+
+.growth-workbench .growth-stat-row > i {
+  color: var(--stat-tint, #7a5a2a) !important;
+}
+
+.growth-stat-row[data-growth-stat-row="damage"] { --stat-tint: #a63a24; }
+.growth-stat-row[data-growth-stat-row="attackSpeed"] { --stat-tint: #1f6b7d; }
+.growth-stat-row[data-growth-stat-row="range"] { --stat-tint: #3d7538; }
+.growth-stat-row[data-growth-stat-row="abilityPower"] { --stat-tint: #654397; }
+.growth-stat-row[data-growth-stat-row="statusPower"] { --stat-tint: #8a6410; }
