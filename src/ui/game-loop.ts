@@ -2,7 +2,7 @@
  * requestAnimationFrame 루프와 일시정지.
  */
 import { type GameEvent } from "../core/types";
-import { canvas, ctx, must, shell, sound, summonReveal } from "./app-context";
+import { canvas, ctx, must, shell, sound } from "./app-context";
 import { drawWorld } from "./battle/draw";
 import { syncCoachProgress } from "./coach";
 import { showEndScreen } from "./dialogs/end";
@@ -16,30 +16,29 @@ import { syncScrollAffordances } from "./scroll-affordance";
 import { showCasualFusionReveal, showSummonReveal } from "./summon-reveal";
 
 /**
- * 소환·3합 공개 연출은 `<dialog>` 가 아니라 화면을 덮는 `<section>` 이라
- * `dialog[open]` 판정에 걸리지 않았다. 3초 남짓한 연출을 읽는 동안 적이 계속
- * 밀려들어 "카드를 읽었더니 판이 무너져 있다"가 됐다 — 도움말 다이얼로그와
- * 같은 규칙으로 세운다.
+ * 공개 연출은 **판을 세우지 않는다**(v039).
+ *
+ * 한때는 세웠다 — 연출을 읽는 동안 적이 밀려들어 "카드를 읽었더니 판이 무너져
+ * 있다"가 됐기 때문이다. 그런데 소환은 **연달아 누르는 조작**이다. 한 번 누를
+ * 때마다 판이 통째로 멎었다 살아나니, 빠르게 누르면 게임이 끊겨 보였다
+ * ("자령 소환시 멈추는거 없애. 연속으로 누르는데 렉걸리는거 같잖아" — 사용자).
+ *
+ * 애초의 걱정은 v037 에서 이미 다른 방식으로 풀렸다: 교전 중 평범한 한 기는
+ * 카드 없이 패널 토스트 한 줄로 지나가고(summon-reveal.ts), 카드가 서는 것은
+ * 첫 소환·새 발견·10연처럼 값하는 순간뿐이다. 그 몇 초를 위해 손맛을 버릴
+ * 이유가 없다.
+ *
+ * 창(dialog)은 그대로 세운다 — 그것은 읽고 고르는 자리라 성격이 다르다.
  */
-export function revealPauseActive(): boolean {
-  return summonReveal.classList.contains("is-active");
-}
-
-/** 열려 있는 모달 다이얼로그·공개 연출이 하나라도 있으면 전투를 세운다. */
 function modalPauseActive(): boolean {
-  return document.querySelector("dialog[open]") !== null || revealPauseActive();
+  return document.querySelector("dialog[open]") !== null;
 }
 
 function syncPauseChip(paused: boolean, manual: boolean): void {
   const chip = must<HTMLElement>("#pause-chip");
   if (chip.hidden !== !paused) chip.hidden = !paused;
   if (!paused) return;
-  // 연출은 닫는 방법이 창과 달라(아무 곳이나 누름 · Esc) 안내 문구도 갈라 준다.
-  const reason = manual
-    ? "P 키로 계속"
-    : revealPauseActive() && document.querySelector("dialog[open]") === null
-      ? "Esc·클릭으로 계속"
-      : "창을 닫으면 계속";
+  const reason = manual ? "P 키로 계속" : "창을 닫으면 계속";
   const label = must<HTMLElement>("#pause-reason");
   if (label.textContent !== reason) label.textContent = reason;
 }

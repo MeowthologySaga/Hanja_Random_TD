@@ -182,25 +182,48 @@ export function renderSummonShop(): void {
       wish.reason === null ? `부족 ${wishChars.join("·")}` : wish.reason
     ]
   }));
-  cards.push(summonCardMarkup({
-    key: "multi",
-    label: "10연 소환",
-    effect: multiBand === null ? "기본 확률 10회" : `${multiBand.max}★ 1기 보장`,
-    tint: "#a8791f",
-    icon: "v4/shop/shop-ten-pull-coin-bundle-v1",
-    price: `${tenCost} 엽전`,
-    disabled: !active || state.gold < tenCost,
-    affordable: !active || state.gold >= tenCost,
-    hotkey: "Q",
-    // [FB1] 2열 격자를 빈칸 없이 채우는 배치가 정본이다. 상품 수가 홀수면
-    // 10연이 남은 반 칸에 들어가고(캐주얼 5+1=3행), 짝수면 홀로 한 행을
-    // 넓게 차지한다(표준 4+1=3행). 이전 조건(홀수일 때 wide)은 캐주얼에서
-    // 빈칸 + 전용 행으로 한 행을 통째로 낭비해 상점 세로 넘침의 주범이었다.
-    wide: cards.length % 2 === 0,
-    testId: "multi-summon-button",
-    // 웨이브 자물쇠는 걷었다 — 값이 이미 문지기다(시작 42엽전 · 10연 70).
-    details: ["할증 없음", multiBand === null ? "" : `주로 ${multiBand.min}~${multiBand.max}★ · ${multiBand.max}★ 1기 보장`]
-  }));
+  /*
+   * 10연은 균형에만 있었다 — 별을 노리는 사람일수록 열 장씩 뽑고 싶은데,
+   * 정작 별을 파는 상품(중급·고급)에 그 손잡이가 없었다("다른 중급고급은
+   * 10연뽑이 없는것도 문제야" — 사용자). 열려 있는 티어마다 한 장씩 세운다.
+   *
+   * 값은 그 상품 한 장 값의 열 배다 — 10연이라고 깎지도 얹지도 않는다.
+   * 균형 10연이 예전 값 그대로인 것도 같은 규칙의 결과다(균형 배수 1).
+   */
+  const tenPulls: Array<{ key: string; label: string; tint: string; cost: number; band: { min: number; max: number } | null; testId: string; hotkey?: string }> = [
+    { key: "multi", label: "10연 소환", tint: "#a8791f", cost: tenCost, band: multiBand, testId: "multi-summon-button", hotkey: "Q" }
+  ];
+  for (const product of products) {
+    if (product.intent !== "midstar" && product.intent !== "highstar") continue;
+    const cost = Array.from({ length: 10 }, (_, index) => summonProductCost(state.summonCount + index, product.intent))
+      .reduce((total, each) => total + each, 0);
+    tenPulls.push({
+      key: `multi:${product.intent}`,
+      label: `${product.label.replace(" 소환", "")} 10연`,
+      tint: product.tint,
+      cost,
+      band: product.band,
+      testId: `multi-${product.intent}-button`
+    });
+  }
+  tenPulls.forEach((pull, index) => {
+    cards.push(summonCardMarkup({
+      key: pull.key,
+      label: pull.label,
+      effect: pull.band === null ? "기본 확률 10회" : `${pull.band.max}★ 1기 보장`,
+      tint: pull.tint,
+      icon: "v4/shop/shop-ten-pull-coin-bundle-v1",
+      price: `${pull.cost} 엽전`,
+      disabled: !active || state.gold < pull.cost,
+      affordable: !active || state.gold >= pull.cost,
+      ...(pull.hotkey === undefined ? {} : { hotkey: pull.hotkey }),
+      // [FB1] 2열 격자를 빈칸 없이 채운다 — 마지막 한 장이 홀로 남으면 넓게 편다.
+      wide: index === tenPulls.length - 1 && cards.length % 2 === 0,
+      testId: pull.testId,
+      // 웨이브 자물쇠는 걷었다 — 값이 이미 문지기다(시작 42엽전 · 10연 70).
+      details: ["할증 없음", pull.band === null ? "" : `주로 ${pull.band.min}~${pull.band.max}★ · ${pull.band.max}★ 1기 보장`]
+    }));
+  });
   must<HTMLElement>("#summon-shop").innerHTML = cards.join("");
 }
 
@@ -232,6 +255,7 @@ export function wireShop1(): void {
     if (!card || card.disabled) return;
     const product = card.dataset.summonProduct ?? "balanced";
     if (product === "multi") summonAndFocus(10);
+    else if (product.startsWith("multi:")) summonAndFocus(10, product.slice("multi:".length) as SummonIntent);
     else if (product === "idiom-wish") summonIdiomWishAndFocus();
     // 부적 무료권이 있으면 기본 소환은 무료 래퍼를 거친다(트랙 C).
     else if (product === "balanced" && ctx.talismanFreeSummonTokens > 0) summonWithTalismanToken();

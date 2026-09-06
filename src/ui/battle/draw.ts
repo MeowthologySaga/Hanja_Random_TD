@@ -51,7 +51,7 @@ import { casualStarOf } from "../format";
 import { drawHoveredTowerCard, drawTower, flushTowerPlaques } from "./draw-tower";
 import { type IdiomRippleFx, idiomRipples, pushPooled, ringPool, rings, takeRing, updateAndDrawFx } from "./fx";
 import { clampScreenBox, placeStageLabel, resetStageLabels } from "./stage-labels";
-import { advanceEnemyHealth, enemyHealthTrail, healthTrailColor } from "./enemy-health";
+import { advanceEnemyHealth, enemyHealthTrail, HEALTH_BAR_COLOR, HEALTH_TRAIL_COLOR } from "./enemy-health";
 
 export function drawWorld(delta: number): void {
   // [S/P-12] 부동 라벨의 자리 잡기는 프레임 단위다 — 지난 프레임의 점유는 잊는다.
@@ -1501,20 +1501,26 @@ function drawEnemy(enemy: Enemy, point = positionOnPath(enemy.progress)): void {
   context.fillStyle = "rgba(10, 7, 5, 0.9)";
   context.fillRect(left, top - 6, width, 4);
   /*
-   * 뒤따르는 띠 — 방금 깎인 만큼.
+   * 뒤따르는 붉은 띠 — 방금 깎인 만큼.
    *
    * 피해 수치를 글자로 띄우던 것을 걷고(events.ts) 그 몫을 여기로 옮겼다.
-   * 앞 띠는 곧바로 줄고 이 띠가 잠깐 머물렀다 따라 내려오므로, 얼마나 깎였는지가
-   * 두 띠의 간격으로 읽힌다. 색은 그 타격의 결이다 — 약점은 푸른빛, 치명은
-   * 금빛(enemy-health.ts).
+   * 앞 띠는 곧바로 줄고 이 띠가 잠깐 머물렀다 **빠르게** 따라 내려온다 —
+   * 남아 있는 것이 아니라 줄어드는 움직임이 「이만큼 깎였다」를 말한다.
+   *
+   * 두 색은 하나씩이다(v039): 남은 피는 호분 크림, 깎인 피는 주홍. 적마다
+   * 다르던 막대색과 결마다 달라지던 띠색을 함께 걷었다 — 회생의 초록 막대 위
+   * 연두 띠는 사람 눈에 없는 것과 같았다. 자세한 까닭은 enemy-health.ts 에.
+   *
+   * 독은 막대색이 아니라 위쪽 상태 인장(毒)이 말한다 — 색을 겹쳐 쓰면 그 색이
+   * 「남은 피」인지 「상태」인지 알 수 없다.
    */
   const ratio = Math.max(0, enemy.hp / enemy.maxHp);
   const trail = enemyHealthTrail(enemy.id, ratio);
-  if (trail.value > ratio) {
-    context.fillStyle = healthTrailColor(trail.tone);
-    context.fillRect(left + width * ratio, top - 6, width * (trail.value - ratio), 4);
+  if (trail > ratio) {
+    context.fillStyle = HEALTH_TRAIL_COLOR;
+    context.fillRect(left + width * ratio, top - 6, width * (trail - ratio), 4);
   }
-  context.fillStyle = enemy.poisonUntil > ctx.engine.state.elapsed ? "#62db8a" : color;
+  context.fillStyle = HEALTH_BAR_COLOR;
   context.fillRect(left, top - 6, width * ratio, 4);
   /*
    * 우두머리의 약점은 크게 박는다(v035 ③).

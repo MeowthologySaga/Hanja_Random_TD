@@ -137,13 +137,20 @@ test("keeps stage labels clear of one another and no damage numbers return", asy
   // ① 걷어 낸 피해 수치가 조용히 돌아오지 않는다.
   expect(report.damageBoxes).toBe(0);
   /*
-   * ② 정적 라벨끼리의 겹침은 **아직 0 이 아니다** — 같은 판에서 56건이 잡힌다.
+   * ② 정적 라벨끼리의 겹침은 **아직 0 이 아니다** — 처음 쟀을 때 56건이었다.
    *
    * 옛 시험은 이 짝을 아예 보지 않았다(피해 수치 대 정적 라벨만 봤다). 여기서
    * 0 을 요구하면 없던 요건을 새로 세우는 셈이라, 지금은 **더 나빠지지 않는
    * 것**만 지킨다. 명패가 서로 겹치는 것을 푸는 일은 따로 다룰 몫이다.
+   *
+   * 상한 재기준(v039, 120 → 150): 공개 카드가 더는 판을 세우지 않는다. 이 판을
+   * 짓는 동안 10연을 두 번 뽑는데, 예전에는 그 두 연출(약 19초) 동안 시계가
+   * 멎어 있었다 — 이제는 그만큼 판이 더 굴러간 상태에서 재게 된다. 살아 있는
+   * 장판·기술 배너가 한둘 더 서므로(peakBoxes 17 → 18~19) 겹침도 함께 는다.
+   * 라벨 배치가 나빠진 것이 아니라 **재는 시점의 판이 달라진 것**이다.
+   * 실측 134·138(두 번), 여유를 두어 150 으로 잡는다.
    */
-  expect(report.staticOverStatic).toBeLessThanOrEqual(120);
+  expect(report.staticOverStatic).toBeLessThanOrEqual(150);
 });
 
 /*
@@ -236,10 +243,16 @@ test("closes the summon reveal with Escape and auto-hides multi-card reveals", a
   await page.goto("/?seed=TRACK-W-REVEAL&mode=standard");
   await page.getByTestId("start-run").click();
 
-  // ① 한 장짜리 — Esc 로 닫힌다. 정지도 함께 풀린다.
+  // ① 한 장짜리 — Esc 로 닫힌다.
   await page.getByTestId("summon-button").click();
   await expect(page.locator("#summon-reveal")).toHaveClass(/is-active/u);
-  await expect(page.locator("#pause-reason")).toHaveText("Esc·클릭으로 계속");
+  /*
+   * v039: 공개 카드는 **판을 세우지 않는다.** 소환은 연달아 누르는 조작이라
+   * 한 번 누를 때마다 판이 멎으면 게임이 끊겨 보였다("연속으로 누르는데
+   * 렉걸리는거 같잖아" — 사용자). 걷어 낸 그 계약을 여기 못 박는다 —
+   * 카드가 떠 있어도 정지 쪽지는 서지 않는다.
+   */
+  await expect(page.locator("#pause-chip")).toBeHidden();
   await page.screenshot({ path: ".claude/uiux/track-w/07-reveal-before-escape.png" });
   await page.keyboard.press("Escape");
   await expect(page.locator("#summon-reveal")).not.toHaveClass(/is-active/u);

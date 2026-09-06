@@ -736,21 +736,45 @@ describe("casual eight-star mode", () => {
     expect(standard.casualPolarisDamageMultiplier(wuxing)).toBe(1);
   });
 
-  it("widens splash radius and ratio with the casual star while standard stays stage-scaled", () => {
-    // 수술 5(사용자 지시): 광역 계열이 별과 무관하게 일정하던 것을 바로잡는다.
-    const engine = casualEngine("casual-splash-scale");
+  it("광역은 별로 열리고, 반경은 3성 1/3 에서 8성 제값까지 사다리를 탄다", () => {
+    /*
+     * v039(사용자 지시): "낮은별부터 광역기 효과가 범위가 너무커 …
+     * 최소 3성부터 광역기 넣고, 가장 작은 범위는 현재의 1/3까지 줄여".
+     *
+     * 예전에는 1성도 배율 1(=제값)이었고 8성이 1.49 였다 — 별을 올려도 원이
+     * 절반밖에 안 커졌고, 정작 1성이 이미 컸다. 이제 문이 3성에 있다.
+     */
+    const engine = casualEngine("casual-aoe-ladder");
     const definition = safeCasualDefinitions(engine, 1)[0] as HanziDefinition;
-    const low = casualTower(definition, 1401, 0, 1);
-    const high = casualTower(definition, 1402, 1, 8);
-    expect(engine.casualSplashRadiusScale(low)).toBe(1);
-    expect(engine.casualSplashRatioScale(low)).toBe(1);
-    expect(engine.casualSplashRadiusScale(high)).toBeCloseTo(1.49, 5);
-    expect(engine.casualSplashRatioScale(high)).toBeCloseTo(1.28, 5);
+    const oneStar = casualTower(definition, 1401, 0, 1);
+    const twoStar = casualTower(definition, 1402, 1, 2);
+    const threeStar = casualTower(definition, 1403, 2, 3);
+    const midStar = casualTower(definition, 1404, 3, 6);
+    const topStar = casualTower(definition, 1405, 4, 8);
 
-    const standard = new GameEngine("standard-splash-scale", "KR");
+    // 문 앞 — 광역이 아예 없다(0 이 아니라 null 이라야 장판을 안 깐다).
+    expect(engine.towerAoeScale(oneStar)).toBeNull();
+    expect(engine.towerAoeScale(twoStar)).toBeNull();
+    // 열리는 자리는 제값의 1/3.
+    expect(engine.towerAoeScale(threeStar)).toBeCloseTo(1 / 3, 5);
+    // 중후반에서 오늘의 가장 작던 원에 닿고, 만렙이 제값이다.
+    expect(engine.towerAoeScale(midStar)).toBeCloseTo(0.733, 3);
+    expect(engine.towerAoeScale(topStar)).toBe(1);
+
+    // 확산비(피해 몫)는 이 손질의 대상이 아니다 — 그대로 별을 탄다.
+    expect(engine.casualSplashRatioScale(oneStar)).toBe(1);
+    expect(engine.casualSplashRatioScale(topStar)).toBeCloseTo(1.28, 5);
+
+    /*
+     * 표준(자형연성)은 이 사다리를 안 탄다 — 별이 없고 단계는 눈금이 다르다.
+     * 같은 창을 단계에 씌워 재어 봤더니 1단계가 광역을 잃어 135런 승률이
+     * 0.659 → 0.000 으로 무너졌다(실측). 그래서 표준은 배율 1 로 예전 그대로다.
+     */
+    const standard = new GameEngine("standard-aoe-ladder", "KR");
     standard.begin();
-    expect(standard.casualSplashRadiusScale(high)).toBe(1);
-    expect(standard.casualSplashRatioScale(high)).toBe(1);
+    expect(standard.towerAoeScale({ ...topStar, stage: 1 } as Tower)).toBe(1);
+    expect(standard.towerAoeScale({ ...topStar, stage: 5 } as Tower)).toBe(1);
+    expect(standard.casualSplashRatioScale(topStar)).toBe(1);
   });
 
   it("narrows low-star reach and steepens per-star range and haste growth", () => {

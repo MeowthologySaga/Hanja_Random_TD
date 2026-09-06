@@ -161,15 +161,26 @@ function laidOut(selector: string): HTMLElement | null {
 }
 
 /**
- * 대상의 가운데가 실제로 눌리는 상태인지. 고정 바(자동배치)나 탭 띠에 덮여
+ * 대상의 가운데가 실제로 **보이는** 상태인지. 고정 바(자동배치)나 탭 띠에 덮여
  * 보이지 않는 버튼을 링으로 짚으면 "빈 곳을 가리키는 안내"가 된다.
  * 링은 pointer-events:none 이라 판정을 방해하지 않는다. 노출 시점에만 본다 —
  * 노출 뒤에는 말풍선 자신이 대상을 스칠 수 있어 이 판정을 다시 하지 않는다.
+ *
+ * 「눌리는가」가 아니라 「보이는가」인 것이 요점이다(v039). 소환 공개 카드는
+ * 손을 막지 않으려고 스스로 pointer-events:none 이 됐는데(850절), 그러면
+ * elementFromPoint 가 그 **아래**를 짚어 카드 위 안내(획수→별)가 영영 안 섰다.
+ * 클릭을 안 받는 것과 안 보이는 것은 다른 일이므로, 그 경우는 통과시킨다.
  */
 function visiblyHittable(target: HTMLElement): boolean {
   const rect = target.getBoundingClientRect();
   const hit = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2);
-  return hit !== null && (hit === target || target.contains(hit));
+  if (hit === null) return false;
+  if (hit === target || target.contains(hit)) return true;
+  // 제 조상 가운데 클릭을 안 받는 층이 있으면, 안 눌릴 뿐 가려진 것은 아니다.
+  for (let node: HTMLElement | null = target; node !== null; node = node.parentElement) {
+    if (getComputedStyle(node).pointerEvents === "none") return true;
+  }
+  return false;
 }
 
 /** 다른 말풍선·모달이 떠 있으면 기다린다 — 화면에 안내는 항상 1개다. */

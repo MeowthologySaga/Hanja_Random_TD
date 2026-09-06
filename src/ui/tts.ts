@@ -91,18 +91,53 @@ function pickVoice(lang: string): SpeechSynthesisVoice | null {
  * `fallbackText` 는 그 언어의 목소리가 없을 때 대신 말할 글이다(병음 문자열).
  * 목소리가 없는데 한자를 기본 목소리로 넘기면 한국어 음성이 "몸 신"도 아니고
  * "미"도 아닌 소리를 내므로, 차라리 적혀 있는 대로 읽는 편이 정직하다.
+ *
+ * `onStart`·`onEnd` 는 말하는 동안을 부르는 쪽에 알린다 — 배경음 덕킹이
+ * 이 두 지점에 걸린다("부적 tts소리 작아서 배경음에 묻혀" — 사용자).
+ * 이 모듈은 소리 설정을 모르는 잎이라, 무엇을 낮출지는 부르는 쪽이 정한다.
  */
-export function speakReading(utterance: ReadingUtterance, fallbackText?: string): boolean {
+export interface SpeakOptions {
+  /** 그 언어의 목소리가 없을 때 대신 말할 글(병음 문자열). */
+  readonly fallbackText?: string;
+  /** 말이 시작될 때 · 끝날 때. 배경음 덕킹이 이 두 지점을 쓴다. */
+  readonly onStart?: () => void;
+  readonly onEnd?: () => void;
+}
+
+export function speakReading(utterance: ReadingUtterance, options: SpeakOptions = {}): boolean {
   lastSpoken = utterance;
   if (!speechAvailable()) return false;
   const synthesis = window.speechSynthesis;
   const voice = pickVoice(utterance.lang);
-  const text = voice === null && fallbackText ? fallbackText : utterance.text;
+  const text = voice === null && options.fallbackText ? options.fallbackText : utterance.text;
   const speech = new SpeechSynthesisUtterance(text);
   speech.lang = utterance.lang;
   if (voice) speech.voice = voice;
+  // 목소리 쪽은 천장까지 올린다 — 배경음을 낮추는 일은 부르는 쪽이 맡는다.
+  speech.volume = 1;
+  // 훈음 두 마디는 기본 속도로는 뭉개져 들린다. 한 뼘만 늦춘다.
+  speech.rate = 0.95;
+  /*
+   * 끝을 **반드시** 한 번은 알린다.
+   *
+   * onend 는 취소·오류·목소리 없음에서 안 오는 브라우저가 있다. 덕킹이 그
+   * 신호에 걸려 있으므로 한 번이라도 새면 배경음이 눌린 채로 남는다 — 그래서
+   * 세 갈래(끝·오류·안전 시계)를 한 문으로 모은다.
+   */
+  let closed = false;
+  const finish = (): void => {
+    if (closed) return;
+    closed = true;
+    window.clearTimeout(guard);
+    options.onEnd?.();
+  };
+  // 글자당 넉넉히 잡은 안전 시계 — 훈음 두 마디는 2초를 넘지 않는다.
+  const guard = window.setTimeout(finish, 1_500 + text.length * 220);
+  speech.onend = finish;
+  speech.onerror = finish;
   // 잇달아 완성해도 겹쳐 읽지 않는다 — 마지막 것만 남긴다.
   synthesis.cancel();
+  options.onStart?.();
   synthesis.speak(speech);
   return true;
 }

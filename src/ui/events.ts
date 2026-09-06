@@ -59,7 +59,7 @@ export function processEvent(event: GameEvent): void {
        * 머물렀다 따라 내려오므로, 얼마나 깎였는지가 그 간격으로 읽힌다
        * (battle/enemy-health.ts).
        */
-      noteEnemyHit(event.enemyId, event.critical ? "critical" : event.weakness ? "weakness" : "normal");
+      noteEnemyHit(event.enemyId);
       break;
     case "kill":
       pushPooled(floaters, floaterPool, takeFloater(event.at, "+" + String(event.reward), "#ffd86d", 0.72, false), 48);

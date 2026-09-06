@@ -5,6 +5,14 @@ export const AUDIO_SETTINGS_STORAGE_KEY = "hanja-random-td:audio-settings-v1";
 export const BOSS_BGM_ENTRY_DELAY_MS = 8_000;
 export const BOSS_BGM_EXIT_GRACE_MS = 5_000;
 export const BGM_CROSSFADE_MS = 3_000;
+
+/**
+ * 읽기 소리가 나가는 동안 배경음에 곱하는 배수.
+ *
+ * 0.22 는 "묻히지 않는다"와 "음악이 끊긴 줄 안다" 사이다 — 완전히 죽이면
+ * 한 글자 읽을 때마다 반주가 툭툭 끊기고, 0.5 로는 여전히 겹쳐 들린다.
+ */
+export const SPEECH_DUCK_LEVEL = 0.22;
 const BGM_FADE_STEP_MS = 80;
 
 export type BgmId = "menu" | "early" | "mid" | "late" | "boss" | "final";
@@ -272,6 +280,9 @@ export class SoundManager {
   private readonly sfxPools = new Map<SfxId, HTMLAudioElement[]>();
   private readonly sfxPoolIndices = new Map<SfxId, number>();
   private readonly bgmNodes = new Map<BgmId, HTMLAudioElement>();
+
+  /** 읽기 소리가 나가는 동안 배경음에 곱해지는 배수(1 = 그대로). */
+  private speechDuck = 1;
   private waveSfxPreloadScheduled = false;
   private targetBgmId: BgmId | null = null;
   private activeBgmId: BgmId | null = null;
@@ -601,7 +612,24 @@ export class SoundManager {
 
   private bgmVolume(id: BgmId): number {
     if (this.settings.masterMuted || this.settings.bgmMuted) return 0;
-    return Math.min(1, this.settings.bgmVolume * BGM_MIX_LEVEL[id]);
+    return Math.min(1, this.settings.bgmVolume * BGM_MIX_LEVEL[id] * this.speechDuck);
+  }
+
+  /**
+   * 읽기 소리(TTS)가 나가는 동안 배경음을 눌러 둔다 — v039.
+   *
+   * "부적 tts소리 작아서 배경음에 묻혀"(사용자). 목소리 쪽 음량은 이미 최대라
+   * 더 올릴 데가 없다(브라우저 합성음은 1.0 이 천장이다). 그러면 남은 길은
+   * 하나뿐 — 말하는 동안 반주를 낮추는 것이다. 방송에서 쓰는 그 덕킹이다.
+   *
+   * 사람이 정한 음량 설정은 건드리지 않는다. 곱해지는 배수만 잠깐 내렸다
+   * 되돌리므로, 말이 끝나면 원래 음량으로 정확히 복귀한다.
+   */
+  duckForSpeech(active: boolean): void {
+    const next = active ? SPEECH_DUCK_LEVEL : 1;
+    if (this.speechDuck === next) return;
+    this.speechDuck = next;
+    this.applyMixVolumes();
   }
 
   private playSfx(id: SfxId, options: { rate?: number } = {}): void {

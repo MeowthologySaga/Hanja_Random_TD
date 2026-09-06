@@ -109,9 +109,15 @@ export function focusMapOnFormation(formationIndex: number): void {
   syncMapZoomControl();
 }
 
-export function summonAndFocus(amount = 1, intent: SummonIntent = "balanced"): void {
+export function summonAndFocus(amount = 1, intent?: SummonIntent): void {
   sound.unlock();
-  const result = amount === 1 ? ctx.engine.summonProduct(intent) : ctx.engine.summonMany(amount);
+  /*
+   * 10연에도 상품을 넘긴다(v039) — 균형 10연은 예전처럼 상품 없이 부른다.
+   * 그래야 균형 10연의 값·밴드가 한 푼도 안 바뀌고, 중급·고급 10연만 새로 열린다.
+   */
+  const result = amount === 1
+    ? ctx.engine.summonProduct(intent ?? "balanced")
+    : ctx.engine.summonMany(amount, intent);
   handleAction(result);
   if (result.ok) focusMapOnSelectedTower();
 }

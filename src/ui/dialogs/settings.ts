@@ -80,6 +80,8 @@ export function setReadingVoice(enabled: boolean): void {
   if (!enabled) {
     // 끄는 순간 말하던 것도 걷는다 — 껐는데 계속 말하면 고장으로 읽힌다.
     stopReading();
+    // 말이 잘려도 눌러 둔 배경음은 반드시 되돌린다.
+    sound.duckForSpeech(false);
     showToast("읽기 소리 OFF");
     return;
   }

@@ -104,6 +104,8 @@ import {
   concentrationPathLabel,
   dismantleEssenceValue,
   distance,
+  aoeRadiusScale,
+  AOE_RANK_WINDOW,
   ELEMENT_ZONE_SPECS,
   emptyElementEssence,
   emptyElementUpgrades,
@@ -123,6 +125,7 @@ import {
   regionEnemyHpMultiplier,
   SUMMON_STAGE_WEIGHTS,
   summonCost,
+  summonProductCost,
   summonSurcharge,
   type SummonStarBand,
   TALISMAN_MODE_ENEMY_HP_SCALE,
@@ -777,7 +780,10 @@ export class GameEngine {
     return damage / PROJECTILE_WEIGHT;
   }
 
-  private deployElementZone(tower: Tower, target: Enemy, damage: number, potency: number, abilityPower: number): { label: string; duration: number; damagePerSecond: number } {
+  private deployElementZone(tower: Tower, target: Enemy, damage: number, potency: number, abilityPower: number): { label: string; duration: number; damagePerSecond: number } | null {
+    // v039: 광역은 별로 열린다 — 문 앞이면 장판을 아예 깔지 않는다.
+    const aoeScale = this.towerAoeScale(tower);
+    if (aoeScale === null) return null;
     const spec = ELEMENT_ZONE_SPECS[tower.wuxing];
     const durationMultiplier = tower.wuxing === "木" ? 1 + this.elementTraitLevel("木", 1) * 0.02 : 1;
     const radiusTraitIndex = tower.wuxing === "木" || tower.wuxing === "水" ? 0 : tower.wuxing === "火" ? 1 : tower.wuxing === "土" ? 2 : -1;
@@ -785,7 +791,13 @@ export class GameEngine {
     const damageMultiplier = tower.wuxing === "火" ? 1 + this.elementTraitLevel("火", 0) * 0.025 : 1;
     const progressionRank = this.state.mode === "casual" ? tower.casualStar ?? tower.naturalStar ?? 1 : tower.stage;
     const duration = (spec.duration + progressionRank * 0.22) * durationMultiplier;
-    const radius = (spec.radius + progressionRank * 5) * radiusMultiplier;
+    /*
+     * 캐주얼은 사다리가 반경을 정한다(3성 1/3 → 8성 spec 그대로) — 별당 +5 는
+     * 사다리에 흡수됐다. 표준은 예전 그대로 단계마다 +5 다(사다리를 안 탄다).
+     */
+    const radius = this.state.mode === "casual"
+      ? spec.radius * aoeScale * radiusMultiplier
+      : (spec.radius + progressionRank * 5) * radiusMultiplier;
     const damagePerSecond = this.sustainedDamage(damage) * spec.damageRatio * potency * abilityPower * damageMultiplier;
     const existing = this.state.abilityZones.find((zone) => zone.towerId === tower.id);
     const zone: AbilityZone = {
@@ -809,7 +821,9 @@ export class GameEngine {
    * [SKILL-V1] 서리길(frost) 지대 — 비구름 장판 문법을 그대로 빌린 순수 감속 지대.
    * 피해 0, 밀치기 0. 밟는 동안만 걸음이 늦어지고 벗어나면 곧 풀린다.
    */
-  private deployFrostZone(tower: Tower, target: Enemy): { label: string; duration: number; damagePerSecond: number } {
+  private deployFrostZone(tower: Tower, target: Enemy): { label: string; duration: number; damagePerSecond: number } | null {
+    const aoeScale = this.towerAoeScale(tower);
+    if (aoeScale === null) return null;
     const star = this.state.mode === "casual" ? tower.casualStar ?? tower.naturalStar ?? 1 : null;
     const slowRatio = frostSlowRatio(star);
     const existing = this.state.abilityZones.find((zone) => zone.towerId === tower.id);
@@ -819,7 +833,7 @@ export class GameEngine {
       kind: "frost",
       wuxing: tower.wuxing,
       progress: target.progress,
-      radius: FROST_ZONE_RADIUS,
+      radius: FROST_ZONE_RADIUS * aoeScale,
       damagePerSecond: 0,
       expiresAt: this.state.elapsed + FROST_ZONE_DURATION,
       color: "#bfe8ff",
@@ -838,7 +852,9 @@ export class GameEngine {
    * 무효화 대상이 실제로 존재함은 웨이브 계획에서 확인했다 — 정예 철갑
    * (armor 0.28~0.48)·회생 요괴(regen)·우두머리(둘 다)다.
    */
-  private deployMireZone(tower: Tower, target: Enemy, damage: number, potency: number, abilityPower: number): { label: string; duration: number; damagePerSecond: number } {
+  private deployMireZone(tower: Tower, target: Enemy, damage: number, potency: number, abilityPower: number): { label: string; duration: number; damagePerSecond: number } | null {
+    const aoeScale = this.towerAoeScale(tower);
+    if (aoeScale === null) return null;
     const existing = this.state.abilityZones.find((zone) => zone.towerId === tower.id);
     // 진흙밭은 자기 오행 장판을 **대체하지 않는다** — 같은 초당 피해를 그대로
     // 이고, 지속을 기획값 4초로 줄이는 대신 장갑·재생 무효를 얹는다. 초안처럼
@@ -852,7 +868,7 @@ export class GameEngine {
       kind: "mire",
       wuxing: tower.wuxing,
       progress: target.progress,
-      radius: MIRE_ZONE_RADIUS * this.casualSplashRadiusScale(tower),
+      radius: MIRE_ZONE_RADIUS * aoeScale,
       damagePerSecond: this.sustainedDamage(damage) * spec.damageRatio * potency * abilityPower,
       expiresAt: this.state.elapsed + MIRE_ZONE_SECONDS,
       color: "#c2a06a"
@@ -896,6 +912,9 @@ export class GameEngine {
    * 트리거만 처치일 뿐 판정·연출은 기존 장판과 같다. 자령당 1개(최근 처치 자리).
    */
   private deployEmberZone(tower: Tower, victim: Enemy): void {
+    // v039: 잔화도 같은 문을 쓴다 — 안 열렸으면 자리에 아무것도 안 남는다.
+    const aoeScale = this.towerAoeScale(tower);
+    if (aoeScale === null) return;
     const definition = definitionForTower(this.catalog, tower.definitionId);
     const star = this.state.mode === "casual" ? tower.casualStar ?? tower.naturalStar ?? 1 : null;
     const duration = scorchZoneSeconds(star);
@@ -909,7 +928,7 @@ export class GameEngine {
       kind: "ember",
       wuxing: tower.wuxing,
       progress: victim.progress,
-      radius: SCORCH_ZONE_RADIUS * this.casualSplashRadiusScale(tower),
+      radius: SCORCH_ZONE_RADIUS * aoeScale,
       damagePerSecond,
       expiresAt: this.state.elapsed + duration,
       color: "#ff9a52"
@@ -1227,9 +1246,10 @@ export class GameEngine {
       }
     }
 
-    if (activeSkills && tower.wuxing === "火") {
-      // 수술 5: 캐주얼에서는 별이 곧 광역의 크기다(표준은 배율 1).
-      const splashRadius = (tuning.splashRadius + signatureControlBonus * 80) * (1 + this.elementTraitLevel("火", 1) * 0.02) * this.casualSplashRadiusScale(tower);
+    const fireAoeScale = this.towerAoeScale(tower);
+    if (activeSkills && tower.wuxing === "火" && fireAoeScale !== null) {
+      // v039: 별이 곧 광역의 크기다 — 문 앞(3성 미만)이면 확산 자체가 없다.
+      const splashRadius = (tuning.splashRadius + signatureControlBonus * 80) * (1 + this.elementTraitLevel("火", 1) * 0.02) * fireAoeScale;
       const splashRatio = (tuning.splashRatio + signatureControlBonus * 0.35) * (1 + this.elementTraitLevel("火", 0) * 0.025) * this.casualSplashRatioScale(tower);
       for (const enemy of this.state.enemies
         .filter((candidate) => candidate.id !== target.id && distance(this.enemyPoint(candidate), targetPoint) <= splashRadius)
@@ -1267,9 +1287,9 @@ export class GameEngine {
       if (profile.role === "rapid" && this.state.enemies.includes(target)) {
         this.damageEnemy(target, damage * 0.58 * tuning.signatureMultiplier * abilityPower, false, weakness, armorPenetration * 0.5, tower);
         roleEffect = "같은 적에게 " + String(Math.round(58 * tuning.signatureMultiplier)) + "% 추가타";
-      } else if (profile.role === "splash") {
-        // 수술 5: 역할 확산도 캐주얼 별 스케일을 함께 탄다.
-        const spreadRadius = (tuning.splashRadius + 22) * this.casualSplashRadiusScale(tower);
+      } else if (profile.role === "splash" && this.towerAoeScale(tower) !== null) {
+        // v039: 역할 확산도 같은 사다리를 탄다.
+        const spreadRadius = (tuning.splashRadius + 22) * (this.towerAoeScale(tower) ?? 0);
         const spreadRatio = tuning.roleSplashRatio * this.casualSplashRatioScale(tower);
         const spreadTargets = this.state.enemies
           .filter((candidate) => candidate.id !== target.id && distance(this.enemyPoint(candidate), targetPoint) <= spreadRadius)
@@ -1353,10 +1373,12 @@ export class GameEngine {
       }
     } else if (family === "weather") {
       targets = Math.max(1, zoneTargets);
-      effect = `${zone.label} ${zone.duration.toFixed(1)}초 · 초당 ${Math.round(zone.damagePerSecond)} 피해`;
+      effect = zone
+        ? `${zone.label} ${zone.duration.toFixed(1)}초 · 초당 ${Math.round(zone.damagePerSecond)} 피해`
+        : this.aoeLockedNote();
     } else if (family === "flame") {
-      // 수술 5: 잔화 지대도 캐주얼에서는 별을 따라 넓어진다.
-      const radius = 115 * this.casualSplashRadiusScale(tower);
+      // v039: 밀집 구간도 같은 사다리 — 문 앞이면 반경 0 이라 한 체만 맞는다.
+      const radius = 115 * (this.towerAoeScale(tower) ?? 0);
       const victims = this.state.enemies
         .filter((candidate) => candidate.id !== target.id && distance(this.enemyPoint(candidate), targetPoint) <= radius)
         .slice(0, 5);
@@ -1447,18 +1469,22 @@ export class GameEngine {
       // [SKILL-V1] 서리길: 적중 지점 서리 지대 — 감속만 있고 피해·밀치기는 없다.
       const slowRatio = frostSlowRatio(this.state.mode === "casual" ? tower.casualStar ?? tower.naturalStar ?? 1 : null);
       targets = Math.max(1, zoneTargets);
-      effect = `서리길 ${zone.duration.toFixed(1)}초 · 밟는 적 ${Math.round(slowRatio * 100)}% 감속`;
+      effect = zone
+        ? `서리길 ${zone.duration.toFixed(1)}초 · 밟는 적 ${Math.round(slowRatio * 100)}% 감속`
+        : this.aoeLockedNote();
     } else if (family === "mire") {
       // [SKILL-V3] 진흙밭: 밟는 동안 장갑·재생만 무효 — 걸음에는 손대지 않는다.
       targets = Math.max(1, zoneTargets);
-      effect = `진흙밭 ${zone.duration.toFixed(1)}초 · 초당 ${Math.round(zone.damagePerSecond)} 피해 · 밟는 적 장갑·재생 무효 (이동 그대로)`;
+      effect = zone
+        ? `진흙밭 ${zone.duration.toFixed(1)}초 · 초당 ${Math.round(zone.damagePerSecond)} 피해 · 밟는 적 장갑·재생 무효 (이동 그대로)`
+        : this.aoeLockedNote();
     } else {
       effect = "뜻 구현 · 이번 공격 ×" + tuning.semanticMultiplier.toFixed(2);
     }
 
     // [SKILL-V1] frost 는 장판 자체가 본 효과라 꼬리 문구를 겹쳐 붙이지 않는다.
     // [SKILL-V3] mire 도 같은 이유로 뺀다.
-    if (family !== "weather" && family !== "frost" && family !== "mire") effect += ` · ${zone.label} ${zone.duration.toFixed(1)}초`;
+    if (zone && family !== "weather" && family !== "frost" && family !== "mire") effect += ` · ${zone.label} ${zone.duration.toFixed(1)}초`;
 
     this.emitAbility(tower, abilities.semantic, origin, targetPoint, targets, effect, persistent);
   }
@@ -1920,14 +1946,43 @@ export class GameEngine {
     return { ok: true, message: this.state.lastMessage };
   }
 
-  summonMany(amount = 10): ActionResult {
+  /**
+   * 연속 소환. `intent` 를 주면 **그 상품으로** 열 장을 뽑는다(v039).
+   *
+   * "다른 중급고급은 10연뽑이 없는것도 문제야"(사용자). 여태 10연은 균형
+   * 소환에만 있었다 — 별을 노리는 사람일수록 열 장씩 뽑고 싶은데, 정작 별을
+   * 파는 상품(중급·고급)에는 그 손잡이가 없었다.
+   *
+   * 값은 그 상품의 한 장 값 열 개다(`summonProductCost`) — 10연이라고 깎지도,
+   * 얹지도 않는다. 균형 10연이 예전과 한 푼도 다르지 않게 남는 것도 같은 규칙의
+   * 결과다(균형 배수 1 = `multiSummonCost`). 밴드 상한 1기 보장도 그 상품의
+   * 밴드를 따른다 — 고급 10연이면 8★ 한 기가 보장된다.
+   */
+  summonMany(amount = 10, intent?: SummonIntent): ActionResult {
     if (!Number.isInteger(amount) || amount <= 0) return { ok: false, message: "연속 소환 횟수가 올바르지 않습니다." };
     if (!this.isRunActive()) return { ok: false, message: "진행 중인 수비전이 없습니다." };
-    const totalCost = multiSummonCost(this.state.summonCount, amount);
+    if (intent !== undefined && !this.isSummonProductAvailable(intent)) {
+      return { ok: false, message: `${SUMMON_INTENT_LABELS[intent]} 소환은 이 지역·모드에서 열리지 않습니다.` };
+    }
+    const totalCost = intent === undefined
+      ? multiSummonCost(this.state.summonCount, amount)
+      : Array.from({ length: amount }, (_, index) => summonProductCost(this.state.summonCount + index, intent))
+        .reduce((total, cost) => total + cost, 0);
     if (this.state.gold < totalCost) return { ok: false, message: `연속 소환에 엽전 ${totalCost}이 필요합니다.` };
     if (this.runSummonPool.length === 0) return { ok: false, message: "이 지역의 활성 소환 풀이 비어 있습니다." };
 
     const eventStart = this.events.length;
+    // 밴드·가중이 이 상품을 따르도록 한 묶음 동안만 갈아 끼운다(summonProduct 와 같은 규범).
+    const previousIntent = this.state.summonIntent;
+    if (intent !== undefined) this.state.summonIntent = intent;
+    try {
+      return this.runSummonBatch(amount, intent, eventStart);
+    } finally {
+      this.state.summonIntent = previousIntent;
+    }
+  }
+
+  private runSummonBatch(amount: number, intent: SummonIntent | undefined, eventStart: number): ActionResult {
     // 캐주얼 10연은 밴드 상한 이상(기본 밴드면 3★+, 잭팟 포함) 1기를 보장한다. 열 장을 뽑고도
     // 상한이 한 번도 안 나왔으면 마지막 한 장의 후보를 상한 별로 좁힌다.
     const band = this.summonStarBand(this.state.summonIntent);
@@ -1935,7 +1990,9 @@ export class GameEngine {
     for (let index = 0; index < amount; index += 1) {
       const last = index === amount - 1 && amount >= 10;
       const guaranteedStar = last && band !== null && !bandTopSeen ? band.max : null;
-      const result = this.summon(last, 0, guaranteedStar);
+      // 티어 10연은 그 상품의 정찰료를 장마다 그대로 문다.
+      const surcharge = intent === undefined ? 0 : summonSurcharge(this.state.summonCount, intent);
+      const result = this.summon(last, surcharge, guaranteedStar);
       if (!result.ok) return result;
       if (band !== null && !bandTopSeen) {
         const drawn = this.events.slice(eventStart).filter((event): event is Extract<GameEvent, { type: "summon" }> => event.type === "summon");
@@ -1952,7 +2009,8 @@ export class GameEngine {
       : storedCount === amount
         ? "가방 보관"
         : `전장 ${amount - storedCount}체 · 가방 ${storedCount}체`;
-    this.state.lastMessage = `${amount}연 소환 완료 · 새 한자 ${discovered}종 · 목표·성어 재료 ${helpful}체 · ${placement}`;
+    const label = intent === undefined ? "" : `${SUMMON_INTENT_LABELS[intent]} `;
+    this.state.lastMessage = `${label}${amount}연 소환 완료 · 새 한자 ${discovered}종 · 목표·성어 재료 ${helpful}체 · ${placement}`;
     return { ok: true, message: this.state.lastMessage };
   }
 
@@ -2721,13 +2779,25 @@ export class GameEngine {
     return this.casualPolarisAuraActive(wuxing) ? 1 + CASUAL_POLARIS_AURA.damageBonus : 1;
   }
 
+  /** 이 자령의 광역 진급 — 캐주얼은 별, 표준은 단계. */
+  private aoeRank(tower: Tower): number {
+    return this.state.mode === "casual" ? tower.casualStar ?? tower.naturalStar ?? 1 : tower.stage;
+  }
+
   /**
-   * 광역 계열(화행 폭발·역할 확산·잔화 지대)의 반경에 곱하는 캐주얼 별 스케일.
-   * 표준 모드는 tuning 이 이미 stage 로 스케일하므로 1이다.
+   * 이 자령의 광역 반경 배율 — **null 이면 광역이 아직 안 열렸다**(v039).
+   *
+   * 장판도 확산도 이 하나를 본다. 예전에는 자리마다 제각각이었다(오행 장판은
+   * `+별×5`, 나머지는 `casualSplashRadiusScale`) — 그래서 1성에도 반경 110 이
+   * 깔렸고 별을 올려도 원이 거의 안 컸다. engine-tuning 의 AOE_RANK_WINDOW 를 보라.
    */
-  casualSplashRadiusScale(tower: Tower): number {
-    if (this.state.mode !== "casual") return 1;
-    return 1 + ((tower.casualStar ?? tower.naturalStar ?? 1) - 1) * CASUAL_SPLASH_STAR_SCALE.radiusPerStar;
+  towerAoeScale(tower: Tower): number | null {
+    return aoeRadiusScale(this.aoeRank(tower), this.state.mode);
+  }
+
+  /** 광역이 아직 안 열린 자령의 기술 문구 — 왜 한 체만 맞는지 그 자리에서 말한다. */
+  private aoeLockedNote(): string {
+    return `광역은 ${AOE_RANK_WINDOW.open}성부터 열립니다 · 지금은 한 체만`;
   }
 
   /** 광역 계열 확산비(splashRatio·roleSplashRatio)에 곱하는 캐주얼 별 스케일. */

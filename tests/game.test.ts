@@ -9,7 +9,7 @@ import {
   researchUnlockWave,
   summonStageUnlockWave
 } from "../src/core/hanzi";
-import { multiSummonCost } from "../src/core/engine-tuning";
+import { multiSummonCost, summonProductCost } from "../src/core/engine-tuning";
 import type { Enemy, RegionCode, Tower } from "../src/core/types";
 
 function tower(region: RegionCode, char: string, id: number, cell: number): Tower {
@@ -89,6 +89,34 @@ describe("regional recipe defense run", () => {
     expect(engine.state.summonCount).toBe(10);
     expect(engine.state.towers).toHaveLength(10);
     expect(engine.consumeEvents().filter((event) => event.type === "summon")).toHaveLength(10);
+
+    /*
+     * v039: 10연은 이제 **상품마다** 있다.
+     *
+     * "다른 중급고급은 10연뽑이 없는것도 문제야"(사용자). 값은 그 상품 한 장 값
+     * 열 개 — 10연이라고 깎지도 얹지도 않는다. 균형 10연이 위 단언처럼 예전 값
+     * 그대로 남는 것도 같은 규칙의 결과다(균형 배수 1).
+     */
+    const tiered = new GameEngine("ten-summon-tier", "KR");
+    tiered.begin();
+    tiered.state.wave = 10;
+    if (tiered.isSummonProductAvailable("highstar")) {
+      const expected = Array.from({ length: 10 }, (_, index) => summonProductCost(index, "highstar"))
+        .reduce((total, cost) => total + cost, 0);
+      tiered.state.gold = expected;
+      expect(tiered.summonMany(10, "highstar")).toMatchObject({ ok: true });
+      expect(tiered.state.gold).toBe(0);
+      expect(tiered.state.summonCount).toBe(10);
+      // 묶음이 끝나면 목적은 원래대로 돌아온다 — 다음 한 장이 고급이 되면 안 된다.
+      expect(tiered.state.summonIntent).not.toBe("highstar");
+
+      const short = new GameEngine("ten-summon-tier-poor", "KR");
+      short.begin();
+      short.state.wave = 10;
+      short.state.gold = expected - 1;
+      expect(short.summonMany(10, "highstar")).toMatchObject({ ok: false, message: `연속 소환에 엽전 ${expected}이 필요합니다.` });
+      expect(short.state.summonCount).toBe(0);
+    }
 
     const poor = new GameEngine("ten-summon-poor", "KR");
     poor.begin();

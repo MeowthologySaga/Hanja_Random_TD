@@ -933,8 +933,20 @@ function speakCompletedReading(): void {
   const notation = ctx.engine.state.notation;
   const info = learningInfoForNotation(notation, currentDefinition.char);
   const utterance = readingUtterance(currentDefinition.char, notation, info.short);
-  // 중국어 목소리가 없는 기기에서는 적힌 대로(병음) 읽는 편이 침묵보다 낫다.
-  if (utterance) speakReading(utterance, info.short);
+  if (!utterance) return;
+  /*
+   * 말하는 동안 배경음을 눌러 둔다 — 안 그러면 목소리가 반주에 묻힌다
+   * ("부적 tts소리 작아서 배경음에 묻혀" — 사용자). 목소리 음량은 이미 천장이라
+   * 낮출 것은 반주뿐이다.
+   *
+   * fallbackText: 중국어 목소리가 없는 기기에서는 적힌 대로(병음) 읽는 편이
+   * 침묵보다 낫다.
+   */
+  speakReading(utterance, {
+    fallbackText: info.short,
+    onStart: () => sound.duckForSpeech(true),
+    onEnd: () => sound.duckForSpeech(false)
+  });
 }
 
 /** 완성 연출 — 먹선이 또렷해지고 주홍 인장이 찍힌다(calm-screen 은 맥동 없이). */
