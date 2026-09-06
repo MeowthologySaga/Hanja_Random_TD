@@ -272,12 +272,16 @@ test("keeps floating battlefield labels inside the stage safe area", async ({ pa
 test("keeps the survivor tail ahead of the chapter note and inside two lines", async ({ page }) => {
   await page.goto("/?seed=TRACK-S-BRIEF&mode=standard");
   await page.getByTestId("start-run").click();
+  // v037: 설명은 카드 상태 줄의 꼬리라 첫 소환 뒤에야 서고, 넘침은 그 상자에서 잰다.
+  await page.getByTestId("summon-button").click();
+  await page.keyboard.press("Escape");
   await expect(page.locator("#wave-briefing")).toBeVisible();
 
   const report = await page.evaluate(async () => {
     const specifier = "/src/core/content.ts";
     const module = await import(specifier) as typeof import("../src/core/content");
     const element = document.getElementById("wave-briefing") as HTMLElement;
+    const box = document.getElementById("wave-status-line") as HTMLElement;
     const original = element.textContent;
     const overflowing: Array<{ wave: number; survivors: number; overflow: number; text: string }> = [];
     const misordered: number[] = [];
@@ -289,7 +293,7 @@ test("keeps the survivor tail ahead of the chapter note and inside two lines", a
         const chapter = `제${Math.max(1, Math.ceil(wave / 10))}장`;
         if (text.indexOf(tail) > text.indexOf(chapter)) misordered.push(wave);
         element.textContent = text;
-        const overflow = element.scrollHeight - element.clientHeight;
+        const overflow = box.scrollHeight - box.clientHeight;
         if (overflow > 1) overflowing.push({ wave, survivors, overflow, text });
       }
     }

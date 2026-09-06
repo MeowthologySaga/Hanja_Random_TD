@@ -1,7 +1,7 @@
 /*
  * 수련장(튜토리얼 모드) 완주 스펙.
  *
- * 첫 방문 상태에서 수련장에 들어가 8걸음 각본(소환→배치→첫 웨이브→3합→
+ * 첫 방문 상태에서 수련장에 들어가 9걸음 각본(소환→배치→첫 웨이브→부적→3합→
  * 티어 소환→강화→사자성어 발동→수료)을 실제 조작으로 끝까지 밟고, 수료
  * 기록(localStorage)과 첫 방문 강조 해제까지 확인한다. 진행 감지는 각 걸음이
  * 셸에 남기는 data-tutorial-step 을 쓴다(각본 완료 감지 = 속성 전이).
@@ -61,13 +61,16 @@ async function clickCell(page: Page, cell: number): Promise<void> {
   await page.locator("#battle-canvas").click({ position: await canvasPositionForWorld(page, worldX, worldY) });
 }
 
-test("walks the training grounds through all eight scripted steps", async ({ page }) => {
+test("walks the training grounds through all nine scripted steps", async ({ page }) => {
   // 3걸음은 전멸 대기 없이 관전(6초 자동 또는 아무 곳 클릭) 뒤 곧장 넘어간다.
   // 여유는 자산 로딩·저사양 CI 를 위한 것이다.
   test.setTimeout(120_000);
   mkdirSync(SHOT_DIR, { recursive: true });
   mkdirSync(TRACK_H_DIR, { recursive: true });
   mkdirSync(TRACK_H3_DIR, { recursive: true });
+  // 부적 걸음의 QA 자동 따라쓰기는 마스크의 가로줄을 훑을 뿐 획순을 따르지 않는다 —
+  // 획순 안내(기본 켜짐)를 끈다(e2e/souls.spec.ts 와 같은 사정).
+  await page.addInitScript((key) => window.localStorage.setItem(key, "false"), "hanja-td:stroke-order-guide");
   await page.goto("/");
   const shell = page.locator(".game-shell");
 
@@ -82,7 +85,7 @@ test("walks the training grounds through all eight scripted steps", async ({ pag
   // 1걸음 — 소환. 기본 소환 버튼만 열려 있다.
   await expect(page.locator("#tutorial-layer")).toBeVisible({ timeout: 20_000 });
   await expect(shell).toHaveAttribute("data-tutorial-step", "1", { timeout: 20_000 });
-  await expect(page.locator("#tutorial-step-total")).toHaveText("8");
+  await expect(page.locator("#tutorial-step-total")).toHaveText("9");
   await expect(page.locator("#tutorial-title")).toContainText("자령");
   await expect(page.getByTestId("tutorial-exit")).toBeVisible();
   await page.screenshot({ path: `${SHOT_DIR}/tutorial-step1-summon-1280x720.png` });
@@ -115,7 +118,20 @@ test("walks the training grounds through all eight scripted steps", async ({ pag
   // 자동 진행(GUIDANCE_MS)보다 먼저 도달했어야 클릭 진행이 증명된다.
   expect(step3Seconds).toBeLessThan(GUIDANCE_MS / 1000);
 
-  // 4걸음 — 3합 승급. 같은 별 3기가 지급돼 있다.
+  // 4걸음 — 부적(v037). 부적 갈피가 서고 한 장이 손에 있다. 그리기는 QA 자동
+  // 따라쓰기로, 제출은 실제 단추로 — 사람이 하는 그 순서다.
+  await expect(page.locator("#tutorial-title")).toContainText("부적");
+  await expect(page.locator("#talisman-panel")).toBeVisible();
+  await expect(page.locator("#talisman-tab")).toHaveAttribute("aria-selected", "true");
+  await page.screenshot({ path: `${SHOT_DIR}/tutorial-step4-talisman-1280x720.png` });
+  await page.evaluate(() => {
+    (window as unknown as { __HANJA_TALISMAN_QA__: { autoTrace: () => void } }).__HANJA_TALISMAN_QA__.autoTrace();
+  });
+  await expect(page.getByTestId("talisman-submit")).toBeEnabled();
+  await page.getByTestId("talisman-submit").click();
+  await expect(shell).toHaveAttribute("data-tutorial-step", "5", { timeout: 5_000 });
+
+  // 5걸음 — 3합 승급. 같은 별 3기가 지급돼 있다.
   await page.locator('[data-panel-tab="evolution"]').click();
   const fuseAll = page.locator("#casual-fuse-all");
   await expect(fuseAll).toBeVisible();
@@ -140,19 +156,19 @@ test("walks the training grounds through all eight scripted steps", async ({ pag
   // 아무 곳 클릭 진행 — soft-lock 이 삼키는 클릭도 [다음]으로 친다. 이 좌표는
   // 상단 띠처럼 보이지만 실제로는 전장 캔버스(잠긴 칸) 위다.
   await page.mouse.click(500, 28);
-  await expect(shell).toHaveAttribute("data-tutorial-step", "5", { timeout: 3_000 });
+  await expect(shell).toHaveAttribute("data-tutorial-step", "6", { timeout: 3_000 });
   // 회귀 방어(트랙 H3): 이 클릭이 soft-lock 을 새어 나가 잠긴 칸에 닿으면
   // 진 해금 창이 떠 다음 걸음의 갈피 클릭을 통째로 삼킨다.
   await expect(page.locator("#formation-unlock-dialog")).toBeHidden();
 
-  // 5걸음 — 티어 소환. 중급 소환 값이 지급돼 있다.
+  // 6걸음 — 티어 소환. 중급 소환 값이 지급돼 있다.
   await page.locator('.panel-tabs [data-panel-tab="shop"]').click();
   const midstar = page.locator('[data-summon-product="midstar"]');
   await expect(midstar).toBeEnabled();
   await midstar.click();
-  await expect(shell).toHaveAttribute("data-tutorial-step", "6");
+  await expect(shell).toHaveAttribute("data-tutorial-step", "7");
 
-  // 6걸음 — 문기 교육. 출처(승급·분해) 도입 → 강화 [1회] 조작 → 맺음 메시지.
+  // 7걸음 — 문기 교육. 출처(승급·분해) 도입 → 강화 [1회] 조작 → 맺음 메시지.
   await expect(page.locator("#tutorial-body")).toContainText("3체 승급과 자령 분해");
   await page.locator('.panel-tabs [data-panel-tab="growth"]').click();
   const upgrade = page
@@ -195,9 +211,9 @@ test("walks the training grounds through all eight scripted steps", async ({ pag
   await page.screenshot({ path: `${TRACK_H_DIR}/tutorial-step6-growth-close-1280x720.png` });
   await page.screenshot({ path: `${TRACK_H3_DIR}/tutorial-step6-emphasis-line-1280x720.png` });
   await page.locator("#tutorial-bubble").click();
-  await expect(shell).toHaveAttribute("data-tutorial-step", "7", { timeout: 3_000 });
+  await expect(shell).toHaveAttribute("data-tutorial-step", "8", { timeout: 3_000 });
 
-  // 7걸음 — 사자성어 발동. 네 글자가 지급되고 1번째는 미리 놓여 있다.
+  // 8걸음 — 사자성어 발동. 네 글자가 지급되고 1번째는 미리 놓여 있다.
   const cellsAttribute = await shell.getAttribute("data-tutorial-idiom-cells");
   const cells = (cellsAttribute ?? "").split(",").map(Number);
   expect(cells).toHaveLength(4);
@@ -225,12 +241,12 @@ test("walks the training grounds through all eight scripted steps", async ({ pag
     // 배치·다음 글자 자동 선택이 한 프레임 돌 시간을 준다.
     await page.waitForTimeout(250);
   }
-  await expect(shell).toHaveAttribute("data-tutorial-step", "8", { timeout: 10_000 });
+  await expect(shell).toHaveAttribute("data-tutorial-step", "9", { timeout: 10_000 });
 
-  // 8걸음 — 수료. 발동 연출 6초(또는 아무 곳 클릭) 뒤 수료막(배운 것 4줄)이
+  // 9걸음 — 수료. 발동 연출 6초(또는 아무 곳 클릭) 뒤 수료막(배운 것 4줄)이
   // 뜨고 기록이 남는다. 여기서는 6초 자동 경로를 그대로 태운다.
   await expect(page.locator("#tutorial-complete")).toBeVisible({ timeout: 10_000 });
-  await expect(page.locator("#tutorial-summary li")).toHaveCount(4);
+  await expect(page.locator("#tutorial-summary li")).toHaveCount(5);
   await expect(page.getByTestId("tutorial-exit")).toBeHidden();
   await page.screenshot({ path: `${SHOT_DIR}/tutorial-step8-complete-1280x720.png` });
   expect(await page.evaluate((key) => window.localStorage.getItem(key), TUTORIAL_STORAGE_KEY)).toBe("1");

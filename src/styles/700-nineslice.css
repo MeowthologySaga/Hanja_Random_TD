@@ -143,7 +143,16 @@
 
 .resource-grid::before {
   border-width: 8px 9.6px;
-  border-image: url("/assets/ui/frames/resource-rail-v1.webp") 15 18 fill stretch;
+  /*
+   * v037: 칸막이 없는 띠로 바꿨다.
+   *
+   * 원본(resource-rail-v1)은 **네 칸짜리** 그림이다 — 자원칸이 넷이던 시절의
+   * 것이라 칸막이 셋이 그려져 있다. 지금은 두 칸이라 그 칸막이가 내용과 어긋난
+   * 자리에 유령처럼 비쳤고, 사용자가 그 세로선들을 짚었다. 원본의 좌우 모서리
+   * 24px 과 첫 칸 안쪽의 깨끗한 종이만 잘라 이어 만든 것이 -plain 이다(크기·
+   * 슬라이스 동일).
+   */
+  border-image: url("/assets/ui/frames/resource-rail-plain-v1.webp") 15 18 fill stretch;
   border-image-width: 8px 9.6px;
 }
 
@@ -169,10 +178,18 @@
   background-image: none !important;
 }
 
+/*
+ * v037: 인장 칸 없는 카드로 바꿨다.
+ *
+ * 위 주석의 「두 판」 가운데 오른쪽 인장판(먹 번짐·낙관, 103px)은 카드가 읽는
+ * 자리이던 시절의 장식이다. 카드가 누르는 자리(v036)가 되면서 글과 단추가 그
+ * 판 위로 파고들었고, 사용자가 그 자리를 짚었다. 왼쪽 글판의 테를 거울로 이어
+ * 만든 -plain 을 쓴다 — 슬라이스는 좌우 대칭 18px, 자원 띠와 같은 셈이다.
+ */
 .wave-card::before {
-  border-width: 15px 103px 15px 18px;
-  border-image: url("/assets/ui/frames/briefing-card-v1.webp") 15 103 15 18 fill stretch;
-  border-image-width: 15px 103px 15px 18px;
+  border-width: 15px 18px;
+  border-image: url("/assets/ui/frames/briefing-card-plain-v1.webp") 15 18 fill stretch;
+  border-image-width: 15px 18px;
 }
 
 /*

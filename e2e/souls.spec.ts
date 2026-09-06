@@ -29,6 +29,8 @@ test.beforeEach(async ({ page }) => {
    */
   await page.addInitScript((key) => window.localStorage.setItem(key, "false"), "hanja-td:stroke-order-guide");
   await page.addInitScript((key) => window.localStorage.setItem(key, "1"), COACH_STORAGE_KEY);
+  // 첫 방문 안내(v037, e2e/soul-tutor.spec.ts 가 지킨다)는 이 스펙의 흐름 밖이다.
+  await page.addInitScript((key) => window.localStorage.setItem(key, "1"), "hanja-td:soul-tutor-v1");
   // 새로고침에도 다시 심으면 "판을 넘어 남는가"를 잴 수 없다 — 처음 한 번만
   // 앉히고, 그 뒤로는 게임이 적어 둔 것을 그대로 쓴다.
   await page.addInitScript(

@@ -38,6 +38,7 @@ import { ctx, must, shell } from "../app-context";
 import { spiritPortraitMarkup } from "../format";
 import { showToast } from "../hud";
 import { bindSoulReroll, closeSoulReroll, openSoulReroll } from "./soul-reroll";
+import { bindSoulTutor, grantStarterSouls, hideSoulTutor, syncSoulTutor } from "./soul-tutor";
 import { onSoulArchiveChange, setSoulArchive, soulArchive, updateSoulArchive } from "../souls";
 
 /**
@@ -332,6 +333,7 @@ export function renderSoulArchive(): void {
   renderForge(archive);
   renderShelf(archive);
   renderTabs(archive);
+  syncSoulTutor({ archive, draft });
 }
 
 /** 제목 화면의 자혼 배지 — 지닌 자혼이 있을 때만 선다. */
@@ -457,6 +459,8 @@ export function openSoulArchive(): void {
   bindSoulArchive();
   const box = dialog();
   if (!box.open) box.showModal();
+  // 첫 방문이면 자혼 넷이 먼저 손에 온다 — 재료가 있어야 규칙이 보인다.
+  grantStarterSouls(soulArchive());
   renderSoulArchive();
 }
 
@@ -571,6 +575,9 @@ export function bindSoulArchive(): void {
   box.addEventListener("click", handleClick);
   must<HTMLButtonElement>("#soul-close").addEventListener("click", () => box.close());
   must<HTMLButtonElement>("#soul-forge-button").addEventListener("click", forge);
+  bindSoulTutor();
+  // 뜻 칸은 그리기를 부르지 않는다 — 안내가 「뜻을 적었는가」를 볼 수 있게 입력을 듣는다.
+  must<HTMLInputElement>("#soul-meaning-input").addEventListener("input", () => syncSoulTutor({ archive: soulArchive(), draft }));
 
   for (const tab of document.querySelectorAll<HTMLButtonElement>("[data-soul-tab]")) {
     tab.addEventListener("click", () => {
@@ -618,6 +625,7 @@ export function bindSoulArchive(): void {
   // 새김대를 비운 채 닫으면 다음에 열었을 때 남은 글자에 놀라지 않는다.
   box.addEventListener("close", () => {
     closeSoulReroll();
+    hideSoulTutor();
     draft = [];
     must<HTMLInputElement>("#soul-meaning-input").value = "";
   });

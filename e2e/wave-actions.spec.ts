@@ -50,6 +50,16 @@ test("「장 N / 10」 칩은 사라지고 그 자리에 무엇이 오는가가 
   const info = page.locator(".stage-chip--wave-info");
   await expect(info).toBeVisible();
   await expect(info.locator("#wave-label")).toBeVisible();
+  /*
+   * 첫 소환 전에는 「할 일」을 여기서 말하지 않는다(v037) — 같은 문장이 상단 띠·
+   * 패널 카드·패널 맨 아래 줄 세 군데에 서 있었다. 이 칩은 짧게 「대기」만 하고,
+   * 웨이브가 없으니 약점 인장도 감춘다.
+   */
+  await expect(info.locator("#wave-label")).toHaveText("첫 소환 대기");
+  await expect(info.locator("#wave-weakness")).toBeHidden();
+
+  await page.getByTestId("summon-button").click();
+  await page.keyboard.press("Escape");
   await expect(info.locator("#wave-weakness")).toBeVisible();
   // 약점은 그 오행의 색으로 선다 — 글자만으로는 훑을 때 안 걸린다.
   const painted = await info.locator("#wave-weakness").evaluate((element) => getComputedStyle(element).color);

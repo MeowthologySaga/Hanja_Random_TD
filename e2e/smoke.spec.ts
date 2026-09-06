@@ -1525,6 +1525,13 @@ test("hints research unlock and first Munki once in standard mode", { tag: HINT_
 test("keeps every wave briefing inside the two-line clamp", async ({ page }) => {
   await page.goto("/?seed=TRACK-N-BRIEF&mode=casual");
   await page.getByTestId("start-run").click();
+  /*
+   * v037: 설명은 카드 상태 줄(#wave-status-line = 시계 + 설명)의 꼬리다. 첫 소환
+   * 전에는 비어 있으므로 한 기 소환한 뒤에 재고, 넘침은 두 줄로 접힌 그 상자에서
+   * 잰다 — 인라인 span 은 제 상자가 없다.
+   */
+  await page.getByTestId("summon-button").click();
+  await page.keyboard.press("Escape");
   await expect(page.locator("#wave-briefing")).toBeVisible();
 
   const overflowing = await page.evaluate(async () => {
@@ -1532,6 +1539,7 @@ test("keeps every wave briefing inside the two-line clamp", async ({ page }) => 
     const specifier = "/src/core/content.ts";
     const module = await import(specifier) as typeof import("../src/core/content");
     const element = document.getElementById("wave-briefing") as HTMLElement;
+    const box = document.getElementById("wave-status-line") as HTMLElement;
     const original = element.textContent;
     const bad: Array<{ wave: number; survivors: number | null; text: string; overflow: number }> = [];
     for (let wave = 1; wave <= 100; wave += 1) {
@@ -1539,7 +1547,7 @@ test("keeps every wave briefing inside the two-line clamp", async ({ page }) => 
       for (const survivors of [null, 9, 99]) {
         const text = module.composeWaveBriefing(plan.briefing, wave, plan.boss, survivors);
         element.textContent = text;
-        const overflow = element.scrollHeight - element.clientHeight;
+        const overflow = box.scrollHeight - box.clientHeight;
         if (overflow > 1) bad.push({ wave, survivors, text, overflow });
       }
     }

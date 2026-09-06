@@ -316,9 +316,14 @@ test("gives the clipped footer message a full-text tooltip", async ({ page }) =>
   const plain = await measure();
   // 개발자 모드가 꺼져 있으면 시드는 display:none 이라 문장이 자리를 온전히 쓴다.
   expect(plain.seed).toBe(0);
-  expect(plain.shown).toBe(354);
-  expect(plain.natural).toBeGreaterThan(plain.shown);
-  expect(plain.title).toBe(plain.text);
+  /*
+   * v037: 개문 문구를 자리에 맞게 줄였다(380px → 354px 안). 글이 칸(354px)을
+   * 넘지 않는 것이 정상이고, 곁말은 잘리든 말든 전문을 든다 — 안전망은 그대로다.
+   */
+  expect(plain.shown).toBeLessThanOrEqual(354);
+  expect(plain.natural).toBeLessThanOrEqual(354);
+  // 다 보이는 문장에는 곁말을 달지 않는다(소음) — 잘릴 때만 전문을 든다.
+  expect(plain.title).toBe(plain.natural > plain.shown ? plain.text : "");
   await page.screenshot({ path: ".claude/uiux/track-w/10-footer-tooltip-plain.png" });
 
   // 개발자 모드에서는 시드가 자리를 나눠 가진다 — 그래도 곁말은 전문을 준다.

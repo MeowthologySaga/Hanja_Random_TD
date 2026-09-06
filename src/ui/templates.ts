@@ -245,6 +245,8 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
           </div>
           <div class="focus-panel-summary">
             <p id="goal-panel-summary">추적 중 성어 <b>1구</b></p>
+            <!-- v037: 「준비 25%」가 무엇의 비율인지, 이 갈피가 무엇을 하는 곳인지를 패널이 말한다(페르소나 실측). -->
+            <small id="goal-panel-hint">서책에서 성어를 고르면 부족한 글자가 소환 목표가 됩니다 · 준비도 = 네 글자 가운데 지닌 비율</small>
             <button id="goal-frame-open" class="focus-open-button" type="button">서책 열기</button>
           </div>
         </section>
@@ -427,6 +429,8 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
           </div>
           <div class="focus-panel-summary">
             <p id="run-inventory-panel-summary">보관 <b id="run-inventory-heading-count">0기 · 0종</b></p>
+            <!-- v037: 자동 배치라 가방은 늘 비어 보인다 — 왜 비었는지, 어떻게 채우는지를 말한다(페르소나 실측). -->
+            <small>뽑은 자령은 전장에 바로 섭니다 · 자령 상세의 [보관]으로 가방에 옮기고, 안 쓰는 자령은 분해해 문기로 바꿉니다</small>
             <button id="run-inventory-frame-open" class="focus-open-button" type="button">가방 열기</button>
           </div>
         </section>
@@ -538,7 +542,7 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
     <div id="tutorial-layer" class="tutorial-layer" aria-live="polite" hidden>
       <div id="tutorial-ring" class="tutorial-ring" aria-hidden="true"></div>
       <div id="tutorial-bubble" class="tutorial-bubble" role="dialog" aria-labelledby="tutorial-title">
-        <p class="tutorial-step-count">수련 <span id="tutorial-step-index">1</span> / <span id="tutorial-step-total">8</span></p>
+        <p class="tutorial-step-count">수련 <span id="tutorial-step-index">1</span> / <span id="tutorial-step-total">9</span></p>
         <b id="tutorial-title"></b>
         <p id="tutorial-body"></p>
         <p id="tutorial-emphasis" class="tutorial-emphasis" hidden></p>
@@ -547,9 +551,10 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
       <section id="tutorial-complete" class="tutorial-complete" aria-labelledby="tutorial-complete-title" hidden>
         <div class="tutorial-complete-card">
           <p class="eyebrow">수련 완수</p>
-          <h2 id="tutorial-complete-title">여덟 걸음을 모두 배웠습니다</h2>
+          <h2 id="tutorial-complete-title">아홉 걸음을 모두 배웠습니다</h2>
           <ul id="tutorial-summary" class="tutorial-summary">
             <li><b>소환</b><span>획이 많은 한자일수록 별이 높아요 · 기본 주로 1~3★ / 중급 2★ 확정 / 고급 3★ 확정</span></li>
+            <li><b>부적</b><span>한자를 따라 쓰면 자령이 응답해요 · 웨이브마다 한 장, 획순은 자유</span></li>
             <li><b>승급</b><span>같은 오행·같은 별 3기 → 다음 별 자령 1기, 무엇이 나올지는 무작위</span></li>
             <li><b>강화</b><span>안 쓰는 자령을 분해해 문기를 얻고, 그 오행 전원을 키워요</span></li>
             <li><b>사자성어</b><span>한 줄에 4자 순서대로 — 발동! 보너스는 줄을 지키는 동안만 살아 있어요</span></li>
@@ -628,7 +633,7 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
         </div>
 
         <button id="tutorial-button" class="s00-training" type="button" data-testid="tutorial-button"
-          aria-label="수련장. 소환부터 사자성어 발동까지 여덟 걸음으로 배우는 연습 판. 처음이라면 여기부터">
+          aria-label="수련장. 소환부터 사자성어 발동까지 아홉 걸음으로 배우는 연습 판. 처음이라면 여기부터">
           <b>수련장</b><small>처음이라면 여기부터</small><em>八</em>
         </button>
 
@@ -1252,6 +1257,15 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
         <s id="soul-forge-fx-bonus"></s>
         <i class="soul-forge-fx-seal">刻</i>
       </div>
+
+      <!-- 첫 방문 안내(v037, panels/soul-tutor.ts) — 창은 최상위 층이라 셸의 코치 층이 못 올라온다. -->
+      <div id="soul-tutor-ring" class="soul-tutor-ring" aria-hidden="true" hidden></div>
+      <section id="soul-tutor" class="soul-tutor" aria-live="polite" data-testid="soul-tutor" hidden>
+        <p class="eyebrow">집자소 첫걸음 <span id="soul-tutor-step"></span></p>
+        <b id="soul-tutor-title"></b>
+        <p id="soul-tutor-body"></p>
+        <button id="soul-tutor-skip" type="button" data-testid="soul-tutor-skip">안내 닫기</button>
+      </section>
     </dialog>
 
   </main>

@@ -482,7 +482,7 @@ export class GameEngine {
       lineageTargetProgress: 0,
       unlockedFormations: [...INITIAL_UNLOCKED_FORMATIONS],
       startingFormationIndex: null,
-      lastMessage: "① 상점에서 첫 자령을 소환하세요. 준비 시간은 아직 흐르지 않습니다.",
+      lastMessage: "① 상점에서 첫 자령을 소환하세요 · 그 전엔 시간이 멈춥니다",
       autoPlaceSummons: this.state.autoPlaceSummons,
       summonIntent: this.state.summonIntent,
       towers: [],
@@ -1624,7 +1624,7 @@ export class GameEngine {
       this.endRun("victory", `백 번째 봉인을 지켜내고 천자문의 대봉인을 완성했습니다!${interest > 0 ? ` · 은행 이자 +${interest}엽전` : ""}`);
       return;
     }
-    const bonus = waveClearReward(this.state.wave);
+    const bonus = waveClearReward(this.state.wave, this.state.mode);
     this.state.gold += bonus;
     const interest = this.payBankInterest();
     this.state.phase = "prep";
@@ -1643,7 +1643,9 @@ export class GameEngine {
     const previousWave = this.state.wave;
     const interest = this.payBankInterest();
     this.startNextWave();
-    this.state.lastMessage = `${previousWave}웨이브 잔존 ${survivors}체 · ${this.currentPlan?.label ?? "다음 웨이브"} 합류${interest > 0 ? ` · 은행 이자 +${interest}엽전` : ""}`;
+    // 「잔존 N체 합류」만으로는 규칙(다 잡아야 준비 시간이 온다)을 아무 데서도
+    // 말하지 않았다(v037 페르소나 실측) — 할 일을 문장 안에 넣는다.
+    this.state.lastMessage = `${previousWave}웨이브 잔존 ${survivors}체 — 다 잡아야 준비 시간이 열립니다 · ${this.currentPlan?.label ?? "다음 웨이브"} 합류${interest > 0 ? ` · 은행 이자 +${interest}엽전` : ""}`;
   }
 
   private payBankInterest(): number {

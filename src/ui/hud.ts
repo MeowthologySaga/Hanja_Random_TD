@@ -149,7 +149,13 @@ function maybeShowEarlyHint(): void {
  *   90% 미만으로 내려가면 클래스가 벗겨져 원상 복구된다.
  * 3단(패배): 종료 화면이 state.defeatCause 로 사유를 명시한다(end.ts).
  */
-const ENEMY_LIMIT_WARN_RATIO = 0.75;
+/*
+ * v037: 75% 는 너무 늦었다 — 페르소나 실측에서 61/80 에 첫 경고가 뜨고 두 웨이브
+ * 뒤에 졌다. 40% 에 색이 바뀌고(is-watch), 60% 에 빨강 + 토스트(is-danger),
+ * 90% 에 맥동(is-critical). 손쓸 시간이 있을 때 말한다.
+ */
+const ENEMY_LIMIT_WATCH_RATIO = 0.4;
+const ENEMY_LIMIT_WARN_RATIO = 0.6;
 
 const ENEMY_LIMIT_CRITICAL_RATIO = 0.9;
 
@@ -158,11 +164,12 @@ let enemyLimitWarnedEngine: GameEngine | null = null;
 function syncEnemyLimitWarning(count: number): void {
   const chip = must<HTMLElement>("#enemy-limit-chip");
   const ratio = count / MAX_ENEMIES;
+  chip.classList.toggle("is-watch", ratio >= ENEMY_LIMIT_WATCH_RATIO && ratio < ENEMY_LIMIT_WARN_RATIO);
   chip.classList.toggle("is-danger", ratio >= ENEMY_LIMIT_WARN_RATIO);
   chip.classList.toggle("is-critical", ratio >= ENEMY_LIMIT_CRITICAL_RATIO);
   if (ratio < ENEMY_LIMIT_WARN_RATIO || enemyLimitWarnedEngine === ctx.engine) return;
   enemyLimitWarnedEngine = ctx.engine;
-  showToast(`적이 최대 ${MAX_ENEMIES}체를 넘으면 봉인이 무너집니다`, true);
+  showToast(`적 ${count}체 — ${MAX_ENEMIES}체에 닿으면 봉인이 무너집니다 · 자령을 더 세우세요`, true);
   sound.playEnemyLimitWarning();
 }
 
@@ -550,10 +557,18 @@ export function syncPanel(): void {
         ? "다음 웨이브 " + nextWaveRemaining.toFixed(1) + "초"
         : state.phase === "combat" ? formatTime(state.waveElapsed) + " 경과" : "봉인전 종료";
   must<HTMLElement>("#wave-label").textContent = state.phase === "prep"
-    ? state.summonCount === 0 ? "① 상점에서 첫 자령을 소환하세요" : String(state.wave + 1) + "웨이브 · " + (preview?.label ?? "")
+    /*
+     * 첫 소환 전에는 「할 일」을 여기서 말하지 않는다(v037).
+     *
+     * 같은 문장이 상단 띠·패널 카드·패널 맨 아래 줄 세 군데에 서 있었다(사용자
+     * 지적). 할 일은 맨 아래 줄(lastMessage) 한 곳이 말하고, 이 칩은 **무엇이
+     * 오는가**만 말한다 — 올 것이 아직 없으니 짧게 「대기」만 적는다.
+     */
+    ? state.summonCount === 0 ? "첫 소환 대기" : String(state.wave + 1) + "웨이브 · " + (preview?.label ?? "")
     : plan?.label ?? state.lastMessage;
   const briefing = state.summonCount === 0
-    ? "첫 자령의 오행에 맞는 진이 무료로 열립니다. 소환 전에는 시간이 멈춥니다."
+    // 첫 소환 전 설명도 비운다 — 맨 아래 줄과 개문 안내(①②③)가 이미 말한다.
+    ? ""
     : preview
       ? composeWaveBriefing(preview.briefing, preview.wave, previewBossLimit !== null, nextWaveRemaining !== null ? state.enemies.length : null)
       : "적 " + String(MAX_ENEMIES) + "체 도달 시 즉시 게임오버";
@@ -575,6 +590,9 @@ export function syncPanel(): void {
   const weaknessElement = must<HTMLElement>("#wave-weakness");
   weaknessElement.textContent = weakness;
   weaknessElement.style.color = ELEMENT_STYLES[weakness].color;
+  // 웨이브가 서기 전의 약점은 뜻이 없다 — 첫 소환 전에는 인장을 감춘다.
+  const weaknessSeal = weaknessElement.closest<HTMLElement>(".stage-weakness-seal");
+  if (weaknessSeal) weaknessSeal.hidden = state.summonCount === 0;
   const progress = plan && state.phase === "combat"
     ? nextWaveRemaining !== null
       ? 1 - nextWaveRemaining / WAVE_REINFORCEMENT_DELAY

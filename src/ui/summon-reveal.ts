@@ -2,15 +2,15 @@
  * 소환·3합 결과 발표막.
  */
 import { CASUAL_STAR_COLORS, CASUAL_STAR_NAMES, casualStrokeCount } from "../core/casual";
-import { BOARD_FORMATIONS } from "../core/content";
+import { BOARD_FORMATIONS, CELLS_PER_FORMATION } from "../core/content";
 import { definitionForTower, ELEMENT_STYLES } from "../core/hanzi";
 import { jaryeongAssetPath, jaryeongVisualFor, type JaryeongVisual } from "../core/jaryeongs";
 import { learningInfoForNotation } from "../core/learning";
 import { notationShortHtml } from "./notation-substitute";
 import { type GameEvent, type Wuxing } from "../core/types";
 import { ctx, fusionVortex, must, summonReveal } from "./app-context";
-import { coachIsPointingAtBoard } from "./coach";
 import { casualStarOf, escapeHtml, visualBackgroundStyle } from "./format";
+import { showToast } from "./hud";
 
 /**
  * 다장 연출이 스스로 걷히는 시간(ms).
@@ -153,12 +153,30 @@ export function showCasualFusionReveal(events: Array<Extract<GameEvent, { type: 
   ctx.summonRevealTimer = window.setTimeout(hideSummonReveal, summonRevealHoldMs(events.length));
 }
 
+/**
+ * 교전 중의 평범한 한 기는 카드 대신 패널 토스트 한 줄로 알린다(v037).
+ *
+ * 카드는 서 있는 동안 전투를 멈춘다. 30웨이브 동안 소환이 100회를 넘는 판에서
+ * 그것은 「닫기 100번·정지 100번」이었다(페르소나 실측). 카드가 값하는 순간만
+ * 남긴다 — 첫 소환, 새 발견, 목표·성어 재료, 상한 돌파, 높은 별(표준은 2단 이상),
+ * 그리고 준비 시간(멈출 전투가 없다).
+ */
+function quietSummon(events: Array<Extract<GameEvent, { type: "summon" }>>): boolean {
+  if (events.length !== 1) return false;
+  const state = ctx.engine.state;
+  if (state.phase !== "combat" || state.summonCount <= 1) return false;
+  const event = events[0] as Extract<GameEvent, { type: "summon" }>;
+  if (event.newDiscovery || event.helpful || event.jackpot) return false;
+  return state.mode === "casual" ? casualStarOf(event.tower) <= 2 : event.tower.stage <= 1;
+}
+
 export function showSummonReveal(events: Array<Extract<GameEvent, { type: "summon" }>>): void {
   if (events.length === 0) return;
-  // 코치가 전장 조작을 안내하는 동안에는 카드가 스포트라이트를 덮고
-  // wheel 을 삼키므로 아예 띄우지 않는다.
-  if (coachIsPointingAtBoard()) {
-    hideSummonReveal();
+  if (quietSummon(events)) {
+    const tower = (events[0] as Extract<GameEvent, { type: "summon" }>).tower;
+    const learning = learningInfoForNotation(ctx.engine.state.notation, tower.char);
+    const formation = tower.cell >= 0 ? BOARD_FORMATIONS[Math.floor(tower.cell / CELLS_PER_FORMATION)]?.label ?? "전장" : "가방";
+    showToast(`${tower.char} ${learning.short} · ${formation} 배치`, false, "panel");
     return;
   }
   window.clearTimeout(ctx.summonRevealTimer);

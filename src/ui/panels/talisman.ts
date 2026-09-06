@@ -221,6 +221,14 @@ let chargeEngine: GameEngine | null = null;
 
 /** 마지막으로 적립을 정산한 웨이브. 여기서 지금 웨이브까지의 차이만큼 준다. */
 let chargeWave = 1;
+/** 이 판에서 완성해 본 부적 가운데 가장 많은 획수 — 부활 부적지의 난이도 잣대. */
+let sealedStrokeMax = 0;
+/** 이 판에서 완성한 부적 장수 — 수련장 「부적」 걸음이 완료를 센다. */
+let sealCount = 0;
+
+export function talismanSealCount(): number {
+  return sealCount;
+}
 
 /** 지금 남아 있는 장수. */
 let charges = CHARGES_PER_WAVE;
@@ -273,6 +281,8 @@ function talismanCharges(): number {
     charges = CHARGES_PER_WAVE;
     waveCredit = CHARGES_PER_WAVE;
     recentRewards = emptyTally();
+    sealedStrokeMax = 0;
+    sealCount = 0;
     return charges;
   }
   const wave = Math.max(1, state.wave);
@@ -875,6 +885,8 @@ function grantReward(): void {
 function completeTalisman(score: TalismanScore): void {
   sealed = true;
   drawing = false;
+  sealCount += 1;
+  if (currentDefinition) sealedStrokeMax = Math.max(sealedStrokeMax, casualStrokeCount(currentDefinition.char) ?? 0);
   const ink = must<HTMLCanvasElement>("#talisman-ink");
   // 그린 알파를 자기 자신 위에 한 번 더 겹쳐 먹을 진하게 굳힌다.
   inkContext?.drawImage(ink, 0, 0);
@@ -934,13 +946,23 @@ export function beginRevivalSheet(onSealed: (score: TalismanScore) => void): HTM
   const reachable = guided ? pool.filter((entry) => strokeGlyphFor(entry.char) !== null) : pool;
   const candidates = reachable.length > 0 ? reachable : pool;
   if (candidates.length === 0) return null;
-  const hardest = candidates.reduce((best, entry) =>
+  /*
+   * v037: 예전에는 풀에서 **획수 최다**(鬱 29획)를 골랐다. 부적 갈피를 한 번도
+   * 안 연 사람에게 29획은 「해 볼 만하다」는 느낌이 없다(페르소나 실측). 이 판에서
+   * 완성해 본 획수를 잣대로 — 한 장도 안 썼으면 10획 이하, 썼으면 그 최다 +2 이하
+   * 가운데 가장 어려운 글자를 고른다. 그래도 마지막 보루답게 쉬운 글자는 아니다.
+   */
+  const budget = sealedStrokeMax > 0 ? sealedStrokeMax + 2 : 10;
+  const withinBudget = candidates.filter((entry) => (casualStrokeCount(entry.char) ?? 0) <= budget);
+  const hardest = (withinBudget.length > 0 ? withinBudget : candidates).reduce((best, entry) =>
     (casualStrokeCount(entry.char) ?? 0) > (casualStrokeCount(best.char) ?? 0) ? entry : best
   );
   cancelAdvance();
   revivalHandler = onSealed;
   presentDefinition(hardest);
-  setStatus(`${hardest.char} — 이 한 장이 마지막 보루입니다`, "hint");
+  // 붓을 대기 전에 「무엇을 어떻게」를 말한다 — 첫 획을 긋고 나서야 뜨던 안내였다.
+  const strokes = casualStrokeCount(hardest.char) ?? 0;
+  setStatus(`${hardest.char} ${strokes > 0 ? `${strokes}획` : ""} — 반투명 글자를 마우스로 따라 그으세요 · 다 쓰면 [부적 완성]`, "hint");
   return document.querySelector<HTMLElement>("#talisman-paper");
 }
 
@@ -1240,6 +1262,28 @@ function syncModeToggle(): void {
   toggle.setAttribute("aria-checked", String(ctx.talismanMode));
   const label = toggle.querySelector<HTMLElement>("i em");
   if (label) label.textContent = ctx.talismanMode ? "ON" : "OFF";
+}
+
+/**
+ * 수련장 「부적」 걸음의 준비(v037).
+ *
+ * 부적은 임시 기능에서 정식 기능이 됐는데 수련장은 그것을 한 번도 말하지
+ * 않았다. 이 판에서만 부적 모드를 켜고(설정 저장은 건드리지 않는다 — 수련을
+ * 나가면 새로고침이라 원래 설정으로 돌아온다), 갈피를 세우고, 한 장을 손에
+ * 쥐여 준다.
+ */
+export function prepareTalismanForTutorial(): void {
+  ctx.talismanMode = true;
+  syncTabPresence();
+  syncModeToggle();
+  refreshCharges();
+  if (charges <= 0) {
+    charges = 1;
+    outOfCharges = false;
+    document.querySelector("#talisman-paper")?.classList.remove("is-out-of-charges");
+    syncRewardNote();
+  }
+  ensureDefinition();
 }
 
 export function setTalismanMode(enabled: boolean): void {

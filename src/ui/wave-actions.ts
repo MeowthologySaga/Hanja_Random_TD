@@ -64,6 +64,24 @@ export function pickPanelActions(): PanelAction[] {
   }
 
   /*
+   * ①′ 화력 부족. 웨이브를 못 치워 합류 시계가 도는데(nextWaveRemaining) 엽전은
+   * 소환 한 기 값이 있다 — 페르소나 실측에서 이 상황을 화면 어디도 급하게
+   * 말하지 않아 1기로 출정한 사람이 8웨이브 동안 처치 0 으로 졌다. 적이 3할을
+   * 넘어 쌓이는 것도 같은 신호다.
+   */
+  const cost = summonCost(state.summonCount);
+  const stacking = state.phase === "combat" && (state.nextWaveRemaining !== null || filled >= 0.3);
+  if (stacking && state.gold >= cost && filled < 0.7) {
+    picks.push({
+      key: "summon",
+      label: `소환 ${cost}엽전 · 화력 부족`,
+      tone: "urgent",
+      title: "적을 다 못 잡으면 다음 웨이브가 합류합니다. 자령을 더 세우세요.",
+      action: () => setTab("shop")
+    });
+  }
+
+  /*
    * ② 지금 시작. 패널에서는 전용 단추(#early-button)가 맡으므로 목록에서는
    * 두 번째다 — 부적지 아래 한 줄이 이 항목을 가져다 쓴다.
    */
@@ -95,8 +113,7 @@ export function pickPanelActions(): PanelAction[] {
   }
 
   // ④ 소환할 엽전이 있다. 판을 넓히는 것이 언제나 첫 수다.
-  const cost = summonCost(state.summonCount);
-  if (state.gold >= cost) {
+  if (state.gold >= cost && !picks.some((pick) => pick.key === "summon")) {
     picks.push({
       key: "summon",
       label: `소환 ${cost}엽전`,

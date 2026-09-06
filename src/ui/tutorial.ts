@@ -2,8 +2,8 @@
  * 수련장(튜토리얼 모드).
  *
  * 별승급 규칙 그대로의 "각본 있는 짧은 런"이다. 고정 시드(TUTORIAL) 위에서
- * 소환 → 배치 → 첫 웨이브 → 3합 승급 → 티어 소환 → 강화 → 사자성어 발동 →
- * 수료의 여덟 걸음을 밟는다. 각 걸음은 [말풍선 + 스포트라이트 + 나머지
+ * 소환 → 배치 → 첫 웨이브 → 부적 → 3합 승급 → 티어 소환 → 강화 → 사자성어
+ * 발동 → 수료의 아홉 걸음을 밟는다. 각 걸음은 [말풍선 + 스포트라이트 + 나머지
  * 상호작용 잠금(soft-lock)]으로 이루어지고, 해당 조작을 실제로 해내면
  * 저절로 다음으로 넘어간다. 코치(coach.ts)의 시각 언어를 빌리되 구현은
  * 이 모듈 안에서 자기완결한다 — coach.ts 는 건드리지 않는다.
@@ -25,6 +25,7 @@ import { cellAtPointerEvent } from "./battle/input";
 import { scrollIntoContainer } from "./scroll-into-container";
 import { setPanelTab, showToast } from "./hud";
 import { startRun } from "./s00-menu";
+import { prepareTalismanForTutorial, talismanSealCount } from "./panels/talisman";
 import { hideSummonReveal } from "./summon-reveal";
 import {
   cellsWorldBounds,
@@ -189,12 +190,14 @@ interface TutorialRuntime {
   idiomLine: number[];
   /** 4걸음 동안만 잠가 둔 전장 자령 — 다음 걸음이 그대로 되돌린다. */
   fusionLockedIds: number[];
+  /** 부적 걸음에 들어설 때의 완성 장수 — 이보다 늘면 한 장을 쓴 것이다. */
+  sealBaseline: number;
 }
 
 let runtime: TutorialRuntime = freshRuntime();
 
 function freshRuntime(): TutorialRuntime {
-  return { summonBaseline: 0, essenceBaseline: 0, growthWuxing: "木", fusionWuxing: "木", idiomGrantIds: [], idiomLine: [], fusionLockedIds: [] };
+  return { summonBaseline: 0, essenceBaseline: 0, growthWuxing: "木", fusionWuxing: "木", idiomGrantIds: [], idiomLine: [], fusionLockedIds: [], sealBaseline: 0 };
 }
 
 /** 4걸음이 재료 보호를 위해 걸어 둔 잠금을 원래대로 되돌린다. */
@@ -236,7 +239,7 @@ function nextIdiomCells(): number[] {
   return cell === undefined ? [] : [cell];
 }
 
-/* ── 여덟 걸음 각본 ─────────────────────────────────────────────── */
+/* ── 아홉 걸음 각본 ─────────────────────────────────────────────── */
 
 const STEPS: readonly TutorialStep[] = [
   {
@@ -301,6 +304,28 @@ const STEPS: readonly TutorialStep[] = [
     // 전투는 배경에서 계속되고, 전멸은 조건이 아니다.
     satisfied: () => ctx.engine.state.wave >= 1
       && (guidancePassed("wave-watch") || ctx.engine.state.phase === "prep")
+  },
+  {
+    /*
+     * 부적(v037). 임시 기능이 정식이 되며 수련장이 비어 있던 자리다. 첫 교전이
+     * 배경에서 흐르는 동안 한 장을 써 본다 — 「전투 중에 손이 할 일」이 바로
+     * 이것이라는 감각을 여기서 심는다.
+     */
+    id: "talisman",
+    enter: () => {
+      prepareTalismanForTutorial();
+      setPanelTab("talisman");
+      runtime.sealBaseline = talismanSealCount();
+    },
+    tick: () => hideSummonReveal(),
+    view: () => ({
+      target: "#talisman-paper",
+      title: "부적을 한 장 써 보세요",
+      body: "반투명 글자를 마우스로 따라 그으면 자령이 응답해요 — 엽전·문기·전장 이벤트. 획순은 자유고 웨이브마다 한 장씩 적립돼요. 다 그렸으면 [부적 완성].",
+      control: "drag"
+    }),
+    allow: () => [panelTab("talisman"), "#talisman-panel"],
+    satisfied: () => talismanSealCount() > runtime.sealBaseline
   },
   {
     id: "fusion",

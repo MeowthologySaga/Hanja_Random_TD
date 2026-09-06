@@ -1,0 +1,170 @@
+/* ══════════════════════════════════════════════════════
+   800. 글자 대비 — 사람 눈으로 읽히는가 (v037)
+   ══════════════════════════════════════════════════════
+
+   "사람 눈 입장에서 생각해. 배경색이랑 대조 없으면 안보여. 계속 이 문제
+    반복되고 있어"(사용자).
+
+   눈짐작으로 고치지 않았다. 화면 열세 장(제목·개문·준비 갈피 아홉·교전 둘)의
+   글자 942개를 스크린샷 픽셀로 재어(글자 상자 안 픽셀 가운데 글자색과 먼 것의
+   중앙값을 배경으로 본다) WCAG 기준(작은 글자 4.5 · 큰/굵은 글자 3.0)에 미달인
+   47자리를 찾았고, 여기서 그 갈래들을 막는다. 재는 법은 scripts/ 가 아니라
+   임시 스펙이었다 — 다시 재려면 이 절 끝의 「다시 재기」를 보라.
+
+   반복되던 뿌리는 셋이다.
+    ① **어두운 칩용 밝은 글자를 종이 칩에 얹었다.** 한지 테마(060절)가 칩을
+       종이로 바꿨는데, 나중에 붙인 칩(상단 띠 웨이브 칩·전장 조작 안내)은
+       어두운 칩 시절의 크림색 글자를 그대로 들고 왔다 — 1.2:1.
+    ② **비활성을 「흐리게」로 표현했다.** opacity 0.36~0.65 로 통째로 흐리면
+       글자가 사라진다(가방 행동 단추 1.15:1). 비활성은 **색을 걷어**(회갈색
+       글자·무광 바탕) 말해야지 지워서는 안 된다 — 060절 1000행이 상점 단추에
+       이미 세운 규범인데 다른 단추들이 안 따랐다.
+    ③ **인주·하늘색 바탕 위에 어두운 글자.** 판매·분해 단추 속 문기 표기, 추적
+       배지 — 바탕은 바꿨는데 안쪽 글자는 종이용 어두운 색이 남았다.
+
+   여기 규칙은 전부 뒤 순서 + !important 다. 060·100절이 같은 무게로 색을
+   못 박아 두어 그 아래로는 못 뚫는다. */
+
+/* ── ① 종이 칩 위의 밝은 글자 ─────────────────────────────────── */
+
+/* 상단 띠 웨이브 칩 — 790절이 #f2e2bb 로 칠했던 것(종이 위 1.2:1). 형제 칩의
+   strong 과 같은 먹색으로. */
+.stage-chip--wave-info > b {
+  color: var(--text-100) !important;
+}
+
+.stage-weakness-seal {
+  color: var(--text-300) !important;
+}
+
+/* 전장 아래 조작 안내의 키 표시(끌기·클릭) — 어두운 알약 위에 금갈색(1.4:1).
+   알약이 어두우니 글자는 밝아야 한다. */
+.canvas-tip i em {
+  color: #f3e6c6 !important;
+  background: rgba(155, 113, 55, 0.38) !important;
+}
+
+/* ── ② 비활성은 흐리게가 아니라 색을 걷어서 ───────────────────── */
+
+.run-inventory-action:disabled,
+.workbench-primary:disabled,
+.dismantle-quote button:disabled,
+#dismantle-confirm-button:disabled,
+#concentration-confirm-button:disabled {
+  opacity: 1 !important;
+  color: #524839 !important;
+  background: linear-gradient(180deg, #d6c9a8 0%, #c4b491 100%) !important;
+  border-color: rgba(122, 90, 42, 0.3) !important;
+  box-shadow: inset 0 0 0 1px rgba(122, 90, 42, 0.28) !important;
+  text-shadow: none !important;
+}
+
+/* 가방 행동 줄 — 카드를 안 고른 동안 줄 전체를 0.5 로 흐렸다(270절 232행).
+   단추 하나하나가 이미 비활성 색으로 말하고 있으니 줄까지 흐릴 까닭이 없고,
+   흐리면 「카드를 고르세요」라는 안내마저 2.3:1 로 사라진다. */
+.run-inventory-actions.is-idle .run-inventory-action-set {
+  opacity: 1 !important;
+}
+
+/* 못 쓰는 지불 방식 — 0.38 로 흐리면 「왜 못 쓰는지」를 적은 잔글씨가 먼저
+   사라진다. 바탕만 가라앉히고 글자는 남긴다. */
+.payment-option.is-unavailable {
+  opacity: 1 !important;
+  background: rgba(214, 201, 168, 0.55) !important;
+}
+
+.payment-option.is-unavailable :is(span, small, b, strong) {
+  color: #524839 !important;
+}
+
+/* 개문 안내의 지난 걸음 — 0.62 로 흐린 데다 b 가 연두(#7fd2a2)라 종이 위에서
+   2.3:1 이었다. 「했다」는 색(짙은 초록)으로 말하고, 흐림은 약하게. */
+.opening-guide > div.is-complete {
+  opacity: 1 !important;
+}
+
+.opening-guide > div.is-complete b {
+  color: #2f6f47 !important;
+}
+
+.opening-guide > div.is-complete span {
+  color: var(--text-400) !important;
+}
+
+/* 빈 자리 안내 — 부모가 흐려도 글자는 읽혀야 한다. */
+.empty-run-inventory span,
+.run-inventory-action-hint,
+.run-inventory-detail-empty span,
+.workbench-empty span {
+  color: var(--text-300) !important;
+  opacity: 1 !important;
+}
+
+/* ── ③ 인주·하늘색 바탕 위의 어두운 글자 ──────────────────────── */
+
+/* 자령 카드의 [분해] 속 문기 표기 — 판매 단추에는 밝게 섞는 규칙(520절)이
+   있는데 분해 단추가 빠져 있었다. 인주 위 1.75:1. */
+#dismantle-button .unit-essence,
+#dismantle-button :is(small, em, i),
+#sell-button .unit-essence,
+.run-inventory-action--dismantle:not(:disabled) .unit-essence {
+  /* 58% 섞음(520절)은 인주 위에서 2.75:1 — 오행색은 기색만 남기고 밝게. */
+  color: color-mix(in srgb, var(--unit-element, #e0d3b2) 28%, #fff2ec) !important;
+}
+
+/* 유일 자령 보호 토글의 OFF 알약 — 인주 위에 먹색 글자. */
+.dismantle-unique-toggle i,
+.dismantle-unique-toggle i em {
+  color: #fff2ec !important;
+}
+
+/* 3체 조합 단추는 바탕이 어두운 옻칠인데 라벨은 종이용 먹색(2.1:1). 상점 단추
+   공통 규칙(100절 614행)이 small·em 까지 먹색으로 못 박아 그 무게로 되돌린다. */
+/* 100절 `.shop-workbench .action-button:not(:disabled) b` 가 :not() 덕에 한 단
+   더 무겁다(0,3,1). 같은 꼴로 되받는다 — 브라우저에서 맞는 규칙을 전부 뽑아
+   순서대로 세워 보고 찾았다. */
+.shop-workbench .action-button--evolve:not(:disabled) :is(b, strong, small, em, i),
+.action-button--evolve:not(:disabled) :is(b, strong, small, em, i) {
+  color: #f3e2b4 !important;
+}
+
+/* 비활성일 때는 바탕이 종이색(060절 .action-button:disabled)으로 바뀌므로
+   위 밝은 글자를 얹으면 안 된다 — 그때는 공통 비활성 색(#4a4336)에 맡긴다. */
+.shop-workbench .action-button--evolve:disabled :is(b, strong, small, em, i),
+.action-button--evolve:disabled :is(b, strong, small, em, i) {
+  color: #4a4336 !important;
+}
+
+/* 성어 추적 배지·단추 — 성어 강조색(--goal-accent)을 78% 섞으면 밝은 하늘색
+   위에 흰 글자(2.3~2.9:1). 어두운 쪽을 더 섞어 흰 글자가 서게 한다. */
+.goal-idiom-track[aria-pressed="true"],
+.goal-detail-track.is-on {
+  color: #fff6e2 !important;
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--goal-accent) 52%, #1d160f) 0%,
+    color-mix(in srgb, var(--goal-accent) 36%, #14100a) 100%
+  ) !important;
+}
+
+.goal-idiom-card > mark {
+  color: #fff6e2 !important;
+  background: color-mix(in srgb, var(--goal-accent) 40%, #1d160f) !important;
+}
+
+/* ── ④ 종이 위의 오행색·별색 글자 ───────────────────────────────
+   오행색(ELEMENT_STYLES)과 별색(CASUAL_STAR_COLORS)은 어두운 전장 위에서 빛나게
+   고른 파스텔이라, 종이 위에 글자로 앉히면 3.5~4.2:1 로 처진다(문기 「金0」·
+   희귀도 표의 ★). 색 자체는 전장과 같아야 하니 값을 안 바꾸고, 종이 위에서만
+   한 단 어둡게 거른다 — 색상은 남고 밝기만 내려간다. */
+#essence-total-value > i,
+.casual-rarity-rule > i > b,
+.stage-weakness-seal > b {
+  filter: brightness(0.72) saturate(1.25);
+}
+
+/* ── 다시 재기 ─────────────────────────────────────────────────
+   e2e 임시 스펙으로 열세 상태를 찍고 글자 상자(경로·색·크기·좌표)를 JSON 으로
+   남긴 뒤, PIL 로 상자 안 픽셀에서 배경을 추정해 대비를 센다. 가려진 글자는
+   elementFromPoint 로 걸러야 하고(제목 막 뒤의 패널 글자가 잡힌다), 상단 띠는
+   pointer-events:none 이라 재는 동안 켜 줘야 한다. 기준: 4.5 / 큰·굵은 글자 3.0. */

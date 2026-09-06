@@ -1,0 +1,87 @@
+/*
+ * 집자소 첫걸음(v037, panels/soul-tutor.ts) — 창 안에 사는 코치.
+ *
+ * 창(dialog)은 최상위 층이라 셸의 #coach-layer 가 위에 설 수 없다. 코치의 시각
+ * 언어(먹빛 말풍선 · 금테 링)를 그대로 옮기되 좌표는 창 기준이다.
+ */
+.soul-dialog {
+  position: relative;
+}
+
+.soul-tutor-ring {
+  position: absolute;
+  z-index: 8;
+  border-radius: 6px;
+  box-shadow: 0 0 0 2px var(--gold-400), 0 0 0 6px rgba(176, 138, 69, 0.28), 0 0 18px rgba(176, 138, 69, 0.45);
+  pointer-events: none;
+  animation: soul-tutor-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes soul-tutor-pulse {
+  0%, 100% { box-shadow: 0 0 0 2px var(--gold-400), 0 0 0 6px rgba(176, 138, 69, 0.28), 0 0 18px rgba(176, 138, 69, 0.45); }
+  50% { box-shadow: 0 0 0 2px var(--gold-400), 0 0 0 9px rgba(176, 138, 69, 0.14), 0 0 26px rgba(176, 138, 69, 0.6); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .soul-tutor-ring { animation: none; }
+}
+
+.soul-tutor {
+  position: absolute;
+  z-index: 9;
+  width: 272px;
+  padding: var(--sp-3) var(--sp-3) var(--sp-2);
+  clip-path: var(--clip-cut-sm);
+  background:
+    var(--grain),
+    linear-gradient(180deg, #33291c 0%, #1d1710 52%, #14100b 100%);
+  box-shadow: var(--bevel-up), 0 0 0 1px rgba(122, 90, 42, 0.42), var(--lift-2);
+  color: var(--ji-500);
+}
+
+.soul-tutor .eyebrow {
+  margin: 0 0 4px;
+  color: var(--gold-600);
+  font-size: 10.5px;
+  letter-spacing: 0.08em;
+}
+
+.soul-tutor .eyebrow span {
+  margin-left: 6px;
+  color: var(--ji-800);
+  letter-spacing: 0;
+}
+
+.soul-tutor > b {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--gold-700);
+  font-size: var(--fs-md);
+  font-weight: 900;
+  line-height: 1.3;
+}
+
+.soul-tutor > p:not(.eyebrow) {
+  margin: 0 0 var(--sp-2);
+  color: var(--ji-600);
+  font-size: var(--fs-xs);
+  line-height: 1.5;
+}
+
+.soul-tutor > button {
+  display: block;
+  margin-left: auto;
+  padding: 4px 10px;
+  border: 1px solid rgba(201, 183, 143, 0.4);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--ji-700);
+  font-size: 11.5px;
+  cursor: pointer;
+}
+
+.soul-tutor > button:hover,
+.soul-tutor > button:focus-visible {
+  border-color: var(--gold-400);
+  color: var(--gold-700);
+}

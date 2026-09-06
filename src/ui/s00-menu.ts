@@ -130,8 +130,13 @@ export function syncTitleModeSelection(): void {
   // 개발용 표현(심사·제출)은 dev 모드에서만 남긴다. 플레이어에게는
   // "무엇이 가장 잘 갖춰져 있는가"만 말한다.
   const devLabels = shell.dataset.devMode === "1";
+  /*
+   * v037: 「가장 완성된 콘텐츠」가 진법 목패의 [미리 해보기] 배지와 한 줄에 서서
+   * 서로 모순으로 읽혔다(페르소나 실측). 완성도는 **지역**의 말이고 미리 해보기는
+   * **진법**의 말이다 — 지역 쪽 말만 남기고 무엇이 완성됐는지를 적는다.
+   */
   must<HTMLElement>("#title-note").textContent = ctx.selectedRegion === "KR"
-    ? devLabels ? "심사 권장 · 현재 제출 기준 콘텐츠" : "가장 완성된 콘텐츠"
+    ? devLabels ? "심사 권장 · 현재 제출 기준 콘텐츠" : "천자문 1,000자 도감·풀이가 갖춰진 지역"
     : "미리 해보기 · 도감·현지화·밸런스 보강 중";
 }
 

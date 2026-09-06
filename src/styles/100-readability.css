@@ -245,7 +245,7 @@
 }
 
 .summon-result-card small {
-  color: #6d5a3c !important;
+  color: #5b4b30 !important;
   font-size: 11.5px !important;
 }
 
@@ -383,7 +383,7 @@
 }
 
 .action-button b { color: #2e2212; }
-.action-button :is(small, em, i) { color: #6d5a3c; }
+.action-button :is(small, em, i) { color: #5b4b30; }
 .action-button .hotkey {
   color: #7a5a26;
   background: rgba(122, 90, 42, 0.16);
@@ -497,7 +497,7 @@
 }
 
 .concentration-target-list > button small {
-  color: #6d5a3c !important;
+  color: #5b4b30 !important;
   font-size: 10.5px !important;
 }
 
@@ -551,7 +551,7 @@
 }
 
 .concentration-guide {
-  color: #6d5a3c !important;
+  color: #5b4b30 !important;
   font-size: 11.5px !important;
   line-height: 1.5;
 }
@@ -596,7 +596,7 @@
 /* 빈 목록 안내 둘째 줄이 흐릿하게 잘리던 것 */
 .growth-dismantle-list :is(p, span, small),
 .dismantle-workbench .empty-note {
-  color: #6d5a3c !important;
+  color: #5b4b30 !important;
   font-size: 11px !important;
   line-height: 1.45;
   white-space: normal;
@@ -611,7 +611,7 @@
    접두 !important 가 74절 종이 카드 규칙을 눌러온 탓이라 같은 접두로 되돌린다.
    (오행진 해금·강화 오행 탭은 여전히 어두운 판이므로 건드리지 않는다) */
 .shop-workbench .action-button:not(:disabled) b { color: #2e2212 !important; }
-.shop-workbench .action-button:not(:disabled) :is(strong, small, em, i) { color: #6d5a3c !important; }
+.shop-workbench .action-button:not(:disabled) :is(strong, small, em, i) { color: #5b4b30 !important; }
 .shop-workbench .action-button:not(:disabled) .hotkey { color: #7a5a26 !important; }
 .shop-workbench .action-button--summon:not(:disabled) b { color: #2b2009 !important; }
 .shop-workbench .action-button--summon:not(:disabled) :is(small, em) { color: #5c4312 !important; }
@@ -646,7 +646,7 @@
 .casual-rarity-rule { min-height: 46px !important; }
 
 .casual-rarity-rule > span b { color: #2e2212 !important; font-size: 11px !important; }
-.casual-rarity-rule > span small { color: #6d5a3c !important; font-size: 11px !important; }
+.casual-rarity-rule > span small { color: #5b4b30 !important; font-size: 11px !important; }
 
 .casual-rarity-rule > i {
   min-height: 38px !important;
@@ -658,7 +658,7 @@
 }
 
 .casual-rarity-rule > i b { color: color-mix(in srgb, var(--star) 46%, #241c0e) !important; font-size: 11px !important; }
-.casual-rarity-rule > i small { color: #6d5a3c !important; font-size: 11px !important; }
+.casual-rarity-rule > i small { color: #5b4b30 !important; font-size: 11px !important; }
 
 /* 3체 슬롯 — 본체(남김)는 청록, 재료(소모)는 인주 왼줄 */
 .casual-fusion-slot.is-core {
@@ -674,24 +674,24 @@
 .casual-fusion-slot.is-material > span em { color: #8e2a1e !important; }
 .casual-fusion-slot > b { color: color-mix(in srgb, var(--star) 42%, #241c0e) !important; }
 .casual-fusion-slot > div strong { color: #2e2212 !important; font-size: 11px !important; }
-.casual-fusion-slot > div small { color: #6d5a3c !important; font-size: 11px !important; }
+.casual-fusion-slot > div small { color: #5b4b30 !important; font-size: 11px !important; }
 .casual-fusion-slot:not(.is-filled) > b { color: #5f5341 !important; }
 .casual-fusion-slot:not(.is-filled) > strong { color: #4a3f30 !important; font-size: 11px !important; }
-.casual-fusion-slot:not(.is-filled) > small { color: #6d5a3c !important; font-size: 11px !important; }
+.casual-fusion-slot:not(.is-filled) > small { color: #5b4b30 !important; font-size: 11px !important; }
 
 /* 승급 결과 */
 .casual-fusion-result {
   box-shadow: var(--bevel-up), 0 0 0 2px color-mix(in srgb, var(--star) 46%, rgba(122, 90, 42, 0.5)) !important;
 }
 
-.casual-fusion-result > span { color: #6d5a3c !important; font-size: 11px !important; }
+.casual-fusion-result > span { color: #5b4b30 !important; font-size: 11px !important; }
 .casual-fusion-result > b { color: #2e2212 !important; }
 .casual-fusion-result > strong { color: color-mix(in srgb, var(--star) 46%, #241c0e) !important; }
-.casual-fusion-result > small { color: #6d5a3c !important; font-size: 11px !important; }
+.casual-fusion-result > small { color: #5b4b30 !important; font-size: 11px !important; }
 
 /* "?★" 는 아무 정보도 주지 않아 문장으로 바꿨다 — 18px 자리에 들어가게 줄인다 */
 .casual-fusion-result > strong.is-placeholder {
-  color: #6d5a3c !important;
+  color: #5b4b30 !important;
   font-size: 11px !important;
   font-weight: 800;
   line-height: 1.3;
@@ -735,7 +735,7 @@
 /* 보유 자령 후보 카드 */
 .evolution-options .casual-fusion-tower > b { color: color-mix(in srgb, var(--star) 42%, #241c0e) !important; }
 .evolution-options .casual-fusion-tower strong { color: #2e2212 !important; font-size: 11px !important; }
-.evolution-options .casual-fusion-tower small { color: #6d5a3c !important; font-size: 11px !important; }
+.evolution-options .casual-fusion-tower small { color: #5b4b30 !important; font-size: 11px !important; }
 .evolution-options .casual-fusion-tower > em { color: #5c4a1f !important; font-size: 11px !important; }
 .evolution-options .casual-fusion-tower.is-core > em { color: #1f5645 !important; }
 .evolution-options .casual-fusion-tower.is-material > em { color: #8e2a1e !important; }
@@ -808,7 +808,7 @@
 }
 
 #settings-dialog .audio-settings-heading { color: #2e2212 !important; }
-#settings-dialog .audio-settings-heading small { color: #6d5a3c !important; font-size: 11px !important; }
+#settings-dialog .audio-settings-heading small { color: #5b4b30 !important; font-size: 11px !important; }
 
 #settings-dialog .audio-setting-row {
   border: 0 !important;
@@ -817,7 +817,7 @@
 }
 
 #settings-dialog .audio-setting-row > span b { color: #2e2212 !important; }
-#settings-dialog .audio-setting-row > span small { color: #6d5a3c !important; font-size: 11px !important; }
+#settings-dialog .audio-setting-row > span small { color: #5b4b30 !important; font-size: 11px !important; }
 #settings-dialog .audio-setting-row label { color: #4a3f30 !important; font-size: 11px !important; }
 #settings-dialog .audio-setting-row output { color: #5c4a1f !important; font-size: 11px !important; }
 
@@ -899,7 +899,7 @@
 
 #codex-detail .idiom-material-guide button b { color: color-mix(in srgb, var(--codex) 44%, #241c0e) !important; }
 #codex-detail .idiom-material-guide button span { color: #2e2212 !important; font-size: 11px !important; }
-#codex-detail .idiom-material-guide button small { color: #6d5a3c !important; font-size: 11px !important; }
+#codex-detail .idiom-material-guide button small { color: #5b4b30 !important; font-size: 11px !important; }
 
 /* (B6) 자령 도감 카드 분류줄 — 금색이라 종이 위에서 흐렸다 */
 span.codex-jaryeong-category { color: #4a3f30 !important; }
@@ -986,7 +986,7 @@ span.codex-jaryeong-category { color: #4a3f30 !important; }
 #help-dialog .help-quickstart > small {
   grid-column: 1 / -1;
   margin-top: 2px;
-  color: #6d5a3c !important;
+  color: #5b4b30 !important;
   font-size: 11.5px;
   line-height: 1.5;
 }
@@ -1016,7 +1016,7 @@ span.codex-jaryeong-category { color: #4a3f30 !important; }
 .growth-element-tabs button span { color: #3a2c16 !important; }
 
 .growth-workbench .growth-element-tabs button small,
-.growth-element-tabs button small { color: #6d5a3c !important; }
+.growth-element-tabs button small { color: #5b4b30 !important; }
 
 .growth-element-tabs button:hover {
   background: linear-gradient(180deg, #f9f0d9 0%, #eadec0 100%) !important;
@@ -1045,7 +1045,7 @@ span.codex-jaryeong-category { color: #4a3f30 !important; }
   filter: none !important;
 }
 
-.growth-trait-row.is-locked :is(strong, span, small) { color: #6d5a3c !important; }
+.growth-trait-row.is-locked :is(strong, span, small) { color: #5b4b30 !important; }
 .growth-trait-row.is-locked .trait-seal b { color: #5f5341 !important; }
 
 /* 섹션 헤더는 오행 탭 클릭의 착지점이다 */

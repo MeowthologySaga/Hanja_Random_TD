@@ -56,10 +56,19 @@ describe("수련장 엔진 훅", () => {
     const engine = beginEngine(true);
     expect(engine.summon().ok).toBe(true);
     expect(engine.startWaveEarly().ok).toBe(true);
-    // 잔존 합류 시계(20초)를 훌쩍 넘겨도 다음 웨이브가 겹쳐 오지 않는다.
-    for (let frame = 0; frame < 450; frame += 1) engine.update(0.1);
+    /*
+     * 잔존 합류 시계(20초)를 훌쩍 넘겨도 다음 웨이브가 겹쳐 오지 않는다 — 합류
+     * 시계는 한 프레임도 서지 않는다. 개문 램프(v037) 뒤로는 1기로도 첫 웨이브가
+     * 전멸로 끝나 준비 단계가 오므로, 끝나는 길이 「전멸→준비」뿐임을 본다.
+     */
+    let cleared = false;
+    for (let frame = 0; frame < 450 && !cleared; frame += 1) {
+      engine.update(0.1);
+      expect(engine.state.nextWaveRemaining).toBeNull();
+      if (engine.state.phase === "prep") cleared = true;
+    }
     expect(engine.state.wave).toBe(1);
-    expect(engine.state.nextWaveRemaining).toBeNull();
+    if (!cleared) expect(engine.state.phase).toBe("combat");
   });
 
   it("수련장 웨이브는 수량·체력이 완화 계수만큼 줄어든다", () => {

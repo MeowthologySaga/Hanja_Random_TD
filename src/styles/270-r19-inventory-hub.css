@@ -67,7 +67,7 @@
 
 .run-inventory-detail-empty {
   margin: auto 0;
-  color: #7b6a4c;
+  color: #66563a;
   text-align: center;
 }
 
@@ -162,7 +162,7 @@
 }
 
 .run-inventory-detail-card > em {
-  color: #7b6a4c;
+  color: #66563a;
   font-size: 10.5px;
   font-style: normal;
   font-weight: 800;
@@ -180,7 +180,7 @@
 }
 
 .run-inventory-detail-eyebrow {
-  color: #7b6a4c;
+  color: #66563a;
   font-size: 10.5px;
   font-weight: 800;
 }
@@ -207,7 +207,7 @@
 
 .run-inventory-detail-bulk em {
   margin-top: 4px;
-  color: #7b6a4c;
+  color: #66563a;
   font-size: 10px;
   font-style: normal;
   font-weight: 700;
@@ -343,7 +343,7 @@
   height: 16px;
   padding: 0 3px;
   place-items: center;
-  color: #7b6a4c;
+  color: #66563a;
   font-size: 9.5px !important;
   font-weight: 900;
   border-radius: 3px;

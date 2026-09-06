@@ -98,7 +98,7 @@
 }
 
 .run-inventory-chips button small {
-  color: #7b6a4c;
+  color: #66563a;
   font-size: 10.5px;
   font-weight: 800;
 }
@@ -227,7 +227,7 @@
 }
 
 #run-inventory-layout .run-inventory-card small {
-  color: #7b6a4c;
+  color: #66563a;
   font-size: 9px !important;
   font-weight: 700;
   line-height: 1.2;
@@ -312,7 +312,7 @@
   flex-direction: column;
   gap: 8px;
   min-height: 220px;
-  color: #7b6a4c;
+  color: #66563a;
   text-align: center;
 }
 

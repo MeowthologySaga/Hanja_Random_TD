@@ -1,8 +1,7 @@
 /*
  * 첫 판 안내 코치.
  */
-import { ctx, must, shell } from "./app-context";
-import { hideSummonReveal } from "./summon-reveal";
+import { ctx, must, shell, summonReveal } from "./app-context";
 
 /*
  * 첫 실행 조작 안내.
@@ -13,7 +12,8 @@ import { hideSummonReveal } from "./summon-reveal";
  */
 interface CoachStep {
   readonly target: string;
-  readonly title: string;
+  /** 진행 수를 찍는 걸음은 함수다 — 「자령 3기를 소환하세요 (1/3)」. */
+  readonly title: string | (() => string);
   readonly body: string;
   /** 조작 픽토그램(p0-ui-components-pack-v1). 글보다 먼저 읽히는 그림 한 장. */
   readonly control?: "wheel" | "click" | "drag";
@@ -36,10 +36,15 @@ const COACH_STORAGE_KEY = "hanja-td:coach-seen-v1";
 const COACH_STEPS: readonly CoachStep[] = [
   {
     target: '[data-summon-product="balanced"]',
-    title: "먼저 자령(=타워)을 소환하세요",
-    body: "엽전을 써서 자령을 뽑습니다. 첫 자령의 오행에 맞는 4×4 진이 무료로 열립니다.",
+    /*
+     * v037: 「1기 소환」으로 끝내면 시키는 대로 한 사람이 1기로 출정해 8웨이브
+     * 동안 처치 0 으로 진다(페르소나 실측). 첫 웨이브를 치우는 최소 화력은
+     * 3기다(scripts/opening-probe.ts) — 그 수를 걸음 제목에 센다.
+     */
+    title: () => `자령(=타워) 3기를 소환하세요 (${Math.min(3, ctx.engine.state.summonCount)}/3)`,
+    body: "엽전을 써서 자령을 뽑습니다. 첫 자령의 오행에 맞는 4×4 진이 무료로 열리고, 3기는 있어야 첫 웨이브를 치웁니다.",
     control: "click",
-    satisfied: () => ctx.engine.state.summonCount >= 1
+    satisfied: () => ctx.engine.state.summonCount >= 3
   },
   {
     target: "#battle-canvas",
@@ -167,6 +172,10 @@ export function layoutCoach(): void {
   bubble.style.left = `${Math.max(8, Math.min(shell.offsetWidth - bubbleWidth - 8, focusLeft + focusWidth / 2 - bubbleWidth / 2))}px`;
 }
 
+function coachTitle(step: CoachStep): string {
+  return typeof step.title === "function" ? step.title() : step.title;
+}
+
 function renderCoach(): void {
   const layer = must<HTMLElement>("#coach-layer");
   const base = COACH_STEPS[coachIndex];
@@ -179,7 +188,7 @@ function renderCoach(): void {
   layer.hidden = false;
   must<HTMLElement>("#coach-index").textContent = String(coachIndex + 1);
   must<HTMLElement>("#coach-total").textContent = String(COACH_STEPS.length);
-  must<HTMLElement>("#coach-title").textContent = step.title;
+  must<HTMLElement>("#coach-title").textContent = coachTitle(step);
   must<HTMLElement>("#coach-body").textContent = step.body;
   must<HTMLElement>("#coach-next").textContent = coachIndex === COACH_STEPS.length - 1 ? "마치기" : "다음";
   // 조작 픽토그램은 장식이므로 aria 트리에 넣지 않고 CSS ::after 로만 얹는다.
@@ -202,7 +211,12 @@ export function coachIsPointingAtBoard(): boolean {
 function enterCoachStep(): void {
   coachGestureBaseline = ctx.mapCameraGestures;
   coachResolvedTarget = COACH_STEPS[coachIndex] ? resolveCoachStep(COACH_STEPS[coachIndex]).step.target : "";
-  if (coachIsPointingAtBoard()) hideSummonReveal();
+  /*
+   * v037: 예전에는 전장 걸음에 들어서며 소환 공개 카드를 걷었다 — 그래서 **첫
+   * 소환의 카드만** 안 보였다(배우려고 온 사람이 가장 먼저 읽고 싶은 훈음).
+   * 이제 카드가 떠 있는 동안 코치가 물러서고(syncCoachProgress), 카드가 걷히면
+   * 그 걸음 그대로 다시 선다.
+   */
   renderCoach();
 }
 
@@ -243,10 +257,18 @@ export function syncCoachProgress(): void {
    * 걸음 그대로 다시 선다 — 진행을 잃지 않는다.
    */
   const layer = must<HTMLElement>("#coach-layer");
-  if (ctx.openFocusFrame !== null) {
+  const phase = ctx.engine.state.phase;
+  if (phase === "defeat" || phase === "victory") {
+    // 판이 끝났는데 2걸음 말풍선이 종료 화면 위에 남아 있었다(페르소나 실측).
+    endCoach();
+    return;
+  }
+  if (ctx.openFocusFrame !== null || summonReveal.classList.contains("is-active")) {
     layer.hidden = true;
     return;
   }
+  const title = coachTitle(base);
+  if (!layer.hidden && must<HTMLElement>("#coach-title").textContent !== title) renderCoach();
   if (layer.hidden) renderCoach();
   // 대상이 나타나거나 사라지면(소환 직후의 웨이브 시작 버튼) 문구와
   // 스포트라이트를 그 자리에서 갈아 끼운다.

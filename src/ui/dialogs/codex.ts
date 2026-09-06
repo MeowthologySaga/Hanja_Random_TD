@@ -283,6 +283,16 @@ function renderCodex(query = ""): void {
   );
   definitions = definitions.filter((definition) => definitionMatches(definition, normalized));
   definitions.sort((left, right) => {
+    /*
+     * v037: 글자 하나를 넣으면 **그 글자**가 맨 앞이다. 「乂」를 치면 父(八+乂)가
+     * 첫 자리에 서고 乂 는 둘째였다 — 첫 카드를 누른 사람은 '내가 쓴 글자가
+     * 父인가?' 하고 헷갈렸다(페르소나 실측). 부품으로 든 글자는 그 아래 선다.
+     */
+    if (normalized) {
+      const leftExact = left.char === normalized ? 0 : 1;
+      const rightExact = right.char === normalized ? 0 : 1;
+      if (leftExact !== rightExact) return leftExact - rightExact;
+    }
     if (ctx.codexMode === "hanzi" && ctx.engine.state.region === "KR") {
       const leftNumber = CHEONJAMUN_JARYEONG_DEX_BY_HANJA.get(left.char)?.number ?? Number.MAX_SAFE_INTEGER;
       const rightNumber = CHEONJAMUN_JARYEONG_DEX_BY_HANJA.get(right.char)?.number ?? Number.MAX_SAFE_INTEGER;

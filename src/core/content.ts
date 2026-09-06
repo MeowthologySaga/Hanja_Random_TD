@@ -1,5 +1,5 @@
 import { WUXING_ORDER } from "./hanzi";
-import type { EnemyArchetype, Point, WavePlan, Wuxing } from "./types";
+import type { EnemyArchetype, GameMode, Point, WavePlan, Wuxing } from "./types";
 
 export const WORLD_WIDTH = 880;
 export const WORLD_HEIGHT = 720;
@@ -43,8 +43,26 @@ export function bossHpFactorForWave(wave: number): number {
   return 6.5 + chapter * 1.25;
 }
 
-export function waveClearReward(wave: number): number {
-  return 8 + Math.floor(Math.max(0, wave - 1) / 5) * 2;
+/**
+ * 웨이브를 다 잡았을 때의 보상.
+ *
+ * v037 개문 램프(OPENING_COUNT_RAMP)는 첫 스무 웨이브의 몸수를 줄인다 — 잡을
+ * 적이 줄면 처치 엽전(1/체)과 은행 이자가 함께 줄어, 실측에서 135런 승률이
+ * 0.667 → 0.578 로 내려앉았다(KR 0.644 → 0.467). 줄어든 몸수만큼을 **방어
+ * 보상**으로 돌려준다 — 처치 엽전과 달리 웨이브를 **치웠을 때만** 오므로,
+ * 개문을 치우는 사람에게 가고 못 치우는 판에는 안 간다. 표준은 +4 로 승률 0.659 ·
+ * 지역 격차 0.022(같은 시드 135런)까지 돌아왔다. 캐주얼은 몸수 계수 0.85 라 잃는
+ * 처치 엽전이 적고 3합 경제가 엽전에 더 민감해 +4 에서 0.711(45런, 밴드 초과)로
+ * 튀었다 — 절반만 돌려준다.
+ */
+export const OPENING_CLEAR_BONUS = Object.freeze({
+  amount: { standard: 4, casual: 2 } as Record<GameMode, number>,
+  waves: 20
+} as const);
+
+export function waveClearReward(wave: number, mode: GameMode = "standard"): number {
+  const bonus = wave <= OPENING_CLEAR_BONUS.waves ? OPENING_CLEAR_BONUS.amount[mode] : 0;
+  return 8 + Math.floor(Math.max(0, wave - 1) / 5) * 2 + bonus;
 }
 
 export interface BoardFormation {
@@ -352,6 +370,42 @@ export function directionOnPath(progress: number, smoothingDistance = 36): Point
 export const EARLY_LAP_WAVES = 3;
 export const EARLY_LAP_SPEED_MULTIPLIER = 1.15;
 
+/**
+ * 개문 램프(v037) — 「2~30웨이브가 너무 강하다. 적이 너무 많고 빽빽하다」(사용자).
+ *
+ * 실측이 가리킨 뿌리는 **1웨이브가 시작 엽전으로 치워지지 않는다**는 것이었다.
+ * 42엽전을 다 써 6기를 세워도 1웨이브(8체 × 869HP)를 합류 시계(스폰 뒤 20초)
+ * 안에 못 잡고, 3기면 한 마리를 잡는 데 26초가 걸렸다. 그래서 준비 단계가
+ * 한 번도 돌아오지 않고 웨이브가 겹겹이 쌓여 5웨이브 진입 때 14~34체가
+ * 화면에 서 있었다 — 그것이 「빽빽함」의 정체다. 게이트 봇도 1웨이브를 8체
+ * 가운데 6.5체밖에 못 잡고 합류로 넘어갔다(scripts/combat-tempo.ts).
+ *
+ * 전체 체력 계수(REGION_ENEMY_HP_CURVE)는 100웨이브 승률로 고정된 값이라
+ * 건드리지 않고, **첫 서른 웨이브만** 몸수와 체력을 낮은 데서 출발시켜
+ * 30웨이브에서 원래 곡선에 합류하게 한다. 1웨이브는 몸수 0.72 × 체력 0.32
+ * ≈ 총 내구 0.23 — 3기(초당 93 피해)가 사정권 체류 95%로 20초 안에 치우는
+ * 값이다(scripts/opening-probe.ts 로 다시 잰다).
+ *
+ * 몸수 램프는 20웨이브에, 체력 램프는 30웨이브에 닿는다. 몸수는 화면의
+ * 「빽빽함」이자 글자를 읽을 여유이므로 먼저 원래대로 돌리고, 체력은 자령이
+ * 진화·강화로 세지는 속도를 따라 천천히 올린다.
+ */
+export const OPENING_COUNT_RAMP = Object.freeze({ start: 0.66, waves: 20 } as const);
+export const OPENING_HP_RAMP = Object.freeze({ start: 0.26, waves: 30 } as const);
+
+function openingRamp(wave: number, ramp: { readonly start: number; readonly waves: number }): number {
+  const t = Math.max(0, Math.min(1, (wave - 1) / (ramp.waves - 1)));
+  return ramp.start + (1 - ramp.start) * t;
+}
+
+export function openingCountRamp(wave: number): number {
+  return openingRamp(wave, OPENING_COUNT_RAMP);
+}
+
+export function openingHpRamp(wave: number): number {
+  return openingRamp(wave, OPENING_HP_RAMP);
+}
+
 export function wavePlan(wave: number): WavePlan {
   const archetype = archetypeForWave(wave);
   const boss = archetype === "boss";
@@ -386,8 +440,8 @@ export function wavePlan(wave: number): WavePlan {
 
   return {
     wave,
-    count: Math.max(1, Math.round(baseCount * countFactor)),
-    hp: baseHp * hpFactor,
+    count: Math.max(1, Math.round(baseCount * countFactor * openingCountRamp(wave))),
+    hp: baseHp * hpFactor * openingHpRamp(wave),
     speed: (0.025 + Math.min(0.015, wave * 0.00015)) * speedFactor * (wave <= EARLY_LAP_WAVES ? EARLY_LAP_SPEED_MULTIPLIER : 1),
     interval: archetype === "swarm" ? 0.38 : boss ? 0.72 : Math.max(0.42, 0.9 - wave * 0.0048),
     reward: boss ? 24 + chapter * 6 : 1 + Math.floor((wave - 1) / 25),

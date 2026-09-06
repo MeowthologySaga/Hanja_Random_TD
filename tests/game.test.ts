@@ -742,10 +742,11 @@ describe("regional recipe defense run", () => {
     engine.update(0.01);
 
     expect(engine.state.phase).toBe("prep");
-    expect(engine.state.gold).toBe(108);
+    // v037: 1웨이브 방어 보상은 8 + 개문 보정 4 = 12 (content.ts OPENING_CLEAR_BONUS).
+    expect(engine.state.gold).toBe(112);
     expect(engine.state.interestEarned).toBe(5);
-    expect(engine.state.lastMessage).toContain("보상 8엽전 · 은행 이자 +5엽전");
-    expect(engine.consumeEvents()).toContainEqual({ type: "interest", amount: 5, gold: 108 });
+    expect(engine.state.lastMessage).toContain("보상 12엽전 · 은행 이자 +5엽전");
+    expect(engine.consumeEvents()).toContainEqual({ type: "interest", amount: 5, gold: 112 });
   });
 
   it("우두머리 제한시간은 벽이 아니라 문턱이다 — 넘기면 다음 웨이브가 합류한다", () => {

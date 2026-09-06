@@ -1,0 +1,42 @@
+/* ══════════════════════════════════════════════════════
+   810. 상점 머리글 — 잘린 것처럼 보이지 않게 (v037)
+   ══════════════════════════════════════════════════════
+
+   "ui가 짤린것처럼 보이잖아"(사용자).
+
+   머리글 오른쪽에 두 줄(「천자문 1,000종」 / 「전 자령 직접 등장 · 획수별
+   1★–8★」)이 오른끝에 붙어 서 있었다. 오른쪽 여백이 0 이라 마지막 글자(★)가
+   테에 닿고, 두 줄이 제목보다 낮게 내려앉아 아래 먹선(ink-divider)에 걸치니
+   눈에는 「아래가 잘렸다」로 읽힌다.
+
+   한 줄로 붙이고(가름점), 오른쪽에 숨 쉴 여백을 주고, 제목 밑선에 맞춘다. */
+
+.shop-workbench-heading {
+  align-items: flex-end;
+  padding-right: 8px;
+}
+
+.shop-workbench-heading p {
+  display: flex !important;
+  align-items: baseline;
+  gap: 5px;
+  min-width: 0;
+  margin: 0 0 2px;
+  white-space: nowrap;
+}
+
+.shop-workbench-heading p b {
+  color: var(--gold-500) !important;
+  font-size: 11.5px !important;
+}
+
+.shop-workbench-heading p span {
+  color: var(--text-400) !important;
+  font-size: 10px !important;
+  letter-spacing: 0 !important;
+}
+
+.shop-workbench-heading p span::before {
+  content: "· ";
+  color: var(--text-400);
+}
