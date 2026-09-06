@@ -65,6 +65,48 @@ test("첫 방문에 자혼 넷을 받아 「식매식매」를 새기고 장착�
   await expect(page.locator(".soul-card")).toHaveCount(1);
 });
 
+test("말풍선과 링은 어떤 배율에서도 창 밖으로 새지 않는다", async ({ page }) => {
+  /*
+   * 셸은 창 크기에 맞춰 `transform: scale(var(--stage-scale))` 로 늘고 준다.
+   * getBoundingClientRect() 는 그 배율이 곱해진 값을 주는데, 창 안에서
+   * position:absolute 로 놓을 때 쓰는 단위는 곱해지지 않은 제 좌표계다.
+   * 그 환율을 안 나눠서 배율 1.35 짜리 큰 창에서는 664px 짜리 창의 830px
+   * 자리에 말풍선이 놓여 아래가 잘렸다("집자소 ui버그" — 사용자).
+   * 배율을 세 가지로 바꿔 가며 **자리가 배율과 무관한지**까지 본다.
+   */
+  await page.goto("/?seed=SOUL-TUTOR-SCALE");
+  await page.getByTestId("soul-archive-open").click();
+  await expect(page.locator("#soul-dialog")).toBeVisible();
+  await expect(page.getByTestId("soul-tutor")).toBeVisible();
+
+  const placements = [];
+  for (const scale of [0.6, 1, 1.35]) {
+    const placement = await page.evaluate((value) => {
+      document.querySelector<HTMLElement>(".game-shell")?.style.setProperty("--stage-scale", String(value));
+      window.dispatchEvent(new Event("resize"));
+      const dialog = document.querySelector<HTMLElement>("#soul-dialog")!;
+      const box = (element: HTMLElement): { left: number; top: number; right: number; bottom: number } => ({
+        left: element.offsetLeft,
+        top: element.offsetTop,
+        right: element.offsetLeft + element.offsetWidth,
+        bottom: element.offsetTop + element.offsetHeight
+      });
+      const fits = (rect: { left: number; top: number; right: number; bottom: number }): boolean =>
+        rect.left >= 0 && rect.top >= 0 && rect.right <= dialog.offsetWidth && rect.bottom <= dialog.offsetHeight;
+      const bubble = box(document.querySelector<HTMLElement>("#soul-tutor")!);
+      const ring = box(document.querySelector<HTMLElement>("#soul-tutor-ring")!);
+      return { bubble, ring, bubbleFits: fits(bubble), ringFits: fits(ring) };
+    }, scale);
+    expect(placement.bubbleFits, `배율 ${scale} 에서 말풍선이 창을 넘었다`).toBe(true);
+    expect(placement.ringFits, `배율 ${scale} 에서 링이 창을 넘었다`).toBe(true);
+    placements.push(placement);
+  }
+  // 제 좌표계로 놓으므로 배율이 달라도 자리는 같아야 한다.
+  expect(placements[1]?.bubble).toEqual(placements[0]?.bubble);
+  expect(placements[2]?.bubble).toEqual(placements[0]?.bubble);
+  expect(placements[2]?.ring).toEqual(placements[0]?.ring);
+});
+
 test("이미 자혼을 넷 이상 지녔으면 자혼을 더 주지 않는다", async ({ page }) => {
   await page.addInitScript((key) => {
     if (window.localStorage.getItem(key) === null) {

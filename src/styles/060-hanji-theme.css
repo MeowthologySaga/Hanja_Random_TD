@@ -367,8 +367,22 @@ body {
 .dismantle-toolbar button,
 .formation-unlock-list button,
 /* 패널 행동 자리(v036)도 같은 놋쇠다 — 바로 위 카드 안에 서는 단추라
-   결이 다르면 딴 데서 온 조각처럼 뜬다. */
-.wave-action-row > button,
+   결이 다르면 딴 데서 온 조각처럼 뜬다.
+
+   단 [시작]만은 뺀다(v038). 이 절의 background·box-shadow 는 !important 라
+   **@keyframes 를 이긴다** — 애니메이션 선언은 !important 일반 선언을 못 이긴다.
+   v036 에서 그 단추를 전장 위에서 이 줄 안으로 옮긴 순간, 130 절의 early-beacon
+   맥동이 소리 없이 죽어 형제 둘과 똑같은 놋쇠 조각이 됐다("빠른시작이 눈에 잘
+   안 띄어" — 사용자). 080-feedback-r3.css 92절 주가 같은 사고를 한 번 적어 두었다.
+   [시작]의 옷은 840 절이 입힌다.
+
+   빼는 열쇠는 **클래스(.early-start)여야 한다.** `:not(#early-button)` 로 쓰면
+   이 선택자의 특이도가 (0,1,1) → (1,1,1) 로 올라가, 같은 !important 인
+   790-wave-actions.css 의 인주 규칙 `.wave-action-row > button[data-tone="urgent"]`
+   ((0,2,1))을 역전시킨다 — 「적 한계」·「소환 · 화력 부족」 곁자리가 도로 놋쇠가
+   되면서, e2e 는 data-tone 속성만 보므로 **시험은 통과한 채 색만 조용히 죽는다.**
+   클래스로 빼면 (0,2,1) 동률이라 뒤에 오는 790 이 그대로 이긴다. */
+.wave-action-row > button:not(.early-start),
 .ability-overview > button,
 .summon-reveal > header button,
 .codex-dialog > header button {
@@ -383,7 +397,7 @@ body {
 .growth-stat-row button:hover:not(:disabled),
 .growth-trait-row button:hover:not(:disabled),
 .dismantle-toolbar button:hover:not(:disabled),
-.wave-action-row > button:hover:not(:disabled),
+.wave-action-row > button:not(.early-start):hover:not(:disabled),
 .formation-unlock-list button:hover:not(:disabled) {
   background: var(--mat-brass-hot) !important;
 }

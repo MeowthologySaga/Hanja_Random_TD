@@ -46,6 +46,7 @@ import { summonAndFocus } from "../battle/camera";
 import { setPanelTab, showToast } from "../hud";
 import { pickPanelActions } from "../wave-actions";
 import { pickTalismanVisitLine } from "../talisman-lines";
+import { readingUtterance, speakReading } from "../tts";
 import { playTalismanImpact, playTalismanRewardVisit, type TalismanRewardGrant } from "../talisman-reward";
 import { rasterizeImageAlpha, scoreTalismanDrawing, TALISMAN_THRESHOLDS, type TalismanCellGrid, type TalismanScore } from "./talisman-score";
 import { StrokeGuide } from "./stroke-guide";
@@ -385,7 +386,21 @@ function refreshCharges(): void {
  */
 export function preloadStrokeGuide(): void {
   if (!ctx.strokeOrderGuide) return;
-  void loadStrokeGlyphs().then(() => refreshStrokeGuideSheet(false));
+  void loadStrokeGlyphs().then(() => {
+    refreshStrokeGuideSheet(false);
+    /*
+     * 못 받았으면 **그렇다고 적는다.**
+     *
+     * 위 함수는 안내가 설 수 있을 때만 종이를 갈아 끼운다(wanted === available
+     * 이면 곧바로 돌아간다). 그래서 실패는 조용히 지나가고, 상태 줄은 그 종이를
+     * 세우던 순간의 문구에 그대로 멈춰 있었다 — 「받는 중입니다」에서 영영.
+     * 여태 그 자리에 실패 문구가 뜬 것은 순서 운이었다(부팅에서 이미 실패한
+     * 뒤에 종이를 세웠기 때문). loadStrokeGlyphs 는 failed 에서 다시 시도하므로
+     * 갈피에 들어설 때마다 그 운이 뒤집힌다 — 운에 기대지 않고 여기서 적는다.
+     * 먹이 얹힌 종이는 건드리지 않는다(채점·안내 문구를 덮어쓰면 안 된다).
+     */
+    if (strokeGlyphStatus() === "failed" && currentDefinition !== null && !sealed && board.isEmpty) setIdleStatus();
+  });
 }
 
 /**
@@ -452,11 +467,36 @@ function pickTalismanCue(): TalismanCue | null {
   return null;
 }
 
+/**
+ * 부적 갈피에 **들어서는 문** — 어느 단추로 왔든 여기를 지난다(v038).
+ *
+ * 여태 이 준비는 탭바 [부적] 단추의 click 리스너 안에만 있었다. 그래서 웨이브
+ * 카드 곁자리 [부적 N장]으로 들어오면 화선지가 「글자를 준비하는 중」에 멈춰
+ * 있었고, 탭바를 한 번 눌러야 비로소 글자가 떴다("부적 버튼 누르면 한자 로딩
+ * 안되는 버그" — 사용자). 실측: 곁자리 진입 시 currentChar()=null · 안내 획
+ * 0픽셀 / 탭바 진입 시 陛 · 5,959픽셀.
+ *
+ * 갈피 전환은 hud.setPanelTab 한 곳뿐이므로 준비도 거기서 한 번 부른다.
+ * **프레임 루프에 기대지 않는다** — 화면이 가려져 rAF 가 멈춘 창(백그라운드
+ * 탭)에서도 갈피는 열리고, 그때 종이가 비어 있으면 안 되기 때문이다.
+ */
+export function ensureTalismanSheet(): void {
+  if (!document.querySelector("#talisman-panel")) return;
+  ensureDefinition();
+  // 탭을 닫아 둔 사이 지나간 웨이브의 적립이 여기서 한꺼번에 들어온다.
+  refreshCharges();
+  if (!outOfCharges) refreshScore();
+  // 자료 받기는 종이를 세운 **뒤에** 건다 — 2.5MB 를 기다리느라 종이가 늦지 않게.
+  preloadStrokeGuide();
+}
+
 export function syncTalismanPanel(): void {
   if (ctx.activePanelTab !== "talisman") return;
   preloadStrokeGuide();
   syncTalismanCue();
   if (!document.querySelector("#talisman-panel")) return;
+  // 안전망 — 갈피가 열려 있는 한 글자는 서 있어야 한다(문은 아래 ensureTalismanSheet).
+  ensureDefinition();
   refreshCharges();
   // 표기 전환은 이 탭을 다시 그리지 않는다 — 읽기 줄만 따로 따라오게 한다.
   syncTalismanReading();
@@ -881,12 +921,29 @@ function grantReward(): void {
   playTalismanRewardVisit(char, wuxing, grants, goldBefore, line);
 }
 
+/**
+ * 인장이 찍히는 순간, 그 글자를 소리로 한 번 더 준다(설정 「읽기 소리내기」).
+ *
+ * 화면의 읽기 줄(#talisman-reading)이 이미 쓴 그 값을 그대로 읽는다 — 무엇을
+ * 읽을지는 core/learning 한 곳에서만 나오므로 화면과 소리가 갈라지지 않는다.
+ * 부활 부적지(dialogs/revival.ts)도 같은 완성 경로를 타므로 함께 읽힌다.
+ */
+function speakCompletedReading(): void {
+  if (!ctx.readingVoice || !currentDefinition) return;
+  const notation = ctx.engine.state.notation;
+  const info = learningInfoForNotation(notation, currentDefinition.char);
+  const utterance = readingUtterance(currentDefinition.char, notation, info.short);
+  // 중국어 목소리가 없는 기기에서는 적힌 대로(병음) 읽는 편이 침묵보다 낫다.
+  if (utterance) speakReading(utterance, info.short);
+}
+
 /** 완성 연출 — 먹선이 또렷해지고 주홍 인장이 찍힌다(calm-screen 은 맥동 없이). */
 function completeTalisman(score: TalismanScore): void {
   sealed = true;
   drawing = false;
   sealCount += 1;
   if (currentDefinition) sealedStrokeMax = Math.max(sealedStrokeMax, casualStrokeCount(currentDefinition.char) ?? 0);
+  speakCompletedReading();
   const ink = must<HTMLCanvasElement>("#talisman-ink");
   // 그린 알파를 자기 자신 위에 한 번 더 겹쳐 먹을 진하게 굳힌다.
   inkContext?.drawImage(ink, 0, 0);
@@ -1244,14 +1301,8 @@ function syncTabPresence(): void {
   button.setAttribute("aria-selected", "false");
   button.textContent = "부적";
   button.title = "부적 만들기 — 한자를 따라 써서 부적을 완성합니다";
-  button.addEventListener("click", () => {
-    setPanelTab("talisman");
-    ensureDefinition();
-    // 같은 글자로 돌아온 경우에도 제출 활성·상태 줄을 지금 먹선에 맞춘다.
-    if (!outOfCharges) refreshScore();
-    // 탭을 닫아 둔 사이 지나간 웨이브의 적립이 여기서 한꺼번에 들어온다.
-    refreshCharges();
-  });
+  // 준비는 setPanelTab(hud.ts)이 한 곳에서 한다 — 두 문이 각자 하면 또 갈라진다.
+  button.addEventListener("click", () => setPanelTab("talisman"));
   must<HTMLElement>(".panel-tabs").append(button);
 }
 

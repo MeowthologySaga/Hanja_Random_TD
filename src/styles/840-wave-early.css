@@ -1,0 +1,114 @@
+/* ══════════════════════════════════════════════════════
+   840. 패널 [시작]은 형제 사이에서 혼자 뛴다 (v038)
+   ══════════════════════════════════════════════════════
+
+   "1번 빠른시작이 눈에 잘 안 띄어. 깜박거리고 색 바뀌게 하고"(사용자).
+
+   왜 안 띄었나 — 애니메이션이 **죽어 있었다.** v036 에서 이 단추를 전장 위에서
+   패널 카드 안(#wave-action-row)으로 옮기자, 060-hanji-theme.css 의 놋쇠 규칙
+   `.wave-action-row > button { background: … !important }` 이 걸리기 시작했다.
+   `!important` 일반 선언은 **@keyframes 를 이긴다** — 그래서 130 절의 early-beacon
+   맥동이 소리 없이 무력화되고, [시작]은 곁자리 형제 둘과 똑같은 놋쇠 조각이 됐다.
+   (080-feedback-r3.css 92절 주가 같은 사고를 한 번 적어 두었는데 되풀이됐다.)
+
+   그래서 060 에서 이 단추를 `:not(.early-start)` 로 비켜 두고, 옷은 여기서
+   입힌다. **id 가 아니라 클래스로 뺀 까닭**은 060 쪽 주석에 적었다 — id 로 빼면
+   그 규칙의 특이도가 올라 790 절의 인주 !important 를 역전시켜 곁자리 색이
+   조용히 죽는다. 특이도로 이긴다 — `.wave-action-row > #early-button.early-start:not(:disabled)`
+   는 (1,3,0) 이라 900-fb6-calm 의 (1,2,0) 보다 위다. !important 는 쓰지 않는다(색만 예외:
+   080 이 color 를 !important 로 못 박아 두었다).
+
+   무엇이 바뀌나 — 금빛과 밝은 금빛 사이를 오가며 **인주색 테**가 들고 난다.
+   형광색을 새로 들이지 않고 이 게임이 이미 쓰는 두 색(놋쇠 금 · 인주 --seal)만
+   쓴다. 글자는 먹빛(#2b1d07)이라 어느 지점에서도 읽힌다 — 실측 대비: 금빛 마루
+   8.72:1 · 그 아래 가장 어두운 지점 5.70:1 · 밝아진 절반 12.50:1(모두 4.5 위). */
+
+.wave-action-row > #early-button.early-start:not(:disabled) {
+  color: #2b1d07 !important;
+  border: 0;
+  font-weight: 900;
+  background: linear-gradient(180deg, #ffeec4 0%, #dbb96e 46%, #b8934a 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 252, 240, 0.85),
+    inset 0 -2px 0 rgba(78, 58, 22, 0.5),
+    0 1px 0 rgba(0, 0, 0, 0.35);
+  animation: wave-early-beacon 1.25s ease-in-out infinite;
+}
+
+/* 카드 높이(82px)를 밀지 않도록 크기 변화는 transform 축(scale)으로만 준다 —
+   레이아웃에 영향이 없어 e2e/wave-actions 의 "카드 틀을 넘지 않는다" 가 산다. */
+@keyframes wave-early-beacon {
+  0%,
+  100% {
+    background: linear-gradient(180deg, #ffeec4 0%, #dbb96e 46%, #b8934a 100%);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 252, 240, 0.85),
+      inset 0 -2px 0 rgba(78, 58, 22, 0.5),
+      inset 0 0 0 0 rgba(159, 47, 35, 0),
+      0 1px 0 rgba(0, 0, 0, 0.35);
+    scale: 1;
+  }
+
+  50% {
+    background: linear-gradient(180deg, #fffae8 0%, #ffdd94 46%, #e0ae4e 100%);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 250, 0.95),
+      inset 0 -2px 0 rgba(78, 58, 22, 0.5),
+      inset 0 0 0 2px rgba(159, 47, 35, 0.85),
+      0 1px 0 rgba(0, 0, 0, 0.35);
+    scale: 1.03;
+  }
+}
+
+/* 손을 올리면 멈춘다 — 누르려는 순간에 흔들리면 오히려 방해다. */
+.wave-action-row > #early-button.early-start:hover:not(:disabled) {
+  background: linear-gradient(180deg, #fffdf6 0%, #ffeeba 46%, #edc673 100%);
+  animation-play-state: paused;
+}
+
+.wave-action-row > #early-button.early-start:active:not(:disabled) {
+  translate: 0 1px;
+  background: linear-gradient(180deg, #f2dcac 0%, #cfa957 46%, #a8843e 100%);
+}
+
+/*
+   과자극 방지 — 두 번 써 본 사람(data-early-calm)과 「차분한 화면」·OS 동작
+   줄이기에서는 **깜박임만** 멈춘다. 색은 그대로 남겨야 여전히 눈에 걸린다:
+   인주 테를 옅게 고정해 「이 단추가 그 단추다」를 유지한다.
+*/
+.game-shell[data-early-calm="1"] .wave-action-row > #early-button.early-start:not(:disabled),
+.game-shell[data-calm-screen="1"] .wave-action-row > #early-button.early-start:not(:disabled) {
+  animation: none;
+  scale: 1;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 252, 240, 0.85),
+    inset 0 -2px 0 rgba(78, 58, 22, 0.5),
+    inset 0 0 0 2px rgba(159, 47, 35, 0.55),
+    0 1px 0 rgba(0, 0, 0, 0.35);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wave-action-row > #early-button.early-start:not(:disabled) {
+    animation: none;
+    scale: 1;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 252, 240, 0.85),
+      inset 0 -2px 0 rgba(78, 58, 22, 0.5),
+      inset 0 0 0 2px rgba(159, 47, 35, 0.55),
+      0 1px 0 rgba(0, 0, 0, 0.35);
+  }
+}
+
+/*
+   꺼져 있을 때(교전 중)는 조용해야 한다 — 못 누르는 단추가 깜박이면 소음이다.
+   060 의 놋쇠에서 빠졌으니 꺼진 옷도 여기서 입힌다. 800-contrast 의 비활성
+   팔레트(#524839 글자 · 종이 바탕)와 같은 결이라 4.6:1 이 나온다.
+*/
+.wave-action-row > #early-button:disabled {
+  animation: none;
+  scale: 1;
+  color: #524839 !important;
+  background: linear-gradient(180deg, #ded2b4 0%, #c9bb99 100%);
+  box-shadow: inset 0 0 0 1px rgba(122, 90, 42, 0.3);
+  opacity: 1;
+}

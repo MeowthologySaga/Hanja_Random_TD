@@ -48,7 +48,7 @@ import { renderActiveIdioms, renderIdiomHud } from "./panels/idiom";
 import { renderRunInventory, setRunInventoryBulkMode } from "./panels/inventory";
 import { closeCompositionDrawer, renderCompositionDrawer, renderSelected } from "./panels/selected";
 import { renderFormationUnlocks, renderSummonShop } from "./panels/shop";
-import { syncTalismanPanel } from "./panels/talisman";
+import { ensureTalismanSheet, syncTalismanPanel } from "./panels/talisman";
 import { talismanGoldRoll } from "./talisman-reward";
 
 /*
@@ -242,6 +242,9 @@ export function setPanelTab(tab: PanelTab): void {
   } else if (tab === "growth") {
     ctx.growthRenderKey = "";
     renderGrowth();
+  } else if (tab === "talisman") {
+    // 갈피 전환은 여기 한 곳뿐이다 — 부적지 준비(글자 세우기)도 여기서 한 번만.
+    ensureTalismanSheet();
   }
   // 탭 진입은 곧 집중 프레임 진입이다. 다른 탭으로 나가면 프레임도 닫힌다.
   setFocusFrame(FOCUS_FRAME_MOUNTS.some((mount) => mount.id === tab) ? (tab as FocusFrameId) : null);

@@ -4,10 +4,11 @@
 import { type GameMode } from "../../core/types";
 import { type DisplayMode, saveDisplayMode } from "../display-mode";
 import { saveAutoPlaceSummons } from "../summon-placement";
-import { CALM_SCREEN_STORAGE_KEY, ctx, HOVER_GLYPH_STORAGE_KEY, must, reducedMotion, settingsDialog, shell, sound, STROKE_ORDER_STORAGE_KEY } from "../app-context";
+import { CALM_SCREEN_STORAGE_KEY, ctx, HOVER_GLYPH_STORAGE_KEY, must, READING_VOICE_STORAGE_KEY, reducedMotion, settingsDialog, shell, sound, STROKE_ORDER_STORAGE_KEY } from "../app-context";
 import { loadStrokeGlyphs } from "../../core/stroke-order";
 import { refreshStrokeGuideSheet } from "../panels/talisman";
 import { refreshSoulStrokeGuide } from "../panels/soul-reroll";
+import { primeVoices, speechAvailable, stopReading } from "../tts";
 import { startCoach } from "../coach";
 import { handleAction, showToast } from "../hud";
 import { openStandardModeNotice } from "./s13";
@@ -53,6 +54,44 @@ function syncCalmScreenControl(): void {
   button.classList.toggle("is-on", ctx.calmScreen);
   button.setAttribute("aria-checked", String(ctx.calmScreen));
   must<HTMLElement>("#calm-screen-toggle i em").textContent = ctx.calmScreen ? "ON" : "OFF";
+}
+
+/*
+ * 읽기 소리(TTS) — 기본 꺼짐.
+ *
+ * 무엇을 어느 말로 읽는지는 ui/tts.ts 가 혼자 안다. 여기서는 켬/끔과 저장,
+ * 그리고 끌 때 지금 말하는 것을 걷는 일만 한다.
+ */
+function syncReadingVoiceControl(): void {
+  const button = must<HTMLButtonElement>("#reading-voice-toggle");
+  button.classList.toggle("is-on", ctx.readingVoice);
+  button.setAttribute("aria-checked", String(ctx.readingVoice));
+  must<HTMLElement>("#reading-voice-toggle i em").textContent = ctx.readingVoice ? "ON" : "OFF";
+}
+
+export function setReadingVoice(enabled: boolean): void {
+  ctx.readingVoice = enabled;
+  try {
+    window.localStorage.setItem(READING_VOICE_STORAGE_KEY, String(enabled));
+  } catch {
+    // 저장이 막혀도 이번 판의 선택은 살린다(획순 안내와 같은 규범).
+  }
+  syncReadingVoiceControl();
+  if (!enabled) {
+    // 끄는 순간 말하던 것도 걷는다 — 껐는데 계속 말하면 고장으로 읽힌다.
+    stopReading();
+    showToast("읽기 소리 OFF");
+    return;
+  }
+  /*
+   * 목소리 목록은 늦게 온다(크롬은 첫 호출에 빈 배열을 준다). 켜는 이 순간
+   * 한 번 찔러 두면 정작 부적을 다 썼을 때 언어를 못 고르는 일이 없다.
+   */
+  primeVoices();
+  const ready = speechAvailable();
+  showToast(ready
+    ? "읽기 소리 ON · 부적을 완성하면 그 글자를 읽어 줍니다"
+    : "이 브라우저는 읽기 소리를 지원하지 않습니다", !ready);
 }
 
 /*
@@ -179,6 +218,7 @@ export function wireSettings1(): void {
     syncHoverGlyphControl();
     syncCalmScreenControl();
     syncStrokeOrderControl();
+    syncReadingVoiceControl();
     syncAudioControls();
     settingsDialog.showModal();
   });
@@ -215,6 +255,7 @@ export function wireSettings2(): void {
     syncHoverGlyphControl();
     syncCalmScreenControl();
     syncStrokeOrderControl();
+    syncReadingVoiceControl();
     syncAudioControls();
     settingsDialog.showModal();
   });
@@ -231,6 +272,11 @@ export function wireSettings2(): void {
   must<HTMLButtonElement>("#stroke-order-toggle").addEventListener("click", () => {
     sound.unlock();
     setStrokeOrderGuide(!ctx.strokeOrderGuide);
+    sound.playUiConfirm();
+  });
+  must<HTMLButtonElement>("#reading-voice-toggle").addEventListener("click", () => {
+    sound.unlock();
+    setReadingVoice(!ctx.readingVoice);
     sound.playUiConfirm();
   });
   must<HTMLButtonElement>("#settings-close").addEventListener("click", () => settingsDialog.close());

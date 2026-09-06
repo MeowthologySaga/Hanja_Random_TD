@@ -150,48 +150,111 @@ function enterStep(view: SoulTutorView): void {
   layoutSoulTutor();
 }
 
-/** 창 좌표계로 링과 말풍선을 놓는다. 창은 최상위 층이라 셸의 확대 배율을 안 탄다. */
+/** 말풍선 폭(px) — 830-soul-tutor.css 의 width 와 같아야 한다. */
+const BUBBLE_WIDTH = 272;
+
+/**
+ * 창의 **제 좌표계**와 화면 좌표계의 환율.
+ *
+ * 셸은 `transform: scale(var(--stage-scale))` 로 창 크기에 맞춰 늘고 준다
+ * (280-r8-stage.css). getBoundingClientRect() 는 그 배율이 **곱해진** 값을
+ * 주는데, 창 안에서 position:absolute 로 놓을 때 쓰는 단위는 배율이 **곱해지지
+ * 않은** 제 좌표계다. 이 환율을 안 나누면 배율만큼 어긋난다 —
+ * 배율 1.25 짜리 큰 창에서 말풍선이 664px 짜리 창의 830px 자리에 놓여 아래가
+ * 잘려 나갔다(사용자 제보: 「집자소 ui버그」). 코치(coach.ts)는 같은 환율을
+ * 이미 이렇게 나눈다.
+ */
+function dialogFrame(): { rect: DOMRect; scale: number; width: number; height: number } {
+  const dialogElement = must<HTMLElement>("#soul-dialog");
+  const rect = dialogElement.getBoundingClientRect();
+  const scale = rect.width > 0 && dialogElement.offsetWidth > 0 ? rect.width / dialogElement.offsetWidth : 1;
+  return { rect, scale, width: dialogElement.offsetWidth, height: dialogElement.offsetHeight };
+}
+
+/** 화면 좌표 상자를 창의 제 좌표계로 옮긴다. */
+function toDialogSpace(rect: DOMRect, frame: ReturnType<typeof dialogFrame>): { left: number; top: number; width: number; height: number } {
+  return {
+    left: (rect.left - frame.rect.left) / frame.scale,
+    top: (rect.top - frame.rect.top) / frame.scale,
+    width: rect.width / frame.scale,
+    height: rect.height / frame.scale
+  };
+}
+
+/**
+ * 링이 감쌀 상자 — 대상과 **그 대상을 자르는 스크롤 칸**의 교집합.
+ *
+ * 자혼 격자(#soul-grid)는 수백 종을 이고 있어 제 높이가 900px 를 넘지만,
+ * 실제로 보이는 것은 452px 짜리 칸(.soul-col)이 잘라 낸 부분뿐이다. 대상의
+ * 온 높이에 링을 두르면 창 밖까지 뻗은 금테가 그려진다(실측: 격자 550 ·
+ * 링 327 로 어긋남). 보이는 데까지만 두른다.
+ */
+function visibleTargetRect(target: HTMLElement): DOMRect | null {
+  const rect = target.getBoundingClientRect();
+  const clip = target.closest<HTMLElement>(".soul-col, .soul-view, .soul-dialog");
+  if (!clip) return rect;
+  const bounds = clip.getBoundingClientRect();
+  const left = Math.max(rect.left, bounds.left);
+  const right = Math.min(rect.right, bounds.right);
+  const top = Math.max(rect.top, bounds.top);
+  const bottom = Math.min(rect.bottom, bounds.bottom);
+  if (right - left < 1 || bottom - top < 1) return null;
+  return new DOMRect(left, top, right - left, bottom - top);
+}
+
+/** 창 좌표계로 링과 말풍선을 놓는다. 둘 다 창 안을 벗어나지 않는다. */
 export function layoutSoulTutor(): void {
   const step = STEPS[stepIndex];
   if (!step) return;
-  const box = must<HTMLElement>("#soul-dialog").getBoundingClientRect();
+  const frame = dialogFrame();
   const target = document.querySelector<HTMLElement>(step.target());
-  const rect = target?.getBoundingClientRect();
+  const visible = target ? visibleTargetRect(target) : null;
   const marker = ring();
   const note = bubble();
-  const noteWidth = 272;
-  if (!rect || rect.width < 1 || rect.height < 1) {
+  const noteHeight = note.offsetHeight || 140;
+  // 창 안에 반드시 남기는 자리 — 어느 갈래로 가든 마지막에 이 두 죔쇠를 통과한다.
+  const clampLeft = (value: number): number => Math.max(8, Math.min(frame.width - BUBBLE_WIDTH - 8, value));
+  const clampTop = (value: number): number => Math.max(8, Math.min(frame.height - noteHeight - 8, value));
+
+  if (!visible) {
+    // 짚을 것이 없으면 링을 걷고 말풍선만 창 아래 가운데에 세운다.
     marker.hidden = true;
-    note.style.left = `${Math.max(8, (box.width - noteWidth) / 2)}px`;
-    note.style.top = `${Math.max(8, box.height - 180)}px`;
+    note.style.left = `${clampLeft((frame.width - BUBBLE_WIDTH) / 2)}px`;
+    note.style.top = `${clampTop(frame.height - noteHeight - 24)}px`;
     return;
   }
-  const left = rect.left - box.left;
-  const top = rect.top - box.top;
+
+  const box = toDialogSpace(visible, frame);
+  /*
+   * 링은 대상보다 6px 씩 넓게 두르는데, 대상이 창 가장자리에 닿아 있으면 그
+   * 여백이 창 밖으로 삐져나간다(실측: 배율 1.35 에서 아래로 3px). 창 안으로
+   * 물린다 — 금테 한 줄이 종이 밖에 걸리는 것도 사용자 눈에는 깨진 화면이다.
+   */
+  const ringLeft = Math.max(0, box.left - 6);
+  const ringTop = Math.max(0, box.top - 6);
+  const ringRight = Math.min(frame.width, box.left + box.width + 6);
+  const ringBottom = Math.min(frame.height, box.top + box.height + 6);
   marker.hidden = false;
-  marker.style.left = `${left - 6}px`;
-  marker.style.top = `${top - 6}px`;
-  marker.style.width = `${rect.width + 12}px`;
-  marker.style.height = `${rect.height + 12}px`;
-  const noteHeight = note.offsetHeight || 140;
+  marker.style.left = `${ringLeft}px`;
+  marker.style.top = `${ringTop}px`;
+  marker.style.width = `${Math.max(0, ringRight - ringLeft)}px`;
+  marker.style.height = `${Math.max(0, ringBottom - ringTop)}px`;
+
   /*
    * 대상 **아래**가 첫 자리다 — 자혼 격자 옆(새김대)은 지금 채워지는 것을
    * 보여야 하는 자리라 가리면 안 된다. 아래에 자리가 없으면 오른쪽, 그마저
    * 없으면 왼쪽으로 물러선다.
    */
-  const belowRoom = box.height - (top + rect.height + 14) >= noteHeight + 8;
-  const rightRoom = box.width - (left + rect.width + 14) >= noteWidth + 8;
-  let noteLeft: number;
-  let noteTop: number;
-  if (belowRoom) {
-    noteLeft = Math.max(8, Math.min(box.width - noteWidth - 8, left + rect.width / 2 - noteWidth / 2));
-    noteTop = top + rect.height + 14;
-  } else {
-    noteLeft = rightRoom ? left + rect.width + 14 : Math.max(8, left - noteWidth - 14);
-    noteTop = Math.max(8, Math.min(box.height - noteHeight - 8, top + rect.height / 2 - noteHeight / 2));
-  }
-  note.style.left = `${noteLeft}px`;
-  note.style.top = `${noteTop}px`;
+  const belowRoom = frame.height - (box.top + box.height + 14) >= noteHeight + 8;
+  const rightRoom = frame.width - (box.left + box.width + 14) >= BUBBLE_WIDTH + 8;
+  const noteLeft = belowRoom
+    ? box.left + box.width / 2 - BUBBLE_WIDTH / 2
+    : rightRoom ? box.left + box.width + 14 : box.left - BUBBLE_WIDTH - 14;
+  const noteTop = belowRoom
+    ? box.top + box.height + 14
+    : box.top + box.height / 2 - noteHeight / 2;
+  note.style.left = `${clampLeft(noteLeft)}px`;
+  note.style.top = `${clampTop(noteTop)}px`;
 }
 
 /**
@@ -230,4 +293,9 @@ export function hideSoulTutor(): void {
 export function bindSoulTutor(): void {
   must<HTMLButtonElement>("#soul-tutor-skip").addEventListener("click", endTutor);
   window.addEventListener("resize", layoutSoulTutor);
+  /*
+   * 자혼 칸을 굴리면 링도 따라와야 한다 — 안 그러면 짚던 것은 위로 사라지고
+   * 금테만 허공에 남는다. 스크롤은 거품이 일지 않으므로 잡기 단계에서 듣는다.
+   */
+  must<HTMLElement>("#soul-dialog").addEventListener("scroll", () => layoutSoulTutor(), { capture: true });
 }

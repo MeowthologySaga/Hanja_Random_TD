@@ -222,6 +222,15 @@ export const TALISMAN_MODE_STORAGE_KEY = "hanja-td:talisman-mode";
  */
 export const STROKE_ORDER_STORAGE_KEY = "hanja-td:stroke-order-guide";
 
+/**
+ * 읽기 소리(TTS) 저장 키 — **기본 꺼짐**.
+ *
+ * 소리를 내는 기능은 켜 달라고 해야 켠다("기본값은 꺼져있게 해 줘" — 사용자).
+ * 그래서 저장된 값이 "true" 일 때만 켜진다. 기본 켜짐인 획순·부적 토글의
+ * `!== "false"` 와 방향이 반대라는 점을 헷갈리지 마라.
+ */
+export const READING_VOICE_STORAGE_KEY = "hanja-td:reading-voice";
+
 export const MIN_MAP_ZOOM = 0.72;
 
 export const BASE_MAP_ZOOM = 2.6;
@@ -401,6 +410,14 @@ class AppContext {
       return window.localStorage.getItem(STROKE_ORDER_STORAGE_KEY) !== "false";
     } catch {
       return true;
+    }
+  })();
+  /** 부적 완성 읽기 소리. 기본 꺼짐이라 저장된 값이 "true" 일 때만 켜진다. */
+  readingVoice = ((): boolean => {
+    try {
+      return window.localStorage.getItem(READING_VOICE_STORAGE_KEY) === "true";
+    } catch {
+      return false;
     }
   })();
   /** 부적 보상으로 얻은 기본 소환 무료권. 코어 무수정 — UI 층에서만 산다. */

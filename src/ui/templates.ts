@@ -1011,6 +1011,16 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
           <button id="sfx-mute-button" class="audio-mute-button" type="button" role="switch" aria-checked="true">ON</button>
         </div>
       </section>
+      <!--
+        읽기 소리는 부적 탭 안이 아니라 설정에 둔다 — 획순 안내와 같은 이유다.
+        부적 모드를 꺼도 부활 부적지(dialogs/revival.ts)는 서고 그 장도 인장을
+        찍으므로, 부적 모드가 꺼져 있어도 감추거나 잠그지 않는다.
+        기본은 **꺼짐**이다 — 소리를 내는 기능은 켜 달라고 해야 켠다.
+      -->
+      <button id="reading-voice-toggle" class="settings-toggle" type="button" role="switch" aria-checked="false" data-testid="reading-voice-toggle">
+        <span><b>학습 모드 · 읽기 소리내기</b><small>부적을 완성하면 그 글자의 <b>훈과 음</b>을 소리로 읽어 줍니다. 표기가 <b>중국 병음</b>이면 그 한자를 중국어 발음으로, <b>일본 음훈</b>이면 일본어 발음으로 읽습니다. 브라우저에 깔린 목소리를 쓰며, 그 언어의 목소리가 없으면 적힌 대로 읽습니다. 기본값은 꺼짐입니다.</small></span>
+        <i aria-hidden="true"><em>OFF</em></i>
+      </button>
       <button id="replay-coach-button" class="settings-toggle settings-toggle--action" type="button">
         <span><b>처음 안내 다시 보기</b><small>소환·전장 조작·웨이브 시작을 짚어 주는 3단계 안내를 다시 띄웁니다.</small></span>
         <i aria-hidden="true"><em>보기</em></i>
