@@ -92,9 +92,14 @@ test("the default-on talisman tab turns a submitted trace into a jaryeong reward
    * 돌리고, 줄인 만큼 한 장을 값지게 한다(농축 2.7배).
    */
   await expect(page.locator("#talisman-charge-count")).toHaveText("남은 부적 1장");
-  await expect(page.locator("#talisman-charge-credit")).toContainText("+1 적립");
   await expect(page.locator("#talisman-recent-reward")).toContainText("아직 없음");
-  await expect(page.locator("#talisman-economy-note")).toContainText("적이 5% 강해집니다");
+  /*
+   * v041 에서 바닥 한 줄을 **쉬운 뜻**에 내주었다("쉬운 뜻이 안 보이는 부분
+   * 아쉬워" — 사용자). 난이도 고지(적 +5%)는 문장 그대로 상태 줄의 곁말로 옮겼고,
+   * 적립 줄(+1)도 장수 표시의 곁말이 됐다 — 둘 다 세로 예산을 내주고 살아 있다.
+   */
+  await expect(page.locator("#talisman-easy-meaning")).toContainText("쉬운 뜻");
+  await expect(page.locator("#talisman-status")).toHaveAttribute("title", /적이 5% 강해집니다/);
   // 패널 세로 예산 — 부적지·바닥줄이 작업 영역을 넘겨 스크롤을 만들면 안 된다.
   const deckOverflow = await page.locator(".context-deck").evaluate((element) => element.scrollHeight - element.clientHeight);
   expect(deckOverflow).toBeLessThanOrEqual(0);

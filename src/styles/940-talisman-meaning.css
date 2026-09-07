@@ -1,0 +1,68 @@
+/* ══════════════════════════════════════════════════════
+   940. 부적지의 훈음과 쉬운 뜻 (v041)
+   ══════════════════════════════════════════════════════
+
+   "부적 기능에서 훈음이 작은 부분, 쉬운 뜻이 안 보이는 부분 아쉬워"(사용자).
+
+   ■ 훈음 11.5 → 14px
+   상자는 176px(종이 196 − 좌우 8). KR 훈음 1,000자를 캔버스로 전수 실측하면 가장
+   긴 것이 軻 「훈음 · 수레 가기 힘들 가」이고, 14px 에서 154.3px 이라 **한 자도 안
+   잘린다**(15px 여유 10.7px · 16px 부터 잘림). 그래서 14px 을 고른다.
+
+   ■ 쉬운 뜻 두 줄
+   여태 쉬운 뜻은 전장 자령 카드와 도감에만 있었다 — 정작 글자를 **손으로 쓰는**
+   자리에는 없었다. 패널 전폭 344px · 12px 로 재면 1,000자 가운데 3줄이 되는 글자가
+   없다(가장 긴 것 目 43자). 그래서 두 줄로 못 박고 넘치면 말줄임 + 곁말이다.
+
+   ■ 세로 장부 (합계 0 — .context-deck 368px 은 그대로다)
+     + 쉬운 뜻 두 줄 12px × 1.2         = +29
+     − 난이도 고지 12 + gap 2            = −14   (문구는 상태 줄 곁말로 옮겼다)
+     − 머리글 36 → 24                    = −12   (장식 부제·적립 줄을 곁말로)
+     − 종이 260 → 256                    = −4    (캔버스 논리 크기도 함께)
+   글자 상자(174)는 그대로라 붓 글자 크기는 한 픽셀도 안 변한다. */
+
+.talisman-reading {
+  font-size: 14px;
+}
+
+/*
+   머리글에서 12px 을 되찾는다 — 장식 부제(「따라 쓰는 봉인구」)와 적립 줄은 곁말로
+   옮겼다. `flex: 0 0 36px` 를 24px 로 낮추고 아래 여백을 3px 줄인다. 제목 15px 과
+   장수 표시는 그대로 남는다.
+*/
+#talisman-panel > .talisman-heading {
+  flex: 0 0 24px;
+  padding-bottom: 4px;
+}
+
+.talisman-heading > div:first-child {
+  gap: 0;
+}
+
+.talisman-heading strong {
+  line-height: 1.15;
+}
+
+.talisman-paper {
+  height: 256px;
+}
+
+.talisman-easy-meaning {
+  display: -webkit-box;
+  margin: 0;
+  overflow: hidden;
+  color: var(--text-200);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.talisman-easy-meaning > b {
+  margin-right: 5px;
+  color: var(--text-400);
+  font-size: 10.5px;
+  font-weight: 800;
+}

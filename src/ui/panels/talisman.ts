@@ -50,6 +50,7 @@ import { playTalismanImpact, playTalismanRewardVisit, type TalismanRewardGrant }
 import { rasterizeImageAlpha, scoreTalismanDrawing, TALISMAN_THRESHOLDS, type TalismanCellGrid, type TalismanScore } from "./talisman-score";
 import { StrokeGuide } from "./stroke-guide";
 import { InkBoard, paintInk } from "./ink-strokes";
+import { koreanMeaningExplanation } from "../../core/korean-meaning-explanations";
 import { loadStrokeGlyphs, paperBoxFor, strokeGlyphFor, strokeGlyphStatus } from "../../core/stroke-order";
 
 /**
@@ -60,15 +61,21 @@ import { loadStrokeGlyphs, paperBoxFor, strokeGlyphFor, strokeGlyphStatus } from
  */
 const PAPER_WIDTH = 196;
 
-const PAPER_HEIGHT = 260;
+/*
+ * [v041] 260 → 256. 쉬운 뜻 두 줄을 세우려고 세로 장부에서 마지막 4px 을 여기서
+ * 되찾는다. 캔버스 논리 크기와 화면 크기를 1:1 로 맞추는 규칙(540 절)에 따라
+ * CSS 의 `.talisman-paper { height }` 도 함께 움직인다. 제시 글자 상자(174)는
+ * 그대로라 글자 크기는 한 픽셀도 안 변한다.
+ */
+const PAPER_HEIGHT = 256;
 
 /** 제시 글자 크기 — 명세 하한 180px 을 넘긴다. */
 const GLYPH_FONT = '900 186px "Batang", "Malgun Gothic", serif';
 
 const GLYPH_CENTER_X = PAPER_WIDTH / 2;
 
-/** 위 훈음 띠·아래 인장 자리를 남기려고 중심을 살짝 아래에 둔다. */
-const GLYPH_CENTER_Y = 130;
+/** 위 훈음 띠·아래 인장 자리를 남기려고 중심을 살짝 아래에 둔다(종이 256의 절반). */
+const GLYPH_CENTER_Y = 128;
 
 /** 채점 칸 크기. 칸 양자화 + 1칸 팽창이 손떨림 허용치다(talisman-score.ts). */
 const CELL_SIZE = 8;
@@ -355,6 +362,11 @@ function syncRewardNote(): void {
       ? `다음 웨이브에 ${CHARGES_PER_WAVE}장 적립`
       : waveCredit > 0 ? `이번 웨이브 +${waveCredit} 적립` : "이번 웨이브 적립 없음";
   credit.classList.toggle("is-capped", left >= CHARGE_CAP);
+  /*
+   * [v041] 적립 줄은 감췄지만 그 사실은 남는다 — 장수 표시의 곁말로 옮겼다.
+   * 머리글에서 12px 을 되찾아 쉬운 뜻 두 줄에 내주었기 때문이다.
+   */
+  must<HTMLElement>("#talisman-charge-count").title = credit.textContent ?? "";
   const recent = must<HTMLElement>("#talisman-recent-reward");
   const text = recentRewardText();
   recent.textContent = text === "" ? "최근 보상 · 아직 없음" : `최근 보상 · ${text}`;
@@ -698,7 +710,23 @@ function syncTalismanReading(): void {
   talismanReadingKey = key;
   const info = learningInfoForNotation(notation, definition.char);
   const infoMark = notationBadgeText(info);
-  must<HTMLElement>("#talisman-reading").textContent = `${info.readingLabel} · ${info.reading}${infoMark ? ` (${infoMark})` : ""}`;
+  const readingLine = must<HTMLElement>("#talisman-reading");
+  readingLine.textContent = `${info.readingLabel} · ${info.reading}${infoMark ? ` (${infoMark})` : ""}`;
+  /*
+   * 훈음 줄은 한 줄 말줄임이다 — 일본 음훈으로 바꾸면 1,000자 가운데 886자가
+   * 넘친다(실측 최장 辱 387px vs 상자 176px). 잘리는 곳에는 전문을 되찾을 길이
+   * 있어야 한다는 규범대로 곁말을 단다.
+   */
+  readingLine.title = readingLine.textContent ?? "";
+  /*
+   * 쉬운 뜻 (v041). 코어 문장을 그대로 옮기고 라벨만 화면이 붙인다 —
+   * 전장 자령 카드가 쓰는 그 규칙이다.
+   */
+  const explanation = koreanMeaningExplanation(definition.char, info.short, info.meaning);
+  const band = must<HTMLElement>("#talisman-easy-meaning");
+  must<HTMLElement>("#talisman-easy-meaning-text").textContent = explanation.short;
+  band.title = explanation.body;
+  band.setAttribute("aria-label", `쉬운 뜻 ${explanation.short}`);
 }
 
 /** 새 글자를 부적지에 앉힌다. 먹선·인장·상태를 함께 되돌린다. */
@@ -1384,12 +1412,12 @@ export function summonWithTalismanToken(): void {
 /* ── 부팅 배선 ────────────────────────────────────────────────── */
 
 const PANEL_MARKUP = `
-  <header class="workbench-heading">
-    <div><span>따라 쓰는 봉인구</span><strong>부적 만들기</strong></div>
+  <header class="workbench-heading talisman-heading">
+    <div><strong title="따라 쓰는 봉인구">부적 만들기</strong></div>
     <div class="talisman-reward-column">
       <div id="talisman-charges" class="talisman-charges" aria-label="남은 부적 장수">
         <b id="talisman-charge-count" data-testid="talisman-charge-count">남은 부적 ${CHARGES_PER_WAVE}장</b>
-        <em id="talisman-charge-credit">이번 웨이브 +${CHARGES_PER_WAVE} 적립</em>
+        <em id="talisman-charge-credit" hidden>이번 웨이브 +${CHARGES_PER_WAVE} 적립</em>
       </div>
       <p id="talisman-recent-reward" class="talisman-recent-reward is-empty">최근 보상 · 아직 없음</p>
     </div>
@@ -1412,7 +1440,19 @@ const PANEL_MARKUP = `
       <button id="talisman-redraw" class="small-button" type="button" data-testid="talisman-redraw">다시 뽑기</button>
       <button id="talisman-submit" class="small-button talisman-submit" type="button" data-testid="talisman-submit" disabled>부적 완성</button>
     </div>
-    <p id="talisman-economy-note" class="talisman-economy-note">부적 모드에서는 적이 ${Math.round((TALISMAN_MODE_ENEMY_HP_SCALE - 1) * 100)}% 강해집니다 — 그 대신 부적 보상을 얻습니다 · 설정에서 학습부적을 켜고 끌 수 있습니다</p>
+    <!--
+      쉬운 뜻 (v041).
+
+      "부적 기능에서 훈음이 작은 부분, 쉬운 뜻이 안 보이는 부분 아쉬워"(사용자).
+      쉬운 뜻은 여태 전장 자령 카드와 도감에만 있었다 — 정작 **글자를 손으로 쓰는
+      자리**에는 없었다. 자료는 이미 코어에 있다(korean-easy-meanings, KR 1,000자
+      전수 dedicated).
+
+      두 줄로 못 박는다. 패널 전폭 344px · 12px 로 재면 1,000자 가운데 3줄이 되는
+      글자가 없다(가장 긴 것이 目 43자). 난이도 고지는 이 줄에 자리를 내주고
+      #talisman-status 의 곁말로 옮겼다 — 문장은 한 글자도 안 바뀐다.
+    -->
+    <p id="talisman-easy-meaning" class="talisman-easy-meaning"><b>쉬운 뜻</b><span id="talisman-easy-meaning-text">글자를 준비하는 중</span></p>
   </div>`;
 
 function mountTalismanPanel(): void {
@@ -1429,13 +1469,11 @@ function mountTalismanPanel(): void {
   guideContext = guide.getContext("2d");
   inkContext = ink.getContext("2d", { willReadFrequently: true });
   /*
-   * 난이도 고지는 9.5px 에 `overflow:hidden` 이라 폭이 좁으면 끝이 잘린다.
-   * 문구를 새로 짓지 않고 **같은 문자열을 곁말로 얹어** 전문을 되찾을 길을 둔다
-   * (#message-value 가 쓰는 그 규범 — 잘리는 곳에는 title 이 있어야 한다).
+   * 난이도 고지는 쉬운 뜻에 자리를 내주고 **상태 줄의 곁말**로 옮겨 왔다(v041).
+   * 문장은 한 글자도 바꾸지 않는다 — 자리만 옮긴 것이다.
    */
-  const economyNote = must<HTMLElement>("#talisman-economy-note");
-  economyNote.title = economyNote.textContent ?? "";
-  must<HTMLElement>("#talisman-status").title =
+  const economyNote = `부적 모드에서는 적이 ${Math.round((TALISMAN_MODE_ENEMY_HP_SCALE - 1) * 100)}% 강해집니다 — 그 대신 부적 보상을 얻습니다 · 설정에서 학습부적을 켜고 끌 수 있습니다`;
+  must<HTMLElement>("#talisman-status").title = economyNote + " · " +
     `획순은 자유 · 정확 ${Math.round(TALISMAN_THRESHOLDS.inside * 100)}% · 덮음 ${Math.round(TALISMAN_THRESHOLDS.coverage * 100)}% 이상이면 부적이 완성됩니다`;
   wireDrawing(ink);
   must<HTMLButtonElement>("#talisman-undo").addEventListener("click", () => {
