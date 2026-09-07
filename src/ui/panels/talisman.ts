@@ -34,6 +34,7 @@
  * state 에 먼저 얹고 즉시 소환하는 래퍼다(실패 시 얹은 엽전을 물려 권 보존).
  */
 import { casualStrokeCount } from "../../core/casual";
+import { type PickSource, pickWeighted, type RevisitEntry } from "./talisman-revisit";
 import { MAX_ENEMIES } from "../../core/content";
 import { TALISMAN_MODE_ENEMY_HP_SCALE } from "../../core/engine-tuning";
 import { type GameEngine } from "../../core/game";
@@ -165,6 +166,40 @@ const REWARD_GOLD_MAX = 14;
  * 넘지 않는 것**이 그 되돌림의 상한이고, 지금 값은 84.0 이다.
  */
 const REWARD_DENSITY = 2.7;
+
+/**
+ * 못 넘긴 글자를 적어 두는 명단 (v042) — 이 판에서만 산다.
+ *
+ * 저장본에 넣지 않는다. 재회는 「이 판」의 규칙이고, 저장 스키마를 올리면 진행 중인
+ * 이어하기가 통째로 날아간다.
+ */
+const revisitList = new Map<string, RevisitEntry>();
+
+/** 이 종이에서 빗나간 붓질 수 — 두 번을 넘으면 재회 명단에 적는다. */
+let warnedStrokes = 0;
+
+/** 지금 종이의 글자를 어디서 골랐나 — 뽑는 순간에 굳혀 두고 다시 세지 않는다. */
+let lastPickSource: PickSource | "revival" | "scripted" | "qa" | null = null;
+
+/** 그 출처를 사람 말로. [다시 뽑기] 곁말에 실린다. */
+const PICK_SOURCE_NOTE: Readonly<Record<string, string>> = Object.freeze({
+  board: "지금 전장에 선 자령의 글자입니다",
+  wave: "이번 웨이브가 데려온 글자입니다",
+  idiom: "쫓는 성어에 아직 없는 글자입니다",
+  discovered: "이 판에서 만난 적 있는 글자입니다",
+  revisit: "지난번에 못 넘긴 글자 — 다시 만납니다",
+  pool: "이 지역 로스터에서 새로 뽑았습니다",
+  revival: "마지막 한 장 — 이 판에서 가장 어려운 글자입니다",
+  scripted: "수련장이 정해 준 글자입니다",
+  qa: "검사용으로 세운 글자입니다"
+});
+
+/** 못 넘긴 글자를 명단에 적는다 — 미달 제출·다시 뽑기·획순 되돌림. */
+function noteRevisit(char: string): void {
+  if (!char) return;
+  const prior = revisitList.get(char);
+  revisitList.set(char, { fails: (prior?.fails ?? 0) + 1, lastWave: ctx.engine.state.wave });
+}
 
 /**
  * 손에 쥘 수 있는 강림부 장수 (v041).
@@ -534,27 +569,45 @@ export function syncTalismanPanel(): void {
 }
 
 /** 현재 지역 로스터에서 다음 글자를 뽑는다(직전 글자는 피한다). */
+/**
+ * 다음 글자를 고른다 — **이 판에 묶어서** (v042).
+ *
+ * 여태 활성 풀에서 균등이었다. 실측하면 그 글자가 지금 전장에 서 있을 확률 8%,
+ * 이 판에서 만난 글자일 확률 18%다 — 100웨이브를 다 써도 거의 전부 「처음 보는
+ * 글자를 한 번 베끼고 끝」이었다. 노출만 있고 재회가 없다.
+ *
+ * 지분은 60(이 판에 닿은 글자) / 25(재회 명단) / 15(균등)이고, 규칙은 창 없이
+ * 시험할 수 있게 잎 모듈(talisman-revisit)이 갖는다. 여기서는 재료만 긁어 준다.
+ *
+ * 안내를 켰으면 **획순 자료가 있는 글자**를 고르는 규칙은 그대로다(명단의 2%는
+ * 자료가 없어 안내가 못 선다). 다만 이제 그 필터는 가중 **뒤에** 걸린다.
+ */
 function pickDefinition(): HanziDefinition | null {
   const catalog = ctx.engine.catalog;
   const pool = catalog.activePool.length > 0 ? catalog.activePool : [...catalog.definitions.values()];
   if (pool.length === 0) return null;
-  if (pool.length === 1) return pool[0] ?? null;
-  /*
-   * 안내를 켰으면 **획순 자료가 있는 글자**를 고른다.
-   *
-   * 한국 명단 1000자 가운데 20자(2%)는 자료가 없어 안내가 못 선다. 쉰 장에 한
-   * 번꼴이라 사람 눈에는 "가끔 획순이 안 나온다"는 버그로 읽혔다(사용자 제보).
-   * 자료가 아직 안 왔으면 가릴 수 없으므로 예전처럼 아무나 고른다.
-   */
+  const state = ctx.engine.state;
   const preferGuided = ctx.strokeOrderGuide && strokeGlyphStatus() === "ready";
-  let fallback: HanziDefinition | null = null;
-  for (let attempt = 0; attempt < 12; attempt += 1) {
-    const candidate = pool[Math.floor(Math.random() * pool.length)] ?? null;
-    if (!candidate || candidate.char === currentDefinition?.char) continue;
-    if (!preferGuided || strokeGlyphFor(candidate.char) !== null) return candidate;
-    fallback ??= candidate;
-  }
-  return fallback ?? pool[0] ?? null;
+  const board = new Set<string>();
+  for (const tower of state.towers) board.add(tower.char);
+  for (const tower of state.inventoryTowers) board.add(tower.char);
+  const chosen = pickWeighted(
+    {
+      board: [...board],
+      waveChar: state.waveChar,
+      idiomMissing: [...ctx.engine.trackedIdiomMissingChars()],
+      discovered: state.discoveredChars
+    },
+    revisitList,
+    state.wave,
+    pool.map((entry) => entry.char),
+    (char) => !preferGuided || strokeGlyphFor(char) !== null,
+    currentDefinition?.char ?? "",
+    Math.random
+  );
+  if (!chosen) return null;
+  lastPickSource = chosen.source;
+  return catalog.definitions.get(chosen.char) ?? null;
 }
 
 function drawGlyph(context: CanvasRenderingContext2D, char: string, style: string): void {
@@ -788,8 +841,15 @@ function syncTalismanReading(): void {
 }
 
 /** 새 글자를 부적지에 앉힌다. 먹선·인장·상태를 함께 되돌린다. */
-function presentDefinition(definition: HanziDefinition): void {
+function presentDefinition(definition: HanziDefinition, source: typeof lastPickSource = lastPickSource): void {
   currentDefinition = definition;
+  /*
+   * 왜 이 글자인지를 **뽑는 순간** 굳힌다 (v042). 나중에 다시 세면 그 사이 자령이
+   * 팔렸을 때 문장이 거짓이 된다. 세로 예산은 0px — 종이의 데이터 속성과 [다시 뽑기]
+   * 의 곁말에만 적는다.
+   */
+  lastPickSource = source;
+  warnedStrokes = 0;
   sealed = false;
   guideReadyNoticeShown = false;
   // 안내를 먼저 세운 뒤 마스크를 만든다 — 마스크가 안내의 글자를 따라야 한다.
@@ -802,6 +862,8 @@ function presentDefinition(definition: HanziDefinition): void {
   syncTalismanReading();
   setIdleStatus();
   must<HTMLButtonElement>("#talisman-redraw").textContent = "다시 뽑기";
+  must<HTMLElement>("#talisman-paper").dataset.pickSource = source ?? "pool";
+  must<HTMLButtonElement>("#talisman-redraw").title = `${PICK_SOURCE_NOTE[source ?? "pool"] ?? ""} · 다른 글자를 받으려면 [다시 뽑기]`;
   syncSubmitButton(false);
   setControlsEnabled(true);
   syncRewardNote();
@@ -1027,6 +1089,8 @@ function speakCompletedReading(): void {
 /** 완성 연출 — 먹선이 또렷해지고 주홍 인장이 찍힌다(calm-screen 은 맥동 없이). */
 function completeTalisman(score: TalismanScore): void {
   sealed = true;
+  // 넘긴 글자는 명단에서 뺀다 — 재회는 못 넘긴 것에만 걸린다(v042).
+  if (currentDefinition) revisitList.delete(currentDefinition.char);
   drawing = false;
   sealCount += 1;
   if (currentDefinition) sealedStrokeMax = Math.max(sealedStrokeMax, casualStrokeCount(currentDefinition.char) ?? 0);
@@ -1103,7 +1167,7 @@ export function beginRevivalSheet(onSealed: (score: TalismanScore) => void): HTM
   );
   cancelAdvance();
   revivalHandler = onSealed;
-  presentDefinition(hardest);
+  presentDefinition(hardest, "revival");
   // 붓을 대기 전에 「무엇을 어떻게」를 말한다 — 첫 획을 긋고 나서야 뜨던 안내였다.
   const strokes = casualStrokeCount(hardest.char) ?? 0;
   setStatus(`${hardest.char} ${strokes > 0 ? `${strokes}획` : ""} — 반투명 글자를 마우스로 따라 그으세요 · 다 쓰면 [부적 완성]`, "hint");
@@ -1164,6 +1228,12 @@ function advanceStrokeGuide(): void {
       if (!sealed) dropWarnedStroke();
     }, WARN_HOLD_MS);
     setStatus(`${strokeGuide.current + 1}번째 획을 붉은 점선을 따라 끝까지 그으세요`, "hint");
+    /*
+     * 한 종이에서 두 번 넘게 빗나가면 그 글자를 재회 명단에 적는다(v042).
+     * 한 번은 손이 미끄러진 것이고, 두 번부터가 「아직 못 쓰는 글자」다.
+     */
+    warnedStrokes += 1;
+    if (warnedStrokes === 2 && currentDefinition) noteRevisit(currentDefinition.char);
     return;
   }
   /*
@@ -1183,6 +1253,8 @@ function advanceStrokeGuide(): void {
     setStatus(`${strokeGuide.total}획을 모두 그었습니다 — [부적 완성]`, "pass");
     return;
   }
+  // 획순이 거꾸로였던 글자도 「아직 못 쓰는 글자」다.
+  if (result.reversed && currentDefinition) noteRevisit(currentDefinition.char);
   setStatus(result.reversed
     ? `방향이 거꾸로였습니다 — 다음은 ${strokeGuide.current + 1}번째 획`
     : strokeStatus(), result.reversed ? "hint" : "plain");
@@ -1276,11 +1348,14 @@ function submitTalisman(): void {
   if (needed !== null && strokesOnPaper < needed) {
     setStatus(`획을 나눠 써 보세요 — ${needed}획 이상 필요 (지금 ${strokesOnPaper}획)`, "hint");
     sound.playActionOutcome(false);
+    // 못 넘긴 글자는 명단에 적어 나중에 다시 만난다(v042).
+    if (currentDefinition) noteRevisit(currentDefinition.char);
     return;
   }
   if (!score.pass) {
     setStatus(shortfallHint(score), "hint");
     sound.playActionOutcome(false);
+    if (currentDefinition) noteRevisit(currentDefinition.char);
     return;
   }
   completeTalisman(score);
@@ -1432,7 +1507,7 @@ export function prepareTalismanForTutorial(char?: string): void {
    * 글자는 호출부(각본)가 준다 — 부적 모듈이 수련장을 알 필요는 없다.
    */
   const scripted = char === undefined ? undefined : ctx.engine.catalog.definitions.get(char);
-  if (scripted) presentDefinition(scripted);
+  if (scripted) presentDefinition(scripted, "scripted");
   else ensureDefinition();
 }
 
@@ -1571,6 +1646,8 @@ function mountTalismanPanel(): void {
   must<HTMLButtonElement>("#talisman-redraw").addEventListener("click", () => {
     sound.unlock();
     cancelAdvance();
+    // 물린 글자도 「못 넘긴 것」이다 — 뽑기 전에 적는다(v042).
+    if (currentDefinition && !sealed) noteRevisit(currentDefinition.char);
     const definition = pickDefinition();
     if (definition) presentDefinition(definition);
   });
@@ -1653,9 +1730,13 @@ export function wireTalisman1(): void {
         /** 특정 글자를 강제 제시 — 최밀 글자 채점 검증·스크린샷 재현용. */
         present: (char: string) => {
           const definition = ctx.engine.catalog.definitions.get(char);
-          if (definition) presentDefinition(definition);
+          if (definition) presentDefinition(definition, "qa");
           return definition !== undefined;
         },
+        /** 지금 종이의 글자를 어디서 골랐나(v042). */
+        pickSource: () => lastPickSource,
+        /** 재회 명단 — 못 넘긴 글자와 그 횟수. */
+        revisitList: () => [...revisitList.entries()].map(([char, entry]) => ({ char, ...entry })),
         /* ── 획순 안내(선택 항목) ── */
         strokeGuide: () => ({
           available: strokeGuide.available,
