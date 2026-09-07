@@ -182,6 +182,30 @@ test("부적 갈피를 열어도 급한 것은 카드에서 보인다", async ({
   await expect(page.locator("#talisman-easy-meaning")).toBeVisible();
 });
 
+test("준비 단계가 「못 치운다」를 손이 자유로울 때 말한다", async ({ page }) => {
+  /*
+   * v042 — ①′ 「화력 부족」 칩은 `phase === "combat"` 조건이라 준비 단계에서는 한 번도
+   * 안 섰다. 그래서 화면 어디도 손이 아직 자유로울 때 부족을 말하지 않았다.
+   * 실측: 3기로 W5(정예 철갑)에 들어가면 60발을 쏘고 처치 0, 준비 복귀 3/8.
+   */
+  await openRun(page);
+  await page.getByTestId("summon-button").click();
+  await page.keyboard.press("Escape");
+  // 4웨이브 준비 — 다음이 정예 철갑(5의 배수)이다. 자령 셋에 엽전은 남겨 둔다.
+  await page.evaluate(() => {
+    const handle = (window as unknown as { __HANJA_CTX_QA__: unknown }).__HANJA_CTX_QA__;
+    const ctx = (typeof handle === "function" ? (handle as () => { engine: { state: { wave: number; phase: string; gold: number } } })() : handle) as { engine: { state: { wave: number; phase: string; gold: number } } };
+    ctx.engine.state.wave = 4;
+    ctx.engine.state.phase = "prep";
+    ctx.engine.state.gold = 400;
+  });
+  await expect.poll(async () => (await page.getByTestId("wave-action-a").textContent()) ?? "").toContain("못 치움");
+  await expect(page.getByTestId("wave-action-a")).toHaveAttribute("data-tone", "offer");
+  // 라벨이 단추 안에 든다 — 준비 단계는 단추가 셋이라 글 상자가 95px 뿐이다.
+  const overflow = await page.getByTestId("wave-action-a").evaluate((node) => node.scrollWidth - node.clientWidth);
+  expect(overflow).toBeLessThanOrEqual(0);
+});
+
 test("행동 자리는 카드 틀을 넘지 않는다", async ({ page }) => {
   await openRun(page);
   await page.getByTestId("summon-button").click();

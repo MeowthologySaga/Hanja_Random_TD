@@ -3461,6 +3461,62 @@ export class GameEngine {
    * 그 시계는 이제 벽이 아니라 문턱이라(v035 ③), 넘겨도 판은 안 끝나고 다음
    * 웨이브가 합류한다. 화면이 그 사실을 말해야 해서 밖으로 낸다.
    */
+  /**
+   * 다음 웨이브를 합류 시계(20초) 안에 못 치우는가 — **개문 전용 상대 지수** (v042).
+   *
+   * 1 이 「딱 맞음」이 아니다. 사정권 체류·약점 배수·스폰 구간이 다 빠져 있어
+   * 절대값에는 뜻이 없고, 뜻이 있는 것은 같은 판 안의 크기 비교뿐이다. 그래서
+   * 문턱은 실측 사다리로 못 박았다(WAVE_READINESS_ALERT).
+   *
+   * **1장(W1~W9) 준비 단계에서만** 돌려준다. 후반의 화력은 기술·장판·확산·별에서
+   * 나오는데 이 식은 그것을 하나도 못 본다 — 봇 승리 런에서 이 값이 W84 에 8.5 까지
+   * 뜬다(실측). 1장 안에서는 봇 9런 최대가 0.60 이라 정직하다.
+   *
+   * 수련장에서는 돌려주지 않는다 — 각본이 클릭을 묶어 둔 자리에 못 누르는 권유가
+   * 서게 된다.
+   *
+   * RNG 도 상태도 안 건드린다 — 시뮬 해시·결정성 무영향.
+   */
+  waveReadiness(): number | null {
+    if (this.state.phase !== "prep" || this.tutorial) return null;
+    if (this.state.wave < 1 || this.state.wave >= 10) return null;
+    /*
+     * 공명 보너스는 전투 캐시(combatFormationBonuses)가 들고 있는데 그 캐시는
+     * updateCombat 안에서만 갱신된다 — 준비 단계에서는 낡았다. 여기서는 공개
+     * getter(formationResonance)로 지금 값을 다시 센다.
+     */
+    const resonance = BOARD_FORMATIONS.map((_, index) => this.formationResonance(index).damageBonus);
+    let dps = 0;
+    for (const tower of this.state.towers) {
+      if (tower.cell < 0) continue;
+      const definition = definitionForTower(this.catalog, tower.definitionId);
+      const profile = definition.combat;
+      const formationIndex = Math.floor(tower.cell / CELLS_PER_FORMATION);
+      const concentration = tower.concentration ?? 0;
+      let damage = profile.baseDamage * this.towerPowerMultiplier(tower) * profile.budgetMultiplier;
+      damage *= 1 + concentration * (tower.concentrationPath === "potent" ? 0.12 : 0.055);
+      damage *= 1 + this.combinedUpgradeBonus(tower.wuxing, "damage");
+      damage *= 1 + this.totalIdiomBonus("damage");
+      damage *= 1 + this.idiomSealAttackBonus();
+      damage *= 1 + (resonance[formationIndex] ?? 0);
+      damage *= FORMATION_ROUTE_COVERAGE_MULTIPLIER[formationIndex] ?? 1;
+      if (this.state.wave <= 10 && formationIndex === this.state.startingFormationIndex) damage *= 1.15;
+      const cooldown = this.towerAttackCooldown(tower);
+      if (cooldown > 0) dps += damage / cooldown;
+    }
+    if (dps <= 0) return null;
+    const plan = this.planForWave(this.state.wave + 1);
+    const region = regionEnemyHpMultiplier(this.state.region, plan.wave, this.state.mode);
+    const talisman = this.talismanMode ? TALISMAN_MODE_ENEMY_HP_SCALE : 1;
+    // 장갑은 들어가는 피해를 깎으므로 「버텨야 할 총량」쪽에서 나눈다.
+    const armor = 1 / (1 - Math.min(0.95, plan.armor));
+    // 우두머리 웨이브의 잡졸은 우두머리 몫을 나눠 가진다(spawnEnemy 의 1/bossFactor).
+    const bulk = plan.boss
+      ? plan.hp + Math.max(0, plan.count - 1) * plan.hp / bossHpFactorForWave(plan.wave)
+      : plan.count * plan.hp;
+    return (bulk * region * talisman * armor) / (dps * WAVE_REINFORCEMENT_DELAY);
+  }
+
   bossOvertime(): boolean {
     if (this.state.phase !== "combat" || !this.currentPlan?.boss || this.state.bossDefeated) return false;
     const limit = this.bossTimeLimit(this.currentPlan.wave);

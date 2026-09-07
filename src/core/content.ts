@@ -55,6 +55,32 @@ export function bossFinalWallNotice(): string {
   return "마지막 우두머리는 제한시간을 넘기면 그 자리에서 패배합니다.";
 }
 
+/**
+ * 준비 단계에서 「못 치운다」고 말할 문턱 (v042).
+ *
+ * 이 지수는 절대값에 뜻이 없다 — 사정권 체류(실측 32~100%)·약점 배수·스폰 구간이
+ * 다 빠져 있다. 뜻이 있는 것은 **같은 판 안의 크기 비교**뿐이라 문턱을 실측 사다리로
+ * 고정한다: W4→W5 준비(KR 표준)에서 3기 2.78 · 4기 2.00 · 5기 1.60 · 6기 1.32,
+ * 봇 1장 최대 0.60(9런). 1.8 은 넉 기 이하에서만 서고 다섯 기·봇에서는 잠잠하다.
+ */
+export const WAVE_READINESS_ALERT = 1.8;
+
+/**
+ * 준비 단계의 화력 경고 — 문장은 코어가 만든다.
+ *
+ * "3기는 있어야 첫 웨이브를 치웁니다"라고 코치가 말하는데, 실측하면 3기로 W5(정예
+ * 철갑)에 들어가면 60발을 쏘고 **처치 0**이고 준비 시간이 여덟 웨이브 중 세 번만
+ * 돌아온다. 준비를 못 되찾으면 부적을 쓸 창까지 함께 잃는다. 그런데 화면 어디도
+ * 손이 아직 자유로울 때(준비 단계) 「부족하다」고 말하지 않았다.
+ */
+export function waveReadinessNotice(nextWave: number, cost: number): { label: string; title: string } {
+  return {
+    // 준비 단계는 단추가 셋이라 한 칸의 글 상자가 95px 뿐이다 — 라벨은 그 안에 든다.
+    label: `${nextWave}웨이브 못 치움`,
+    title: `지금 화력으로는 ${nextWave}웨이브를 ${WAVE_REINFORCEMENT_DELAY}초 안에 못 치웁니다. 못 치우면 다음 웨이브가 겹치고 준비 시간이 돌아오지 않습니다 · 소환 ${cost}엽전`
+  };
+}
+
 export const FORMATION_COLUMNS = 4;
 export const FORMATION_ROWS = 4;
 export const CELLS_PER_FORMATION = FORMATION_COLUMNS * FORMATION_ROWS;

@@ -16,7 +16,7 @@
  *     바뀐다 — 누르는 도중에 노드가 사라지면 click 이 아예 안 난다(제련소에서
  *     겪은 그 사고, e2e/growth-clickable.spec.ts).
  */
-import { bossClockNotice, bossOvertimeNotice, MAX_ENEMIES } from "../core/content";
+import { bossClockNotice, bossOvertimeNotice, MAX_ENEMIES, WAVE_READINESS_ALERT, waveReadinessNotice } from "../core/content";
 import { summonCost } from "../core/engine-tuning";
 import { GAME_CONFIG } from "../core/hanzi";
 import { UPGRADE_STAT_ORDER } from "../core/hanzi";
@@ -106,6 +106,30 @@ function pickPanelActions(): PanelAction[] {
       label: `소환 ${cost}엽전 · 화력 부족`,
       tone: "urgent",
       title: "적을 다 못 잡으면 다음 웨이브가 합류합니다. 자령을 더 세우세요.",
+      action: () => setTab("shop")
+    });
+  }
+
+  /*
+   * ①″ 준비 화력 (v042).
+   *
+   * ①′ 는 `phase === "combat"` 조건이라 준비 단계에서는 한 번도 안 선다 — 그래서
+   * 화면 어디도 「지금 화력으로는 다음 웨이브를 못 치운다」를 **손이 아직 자유로울
+   * 때** 말하지 않았다. 실측: 3기로 W5(정예 철갑 6체·장갑 0.298)에 들어가면 60발을
+   * 쏘고 처치 0, 준비 시간이 여덟 웨이브 중 세 번만 돌아온다.
+   *
+   * 판단도 문턱도 문장도 **코어**가 갖는다(waveReadiness · WAVE_READINESS_ALERT ·
+   * waveReadinessNotice) — 여기는 자리에 놓을 뿐이다. key 를 "summon" 으로 두는
+   * 것이 중요하다: 아래 ⑤ 의 중복 방지 문이 이 key 를 보고 소환 칩을 두 번 안 세운다.
+   */
+  const readiness = ctx.engine.waveReadiness();
+  if (readiness !== null && readiness > WAVE_READINESS_ALERT && state.gold >= cost) {
+    const notice = waveReadinessNotice(state.wave + 1, cost);
+    picks.push({
+      key: "summon",
+      label: notice.label,
+      tone: "offer",
+      title: notice.title,
       action: () => setTab("shop")
     });
   }
