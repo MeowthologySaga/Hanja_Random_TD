@@ -34,33 +34,103 @@ function modalPauseActive(): boolean {
   return document.querySelector("dialog[open]") !== null;
 }
 
-function syncPauseChip(paused: boolean, manual: boolean): void {
+function syncPauseChip(paused: boolean, manual: boolean, away: boolean): void {
   const chip = must<HTMLElement>("#pause-chip");
   if (chip.hidden !== !paused) chip.hidden = !paused;
   if (!paused) return;
-  const reason = manual ? "P 키로 계속" : "창을 닫으면 계속";
+  /*
+   * 사유를 셋으로 가른다 (v042). **손으로 세운 것을 먼저 본다** — 창을 벗어났다
+   * 돌아와도 사람이 P 로 세운 판은 계속 서 있어야 하기 때문이다.
+   */
+  const reason = manual ? "P 키로 계속" : away ? "창을 다시 누르면 계속" : "창을 닫으면 계속";
   const label = must<HTMLElement>("#pause-reason");
   if (label.textContent !== reason) label.textContent = reason;
 }
 
 export function toggleManualPause(): void {
   if (ctx.engine.state.phase !== "prep" && ctx.engine.state.phase !== "combat") return;
+  /*
+   * [v042] 창을 벗어나 서 있던 판이라면 P 는 「지금 이어라」다 — 1초 타이머를
+   * 기다리게 하면 그 키가 고장 난 것으로 읽힌다.
+   */
+  if (ctx.awayPause) {
+    clearAwayPause();
+    ctx.manualPause = false;
+    showToast("다시 진행합니다.");
+    return;
+  }
   ctx.manualPause = !ctx.manualPause;
   showToast(ctx.manualPause ? "일시정지 — P 키로 계속합니다." : "다시 진행합니다.");
+}
+
+/** 창을 벗어났다 돌아온 뒤 한 박자 — 복귀 클릭이 전장에 떨어지는 오조작을 막는다. */
+const AWAY_RESUME_DELAY_MS = 1_000;
+
+let awayResumeTimer = 0;
+
+function pauseForAway(): void {
+  if (!ctx.pauseOnBlur) return;
+  // 빠른 알트탭에서 묵은 타이머가 살아 있으면, 다시 나간 뒤 1초 만에 판이 혼자 굴러간다.
+  if (awayResumeTimer !== 0) {
+    window.clearTimeout(awayResumeTimer);
+    awayResumeTimer = 0;
+  }
+  ctx.awayPause = true;
+}
+
+function resumeFromAway(): void {
+  if (!ctx.awayPause || awayResumeTimer !== 0) return;
+  awayResumeTimer = window.setTimeout(() => {
+    awayResumeTimer = 0;
+    ctx.awayPause = false;
+    // 얼어 있던 사이가 한 프레임에 쏟아지지 않게 시계를 지금으로 되감는다.
+    ctx.lastFrame = performance.now();
+  }, AWAY_RESUME_DELAY_MS);
+}
+
+/** 설정에서 토글을 끌 때 이미 서 있던 정지까지 걷는다. */
+export function clearAwayPause(): void {
+  if (awayResumeTimer !== 0) {
+    window.clearTimeout(awayResumeTimer);
+    awayResumeTimer = 0;
+  }
+  ctx.awayPause = false;
+}
+
+/**
+ * 창을 벗어나면 멈추고, 탭이 숨으면 소리를 끈다 (v042).
+ *
+ * 40~50분(사람 손으로는 60분 남짓)짜리 한 판인데 자리를 비우는 동안에도 판이
+ * 굴러갔다 — 돌아오면 무너져 있는 것이다. 정지는 **창을 벗어남**(blur)으로, 소리는
+ * **탭이 숨음**(visibilitychange)으로 가른다: 옆 창을 쓰는 동안에도 음악은 들리는
+ * 편이 낫고, 보이지도 않는 탭에서 나는 소리는 고장으로 읽힌다.
+ */
+export function wireAwayPause(): void {
+  window.addEventListener("blur", pauseForAway);
+  window.addEventListener("focus", resumeFromAway);
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) {
+      pauseForAway();
+      sound.setAwayDuck(true);
+      return;
+    }
+    resumeFromAway();
+    sound.setAwayDuck(false);
+  });
 }
 
 export function frame(now: number): void {
   const frameWorkStartedAt = performance.now();
   const delta = Math.min(0.1, Math.max(0, (now - ctx.lastFrame) / 1000));
   const running = ctx.engine.state.phase === "prep" || ctx.engine.state.phase === "combat";
-  const paused = running && (ctx.manualPause || modalPauseActive());
+  const paused = running && (ctx.manualPause || ctx.awayPause || modalPauseActive());
   /*
    * 수련장은 그 순간만 판을 늦춘다(v041) — 연출은 실시간을 지키므로 `drawWorld`
    * 쪽 delta 는 건드리지 않는다.
    */
   const simulationDelta = paused ? 0 : delta * ctx.gameSpeed * ctx.timeDilation;
   ctx.lastFrame = now;
-  syncPauseChip(paused, ctx.manualPause);
+  syncPauseChip(paused, ctx.manualPause, ctx.awayPause);
   if (!paused) ctx.engine.update(simulationDelta);
   const audioPlan = ctx.engine.getCurrentPlan();
   sound.syncBgm({

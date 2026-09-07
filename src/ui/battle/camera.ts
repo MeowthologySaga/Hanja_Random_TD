@@ -16,6 +16,7 @@ import {
   shell,
   sound
 } from "../app-context";
+import { saveGameSpeed } from "../game-speed";
 import { handleAction, showToast } from "../hud";
 import { plaqueIsGlyphOnly } from "./draw-tower";
 
@@ -131,6 +132,8 @@ export function summonIdiomWishAndFocus(): void {
 }
 
 export function setGameSpeed(speed: GameSpeed): void {
+  // 배속은 판을 넘어 남는다(v042) — 누른 그 순간 저장한다.
+  saveGameSpeed(speed);
   ctx.gameSpeed = speed;
   const button = must<HTMLButtonElement>("#speed-button");
   button.textContent = `${speed}×`;

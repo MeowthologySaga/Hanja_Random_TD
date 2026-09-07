@@ -11,6 +11,7 @@ import { WORLD_HEIGHT, WORLD_WIDTH } from "../core/content";
 import { type CasualFusionQuote, GameEngine } from "../core/game";
 import { type IdiomDefinition, type PartialIdiomChain } from "../core/idioms";
 import { createRunSeed } from "../core/rng";
+import { type GameSpeed, loadGameSpeed } from "./game-speed";
 import { type GameMode, type NotationCode, type Point, type RegionCode, type RunPhase, type Wuxing } from "../core/types";
 import { type S00Mode } from "./asset-loader";
 import { SoundManager } from "./audio";
@@ -229,6 +230,9 @@ export const STROKE_ORDER_STORAGE_KEY = "hanja-td:stroke-order-guide";
  * 그래서 저장된 값이 "true" 일 때만 켜진다. 기본 켜짐인 획순·부적 토글의
  * `!== "false"` 와 방향이 반대라는 점을 헷갈리지 마라.
  */
+/** 창을 벗어나면 멈춤 — 기본 켜짐이라 저장된 값이 "false" 일 때만 꺼진다. */
+export const PAUSE_ON_BLUR_STORAGE_KEY = "hanja-td:pause-on-blur";
+
 export const READING_VOICE_STORAGE_KEY = "hanja-td:reading-voice";
 
 export const MIN_MAP_ZOOM = 0.72;
@@ -248,7 +252,11 @@ export function defaultMapOffset(): Point {
   };
 }
 
-export type GameSpeed = 1 | 2 | 3;
+/*
+ * [v042] 배속 타입의 정본은 `./game-speed` 로 옮겼다 — 저장 서랍이 그 값을 읽고
+ * 쓰기 때문이다. 여기서 되보내 기존 수입 경로(battle/camera 등)는 그대로 산다.
+ */
+export type { GameSpeed } from "./game-speed";
 
 /*
  * 집중 프레임(S06 강화 · S07 농축).
@@ -438,7 +446,8 @@ class AppContext {
   mapOffset: Point = defaultMapOffset();
   /** 휠 확대·축소 1회 또는 팬 1회마다 오른다. 코치 2단계 자동 진행의 근거. */
   mapCameraGestures = 0;
-  gameSpeed: GameSpeed = 1;
+  /** 배속은 사람의 설정이라 판을 넘어 남는다(v042) — 저장은 브라우저, 런 저장본이 아니다. */
+  gameSpeed: GameSpeed = loadGameSpeed();
 
   /**
    * 수련장이 그 순간만 판을 늦추는 배수(1 = 그대로) — v041.
@@ -472,6 +481,24 @@ class AppContext {
    * 종료 화면은 이미 정지 상태라 무관하다.
    */
   manualPause = false;
+
+  /** 창을 벗어나면 멈춤 — 기본 켜짐(설정에서 끌 수 있다). */
+  pauseOnBlur = ((): boolean => {
+    try {
+      return window.localStorage.getItem(PAUSE_ON_BLUR_STORAGE_KEY) !== "false";
+    } catch {
+      return true;
+    }
+  })();
+
+  /*
+   * 창을 벗어나서 선 정지 (v042).
+   *
+   * `manualPause` 와 **따로** 든다. 한 통에 담으면 복귀 타이머가 사람이 P 로 세워
+   * 둔 판까지 몰래 푼다 — 판을 읽으려고 세우고 사전을 찾으러 간 사람의 판이 등
+   * 뒤에서 굴러가는 셈이다.
+   */
+  awayPause = false;
 }
 
 /** 화면 모듈 전체가 참조를 공유하는 상태 그릇. */

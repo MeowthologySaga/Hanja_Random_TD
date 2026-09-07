@@ -13,6 +13,17 @@ export const BGM_CROSSFADE_MS = 3_000;
  * 한 글자 읽을 때마다 반주가 툭툭 끊기고, 0.5 로는 여전히 겹쳐 들린다.
  */
 export const SPEECH_DUCK_LEVEL = 0.22;
+
+/**
+ * 탭이 숨어 있는 동안 배경음에 곱하는 배수 (v042).
+ *
+ * 0 이다 — 보이지도 않는 탭에서 나는 소리는 고장으로 읽힌다. 말하기 덕킹(0.22)과
+ * **곱셈으로 독립**이라, 숨은 동안 읽기 소리가 끝나도 음악이 되살아나지 않는다.
+ */
+export const AWAY_DUCK_LEVEL = 0;
+
+/** 돌아올 때만 걸어 올린다 — 툭 켜지면 놀란다. */
+export const AWAY_DUCK_FADE_MS = 600;
 const BGM_FADE_STEP_MS = 80;
 
 export type BgmId = "menu" | "early" | "mid" | "late" | "boss" | "final";
@@ -78,6 +89,9 @@ export interface AudioDebugState {
   activeSrc: string | null;
   bgmPlaying: boolean;
   activeVolume: number;
+  /** [v042] 배경음에 곱해지는 두 배수 — `activeVolume` 은 곡이 없으면 늘 0 이라 이걸로 잰다. */
+  speechDuck: number;
+  awayDuck: number;
   lastError: string | null;
   settings: AudioSettings;
   /** Total accepted one-shot triggers since load, for headless playback assertions. */
@@ -283,6 +297,11 @@ export class SoundManager {
 
   /** 읽기 소리가 나가는 동안 배경음에 곱해지는 배수(1 = 그대로). */
   private speechDuck = 1;
+
+  /** 탭이 숨은 동안의 배수(1 = 그대로) — 말하기 배수와 따로 든다. */
+  private awayDuck = 1;
+
+  private awayDuckTimer = 0;
   private waveSfxPreloadScheduled = false;
   private targetBgmId: BgmId | null = null;
   private activeBgmId: BgmId | null = null;
@@ -407,6 +426,41 @@ export class SoundManager {
   /** 우두머리 시계가 15초·5초를 지날 때의 북 (v041) — 이미 실린 가장 무거운 한 방. */
   playBossDrum(): void {
     this.playSfx("fx-boss-drum");
+  }
+
+  /**
+   * 탭이 숨으면 배경음을 소거하고, 돌아오면 걸어 올린다 (v042).
+   *
+   * 음량이 아니라 **배수**를 움직인다 — 크로스페이드의 step 이 매 80ms `bgmVolume(id)`
+   * 를 다시 읽으므로, 두 타이머가 같은 값에 합의하고 사람이 정한 음량 설정은 그대로다.
+   *
+   * 전역 타이머를 쓴다(`window.` 접두를 안 붙인다) — 이 저장소의 vitest 는 node
+   * 환경이라 `window` 를 만지는 순간 시험이 죽는다.
+   */
+  setAwayDuck(active: boolean): void {
+    const next = active ? AWAY_DUCK_LEVEL : 1;
+    // 같은 값으로 다시 들어오면 아무 일도 하지 않는다 — 안 그러면 멀쩡히 듣던 음악이 한 번 꺼진다.
+    if (this.awayDuck === next && this.awayDuckTimer === 0) return;
+    if (this.awayDuckTimer !== 0) {
+      clearInterval(this.awayDuckTimer);
+      this.awayDuckTimer = 0;
+    }
+    if (active) {
+      this.awayDuck = AWAY_DUCK_LEVEL;
+      this.applyMixVolumes();
+      return;
+    }
+    const startedAt = performance.now();
+    const step = (): void => {
+      const progress = Math.min(1, (performance.now() - startedAt) / AWAY_DUCK_FADE_MS);
+      this.awayDuck = progress;
+      this.applyMixVolumes();
+      if (progress < 1) return;
+      clearInterval(this.awayDuckTimer);
+      this.awayDuckTimer = 0;
+    };
+    step();
+    this.awayDuckTimer = setInterval(step, BGM_FADE_STEP_MS) as unknown as number;
   }
 
   /**
@@ -597,6 +651,8 @@ export class SoundManager {
       activeSrc: this.activeBgm?.currentSrc || this.activeBgm?.src || null,
       bgmPlaying: Boolean(this.activeBgm && !this.activeBgm.paused && this.activeBgm.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA),
       activeVolume: this.activeBgm?.volume ?? 0,
+      speechDuck: this.speechDuck,
+      awayDuck: this.awayDuck,
       lastError: this.lastError,
       settings: this.audioSettings,
       sfxPlayCount: this.sfxPlayCount,
@@ -632,7 +688,7 @@ export class SoundManager {
 
   private bgmVolume(id: BgmId): number {
     if (this.settings.masterMuted || this.settings.bgmMuted) return 0;
-    return Math.min(1, this.settings.bgmVolume * BGM_MIX_LEVEL[id] * this.speechDuck);
+    return Math.min(1, this.settings.bgmVolume * BGM_MIX_LEVEL[id] * this.speechDuck * this.awayDuck);
   }
 
   /**
@@ -834,7 +890,7 @@ export class SoundManager {
     const step = (): void => {
       if (generation !== this.fadeGeneration) return;
       const progress = Math.min(1, (performance.now() - startedAt) / BGM_CROSSFADE_MS);
-      if (outgoing && outgoing !== incoming) outgoing.volume = Math.max(0, outgoingStart * (1 - progress));
+      if (outgoing && outgoing !== incoming) outgoing.volume = Math.max(0, outgoingStart * (1 - progress) * this.awayDuck);
       if (incoming && id) incoming.volume = Math.max(0, this.bgmVolume(id) * progress);
       if (progress < 1) return;
       if (this.fadeTimer !== 0) window.clearInterval(this.fadeTimer);

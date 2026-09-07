@@ -20,7 +20,7 @@ import { preloadLockSprites } from "./lock-sprites";
 import { preloadNameplateSprites } from "./nameplate-sprites";
 import { preloadP0ComponentSprites } from "./p0-component-sprites";
 import { preloadPolishSprites } from "./polish-sprites";
-import { canvas, context, initialDisplayMode, must, s00Mode, seedInput, shell } from "./app-context";
+import { canvas, context, ctx, initialDisplayMode, must, s00Mode, seedInput, shell } from "./app-context";
 import { setGameSpeed, syncMapZoomControl } from "./battle/camera";
 import { drawWorld } from "./battle/draw";
 import { layoutCoach } from "./coach";
@@ -154,7 +154,8 @@ export function wireBoot3(): void {
     warm.src = new URL(`${import.meta.env.BASE_URL}${path}`, document.baseURI).toString();
   }
   syncMapZoomControl();
-  setGameSpeed(1);
+  // [v042] 배속은 사람의 설정이라 부팅에 1× 로 되돌리지 않는다 — 저장된 값을 세운다.
+  setGameSpeed(ctx.gameSpeed);
   setDisplayMode(initialDisplayMode, false);
   syncTitleModeSelection();
   syncAudioControls();

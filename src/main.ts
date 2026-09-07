@@ -8,6 +8,7 @@ import { wireCommon1 } from "./ui/dialogs/common";
 import { wireConfirm1 } from "./ui/dialogs/confirm";
 import { wireElementUpgrade1, wireElementUpgrade2 } from "./ui/dialogs/element-upgrade";
 import { wireFormationUnlock1 } from "./ui/dialogs/formation-unlock";
+import { wireAwayPause } from "./ui/game-loop";
 import { wireHelp1, wireHelp2 } from "./ui/dialogs/help";
 import { wireS131, wireS132 } from "./ui/dialogs/s13";
 import { wireSettings1, wireSettings2, wireSettings3 } from "./ui/dialogs/settings";
@@ -68,6 +69,8 @@ wireSettings3();
 wireTalisman1();
 wireSelected3();
 wireHotkeys1();
+// 창을 벗어나면 멈추고 탭이 숨으면 소리를 끈다(v042) — 같은 window 리스너 무리다.
+wireAwayPause();
 wireS00Menu4();
 wireBoot2();
 wireDevTools1();

@@ -1045,6 +1045,10 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
         <span><b>학습 모드 · 획순 안내</b><small>따라 쓰기 판에서 획을 <b>순서대로 한 획씩</b> 짚어 줍니다. 지금 그을 획만 붉은 점선과 화살표로 서고, 제대로 그으면 그 획이 <b>정본 모양으로 정리</b>되어 종이가 깨끗하게 쌓입니다. 빗나간 붓질은 잠깐 붉게 비친 뒤 스스로 걷힙니다. 획순 자료가 있는 글자에서만 서며(명단의 94%), 없는 글자는 글자 한 장을 통째로 보여 줍니다. 처음 따라 쓰기 판을 열 때 획순 자료를 한 번 내려받습니다(약 2.5MB).</small></span>
         <i aria-hidden="true"><em>ON</em></i>
       </button>
+      <button id="pause-on-blur-toggle" class="settings-toggle" type="button" role="switch" aria-checked="true" data-testid="pause-on-blur-toggle">
+        <span><b>창을 벗어나면 멈춤</b><small>다른 창이나 다른 탭으로 옮겨 가면 판이 <b>스스로 멈춥니다</b>. 탭이 숨는 동안에는 배경음도 잦아듭니다. 돌아와 이 창을 누르면 <b>1초 뒤</b> 이어집니다 — 돌아오자마자 누른 손이 전장에 떨어지지 않게 한 박자 둡니다. 손으로 세운 정지(<b>P</b>)는 이 규칙과 상관없이 그대로 서 있습니다.</small></span>
+        <i aria-hidden="true"><em>ON</em></i>
+      </button>
       <section class="audio-settings" aria-labelledby="audio-settings-title">
         <div class="audio-settings-heading"><b id="audio-settings-title">오디오 믹스</b><small>첫 조작 뒤 재생 · 선택은 브라우저에 저장</small></div>
         <div class="audio-setting-row">

@@ -4,7 +4,8 @@
 import { type GameMode } from "../../core/types";
 import { type DisplayMode, saveDisplayMode } from "../display-mode";
 import { saveAutoPlaceSummons } from "../summon-placement";
-import { CALM_SCREEN_STORAGE_KEY, ctx, HOVER_GLYPH_STORAGE_KEY, must, READING_VOICE_STORAGE_KEY, reducedMotion, settingsDialog, shell, sound, STROKE_ORDER_STORAGE_KEY } from "../app-context";
+import { CALM_SCREEN_STORAGE_KEY, ctx, HOVER_GLYPH_STORAGE_KEY, must, PAUSE_ON_BLUR_STORAGE_KEY, READING_VOICE_STORAGE_KEY, reducedMotion, settingsDialog, shell, sound, STROKE_ORDER_STORAGE_KEY } from "../app-context";
+import { clearAwayPause } from "../game-loop";
 import { loadStrokeGlyphs } from "../../core/stroke-order";
 import { refreshStrokeGuideSheet } from "../panels/talisman";
 import { refreshSoulStrokeGuide } from "../panels/soul-reroll";
@@ -103,6 +104,32 @@ export function setReadingVoice(enabled: boolean): void {
  * 한 번만 하고, 실패하면 조용히 예전 방식으로 돌아간다 — 부적을 쓰는 도중에
  * 오류 창이 뜨는 것보다 안내가 안 서는 편이 낫다.
  */
+/**
+ * 창을 벗어나면 멈춤 (v042).
+ *
+ * 40~50분(사람 손으로는 60분 남짓)짜리 한 판인데 자리를 비우는 동안에도 판이
+ * 굴러갔다 — 돌아오면 무너져 있는 것이다. 기본은 켜짐이고, 끄면 이미 서 있던
+ * 정지까지 함께 걷는다(안 그러면 끈 뒤에도 판이 서 있어 고장으로 읽힌다).
+ */
+function syncPauseOnBlurControl(): void {
+  const button = must<HTMLButtonElement>("#pause-on-blur-toggle");
+  button.classList.toggle("is-on", ctx.pauseOnBlur);
+  button.setAttribute("aria-checked", String(ctx.pauseOnBlur));
+  must<HTMLElement>("#pause-on-blur-toggle i em").textContent = ctx.pauseOnBlur ? "ON" : "OFF";
+}
+
+function setPauseOnBlur(enabled: boolean): void {
+  ctx.pauseOnBlur = enabled;
+  try {
+    window.localStorage.setItem(PAUSE_ON_BLUR_STORAGE_KEY, String(enabled));
+  } catch {
+    // 저장이 막혀 있어도 이번 세션 동작에는 영향이 없다.
+  }
+  if (!enabled) clearAwayPause();
+  syncPauseOnBlurControl();
+  showToast(enabled ? "창을 벗어나면 판이 멈춥니다." : "창을 벗어나도 판이 계속 굴러갑니다.");
+}
+
 function syncStrokeOrderControl(): void {
   const button = must<HTMLButtonElement>("#stroke-order-toggle");
   button.classList.toggle("is-on", ctx.strokeOrderGuide);
@@ -220,6 +247,7 @@ export function wireSettings1(): void {
     syncHoverGlyphControl();
     syncCalmScreenControl();
     syncStrokeOrderControl();
+    syncPauseOnBlurControl();
     syncReadingVoiceControl();
     syncAudioControls();
     settingsDialog.showModal();
@@ -274,6 +302,11 @@ export function wireSettings2(): void {
   must<HTMLButtonElement>("#stroke-order-toggle").addEventListener("click", () => {
     sound.unlock();
     setStrokeOrderGuide(!ctx.strokeOrderGuide);
+    sound.playUiConfirm();
+  });
+  must<HTMLButtonElement>("#pause-on-blur-toggle").addEventListener("click", () => {
+    sound.unlock();
+    setPauseOnBlur(!ctx.pauseOnBlur);
     sound.playUiConfirm();
   });
   must<HTMLButtonElement>("#reading-voice-toggle").addEventListener("click", () => {

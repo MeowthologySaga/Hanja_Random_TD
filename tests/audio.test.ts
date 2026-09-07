@@ -34,6 +34,39 @@ describe("Suno audio catalog and runtime mapping", () => {
     expect(battleBgmForWave(100, true)).toBe("final");
   });
 
+  it("숨김 소거와 말하기 덕킹은 서로를 풀지 않는다", () => {
+    /*
+     * [v042] 두 배수는 곱셈으로 **독립**이어야 한다.
+     *
+     * 하나로 합치면 숨은 탭에서 읽기 소리(TTS)가 끝나는 순간 `duckForSpeech(false)`
+     * 가 소거까지 풀어 **보이지도 않는 탭에서 음악이 되살아난다.** 반대로 말하기가
+     * 걸린 채 탭을 오가면 목소리가 반주에 묻힌다.
+     */
+    const sound = new SoundManager();
+    sound.duckForSpeech(true);
+    sound.setAwayDuck(true);
+    expect(sound.getDebugState().speechDuck).toBeCloseTo(0.22, 5);
+    expect(sound.getDebugState().awayDuck).toBe(0);
+    sound.duckForSpeech(false);
+    expect(sound.getDebugState().speechDuck).toBe(1);
+    expect(sound.getDebugState().awayDuck, "말하기가 끝나도 숨김 소거는 남는다").toBe(0);
+
+    // 반대 순서도 같다 — 독립은 양방향이라야 계약이다.
+    const other = new SoundManager();
+    other.setAwayDuck(true);
+    other.duckForSpeech(true);
+    other.setAwayDuck(false);
+    expect(other.getDebugState().speechDuck, "숨김이 풀려도 말하기 덕킹은 남는다").toBeCloseTo(0.22, 5);
+  });
+
+  it("숨김 소거는 사람이 정한 음량 설정을 건드리지 않는다", () => {
+    const sound = new SoundManager();
+    const before = sound.getDebugState().settings.bgmVolume;
+    sound.setAwayDuck(true);
+    expect(sound.getDebugState().settings.bgmVolume).toBe(before);
+    expect(sound.getDebugState().awayDuck).toBe(0);
+  });
+
   it("selects the dedicated menu track for the title phase", () => {
     const sound = new SoundManager();
     sound.syncBgm({ phase: "title", wave: 1, boss: false }, 0);
