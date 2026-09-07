@@ -173,10 +173,13 @@ test("부적 갈피를 열어도 급한 것은 카드에서 보인다", async ({
   await expect(first).toContainText("적 한계");
   await expect(first).toHaveAttribute("data-tone", "urgent");
 
-  // 그리고 부적 패널이 더는 넘치지 않는다 — 난이도 고지가 제자리로 돌아온다.
+  /*
+   * 그리고 부적 패널이 더는 넘치지 않는다. 되찾은 자리는 v041 에서 **쉬운 뜻**이
+   * 이어받았고(난이도 고지는 상태 줄의 곁말로 옮겼다), 그 자리도 넘치지 않는다.
+   */
   const deck = await page.locator(".context-deck").evaluate((node) => node.scrollHeight - node.clientHeight);
   expect(deck).toBeLessThanOrEqual(0);
-  await expect(page.locator("#talisman-economy-note")).toBeVisible();
+  await expect(page.locator("#talisman-easy-meaning")).toBeVisible();
 });
 
 test("행동 자리는 카드 틀을 넘지 않는다", async ({ page }) => {

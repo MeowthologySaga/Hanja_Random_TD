@@ -562,10 +562,38 @@ export const IDIOM_SEAL_ATTACK_PER_SEAL = 0.02;
 
 export const IDIOM_SEAL_ATTACK_CAP = 0.1;
 
-// The center formation overlaps more of the loop than the east formation.
-// These small route-coverage coefficients make "which element appeared first"
-// a build choice rather than a hidden map-position difficulty roll. Once all
-// five formations are open their bonuses nearly cancel out.
+/*
+ * 진마다 경로를 덮는 넓이가 달라 첫 진이 판의 템포를 정한다 — 그 기울기를 되돌리는 계수.
+ *
+ * [v041] 손으로 맞춘 값을 **실측 역수**로 바꿨다. 사용자가 "중앙진이 너무 유리하고
+ * 어느곳 걸리냐에 따라 초보유저에게 큰 난이도 널뛰기를 줘"라고 했고, 재 보니 절반만
+ * 맞았다.
+ *
+ * ① **승패는 안 갈린다.** 첫 진을 다섯으로 고정해 135시드씩 810런을 돌리면 승률이
+ *    0.637~0.689(격차 0.052)이고 토진 대 외곽 넷의 짝지은 McNemar χ² 는 0.00·0.55·
+ *    0.15·0.14 로 임계 3.84 를 하나도 안 넘는다. 오히려 지금은 **중앙(토진)이 가장
+ *    낮은 승률**이고 가장 빠른 판이다.
+ * ② **템포는 갈린다.** 진 하나만 연 채 30웨이브를 30시드로 재면 사정권 체류율이
+ *    수진 79.8% · 토진 99.3%, 칸 하나의 죽은 시간이 17.7초 대 5.5초, 피해/틱이
+ *    1.21배 벌어진다. 초보가 느끼는 「널뛰기」의 정체가 이것이다.
+ * ③ 방향은 「중앙 유리」가 아니라 **「수진 불리」**다.
+ *
+ * **계수는 그대로 둔다 — 고치려다 되돌린 자리다.**
+ *
+ * 기하 실측의 역수([1.12, 1.06, 0.90, 1.02, 0.94])로 바꿔 보고 절반값·4분의 1값까지
+ * 세 갈래를 실제로 돌렸다. 표준은 절반값에서 오히려 좋아졌지만(승률 0.630 · 지역
+ * 격차 0.089 → **0.022**), **캐주얼이 0.556 → 0.378 로 밴드(0.45~0.70) 아래로
+ * 떨어졌다.** 4분의 1값도 같은 0.378 이라 눅여서 넘어갈 자리가 아니다 — 캐주얼은
+ * 적 체력이 표준의 3.3배라 진마다의 화력 차이에 훨씬 민감하다.
+ *
+ * 그래서 이 손질은 **캐주얼 재보정(MODE_ENEMY_HP_SCALE)을 함께 하는 별도 균형
+ * 작업**으로 미룬다. 템포 격차를 줄이는 이득이 두 모드를 다시 재는 비용을 아직
+ * 넘지 않는다 — 그리고 실측상 이 격차는 **승패를 가르지 않는다**(첫 진 고정 810런,
+ * 승률 격차 0.052 · McNemar χ² 전부 무의).
+ *
+ * 경로·좌표는 어느 경우에도 건드리지 않는다 — 옮기면 먹물 꼭짓점 12점·보스 관문
+ * 계단·e2e 스크린샷이 줄줄이 다시 접힌다.
+ */
 export const FORMATION_ROUTE_COVERAGE_MULTIPLIER = Object.freeze([0.995, 0.995, 0.95, 1.05, 1.01] as const);
 
 export function regionEnemyHpMultiplier(region: RegionCode, wave: number, mode: GameMode): number {
