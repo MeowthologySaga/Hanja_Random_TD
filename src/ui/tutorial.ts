@@ -15,8 +15,8 @@
  * 첫 웨이브 전멸은 어느 걸음의 조건도 아니다 — 전투는 배경에서 자연히 끝난다.
  */
 import { WORLD_HEIGHT, WORLD_WIDTH } from "../core/content";
-import { GameEngine } from "../core/game";
-import { summonProductCost } from "../core/engine-tuning";
+import { GameEngine, MAX_TRACKED_IDIOMS } from "../core/game";
+import { IDIOM_WISH_COST_MULTIPLIER, summonProductCost } from "../core/engine-tuning";
 import { type Wuxing } from "../core/types";
 import { isBattleAssetsReady, whenBattleAssetsReady } from "./asset-loader";
 import { canvas, ctx, must, shell, sound } from "./app-context";
@@ -147,6 +147,26 @@ function keepGrowthTargetInView(): void {
   scrollIntoContainer(button, list, { block: "center" });
 }
 
+/** 6걸음 2박자에서 링이 감싸는 카드 — 성어 기원. */
+const IDIOM_WISH_TARGET = '[data-summon-product="idiom-wish"]';
+
+/**
+ * 상점 두루마리에서도 링 대상을 보이는 자리에 지킨다 (v041).
+ *
+ * 성어 기원 카드는 상점 목록의 아래쪽이라 실측 y413 대 가시 하단 460 으로 1px
+ * 넘친다 — 링만 뜨고 카드는 스크롤 밖에 있게 된다. 강화 쪽 지킴이와 같은 규칙이다.
+ */
+function keepShopTargetInView(): void {
+  if (ctx.activePanelTab !== "shop") return;
+  const card = laidOut(IDIOM_WISH_TARGET);
+  const list = document.querySelector<HTMLElement>("#shop-scroll");
+  if (!card || !list) return;
+  const listRect = list.getBoundingClientRect();
+  const cardRect = card.getBoundingClientRect();
+  if (cardRect.top >= listRect.top + 2 && cardRect.bottom <= listRect.bottom - 2) return;
+  scrollIntoContainer(card, list, { block: "center" });
+}
+
 /**
  * 관전형 안내(조작 대기가 없는 말풍선)의 진행 규칙 — 자동 진행 시간이되,
  * 그 전에라도 화면 아무 곳 클릭(soft-lock 이 삼킨 클릭 포함)이면 즉시
@@ -209,12 +229,22 @@ interface TutorialRuntime {
   fusionLockedIds: number[];
   /** 부적 걸음에 들어설 때의 완성 장수 — 이보다 늘면 한 장을 쓴 것이다. */
   sealBaseline: number;
+  /**
+   * 6걸음 2박자 — 중급 소환을 마친 순간의 소환 수 (v041). -1 이면 아직 첫 박자다.
+   *
+   * 「목표」는 이 게임에서 소환 확률·자동 배치·정리 보호를 한꺼번에 정하는 축인데
+   * 수련장 어디에도 그 낱말이 없었다(grep 0건). 8걸음이 말없이 목표를 세우고
+   * 「네 글자를 드렸어요」라고만 했다.
+   */
+  wishBaseline: number;
+  /** 기원 값을 이미 드렸는가 — tick 이 매 프레임 돌므로 한 번만 준다. */
+  wishGranted: boolean;
 }
 
 let runtime: TutorialRuntime = freshRuntime();
 
 function freshRuntime(): TutorialRuntime {
-  return { summonBaseline: 0, essenceBaseline: 0, growthWuxing: "木", fusionWuxing: "木", idiomGrantIds: [], idiomLine: [], fusionLockedIds: [], sealBaseline: 0 };
+  return { summonBaseline: 0, essenceBaseline: 0, growthWuxing: "木", fusionWuxing: "木", idiomGrantIds: [], idiomLine: [], fusionLockedIds: [], sealBaseline: 0, wishBaseline: -1, wishGranted: false };
 }
 
 /** 4걸음이 재료 보호를 위해 걸어 둔 잠금을 원래대로 되돌린다. */
@@ -410,22 +440,66 @@ const STEPS: readonly TutorialStep[] = [
       ctx.engine.state.autoPlaceSummons = true;
       ctx.engine.tutorialGrantGold(summonProductCost(ctx.engine.state.summonCount, "midstar"));
       showToast("수련 지원 — 중급 소환 값을 드렸어요");
+      runtime.wishBaseline = -1;
+      runtime.wishGranted = false;
     },
-    view: () => ctx.activePanelTab === "shop"
-      ? {
-        target: '[data-summon-product="midstar"]',
-        title: "더 높은 별을 노려 보세요",
-        body: "소환마다 별 확률이 달라요 — 기본 주로 1~3★ · 중급 2★ 확정 · 고급 3★ 확정. 아주 가끔은 구간 위 별도 터져요. 중급 소환 값은 드렸으니 한 번 뽑아 보세요.",
-        control: "click"
+    tick: () => {
+      /*
+       * 2박자 진입 — 중급 소환이 끝난 순간 성어 기원 값을 드리고 기준선을 세운다.
+       * 「목표」가 뽑기를 어떻게 바꾸는지는 말로만 하면 안 남는다. 한 번 눌러 보게
+       * 하는 것이 이 박자의 전부다.
+       */
+      if (runtime.wishBaseline < 0 && ctx.engine.state.summonCount > runtime.summonBaseline) {
+        runtime.wishBaseline = ctx.engine.state.summonCount;
       }
-      : {
-        target: panelTab("shop"),
-        title: "상점으로 돌아가요",
-        body: "[상점] 갈피를 눌러 주세요.",
-        control: "click"
-      },
-    allow: () => [panelTab("shop"), '[data-summon-product="midstar"]'],
-    satisfied: () => ctx.engine.state.summonCount > runtime.summonBaseline
+      if (runtime.wishBaseline >= 0 && !runtime.wishGranted && ctx.engine.state.summonCount === runtime.wishBaseline) {
+        runtime.wishGranted = true;
+        ctx.engine.tutorialGrantGold(ctx.engine.idiomWishQuote().cost);
+        showToast("수련 지원 — 성어 기원 값을 드렸어요");
+      }
+      keepShopTargetInView();
+    },
+    view: () => {
+      // 3박자 맺음 — 기원까지 뽑았으면 목표 갈피를 짚고 규칙을 한 줄로 남긴다.
+      if (runtime.wishBaseline >= 0 && ctx.engine.state.summonCount > runtime.wishBaseline) {
+        return {
+          target: panelTab("goal"),
+          title: "목표는 [목표] 갈피에서 바꿔요",
+          body: `서책을 열어 다른 성어를 [추적]하면 그때부터 소환이 그 성어를 따라와요 — 추적은 최대 ${MAX_TRACKED_IDIOMS}구고, 집자소에서 직접 새긴 성어도 고를 수 있어요. (아무 곳이나 눌러 계속)`,
+          emphasis: "목표로 삼은 성어의 부족 글자는 기본 소환에서도 훨씬 자주 나오고, 정리·합성이 그 글자를 재료로 삼지 않아요.",
+          alsoLit: [IDIOM_WISH_TARGET],
+          slow: 0.35
+        };
+      }
+      // 2박자 — 목표가 뽑기를 바꾼다는 것을 손으로 겪게 한다.
+      if (runtime.wishBaseline >= 0) {
+        return {
+          target: IDIOM_WISH_TARGET,
+          title: "목표가 뽑기를 바꿔요",
+          body: `지금 목표는 [이심전심]이에요. [성어 기원]은 그 성어에서 모자란 글자만 불러 줘요 — 값은 기본 소환의 ${IDIOM_WISH_COST_MULTIPLIER}배지만 반드시 성어 재료가 나오고 언제나 1★로 태어나요. 값은 드렸으니 한 번 눌러 보세요.`,
+          control: "click"
+        };
+      }
+      return ctx.activePanelTab === "shop"
+        ? {
+          target: '[data-summon-product="midstar"]',
+          title: "더 높은 별을 노려 보세요",
+          body: "소환마다 별 확률이 달라요 — 기본 주로 1~3★ · 중급 2★ 확정 · 고급 3★ 확정. 아주 가끔은 구간 위 별도 터져요. 중급 소환 값은 드렸으니 한 번 뽑아 보세요.",
+          control: "click"
+        }
+        : {
+          target: panelTab("shop"),
+          title: "상점으로 돌아가요",
+          body: "[상점] 갈피를 눌러 주세요.",
+          control: "click"
+        };
+    },
+    allow: () => runtime.wishBaseline >= 0
+      ? [panelTab("shop"), panelTab("goal"), IDIOM_WISH_TARGET]
+      : [panelTab("shop"), '[data-summon-product="midstar"]'],
+    satisfied: () => runtime.wishBaseline >= 0
+      && ctx.engine.state.summonCount > runtime.wishBaseline
+      && guidancePassed("goal-close")
   },
   {
     id: "growth",

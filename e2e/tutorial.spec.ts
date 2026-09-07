@@ -176,7 +176,24 @@ test("walks the training grounds through all nine scripted steps", async ({ page
   const midstar = page.locator('[data-summon-product="midstar"]');
   await expect(midstar).toBeEnabled();
   await midstar.click();
-  await expect(shell).toHaveAttribute("data-tutorial-step", "7");
+
+  /*
+   * 6걸음은 v041 에서 세 박자가 됐다 — 「목표」를 가르치는 자리가 여기 들어왔다.
+   * 수련장 어디에도 「목표」라는 낱말이 없어서(grep 0건), 8걸음이 말없이 목표를
+   * 세우고 「네 글자를 드렸어요」라고만 했다. 그런데 목표는 소환 확률·자동 배치·
+   * 정리 보호를 한꺼번에 정하는 축이다.
+   *
+   * 2박자 — 성어 기원을 한 번 눌러 「목표가 뽑기를 바꾼다」를 손으로 겪는다.
+   */
+  const wish = page.locator('[data-summon-product="idiom-wish"]');
+  await expect(page.locator("#tutorial-title")).toContainText("목표가 뽑기를 바꿔요", { timeout: 10_000 });
+  await expect(wish).toBeEnabled({ timeout: 10_000 });
+  await wish.click();
+  // 3박자(맺음) — 목표 갈피를 짚고 규칙 한 줄을 남긴 뒤 아무 곳 클릭으로 넘어간다.
+  await expect(page.locator("#tutorial-title")).toContainText("목표는 [목표] 갈피", { timeout: 10_000 });
+  await expect(page.locator("#tutorial-emphasis")).toContainText("부족 글자");
+  await page.mouse.click(500, 28);
+  await expect(shell).toHaveAttribute("data-tutorial-step", "7", { timeout: 10_000 });
 
   // 7걸음 — 문기 교육. 출처(승급·분해) 도입 → 강화 [1회] 조작 → 맺음 메시지.
   await expect(page.locator("#tutorial-body")).toContainText("3체 승급과 자령 분해");
