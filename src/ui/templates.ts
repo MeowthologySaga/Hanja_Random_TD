@@ -564,6 +564,16 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
     </div>
 
     <div id="tutorial-layer" class="tutorial-layer" aria-live="polite" hidden>
+      <!--
+        딤을 링에서 떼어 낸다 (v041).
+
+        여태 어둠은 링의 거대한 spread 그림자였다. 그래서 짚을 곳이 없는
+        걸음(결론 말풍선 등)에서는 링이 감춰지며 **어둠도 통째로 사라졌다** — 각본이
+        말하는 동안 화면이 평소와 똑같아 어디를 보라는 건지 알 수 없었다.
+        이제 어둠은 제 요소가 맡고, 링은 테두리만 맡는다. 구멍은 clip-path 로
+        뚫으므로 한 걸음에 **여러 곳**을 함께 밝힐 수 있다(예: 부적지 + [부적 완성]).
+      -->
+      <div id="tutorial-dim" class="tutorial-dim" aria-hidden="true" hidden></div>
       <div id="tutorial-ring" class="tutorial-ring" aria-hidden="true"></div>
       <div id="tutorial-bubble" class="tutorial-bubble" role="dialog" aria-labelledby="tutorial-title">
         <p class="tutorial-step-count">수련 <span id="tutorial-step-index">1</span> / <span id="tutorial-step-total">9</span></p>

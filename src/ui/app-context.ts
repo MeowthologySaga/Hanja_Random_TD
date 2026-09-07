@@ -427,6 +427,14 @@ class AppContext {
   /** 휠 확대·축소 1회 또는 팬 1회마다 오른다. 코치 2단계 자동 진행의 근거. */
   mapCameraGestures = 0;
   gameSpeed: GameSpeed = 1;
+
+  /**
+   * 수련장이 그 순간만 판을 늦추는 배수(1 = 그대로) — v041.
+   *
+   * [배속] 단추의 `gameSpeed`(1|2|3)와 따로 둔다. 그 타입은 단추와 CSS 훅의
+   * 계약이고, 여기 필요한 것은 0.25 같은 분수라 같은 통에 넣을 수 없다.
+   */
+  timeDilation = 1;
   openFocusFrame: FocusFrameId | null = null;
   /**
    * 발동 중 성어 스택 — 스펙 6라운드 D.

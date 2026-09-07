@@ -54,7 +54,11 @@ export function frame(now: number): void {
   const delta = Math.min(0.1, Math.max(0, (now - ctx.lastFrame) / 1000));
   const running = ctx.engine.state.phase === "prep" || ctx.engine.state.phase === "combat";
   const paused = running && (ctx.manualPause || modalPauseActive());
-  const simulationDelta = paused ? 0 : delta * ctx.gameSpeed;
+  /*
+   * 수련장은 그 순간만 판을 늦춘다(v041) — 연출은 실시간을 지키므로 `drawWorld`
+   * 쪽 delta 는 건드리지 않는다.
+   */
+  const simulationDelta = paused ? 0 : delta * ctx.gameSpeed * ctx.timeDilation;
   ctx.lastFrame = now;
   syncPauseChip(paused, ctx.manualPause);
   if (!paused) ctx.engine.update(simulationDelta);

@@ -1,0 +1,78 @@
+/* ══════════════════════════════════════════════════════
+   950. 수련장 하이라이트 — 어둠·구멍·조여드는 링 (v041)
+   ══════════════════════════════════════════════════════
+
+   "튜토리얼 하이라이트 부분에 부적완성이나. 문기가 들어오는부분, 그리고 문기로
+   강화해서 등급 낮은 자령을 필드에 배치해도 괜찮다는 말풍선 등등이 잘 안보여.
+   하이라이트나. 슬로우. 확대 적극적으로 개선하고"(사용자).
+
+   구조가 원인이었다. 어둠은 링의 `box-shadow: 0 0 0 9999px` 였다 — 그래서
+   ① 링이 감춰지는 걸음(짚을 곳이 없는 결론 말풍선)에서는 **어둠도 통째로 사라져**
+      화면이 평소와 똑같았고,
+   ② 한 걸음에 밝힐 수 있는 자리가 **하나뿐**이었다. 부적 걸음에서 종이만 밝고
+      정작 눌러야 할 [부적 완성]은 어둠 밑에 남았다(실측 휘도 211.6 대 87.6).
+
+   어둠을 제 요소로 떼어 내고 구멍은 clip-path 로 뚫는다. 어둠의 진하기는
+   0.58 그대로다 — 더 어둡게 하면 3걸음(교전을 관전하며 배우는 걸음)이 통째로
+   묻힌다(실측 평균 휘도 40.8). 문제는 밝기가 아니라 구멍의 개수였다. */
+
+.tutorial-dim {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background: rgba(8, 6, 4, 0.58);
+  pointer-events: none;
+}
+
+.tutorial-dim[hidden] {
+  display: none;
+}
+
+/*
+   걸음이 바뀌면 링이 **조여든다** — 1.9배에서 제 크기로.
+
+   패널 요소를 실제로 키우면 조판이 흔들리므로(400px 예산) 키우는 것은 링의
+   transform 뿐이다. 리플로가 없어 다른 것을 한 픽셀도 밀지 않는다.
+*/
+.tutorial-ring.is-arrive {
+  animation:
+    fbt-ring-pulse 1.7s ease-in-out infinite,
+    tutorial-ring-arrive 0.42s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes tutorial-ring-arrive {
+  from {
+    opacity: 0.2;
+    transform: scale(1.9);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* 감속 중임을 화면이 말한다 — 판이 느린 것이 버벅임으로 읽히면 안 된다. */
+.game-shell[data-tutorial-slow="1"] .tutorial-bubble::after {
+  content: "판을 늦춰 보여 드리는 중";
+  display: block;
+  margin-top: 6px;
+  color: #cbb684;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+
+/*
+   차분한 화면·동작 줄이기에서는 **조여드는 연출만** 끈다. 어둠과 구멍은 남는다 —
+   그것을 지우면 접근성 설정이 곧 「어디를 볼지 모름」이 된다(930 절과 같은 규범).
+*/
+.game-shell[data-calm-screen="1"] .tutorial-ring.is-arrive {
+  animation: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tutorial-ring.is-arrive {
+    animation: none;
+  }
+}

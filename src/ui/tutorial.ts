@@ -50,6 +50,22 @@ const BUBBLE_WIDTH = 272;
 interface TutorialView {
   /** 스포트라이트 대상 셀렉터. world 가 있으면 무시된다. */
   readonly target?: string;
+  /**
+   * 링 없이 **구멍만** 함께 뚫을 곳 (v041).
+   *
+   * 한 걸음에서 손이 오갈 자리가 둘일 때 쓴다 — 부적 걸음이 그렇다. 종이만
+   * 밝히면 정작 눌러야 할 [부적 완성]이 어둠 밑에 남아(실측 휘도 211 대 88,
+   * 59% 어둡다) 「다 그렸는데 뭘 눌러야 하지」가 된다.
+   */
+  readonly alsoLit?: readonly string[];
+  /**
+   * 이 걸음 동안 판을 늦추는 배수 (v041). 1 이면 그대로.
+   *
+   * "슬로우. 확대 적극적으로 개선하고"(사용자). 연출이 지나가 버려서 못 보는
+   * 걸음(문기가 들어오는 순간·성어 발동)이 있다. 시계만 늦추고 연출은 실시간을
+   * 지킨다(game-loop 의 규칙).
+   */
+  readonly slow?: number;
   /** 전장 월드 좌표 사각형 스포트라이트(진·성어 줄). */
   readonly world?: { x: number; y: number; width: number; height: number } | null;
   readonly title: string;
@@ -322,7 +338,15 @@ const STEPS: readonly TutorialStep[] = [
     view: () => ({
       target: "#talisman-paper",
       title: "부적을 한 장 써 보세요",
-      body: "반투명 「불 화(火)」를 마우스로 따라 그으면 자령이 응답해요 — 엽전·문기·전장 이벤트. 붉은 점선이 짚는 순서대로 네 획, 다 그렸으면 [부적 완성]. 부적은 웨이브마다 한 장씩 쌓여요.",
+      body: "반투명 「불 화(火)」를 마우스로 따라 그으면 자령이 응답해요 — 엽전·문기·전장 이벤트. 붉은 점선이 짚는 순서대로 네 획, 다 그렸으면 아래 [부적 완성]. 부적은 웨이브마다 한 장씩 쌓여요.",
+      /*
+       * 종이만 밝히면 정작 눌러야 할 [부적 완성]이 어둠 밑에 남는다 — 링 아래
+       * 14px 밖이라 실측 휘도가 211 대 88 로 갈렸다. 완성 단추와 채점 줄을 함께
+       * 밝힌다.
+       */
+      alsoLit: ["#talisman-submit", "#talisman-status"],
+      // 처음 붓을 잡는 손이 급하지 않도록 판을 절반 속도로 늦춘다.
+      slow: 0.5,
       control: "drag"
     }),
     allow: () => [panelTab("talisman"), "#talisman-panel"],
@@ -430,7 +454,14 @@ const STEPS: readonly TutorialStep[] = [
         return {
           title: "낮은 별이어도 괜찮아요",
           body: "강화는 그 오행의 모든 자령을 한꺼번에 올려 줘요. 별이 낮아도 오행이 맞으면 같이 세져요. (아무 곳이나 눌러 계속)",
-          emphasis: "그래서 사자성어를 위해 낮은 별 자령을 배치해도 불리하지 않아요 — 강화와 농축이 받쳐 줍니다."
+          emphasis: "그래서 사자성어를 위해 낮은 별 자령을 배치해도 불리하지 않아요 — 강화와 농축이 받쳐 줍니다.",
+          /*
+           * 이 걸음에는 짚을 곳이 없다. 여태 그런 걸음에서는 링과 함께 **어둠까지
+           * 사라져** 화면이 평소와 똑같았다 — 사용자가 "말풍선이 잘 안 보여"라고
+           * 한 자리가 바로 여기다. 이제 어둠은 남고, 방금 누른 강화 자리만 밝다.
+           */
+          alsoLit: [GROWTH_UPGRADE_TARGET],
+          slow: 0.25
         };
       }
       return ctx.activePanelTab === "growth"
@@ -444,6 +475,13 @@ const STEPS: readonly TutorialStep[] = [
           target: panelTab("growth"),
           title: "문기는 어디서 오나요",
           body: "문기는 3체 승급과 자령 분해가 남겨요 — 방금 승급 때도 들어왔죠. 조금 더 얹어 드렸으니 [강화] 갈피를 눌러 주세요.",
+          /*
+           * 문기가 들어오는 순간은 자원 레일 숫자 하나가 바뀌는 것이 전부라
+           * 지나쳐 버린다("문기가 들어오는부분 … 잘 안보여" — 사용자). 자원 레일을
+           * 함께 밝히고 판을 늦춰 그 숫자를 보게 한다.
+           */
+          alsoLit: [".resource-grid"],
+          slow: 0.35,
           control: "click"
         };
     },
@@ -587,6 +625,34 @@ function setStyle(element: HTMLElement, property: string, value: string): void {
   if (element.style.getPropertyValue(property) !== value) element.style.setProperty(property, value);
 }
 
+/**
+ * 어둠에 구멍을 뚫는다 (v041).
+ *
+ * 셸 좌표 그대로 쓴다 — `#tutorial-dim` 은 셸 직계의 `inset:0` 이라 무대 배율이
+ * 그대로 실린다. 좌표를 만드는 곳은 언제나 toShellRect·worldToShellRect 둘뿐이다.
+ */
+function paintDimHoles(holes: readonly ShellRect[]): void {
+  const dim = must<HTMLElement>("#tutorial-dim");
+  if (dim.hidden) dim.hidden = false;
+  if (holes.length === 0) {
+    // 짚을 곳이 없는 걸음에도 **어둠은 남는다.** 여태 링과 함께 사라져, 각본이
+    // 말하는 동안 화면이 평소와 똑같았다.
+    setStyle(dim, "clip-path", "none");
+    return;
+  }
+  const round = (value: number): string => String(Math.round(value * 10) / 10);
+  const shape = holes
+    .map((hole) => {
+      const left = round(hole.left - 6);
+      const top = round(hole.top - 6);
+      const right = round(hole.left + hole.width + 6);
+      const bottom = round(hole.top + hole.height + 6);
+      return `M${left} ${top}H${right}V${bottom}H${left}Z`;
+    })
+    .join("");
+  setStyle(dim, "clip-path", `path(evenodd, "M0 0H${shell.offsetWidth}V${shell.offsetHeight}H0Z${shape}")`);
+}
+
 function layoutView(view: TutorialView): void {
   const ring = must<HTMLElement>("#tutorial-ring");
   const bubble = must<HTMLElement>("#tutorial-bubble");
@@ -596,15 +662,23 @@ function layoutView(view: TutorialView): void {
     const element = laidOut(view.target);
     if (element) focus = toShellRect(element.getBoundingClientRect());
   }
+  // 링 없이 함께 밝힐 자리 — 지금 화면에 서 있는 것만.
+  const extraHoles: ShellRect[] = [];
+  for (const selector of view.alsoLit ?? []) {
+    const element = laidOut(selector);
+    if (element) extraHoles.push(toShellRect(element.getBoundingClientRect()));
+  }
   if (!focus) {
     // 짚을 곳이 없으면 링을 걷고 말풍선만 화면 아래 가운데에 세운다.
     // 높이는 실측한다 — 결론 줄(emphasis)이 붙는 걸음은 말풍선이 더 길어서
     // 고정값으로 잡으면 아래가 화면 밖으로 잘린다.
     if (!ring.hidden) ring.hidden = true;
+    paintDimHoles(extraHoles);
     setStyle(bubble, "top", `${Math.max(8, shell.offsetHeight - (bubble.offsetHeight || 140) - 38)}px`);
     setStyle(bubble, "left", `${Math.max(8, (shell.offsetWidth - BUBBLE_WIDTH) / 2)}px`);
     return;
   }
+  paintDimHoles([focus, ...extraHoles]);
   if (ring.hidden) ring.hidden = false;
   setStyle(ring, "left", `${focus.left - 6}px`);
   setStyle(ring, "top", `${focus.top - 6}px`);
@@ -631,6 +705,10 @@ function renderView(): void {
   if (bubbleElement.hidden !== completeShown) bubbleElement.hidden = completeShown;
   if (completeShown) {
     must<HTMLElement>("#tutorial-ring").hidden = true;
+    // 수료막이 스스로 화면을 덮는다 — 어둠과 감속은 여기서 걷는다.
+    must<HTMLElement>("#tutorial-dim").hidden = true;
+    ctx.timeDilation = 1;
+    shell.dataset.tutorialSlow = "0";
     return;
   }
   const view = step.view();
@@ -651,6 +729,23 @@ function renderView(): void {
     else delete bubble.dataset.tutorialControl;
     // 수료 걸음에서는 [수련 건너뛰기]를 걷는다 — 이미 수료 기록이 남았다.
     must<HTMLElement>("#tutorial-exit").hidden = stepIndex >= STEPS.length - 1;
+    /*
+     * 걸음이 바뀌면 링이 **조여든다**(v041) — 1.9배에서 제 크기로 0.42초.
+     *
+     * "확대 적극적으로 개선하고"(사용자). 패널 요소를 실제로 키우면 조판이
+     * 흔들리므로 키우는 것은 링(transform)뿐이다. 클래스를 뗐다 붙이려면 리플로를
+     * 한 번 강제해야 애니메이션이 다시 돈다(말풍선 nudge 와 같은 문법).
+     */
+    const ringElement = must<HTMLElement>("#tutorial-ring");
+    ringElement.classList.remove("is-arrive");
+    void ringElement.offsetWidth;
+    ringElement.classList.add("is-arrive");
+    /*
+     * 그 걸음이 느리게 봐야 하는 것이면 판을 늦춘다. 각본이 값을 안 주면 1 로
+     * 되돌아온다 — 걸음을 넘길 때마다 반드시 여기를 지나므로 새지 않는다.
+     */
+    ctx.timeDilation = view.slow ?? 1;
+    shell.dataset.tutorialSlow = (view.slow ?? 1) < 1 ? "1" : "0";
   }
   layoutView(view);
 }
@@ -716,6 +811,8 @@ function startTutorial(): void {
   stepIndex = -1;
   renderKey = "";
   active = true;
+  // 지난 판의 감속이 남지 않게(판을 나가면 새로고침이라 사실상 늘 1 이지만 명시한다).
+  ctx.timeDilation = 1;
   shell.dataset.tutorial = "1";
   delete shell.dataset.tutorialComplete;
   delete shell.dataset.tutorialIdiomCells;
