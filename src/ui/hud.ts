@@ -58,35 +58,44 @@ import { talismanGoldRoll } from "./talisman-reward";
  * 뒤에는 잔잔한 금테만 남긴다(과자극 방지). 안내 말풍선은 첫 런에서
  * 조기 시작이 처음 가능해지는 순간 딱 한 번 뜬다.
  */
-const EARLY_USED_STORAGE_KEY = "hanja-td:early-used";
-
 const EARLY_HINT_STORAGE_KEY = "hanja-td:early-hint-v1";
 
 const EARLY_CALM_THRESHOLD = 2;
 
-function readEarlyUsedCount(): number {
-  try {
-    return Number.parseInt(window.localStorage.getItem(EARLY_USED_STORAGE_KEY) ?? "0", 10) || 0;
-  } catch {
-    return 0;
-  }
-}
+/**
+ * 이 **판에서** 조기 출전을 몇 번 썼나 (v041).
+ *
+ * 예전에는 브라우저에 영구 누적했다(`hanja-td:early-used`). 그래서 평생 두 번만
+ * 눌러 보면 맥동이 영영 꺼졌다 — 사용자가 "빠른 시작 버튼이 눈에 잘 안 띄어"라고
+ * 한 화면이 정확히 그 상태다(실측: `data-early-calm="1"` · animationName "none" ·
+ * getAnimations().length 0). v038 에서 살려 둔 맥동을 그 사람은 **구조상 볼 수
+ * 없었다.**
+ *
+ * 「두 번 써 본 뒤에는 조용해진다」는 취지는 한 판 안에서만 뜻이 있다. 판이 새로
+ * 서면 0 으로 돌아간다.
+ */
+let earlyUsedThisRun = 0;
 
 function syncEarlyCalmState(): void {
-  shell.dataset.earlyCalm = readEarlyUsedCount() >= EARLY_CALM_THRESHOLD ? "1" : "0";
+  shell.dataset.earlyCalm = earlyUsedThisRun >= EARLY_CALM_THRESHOLD ? "1" : "0";
+}
+
+/** 새 판이 설 때 맥동을 되살린다(s00-menu 가 engine.begin 곁에서 부른다). */
+export function resetEarlyStartRunState(): void {
+  earlyUsedThisRun = 0;
+  syncEarlyCalmState();
 }
 
 function noteEarlyStartUsed(): void {
-  const next = readEarlyUsedCount() + 1;
-  try {
-    window.localStorage.setItem(EARLY_USED_STORAGE_KEY, String(next));
-  } catch {
-    // 저장이 막혀 있어도 이번 세션 동작에는 영향이 없다.
-  }
+  earlyUsedThisRun += 1;
   syncEarlyCalmState();
 }
 
 let earlyHintTimer = 0;
+
+/** 직전에 그린 심지 길이·액수 — 값이 바뀔 때만 화면을 건드린다. */
+let earlyStepProbe = "";
+let earlyBonusProbe = 0;
 
 /**
  * 이 안내가 나설 수 있게 된 시각. 소환 클릭은 공개 연출보다 한 프레임 먼저
@@ -126,17 +135,29 @@ function maybeShowEarlyHint(): void {
   if (performance.now() - earlyHintEligibleSince < EARLY_HINT_DWELL_MS) return;
   try {
     if (window.localStorage.getItem(EARLY_HINT_STORAGE_KEY) === "1") return;
-    window.localStorage.setItem(EARLY_HINT_STORAGE_KEY, "1");
   } catch {
     return;
   }
-  const stage = must<HTMLElement>(".battle-stage").getBoundingClientRect();
+  /*
+   * 자리는 **무대 껍데기(shell)** 기준이다 (v041).
+   *
+   * 예전에는 `.battle-stage`(0~880, overflow:hidden) 기준으로 놓았다. v036 에서
+   * 단추가 오른쪽 패널로 옮겨 간 뒤로 left 가 903.85px 이 되어 상자가 무대 밖으로
+   * 나갔고 — 통째로 잘려 아무도 못 봤다. 그런데 코드는 **보여 주기 전에** 「봤다」를
+   * 저장해 단 한 번뿐인 기회를 태웠다. 이제 자리를 잡고 세운 **뒤에** 표시한다.
+   */
+  const shellRect = shell.getBoundingClientRect();
   const rect = button.getBoundingClientRect();
-  const scale = stage.width / Math.max(1, must<HTMLElement>(".battle-stage").offsetWidth);
-  hint.style.left = `${(rect.left - stage.left) / scale}px`;
-  hint.style.top = `${(rect.bottom - stage.top) / scale + 10}px`;
+  const scale = shellRect.width / Math.max(1, shell.offsetWidth);
+  hint.style.left = `${(rect.left - shellRect.left) / scale}px`;
+  hint.style.top = `${(rect.bottom - shellRect.top) / scale + 10}px`;
   hint.hidden = false;
-  earlyHintTimer = window.setTimeout(hideEarlyHint, 5000);
+  try {
+    window.localStorage.setItem(EARLY_HINT_STORAGE_KEY, "1");
+  } catch {
+    // 저장이 막혀 있어도 이번 판에서는 한 번 보여 준 것으로 친다.
+  }
+  earlyHintTimer = window.setTimeout(hideEarlyHint, 6500);
 }
 
 /*
@@ -529,9 +550,29 @@ export function syncPanel(): void {
    * 창이 예전 시계에 묶인 뒤로(v035 ②) 그 셈은 실제로 받는 액수보다 커졌다 —
    * 준비 11초에 화면은 5엽전이라 적고 실제로는 4엽전이 들어왔다.
    */
+  const earlyBonus = state.phase === "prep" ? ctx.engine.earlyStartBonus() : 0;
   earlyButton.textContent = state.phase === "prep"
-    ? state.summonCount === 0 ? "첫 소환 필요" : "시작 +" + String(ctx.engine.earlyStartBonus()) + "엽전"
+    ? state.summonCount === 0 ? "첫 소환 필요" : earlyBonus > 0 ? "시작 +" + String(earlyBonus) + "엽전" : "지금 시작"
     : "교전 중";
+  /*
+   * 남은 몫을 **심지**로 보인다 (v041) — 단추 아래 3px 띠가 왼쪽으로 줄어든다.
+   *
+   * "+3보너스 빨리 지나가서 손해보는 느낌이야"(사용자). 손해의 정체는 「언제 한 칸
+   * 떨어지는지 모른다」였다. 숫자를 하나 더 띄우면 폭 115px 안에서 두 숫자가 함께
+   * 뛰어 오히려 안 읽히므로, 초는 길이로 준다. 값이 실제로 바뀔 때만 쓴다 — 매
+   * 프레임 setProperty 는 프레임마다 스타일 무효화를 부른다.
+   */
+  const stepRatio = state.phase === "prep" && state.summonCount > 0 ? ctx.engine.earlyStartStepRatio() : 0;
+  const stepKey = stepRatio.toFixed(2);
+  if (earlyStepProbe !== stepKey) {
+    earlyStepProbe = stepKey;
+    earlyButton.style.setProperty("--early-step", stepKey);
+  }
+  if (earlyBonusProbe !== earlyBonus) {
+    // 한 칸 떨어지는 순간에만 소리를 준다. 마지막 두 계단은 재촉이 되므로 뺀다.
+    if (earlyBonusProbe > earlyBonus && earlyBonus >= 2) sound.playEarlyTick();
+    earlyBonusProbe = earlyBonus;
+  }
   if (earlyButton.disabled) hideEarlyHint();
   else maybeShowEarlyHint();
   const openingGuide = must<HTMLElement>("#opening-guide");
@@ -657,18 +698,28 @@ export function wireHud3(): void {
   must<HTMLButtonElement>("#early-button").addEventListener("click", () => {
     sound.unlock();
     hideEarlyHint();
-    const bonus = Math.floor(ctx.engine.state.prepRemaining / 2);
+    /*
+     * 액수와 자리를 **누르기 전에** 잡는다 (v041).
+     *
+     * 둘 다 어긋나 있었다. ① 액수는 `floor(prepRemaining/2)` 라는 옛 셈이라 엔진이
+     * 실제로 준 액수와 달랐다(준비 11초에 화면 5 · 실제 4). ② 자리는 웨이브가 열린
+     * **뒤에** 단추를 쟀는데, 교전 중에는 그 단추가 `display:none` 이라 상자가 전부
+     * 0 이다 — 팝이 무대 왼쪽 위 구석(0,0)에 떠서 절반이 잘려 나갔다(실측: 셸 밖
+     * 왼쪽 40px · 위 29px). 이득을 보이려던 연출이 이득을 감추고 있었다.
+     */
+    const button = must<HTMLButtonElement>("#early-button");
+    const bonus = ctx.engine.earlyStartBonus();
+    const rect = button.getBoundingClientRect();
+    const shellRect = shell.getBoundingClientRect();
     const result = ctx.engine.startWaveEarly();
     handleAction(result, { invalidatePanels: false });
     if (result.ok) {
       noteEarlyStartUsed();
+      if (bonus > 0) sound.playEarlyReward();
       // 이득이 "일어났다"가 눈에 남게: 버튼 자리에서 엽전 팝이 떠오른다.
-      const button = must<HTMLButtonElement>("#early-button");
       const pop = document.createElement("span");
       pop.className = "early-bonus-pop";
       pop.textContent = bonus > 0 ? `+${bonus} 엽전` : "웨이브 시작!";
-      const rect = button.getBoundingClientRect();
-      const shellRect = shell.getBoundingClientRect();
       const scale = shellRect.width / Math.max(1, shell.offsetWidth);
       pop.style.left = `${(rect.left - shellRect.left) / scale + rect.width / scale / 2}px`;
       pop.style.top = `${(rect.top - shellRect.top) / scale}px`;

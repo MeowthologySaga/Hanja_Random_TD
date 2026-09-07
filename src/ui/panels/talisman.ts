@@ -44,7 +44,6 @@ import { type HanziDefinition, type Wuxing } from "../../core/types";
 import { calmBattlefield, ctx, must, TALISMAN_MODE_STORAGE_KEY, sound } from "../app-context";
 import { summonAndFocus } from "../battle/camera";
 import { setPanelTab, showToast } from "../hud";
-import { pickPanelActions } from "../wave-actions";
 import { pickTalismanVisitLine } from "../talisman-lines";
 import { readingUtterance, speakReading } from "../tts";
 import { playTalismanImpact, playTalismanRewardVisit, type TalismanRewardGrant } from "../talisman-reward";
@@ -403,69 +402,27 @@ export function preloadStrokeGuide(): void {
   });
 }
 
-/**
- * 시선 자리 행동 줄 — 지금 눌러야 할 것 **하나**.
+/*
+ * 시선 자리 행동 줄은 **걷었다**(v041).
  *
- * 부적을 쓰는 동안 눈은 이 패널에 있다. 그때 정작 손이 가야 할 것들은 전장
- * 쪽에 있었다 — 준비 시간이 흐르는데 [시작 보너스]는 전장 위에 있고, 적 한계가
- * 차오르는데 그 눈금도 저쪽이다. 「패널에서 한 일은 패널에서 알린다」를 행동까지
- * 넓힌다.
+ * 부적지 아래에 「지금 눌러야 할 것 하나」를 세우던 줄이 있었다. 뜻은 옳았지만
+ * 두 가지가 어긋났다.
  *
- * 급한 순서로 **하나만** 세운다. 여럿을 늘어놓으면 그 자체가 소음이고, 패널
- * 세로 예산도 빠듯하다.
+ * ① **같은 말을 두 번 했다.** 그 줄은 웨이브 카드와 같은 목록(wave-actions 의
+ *    pickPanelActions)의 첫 줄을 그대로 가져왔다 — 실측하면 `#wave-action-a` 의
+ *    글자와 한 자도 다르지 않은 「소환 15엽전 · 화력 부족」이 400px 도 안 떨어진
+ *    두 자리에 나란히 섰다. 웨이브 카드는 갈피와 상관없이 늘 서 있으므로 부적
+ *    갈피에서도 그 카드가 이미 보인다.
+ * ② **그 줄이 서면 패널이 넘쳤다.** `.context-deck` 는 368px 로 못 박혀 있는데
+ *    줄이 서는 순간 scrollHeight 가 395 가 됐다(초과 27px) — 줄 자신의 아래
+ *    9px 이 잘리고, 그 아래 난이도 고지(#talisman-economy-note)는 통째로
+ *    사라졌다("짤려서 나오는거 싫어" — 사용자). 이 줄의 주석은 스스로 「27px
+ *    초과 전례」를 적어 두고 같은 자리에서 같은 일을 냈다.
+ *
+ * 그래서 말하는 자리를 **하나로 줄인다** — 급한 것은 웨이브 카드가 말한다.
+ * 「눈이 부적에 있을 때도 급한 것이 눈에 든다」는 규범은 e2e/wave-actions.spec.ts
+ * 로 옮겨 담았다(부적 갈피를 연 채 카드가 적 한계를 말하는지 본다).
  */
-function syncTalismanCue(): void {
-  const row = must<HTMLElement>("#talisman-cue");
-  const button = must<HTMLButtonElement>("#talisman-cue-button");
-  const state = ctx.engine.state;
-  const cue = pickTalismanCue();
-  if (!cue) {
-    row.hidden = true;
-    button.onclick = null;
-    return;
-  }
-  row.hidden = false;
-  row.dataset.tone = cue.tone;
-  button.textContent = cue.label;
-  button.disabled = cue.action === null;
-  button.onclick = cue.action;
-  button.title = cue.title ?? "";
-  void state;
-}
-
-interface TalismanCue {
-  readonly label: string;
-  readonly tone: "urgent" | "offer" | "note";
-  readonly action: (() => void) | null;
-  readonly title?: string;
-}
-
-/** 급한 것이 위다 — 첫 번째로 걸리는 것 하나만 돌려준다. */
-function pickTalismanCue(): TalismanCue | null {
-  /*
-   * 고르는 규칙은 패널 행동 자리와 **한 곳에서** 정한다(ui/wave-actions.ts).
-   *
-   * 여기와 저기가 서로 다른 순서로 다른 말을 하면, 같은 순간에 화면 두 곳이
-   * 다른 것을 급하다고 말하는 셈이 된다. 이 줄은 그 목록의 **첫 줄**만 가져다
-   * 쓴다 — 부적지 아래는 한 줄뿐이라(760절) 가장 급한 하나만 설 수 있다.
-   *
-   * 가져오는 것은 **가장 급한 것 하나**뿐이다(tone === "urgent").
-   *
-   * 처음엔 권유(tone "offer")까지 가져왔더니 [지금 시작]이 이 줄과 위 카드에
-   * 나란히 서서 같은 말을 두 번 했다 — 두 자리가 400px 도 안 떨어져 있어
-   * 소음이었다. 권유는 카드가 맡고(자리가 셋이다), 이 줄은 **판이 끝날 수도
-   * 있는 일**만 말한다. 부적지 아래 한 줄은 늘 서 있으면 종이를 밀어내므로
-   * (작업 영역 27px 초과 전례) 비어 있는 것이 기본값이어야 한다.
-   */
-  const first = pickPanelActions().find((pick) => pick.tone === "urgent");
-  if (first) return { label: first.label, tone: first.tone, action: first.action, title: first.title };
-
-  // 목록이 비었을 때만 「기다린다」를 알린다 — 권할 것이 있으면 그쪽이 먼저다.
-  if (talismanCharges() <= 0) {
-    return { label: `다음 웨이브에 부적 ${CHARGES_PER_WAVE}장`, tone: "note", action: null };
-  }
-  return null;
-}
 
 /**
  * 부적 갈피에 **들어서는 문** — 어느 단추로 왔든 여기를 지난다(v038).
@@ -493,7 +450,6 @@ export function ensureTalismanSheet(): void {
 export function syncTalismanPanel(): void {
   if (ctx.activePanelTab !== "talisman") return;
   preloadStrokeGuide();
-  syncTalismanCue();
   if (!document.querySelector("#talisman-panel")) return;
   // 안전망 — 갈피가 열려 있는 한 글자는 서 있어야 한다(문은 아래 ensureTalismanSheet).
   ensureDefinition();
@@ -1424,20 +1380,6 @@ const PANEL_MARKUP = `
       <button id="talisman-redraw" class="small-button" type="button" data-testid="talisman-redraw">다시 뽑기</button>
       <button id="talisman-submit" class="small-button talisman-submit" type="button" data-testid="talisman-submit" disabled>부적 완성</button>
     </div>
-    <!--
-      시선 자리 행동 줄.
-
-      부적을 쓰는 동안 눈은 오른쪽 패널의 종이에 있는데, 그 시간에 눌러야 할
-      것들은 전부 전장 쪽에 있었다 — [시작 보너스]도, 적 한계 눈금도. 「패널에서
-      한 일은 패널에서 알린다」는 규범을 **행동**에도 넓힌다.
-
-      늘 서 있지 않는다. 조건이 찬 것 가운데 **가장 급한 하나만** 뜬다 — 늘 있는
-      줄은 곧 소음이 되고, 패널 세로 예산도 빠듯하다(단추 넷이 줄을 접어 26px을
-      넘긴 전례가 있다).
-    -->
-    <div id="talisman-cue" class="talisman-cue" hidden>
-      <button id="talisman-cue-button" type="button" data-testid="talisman-cue"></button>
-    </div>
     <p id="talisman-economy-note" class="talisman-economy-note">부적 모드에서는 적이 ${Math.round((TALISMAN_MODE_ENEMY_HP_SCALE - 1) * 100)}% 강해집니다 — 그 대신 부적 보상을 얻습니다 · 설정에서 학습부적을 켜고 끌 수 있습니다</p>
   </div>`;
 
@@ -1454,6 +1396,13 @@ function mountTalismanPanel(): void {
   const ink = must<HTMLCanvasElement>("#talisman-ink");
   guideContext = guide.getContext("2d");
   inkContext = ink.getContext("2d", { willReadFrequently: true });
+  /*
+   * 난이도 고지는 9.5px 에 `overflow:hidden` 이라 폭이 좁으면 끝이 잘린다.
+   * 문구를 새로 짓지 않고 **같은 문자열을 곁말로 얹어** 전문을 되찾을 길을 둔다
+   * (#message-value 가 쓰는 그 규범 — 잘리는 곳에는 title 이 있어야 한다).
+   */
+  const economyNote = must<HTMLElement>("#talisman-economy-note");
+  economyNote.title = economyNote.textContent ?? "";
   must<HTMLElement>("#talisman-status").title =
     `획순은 자유 · 정확 ${Math.round(TALISMAN_THRESHOLDS.inside * 100)}% · 덮음 ${Math.round(TALISMAN_THRESHOLDS.coverage * 100)}% 이상이면 부적이 완성됩니다`;
   wireDrawing(ink);

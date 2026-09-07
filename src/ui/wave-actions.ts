@@ -34,8 +34,8 @@ export interface PanelAction {
   action: (() => void) | null;
 }
 
-/** 지금 화면에 세울 만한 것들 — 급한 차례로. */
-export function pickPanelActions(): PanelAction[] {
+/** 지금 화면에 세울 만한 것들 — 급한 차례로. 쓰는 곳은 이 파일 하나다(v041). */
+function pickPanelActions(): PanelAction[] {
   const state = ctx.engine.state;
   if (state.phase !== "prep" && state.phase !== "combat") return [];
   /*

@@ -138,6 +138,47 @@ test("곁자리는 상황에 따라 서고, 급한 것이 위다", async ({ page
   await expect(first).toHaveAttribute("data-tone", "urgent");
 });
 
+test("부적 갈피를 열어도 급한 것은 카드에서 보인다", async ({ page }) => {
+  /*
+   * v041 에서 부적지 아래 「시선 자리 행동 줄」(#talisman-cue)을 걷었다. 그 줄이
+   * 지키던 규범 — 「눈이 부적에 있을 때도 급한 것이 눈에 든다」 — 은 사라지지
+   * 않는다. 웨이브 카드가 갈피와 상관없이 늘 서 있으므로 그 카드가 맡는다.
+   *
+   * 걷은 까닭은 둘이었다. 그 줄은 카드와 **한 자도 다르지 않은** 문장을 400px
+   * 떨어진 자리에 한 번 더 썼고, 서는 순간 `.context-deck`(368px)를 27px 넘겨
+   * 제 아래 9px 과 그 밑 난이도 고지를 통째로 잘라 먹었다.
+   */
+  await openRun(page);
+  await page.getByTestId("summon-button").click();
+  await page.keyboard.press("Escape");
+  // 맥동이 stable 판정을 막는다(run-save.spec 선례) — force 로 누른다.
+    await page.getByTestId("early-wave").click({ force: true });
+  await expect.poll(async () => (await qa(page)).engine.state.phase).toBe("combat");
+
+  await page.locator('button[data-panel-tab="talisman"]').click();
+  await expect(page.locator("#talisman-panel")).toBeVisible();
+  // 걷어 낸 줄이 정말로 없다.
+  await expect(page.locator("#talisman-cue")).toHaveCount(0);
+
+  for (let press = 0; press < 5; press += 1) await page.keyboard.press("Backquote");
+  await page.locator("#dev-tools-button").click();
+  await page.locator("#dev-enemy-fill").click();
+  await expect
+    .poll(async () => (await qa(page)).engine.state.enemies.length, { timeout: 20_000 })
+    .toBeGreaterThan(56);
+  await page.locator("#dev-tools-close").click();
+
+  const first = page.getByTestId("wave-action-a");
+  await expect(first).toBeVisible();
+  await expect(first).toContainText("적 한계");
+  await expect(first).toHaveAttribute("data-tone", "urgent");
+
+  // 그리고 부적 패널이 더는 넘치지 않는다 — 난이도 고지가 제자리로 돌아온다.
+  const deck = await page.locator(".context-deck").evaluate((node) => node.scrollHeight - node.clientHeight);
+  expect(deck).toBeLessThanOrEqual(0);
+  await expect(page.locator("#talisman-economy-note")).toBeVisible();
+});
+
 test("행동 자리는 카드 틀을 넘지 않는다", async ({ page }) => {
   await openRun(page);
   await page.getByTestId("summon-button").click();

@@ -127,7 +127,6 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
         <i id="fusion-vortex" class="fusion-vortex" aria-hidden="true"></i>
       </section>
 
-      <div id="early-hint" class="early-hint" role="status" hidden>다음 웨이브를 일찍 부르면 엽전 보너스!</div>
       <div id="focus-dim" class="focus-dim" hidden></div>
       <section id="growth-frame" class="focus-frame focus-frame--forge" role="dialog" aria-modal="false" aria-labelledby="growth-frame-title" hidden>
         <header class="focus-frame-head">
@@ -158,6 +157,16 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
         <div id="goal-frame-body" class="focus-frame-body goal-codex-workbench"></div>
       </section>
     </section>
+
+    <!--
+      조기 출전 안내는 **무대 밖**에 선다 (v041).
+
+      예전에는 전장 무대(.battle-stage · 0~880, overflow:hidden) 안에 있었다. v036 에서 [시작]
+      단추가 오른쪽 패널로 옮겨 가면서 이 말풍선의 자리도 그쪽(left 903.85px)이 됐고 —
+      무대 밖이라 통째로 잘렸다. 아무도 못 본 채 「봤다」로 저장되어 단 한 번뿐인
+      기회가 매번 타 버렸다. 이제 껍데기(main) 직계라 패널 위에도 설 수 있다.
+    -->
+    <div id="early-hint" class="early-hint" role="status" hidden>일찍 시작할수록 엽전을 더 받습니다 — 2초마다 1엽전씩 줄어듭니다 (E)</div>
 
     <aside class="control-panel" aria-label="합성과 수비 조작 패널">
       <!--
@@ -262,7 +271,7 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
               <i>→</i>
               <div data-opening-step="2"><b>② 첫 진 자동 개방</b><span>추가 소환 2기를 권장합니다.</span></div>
               <i>→</i>
-              <div data-opening-step="3"><b>③ 웨이브 시작</b><span>첫 소환 뒤 준비 15초가 흐릅니다.</span></div>
+              <div data-opening-step="3"><b>③ 웨이브 시작</b><span>준비 15초 — 일찍 시작할수록 엽전을 더 받습니다.</span></div>
             </section>
             <section class="action-row" aria-label="소환 상품">
               <div id="summon-shop" class="summon-shop" role="group" aria-label="소환 상품"></div>

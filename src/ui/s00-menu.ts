@@ -54,7 +54,7 @@ import { startCoach } from "./coach";
 import { openConfirm } from "./dialogs/confirm";
 import { REGION_MENU_INFO, syncS13 } from "./dialogs/s13";
 import { gameModeLabel } from "./format";
-import { handleAction, setPanelTab, showToast, syncPanel } from "./hud";
+import { handleAction, setPanelTab, showToast, syncPanel, resetEarlyStartRunState } from "./hud";
 import { resetIdiomResult } from "./panels/idiom";
 import { closeCompositionDrawer } from "./panels/selected";
 import { hideSummonReveal } from "./summon-reveal";
@@ -212,6 +212,8 @@ export function startRun(useNewSeed = false, options: StartRunOptions = {}): voi
   } else {
     ctx.engine.begin();
     ctx.previousPhase = "prep";
+    // 조기 출전 맥동은 판마다 새로 돈다(v041) — 예전엔 브라우저에 영구 누적이었다.
+    resetEarlyStartRunState();
   }
   ctx.manualPause = false;
   ctx.mapCameraGestures = 0;

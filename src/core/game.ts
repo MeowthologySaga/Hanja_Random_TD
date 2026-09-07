@@ -1694,9 +1694,15 @@ export class GameEngine {
     const boss = !first && this.state.wave % 10 === 0;
     // 첫 준비 15초는 늘린 적이 없어 시계와 창이 같다 — 꼬리가 0 이다.
     const clock = first ? FIRST_PREP_SECONDS : boss ? GAME_CONFIG.bossPrepSeconds : GAME_CONFIG.prepSeconds;
-    const window = first ? FIRST_PREP_SECONDS : boss ? EARLY_START_BOSS_PAID_SECONDS : EARLY_START_PAID_SECONDS;
     // 꼬리를 뺀 나머지에 값이 붙고, 창을 넘는 시간에는 안 붙는다.
-    return Math.max(0, Math.min(this.state.prepRemaining - (clock - window), window));
+    return Math.max(0, Math.min(this.state.prepRemaining - (clock - this.earlyStartWindowSeconds()), this.earlyStartWindowSeconds()));
+  }
+
+  /** 값이 매겨지는 창의 길이(초). */
+  private earlyStartWindowSeconds(): number {
+    const first = this.state.wave === 0;
+    const boss = !first && this.state.wave % 10 === 0;
+    return first ? FIRST_PREP_SECONDS : boss ? EARLY_START_BOSS_PAID_SECONDS : EARLY_START_PAID_SECONDS;
   }
 
   /**
@@ -1708,7 +1714,40 @@ export class GameEngine {
    */
   earlyStartBonus(): number {
     if (this.state.phase !== "prep") return 0;
-    return Math.floor(this.earlyStartPaidSeconds() / 2);
+    /*
+     * 꼭대기의 **허깨비 한 칸**을 걷는다(v041).
+     *
+     * "+3보너스 빨리 지나가서 손해보는 느낌이야"(사용자). 실제로 손해는 아니었고,
+     * 화면이 **받을 수 없는 액수**를 잠깐 보여 준 것이 문제였다. 일반 웨이브에서
+     * `floor(paid/2)` 의 +4 는 `paid` 가 정확히 8일 때뿐인데, 준비가 열리자마자
+     * 시계가 한 틱만 흘러도 7.95 가 되어 +3 으로 내려앉는다. 사람 손이 닿을 수
+     * 없는 0.05초짜리 숫자를 먼저 보여 주고 곧바로 내리니 「늦어서 손해 봤다」로
+     * 읽힌다.
+     *
+     * 그래서 상한을 **실제로 받을 수 있는 액수**(`floor((window-1)/2)`)로 낮춘다.
+     * 이제 처음 2초 동안 같은 액수가 서 있고, 그 액수가 곧 받는 액수다.
+     *
+     * 액수를 **올리지는 않는다.** 시뮬 봇도 사람과 같은 순간(첫 틱)에 누르므로
+     * 계단을 후하게 만들면 봇 수입이 그대로 오른다 — 실측으로 확인했다: `ceil`
+     * 로 한 칸 후하게 했더니 표준 45런 승률이 0.60 → **0.80** 으로 밴드(0.45~0.70)
+     * 를 넘었다. 이 셈은 봇이 받던 액수를 한 푼도 바꾸지 않는다.
+     */
+    const window = this.earlyStartWindowSeconds();
+    return Math.min(Math.floor((window - 1) / 2), Math.floor(this.earlyStartPaidSeconds() / 2));
+  }
+
+  /**
+   * 다음 계단까지 남은 몫(0~1) — 화면이 「심지」로 그린다.
+   *
+   * 액수가 언제 한 칸 떨어지는지 사람이 알 길이 여태 없었다. 셈은 여기 한 곳에
+   * 두고(엔진), 화면은 길이만 그린다.
+   */
+  earlyStartStepRatio(): number {
+    if (this.state.phase !== "prep") return 0;
+    const bonus = this.earlyStartBonus();
+    if (bonus <= 0) return 0;
+    const remaining = this.earlyStartPaidSeconds() - 2 * bonus;
+    return Math.max(0, Math.min(1, remaining / 2));
   }
 
   startWaveEarly(): ActionResult {

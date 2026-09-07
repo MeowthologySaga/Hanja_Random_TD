@@ -390,6 +390,21 @@ export class SoundManager {
   }
 
   /**
+   * 조기 출전 보너스가 한 칸 떨어지는 순간의 먹방울 (v041).
+   *
+   * 숫자가 언제 내려앉는지 눈으로만 좇게 두면 「모르는 새 손해 봤다」가 된다.
+   * 아주 작게 한 방울만 — 마지막 두 계단에서는 부르는 쪽이 울리지 않는다(재촉이 된다).
+   */
+  playEarlyTick(): void {
+    this.playSfx("ui-ink-drop");
+  }
+
+  /** 조기 출전이 성사돼 엽전이 들어오는 소리 (v041). */
+  playEarlyReward(): void {
+    this.playSfx("ui-coin-string");
+  }
+
+  /**
    * Arms the next successful action so it stamps with a placement or unlock sound
    * instead of the generic seal. Consumed by the very next playActionOutcome call.
    */

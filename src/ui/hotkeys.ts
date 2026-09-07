@@ -42,5 +42,10 @@ export function wireHotkeys1(): void {
     else if (event.code === "KeyM") must<HTMLButtonElement>("#sound-button").click();
     else if (event.code === "KeyF") cycleGameSpeed();
     else if (event.code === "KeyP") toggleManualPause();
+    /*
+     * E — 웨이브 시작(v041). 준비 시간에만 살아 있고, 꺼져 있으면 click 이 아무
+     * 일도 하지 않는다. 손이 상점 카드(1·Q)에 있는 채로 한 번에 넘길 수 있게.
+     */
+    else if (event.code === "KeyE") must<HTMLButtonElement>("#early-button").click();
   });
 }
