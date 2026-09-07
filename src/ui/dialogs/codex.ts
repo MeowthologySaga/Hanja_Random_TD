@@ -34,6 +34,7 @@ import {
   UNCOMBINABLE_STAGE_ONE
 } from "../codex-synthesis";
 import { codexDialog, type CodexMode, ctx, type JaryeongDexFilter, must, reducedMotion, shell } from "../app-context";
+import { jaryeongOrigin } from "../../core/jaryeong-origins";
 import { escapeHtml, spriteStyle } from "../format";
 import { handleAction } from "../hud";
 
@@ -58,8 +59,11 @@ function definitionMatches(definition: HanziDefinition, normalized: string): boo
   const entry = dexEntryForDefinition(definition);
   const explanation = koreanMeaningExplanation(definition.char, learning.short, learning.meaning);
   const abilities = definition.combat.abilities;
+  const origin = jaryeongOrigin(definition.char);
   const searchable = [
     definition.char,
+    origin?.hook ?? "",
+    origin?.body ?? "",
     ...definition.parents,
     learning.short,
     learning.reading,
@@ -409,6 +413,12 @@ function renderCodexDetail(definition: HanziDefinition | undefined): void {
   const categoryLabel = entry?.category ?? `${ELEMENT_STYLES[definition.wuxing].name}행 자령`;
   const dexText = entry?.dexText
     ?? `${definition.char}의 뜻과 ${definition.wuxing}행 기운을 전투 역할로 풀어낸 자령입니다. 쉬운 훈 풀이와 조합 경로를 함께 확인하세요.`;
+  /*
+   * 유래문 (v041) — 그림이 옛 자형·어원을 그렸는데 지금 훈으로는 안 읽히는 글자에만
+   * 붙는다("도감에 유래를 잘 설명한다면 유저가 억지라고 생각 하지 않을 것 같아"
+   * — 사용자). 문장은 코어가 만든다.
+   */
+  const origin = jaryeongOrigin(definition.char);
   const progressionDetail = ctx.engine.state.mode === "casual"
     ? `${naturalStar}★ · ${casualStrokeCount(definition.char) ?? "?"}획 · ${casualStarRangeLabel(naturalStar)}`
     : `${synthesisDepth}단 · ${STAGE_NAMES[definition.stage]}`;
@@ -455,6 +465,12 @@ function renderCodexDetail(definition: HanziDefinition | undefined): void {
         <p>${escapeHtml(explanation.body)}</p>
         ${explanation.example ? `<em>${escapeHtml(explanation.example)}</em>` : ""}
       </article>
+
+      ${origin ? `<details class="codex-origin" id="codex-origin-details"${ctx.codexOriginOpen ? " open" : ""}>
+        <summary><b>이 그림이 왜 이런가</b><small>${escapeHtml(origin.hook)}</small></summary>
+        <p>${escapeHtml(origin.body)}</p>
+        <em>근거 · ${escapeHtml(origin.ground)}</em>
+      </details>` : ""}
 
       <article class="codex-jaryeong-entry">
         <span>자령 기록</span>
@@ -552,6 +568,14 @@ export function wireCodex1(): void {
 
 /** main.ts 가 원래 순서대로 부르는 배선 묶음. */
 export function wireCodex2(): void {
+  /*
+   * 유래 갈피의 접힘을 기억한다 (v041). `toggle` 은 버블하지 않으므로 캡처 단계에서
+   * 듣는다(합성 패널의 「손으로 하기」 갈피가 쓰는 그 문법).
+   */
+  must<HTMLElement>("#codex-detail").addEventListener("toggle", (event) => {
+    const target = event.target;
+    if (target instanceof HTMLDetailsElement && target.id === "codex-origin-details") ctx.codexOriginOpen = target.open;
+  }, true);
   document.querySelectorAll<HTMLButtonElement>("[data-codex-mode]").forEach((button) => {
     button.addEventListener("click", () => setCodexMode(button.dataset.codexMode as CodexMode));
   });

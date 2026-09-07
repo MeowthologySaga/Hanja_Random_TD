@@ -25,6 +25,19 @@ import type { TalismanRewardKind } from "./talisman-reward";
  * 깨진다. 부적 기능은 이미 이 축 바깥에 서 있다(보상 굴림도 Math.random).
  */
 const TALISMAN_VISIT_LINES: Readonly<Record<TalismanRewardKind, readonly string[]>> = Object.freeze({
+  // 강림부(v041) — 아직 안 터진 불. 「지금」이 아니라 「그때」를 말한다.
+  burst: Object.freeze([
+    "이 한 장은 아껴 두게. 급할 때 태우면 내가 가겠네",
+    "불러 놓고 부르지는 말게 — 정말 위태로울 때 사르게",
+    "손에 쥐고 있게. 부르는 순간 내가 내려가겠네",
+    "붓끝의 불을 종이에 재워 두었네. 때가 되면 놓아 주게",
+    "지금은 아니야. 자네가 밀릴 때 나를 태우게",
+    "한 장이 한 번일세. 언제 쓸지는 자네 몫이지",
+    "급할 때 이 종이를 사르게. 나머지는 내가 맡지",
+    "내려갈 채비는 마쳤네 — 자네가 부르기만 하면 되네",
+    "불은 붙여 두었으니, 던질 자리는 자네가 고르게",
+    "가장 어두울 때 태우게. 그때가 내가 가장 밝을 때일세"
+  ]),
   gold: Object.freeze([
     "불러 주어 고맙네. 노잣돈이라 여기게",
     "붓끝이 곧았으니 엽전으로 갚음세",

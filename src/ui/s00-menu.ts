@@ -176,6 +176,8 @@ export function startRun(useNewSeed = false, options: StartRunOptions = {}): voi
    * 있었다. 이어하기는 이 뒤에 저장본을 얹으므로(applySavedUiState) 영향 없다.
    */
   ctx.talismanFreeSummonTokens = 0;
+  // 강림부도 판을 넘기지 않는다 — 이어하기는 이 뒤에 저장본을 얹는다.
+  ctx.talismanBurstCharges = [];
   const seed = useNewSeed ? createRunSeed() : seedInput.value.trim() || createRunSeed();
   ctx.engine = options.createEngine
     ? options.createEngine()

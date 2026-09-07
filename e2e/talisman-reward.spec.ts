@@ -139,7 +139,7 @@ test("경제 밖 보상 — 준비 중에는 숨을 돌려준다", async ({ page
   expect(after.prepRemaining).toBeGreaterThan(before.prepRemaining + 1.5);
 });
 
-test("경제 밖 보상 — 전장에 적이 있으면 내리친다", async ({ page }) => {
+test("경제 밖 보상 — 전장에 적이 있으면 강림부가 손에 쥐어진다", async ({ page }) => {
   test.setTimeout(120_000);
   await openTalisman(page, "REWARD-STRIKE");
 
@@ -160,5 +160,29 @@ test("경제 밖 보상 — 전장에 적이 있으면 내리친다", async ({ p
   await page.locator("#talisman-tab").click();
 
   await submitWithRoll(page, "人", 0);
-  await expect(page.locator("#panel-toast")).toContainText("자령 강림");
+  /*
+   * v041 — 즉시 터지던 일격·봉인이 **강림부 한 장**이 됐다("쌓아뒀다가 … 위급할 때
+   * 사용하게 하자" — 사용자). 실측하면 교전 중 전장의 평균 적 수는 1.5~4.0체이고
+   * 최대는 79체다. 「전장 전체를 내리친다」를 평균 1.6체에 쓰고 버리는 대신 손에
+   * 쥐게 한다 — 같은 상수가 고르는 순간 하나로 스무 배가 된다.
+   */
+  await expect(page.locator("#panel-toast")).toContainText("강림부");
+  const burst = page.locator("#talisman-burst");
+  await expect(burst).toBeVisible();
+  await expect(page.locator("#talisman-burst-count")).toHaveText("1");
+
+  // 사르면 전장이 실제로 맞는다 — 적 체력 합이 줄고 재고가 빈다.
+  const before = await page.evaluate(() => {
+    const handle = (window as unknown as { __HANJA_CTX_QA__: unknown }).__HANJA_CTX_QA__;
+    const ctx = (typeof handle === "function" ? (handle as () => { engine: { state: { enemies: Array<{ hp: number }> } } })() : handle) as { engine: { state: { enemies: Array<{ hp: number }> } } };
+    return ctx.engine.state.enemies.reduce((sum, enemy) => sum + enemy.hp, 0);
+  });
+  await burst.click();
+  const after = await page.evaluate(() => {
+    const handle = (window as unknown as { __HANJA_CTX_QA__: unknown }).__HANJA_CTX_QA__;
+    const ctx = (typeof handle === "function" ? (handle as () => { engine: { state: { enemies: Array<{ hp: number }> } } })() : handle) as { engine: { state: { enemies: Array<{ hp: number }> } } };
+    return ctx.engine.state.enemies.reduce((sum, enemy) => sum + enemy.hp, 0);
+  });
+  expect(after).toBeLessThan(before);
+  await expect(burst).toBeHidden();
 });

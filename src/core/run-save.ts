@@ -52,6 +52,8 @@ export interface RunSaveUiState {
   /** 남은 부적 장수와 그 기준 웨이브 — 없으면 옛 저장본이라 기본값으로 센다. */
   talismanCharges?: number;
   talismanChargeWave?: number;
+  /** 손에 쥔 강림부(v041). 없으면 옛 저장본이라 빈 손으로 읽는다. */
+  talismanBurstCharges?: ReadonlyArray<{ wuxing: string; char: string }>;
 }
 
 export interface RunSave {
@@ -130,6 +132,13 @@ export function parseRunSave(raw: string | null): RunSave | null {
   }
   if (typeof ui.talismanFreeSummonTokens !== "number" || !Number.isFinite(ui.talismanFreeSummonTokens)) return null;
   // 부적 장부는 나중에 더한 축이라 옛 저장본에는 없다 — 있으면 수만 확인한다.
+  if (ui.talismanBurstCharges !== undefined) {
+    // 옛 저장본에는 없는 칸이라 판을 올리지 않는다 — 있으면 모양만 본다.
+    if (!Array.isArray(ui.talismanBurstCharges)) return null;
+    for (const charge of ui.talismanBurstCharges) {
+      if (typeof charge?.wuxing !== "string" || typeof charge?.char !== "string") return null;
+    }
+  }
   for (const key of ["talismanCharges", "talismanChargeWave"]) {
     const value = ui[key];
     if (value !== undefined && (typeof value !== "number" || !Number.isFinite(value))) return null;
@@ -166,6 +175,7 @@ export function captureRunSave(engine: GameEngine, ui: RunSaveUiState, now = Dat
     ui: {
       talismanFreeSummonTokens: ui.talismanFreeSummonTokens,
       ...(ui.talismanCharges === undefined ? {} : { talismanCharges: ui.talismanCharges }),
+      ...(ui.talismanBurstCharges === undefined ? {} : { talismanBurstCharges: ui.talismanBurstCharges.map((charge) => ({ ...charge })) }),
       ...(ui.talismanChargeWave === undefined ? {} : { talismanChargeWave: ui.talismanChargeWave })
     }
   };

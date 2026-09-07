@@ -1,0 +1,71 @@
+/* ══════════════════════════════════════════════════════
+   970. 도감 유래 갈피 — 「이 그림이 왜 이런가」 (v041)
+   ══════════════════════════════════════════════════════
+
+   "검수에서 걸린 스프라이트 예를 들어 올래 같은애는 도감에 유래를 잘 설명한다면
+   유저가 억지라고 생각 하지 않을 것 같아"(사용자).
+
+   v037 감사에서 걸린 210자 가운데 열둘은 그림이 **틀린 것이 아니었다.** 그 글자의
+   옛 자형을 정확히 그렸는데 지금 훈으로는 안 읽히는 것이다 — 來의 보리 이삭, 爲의
+   코끼리, 字의 지붕 아래 아이. 다시 그리는 대신 사연을 말하면 억지가 지식이 된다.
+
+   접이 갈피로 두는 까닭은 도감 상세가 이미 2.9화면 분량이기 때문이다. 접힘 상태는
+   글자를 옮겨도 이어진다. */
+
+.codex-origin {
+  border-radius: 9px;
+  border-left: 4px solid var(--codex, #7fa8d0);
+  background: rgba(4, 10, 17, 0.55);
+}
+
+.codex-origin > summary {
+  display: flex;
+  position: relative;
+  gap: 6px;
+  align-items: baseline;
+  min-height: 26px;
+  padding: 5px 10px 5px 24px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.codex-origin > summary::-webkit-details-marker {
+  display: none;
+}
+
+.codex-origin > summary::before {
+  position: absolute;
+  left: 10px;
+  content: "▸";
+  font-size: 11px;
+}
+
+.codex-origin[open] > summary::before {
+  content: "▾";
+}
+
+.codex-origin > summary b {
+  font-size: 12px;
+}
+
+.codex-origin > summary small {
+  opacity: 0.8;
+  font-size: 10.5px;
+}
+
+.codex-origin > p {
+  margin: 0 11px 6px;
+  font-size: 12px;
+  line-height: 1.58;
+}
+
+.codex-origin > em {
+  display: block;
+  margin: 0 11px 8px;
+  padding-top: 6px;
+  border-top: 1px solid rgba(153, 176, 204, 0.14);
+  font-size: 10px;
+  font-style: normal;
+  line-height: 1.45;
+  opacity: 0.75;
+}

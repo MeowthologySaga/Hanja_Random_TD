@@ -205,7 +205,7 @@ function resetGuidance(): void {
 }
 
 /** 각본 밖 단축키(소환·배속·일시정지·도감 등)는 수련 중에 전부 잠근다. */
-const BLOCKED_KEYS = new Set(["Digit1", "Digit2", "Digit3", "KeyQ", "KeyC", "KeyM", "KeyF", "KeyP", "Space", "Escape"]);
+const BLOCKED_KEYS = new Set(["Digit1", "Digit2", "Digit3", "KeyQ", "KeyC", "KeyM", "KeyF", "KeyP", "KeyB", "KeyE", "Space", "Escape"]);
 
 let active = false;
 

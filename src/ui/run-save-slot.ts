@@ -15,6 +15,7 @@ import {
   writeRunSave
 } from "../core/run-save";
 import { captureTalismanLedger, restoreTalismanLedger } from "./panels/talisman";
+import { type Wuxing } from "../core/types";
 import { ctx } from "./app-context";
 import { REGION_MENU_INFO } from "./dialogs/s13";
 import { formatTime, gameModeLabel } from "./format";
@@ -62,7 +63,9 @@ export function autoSaveRun(): boolean {
   const save = captureRunSave(ctx.engine, {
     talismanFreeSummonTokens: ctx.talismanFreeSummonTokens,
     talismanCharges: ledger.charges,
-    talismanChargeWave: ledger.chargeWave
+    talismanChargeWave: ledger.chargeWave,
+    // 손에 쥔 강림부도 함께 남긴다(v041) — 이어하기가 폭탄을 빼앗으면 안 된다.
+    talismanBurstCharges: ctx.talismanBurstCharges.map((charge) => ({ ...charge }))
   });
   if (!save) return false;
   return writeRunSave(save);
@@ -87,6 +90,7 @@ export function applySavedUiState(save: RunSave): void {
   if (save.ui.talismanCharges !== undefined && save.ui.talismanChargeWave !== undefined) {
     restoreTalismanLedger({ charges: save.ui.talismanCharges, chargeWave: save.ui.talismanChargeWave });
   }
+  ctx.talismanBurstCharges = (save.ui.talismanBurstCharges ?? []).map((charge) => ({ wuxing: charge.wuxing as Wuxing, char: charge.char }));
 }
 
 /**

@@ -34,6 +34,7 @@
  * state 에 먼저 얹고 즉시 소환하는 래퍼다(실패 시 얹은 엽전을 물려 권 보존).
  */
 import { casualStrokeCount } from "../../core/casual";
+import { MAX_ENEMIES } from "../../core/content";
 import { TALISMAN_MODE_ENEMY_HP_SCALE } from "../../core/engine-tuning";
 import { type GameEngine } from "../../core/game";
 import { summonCost } from "../../core/engine-tuning";
@@ -164,6 +165,63 @@ const REWARD_GOLD_MAX = 14;
  * 넘지 않는 것**이 그 되돌림의 상한이고, 지금 값은 84.0 이다.
  */
 const REWARD_DENSITY = 2.7;
+
+/**
+ * 손에 쥘 수 있는 강림부 장수 (v041).
+ *
+ * 셋인 까닭. 100웨이브를 완주하면 강림부가 열 장 남짓 온다 — 상한이 셋이면 네
+ * 장째가 오기 전에 쓰게 된다. 아끼다 못 쓰는 폭탄을 막는 탄막슈팅의 관습이다.
+ */
+const BURST_CAP = 3;
+
+/**
+ * 강림부를 사른다 — 전장 전체를 내리치고 잠깐 묶는다.
+ *
+ * 세기는 **올리지 않았다**. 즉시 발동이던 시절 KR 활성 풀의 평균 배수(1.289)를
+ * 그대로 굳힌 값이다(0.09×1.289 · 6×1.289). 묶음만 상한을 24체로 두었다 —
+ * 전장 전체(최대 80체)를 다 묶으면 그것은 타이밍 개편이 아니라 다른 게임이 된다.
+ *
+ * 무적 프레임은 없다. 웨이브 시계는 그대로 흐르고 새 적도 그대로 나온다 —
+ * 사는 것은 2.5초와 한 번의 타격뿐이다.
+ */
+export function burnTalismanBurst(): void {
+  const charge = ctx.talismanBurstCharges[0];
+  if (!charge) return;
+  if (!runActive() || ctx.engine.state.enemies.length === 0) {
+    showToast("지금은 사를 자리가 없습니다 — 적이 있을 때 태우세요", false);
+    return;
+  }
+  ctx.talismanBurstCharges.shift();
+  const struck = ctx.engine.talismanStrike(0.116, 7.73, charge.wuxing);
+  const bound = ctx.engine.talismanBind(Math.min(24, ctx.engine.state.enemies.length), 2.5);
+  syncTalismanBurst();
+  sound.playBossDrum();
+  const stage = document.querySelector<HTMLElement>(".battle-stage");
+  if (stage && !calmBattlefield()) {
+    stage.classList.remove("is-burst");
+    void stage.offsetWidth;
+    stage.classList.add("is-burst");
+    window.setTimeout(() => stage.classList.remove("is-burst"), 460);
+  }
+  showToast(`강림부를 살랐습니다 — ${struck}체 강타 · ${bound}체 봉인 2.5초`, false);
+}
+
+/** 손잡이의 장수·경보 상태를 화면에 맞춘다. */
+export function syncTalismanBurst(): void {
+  const button = document.querySelector<HTMLButtonElement>("#talisman-burst");
+  if (!button) return;
+  const left = ctx.talismanBurstCharges.length;
+  const running = runActive();
+  button.hidden = !running || left === 0;
+  if (button.hidden) return;
+  must<HTMLElement>("#talisman-burst-count").textContent = String(left);
+  /*
+   * 「위급할 때」의 문턱은 적 한계 경고와 **같은 값**을 쓴다(0.6 · 0.9). 화면 두
+   * 곳이 서로 다른 「위급」을 말하면 그 자체가 소음이다.
+   */
+  const filled = ctx.engine.state.enemies.length / MAX_ENEMIES;
+  button.dataset.alarm = filled >= 0.9 ? "2" : filled >= 0.6 ? "1" : "0";
+}
 
 /**
  * 획이 많을수록 후하다.
@@ -806,26 +864,39 @@ function runActive(): boolean {
  * 지금 쓸 수 있는 것 가운데 하나를 고른다. 하나도 못 쓰면 false 를 돌려주고
  * 부르는 쪽이 경제 보상으로 돌아간다 — 아무 일도 안 일어나는 보상은 없어야 한다.
  */
-function grantTalismanEvent(scale: number, wuxing: Wuxing, grants: TalismanRewardGrant[]): boolean {
+function grantTalismanEvent(scale: number, wuxing: Wuxing, char: string, grants: TalismanRewardGrant[]): boolean {
   const state = ctx.engine.state;
   const options: Array<() => TalismanRewardGrant | null> = [];
 
-  // 자령 강림 · 일격 — 전장 전체를 한 번 내리친다.
+  /*
+   * 강림부(降) — 즉시 터지던 일격·봉인을 **손에 쥐는 한 장**으로 바꾼다 (v041).
+   *
+   * "부적으로 필드 적공격하는건 즉시발동이 아니라 쌓아뒀다가 버튼이나 특정 키
+   * 누르면 사용되게해서 위급할 때 사용하게 하자. 탄막슈팅의 폭탄 같은 개념으로"
+   * (사용자).
+   *
+   * 실측이 그 말을 뒷받침한다 — 봇 6런을 훑어 보면 교전 중 전장의 **평균** 적 수는
+   * 1.5~4.0체이고 최대는 79체다(상한 80). 「전장 전체를 내리친다」는 효과를 평균
+   * 1.6체에 쓰고 버리고 있었다. 세기를 올릴 것이 아니라 **고르는 순간**을 주면
+   * 같은 상수가 스무 배가 된다. 그리고 게이트 45런의 패배 18건 가운데 17건이
+   * 「적 80체가 전장을 뒤덮었습니다」다 — 폭탄이 겨눌 순간이 정확히 그것이다.
+   *
+   * 두 갈래를 하나로 합친 까닭: 무엇이 나올지 모르는 폭탄은 폭탄이 아니다.
+   * 뜨는 조건(적이 있을 때)은 그대로 둔다 — 보상 섞임 비율이 한 푼도 안 바뀐다.
+   */
   if (state.enemies.length > 0) {
     options.push(() => {
-      const struck = ctx.engine.talismanStrike(0.09 * scale, 6 * scale, wuxing);
-      if (struck === 0) return null;
-      return { kind: "strike", amount: struck, wuxing, glyph: "擊", label: `자령 강림 · ${struck}체 타격` };
-    });
-  }
-
-  // 봉인의 손 — 앞선 적을 잠깐 묶는다.
-  if (state.enemies.length > 0) {
-    options.push(() => {
-      const count = Math.max(2, Math.round(3 * scale));
-      const bound = ctx.engine.talismanBind(count, 1.6 + scale * 0.6);
-      if (bound === 0) return null;
-      return { kind: "bind", amount: bound, glyph: "封", label: `봉인의 손 · ${bound}체 묶음` };
+      if (ctx.talismanBurstCharges.length >= BURST_CAP) {
+        // 가득 찼으면 사라지지 않고 문기로 돌아간다 — 손해로 읽히면 안 된다.
+        const amount = Math.max(1, Math.round(scale * REWARD_DENSITY));
+        state.elementEssence[wuxing] += amount;
+        state.elementEssenceGenerated[wuxing] += amount;
+        recentRewards.essence[wuxing] = (recentRewards.essence[wuxing] ?? 0) + amount;
+        return { kind: "essence", amount, wuxing, glyph: wuxing, label: `강림부 가득 · ${wuxing} 문기 +${amount}` };
+      }
+      ctx.talismanBurstCharges.push({ wuxing, char });
+      syncTalismanBurst();
+      return { kind: "burst", amount: 1, wuxing, glyph: "降", label: `강림부 +1 · ${ctx.talismanBurstCharges.length}/${BURST_CAP}장` };
     });
   }
 
@@ -874,7 +945,7 @@ function grantReward(): void {
    * 안 일어나는 보상은 없어야 한다.
    */
   const wantsEvent = Math.random() < eventChance(char);
-  if (wantsEvent && grantTalismanEvent(scale, wuxing, grants)) {
+  if (wantsEvent && grantTalismanEvent(scale, wuxing, char, grants)) {
     // 경제 밖 보상이 실제로 걸렸다 — 남는 숫자가 없으므로 횟수로 적어 둔다.
     recentRewards.events += 1;
   } else {
@@ -1476,6 +1547,11 @@ function mountTalismanPanel(): void {
   must<HTMLElement>("#talisman-status").title = economyNote + " · " +
     `획순은 자유 · 정확 ${Math.round(TALISMAN_THRESHOLDS.inside * 100)}% · 덮음 ${Math.round(TALISMAN_THRESHOLDS.coverage * 100)}% 이상이면 부적이 완성됩니다`;
   wireDrawing(ink);
+  // 강림부 손잡이는 부적 패널이 서기 전에도 눌려야 한다 — 전장 쪽 요소라 여기서 건다.
+  document.querySelector<HTMLButtonElement>("#talisman-burst")?.addEventListener("click", () => {
+    sound.unlock();
+    burnTalismanBurst();
+  });
   must<HTMLButtonElement>("#talisman-undo").addEventListener("click", () => {
     sound.unlock();
     undoStroke();

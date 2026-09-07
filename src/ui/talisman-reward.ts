@@ -41,7 +41,18 @@ import { spiritPortraitMarkup } from "./format";
  * 앞 셋은 경제고 뒤 셋은 **화면에서 벌어지는 일**이다. 경제만 있던 시절에는
  * 쓴 보람이 숫자로만 남아 "썼다"는 감각이 약했다(기획안 v035 ①).
  */
-export type TalismanRewardKind = "gold" | "essence" | "token" | "strike" | "bind" | "breath";
+/**
+ * 부적 보상의 갈래.
+ *
+ * [v041] `burst`(강림부)가 `strike`·`bind` 를 대신한다 — 그 둘은 완성한 **그 자리에서**
+ * 터졌는데, 실측하면 교전 중 전장의 평균 적 수가 1.5~4.0체다(최대는 79체). 즉
+ * 「전장 전체를 내리친다」는 효과를 평균 1.6체에 쓰고 버리고 있었다. 이제 손에
+ * 쥐었다가 위급할 때 사른다("쌓아뒀다가 버튼이나 특정 키 누르면 사용되게해서
+ * 위급할 때 사용하게 하자. 탄막슈팅의 폭탄 같은 개념으로" — 사용자).
+ *
+ * 옛 두 갈래는 이어하기(옛 저장본)와 기록을 위해 타입에 남긴다.
+ */
+export type TalismanRewardKind = "gold" | "essence" | "token" | "strike" | "bind" | "breath" | "burst";
 
 export interface TalismanRewardGrant {
   readonly kind: TalismanRewardKind;
@@ -98,10 +109,12 @@ const GIFT_TINTS: Record<TalismanRewardKind, string> = {
   gold: "#e0b84f",
   essence: "#9fd3c7",
   token: "#d9a3e0",
-  // 화면에서 벌어지는 보상 셋 — 치는 것은 잉걸, 묶는 것은 인주, 숨은 푸른빛.
+  // 화면에서 벌어지는 보상 — 치는 것은 잉걸, 묶는 것은 인주, 숨은 푸른빛.
   strike: "#ff8a5c",
   bind: "#d9605a",
-  breath: "#8fd0e8"
+  breath: "#8fd0e8",
+  // 강림부는 아직 안 터진 불이다 — 잉걸빛에 금테를 두른 색.
+  burst: "#ffb35c"
 };
 
 interface ShellPoint {
@@ -145,6 +158,8 @@ function rewardAnchor(kind: TalismanRewardKind): HTMLElement | null {
   if (kind === "essence") return firstVisible(["#essence-summary", "#growth-resource-summary", ".resource-grid"]);
   // 화면에서 벌어지는 보상은 전장을 가리킨다 — 값이 그쪽에서 쓰였다.
   if (kind === "strike" || kind === "bind") return firstVisible(["#battle-canvas", ".battle-stage"]);
+  // 강림부는 손에 쥐는 것이므로 그 손잡이를 가리킨다.
+  if (kind === "burst") return firstVisible(["#talisman-burst", "#battle-canvas", ".battle-stage"]);
   if (kind === "breath") return firstVisible(["#wave-label", ".wave-card", ".resource-grid"]);
   return firstVisible(["#shop-tab", ".resource-grid"]);
 }

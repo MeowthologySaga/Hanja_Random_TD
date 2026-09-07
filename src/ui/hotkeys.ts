@@ -47,5 +47,10 @@ export function wireHotkeys1(): void {
      * 일도 하지 않는다. 손이 상점 카드(1·Q)에 있는 채로 한 번에 넘길 수 있게.
      */
     else if (event.code === "KeyE") must<HTMLButtonElement>("#early-button").click();
+    /*
+     * B — 강림부 사르기(v041). 符 의 로마자 머리. 재고가 없으면 단추가 아예 없어
+     * 아무 일도 하지 않는다.
+     */
+    else if (event.code === "KeyB") document.querySelector<HTMLButtonElement>("#talisman-burst")?.click();
   });
 }

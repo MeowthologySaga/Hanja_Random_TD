@@ -350,6 +350,9 @@ class AppContext {
   growthSection: "global" | "element" | "trait" = "global";
   casualFusionSelection: number[] = [];
   casualManualOpen = false;
+
+  /** 도감 유래 갈피가 펼쳐져 있는가 (v041) — 한 번 접으면 다음 글자에서도 접혀 있다. */
+  codexOriginOpen = true;
   pendingCasualFusion: PendingCasualFusion | null = null;
   projectileSpriteDrawTotal = 0;
   abilityZoneSpriteDrawTotal = 0;
@@ -422,6 +425,15 @@ class AppContext {
   })();
   /** 부적 보상으로 얻은 기본 소환 무료권. 코어 무수정 — UI 층에서만 산다. */
   talismanFreeSummonTokens = 0;
+
+  /**
+   * 손에 쥔 강림부 (v041) — 사르면 전장 전체를 내리치고 잠깐 묶는다.
+   *
+   * 오행을 함께 들고 있는 까닭은 사를 때 약점 배수(1.3)가 살아 있게 하려는 것뿐이다.
+   * 상한 3장 — 100웨이브에 열 장 남짓 오므로, 셋만 들 수 있으면 네 장째가 오기 전에
+   * 쓰게 된다(안 쓰는 폭탄을 막는 탄막슈팅의 관습).
+   */
+  talismanBurstCharges: Array<{ wuxing: Wuxing; char: string }> = [];
   mapZoom = DEFAULT_MAP_ZOOM;
   mapOffset: Point = defaultMapOffset();
   /** 휠 확대·축소 1회 또는 팬 1회마다 오른다. 코치 2단계 자동 진행의 근거. */

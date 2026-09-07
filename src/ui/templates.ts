@@ -139,6 +139,18 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
         폭이 없다(실측: 우두머리 준비에서 96px 부터 띠가 57px 로 깨진다). 아래 띠는
         지도 배율·한자 강조가 왼쪽에 있을 뿐 오른쪽이 비어 있다.
       -->
+      <!--
+        강림부 손잡이 (v041) — 쟁여 둔 한 장을 사르는 자리.
+
+        전장 아래 오른쪽, 우두머리 시계 바로 위다. 위쪽(y 71~131)은 자령 명패가
+        앉는 띠이고, 왼쪽 아래는 지도 배율·한자 강조가 이미 쓴다. 재고가 0이면
+        아예 서지 않는다 — 늘 서 있는 0장 단추는 소음이다.
+      -->
+      <button id="talisman-burst" class="talisman-burst" type="button" hidden
+        aria-label="강림부 사르기"
+        title="쟁여 둔 강림부를 살라 전장 전체를 내리치고 2.5초 묶습니다 · 무적은 없습니다 (B)">
+        <i aria-hidden="true">降</i><b id="talisman-burst-count">0</b><small>사르기 <em>B</em></small>
+      </button>
       <div id="boss-clock" class="boss-clock" role="status" aria-live="polite" hidden>
         <b id="boss-clock-time"></b><span id="boss-clock-note"></span>
       </div>

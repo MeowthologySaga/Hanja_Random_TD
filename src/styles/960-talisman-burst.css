@@ -1,0 +1,151 @@
+/* ══════════════════════════════════════════════════════
+   960. 강림부 — 쟁였다 사르는 한 장 (v041)
+   ══════════════════════════════════════════════════════
+
+   "부적으로 필드 적공격하는건 즉시발동이 아니라 쌓아뒀다가 버튼이나 특정 키
+   누르면 사용되게해서 위급할 때 사용하게 하자. 탄막슈팅의 폭탄 같은 개념으로"
+   (사용자).
+
+   자리는 전장 **아래 오른쪽**, 우두머리 시계 바로 위다. 위쪽 71~131 은 자령 명패가
+   클램프되어 앉는 띠이고, 왼쪽 아래는 지도 배율·한자 강조가 이미 쓴다.
+
+   「위급할 때」의 문턱은 적 한계 경고와 **같은 값**(0.6 · 0.9)을 쓴다 — 화면 두 곳이
+   서로 다른 위급을 말하면 그 자체가 소음이다. 0.9 의 맥동 박자(0.62초)도 적 한계
+   칩과 같아서 둘이 함께 뛴다. */
+
+.talisman-burst {
+  position: absolute;
+  right: 12px;
+  bottom: 50px;
+  z-index: 8;
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  height: 32px;
+  padding: 0 11px;
+  color: #2b1d07;
+  border: 0;
+  border-radius: 8px;
+  background: linear-gradient(180deg, #ffe0a8 0%, #e8a53c 52%, #b8762a 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 252, 240, 0.8),
+    inset 0 -2px 0 rgba(78, 46, 12, 0.45),
+    0 2px 8px rgba(0, 0, 0, 0.45);
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.talisman-burst[hidden] {
+  display: none;
+}
+
+.talisman-burst > i {
+  font-size: 16px;
+  font-style: normal;
+}
+
+.talisman-burst > b {
+  font-size: 15px;
+  font-variant-numeric: tabular-nums;
+}
+
+.talisman-burst > small {
+  color: #4a3410;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.talisman-burst > small em {
+  padding: 0 3px;
+  border: 1px solid rgba(74, 52, 16, 0.5);
+  border-radius: 3px;
+  font-style: normal;
+}
+
+.talisman-burst:hover {
+  background: linear-gradient(180deg, #fff0cf 0%, #f4b954 52%, #cc8630 100%);
+}
+
+.talisman-burst:active {
+  translate: 0 1px;
+}
+
+/* 적이 6할을 넘으면 인주 테. 여기서부터가 「쓸 만한 순간」이다. */
+.talisman-burst[data-alarm="1"] {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 252, 240, 0.8),
+    inset 0 0 0 3px #9f2f23,
+    0 2px 8px rgba(0, 0, 0, 0.45);
+}
+
+/* 9할 — 적 한계 칩과 같은 박자로 뛴다. */
+.talisman-burst[data-alarm="2"] {
+  color: #fff4ee;
+  background: linear-gradient(180deg, rgba(176, 26, 40, 0.98), rgba(120, 14, 24, 0.98));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 220, 214, 0.6),
+    inset 0 0 0 3px #ffd0cc,
+    0 2px 8px rgba(0, 0, 0, 0.45);
+  animation: talisman-burst-alarm 0.62s ease-in-out infinite;
+}
+
+.talisman-burst[data-alarm="2"] > small {
+  color: #ffd9cf;
+}
+
+@keyframes talisman-burst-alarm {
+  0%,
+  100% {
+    scale: 1;
+  }
+
+  50% {
+    scale: 1.05;
+  }
+}
+
+/* 사르는 순간 — 무대 전체에 주홍 파문 한 번. */
+.battle-stage.is-burst::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 9;
+  background: radial-gradient(circle at 50% 55%, rgba(159, 47, 35, 0.55), rgba(159, 47, 35, 0) 62%);
+  pointer-events: none;
+  animation: talisman-burst-flash 0.46s ease-out forwards;
+}
+
+@keyframes talisman-burst-flash {
+  from {
+    opacity: 1;
+    scale: 0.75;
+  }
+
+  to {
+    opacity: 0;
+    scale: 1.15;
+  }
+}
+
+/*
+   수련장에서는 각본 밖 손잡이를 감춘다 — [수련 그만두기]가 같은 모서리에 선다.
+*/
+.game-shell[data-tutorial="1"] .talisman-burst {
+  display: none;
+}
+
+/* 차분한 화면·동작 줄이기에서는 맥동만 끈다. 색과 숫자는 남는다. */
+.game-shell[data-calm-screen="1"] .talisman-burst[data-alarm="2"] {
+  animation: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .talisman-burst[data-alarm="2"] {
+    animation: none;
+  }
+
+  .battle-stage.is-burst::after {
+    animation: none;
+    opacity: 0;
+  }
+}

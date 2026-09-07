@@ -48,7 +48,7 @@ import { renderActiveIdioms, renderIdiomHud } from "./panels/idiom";
 import { renderRunInventory, setRunInventoryBulkMode } from "./panels/inventory";
 import { closeCompositionDrawer, renderCompositionDrawer, renderSelected } from "./panels/selected";
 import { renderFormationUnlocks, renderSummonShop } from "./panels/shop";
-import { ensureTalismanSheet, syncTalismanPanel } from "./panels/talisman";
+import { ensureTalismanSheet, syncTalismanPanel, syncTalismanBurst } from "./panels/talisman";
 import { talismanGoldRoll } from "./talisman-reward";
 
 /*
@@ -735,6 +735,8 @@ export function syncPanel(): void {
     syncGrowthAffordability();
   }
   if (ctx.activePanelTab === "talisman") syncTalismanPanel();
+  // 강림부 손잡이는 갈피와 무관하게 전장에 서 있다 — 장수·경보를 여기서 맞춘다.
+  syncTalismanBurst();
   renderIdiomHud();
   renderActiveIdioms();
 }
