@@ -483,7 +483,7 @@ export type GameEvent =
   // rejoined 는 흩어졌던 줄을 다시 세운 재발동이다. 첫 발동보다 가벼운 연출을 쓴다.
   | { type: "idiom"; idiomId: string; chars: string; reading: string; meaning: string; bonus: string; color: string; cells: number[]; rejoined: boolean }
   | { type: "idiomBroken"; idiomId: string; chars: string; reading: string; bonus: string; color: string; cells: number[] }
-  | { type: "wave"; wave: number; boss: boolean; archetype: EnemyArchetype; weakness: Wuxing }
+  | { type: "wave"; wave: number; boss: boolean; archetype: EnemyArchetype; weakness: Wuxing; char: string }
   | { type: "phase"; phase: RunPhase };
 
 export interface ActionResult {

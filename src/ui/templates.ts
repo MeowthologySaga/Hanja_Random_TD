@@ -6,8 +6,9 @@
  */
 import { CASUAL_STAR_BINS, CASUAL_STAR_COLORS } from "../core/casual";
 import { MAX_ENEMIES, WORLD_HEIGHT, WORLD_WIDTH } from "../core/content";
+import { OVERRUN_LABEL } from "./glossary";
 import { CHEONJAMUN_JARYEONG_DEX_META } from "../core/cheonjamun-jaryeong-dex";
-import { casualSummonStarDistribution, SUMMON_COST_MULTIPLIER, type SummonStarBand } from "../core/engine-tuning";
+import { casualSummonStarDistribution, multiSummonCost, SUMMON_COST_MULTIPLIER, type SummonStarBand } from "../core/engine-tuning";
 import { GAME_CONFIG, SUMMON_INTENT_LABELS, SUMMON_STAR_BANDS } from "../core/hanzi";
 import { NOTATION_AXIS_READY, NOTATION_LABELS } from "../core/notation";
 import type { CasualStar } from "../core/types";
@@ -600,7 +601,7 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
           <h2 id="tutorial-complete-title">아홉 걸음을 모두 배웠습니다</h2>
           <ul id="tutorial-summary" class="tutorial-summary">
             <li><b>소환</b><span>획이 많은 한자일수록 별이 높아요 · 기본 주로 1~3★ / 중급 2★ 확정 / 고급 3★ 확정</span></li>
-            <li><b>부적</b><span>한자를 따라 쓰면 자령이 응답해요 · 웨이브마다 한 장, 획순은 자유</span></li>
+            <li><b>부적</b><span>한자를 따라 쓰면 자령이 응답해요 · 웨이브마다 한 장, 획순 안내가 켜져 있으면 획순대로</span></li>
             <li><b>승급</b><span>같은 오행·같은 별 3기 → 다음 별 자령 1기, 무엇이 나올지는 무작위</span></li>
             <li><b>강화</b><span>안 쓰는 자령을 분해해 문기를 얻고, 그 오행 전원을 키워요</span></li>
             <li><b>사자성어</b><span>한 줄에 4자 순서대로 — 발동! 보너스는 줄을 지키는 동안만 살아 있어요</span></li>
@@ -845,7 +846,7 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
             <ol class="help-flow" aria-label="처음 세 걸음">
               <li><i aria-hidden="true">①</i><b>자령 소환</b><span>상점의 <em>기본 소환</em>(<kbd>1</kbd>)으로 한 기를 뽑습니다. 첫 자령이 시작 오행을 정합니다.</span></li>
               <li><i aria-hidden="true">②</i><b>첫 진 자동 개방</b><span>그 오행의 진 하나가 무료로 열리고 빈 칸에 바로 놓입니다. 추가 소환 2기를 권합니다.</span></li>
-              <li><i aria-hidden="true">③</i><b>웨이브 시작</b><span>첫 소환 뒤 준비 15초가 흐릅니다. 전장 위 <em>시작</em> 버튼을 일찍 누를수록 엽전을 더 받고, 준비의 마지막 몇 초는 값이 없어 부적을 마저 쓸 수 있습니다.</span></li>
+              <li><i aria-hidden="true">③</i><b>웨이브 시작</b><span>첫 소환 뒤 준비 15초가 흐릅니다. 오른쪽 패널 웨이브 카드의 <em>시작</em> 버튼(<kbd>E</kbd>)을 일찍 누를수록 엽전을 더 받고, 준비의 마지막 몇 초는 값이 없어 부적을 마저 쓸 수 있습니다.</span></li>
             </ol>
             <h3 class="help-subhead">꼭 알아 둘 여섯 낱말</h3>
             <div class="help-term-grid">
@@ -885,7 +886,7 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
             <h3 class="help-subhead">더 얻는 길</h3>
             <div class="help-cards">
               <article class="help-card"><b>소환<em><kbd>1</kbd></em></b><span>지역별 1단계 한자를 품은 자령이 무작위로 나옵니다. 목표에 모자란 재료는 뽑을수록 확률이 올라갑니다.</span></article>
-              <article class="help-card"><b>10연 소환<em><kbd>Q</kbd></em></b><span>10웨이브를 지키면 열립니다. 현재 소환 비용 10회를 한 번에 지불하며, 별승급 진법에서는 열 장 안에 기본 밴드 상단인 3★ 이상 1기가 보장됩니다.</span></article>
+              <article class="help-card"><b>10연 소환<em><kbd>Q</kbd></em></b><span>소환 비용 10회분을 한 번에 지불합니다. 웨이브 자물쇠는 없고 값이 문지기입니다 — 첫 10연 ${multiSummonCost(0)}엽전. 별승급 진법에서는 열 장 안에 기본 밴드 상단인 3★ 이상 1기가 보장됩니다.</span></article>
               <article class="help-card"><b>인연 연구<em><kbd>3</kbd></em></b><span>엽전을 들여 목표 재료가 나올 가중치를 올립니다. 최고 5단계이며 각 단계는 정해진 웨이브를 지나야 열립니다.</span></article>
               <article class="help-card"><b>첫 오행진과 해금</b><span>열린 진 없이 상점에서 시작합니다. 첫 소환 자령과 같은 오행진이 무료로 열리고, 나머지는 원하는 순서로 18·32·52·78엽전에 개방합니다.</span></article>
               <article class="help-card"><b>자동배치</b><span>가방 자령을 현재 개방된 오행진에 투입하고, 완성 가능한 사자성어와 오행 공명을 함께 정리합니다.</span></article>
@@ -911,7 +912,7 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
             <div class="help-cards">
               <article class="help-card"><b>약점과 상생</b><span>웨이브 약점 오행은 피해가 30% 증가합니다. 水→木→火→土→金→水 상생을 함께 배치하면 추가 피해를 줍니다.</span></article>
               <article class="help-card"><b>웨이브와 장</b><span>10웨이브가 한 장(章)이고 장 끝에는 우두머리가 옵니다. 제한시간은 1장 72초이고 장마다 6초씩 깁니다. 넘겨도 그 자리에서 지지는 않지만, 우두머리가 남은 채 20초마다 다음 웨이브가 겹쳐 적이 쌓입니다 — 적 80체가 차면 그때 패배합니다. 마지막 100웨이브만은 넘기면 즉시 패배합니다.</span></article>
-              <article class="help-card"><b>게임오버</b><span>전장에 ${MAX_ENEMIES}체가 쌓이면 즉시 실패합니다. 제어 능력은 적을 뒤로 밀지 않고 현재 공격권 안에서 감속·봉쇄합니다.</span></article>
+              <article class="help-card"><b>${OVERRUN_LABEL}</b><span>전장에 ${MAX_ENEMIES}체가 쌓이면 즉시 실패합니다. 제어 능력은 적을 뒤로 밀지 않고 현재 공격권 안에서 감속·봉쇄합니다.</span></article>
               <article class="help-card"><b>적 특성</b><span>정예 철갑 강시(방어 높음) · 질풍 아귀(빠름) · 백귀야행(다수) · 회생 요괴(체력 회복)를 미리 확인하세요.</span></article>
               <article class="help-card"><b>은행 이자</b><span>웨이브 종료 시 보유 엽전 20개당 1엽전을 지급하며, 한 번에 최대 20엽전까지만 받을 수 있습니다.</span></article>
               <article class="help-card"><b>일시정지<em><kbd>P</kbd></em></b><span>직접 멈출 수 있고, 도감·도움말·설정 창이 열려 있는 동안에도 전투가 저절로 멈춥니다. 창을 닫으면 이어집니다.</span></article>

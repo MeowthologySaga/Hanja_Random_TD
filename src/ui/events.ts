@@ -4,6 +4,7 @@
 import { CASUAL_STAR_COLORS } from "../core/casual";
 import { BOARD_CELLS, bossTimeLimitForWave } from "../core/content";
 import { ELEMENT_STYLES, STAGE_COLORS } from "../core/hanzi";
+import { learningInfoForNotation } from "../core/learning";
 import { type GameEvent, type Point } from "../core/types";
 import {
   clampStarLevel,
@@ -77,7 +78,11 @@ export function processEvent(event: GameEvent): void {
         takeFloater(event.at, `${event.char} 자혼`, "#c9a8ff", event.boss ? 1.15 : 0.8, event.boss),
         48
       );
-      if (event.boss) showToast(`${event.char} 자혼을 얻었습니다 — 자혼 넷을 모으면 나만의 성어를 새깁니다`);
+      // 자혼은 판이 끝나도 남는 유일한 수확이다 — 그 글자를 읽어 주고 넘긴다(v042).
+      if (event.boss) {
+        const soulReading = learningInfoForNotation(ctx.engine.state.notation, event.char).short;
+        showToast(`${event.char} ${soulReading} 자혼을 얻었습니다 — 자혼 넷을 모으면 나만의 성어를 새깁니다`);
+      }
       break;
     case "interest":
       showToast("은행 이자 +" + String(event.amount) + "엽전");
@@ -171,9 +176,23 @@ export function processEvent(event: GameEvent): void {
        * 라고만 하고 제한시간이 있다는 사실 자체를 알리지 않았다.
        */
       const bossLimit = event.boss ? bossTimeLimitForWave(event.wave) : null;
+      /*
+       * 이 웨이브의 **글자를 읽어 준다** (v042).
+       *
+       * 한 웨이브는 한 글자이고 그 글자가 적의 몸에 찍혀 나온다 — 100웨이브면 화면
+       * 한가운데서 100글자를 만나는 셈이라 부적(≤100장)보다도 큰 학습 통로다. 그런데
+       * 여태 그 글자를 **읽어 주는 자리가 한 곳도 없었다**(적 몸통의 12px 글자뿐).
+       * 배너는 폭이 잡혀 있지 않고 웨이브가 열리는 순간에만 서므로, 읽기를 실을 수
+       * 있는 유일한 자리다.
+       *
+       * 읽기 문자열은 코어(learningInfoForNotation)가 만든 것을 그대로 쓴다 —
+       * 표기 축(한국 훈음·일본 음훈·한어병음)이 화면마다 갈리지 않게.
+       */
+      const waveReading = event.char ? learningInfoForNotation(ctx.engine.state.notation, event.char).short : "";
+      const waveGlyph = event.char ? `${event.char} ${waveReading} · ` : "";
       bossBanner.textContent = event.boss
-        ? "⚠ 우두머리 " + String(event.wave) + " · 약점 " + event.weakness + (bossLimit === null ? "" : " · 제한 " + String(bossLimit) + "초") + " ⚠"
-        : "웨이브 " + String(event.wave) + " · 약점 " + event.weakness;
+        ? "⚠ 우두머리 " + String(event.wave) + " · " + waveGlyph + "약점 " + event.weakness + (bossLimit === null ? "" : " · 제한 " + String(bossLimit) + "초") + " ⚠"
+        : "웨이브 " + String(event.wave) + " · " + waveGlyph + "약점 " + event.weakness;
       bossBanner.classList.toggle("boss-banner--boss", event.boss);
       bossBanner.classList.remove("boss-banner--idiom");
       showWaveBanner();

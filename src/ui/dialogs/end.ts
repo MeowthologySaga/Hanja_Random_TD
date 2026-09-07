@@ -2,6 +2,7 @@
  * 판 종료 화면.
  */
 import { MAX_ENEMIES } from "../../core/content";
+import { BOSS_TIMEOUT_LABEL, DEFEAT_LABEL, OVERRUN_LABEL } from "../glossary";
 import { ctx, endOverlay, must } from "../app-context";
 import { formatTime, gameModeLabel } from "../format";
 import { setFocusFrame } from "../hud";
@@ -39,12 +40,16 @@ export function showEndScreen(phase: "victory" | "defeat"): void {
   // [v041] 시계로 진 판도 제 이름을 갖는다 — 여태 "수비 실패"로 뭉개져 무엇이
   // 자기를 죽였는지 화면이 끝까지 말하지 않았다.
   const bossTimeoutDefeat = !victory && state.defeatCause === "boss-timeout";
+  /*
+   * [v042] 패배를 부르는 낱말은 한 곳(ui/glossary)에서 온다. 여기 인라인으로 박혀
+   * 있던 탓에 도움말이 같은 일을 「게임오버」라고 따로 부르고 있었다.
+   */
   must<HTMLElement>("#end-kicker").textContent = victory
     ? "봉인 완수"
-    : enemyLimitDefeat ? "적 한계 초과" : bossTimeoutDefeat ? "제한시간 초과" : "수비 실패";
+    : enemyLimitDefeat ? OVERRUN_LABEL : bossTimeoutDefeat ? BOSS_TIMEOUT_LABEL : DEFEAT_LABEL;
   must<HTMLElement>("#end-heading").textContent = victory
     ? "천자문 대봉인 완성"
-    : enemyLimitDefeat ? "적 한계 초과로 수비 실패" : bossTimeoutDefeat ? "제한시간 초과로 수비 실패" : "수비에 실패했습니다";
+    : enemyLimitDefeat ? `${OVERRUN_LABEL}로 ${DEFEAT_LABEL}` : bossTimeoutDefeat ? `${BOSS_TIMEOUT_LABEL}로 ${DEFEAT_LABEL}` : "수비에 실패했습니다";
   // P-18: lastMessage 는 "마지막으로 한 조작"이라 패배 순간과 무관한 승급 로그가
   // 오는 일이 잦았다. 사유가 분명하면 사유 문장을 쓰고, 조작 로그는 버린다.
   must<HTMLElement>("#end-message").textContent = victory

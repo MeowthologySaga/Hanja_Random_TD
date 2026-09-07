@@ -48,6 +48,7 @@ import { renderActiveIdioms, renderIdiomHud } from "./panels/idiom";
 import { renderRunInventory, setRunInventoryBulkMode } from "./panels/inventory";
 import { closeCompositionDrawer, renderCompositionDrawer, renderSelected } from "./panels/selected";
 import { renderFormationUnlocks, renderSummonShop } from "./panels/shop";
+import { OVERRUN_LABEL } from "./glossary";
 import { ensureTalismanSheet, syncTalismanPanel, syncTalismanBurst } from "./panels/talisman";
 import { talismanGoldRoll } from "./talisman-reward";
 
@@ -692,7 +693,8 @@ export function syncPanel(): void {
     ? ""
     : preview
       ? composeWaveBriefing(preview.briefing, preview.wave, previewBossLimit !== null, nextWaveRemaining !== null ? state.enemies.length : null)
-      : "적 " + String(MAX_ENEMIES) + "체 도달 시 즉시 게임오버";
+      // [v042] 패배를 부르는 이름은 한 곳에서 온다(ui/glossary) — 도움말·종료 화면과 같은 낱말.
+      : "적 " + String(MAX_ENEMIES) + "체 도달 시 즉시 " + OVERRUN_LABEL;
   // 패널 행동 자리 — 탭과 무관하게 늘 서 있으므로 여기서 갱신한다(v036).
   syncWaveActions();
   const briefingElement = must<HTMLElement>("#wave-briefing");

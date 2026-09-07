@@ -1803,7 +1803,9 @@ export class GameEngine {
       wave: nextWave,
       boss: this.currentPlan.boss,
       archetype: this.currentPlan.archetype,
-      weakness: this.currentPlan.weakness
+      weakness: this.currentPlan.weakness,
+      // [v042] 이 웨이브의 야생 글자 — 화면이 그 글자를 읽어 줄 수 있게 함께 싣는다.
+      char: this.state.waveChar
     });
     this.events.push({ type: "phase", phase: "combat" });
   }
