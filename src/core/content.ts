@@ -152,6 +152,38 @@ export function bossSealedNotice(): { readonly time: string; readonly note: stri
   return { time: "우두머리 봉인", note: "제한시계가 멈췄습니다" };
 }
 
+/**
+ * 프레임이 잇달아 몇 번 깨지면 루프를 **의도적으로** 멈추는가 (v042).
+ *
+ * 무한 재시도는 「고장난 채로 굴러가는 판」을 만든다 — 예외가 이벤트를 꺼낸 뒤에
+ * 났다면 그 프레임의 이벤트는 이미 큐에서 빠져 영영 처리되지 않고, 웨이브 저장도
+ * 건너뛴 채 다음 프레임이 반쪽 상태 위에서 돈다. 그렇다고 한 번에 멈추면 한 번뿐인
+ * 딸꾹질에도 판이 끝난다. 실측으로 결정적 결함에서는 초당 77.5프레임이 도니, 셋이면
+ * 0.04초 안에 판정이 난다.
+ */
+export const RUN_INTERRUPT_LIMIT = 3;
+
+/**
+ * 판이 예외로 멈춘 자리에서 하는 말 (v042).
+ *
+ * 여태 이 자리에 **아무 말도 없었다.** 실측하면 프레임이 던지는 순간 재스케줄이
+ * 그 줄 뒤에 있어(game-loop.ts 마지막 문장) 다음 프레임이 영영 안 걸리고, 화면은
+ * 마지막 프레임에 그대로 선다 — 대화상자 0 · 오버레이 0 · 직전 토스트가 그대로.
+ * 사람에게 「고장났다」를 말하는 것이 한 톨도 없었다.
+ *
+ * `saved` 로 갈라야 한다. 수련장과 첫 웨이브 이전은 저장할 지점이 없어
+ * (`captureRunSave` 가 null) 「이어하기」를 권하면 거짓말이 된다 — [家] 확인창이
+ * 이미 같은 boolean 으로 갈라 놓은 그 갈래다.
+ */
+export function runInterruptedNotice(saved: boolean): { readonly heading: string; readonly body: string } {
+  return {
+    heading: "판이 멈췄습니다",
+    body: saved
+      ? "예기치 못한 오류로 화면이 멈췄습니다. 진행은 방금 저장했습니다 — 새로고침한 뒤 [이어하기]로 이 자리에서 다시 시작할 수 있습니다."
+      : "예기치 못한 오류로 화면이 멈췄습니다. 아직 저장할 지점이 없어 이 판은 이어할 수 없습니다 — 새로고침하면 처음부터 다시 시작합니다."
+  };
+}
+
 export const FORMATION_COLUMNS = 4;
 export const FORMATION_ROWS = 4;
 export const CELLS_PER_FORMATION = FORMATION_COLUMNS * FORMATION_ROWS;

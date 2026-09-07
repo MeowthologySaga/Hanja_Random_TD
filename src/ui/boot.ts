@@ -193,5 +193,22 @@ async function bootGame(): Promise<void> {
 
 /** main.ts 가 원래 순서대로 부르는 배선 묶음. */
 export function wireBoot4(): void {
-  void bootGame();
+  /*
+   * 부팅이 던지면 **막이 영원히 안 걷힌다** (v042 에서 고침).
+   *
+   * `bootGame()` 의 첫 문장인 `takeOverBootScreen()` 이 index.html 의 30초 인라인
+   * 안전장치를 스스로 지운다. 그래서 그 뒤 `dismissBootScreen()` 까지 사이에서 동기
+   * 예외가 나면 막을 걷을 사람이 아무도 없고, 진행 막대의 rAF 는 `dismissBootScreen`
+   * 만이 멈추므로 **계속 차오르는 척한다** — 사람은 영원히 로딩 중인 화면을 본다.
+   *
+   * 덜 준비된 화면이 드러나는 편이 영원한 막보다 낫다.
+   */
+  bootGame().catch((error: unknown) => {
+    console.error("[boot] 부팅이 예외로 끝났습니다", error);
+    try {
+      dismissBootScreen();
+    } catch {
+      // 막을 걷는 것까지 깨졌으면 더 할 수 있는 것이 없다.
+    }
+  });
 }

@@ -1,0 +1,54 @@
+/* ══════════════════════════════════════════════════════
+   990. 판이 멈춘 자리 (v042)
+   ══════════════════════════════════════════════════════
+
+   실측이 세운 자리다. 프레임이 예외로 끝나면 재스케줄이 그 줄 뒤에 있어
+   (game-loop.ts 의 마지막 문장) 다음 프레임이 영영 안 걸린다 — 2.5초 동안 프레임
+   스케줄이 4119 에서 한 번도 안 늘었고 판은 71.8초에 섰다. 그런데 화면 신호는
+   **0**이었다: 대화상자 0 · 오버레이 0 · 직전 토스트가 그대로.
+
+   그리고 얼어붙은 판이 **조작을 계속 먹었다** — 죽은 루프 위에서 소환을 한 번
+   눌렀더니 엽전 52→45, 자령 4→5 가 됐다. 다시 그리지도 않은 채로. 이 막의 절반은
+   말하는 것이고 나머지 절반은 **그 손을 받아 내는 것**이다.
+
+   움직임을 안 넣는다. 900-fb6-calm 뒤에 오는 절이 모션을 들이면 calm·동작 줄이기
+   가드를 스스로 달아야 하는데, 이 막은 「고장났다」를 말하는 자리라 뛸 이유가 없다.
+   그래서 이 절에는 끌 것이 없다.
+
+   글은 접히도록 둔다. 상자를 고정 높이로 잡으면 v042 2차가 잡아낸 부류(잘리진
+   않는데 두 줄로 접히던 띠)를 여기서 되풀이한다 — 접히게 두고 높이는 e2e 가 잰다. */
+
+.interrupt-overlay[hidden] {
+  display: none;
+}
+
+.interrupt-card {
+  width: min(560px, 100%);
+  padding: 24px 32px 20px;
+  text-align: center;
+  color: #f2e6cf;
+  border: 1px solid rgba(226, 196, 126, 0.36);
+  border-radius: 18px;
+  background:
+    linear-gradient(150deg, rgba(52, 44, 40, 0.92), rgba(20, 16, 16, 0.97)),
+    #16110f;
+  box-shadow: 0 28px 90px rgba(0, 0, 0, 0.55);
+}
+
+.interrupt-card h2 {
+  margin: 6px 0 10px;
+  font-size: 22px;
+}
+
+.interrupt-card p {
+  margin: 0;
+  color: #d9cdb6;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.interrupt-actions {
+  display: flex;
+  justify-content: center;
+  margin-top: 18px;
+}

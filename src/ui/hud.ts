@@ -776,7 +776,18 @@ export function syncPanel(): void {
      * 지적). 할 일은 맨 아래 줄(lastMessage) 한 곳이 말하고, 이 칩은 **무엇이
      * 오는가**만 말한다 — 올 것이 아직 없으니 짧게 「대기」만 적는다.
      */
-    ? state.summonCount === 0 ? "첫 소환 대기" : String(state.wave + 1) + "웨이브 · " + (preview?.label ?? "")
+    /*
+     * 웨이브 번호를 **두 번 말하지 않는다** (v042).
+     *
+     * 계획의 이름이 이미 번호를 지고 있다 — `label = ARCHETYPE_LABEL + " " + wave`
+     * (content.ts). 그 앞에 「2웨이브 · 」를 또 붙여 상단 띠가 **「2웨이브 · 망령 행렬 2」**
+     * 라고 말하고 있었다. 옆 칸의 `#stage-wave`(「1 / 100」)까지 세면 한 띠에서 번호가
+     * 세 번이다.
+     *
+     * 교전 중 갈래는 처음부터 `plan.label` 만 썼다(아래 줄) — 준비 갈래만 어긋나 있었다.
+     * 같은 것으로 맞춘다. 상단 띠는 41px 예산이라 짧아지는 쪽이 덤이다.
+     */
+    ? state.summonCount === 0 ? "첫 소환 대기" : preview?.label ?? ""
     : plan?.label ?? state.lastMessage;
   const briefing = state.summonCount === 0
     // 첫 소환 전 설명도 비운다 — 맨 아래 줄과 개문 안내(①②③)가 이미 말한다.

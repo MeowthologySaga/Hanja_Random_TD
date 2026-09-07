@@ -1,6 +1,7 @@
 /*
  * requestAnimationFrame 루프와 일시정지.
  */
+import { RUN_INTERRUPT_LIMIT, runInterruptedNotice } from "../core/content";
 import { type GameEvent } from "../core/types";
 import { canvas, ctx, must, shell, sound } from "./app-context";
 import { drawWorld } from "./battle/draw";
@@ -119,7 +120,74 @@ export function wireAwayPause(): void {
   });
 }
 
+/** 잇달아 깨진 프레임 수 — 한 번 성공하면 0 으로 돌아간다. */
+let frameFailureStreak = 0;
+
+/**
+ * 프레임 하나가 예외로 끝나도 **판을 잃지 않는다** (v042).
+ *
+ * 여태 이 자리에 아무 방벽이 없었다. 재스케줄(`requestAnimationFrame(frame)`)이
+ * `runFrame` 의 **마지막 문장**이라 그 앞 어디서 던지든 다음 프레임이 영영 안 걸린다.
+ * 실측: `#pause-chip` 을 지워 결함을 넣었더니 2.5초 동안 프레임 스케줄이 4119 에서
+ * 한 번도 안 늘고 판이 71.8초에 멈췄다. `pageerror` 는 정확히 1건, 화면 신호는 0.
+ *
+ * 저장은 프레임 안에서만 일어난다(웨이브·준비 경계). 봇 6시드로 그 간격을 재면
+ * **중앙 10.0초 · p90 37.0초 · 최대 110.8초**다 — 얼어붙은 뒤 새로고침하면 그만큼을
+ * 잃는다. 예외 자리에서 한 번 저장하면 그 구멍이 0 이 된다. 죽은 루프 위에서도
+ * `autoSaveRun()` 이 도는 것은 실측으로 확인했다([家] 클릭이 같은 일을 한다).
+ *
+ * **`console.error` 는 선택이 아니라 계약이다.** 지금 프레임 예외를 잡는 것은 e2e 셋의
+ * `expect(errors).toEqual([])` 뿐인데 그 배열은 `pageerror` 와 `console type=error` 를
+ * 함께 담는다. try/catch 가 pageerror 를 삼키므로, 여기서 소리를 안 내면 앞으로
+ * 프레임이 깨져도 그 셋이 초록으로 지나간다 — 고치려던 것보다 나쁜 상태가 된다.
+ */
 export function frame(now: number): void {
+  try {
+    runFrame(now);
+  } catch (error) {
+    frameFailureStreak += 1;
+    console.error("[frame] 프레임이 예외로 끝났습니다", error);
+    let saved = false;
+    try {
+      saved = autoSaveRun();
+    } catch {
+      // 저장까지 깨졌으면 더 할 수 있는 것이 없다 — 못 했다고 말한다.
+      saved = false;
+    }
+    if (frameFailureStreak < RUN_INTERRUPT_LIMIT) {
+      window.requestAnimationFrame(frame);
+      return;
+    }
+    showRunInterrupted(saved);
+    return;
+  }
+  frameFailureStreak = 0;
+  window.requestAnimationFrame(frame);
+}
+
+/**
+ * 멈춘 자리를 화면에 세운다. 문장은 코어가 만든다(v041·v042 선례).
+ *
+ * 막이 손도 받는다 — 죽은 판이 조작을 계속 먹던 자리를 여기서 닫는다.
+ */
+function showRunInterrupted(saved: boolean): void {
+  const overlay = document.querySelector<HTMLElement>("#interrupt-overlay");
+  if (!overlay) return;
+  const notice = runInterruptedNotice(saved);
+  const heading = overlay.querySelector<HTMLElement>("#interrupt-heading");
+  const body = overlay.querySelector<HTMLElement>("#interrupt-body");
+  if (heading) heading.textContent = notice.heading;
+  if (body) body.textContent = notice.body;
+  overlay.hidden = false;
+  overlay.classList.add("modal-layer--visible");
+  const reload = overlay.querySelector<HTMLButtonElement>("#interrupt-reload");
+  if (reload) {
+    reload.onclick = (): void => window.location.reload();
+    reload.focus();
+  }
+}
+
+function runFrame(now: number): void {
   const frameWorkStartedAt = performance.now();
   const delta = Math.min(0.1, Math.max(0, (now - ctx.lastFrame) / 1000));
   const running = ctx.engine.state.phase === "prep" || ctx.engine.state.phase === "combat";
@@ -186,5 +254,4 @@ export function frame(now: number): void {
   // 1회성 안내는 코치보다 뒤에서 판정한다 — 코치가 떠 있으면 항상 기다린다.
   syncOneShotHints();
   if (waveStartedThisFrame) canvas.dataset.waveStartWorkMs = (performance.now() - frameWorkStartedAt).toFixed(2);
-  window.requestAnimationFrame(frame);
 }

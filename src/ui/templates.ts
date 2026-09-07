@@ -830,6 +830,24 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
       </div>
     </section>
 
+    <!--
+      판이 예외로 멈춘 자리 (v042). 평소에는 숨어 있다.
+
+      **막는 것이 목적의 절반이다.** 실측하면 루프가 죽은 뒤에도 DOM 리스너는 살아
+      있어 소환을 한 번 누르면 엽전 52→45, 자령 4→5 가 된다 — 다시 그리지도 패널을
+      갱신하지도 않은 채 상태만 바뀐다. 얼어붙는 것보다 나쁘다. 이 막이 그 손을 받는다.
+    -->
+    <section id="interrupt-overlay" class="modal-layer interrupt-overlay" aria-labelledby="interrupt-heading" hidden>
+      <div class="interrupt-card" role="alertdialog" aria-live="assertive">
+        <p class="eyebrow">멈춤</p>
+        <h2 id="interrupt-heading"></h2>
+        <p id="interrupt-body"></p>
+        <div class="interrupt-actions">
+          <button id="interrupt-reload" class="start-button" type="button">새로고침</button>
+        </div>
+      </div>
+    </section>
+
     <dialog id="help-dialog" class="help-dialog">
       <form method="dialog">
         <div class="dialog-heading"><div><p class="eyebrow">놀이 방법</p><h2>봉인술 입문</h2></div><button aria-label="도움말 닫기">×</button></div>
