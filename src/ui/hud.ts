@@ -1,7 +1,7 @@
 /*
  * 상단 띠·패널 탭·집중 프레임·토스트 등 상시 HUD.
  */
-import { bossTimeLimitForWave, composeWaveBriefing, MAX_ENEMIES, WAVE_REINFORCEMENT_DELAY, wavePlan, bossClockNotice, bossFinalWallNotice, bossOvertimeNotice } from "../core/content";
+import { bossTimeLimitForWave, composeWaveBriefing, MAX_ENEMIES, WAVE_REINFORCEMENT_DELAY, wavePlan, bossClockNotice, bossFinalWallNotice, bossOvertimeNotice, bossSealedNotice } from "../core/content";
 import { FIRST_PREP_SECONDS, type GameEngine } from "../core/game";
 import {
   ELEMENT_STYLES,
@@ -84,6 +84,10 @@ function syncEarlyCalmState(): void {
 /** 새 판이 설 때 맥동을 되살린다(s00-menu 가 engine.begin 곁에서 부른다). */
 export function resetEarlyStartRunState(): void {
   earlyUsedThisRun = 0;
+  // 우두머리 시계의 「잡았다」도 판에 매인 기억이다 — 새 판은 못 본 상태로 연다.
+  bossDefeatedSeen = null;
+  bossClockLiveWave = null;
+  bossClearHoldUntilMs = null;
   syncEarlyCalmState();
 }
 
@@ -93,6 +97,38 @@ function noteEarlyStartUsed(): void {
 }
 
 let earlyHintTimer = 0;
+
+/**
+ * 우두머리를 눕힌 뒤 시계가 「잡았다」로 머무는 시간 — **벽시계** 밀리초.
+ *
+ * 처음에는 판 시간 2.5초로 셌다. 그러면 3배속으로 노는 사람에게 0.83초만 서 있다가
+ * 사라진다 — 열여섯 자를 읽기 전에 없어지므로, v041 이 조인 것을 푸는 유일한 표시가
+ * 배속을 올린 사람에게만 안 보인다. 게다가 같은 묶음의 청소 띠는 WAAPI 1200ms 라
+ * 벽시계 고정이어서, 배속이 오를수록 두 「해방」 표시의 길이가 서로 어긋난다.
+ *
+ * **읽는 시간은 판 시간이 아니다.** 띠와 같은 시계를 쓴다.
+ */
+const BOSS_CLEAR_HOLD_MS = 2_500;
+
+/**
+ * 지난 프레임의 `bossDefeated`. **null 은 「아직 못 봤다」**이고, 이어하기로 들어온
+ * 판이 여기 걸린다 — 이미 눕힌 우두머리를 방금 눕힌 것처럼 축하하지 않게 한다.
+ */
+let bossDefeatedSeen: boolean | null = null;
+
+/**
+ * 이 웨이브에 시계가 **실제로 돌았는가** — 돌던 웨이브 번호를 적어 둔다.
+ *
+ * 없으면 「제한시계가 멈췄습니다」가 멈출 시계도 없는 자리에서 뜬다. 실제로 닿는
+ * 길이 있다: 10웨이브에서 제한을 넘기면 우두머리가 남은 채 11웨이브가 합류하고
+ * (v035 ③ 이 설계한 정상 경로) 11웨이브에는 시계가 없다. 거기서 그 우두머리를
+ * 잡으면 `bossDefeated` 가 false→true 로 뒤집힌다 — 숨어 있던 시계가 되살아나
+ * 있지도 않던 제한이 멈췄다고 말할 뻔했다.
+ */
+let bossClockLiveWave: number | null = null;
+
+/** 「잡았다」를 거두는 벽시계 시각. null 이면 지금 보일 것이 없다. */
+let bossClearHoldUntilMs: number | null = null;
 
 /** 우두머리 시계가 이번 웨이브에 이미 지난 문턱(0 없음 · 1 30초 · 2 15초 · 3 5초). */
 let bossClockStage = 0;
@@ -182,6 +218,33 @@ function syncBossClock(remaining: number | null, overtime: boolean, previewLimit
   const clock = must<HTMLElement>("#boss-clock");
   const state = ctx.engine.state;
   const finalWave = state.wave >= GAME_CONFIG.maxWaves;
+  /*
+   * 조인 것을 **푼다** (v042).
+   *
+   * v041 이 이 시계를 세워 72~126초를 조였는데, 우두머리가 쓰러지는 순간
+   * `bossTimeRemaining()` 이 null 이 되어 시계는 그냥 사라졌다 — 조인 것만 있고
+   * 푸는 것이 없었다. 실측하면 우두머리가 쓰러진 시각과 웨이브가 끝나는 시각이
+   * 같은 틱이라(58표본 중 54, 간격 0.0초) 대개는 청소 배너가 그 자리를 맡지만,
+   * 잔존이 남은 나머지(7%)에서는 교전이 이어지므로 시계가 직접 말해야 한다.
+   */
+  // 시계가 돌고 있는 동안 그 웨이브를 적어 둔다 — 「멈췄다」는 돌던 것에만 쓴다.
+  if (remaining !== null && state.phase === "combat") bossClockLiveWave = state.wave;
+  if (state.bossDefeated && bossDefeatedSeen === false && state.phase === "combat" && bossClockLiveWave === state.wave) {
+    bossClearHoldUntilMs = performance.now() + BOSS_CLEAR_HOLD_MS;
+  }
+  if (!state.bossDefeated) bossClearHoldUntilMs = null;
+  bossDefeatedSeen = state.bossDefeated;
+  if (bossClearHoldUntilMs !== null && state.phase === "combat" && performance.now() < bossClearHoldUntilMs) {
+    clock.hidden = false;
+    clock.dataset.alert = "clear";
+    // 문장은 코어가 만든다 — 배너와 시계가 같은 순간에 다른 말을 하지 않게.
+    const sealed = bossSealedNotice();
+    must<HTMLElement>("#boss-clock-time").textContent = sealed.time;
+    must<HTMLElement>("#boss-clock-note").textContent = sealed.note;
+    bossClockStage = 0;
+    bossOvertimeAnnounced = false;
+    return;
+  }
   if (remaining === null && !overtime && previewLimit === null) {
     clock.hidden = true;
     delete clock.dataset.alert;
@@ -515,6 +578,21 @@ export function showToast(message: string, warning = false, where: ToastWhere = 
       ], { duration: 1900, easing: "ease" });
 }
 
+/**
+ * 띠가 옷을 갈아입는 **유일한 자리** (v042).
+ *
+ * 옷이 셋이 되면서(경보 리본 `--boss` · 금박 `--idiom` · 비취 `--clear`) 부르는 쪽마다
+ * 「무엇을 벗길지」를 따로 적게 됐고, 곧바로 새는 자리가 생겼다 — `firstSealCelebration`
+ * 은 `--boss` 만 벗겨서, 웨이브를 막은 뒤 준비 시간에 첫 성어가 서면 판당 한 번뿐인
+ * 금박 축하가 비취 발광을 뒤집어쓴 잡종으로 떴다. 벗기는 일을 한 곳에 모아 부르는
+ * 쪽은 **입을 옷 하나만** 말하게 한다.
+ */
+export function dressWaveBanner(variant: "plain" | "boss" | "idiom" | "clear"): void {
+  bossBanner.classList.toggle("boss-banner--boss", variant === "boss");
+  bossBanner.classList.toggle("boss-banner--idiom", variant === "idiom");
+  bossBanner.classList.toggle("boss-banner--clear", variant === "clear");
+}
+
 export function showWaveBanner(): void {
   bossBanner.classList.remove("boss-banner--visible");
   ctx.waveBannerAnimation?.cancel();
@@ -541,8 +619,7 @@ export function showWaveBanner(): void {
  */
 export function firstSealCelebration(reading: string): void {
   bossBanner.textContent = `첫 발동 ${reading}! 발동 중 성어는 전장 왼쪽에 표시됩니다`;
-  bossBanner.classList.remove("boss-banner--boss");
-  bossBanner.classList.add("boss-banner--idiom");
+  dressWaveBanner("idiom");
   showWaveBanner();
 }
 
@@ -661,7 +738,20 @@ export function syncPanel(): void {
     step.classList.toggle("is-complete", state.wave > 0 || index < openingStep);
   });
   const bossRemaining = ctx.engine.bossTimeRemaining();
-  syncBossClock(bossRemaining, ctx.engine.bossOvertime(), preview?.boss === true ? bossTimeLimitForWave(preview.wave) : null);
+  /*
+   * 미리 보기는 **준비 단계에만** 준다 (v042에서 고침).
+   *
+   * `preview` 는 준비 단계에서만 다음 웨이브이고 교전 중에는 **지금 이 웨이브**다
+   * (611행). v041 은 그 사실을 놓치고 미리 보기를 그대로 넘겼다 — 그래서 우두머리를
+   * 눕히고도 잔존이 남은 자리(실측 7%)에서 `bossTimeRemaining()` 이 null 이 되는
+   * 순간 시계가 **정지한 「우두머리 72초」로 되돌아갔다.** 사라지는 것보다 나쁘다:
+   * 이미 끝난 싸움을 아직 안 시작한 것처럼 말한다.
+   *
+   * 옆줄인 `#wave-kicker`(712행)는 처음부터 `phase === "prep"` 로 갈라 놓아 이
+   * 거짓말을 안 했다. 같은 갈래를 여기에도 세운다.
+   */
+  const bossClockPreview = state.phase === "prep" && preview?.boss === true ? bossTimeLimitForWave(preview.wave) : null;
+  syncBossClock(bossRemaining, ctx.engine.bossOvertime(), bossClockPreview);
   // 제한시간을 넘겨도 판은 안 끝난다(v035 ③) — 그 자리를 화면이 말해 줘야 한다.
   const bossOvertime = ctx.engine.bossOvertime();
   const nextWaveRemaining = state.phase === "combat" ? state.nextWaveRemaining : null;

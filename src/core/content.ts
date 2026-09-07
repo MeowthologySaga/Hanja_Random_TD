@@ -81,6 +81,77 @@ export function waveReadinessNotice(nextWave: number, cost: number): { label: st
   };
 }
 
+/**
+ * 한 웨이브를 다 막은 순간의 말 (v042).
+ *
+ * 여태 이 순간에 화면이 하는 일은 맨 아래 한 줄이 바뀌는 것뿐이었다. 한 웨이브에
+ * 처치 신호가 평균 27번(1장은 6.5번) 뜨는 판에서 마지막 한 마리는 그 27번째와
+ * 구별되지 않는다 — 「이겼다」가 어디에도 없다.
+ *
+ * 문장은 코어가 만든다(v041 우두머리 시계가 세운 선례). 화면이 고쳐 쓰면 같은
+ * 사실이 자리마다 다른 말로 나간다.
+ *
+ * 우두머리 웨이브는 **남긴 초**를 말한다. v041 이 시계를 세워 조였는데 잡는 순간
+ * 그 시계는 그냥 사라졌다 — 조인 것만 있고 푸는 것이 없었다. 남긴 초가 그 해방이다.
+ */
+export function waveClearNotice(
+  wave: number,
+  reward: number,
+  interest: number,
+  boss: boolean,
+  bossSpare: number | null
+): string {
+  const head = boss ? `우두머리 ${wave} 봉인` : `웨이브 ${wave} 방어 성공`;
+  const spare = boss && bossSpare !== null ? ` · 제한 ${bossSpare.toFixed(1)}초 남김` : "";
+  /*
+   * 은행 이자도 **함께 말한다.**
+   *
+   * 처음에는 보상만 실었다. 그러면 엽전을 쌓아 둔 사람에게 이 띠가 거짓이 된다 —
+   * 400엽전을 들고 막으면 실제로 들어오는 것은 34인데 띠는 「+14엽전」이라고 크게
+   * 말하고, 같은 순간 자원 레일의 숫자는 34 오른다. 조용해서 고치려던 맨 아래 12px
+   * 한 줄이 정작 정확했고(「보상 14엽전 · 은행 이자 +20엽전」) 새로 만든 큰 목소리가
+   * 틀린 꼴이라, 은행에 넣을수록 화면이 더 크게 틀린다.
+   *
+   * 이자는 20엽전에서 멈춘다(interestForGold) — 띠가 감당 못 할 만큼 길어지지 않는다.
+   */
+  const bank = interest > 0 ? ` · 은행 이자 +${interest}엽전` : "";
+  return `${head}${spare} · +${reward}엽전${bank}`;
+}
+
+/**
+ * 제한 안에서 눕혔다면 **남긴 초**, 아니면 null (v042).
+ *
+ * 규칙을 코어의 순수 함수로 둔 까닭은 이 자리가 **봇의 사각지대**이기 때문이다.
+ * 8시드 1800초를 굴려도 우두머리 청소 62회 중 제한 초과가 **0회**다 — 봇은 잘 지어서
+ * 시계에 안 걸린다. 그래서 초과 갈래는 시뮬 게이트가 영원히 못 밟고, 사람만 밟는다.
+ *
+ * 두 가지를 같은 null 로 말한다.
+ *  · **못 봤다** — 이어하기로 들어온 판은 우두머리가 쓰러진 순간을 안 봤다.
+ *  · **못 지켰다** — 제한을 넘겨 잡았다.
+ * 둘 다 「남긴 초」가 없다. 처음에는 넘긴 쪽을 0 으로 깎아 봤는데, 그러면 8.1초 늦게
+ * 잡은 사람에게 「제한 0.0초 남김」이라고 말한다 — 시계를 이긴 사람을 칭찬하려고 만든
+ * 기능이 시계에 진 사람을 칭찬하는 꼴이다.
+ *
+ * `fellAt >= limit` 은 엔진의 초과 판정과 **같은 부등호**다. 그래야 화면 두 곳이
+ * (전장 시계의 「제한 초과」와 청소 띠의 「남김」) 시계의 어느 편에서 끝났는지를
+ * 다르게 말할 수 없다.
+ */
+export function bossSpareSeconds(limit: number | null, fellAt: number | null): number | null {
+  if (limit === null || fellAt === null || fellAt >= limit) return null;
+  return limit - fellAt;
+}
+
+/**
+ * 우두머리를 눕혀 시계가 멎은 순간의 말 (v042).
+ *
+ * 시계가 쓰는 문장도 코어가 만든다 — v041 이 이 시계에서 세운 규범이다. 화면이
+ * 리터럴로 들고 있으면, 기획이 「봉인」을 다른 말로 바꿀 때 배너(코어)와 시계(화면)가
+ * 같은 순간에 서로 다른 말을 하게 된다.
+ */
+export function bossSealedNotice(): { readonly time: string; readonly note: string } {
+  return { time: "우두머리 봉인", note: "제한시계가 멈췄습니다" };
+}
+
 export const FORMATION_COLUMNS = 4;
 export const FORMATION_ROWS = 4;
 export const CELLS_PER_FORMATION = FORMATION_COLUMNS * FORMATION_ROWS;

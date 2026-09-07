@@ -2,7 +2,7 @@
  * 엔진 이벤트를 화면 연출로 옮기는 다리.
  */
 import { CASUAL_STAR_COLORS } from "../core/casual";
-import { BOARD_CELLS, bossTimeLimitForWave } from "../core/content";
+import { BOARD_CELLS, bossTimeLimitForWave, waveClearNotice } from "../core/content";
 import { ELEMENT_STYLES, STAGE_COLORS } from "../core/hanzi";
 import { learningInfoForNotation } from "../core/learning";
 import { type GameEvent, type Point } from "../core/types";
@@ -32,6 +32,7 @@ import {
   takeRing
 } from "./battle/fx";
 import {
+  dressWaveBanner,
   firstSealCelebration,
   showToast,
   showTowerAbilityPopup,
@@ -156,7 +157,7 @@ export function processEvent(event: GameEvent): void {
       // 대형 플래시가 `이심전심 · 봉인` 을 이미 크게 말한다. 같은 자리에 뜨던
       // `이심전심 자동 봉인!` 플로터까지 겹치면 배너·플래시·플로터가 한 문장을
       // 세 번 반복해 정작 어느 칸이 봉인됐는지가 안 보인다.
-      ctx.idiomFlash = { chars: event.chars, reading: event.reading, color: event.color, at: center, age: 0, duration: reducedMotion ? 0.6 : 1.2 };
+      ctx.idiomFlash = { chars: event.chars, reading: event.reading, meaning: event.meaning, color: event.color, at: center, age: 0, duration: reducedMotion ? 0.6 : 1.2 };
       showIdiomResult(event.reading, event.meaning, event.bonus, event.color);
       ctx.idiomRenderKey = "";
       if (ctx.engine.state.idiomSeals.length === 1) firstSealCelebration(event.reading);
@@ -193,8 +194,24 @@ export function processEvent(event: GameEvent): void {
       bossBanner.textContent = event.boss
         ? "⚠ 우두머리 " + String(event.wave) + " · " + waveGlyph + "약점 " + event.weakness + (bossLimit === null ? "" : " · 제한 " + String(bossLimit) + "초") + " ⚠"
         : "웨이브 " + String(event.wave) + " · " + waveGlyph + "약점 " + event.weakness;
-      bossBanner.classList.toggle("boss-banner--boss", event.boss);
-      bossBanner.classList.remove("boss-banner--idiom");
+      dressWaveBanner(event.boss ? "boss" : "plain");
+      showWaveBanner();
+      break;
+    case "waveCleared":
+      /*
+       * 「막았다」를 전장이 말한다 (v042).
+       *
+       * 여태 이 순간에 화면이 하는 일은 맨 아래 12px 한 줄이 바뀌는 것뿐이었다.
+       * 실측하면 한 웨이브에 처치 신호가 평균 27번(1장 6.5번) 뜨므로 마지막 한
+       * 마리는 그 27번째와 구별되지 않고, 준비 시간을 되찾은 웨이브가 85%인데
+       * 그 85번이 전부 조용했다.
+       *
+       * 배너를 빌린 까닭은 자리다. 이 순간과 다음 웨이브 배너 사이에는 준비 시간이
+       * 통째로 놓여 있어(빨리 시작을 눌러도 애니메이션이 서로를 취소한다) 겹치지
+       * 않는다. 문장은 코어가 만든다 — 화면은 자리에만 놓는다.
+       */
+      bossBanner.textContent = waveClearNotice(event.wave, event.reward, event.interest, event.boss, event.bossSpare);
+      dressWaveBanner("clear");
       showWaveBanner();
       break;
     case "phase":

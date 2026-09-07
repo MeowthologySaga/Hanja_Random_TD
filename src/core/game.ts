@@ -60,6 +60,7 @@ import {
   BOARD_FORMATIONS,
   bossHpFactorForWave,
   bossSpawnProgress,
+  bossSpareSeconds,
   bossTimeLimitForWave,
   CELLS_PER_FORMATION,
   FORMATION_COLUMNS,
@@ -1574,7 +1575,19 @@ export class GameEngine {
     if (enemy.hp > 0) return;
     const at = this.enemyPoint(enemy);
     this.state.enemies = this.state.enemies.filter((candidate) => candidate.id !== enemy.id);
-    if (enemy.boss) this.state.bossDefeated = true;
+    if (enemy.boss && !this.state.bossDefeated) {
+      this.state.bossDefeated = true;
+      /*
+       * 제한시계를 **얼마나 남기고** 눕혔는지 (v042).
+       *
+       * v041 이 우두머리 시계를 화면에 세웠는데, 잡는 순간 그 시계는 그냥 사라졌다 —
+       * 조인 것은 있고 푸는 것이 없었다. 남긴 초가 그 해방의 숫자다.
+       *
+       * 저장 스키마에 넣지 않는다. 이어하기로 들어온 판은 그 순간을 못 봤으니
+       * 못 본 대로 null 이고, 화면은 그 칸을 빼고 말한다.
+       */
+      this.bossFellAtWaveElapsed = this.state.waveElapsed;
+    }
     this.state.gold += enemy.reward;
     this.state.killCount += 1;
     this.events.push({ type: "kill", at, reward: enemy.reward });
@@ -1644,6 +1657,14 @@ export class GameEngine {
     );
   }
 
+  /**
+   * 이 웨이브의 우두머리가 쓰러진 시각(waveElapsed) — 저장하지 않는 판 안의 기억.
+   *
+   * 이어하기로 들어온 판은 null 이라 화면이 남긴 초를 말하지 않는다. 「모르면
+   * 말하지 않는다」가 「0초로 말한다」보다 낫다.
+   */
+  private bossFellAtWaveElapsed: number | null = null;
+
   private finishWave(): void {
     if (this.state.wave >= this.state.maxWaves) {
       const interest = this.payBankInterest();
@@ -1656,6 +1677,33 @@ export class GameEngine {
     this.state.phase = "prep";
     this.state.prepRemaining = this.state.wave % 10 === 0 ? GAME_CONFIG.bossPrepSeconds : GAME_CONFIG.prepSeconds;
     this.state.lastMessage = String(this.state.wave) + "웨이브 방어 성공 · 보상 " + String(bonus) + "엽전" + (interest > 0 ? " · 은행 이자 +" + String(interest) + "엽전" : "");
+    /*
+     * 「막았다」를 이벤트로도 알린다 (v042).
+     *
+     * 여태 이 자리에서 나가는 신호는 `phase: "prep"`(화면이 아무것도 안 하던) 과
+     * 맨 아래 문장 한 줄뿐이었다. 한 웨이브에 처치 신호가 평균 27번 뜨는 판에서
+     * 마지막 한 마리는 그 27번째와 구별되지 않는다 — 실측.
+     */
+    const boss = this.currentPlan?.boss === true;
+    const limit = boss ? this.bossTimeLimit(this.state.wave) : null;
+    /*
+     * **제한 안에서 눕혔을 때만** 남긴 초를 말한다.
+     *
+     * 처음에는 `Math.max(0, limit - fell)` 로 깎았다. 그 깎기가 「8.1초 늦었다」를
+     * 「0.0초 남겼다」로 바꿔 말한다 — 시계를 이긴 사람을 칭찬하려고 만든 기능이
+     * 시계에 진 사람을 칭찬하는 셈이다. 제한을 넘겨도 판은 안 끝나고(v035 ③)
+     * 겹치기 20초 안에 전장을 비우면 이 자리로 그대로 들어오므로 닿는 길이다.
+     *
+     * 넘긴 자리에서는 `null` 이다 — 이 기능이 이미 정해 둔 「모르면 말하지 않는다」
+     * 를 「졌으면 말하지 않는다」에도 그대로 쓴다. `< limit` 은 엔진의 초과 판정
+     * (`waveElapsed >= bossLimit`)과 같은 부등호라, 화면 두 곳이 시계의 어느 편에서
+     * 끝났는지를 다르게 말할 수 없다.
+     *
+     * 봇은 이 자리에 못 온다(8시드 1800초 62회 청소 중 초과 0). 시뮬 게이트가 아니라
+     * 단위 시험이 지켜야 하는 자리다.
+     */
+    const bossSpare = bossSpareSeconds(limit, this.bossFellAtWaveElapsed);
+    this.events.push({ type: "waveCleared", wave: this.state.wave, reward: bonus, interest, boss, bossSpare });
     this.events.push({ type: "phase", phase: "prep" });
   }
 
@@ -1797,6 +1845,7 @@ export class GameEngine {
     this.state.spawnCooldown = 0;
     this.state.nextWaveRemaining = null;
     this.state.bossDefeated = false;
+    this.bossFellAtWaveElapsed = null;
     this.state.lastMessage = this.currentPlan.label + " 출현 · 약점 " + this.currentPlan.weakness;
     this.events.push({
       type: "wave",

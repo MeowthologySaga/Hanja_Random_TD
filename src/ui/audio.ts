@@ -255,6 +255,27 @@ export function sfxForEvent(event: GameEvent): SfxId | null {
     case "idiom": return "fx-idiom-seal";             // was "goal-complete"
     case "kill": return "fx-enemy-dissolve";          // was silent
     case "wave": return event.boss ? "fx-boss-drum" : "wave-start"; // boss was "boss-warning"
+    /*
+     * 웨이브를 막은 순간은 **아직 소리가 없다** (v042) — 자산 요청 v12 를 기다린다.
+     *
+     * 한 번은 우두머리 청소에만 `fx-boss-drum` 을 0.82배속으로 물려 봤다. 세 가지가
+     * 걸려 되물렀다.
+     *  · 그 북은 `gapMs: 1_000` 이고 이미 셋이 쓴다(우두머리 등장·시계 15/5초 문턱·
+     *    강림부). 문턱 북이 울린 1초 안에 눕히면 **닫는 북이 통째로 삼켜진다** —
+     *    아슬아슬하게 잡는, 이 소리가 가장 필요한 바로 그 자리에서.
+     *  · 한 표본이 넷을 뜻하게 되고, 그중 정반대인 둘(「5초 남았다」와 「잡았다」)이
+     *    음높이 3.4반음으로만 갈린다. 소리만 듣던 사람은 두 번째 북을 세 번째
+     *    경고로 듣는다.
+     *  · 평범한 청소(판당 76회)에는 여전히 무음이라, 소리 채널이 「시작한다」를 100번
+     *    말하고 「끝났다」는 9번만 말한다. 그러면 우두머리 웨이브만 진짜 웨이브처럼
+     *    들린다.
+     *
+     * 남는 소리는 셋뿐이고(goal 5회·formation-unlock 4회·goal-complete) 전부 판당 한
+     * 자릿수라, 85.7회짜리 사건에 빌려 주면 빌려 준 쪽의 정체가 먼저 지워진다. 빌릴
+     * 것이 없으면 **안 빌린다** — 화면이 이미 말하고 있고, 전용 한 장은 청구해 뒀다
+     * (handoff/to-codex/asset-request-v12-wave-clear-sfx.md).
+     */
+    case "waveCleared": return null;
     case "phase": return event.phase === "victory" ? "victory" : event.phase === "defeat" ? "defeat" : null;
     default: return null;
   }

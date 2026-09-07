@@ -170,6 +170,14 @@ type PendingCasualFusion =
 interface IdiomFlashFx {
   chars: string;
   reading: string;
+  /*
+   * 그 넉 자가 무슨 뜻인지 (v042).
+   *
+   * 여태 이 플래시는 「以心傳心」과 「이심전심 · 발동」만 말했다. 뜻은 오른쪽 패널
+   * 성어 갈피의 카드에만 있어서, 다른 갈피를 열어 둔 사람에게는 발동 순간에 뜻이
+   * 화면 어디에도 없었다 — 성어를 가르치려는 게임에서 성어가 켜지는 바로 그 순간에.
+   */
+  meaning: string;
   color: string;
   at: Point;
   age: number;

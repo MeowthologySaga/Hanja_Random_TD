@@ -239,6 +239,28 @@ describe("Codex sfx-v3 pack integration", () => {
     expect(sfxRateForEvent(event("summon"))).toBeUndefined();
   });
 
+  /*
+   * [v042] 웨이브를 막은 순간은 **아직 무음이다** — 자산 요청 v12 를 기다린다.
+   *
+   * 한 번은 우두머리 청소에만 `fx-boss-drum` 을 0.82배속으로 물려 봤다가 되물렀다.
+   * 그 북은 `gapMs: 1_000` 이고 이미 셋이 쓴다(우두머리 등장·시계 15/5초 문턱·강림부)
+   * — 문턱 북이 울린 1초 안에 눕히면 닫는 북이 통째로 삼켜진다. 아슬아슬하게 잡는,
+   * 이 소리가 가장 필요한 바로 그 자리에서. 게다가 한 표본이 넷을 뜻하게 되고 그중
+   * 정반대인 둘(「5초 남았다」와 「잡았다」)이 음높이 3.4반음으로만 갈린다.
+   *
+   * 그래서 **안 빌린다.** 이 시험은 그 결정을 못 박는다 — 판당 85.7회 뜨는 사건에
+   * 누가 기존 소리를 물리면 여기서 걸린다.
+   */
+  it("keeps the wave-clear beat silent until its own asset lands (v042)", () => {
+    const event = (type: GameEvent["type"], extra: Record<string, unknown> = {}): GameEvent => ({ type, ...extra }) as GameEvent;
+    expect(sfxForEvent(event("waveCleared", { boss: false }))).toBeNull();
+    expect(sfxForEvent(event("waveCleared", { boss: true }))).toBeNull();
+    expect(sfxRateForEvent(event("waveCleared", { boss: true }))).toBeUndefined();
+    expect(layerSfxForEvent(event("waveCleared", { boss: true }))).toBeNull();
+    // 우두머리 등장 북은 그대로다 — 조용해진 것은 「끝났다」 쪽뿐이다.
+    expect(sfxForEvent(event("wave", { boss: true }))).toBe("fx-boss-drum");
+  });
+
   it("layers the coin string under summoning and nothing else", () => {
     const event = (type: GameEvent["type"], extra: Record<string, unknown> = {}): GameEvent => ({ type, ...extra }) as GameEvent;
     expect(layerSfxForEvent(event("summon"))).toBe("ui-coin-string");

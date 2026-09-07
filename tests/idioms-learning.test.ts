@@ -426,6 +426,17 @@ describe("regional idiom reachability and learning labels", () => {
     expect(idiomsForRegion("KR").find((idiom) => idiom.chars === "辰宿列張")?.reading).toBe("진수열장");
   });
 
+  /*
+   * [v042] 발동 순간 뜻이 **전장에** 뜨게 되면서(대형 플래시 셋째 줄) 뜻 길이가
+   * 조판 예산이 됐다. 실측 최대 25자 · 15px 로 375px 이고, 플래시 클램프는 그
+   * 반폭까지만 밀어 준다(combat-fx-layout). 서른 자를 넘기면 전장(880px)보다 넓어져
+   * 가운데로 세워도 양끝이 잘리므로, 새 구가 들어올 때 여기서 먼저 걸린다.
+   */
+  it("성어 뜻이 전장 플래시 한 줄 예산 안에 든다", () => {
+    const over = idiomsForRegion("KR").filter((idiom) => idiom.meaning.length === 0 || idiom.meaning.length > 30);
+    expect(over.map((idiom) => `${idiom.chars} ${idiom.meaning.length}자`)).toEqual([]);
+  });
+
   it("keeps the run roster whole and its order seed-stable", () => {
     /*
      * 다섯 구 제한은 걷혔다. 그 수는 화면 자리 때문이었는데 사람은 "성어는

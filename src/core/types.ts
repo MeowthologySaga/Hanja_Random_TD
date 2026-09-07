@@ -484,6 +484,15 @@ export type GameEvent =
   | { type: "idiom"; idiomId: string; chars: string; reading: string; meaning: string; bonus: string; color: string; cells: number[]; rejoined: boolean }
   | { type: "idiomBroken"; idiomId: string; chars: string; reading: string; bonus: string; color: string; cells: number[] }
   | { type: "wave"; wave: number; boss: boolean; archetype: EnemyArchetype; weakness: Wuxing; char: string }
+  /*
+   * 한 웨이브를 **다 막은** 순간 (v042). `phase: "prep"` 과 같은 틱에 서지만 둘은
+   * 다른 말을 한다 — phase 는 「이제 준비 단계다」이고 이쪽은 「방금 지켜냈다」다.
+   * 잔존을 안고 넘어가는 웨이브(실측 15%)에서는 서지 않는다.
+   *
+   * bossSpare = 제한시간에서 우두머리가 쓰러질 때까지 남긴 초. 우두머리 웨이브가
+   * 아니거나 이어하기로 그 순간을 못 본 판에서는 null 이다.
+   */
+  | { type: "waveCleared"; wave: number; reward: number; interest: number; boss: boolean; bossSpare: number | null }
   | { type: "phase"; phase: RunPhase };
 
 export interface ActionResult {

@@ -16,7 +16,7 @@ import { idiomById, partialIdiomChain } from "../../core/idioms";
 import { enemyJaryeongVisualFor, jaryeongFrameLayout, jaryeongVisualFor } from "../../core/jaryeongs";
 import { learningInfoForNotation } from "../../core/learning";
 import { type Enemy, type Point, type Tower } from "../../core/types";
-import { abilityZoneSpriteLayout, deterministicZoneRotation } from "../combat-fx-layout";
+import { abilityZoneSpriteLayout, deterministicZoneRotation, IDIOM_FLASH_MAX_SCALE, idiomFlashClampX, idiomFlashClampY } from "../combat-fx-layout";
 import { elementZoneImage } from "../combat-fx-sprites";
 import {
   ENEMY_FRAME_SIZE,
@@ -50,7 +50,7 @@ import { calmBattlefield, canvas, context, ctx, reducedMotion, shell } from "../
 import { casualStarOf } from "../format";
 import { drawHoveredTowerCard, drawTower, flushTowerPlaques } from "./draw-tower";
 import { type IdiomRippleFx, idiomRipples, pushPooled, ringPool, rings, takeRing, updateAndDrawFx } from "./fx";
-import { clampScreenBox, placeStageLabel, resetStageLabels } from "./stage-labels";
+import { clampScreenBox, placeStageLabel, resetStageLabels, STAGE_SAFE_AREA } from "./stage-labels";
 import { advanceEnemyHealth, enemyHealthTrail, HEALTH_BAR_COLOR, HEALTH_TRAIL_COLOR } from "./enemy-health";
 
 export function drawWorld(delta: number): void {
@@ -1274,8 +1274,36 @@ function drawIdiomFlash(): void {
   const fade = ratio < 0.62 ? 1 : 1 - (ratio - 0.62) / 0.38;
   // FB6: 차분한 화면에서는 튀어 오르는 플래시 없이 정지 표기만 남긴다.
   const scale = calmBattlefield() ? 1 : 0.82 + rise * 0.24 - Math.max(0, ratio - 0.62) * 0.16;
-  const x = Math.min(WORLD_WIDTH - 150, Math.max(150, ctx.mapOffset.x + flash.at.x * ctx.mapZoom));
-  const y = Math.min(WORLD_HEIGHT - 120, Math.max(120, ctx.mapOffset.y + flash.at.y * ctx.mapZoom));
+  /*
+   * 자리를 **재서** 잡는다 — 가로도 세로도 (v042).
+   *
+   * 가로는 여태 반폭 150px 을 가정했다. 넉 자 62px 은 그 안에 들지만 이번에 붙는
+   * 뜻은 실측 중앙 17자·최대 25자(104구)라 15px 로 375px, 반폭 188px 이다. 셋 중
+   * 가장 넓은 줄을 재서 그 반폭으로 잡는다.
+   *
+   * 세로는 두 줄 시절 예산(`WORLD_HEIGHT - 120`)이 그대로 남아 있었다. 상한 y=600 에
+   * 뜻 줄이 +76 이고 배율 상한 1.06 을 얹으면 680.6 인데, 예약 바닥은 720−44=676 이라
+   * **셋째 줄이 설계상 이미 아래 안전 띠를 밟고 있었다.** 이제 마지막 줄의 잉크
+   * 바닥까지 세어 띠 위에 둔다.
+   *
+   * 클램프에 넣는 배율은 애니메이션 값이 아니라 **최대 배율 고정**이다 — 프레임마다
+   * 바뀌면 가장자리 플래시가 부푸는 동안 옆으로 미끄러진다.
+   */
+  context.save();
+  context.font = '900 62px "Malgun Gothic", serif';
+  let widest = context.measureText(flash.chars).width;
+  context.font = '800 19px "Malgun Gothic", sans-serif';
+  widest = Math.max(widest, context.measureText(`${flash.reading} · 발동`).width);
+  context.font = '700 15px "Malgun Gothic", sans-serif';
+  widest = Math.max(widest, context.measureText(flash.meaning).width);
+  context.restore();
+  const x = idiomFlashClampX(ctx.mapOffset.x + flash.at.x * ctx.mapZoom, widest, IDIOM_FLASH_MAX_SCALE, WORLD_WIDTH);
+  const y = idiomFlashClampY(
+    ctx.mapOffset.y + flash.at.y * ctx.mapZoom,
+    IDIOM_FLASH_MAX_SCALE,
+    WORLD_HEIGHT,
+    STAGE_SAFE_AREA.bottom
+  );
   context.save();
   context.globalAlpha = Math.max(0, Math.min(1, rise * fade));
   context.translate(x, y);
@@ -1299,6 +1327,21 @@ function drawIdiomFlash(): void {
   context.strokeText(`${flash.reading} · 발동`, 0, 50);
   context.fillStyle = flash.color;
   context.fillText(`${flash.reading} · 발동`, 0, 50);
+  /*
+   * 그리고 **뜻**을 말한다 (v042).
+   *
+   * 이 게임이 성어를 가르치는 통로는 셋인데(도감·성어 갈피·발동), 앞의 둘은 사람이
+   * 열어야 열리고 마지막 하나만 저절로 온다. 그런데 그 하나가 뜻을 뺀 채 왔다 —
+   * 「以心傳心 · 이심전심 · 발동」까지만 말하고 무슨 뜻인지는 오른쪽 갈피에 두고 왔다.
+   *
+   * 읽기보다 한 급 낮춰(19 → 15px) 무게를 지킨다. 넉 자가 주인공이고 읽기가 그
+   * 이름이며 뜻은 각주다 — 셋이 같은 크기면 무엇을 외워야 하는지가 안 보인다.
+   */
+  context.font = '700 15px "Malgun Gothic", sans-serif';
+  context.lineWidth = 5;
+  context.strokeText(flash.meaning, 0, 76);
+  context.fillStyle = "#efe4c8";
+  context.fillText(flash.meaning, 0, 76);
   context.restore();
 }
 
