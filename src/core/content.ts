@@ -14,6 +14,47 @@ export const BOSS_TIME_LIMITS: Readonly<Record<number, number>> = Object.freeze(
     return [chapter * 10, 72 + (chapter - 1) * 6];
   }))
 );
+/**
+ * 우두머리 시계가 사람에게 말을 거는 문턱(초) — 30 · 15 · 5 (v041).
+ *
+ * "보스 시간제한 있는 거 모르고 냅두다가 게임오버하는거 봤어"(사용자). 시계가
+ * 있다는 사실 자체가 화면 한 곳(패널 12px 줄)에만 있었다.
+ */
+export const BOSS_CLOCK_STAGES: readonly number[] = Object.freeze([30, 15, 5]);
+
+/**
+ * 그 문턱을 처음 지날 때 한 번 하는 말. 문장은 코어가 만든다 — 화면은 고쳐 쓰지 않는다.
+ *
+ * 30초에서만 「넘기면 무슨 일이 벌어지는가」를 말한다. 15·5초에서는 이미 손이
+ * 바쁘므로 짧게만 재촉한다.
+ */
+export function bossClockNotice(remaining: number, finalWave: boolean): string | null {
+  if (remaining <= 5) return "우두머리 5초";
+  if (remaining <= 15) return "우두머리 15초 — 화력을 우두머리에 모으세요";
+  if (remaining <= 30) {
+    return finalWave
+      ? "우두머리 30초 — 마지막 우두머리는 제한을 넘기면 그 자리에서 패배합니다"
+      : "우두머리 30초 — 못 잡으면 우두머리가 남은 채 다음 웨이브가 겹칩니다";
+  }
+  return null;
+}
+
+/**
+ * 제한을 넘긴 순간의 말.
+ *
+ * 넘겨도 그 자리에서 지지는 않는다(v035 ③) — 대신 우두머리가 남은 채 20초마다
+ * 다음 웨이브가 겹쳐 적이 쌓이고, 결국 적 상한에서 진다. 그 연쇄를 어디서도
+ * 잇지 않아 「시계 때문에 졌다」는 것을 아무도 몰랐다.
+ */
+export function bossOvertimeNotice(): string {
+  return `제한시간 초과 — 우두머리를 잡을 때까지 ${WAVE_REINFORCEMENT_DELAY}초마다 다음 웨이브가 겹칩니다. 적 ${MAX_ENEMIES}체가 차면 패배합니다.`;
+}
+
+/** 마지막 우두머리만은 시계가 문턱이 아니라 벽이다 — 코드 밖 어디에도 없던 규칙. */
+export function bossFinalWallNotice(): string {
+  return "마지막 우두머리는 제한시간을 넘기면 그 자리에서 패배합니다.";
+}
+
 export const FORMATION_COLUMNS = 4;
 export const FORMATION_ROWS = 4;
 export const CELLS_PER_FORMATION = FORMATION_COLUMNS * FORMATION_ROWS;

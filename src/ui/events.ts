@@ -2,7 +2,7 @@
  * 엔진 이벤트를 화면 연출로 옮기는 다리.
  */
 import { CASUAL_STAR_COLORS } from "../core/casual";
-import { BOARD_CELLS } from "../core/content";
+import { BOARD_CELLS, bossTimeLimitForWave } from "../core/content";
 import { ELEMENT_STYLES, STAGE_COLORS } from "../core/hanzi";
 import { type GameEvent, type Point } from "../core/types";
 import {
@@ -166,8 +166,13 @@ export function processEvent(event: GameEvent): void {
       break;
     }
     case "wave":
+      /*
+       * 우두머리 배너는 **초 수를 말한다** (v041). 여태 "⚠ 우두머리 10 · 약점 水 ⚠"
+       * 라고만 하고 제한시간이 있다는 사실 자체를 알리지 않았다.
+       */
+      const bossLimit = event.boss ? bossTimeLimitForWave(event.wave) : null;
       bossBanner.textContent = event.boss
-        ? "⚠ 우두머리 " + String(event.wave) + " · 약점 " + event.weakness + " ⚠"
+        ? "⚠ 우두머리 " + String(event.wave) + " · 약점 " + event.weakness + (bossLimit === null ? "" : " · 제한 " + String(bossLimit) + "초") + " ⚠"
         : "웨이브 " + String(event.wave) + " · 약점 " + event.weakness;
       bossBanner.classList.toggle("boss-banner--boss", event.boss);
       bossBanner.classList.remove("boss-banner--idiom");

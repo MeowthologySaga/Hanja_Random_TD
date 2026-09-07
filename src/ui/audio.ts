@@ -404,6 +404,11 @@ export class SoundManager {
     this.playSfx("ui-coin-string");
   }
 
+  /** 우두머리 시계가 15초·5초를 지날 때의 북 (v041) — 이미 실린 가장 무거운 한 방. */
+  playBossDrum(): void {
+    this.playSfx("fx-boss-drum");
+  }
+
   /**
    * Arms the next successful action so it stamps with a placement or unlock sound
    * instead of the generic seal. Consumed by the very next playActionOutcome call.

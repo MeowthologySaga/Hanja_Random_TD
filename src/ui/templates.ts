@@ -127,6 +127,21 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
         <i id="fusion-vortex" class="fusion-vortex" aria-hidden="true"></i>
       </section>
 
+      <!--
+        우두머리 제한시계 (v041).
+
+        여태 시계는 오른쪽 패널의 12px 한 줄뿐이었다. 부적을 쓰는 사람의 눈(종이
+        중심)에서 273px, 전장을 보는 사람에게는 1,000px 떨어진 자리다 — "보스 시간제한
+        있는 거 모르고 냅두다가 게임오버"(사용자)의 구조적 원인이다.
+
+        자리는 전장 **아래 오른쪽**이다. 위쪽(y 71~131)은 자령 명패가 클램프되어 앉는
+        띠라 660 절이 이미 한 번 물러난 자리이고, 상단 띠 41px 에는 여섯째 칩이 들어갈
+        폭이 없다(실측: 우두머리 준비에서 96px 부터 띠가 57px 로 깨진다). 아래 띠는
+        지도 배율·한자 강조가 왼쪽에 있을 뿐 오른쪽이 비어 있다.
+      -->
+      <div id="boss-clock" class="boss-clock" role="status" aria-live="polite" hidden>
+        <b id="boss-clock-time"></b><span id="boss-clock-note"></span>
+      </div>
       <div id="focus-dim" class="focus-dim" hidden></div>
       <section id="growth-frame" class="focus-frame focus-frame--forge" role="dialog" aria-modal="false" aria-labelledby="growth-frame-title" hidden>
         <header class="focus-frame-head">
@@ -873,7 +888,7 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
             <h3 class="help-subhead">전투와 살림</h3>
             <div class="help-cards">
               <article class="help-card"><b>약점과 상생</b><span>웨이브 약점 오행은 피해가 30% 증가합니다. 水→木→火→土→金→水 상생을 함께 배치하면 추가 피해를 줍니다.</span></article>
-              <article class="help-card"><b>웨이브와 장</b><span>10웨이브가 한 장(章)이고 장 끝에는 우두머리가 옵니다. 제한시간 안에 처치하지 못하면 즉시 실패합니다.</span></article>
+              <article class="help-card"><b>웨이브와 장</b><span>10웨이브가 한 장(章)이고 장 끝에는 우두머리가 옵니다. 제한시간은 1장 72초이고 장마다 6초씩 깁니다. 넘겨도 그 자리에서 지지는 않지만, 우두머리가 남은 채 20초마다 다음 웨이브가 겹쳐 적이 쌓입니다 — 적 80체가 차면 그때 패배합니다. 마지막 100웨이브만은 넘기면 즉시 패배합니다.</span></article>
               <article class="help-card"><b>게임오버</b><span>전장에 ${MAX_ENEMIES}체가 쌓이면 즉시 실패합니다. 제어 능력은 적을 뒤로 밀지 않고 현재 공격권 안에서 감속·봉쇄합니다.</span></article>
               <article class="help-card"><b>적 특성</b><span>정예 철갑 강시(방어 높음) · 질풍 아귀(빠름) · 백귀야행(다수) · 회생 요괴(체력 회복)를 미리 확인하세요.</span></article>
               <article class="help-card"><b>은행 이자</b><span>웨이브 종료 시 보유 엽전 20개당 1엽전을 지급하며, 한 번에 최대 20엽전까지만 받을 수 있습니다.</span></article>

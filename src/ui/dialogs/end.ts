@@ -36,10 +36,15 @@ export function showEndScreen(phase: "victory" | "defeat"): void {
   // [FB3] 패배 사유 명시 — "왜 졌는지"를 엔진의 defeatCause 로 읽는다.
   // lastMessage(#end-message)가 상세를 맡고, 제목은 원인을 한 줄로 못박는다.
   const enemyLimitDefeat = !victory && state.defeatCause === "enemy-limit";
-  must<HTMLElement>("#end-kicker").textContent = victory ? "봉인 완수" : enemyLimitDefeat ? "적 한계 초과" : "수비 실패";
+  // [v041] 시계로 진 판도 제 이름을 갖는다 — 여태 "수비 실패"로 뭉개져 무엇이
+  // 자기를 죽였는지 화면이 끝까지 말하지 않았다.
+  const bossTimeoutDefeat = !victory && state.defeatCause === "boss-timeout";
+  must<HTMLElement>("#end-kicker").textContent = victory
+    ? "봉인 완수"
+    : enemyLimitDefeat ? "적 한계 초과" : bossTimeoutDefeat ? "제한시간 초과" : "수비 실패";
   must<HTMLElement>("#end-heading").textContent = victory
     ? "천자문 대봉인 완성"
-    : enemyLimitDefeat ? "적 한계 초과로 수비 실패" : "수비에 실패했습니다";
+    : enemyLimitDefeat ? "적 한계 초과로 수비 실패" : bossTimeoutDefeat ? "제한시간 초과로 수비 실패" : "수비에 실패했습니다";
   // P-18: lastMessage 는 "마지막으로 한 조작"이라 패배 순간과 무관한 승급 로그가
   // 오는 일이 잦았다. 사유가 분명하면 사유 문장을 쓰고, 조작 로그는 버린다.
   must<HTMLElement>("#end-message").textContent = victory
@@ -47,7 +52,7 @@ export function showEndScreen(phase: "victory" | "defeat"): void {
     : state.defeatCause === "enemy-limit"
       ? `적 ${MAX_ENEMIES}체가 전장을 뒤덮어 봉인이 무너졌습니다.`
       : state.defeatCause === "boss-timeout"
-        ? "제한시간 안에 우두머리를 처치하지 못했습니다."
+        ? "마지막 우두머리를 제한시간 안에 처치하지 못했습니다."
         : state.lastMessage;
   must<HTMLElement>("#end-stats").innerHTML = `
     <div><span>진법</span><b>${gameModeLabel(state.mode)}</b></div>

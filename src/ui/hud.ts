@@ -1,7 +1,7 @@
 /*
  * 상단 띠·패널 탭·집중 프레임·토스트 등 상시 HUD.
  */
-import { bossTimeLimitForWave, composeWaveBriefing, MAX_ENEMIES, WAVE_REINFORCEMENT_DELAY, wavePlan } from "../core/content";
+import { bossTimeLimitForWave, composeWaveBriefing, MAX_ENEMIES, WAVE_REINFORCEMENT_DELAY, wavePlan, bossClockNotice, bossFinalWallNotice, bossOvertimeNotice } from "../core/content";
 import { FIRST_PREP_SECONDS, type GameEngine } from "../core/game";
 import {
   ELEMENT_STYLES,
@@ -93,6 +93,10 @@ function noteEarlyStartUsed(): void {
 
 let earlyHintTimer = 0;
 
+/** 우두머리 시계가 이번 웨이브에 이미 지난 문턱(0 없음 · 1 30초 · 2 15초 · 3 5초). */
+let bossClockStage = 0;
+let bossOvertimeAnnounced = false;
+
 /** 직전에 그린 심지 길이·액수 — 값이 바뀔 때만 화면을 건드린다. */
 let earlyStepProbe = "";
 let earlyBonusProbe = 0;
@@ -158,6 +162,78 @@ function maybeShowEarlyHint(): void {
     // 저장이 막혀 있어도 이번 판에서는 한 번 보여 준 것으로 친다.
   }
   earlyHintTimer = window.setTimeout(hideEarlyHint, 6500);
+}
+
+/**
+ * 우두머리 제한시계 — 전장 아래 오른쪽에 세우고, 문턱마다 한 번씩 말을 건다 (v041).
+ *
+ * "보스 시간제한 있는 거 모르고 냅두다가 게임오버하는거 봤어"(사용자).
+ *
+ * 그 사람이 실제로 진 방식은 둘 중 하나다. ① 마지막 100웨이브에서 넘겨 즉사했거나
+ * ② 넘긴 뒤 20초마다 겹치는 웨이브에 적 80체가 차서 졌거나. 화면은 **둘 다 시계
+ * 탓이라고 말하지 않았다** — 넘긴 뒤에도 패널 12px 줄이 「제한 초과 · 잔존 합류
+ * N초」로 바뀔 뿐, 그 뒤에 무슨 일이 벌어지는지 아무 데서도 잇지 않았다.
+ *
+ * 문장은 코어가 만든다(content.ts 의 bossClockNotice·bossOvertimeNotice). 화면은
+ * 그 값을 자리에 놓을 뿐이다.
+ */
+function syncBossClock(remaining: number | null, overtime: boolean, previewLimit: number | null): void {
+  const clock = must<HTMLElement>("#boss-clock");
+  const state = ctx.engine.state;
+  const finalWave = state.wave >= GAME_CONFIG.maxWaves;
+  if (remaining === null && !overtime && previewLimit === null) {
+    clock.hidden = true;
+    delete clock.dataset.alert;
+    bossClockStage = 0;
+    bossOvertimeAnnounced = false;
+    return;
+  }
+  clock.hidden = false;
+  const time = must<HTMLElement>("#boss-clock-time");
+  const note = must<HTMLElement>("#boss-clock-note");
+  if (overtime) {
+    // 넘긴 뒤가 진짜 위험한 구간이다 — 그 연쇄를 여기서만 말한다.
+    time.textContent = "제한 초과";
+    note.textContent = bossOvertimeNotice();
+    clock.dataset.alert = "3";
+    if (!bossOvertimeAnnounced) {
+      bossOvertimeAnnounced = true;
+      showToast(bossOvertimeNotice(), true);
+      sound.playEnemyLimitWarning();
+    }
+    return;
+  }
+  if (remaining === null) {
+    // 준비 단계 — 다음 웨이브가 우두머리다. 정지한 채로 미리 보여 준다.
+    time.textContent = `우두머리 ${String(previewLimit)}초`;
+    note.textContent = finalWave ? bossFinalWallNotice() : "제한 안에 잡지 못하면 웨이브가 겹칩니다";
+    clock.dataset.alert = "0";
+    bossClockStage = 0;
+    bossOvertimeAnnounced = false;
+    return;
+  }
+  time.textContent = `${remaining.toFixed(1)}초`;
+  const stage = remaining <= 5 ? 3 : remaining <= 15 ? 2 : remaining <= 30 ? 1 : 0;
+  clock.dataset.alert = String(stage);
+  /*
+   * 평시 문구는 「우두머리를 잡아야 이 웨이브가 끝난다」를 말한다 — 이것도 여태
+   * 어디에도 없던 규칙이다(game.ts 의 deadlineUnlocked). 우두머리를 살려 두면
+   * 준비 시간이 영영 오지 않는데, 화면은 잔존 합류 때만 그 비슷한 말을 했다.
+   */
+  note.textContent = stage === 0
+    ? finalWave ? bossFinalWallNotice() : "우두머리를 잡아야 이 웨이브가 끝납니다"
+    : bossClockNotice(remaining, finalWave) ?? "우두머리 제한";
+  /*
+   * 문턱을 처음 지날 때만 소리와 토스트를 준다 — 적 한계 3단 경고(아래)와 같은 꼴.
+   * 30초는 알림, 15·5초는 북 한 방. 새 자산은 쓰지 않는다.
+   */
+  if (stage > bossClockStage) {
+    bossClockStage = stage;
+    const notice = bossClockNotice(remaining, finalWave);
+    if (notice) showToast(notice, stage >= 2);
+    if (stage === 1) sound.playEnemyLimitWarning();
+    else sound.playBossDrum();
+  }
 }
 
 /*
@@ -584,6 +660,7 @@ export function syncPanel(): void {
     step.classList.toggle("is-complete", state.wave > 0 || index < openingStep);
   });
   const bossRemaining = ctx.engine.bossTimeRemaining();
+  syncBossClock(bossRemaining, ctx.engine.bossOvertime(), preview?.boss === true ? bossTimeLimitForWave(preview.wave) : null);
   // 제한시간을 넘겨도 판은 안 끝난다(v035 ③) — 그 자리를 화면이 말해 줘야 한다.
   const bossOvertime = ctx.engine.bossOvertime();
   const nextWaveRemaining = state.phase === "combat" ? state.nextWaveRemaining : null;

@@ -16,8 +16,9 @@
  *     바뀐다 — 누르는 도중에 노드가 사라지면 click 이 아예 안 난다(제련소에서
  *     겪은 그 사고, e2e/growth-clickable.spec.ts).
  */
-import { MAX_ENEMIES } from "../core/content";
+import { bossClockNotice, bossOvertimeNotice, MAX_ENEMIES } from "../core/content";
 import { summonCost } from "../core/engine-tuning";
+import { GAME_CONFIG } from "../core/hanzi";
 import { UPGRADE_STAT_ORDER } from "../core/hanzi";
 import { ctx, must, sound } from "./app-context";
 import { captureTalismanLedger } from "./panels/talisman";
@@ -59,6 +60,34 @@ function pickPanelActions(): PanelAction[] {
       label: `적 한계 ${state.enemies.length}/${MAX_ENEMIES}`,
       tone: "urgent",
       title: "적이 상한에 닿으면 판이 끝납니다. 전장을 보세요.",
+      action: () => setTab("unit")
+    });
+  }
+
+  /*
+   * ①″ 우두머리 시계 (v041).
+   *
+   * 적 한계 **다음**이다. 이 파일의 규칙 ①이 「적 한계가 차오르는 것보다 급한 것은
+   * 없다」이고, 자리는 둘뿐이라 앞에 끼우면 그 경고가 밀려 사라진다 — 하필 시계를
+   * 넘긴 뒤가 적이 쌓이는 구간이라 그때 80체 경고를 지우는 셈이 된다.
+   *
+   * 30초 아래에서만 선다. 그 위에서는 전장 아래 시계(#boss-clock)가 이미 말한다.
+   */
+  const bossLeft = ctx.engine.bossTimeRemaining();
+  if (ctx.engine.bossOvertime()) {
+    picks.push({
+      key: "boss-overtime",
+      label: "제한 초과 · 웨이브가 겹칩니다",
+      tone: "urgent",
+      title: bossOvertimeNotice(),
+      action: () => setTab("unit")
+    });
+  } else if (bossLeft !== null && bossLeft <= 30) {
+    picks.push({
+      key: "boss-clock",
+      label: `우두머리 ${bossLeft.toFixed(0)}초`,
+      tone: "urgent",
+      title: bossClockNotice(bossLeft, state.wave >= GAME_CONFIG.maxWaves) ?? "우두머리 제한시간",
       action: () => setTab("unit")
     });
   }

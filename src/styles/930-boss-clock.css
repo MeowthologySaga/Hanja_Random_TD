@@ -1,0 +1,114 @@
+/* ══════════════════════════════════════════════════════
+   930. 우두머리 제한시계 (v041)
+   ══════════════════════════════════════════════════════
+
+   "저번에 다른 유저가 플레이 하는거 봤는데 보스 시간제한 있는 거 모르고 냅두다가
+   게임오버하는거 봤어. 이거에 대한 피드백이 많이 부족 한것 같아"(사용자).
+
+   시계가 나오는 곳이 **오직 한 곳**이었다 — 오른쪽 패널 웨이브 카드의 12px 한 줄
+   (#wave-kicker). 부적을 쓰는 사람의 눈(종이 중심 1080,415)에서 273px, 전장을 보는
+   사람에게는 1,000px 떨어져 있고, 소환 공개 카드가 뜨면 통째로 가린다.
+
+   자리를 고른 근거.
+   · **위쪽은 못 쓴다.** y 71~131 은 클램프된 자령 명패가 앉는 띠이고, 660 절이
+     일시정지 칩을 그 자리에서 137px 로 내리며 이미 한 번 물러났다(물린 명패 412건).
+     이 시계는 우두머리 준비 15초 + 교전 72~126초 내내 서 있으므로 더 나쁘다.
+   · **상단 띠(41px)에도 자리가 없다.** 실측: 여섯째 칩이 96px 만 되어도 우두머리
+     준비에서 띠가 57px 로 깨진다.
+   · 아래 안전 띠(STAGE_SAFE_AREA.bottom 44)의 **오른쪽은 비어 있다** — 지도 배율
+     칩과 한자 강조는 왼쪽에 있고, 조작 안내는 가운데다.
+
+   색은 새로 만들지 않는다 — 440-fb3 의 적 한계 3단 경고가 쓰는 값을 그대로 쓴다.
+   그래야 「지는 조건」 둘이 같은 말을 같은 색으로 한다. */
+
+.boss-clock {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  z-index: 7;
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  max-width: 420px;
+  padding: 5px 11px 6px;
+  color: #f6ecd2;
+  border: 1px solid rgba(159, 47, 35, 0.5);
+  border-radius: 8px;
+  background: linear-gradient(180deg, rgba(24, 18, 13, 0.94), rgba(14, 11, 8, 0.94));
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+  pointer-events: none;
+}
+
+.boss-clock[hidden] {
+  display: none;
+}
+
+.boss-clock > b {
+  color: #f0d79a;
+  font-size: 21px;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.05;
+}
+
+.boss-clock > span {
+  color: #d8cdb6;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+/* 30초 — 놋쇠에서 주황으로. 아직 재촉이 아니라 알림이다. */
+.boss-clock[data-alert="1"] {
+  border-color: rgba(200, 134, 42, 0.8);
+}
+
+.boss-clock[data-alert="1"] > b {
+  color: #e8a53c;
+}
+
+/* 15초 — 인주. 440-fb3 의 is-danger 와 같은 값. */
+.boss-clock[data-alert="2"] {
+  border-color: rgba(164, 19, 38, 0.9);
+}
+
+.boss-clock[data-alert="2"] > b {
+  color: #ff8a86;
+}
+
+/* 5초·초과 — 바탕째 인주. 440-fb3 의 is-critical 과 같은 값. */
+.boss-clock[data-alert="3"] {
+  border-color: #ffd0cc;
+  background: linear-gradient(180deg, rgba(150, 18, 30, 0.98), rgba(104, 12, 20, 0.98));
+  animation: boss-clock-pulse 0.62s ease-in-out infinite;
+}
+
+.boss-clock[data-alert="3"] > b,
+.boss-clock[data-alert="3"] > span {
+  color: #fff4ee;
+}
+
+@keyframes boss-clock-pulse {
+  0%,
+  100% {
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+  }
+
+  50% {
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5), 0 0 0 3px rgba(255, 122, 108, 0.5);
+  }
+}
+
+/*
+   차분한 화면·동작 줄이기에서는 **맥동만** 끈다. 숫자와 색은 남긴다 — 그것을 지우면
+   접근성 설정이 곧 패배가 된다(440-fb3 이 같은 자리에서 정한 규범).
+*/
+.game-shell[data-calm-screen="1"] .boss-clock[data-alert="3"] {
+  animation: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .boss-clock[data-alert="3"] {
+    animation: none;
+  }
+}
