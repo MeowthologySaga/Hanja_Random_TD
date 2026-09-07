@@ -77,6 +77,11 @@ interface PlannedAsset {
   sha256: string;
   entry: GeneratedEntry;
   copy: boolean;
+  /** 런타임이 실제로 읽는 webp 짝(v040·요청서 v11부터 납품 필수). */
+  webpSource: string;
+  webpDestination: string;
+  webpSha256: string;
+  copyWebp: boolean;
 }
 
 const EXPECTED_LAYOUT: Layout = { rows: 2, cols: 2, frameSize: 320, sheetSize: 640 };
@@ -102,6 +107,16 @@ export function expectedAssetId(hanja: string): string {
   const glyphs = [...hanja];
   if (glyphs.length !== 1) fail(`Expected one Unicode character, got ${JSON.stringify(hanja)}`);
   return `cn-${glyphs[0].codePointAt(0)!.toString(16)}`;
+}
+
+/**
+ * PNG 시트 옆에 놓이는 webp 짝의 경로. 통합 스크립트는 PNG 로 크기를 검증하지만
+ * 런타임(`jaryeongAssetPath`)은 `sheet-transparent.webp` 를 읽는다 — 그래서 둘 다
+ * 받아야 하고, webp 가 없으면 통합을 거절한다(v040).
+ */
+export function webpSiblingPath(pngPath: string): string {
+  if (!/\.png$/i.test(pngPath)) fail(`Expected a .png sheet path, got ${pngPath}`);
+  return pngPath.replace(/\.png$/i, ".webp");
 }
 
 export function splitLearningReading(value: string): { reading: string; meaning: string } {
@@ -279,15 +294,38 @@ async function main(): Promise<void> {
     if (destinationHash && destinationHash !== sourceHash && !args.replace) {
       fail(`${addition.id}: destination differs; rerun with --replace only after explicit review`);
     }
-    plan.push({ source, destination, sha256: sourceHash, entry: addition, copy: destinationHash !== sourceHash });
+    const webpSource = webpSiblingPath(source);
+    const webpHash = await existingSha(webpSource);
+    if (!webpHash) fail(`${addition.hanja}: missing webp sibling ${path.basename(webpSource)} — the runtime loads webp`);
+    const webpDestination = path.join(assetRoot, addition.id, "sheet-transparent.webp");
+    const webpDestinationHash = await existingSha(webpDestination);
+    if (webpDestinationHash && webpDestinationHash !== webpHash && !args.replace) {
+      fail(`${addition.id}: webp destination differs; rerun with --replace only after explicit review`);
+    }
+    plan.push({
+      source,
+      destination,
+      sha256: sourceHash,
+      entry: addition,
+      copy: destinationHash !== sourceHash,
+      webpSource,
+      webpDestination,
+      webpSha256: webpHash,
+      copyWebp: webpDestinationHash !== webpHash
+    });
   }
 
   const merged = mergeGeneratedData(current, additions);
   if (!args.dryRun) {
     for (const asset of plan) {
-      if (!asset.copy) continue;
-      await mkdir(path.dirname(asset.destination), { recursive: true });
-      await copyFile(asset.source, asset.destination);
+      if (asset.copy) {
+        await mkdir(path.dirname(asset.destination), { recursive: true });
+        await copyFile(asset.source, asset.destination);
+      }
+      if (asset.copyWebp) {
+        await mkdir(path.dirname(asset.webpDestination), { recursive: true });
+        await copyFile(asset.webpSource, asset.webpDestination);
+      }
     }
     const temporaryDataPath = `${dataPath}.tmp`;
     await writeFile(temporaryDataPath, `${JSON.stringify(merged, null, 2)}\n`, "utf8");
@@ -299,9 +337,10 @@ async function main(): Promise<void> {
     dryRun: args.dryRun,
     passed: additions.length,
     copied: plan.filter((asset) => asset.copy).length,
-    idempotent: plan.filter((asset) => !asset.copy).length,
+    copiedWebp: plan.filter((asset) => asset.copyWebp).length,
+    idempotent: plan.filter((asset) => !asset.copy && !asset.copyWebp).length,
     totalGenerated: merged.entries.length,
-    assets: plan.map((asset) => ({ id: asset.entry.id, sha256: asset.sha256, copy: asset.copy }))
+    assets: plan.map((asset) => ({ id: asset.entry.id, sha256: asset.sha256, webpSha256: asset.webpSha256, copy: asset.copy, copyWebp: asset.copyWebp }))
   }, null, 2));
 }
 

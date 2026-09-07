@@ -3,7 +3,8 @@ import {
   expectedAssetId,
   mergeGeneratedData,
   splitLearningReading,
-  validatePassEntries
+  validatePassEntries,
+  webpSiblingPath
 } from "../scripts/integrate-generated-jaryeongs";
 
 const layout = { rows: 2, cols: 2, frameSize: 320, sheetSize: 640 };
@@ -14,6 +15,12 @@ describe("generated Jaryeong integration", () => {
     expect(expectedAssetId("力")).toBe("cn-529b");
     expect(splitLearningReading("어진사람 인")).toEqual({ reading: "인", meaning: "어진사람" });
     expect(splitLearningReading("우")).toEqual({ reading: "우", meaning: "우" });
+  });
+
+  it("pairs every PNG sheet with the webp the runtime actually loads", () => {
+    // 런타임은 sheet-transparent.webp 를 읽는다 — PNG 만 받으면 통합 뒤 빈 그림이 된다(v040).
+    expect(webpSiblingPath("processed/cn-5382/sheet-transparent.png")).toBe("processed/cn-5382/sheet-transparent.webp");
+    expect(() => webpSiblingPath("processed/cn-5382/sheet.jpg")).toThrow();
   });
 
   it("keeps only QC-passed entries and validates authoritative CN fields", () => {
