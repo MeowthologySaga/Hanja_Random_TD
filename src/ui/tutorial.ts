@@ -37,7 +37,8 @@ import {
   startingWuxing,
   totalEssenceSpent,
   TUTORIAL_IDIOM_ID,
-  TUTORIAL_SEED
+  TUTORIAL_SEED,
+  TUTORIAL_TALISMAN_CHAR
 } from "./tutorial-script";
 
 /** 수료 기록. 코치 키(coach-seen)와 같은 패턴, 키는 분리한다. */
@@ -313,7 +314,7 @@ const STEPS: readonly TutorialStep[] = [
      */
     id: "talisman",
     enter: () => {
-      prepareTalismanForTutorial();
+      prepareTalismanForTutorial(TUTORIAL_TALISMAN_CHAR);
       setPanelTab("talisman");
       runtime.sealBaseline = talismanSealCount();
     },
@@ -321,7 +322,7 @@ const STEPS: readonly TutorialStep[] = [
     view: () => ({
       target: "#talisman-paper",
       title: "부적을 한 장 써 보세요",
-      body: "반투명 글자를 마우스로 따라 그으면 자령이 응답해요 — 엽전·문기·전장 이벤트. 획순은 자유고 웨이브마다 한 장씩 적립돼요. 다 그렸으면 [부적 완성].",
+      body: "반투명 「불 화(火)」를 마우스로 따라 그으면 자령이 응답해요 — 엽전·문기·전장 이벤트. 붉은 점선이 짚는 순서대로 네 획, 다 그렸으면 [부적 완성]. 부적은 웨이브마다 한 장씩 쌓여요.",
       control: "drag"
     }),
     allow: () => [panelTab("talisman"), "#talisman-panel"],

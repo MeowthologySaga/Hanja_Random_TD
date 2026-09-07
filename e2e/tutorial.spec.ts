@@ -123,6 +123,16 @@ test("walks the training grounds through all nine scripted steps", async ({ page
   await expect(page.locator("#tutorial-title")).toContainText("부적");
   await expect(page.locator("#talisman-panel")).toBeVisible();
   await expect(page.locator("#talisman-tab")).toHaveAttribute("aria-selected", "true");
+  /*
+   * 수련장 글자는 **火 로 고정**이다(v041). 랜덤이면 19획 글자가 걸려 통과 하한이
+   * 「2획 이상」에서 「10획 이상」으로 뛰고, 처음 붓을 잡는 사람이 첫 부적에서 막힌다.
+   */
+  const scripted = await page.evaluate(() => {
+    const qa = (window as unknown as { __HANJA_TALISMAN_QA__?: { currentChar(): string | null } }).__HANJA_TALISMAN_QA__;
+    return qa?.currentChar() ?? null;
+  });
+  expect(scripted).toBe("火");
+  await expect(page.locator("#talisman-reading")).toContainText("불 화");
   await page.screenshot({ path: `${SHOT_DIR}/tutorial-step4-talisman-1280x720.png` });
   await page.evaluate(() => {
     (window as unknown as { __HANJA_TALISMAN_QA__: { autoTrace: () => void } }).__HANJA_TALISMAN_QA__.autoTrace();

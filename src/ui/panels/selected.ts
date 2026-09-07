@@ -16,6 +16,7 @@ import {
   STAGE_COLORS,
   STAGE_NAMES
 } from "../../core/hanzi";
+import { BOARD_FORMATIONS, CELLS_PER_FORMATION } from "../../core/content";
 import { jaryeongVisualFor } from "../../core/jaryeongs";
 import { learningInfoForNotation } from "../../core/learning";
 import { notationBadgeText, notationReadingHtml, notationShortHtml } from "../notation-substitute";
@@ -160,10 +161,16 @@ export function renderSelected(): void {
   // [SKILL-V3] 획수 공명 중첩은 자리를 옮기면 바뀐다 — 다시 그리기 열쇠에 넣지
   // 않으면 칩과 공속 표기가 옛 중첩에 머문다.
   const resonanceStacks = tower ? ctx.engine.strokeResonanceStacks(tower) : 0;
+  /*
+   * [v041] 오행 공명은 **자리**를 옮기면 바뀐다 — 획수 공명과 같은 이유로 다시
+   * 그리기 열쇠에 넣는다. 보관 중인 자령은 칸이 -1 이라 진이 없다.
+   */
+  const formationIndex = tower && !stored && tower.cell >= 0 ? Math.floor(tower.cell / CELLS_PER_FORMATION) : -1;
+  const elementResonance = formationIndex >= 0 ? ctx.engine.formationResonance(formationIndex) : null;
   // [SKILL-V3] 회향 여운은 초 단위로 흐른다 — 0.5초 칸으로 끊어 다시 그린다
   // (매 프레임 열쇠를 바꾸면 카드 전체가 초당 60번 재조립된다).
   const echoTick = tower ? Math.ceil((ctx.engine.echoStatus(tower)?.remaining ?? 0) * 2) : 0;
-  const key = tower ? tower.definitionId + "|" + String(tower.id) + "|" + String(tower.locked) + "|" + String(stored) + "|" + String(ctx.engine.isSynergyActive(tower.wuxing)) + "|" + branchKey + `|M${ctx.engine.state.mode}:S${tower.casualStar ?? 0}|C${concentration}:${concentrationPath ?? "none"}:D${duplicateCount}:E${ctx.engine.state.elementEssence[tower.wuxing]}|P${polarisActive ? 1 : 0}|R${resonanceStacks}|E${echoTick}|U${ctx.dismantleProtectsUnique ? 1 : 0}` : "none";
+  const key = tower ? tower.definitionId + "|" + String(tower.id) + "|" + String(tower.locked) + "|" + String(stored) + "|" + String(ctx.engine.isSynergyActive(tower.wuxing)) + "|" + branchKey + `|M${ctx.engine.state.mode}:S${tower.casualStar ?? 0}|C${concentration}:${concentrationPath ?? "none"}:D${duplicateCount}:E${ctx.engine.state.elementEssence[tower.wuxing]}|P${polarisActive ? 1 : 0}|R${resonanceStacks}|F${elementResonance?.matching ?? -1}|E${echoTick}|U${ctx.dismantleProtectsUnique ? 1 : 0}` : "none";
   if (key === ctx.selectedRenderKey) {
     if (tower && definition) syncSelectedCharge(card, tower, definition, chargeStep);
     return;
@@ -246,6 +253,9 @@ export function renderSelected(): void {
         : polarisActive && !stored
           ? `<span class="selected-chip selected-chip--polaris" title="${escapeHtml(CASUAL_POLARIS_AURA.description)}">${CASUAL_POLARIS_AURA.name} 오라 적용 중 · 공격 +${Math.round(CASUAL_POLARIS_AURA.damageBonus * 100)}%</span>`
           : ""}
+      ${elementResonance && formationIndex >= 0
+        ? `<span class="selected-chip selected-chip--element-resonance" style="--element:${(BOARD_FORMATIONS[formationIndex] as { color: string }).color}" title="같은 오행 자령을 그 진에 4·8·12·16기 세우면 그 진의 자령 공격이 6·12·18·25% 오릅니다">五 ${(BOARD_FORMATIONS[formationIndex] as { label: string }).label} 공명 ${elementResonance.matching}/16${elementResonance.damageBonus > 0 ? ` · 이 진 피해 +${Math.round(elementResonance.damageBonus * 100)}%` : ""}</span>`
+        : ""}
       ${strokeResonance
         ? `<span class="selected-chip selected-chip--resonance" title="${escapeHtml(STROKE_RESONANCE_ABILITY.description)}">${STROKE_RESONANCE_ABILITY.glyph} ${STROKE_RESONANCE_ABILITY.name} ${strokeResonance.stacks}/${STROKE_RESONANCE_MAX_STACKS} · 공속 +${Math.round(strokeResonance.haste * 100)}%</span>`
         : ""}

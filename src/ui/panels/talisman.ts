@@ -150,6 +150,11 @@ const REWARD_GOLD_MAX = 14;
  * 되도록 맞췄다. 여기서 총량이 커지면 시뮬 게이트가 못 잡는 자리에서 경제가
  * 부푼다(부적 보상은 UI 층이 엔진을 직접 만져 시뮬에 안 잡힌다 — 그래서 설계로
  * 지켜야 한다).
+ *
+ * [v041] 이 농축은 처음에 **엽전 분기만** 탔다. 그래서 장수 3→1 개편이 엽전
+ * 총량은 지키고 문기 총량은 3분의 1로 떨어뜨렸다(KR 풀 전수 실측: 100웨이브
+ * 100.9 → 33.6). 지금은 문기도 같은 두 배수를 탄다 — **3장 시절 총량 100.9 를
+ * 넘지 않는 것**이 그 되돌림의 상한이고, 지금 값은 84.0 이다.
  */
 const REWARD_DENSITY = 2.7;
 
@@ -853,8 +858,23 @@ function grantReward(): void {
       recentRewards.gold += amount;
       grants.push({ kind: "gold", amount, glyph: "錢", label: `엽전 +${amount}` });
     } else if (roll < REWARD_GOLD_WEIGHT + REWARD_ESSENCE_WEIGHT) {
-      // 문기는 낱개라 배수를 못 쓴다 — 획이 열둘을 넘으면 하나를 더 얹는다.
-      const amount = (casualStrokeCount(char) ?? 6) >= 12 ? 2 : 1;
+      /*
+       * 문기도 엽전과 **같은 두 배수**를 탄다 — 획수(rewardScale)와 농축(REWARD_DENSITY).
+       *
+       * "부적의 문기 보상이 다른것에 비해 양이 적은 것 같아. 농축되면서 보상이
+       * 올라야되는데 변화가 없는 느낌이야"(사용자). 수치가 그대로였다: 엽전 카드는
+       * 평균 +34.8 을 적는데 문기 카드는 언제나 +1(12획 이상 +2)이었다.
+       *
+       * 이건 인상이 아니라 **되돌림**이다. 부적 장수를 셋에서 하나로 줄인 개편이
+       * 농축을 1.35 → 2.7 로 올려 엽전 총량은 지켰는데, 문기 줄만 그 자리에 남아
+       * 총량이 조용히 3분의 1이 됐다(KR 풀 전수 실측: 100웨이브 100.9 → 33.6).
+       * 같은 배수를 태우면 84.0 — 3장 시절 총량 **아래**다. 그 100.9 가 이 되돌림의
+       * 상한이고, 그래서 이 줄은 총량을 늘리는 개편이 아니다.
+       *
+       * 「낱개라 배수를 못 쓴다」고 적어 두었지만 반올림 한 줄이면 같은 규칙으로
+       * 같은 계단이 선다: 1획 2 · 6획 3 · 12획 4 · 20획 5 · 29획 6.
+       */
+      const amount = Math.max(1, Math.round(scale * REWARD_DENSITY));
       state.elementEssence[wuxing] += amount;
       state.elementEssenceGenerated[wuxing] += amount;
       recentRewards.essence[wuxing] = (recentRewards.essence[wuxing] ?? 0) + amount;
@@ -1291,7 +1311,7 @@ function syncModeToggle(): void {
  * 나가면 새로고침이라 원래 설정으로 돌아온다), 갈피를 세우고, 한 장을 손에
  * 쥐여 준다.
  */
-export function prepareTalismanForTutorial(): void {
+export function prepareTalismanForTutorial(char?: string): void {
   ctx.talismanMode = true;
   syncTabPresence();
   syncModeToggle();
@@ -1302,7 +1322,19 @@ export function prepareTalismanForTutorial(): void {
     document.querySelector("#talisman-paper")?.classList.remove("is-out-of-charges");
     syncRewardNote();
   }
-  ensureDefinition();
+  /*
+   * 각본이 글자를 정해 주면 **강제로** 세운다 (v041).
+   *
+   * `ensureDefinition()` 은 같은 지역이면 조기 반환한다 — 종이를 쓰던 중에 갈피를
+   * 여닫아도 글자가 안 날아가게 하는 규칙이다. 그런데 수련장은 새로고침이 아니라
+   * 새 판이라, **한 세션에서 부적 갈피를 한 번이라도 연 뒤 수련장에 들어가면**
+   * 그 옛 글자가 그대로 남는다. 각본 글자는 그 규칙을 비켜 가야 한다.
+   *
+   * 글자는 호출부(각본)가 준다 — 부적 모듈이 수련장을 알 필요는 없다.
+   */
+  const scripted = char === undefined ? undefined : ctx.engine.catalog.definitions.get(char);
+  if (scripted) presentDefinition(scripted);
+  else ensureDefinition();
 }
 
 export function setTalismanMode(enabled: boolean): void {

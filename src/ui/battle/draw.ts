@@ -99,6 +99,8 @@ export function drawWorld(delta: number): void {
   }
   // 명패는 자령 본체를 모두 그린 뒤에 흘려야 이웃 자령이 훈음을 덮지 않는다.
   flushTowerPlaques();
+  // 진 이름표는 그 명패보다도 앞이다 — 아래층에 두었더니 공명이 오를수록 지워졌다.
+  drawFormationPlates();
   // Keep combat sprites in the foreground so their raster silhouettes are not
   // hidden by the enemy/tower bodies. Their alpha and size remain restrained
   // so the learning labels stay readable.
@@ -543,6 +545,79 @@ function drawSpawnPortals(): void {
  * (판 모서리 91px, 도로 코어 안쪽 가장자리 84.5px) 깊이는 전부 판 안쪽과
  * 아래로 드리우는 그림자로만 표현한다.
  */
+/**
+ * 진 이름표를 **자령보다 앞층에** 그린다 (v041).
+ *
+ * "각 진마다 맞는속성 넣으면 데미지 증가하는 거 표시해준 말풍선이 전장에 있는데
+ * 여태까지 하면서 오늘 처음봤어. 가시성 너무 끔찍하다"(사용자).
+ *
+ * 원인은 색도 크기도 아니었다 — **그리는 차례**였다. 이름표는 drawBoard 안, 즉
+ * 가장 아래층에서 그려졌고 그 위로 자령 본체와 명패가 차례로 얹혔다. 실측이 그대로
+ * 말해 준다: 수진이 16/16 · 피해 +25%(이 게임 최대 공명)일 때 이름표 자리의 글자색
+ * 픽셀이 **0개**였다. 공명을 벌면 벌수록 그것을 알리는 줄이 자령에 지워지는 구조다.
+ *
+ * 그래서 명패까지 다 흘린 **뒤에** 이 함수를 부른다. 자리(cy-122)와 겹침 회피
+ * 규칙은 그대로 둔다 — 내려 보면 화진이 아래 안전선에 걸리고 배율 100%에서는
+ * 여전히 둘이 빠진다(실측). 층만 올린다.
+ *
+ * `reserveScreenBox` 로 등록하지는 않는다. 등록이 주던 이득(피해 수치가 비켜 감)은
+ * 그 수치 표시를 걷은 v039 이후 존재하지 않고, 등록하면 track-w 의 겹침 예산
+ * (staticOverStatic ≤ 150, 실측 134~138)만 몇 배로 부풀린다.
+ */
+function drawFormationPlates(): void {
+  context.save();
+  context.textAlign = "center";
+  for (let formationIndex = 0; formationIndex < BOARD_FORMATIONS.length; formationIndex += 1) {
+    const formation = BOARD_FORMATIONS[formationIndex] as (typeof BOARD_FORMATIONS)[number];
+    const unlocked = ctx.engine.isFormationUnlocked(formationIndex);
+    const resonance = ctx.engine.formationResonance(formationIndex);
+    const cx = formation.center.x;
+    const cy = formation.center.y;
+    // 돌에 박힌 작은 명패.
+    const bonusLabel = resonance.damageBonus > 0 ? ` · 이 진 피해 +${Math.round(resonance.damageBonus * 100)}%` : "";
+    const unlockCost = ctx.engine.nextFormationUnlockCost();
+    const unlockAffordable = !unlocked && unlockCost !== null && ctx.engine.state.gold >= unlockCost && ctx.engine.state.startingFormationIndex !== null;
+    const plateText = unlocked
+      ? `${formation.label} ${resonance.matching}/16${bonusLabel}`
+      : unlockAffordable
+        ? `${formation.label} · ${unlockCost}엽전 해금 가능!`
+        : `${formation.label} · ${unlockCost ?? 0}엽전 해금`;
+    context.font = '900 10px "Malgun Gothic", sans-serif';
+    const nameWidth = context.measureText(plateText).width + 16;
+    // 판 위 중앙은 윗줄 자령 명패가 차지한다. 좌상단 모서리에 붙인다.
+    const plateLeft = cx - 91;
+    const plateTop = cy - 122;
+    // 무대 안전 영역 안으로 물리고, 이미 잡힌 진 라벨과 겹치면 그리지 않는다
+    // (placeFormationLabel 주석 참조).
+    const plateNudge = placeFormationLabel(formation.center, plateLeft, plateTop, nameWidth, 17);
+    if (plateNudge !== null) {
+      const plateX = plateLeft + plateNudge.dx / ctx.mapZoom;
+      const plateY = plateTop + plateNudge.dy / ctx.mapZoom;
+      context.fillStyle = "rgba(28, 25, 21, 0.97)";
+      context.beginPath();
+      context.roundRect(plateX, plateY, nameWidth, 17, [3, 8, 3, 8]);
+      context.fill();
+      context.strokeStyle = unlocked ? formation.color + "c0" : "rgba(112, 108, 102, 0.55)";
+      context.lineWidth = 1;
+      context.stroke();
+      context.fillStyle = unlocked ? "#f6ecd2" : unlockAffordable ? "#ffd98a" : "#a8a29a";
+      context.textAlign = "left";
+      // 원본 기준선 cy-113.5 = 상자 윗변 + 8.5 다. 밀린 뒤에도 그대로 유지한다.
+      context.fillText(plateText, plateX + 8, plateY + 8.5);
+      context.textAlign = "center";
+    }
+  }
+  context.restore();
+}
+
+/**
+ * 제단 바닥에 스미는 오행 색의 진하기 — 공명 단계 0~4 (v041).
+ *
+ * 색만으로 단계를 말하지 않는다(네 모서리 꺾쇠가 길이로 이미 말한다). 이 표는
+ * 「이 진이 지금 살아 있다」를 곁눈으로 알게 하는 보조다.
+ */
+const FORMATION_TINT_ALPHA = ["3a", "54", "6e", "88", "a2"] as const;
+
 function drawBoard(): void {
   // 지난 프레임의 라벨 자리는 이번 프레임과 무관하다(stage-labels 의 resetStageLabels 와 같은 규칙).
   formationLabelBoxes.length = 0;
@@ -585,6 +660,27 @@ function drawBoard(): void {
         FORMATION_PLATE_SIZE,
         FORMATION_PLATE_SIZE
       );
+
+      /*
+       * 2''. 공명이 오르면 **바닥이 물든다** (v041).
+       *
+       * 여태 이 재질 경로에는 스밈이 아예 없었다 — 오행 공명이 8기·12기로 올라도
+       * 제단은 한 픽셀도 변하지 않았고, 그 사실을 알리는 것은 위쪽 이름표 한 줄
+       * 뿐이었다("여태까지 하면서 오늘 처음봤어" — 사용자). 색은 **보조**다: 단계
+       * 구분은 이미 네 모서리 꺾쇠 길이가 맡는다(아래 5단계).
+       */
+      if (unlocked && resonance.tier > 0) {
+        context.save();
+        context.beginPath();
+        context.roundRect(cx - 87, cy - 87, 174, 174, 12);
+        context.clip();
+        const plateTint = context.createRadialGradient(cx, cy, 8, cx, cy, 118);
+        plateTint.addColorStop(0, formation.color + FORMATION_TINT_ALPHA[resonance.tier]);
+        plateTint.addColorStop(1, formation.color + "00");
+        context.fillStyle = plateTint;
+        context.fillRect(cx - 87, cy - 87, 174, 174);
+        context.restore();
+      }
     } else {
       // 1. 제단이 도로 위에 떠 있도록 아래로 접지 그림자를 드리운다.
       context.save();
@@ -613,7 +709,7 @@ function drawBoard(): void {
       context.roundRect(cx - 91, cy - 91, 182, 182, plateRadii);
       context.clip();
       const tint = context.createRadialGradient(cx, cy, 8, cx, cy, 118);
-      tint.addColorStop(0, formation.color + (unlocked ? (resonance.tier > 0 ? "5c" : "3a") : "18"));
+      tint.addColorStop(0, formation.color + (unlocked ? FORMATION_TINT_ALPHA[resonance.tier] : "18"));
       tint.addColorStop(1, formation.color + "00");
       context.fillStyle = tint;
       context.fillRect(cx - 91, cy - 91, 182, 182);
@@ -674,39 +770,6 @@ function drawBoard(): void {
     context.fillStyle = unlocked ? formation.color + (resonance.tier > 0 ? "5e" : "44") : "rgba(96, 92, 86, 0.26)";
     context.fillText(formation.preferredWuxing, cx, cy + 16);
 
-    // 7. 진 이름표: 돌에 박힌 작은 명패.
-    const bonusLabel = resonance.damageBonus > 0 ? ` · 피해 +${Math.round(resonance.damageBonus * 100)}%` : "";
-    const unlockCost = ctx.engine.nextFormationUnlockCost();
-    const unlockAffordable = !unlocked && unlockCost !== null && ctx.engine.state.gold >= unlockCost && ctx.engine.state.startingFormationIndex !== null;
-    const plateText = unlocked
-      ? `${formation.label} ${resonance.matching}/16${bonusLabel}`
-      : unlockAffordable
-        ? `${formation.label} · ${unlockCost}엽전 해금 가능!`
-        : `${formation.label} · ${unlockCost ?? 0}엽전 해금`;
-    context.font = '900 10px "Malgun Gothic", sans-serif';
-    const nameWidth = context.measureText(plateText).width + 16;
-    // 판 위 중앙은 윗줄 자령 명패가 차지한다. 좌상단 모서리에 붙인다.
-    const plateLeft = cx - 91;
-    const plateTop = cy - 122;
-    // 무대 안전 영역 안으로 물리고, 이미 잡힌 진 라벨과 겹치면 그리지 않는다
-    // (placeFormationLabel 주석 참조).
-    const plateNudge = placeFormationLabel(formation.center, plateLeft, plateTop, nameWidth, 17);
-    if (plateNudge !== null) {
-      const plateX = plateLeft + plateNudge.dx / ctx.mapZoom;
-      const plateY = plateTop + plateNudge.dy / ctx.mapZoom;
-      context.fillStyle = "rgba(28, 25, 21, 0.94)";
-      context.beginPath();
-      context.roundRect(plateX, plateY, nameWidth, 17, [3, 8, 3, 8]);
-      context.fill();
-      context.strokeStyle = unlocked ? formation.color + "8c" : "rgba(112, 108, 102, 0.55)";
-      context.lineWidth = 1;
-      context.stroke();
-      context.fillStyle = unlocked ? "#f6ecd2" : unlockAffordable ? "#ffd98a" : "#a8a29a";
-      context.textAlign = "left";
-      // 원본 기준선 cy-113.5 = 상자 윗변 + 8.5 다. 밀린 뒤에도 그대로 유지한다.
-      context.fillText(plateText, plateX + 8, plateY + 8.5);
-      context.textAlign = "center";
-    }
   }
 
   // 8. 셀은 돌판에 파인 소켓으로 그린다. 표 칸처럼 보이지 않게 안쪽 그림자를 준다.

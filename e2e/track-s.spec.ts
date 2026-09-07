@@ -105,7 +105,13 @@ test("does not repeat the first coach step at the last one", async ({ page }) =>
   await expect(page.locator("#coach-title")).not.toHaveText(firstTitle ?? "");
   await expect(page.locator("#coach-body")).not.toHaveText(firstBody ?? "");
   await expect(page.locator("#coach-title")).toContainText("웨이브");
-  await expect(page.locator("#coach-body")).toContainText("시작 보너스");
+  /*
+   * v041 에서 이 문구를 고쳤다 — 단추는 v036 부터 전장이 아니라 오른쪽 웨이브
+   * 카드에 있고 이름도 [시작]인데, 코치는 여전히 「전장 위에 [시작 보너스]」라고
+   * 말하고 있었다. 줄어드는 속도(2초마다 1엽전)도 여기서 처음 알려 준다.
+   */
+  await expect(page.locator("#coach-body")).toContainText("웨이브 카드");
+  await expect(page.locator("#coach-body")).toContainText("2초마다");
   // 소환 카드를 짚어 손을 첫 걸음으로 돌려보내지 않는다.
   const ring = await page.evaluate(() => {
     const element = document.querySelector<HTMLElement>("#coach-ring")!;

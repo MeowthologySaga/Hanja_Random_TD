@@ -22,6 +22,17 @@ export const TUTORIAL_SEED = "TUTORIAL";
 /** 7단계에서 확정 체험시키는 성어. KR 추천 성어에 항상 고정 포함된다(이심전심). */
 export const TUTORIAL_IDIOM_ID = "heart";
 
+/**
+ * 수련장 부적 걸음의 고정 글자 (v041).
+ *
+ * 여태 본편과 같은 랜덤이었다. 19획 글자가 걸리면 통과 하한이 「2획 이상」에서
+ * 「10획 이상」으로 뛰고(requiredStrokeCount = max(2, ceil(획/2))), 처음 붓을 잡는
+ * 사람이 첫 부적에서 막힌다. 火 는 4획이고 획순 자료가 있으며, 점·점·삐침·파임
+ * 네 종류가 다 들어 있어 획순을 처음 배우기에 가장 좋다. 오행 이름이라 이 게임의
+ * 낱말(오행진·문기)과도 곧바로 이어진다.
+ */
+export const TUTORIAL_TALISMAN_CHAR = "火";
+
 /** 시작 진(첫 소환이 무료 개방한 진)의 오행. 아직 없으면 木. */
 export function startingWuxing(engine: GameEngine): Wuxing {
   const index = engine.state.startingFormationIndex;
