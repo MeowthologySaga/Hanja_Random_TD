@@ -16,7 +16,14 @@ import { idiomById, partialIdiomChain } from "../../core/idioms";
 import { enemyJaryeongVisualFor, jaryeongFrameLayout, jaryeongVisualFor } from "../../core/jaryeongs";
 import { learningInfoForNotation } from "../../core/learning";
 import { type Enemy, type Point, type Tower } from "../../core/types";
-import { abilityZoneSpriteLayout, deterministicZoneRotation, IDIOM_FLASH_MAX_SCALE, idiomFlashClampX, idiomFlashClampY } from "../combat-fx-layout";
+import {
+  abilityZoneSpriteLayout,
+  deterministicZoneRotation,
+  enemyPlateFlipsUp,
+  IDIOM_FLASH_MAX_SCALE,
+  idiomFlashClampX,
+  idiomFlashClampY
+} from "../combat-fx-layout";
 import { elementZoneImage } from "../combat-fx-sprites";
 import {
   ENEMY_FRAME_SIZE,
@@ -56,6 +63,8 @@ import { advanceEnemyHealth, enemyHealthTrail, HEALTH_BAR_COLOR, HEALTH_TRAIL_CO
 export function drawWorld(delta: number): void {
   // [S/P-12] 부동 라벨의 자리 잡기는 프레임 단위다 — 지난 프레임의 점유는 잊는다.
   resetStageLabels();
+  // [v042] 야생 글자 명패도 프레임 단위로 다시 센다 — 이 수를 e2e 가 읽는다.
+  resetEnemyPlateCount();
   const state = ctx.engine.state;
   const selectedTower = ctx.engine.selectedTower();
   canvas.dataset.selectedTowerId = selectedTower ? String(selectedTower.id) : "";
@@ -108,6 +117,15 @@ export function drawWorld(delta: number): void {
   context.restore();
   drawIdiomFlash();
   drawHoveredTowerCard();
+  /*
+   * [v042] 이번 프레임에 실제로 선 야생 글자 명패 수를 적는다.
+   *
+   * 적을 다 그린 **뒤**여야 이 프레임의 수다. 이 자리는 어떤 게이트도 안 본다 —
+   * 봇은 화면을 안 만지고, 잘림 검사는 DOM 만 보며(`grep canvas` 0건), 무대 라벨
+   * 계측은 stage-labels 에 등록된 것만 센다. 캔버스가 스스로 적어야 e2e 가 읽는다.
+   */
+  canvas.dataset.enemyPlateDraw = String(enemyPlateCount());
+  canvas.dataset.enemyPlateFlip = String(enemyPlateFlipCount());
 }
 
 export function isWorldPointVisible(point: Point, margin = 0): boolean {
@@ -1413,6 +1431,31 @@ function drawTowerRange(tower: Tower, hovered: boolean): void {
   context.restore();
 }
 
+/**
+ * 이번 프레임에 실제로 선 야생 글자 명패 수 — 계측용 (v042).
+ *
+ * 이 자리는 어떤 게이트도 안 본다: 봇은 화면을 안 만지고, 잘림 검사는 DOM 만 보며
+ * (`grep canvas e2e/no-clipped-text.spec.ts` 0건), 무대 라벨 계측(track-w)은
+ * stage-labels 에 등록된 것만 센다. 그래서 캔버스가 스스로 수를 적어 e2e 가 읽는다.
+ */
+let enemyPlatesThisFrame = 0;
+
+/** 그중 아래 안전 띠를 피해 몸 위로 뒤집힌 수 — 규칙이 실제로 걸렸는지 잰다. */
+let enemyPlateFlipsThisFrame = 0;
+
+export function resetEnemyPlateCount(): void {
+  enemyPlatesThisFrame = 0;
+  enemyPlateFlipsThisFrame = 0;
+}
+
+export function enemyPlateCount(): number {
+  return enemyPlatesThisFrame;
+}
+
+export function enemyPlateFlipCount(): number {
+  return enemyPlateFlipsThisFrame;
+}
+
 function drawEnemy(enemy: Enemy, point = positionOnPath(enemy.progress)): void {
   const colors: Record<Enemy["archetype"], string> = { normal: "#7770d9", swarm: "#bd78e8", swift: "#5bcde1", armored: "#b69b76", regenerator: "#64c489", boss: "#ff627d" };
   const color = colors[enemy.archetype];
@@ -1528,25 +1571,56 @@ function drawEnemy(enemy: Enemy, point = positionOnPath(enemy.progress)): void {
    *
    * 우두머리는 반드시 혼을 남기므로 더 또렷하게 적는다.
    */
-  if (enemy.char) {
-    // 초상이 이미 그 글자의 자령이지만 글자도 함께 적는다 — 그림과 글자가
-    // 짝이라는 것이 이 게임의 학습 알맹이다. 몸을 가리지 않게 발치로 내린다.
+  /*
+   * [v042] 이 글자를 **조판 규칙 안으로** 들인다.
+   *
+   * 아군 글자는 보호를 넷 받는데(한자 강조 존중 · 역보정 · 안전 영역 · 라벨 등록)
+   * 적 글자는 하나도 못 받고 있었다. 실측하면 1~25웨이브에서 **22~28%**가 잘리거나
+   * 띠 밑에 깔린다 — 그중 가장 큰 조각이 아래 칩 띠다(1~5웨이브 나쁜 경우의 14.9%).
+   *
+   * 셋을 들인다. 옆으로 미는 것만은 **안 한다** — 아군 명패는 자령이 안 움직이니
+   * 밀어도 공짜지만, 움직이는 적의 글자를 몸에서 떼면 「초상과 글자가 짝」이라는
+   * 학습 알맹이가 깨진다. 위아래 뒤집기로는 짝이 안 깨진다.
+   */
+  if (enemy.char && ctx.hanjaEmphasis) {
     const plate = enemy.boss ? 15 : 10;
-    const y = drawSize * 0.34;
-    context.globalAlpha = enemy.boss ? 0.95 : 0.78;
-    context.fillStyle = "rgba(10, 7, 5, 0.82)";
-    context.beginPath();
-    context.arc(0, y, plate, 0, Math.PI * 2);
-    context.fill();
-    context.lineWidth = 1;
-    context.strokeStyle = enemy.boss ? "#c9a8ff" : "rgba(201, 168, 255, 0.55)";
-    context.stroke();
-    context.fillStyle = enemy.boss ? "#e6d8ff" : "#cfc0e8";
-    context.font = '900 ' + String(enemy.boss ? 18 : 12) + 'px "Malgun Gothic", serif';
-    context.textAlign = "center";
-    context.textBaseline = "middle";
-    context.fillText(enemy.char, 0, y + 1);
-    context.globalAlpha = 1;
+    const fontPx = enemy.boss ? 18 : 12;
+    /*
+     * ① **역보정** — 글자를 화면 고정 크기로.
+     *
+     * 여태 월드 좌표라 배율을 그대로 탔다. 0.72배(판 전체가 보이는 자리)에서 12px
+     * 글자가 8.6px 로 줄어 먹 얼룩이 됐고, 2배에서는 24px 로 부풀어 옆 적을 덮었다.
+     * 아군 명패는 처음부터 `scale(1/mapZoom)` 으로 이 문제를 안 겪는다.
+     */
+    {
+      const offset = drawSize * 0.34 * ctx.mapZoom;
+      const screenY = ctx.mapOffset.y + point.y * ctx.mapZoom;
+      /*
+       * ② **아래 띠를 밟으면 위로 뒤집는다.** 그 44px 에는 지도 배율 칩과 조작
+       * 안내가 산다 — 글자가 그 밑으로 들어가면 통째로 안 읽힌다.
+       */
+      const flipUp = enemyPlateFlipsUp(screenY, offset, plate, WORLD_HEIGHT, STAGE_SAFE_AREA.bottom);
+      const y = (flipUp ? -1 : 1) * (drawSize * 0.34 * ctx.mapZoom + (flipUp ? plate * 0.4 : 0));
+      context.save();
+      context.scale(1 / ctx.mapZoom, 1 / ctx.mapZoom);
+      context.globalAlpha = enemy.boss ? 0.95 : 0.78;
+      context.fillStyle = "rgba(10, 7, 5, 0.82)";
+      context.beginPath();
+      context.arc(0, y, plate, 0, Math.PI * 2);
+      context.fill();
+      context.lineWidth = 1;
+      context.strokeStyle = enemy.boss ? "#c9a8ff" : "rgba(201, 168, 255, 0.55)";
+      context.stroke();
+      context.fillStyle = enemy.boss ? "#e6d8ff" : "#cfc0e8";
+      context.font = '900 ' + String(fontPx) + 'px "Malgun Gothic", serif';
+      context.textAlign = "center";
+      context.textBaseline = "middle";
+      context.fillText(enemy.char, 0, y + 1);
+      context.globalAlpha = 1;
+      context.restore();
+      enemyPlatesThisFrame += 1;
+      if (flipUp) enemyPlateFlipsThisFrame += 1;
+    }
   }
 
   if (enemy.flash > 0) {

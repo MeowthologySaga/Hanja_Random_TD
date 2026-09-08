@@ -35,3 +35,7 @@ handoff_source/data/*
 handoff/*
 !handoff/README.md
 !handoff/LOG.md
+
+# 무설치 Blender — 도구이지 소스가 아니다. 실험(v042 5차 곁길)은 폐기했지만
+# 바이너리는 디스크에 남아 있으므로 다시 커밋에 딸려 들어가지 않게 막는다.
+tools/

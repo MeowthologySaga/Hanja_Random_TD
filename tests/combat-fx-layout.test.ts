@@ -5,6 +5,7 @@ import {
   deterministicZoneRotation,
   IDIOM_FLASH_MAX_SCALE,
   IDIOM_FLASH_MEANING_INK,
+  enemyPlateFlipsUp,
   idiomFlashClampX,
   idiomFlashClampY
 } from "../src/ui/combat-fx-layout";
@@ -136,5 +137,56 @@ describe("플래시 자리는 부푸는 동안 안 움직인다", () => {
   it("세로도 같은 고정 배율을 쓴다", () => {
     const fixed = idiomFlashClampY(720, IDIOM_FLASH_MAX_SCALE, 720, 44);
     expect(idiomFlashClampY(720, IDIOM_FLASH_MAX_SCALE, 720, 44)).toBe(fixed);
+  });
+});
+
+/*
+ * 야생 자령의 글자가 조판 규칙 안에 있는가 (v042).
+ *
+ * 한 웨이브는 한 글자이고 그 글자가 적의 몸에 찍혀 나온다 — 이 게임에서 가장 큰
+ * 학습 통로인데, 그 글자만 규칙 밖에 서 있었다. 아군 글자는 보호를 넷 받는다
+ * (한자 강조 존중 · 역보정 · 안전 영역 · 라벨 등록). 적 글자는 하나도 못 받았다.
+ *
+ * 실측(6시드 · 901,876 표본): 1~5웨이브 24.1% · 11~25웨이브 28.0%가 잘리거나 띠 밑.
+ * 가장 큰 조각이 아래 칩 띠였다(1~5웨이브 나쁜 경우의 14.9%).
+ *
+ * 봇은 화면을 안 만지므로 시뮬 게이트가 이 자리를 영영 못 본다.
+ */
+describe("야생 자령 글자 명패", () => {
+  const WORLD_H = 720;
+  const SAFE_BOTTOM = 44;
+
+  it("발치가 아래 안전 띠를 밟으면 위로 뒤집는다", () => {
+    // 그 44px 에는 지도 배율 칩과 조작 안내가 산다 — 밟으면 글자가 통째로 안 읽힌다.
+    expect(enemyPlateFlipsUp(660, 14, 10, WORLD_H, SAFE_BOTTOM)).toBe(true);
+  });
+
+  it("띠 위를 지나는 동안은 발치 그대로다 — 몸을 안 가리는 자리가 기본이다", () => {
+    expect(enemyPlateFlipsUp(400, 14, 10, WORLD_H, SAFE_BOTTOM)).toBe(false);
+  });
+
+  it("경계에서 한 픽셀 차이로 갈린다", () => {
+    // 676 이 예약 바닥(720-44)이다. 명패 아랫변이 그 선을 넘는 순간부터 뒤집는다.
+    expect(enemyPlateFlipsUp(676 - 24, 14, 10, WORLD_H, SAFE_BOTTOM)).toBe(false);
+    expect(enemyPlateFlipsUp(676 - 23, 14, 10, WORLD_H, SAFE_BOTTOM)).toBe(true);
+  });
+
+  it("우두머리는 명패가 커서 더 일찍 뒤집는다", () => {
+    // 650 + 14 + 10 = 674 (띠 위) · 650 + 14 + 15 = 679 (띠를 밟는다). 예약 바닥은 676.
+    const normalFlips = enemyPlateFlipsUp(650, 14, 10, WORLD_H, SAFE_BOTTOM);
+    const bossFlips = enemyPlateFlipsUp(650, 14, 15, WORLD_H, SAFE_BOTTOM);
+    expect(normalFlips).toBe(false);
+    expect(bossFlips).toBe(true);
+  });
+
+  it("역보정이 가독 문턱을 대신한다 — 글자는 배율과 무관하게 같은 크기다", () => {
+    /*
+     * 처음에는 「화면 10px 밑이면 안 그린다」는 문턱을 뒀는데, 같은 손질에서 글자를
+     * 역보정해 12px(우두머리 18px)로 고정했으므로 그 문턱은 **영영 안 걸린다.**
+     * 못 걸리는 가드는 「그 갈래가 살아 있다」는 거짓말이라 걷어냈다. 이 시험은 그
+     * 결정을 적어 둔다 — 다시 배율을 태우면 문턱이 필요해진다.
+     */
+    const atZoom = (fontPx: number, zoom: number): number => fontPx / zoom * zoom;
+    for (const zoom of [0.72, 1, 2, 5.2]) expect(atZoom(12, zoom)).toBe(12);
   });
 });
