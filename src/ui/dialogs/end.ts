@@ -1,13 +1,18 @@
 /*
  * 판 종료 화면.
  */
-import { MAX_ENEMIES } from "../../core/content";
+import { MAX_ENEMIES, RUN_TRACE_CHIP_LIMIT, runTraceNotice } from "../../core/content";
+import { learningInfoForNotation } from "../../core/learning";
 import { BOSS_TIMEOUT_LABEL, DEFEAT_LABEL, OVERRUN_LABEL } from "../glossary";
 import { ctx, endOverlay, must } from "../app-context";
 import { formatTime, gameModeLabel } from "../format";
 import { setFocusFrame } from "../hud";
 import { clearSavedRun } from "../run-save-slot";
+import { escapeHtml } from "../escape";
+import { cancelWaveReading } from "../events";
+import { runTrace, runTraceTail } from "../run-trace";
 import { hideSummonReveal } from "../summon-reveal";
+import { talismanSealCount } from "../panels/talisman";
 import { totalElementUpgradeLevels, totalGlobalUpgradeLevels } from "./element-upgrade";
 
 export function showEndScreen(phase: "victory" | "defeat"): void {
@@ -71,9 +76,59 @@ export function showEndScreen(phase: "victory" | "defeat"): void {
     <div><span>능력 강화</span><b>${totalGlobalUpgradeLevels() + totalElementUpgradeLevels()}단계</b></div>
     <div><span>발견 한자</span><b>${state.discoveredChars.length}</b></div>
     <div><span>경과 시간</span><b>${formatTime(state.elapsed)}</b></div>
+    <div><span>완성한 부적</span><b>${talismanSealCount()}장</b></div>
   `;
+  renderRunTrace();
+  // 기다리던 웨이브 읽기를 거둔다 — 끝난 판의 글자를 이 화면 위에서 읽으면 안 된다(v042).
+  cancelWaveReading();
   endOverlay.classList.add("modal-layer--visible");
   saveBestWave(state.wave);
+}
+
+/**
+ * 이 판이 만난 글자를 띠 한 장으로 (v042).
+ *
+ * 실측: 한 판이 웨이브마다 야생 글자를 데려와 판당 **99.2자**(서로 다른 **93.0자**)를
+ * 화면 한가운데서 만나는데, **종료 화면에는 그 글자가 0칸**이었다. 열한 칸이 전부
+ * 숫자였고 승리 런에서는 그중 다섯이 매번 바이트까지 같은 글자다(처치한 적은 웨이브
+ * 편성이 결정적이라 언제나 2795). 문제는 「숫자가 모자라다」가 아니라 「숫자만 있다」다.
+ *
+ * 자리는 새로 안 짠다 — 격자 아래로 208.6px 이 남아 있어(실측) 전폭 띠 한 장이 든다.
+ * 칩 수는 코어가 정하고(RUN_TRACE_CHIP_LIMIT) 문장도 코어가 만든다.
+ *
+ * **누를 것을 안 만든다.** 수련장에서도 이 화면이 서므로(game-loop 가 같은 함수를
+ * 부른다) 도감으로 들어가는 단추를 세우면 각본이 클릭을 묶어 둔 판에 못 누르는 권유가
+ * 선다 — v042 첫 바퀴가 준비도 칩에서 이미 되돌린 반박이다. 읽는 것만 더한다.
+ */
+function renderRunTrace(): void {
+  const band = must<HTMLElement>("#end-trace");
+  const trace = runTrace();
+  const shown = runTraceTail(RUN_TRACE_CHIP_LIMIT);
+  band.hidden = trace.distinct === 0;
+  if (trace.distinct === 0) return;
+  const notation = ctx.engine.state.notation;
+  must<HTMLElement>("#end-trace-label").textContent = runTraceNotice(trace.distinct, shown.length);
+  /*
+   * 훈음을 **보여 준다** — 곁말에만 두지 않는다 (v042, 반박이 잡았다).
+   *
+   * 처음에는 글자만 세우고 훈음을 `title` 로 달았다. 그러면 이 화면이 **가르치던
+   * 순간보다 정보가 적어진다** — 웨이브 배너는 「恥 부끄럼 치」라고 말했는데 회상
+   * 화면은 「恥」만 보여 주는 셈이다. 짚어야 나오는 것은 저절로 닿는 통로가 아니다.
+   *
+   * 자리는 잰다: 가장 긴 훈음이 10px 로 58px(「가기 힘들 가」)이고 카드 안쪽이 502px 이라
+   * 한 줄에 일곱이 든다. 열둘이면 두 줄로 접히고, 접히는 것이 이 자리에서는 정상이다.
+   *
+   * `<i>` 로 감싼 까닭은 캐스케이드다 — 한지 테마가
+   * `.end-card :is(b, strong, span, small, p) { color: … !important }` 로 먹색을 못 박아
+   * 두어, 그 목록에 든 태그로는 훈음을 한 톤 낮출 길이 없다. `<i>` 는 그 목록 밖이라
+   * `!important` 를 새로 들이지 않고도 제 색을 갖는다.
+   */
+  must<HTMLElement>("#end-trace-chars").innerHTML = shown
+    .map((char) => {
+      const reading = learningInfoForNotation(notation, char).short;
+      return `<span class="end-trace-chip"><b>${escapeHtml(char)}</b><i>${escapeHtml(reading)}</i></span>`;
+    })
+    .join("");
 }
 
 function bestWaveKey(): string {

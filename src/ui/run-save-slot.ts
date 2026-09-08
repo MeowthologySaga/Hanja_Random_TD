@@ -16,6 +16,7 @@ import {
 } from "../core/run-save";
 import { captureTalismanLedger, restoreTalismanLedger } from "./panels/talisman";
 import { type Wuxing } from "../core/types";
+import { runTraceEntries, seedRunTrace } from "./run-trace";
 import { ctx } from "./app-context";
 import { REGION_MENU_INFO } from "./dialogs/s13";
 import { formatTime, gameModeLabel } from "./format";
@@ -64,6 +65,9 @@ export function autoSaveRun(): boolean {
     talismanFreeSummonTokens: ctx.talismanFreeSummonTokens,
     talismanCharges: ledger.charges,
     talismanChargeWave: ledger.chargeWave,
+    talismanSealCount: ledger.sealCount,
+    // 이 판에서 만난 글자도 함께 남긴다(v042) — 종료 화면의 자취가 판 전체를 세야 한다.
+    waveChars: runTraceEntries().map((entry) => ({ ...entry })),
     // 손에 쥔 강림부도 함께 남긴다(v041) — 이어하기가 폭탄을 빼앗으면 안 된다.
     talismanBurstCharges: ctx.talismanBurstCharges.map((charge) => ({ ...charge }))
   });
@@ -88,8 +92,17 @@ export function applySavedUiState(save: RunSave): void {
   ctx.talismanFreeSummonTokens = Math.max(0, Math.floor(save.ui.talismanFreeSummonTokens));
   // 부적 장부가 없는 옛 저장본이면 손대지 않는다 — 그 판은 웨이브 기준으로 다시 센다.
   if (save.ui.talismanCharges !== undefined && save.ui.talismanChargeWave !== undefined) {
-    restoreTalismanLedger({ charges: save.ui.talismanCharges, chargeWave: save.ui.talismanChargeWave });
+    restoreTalismanLedger({
+      charges: save.ui.talismanCharges,
+      chargeWave: save.ui.talismanChargeWave,
+      sealCount: save.ui.talismanSealCount
+    });
   }
+  /*
+   * 만난 글자를 되살린다 (v042). 없으면 빈손이고, 그건 옛 저장본이 원래 그렇다.
+   * `seedRunTrace` 가 먼저 비우므로 이어하기 가지에 따로 지우는 배선을 안 둔다.
+   */
+  seedRunTrace(save.ui.waveChars ?? []);
   ctx.talismanBurstCharges = (save.ui.talismanBurstCharges ?? []).map((charge) => ({ wuxing: charge.wuxing as Wuxing, char: charge.char }));
 }
 

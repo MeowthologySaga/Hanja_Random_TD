@@ -418,16 +418,25 @@ function talismanCharges(): number {
  * 장부는 엔진이 바뀌면 스스로 처음부터 세는데(재도전을 위한 규칙), 이어하기도
  * 새 엔진을 세우므로 그 규칙에 걸려 부적이 초기화됐다(사용자 제보).
  */
-export function captureTalismanLedger(): { charges: number; chargeWave: number } {
+export function captureTalismanLedger(): { charges: number; chargeWave: number; sealCount: number } {
   talismanCharges();
-  return { charges, chargeWave };
+  return { charges, chargeWave, sealCount };
 }
 
 /** 저장본에서 장부를 되살린다. 되살린 판의 엔진을 기준으로 다시 센다. */
-export function restoreTalismanLedger(ledger: { charges: number; chargeWave: number }): void {
+export function restoreTalismanLedger(ledger: { charges: number; chargeWave: number; sealCount?: number }): void {
   chargeEngine = ctx.engine;
   charges = Math.max(0, Math.min(CHARGE_CAP, Math.floor(ledger.charges)));
   chargeWave = Math.max(1, Math.floor(ledger.chargeWave));
+  /*
+   * 완성한 장수도 이어진다 (v042, 반박이 잡았다).
+   *
+   * 여태 이 값을 읽는 곳이 수련장뿐이라 안 이어도 아무도 몰랐는데, 종료 화면이
+   * 열두째 칸으로 이 값을 말하게 되면서 **같은 카드 안에서 두 칸이 서로 다른 판을
+   * 세는** 꼴이 됐다 — 「도달 웨이브」는 이어하기 이전을 포함하고 「완성한 부적」은 0에서
+   * 다시 셌다. 옛 저장본에는 이 칸이 없으므로 없으면 0으로 이어간다.
+   */
+  sealCount = Math.max(0, Math.floor(ledger.sealCount ?? 0));
   waveCredit = 0;
   recentRewards = emptyTally();
   outOfCharges = charges <= 0;

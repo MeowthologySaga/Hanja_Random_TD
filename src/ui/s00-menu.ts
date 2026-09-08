@@ -4,6 +4,9 @@
 import { GameEngine } from "../core/game";
 import { createRunSeed } from "../core/rng";
 import { restoreRun, type RunSave } from "../core/run-save";
+import { resumeNotice } from "../core/content";
+import { cancelWaveReading } from "./events";
+import { resetRunTrace } from "./run-trace";
 import { type AutomationMode, type GameMode, type RegionCode } from "../core/types";
 import { battleAssetProgress, isBattleAssetsReady, whenBattleAssetsReady } from "./asset-loader";
 import { buildSynthesisDepths, buildUncombinableStageOneChars } from "./codex-synthesis";
@@ -214,11 +217,26 @@ export function startRun(useNewSeed = false, options: StartRunOptions = {}): voi
   } else {
     ctx.engine.begin();
     ctx.previousPhase = "prep";
+    // 만난 글자 기록도 판에 매인다 — 새 판은 빈손으로 연다(v042).
+    resetRunTrace();
     // 조기 출전 맥동은 판마다 새로 돈다(v041) — 예전엔 브라우저에 영구 누적이었다.
     resetEarlyStartRunState();
   }
-  ctx.manualPause = false;
+  /*
+   * **교전 저장으로 들어온 판은 세워 놓고 선다** (v042).
+   *
+   * 실측: 되살린 판에서 첫 적이 서기까지 준비 저장은 661프레임(11.02초)인데 교전
+   * 저장은 **1프레임(0.017초)**이다. 배속 3× 에서도 1프레임이다. 유예가 프레임 하나도
+   * 없으니, 목패를 누른 손이 그대로 전장에 떨어진다.
+   *
+   * 자리비움 정지(`ctx.awayPause`)를 재사용하면 안 된다 — 그쪽의 1초 복귀 타이머가
+   * 다음 focus 에 저 혼자 풀어 버린다. v042 가 손정지와 자리비움 정지를 일부러 두 통에
+   * 나눠 둔 바로 그 이유다. 손정지로 세우면 P 키와 정지 칩이 이미 푸는 길이다.
+   */
+  ctx.manualPause = options.resume === true && ctx.engine.state.phase === "combat";
   ctx.mapCameraGestures = 0;
+  // 기다리던 웨이브 읽기를 거둔다 — 판 경계를 넘어 살면 끝난 판의 글자를 읽는다(v042).
+  cancelWaveReading();
   titleOverlay.classList.remove("modal-layer--visible");
   endOverlay.classList.remove("modal-layer--visible");
   sound.unlock();
@@ -270,7 +288,8 @@ export function startRun(useNewSeed = false, options: StartRunOptions = {}): voi
   ctx.towerDragStart = null;
   ctx.towerDragMoved = false;
   showToast(options.resume
-    ? `${ctx.engine.state.wave}웨이브 준비 시간부터 이어서 봉인합니다.`
+    // 어디로 내려놓는지는 코어가 말한다 — 열에 일곱은 준비 시간이 아니다(실측).
+    ? resumeNotice(ctx.engine.state.wave, ctx.engine.state.phase, ctx.engine.state.enemies.length)
     : `${ctx.engine.catalog.title} · ${gameModeLabel(ctx.engine.state.mode)}을 시작합니다.`);
   syncPanel();
 }

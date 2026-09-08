@@ -54,6 +54,19 @@ export interface RunSaveUiState {
   talismanChargeWave?: number;
   /** 손에 쥔 강림부(v041). 없으면 옛 저장본이라 빈 손으로 읽는다. */
   talismanBurstCharges?: ReadonlyArray<{ wuxing: string; char: string }>;
+  /** 이 판에서 완성한 부적 장수(v042). 없으면 0에서 이어간다. */
+  talismanSealCount?: number;
+  /**
+   * 이 판에서 만난 웨이브 글자와 처음 만난 웨이브 (v042).
+   *
+   * 종료 화면의 자취 띠가 읽는다. **판 전체를 세야 하는 값**이라 이어하기가 이걸 안
+   * 나르면 「이번 판에서 만난 글자」가 「이어한 뒤 만난 글자」가 된다 — 같은 카드의
+   * 「도달 웨이브」와 서로 다른 판을 세게 된다.
+   *
+   * 코어 상태가 아니라 UI 층에 두는 까닭은 값이 화면에서만 쓰이기 때문이다. 선택 칸이라
+   * 옛 저장본은 그대로 파싱된다(부적 장부와 같은 갈래).
+   */
+  waveChars?: ReadonlyArray<{ char: string; wave: number }>;
 }
 
 export interface RunSave {
@@ -139,6 +152,14 @@ export function parseRunSave(raw: string | null): RunSave | null {
       if (typeof charge?.wuxing !== "string" || typeof charge?.char !== "string") return null;
     }
   }
+  // [v042] 나중에 더한 선택 칸들 — 있으면 모양만 본다. 없다고 판을 올리지 않는다.
+  if (ui.waveChars !== undefined) {
+    if (!Array.isArray(ui.waveChars)) return null;
+    for (const entry of ui.waveChars) {
+      if (typeof entry?.char !== "string" || typeof entry?.wave !== "number" || !Number.isFinite(entry.wave)) return null;
+    }
+  }
+  if (ui.talismanSealCount !== undefined && (typeof ui.talismanSealCount !== "number" || !Number.isFinite(ui.talismanSealCount))) return null;
   for (const key of ["talismanCharges", "talismanChargeWave"]) {
     const value = ui[key];
     if (value !== undefined && (typeof value !== "number" || !Number.isFinite(value))) return null;

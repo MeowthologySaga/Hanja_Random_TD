@@ -40,7 +40,68 @@ import {
 } from "./hud";
 import { showIdiomBrokenResult, showIdiomResult } from "./panels/idiom";
 import { collectSoul } from "./souls";
+import { noteWaveChar } from "./run-trace";
+import { waveSoundDurationMs } from "./audio";
+import { readingUtterance, speakReading } from "./tts";
 import { noteEnemyHit } from "./battle/enemy-health";
+
+/** 지금 기다리고 있는 웨이브 읽기 — 새 웨이브가 열리거나 판이 끝나면 거둔다. */
+let waveReadingTimer = 0;
+
+/**
+ * 기다리던 읽기를 거둔다 (v042, 반박이 잡았다).
+ *
+ * 취소 자리가 「다음 웨이브 이벤트」 하나뿐이면 타이머가 **판 경계를 넘어 산다** —
+ * 웨이브가 열리고 3초 안에 지거나 메뉴로 나가면, 끝난 판의 글자를 종료 화면 위에서
+ * 읽는다. 판을 여닫는 자리마다 거둔다.
+ */
+export function cancelWaveReading(): void {
+  if (waveReadingTimer === 0) return;
+  clearTimeout(waveReadingTimer);
+  waveReadingTimer = 0;
+}
+
+/**
+ * 이번 웨이브의 글자를 **소리로도** 준다 (v042).
+ *
+ * 읽기 소리가 붙어 있던 자리는 저장소를 통틀어 **한 곳**이었다(부적 완성). 그 한
+ * 자리는 부적 모드 ON + 부적 탭 열기 + 획 다 긋기 + [완성] 누르기까지 사람 손 대여섯
+ * 번이 드는 **조건부** 통로다. 저절로 닿는 통로가 하나도 없었다.
+ *
+ * 웨이브 글자를 고른 까닭은 빈도다 — 판당 **97.17회**(서로 다른 글자 90.83자), 중앙
+ * 간격 **22.8초**. `speakReading` 은 말하기 전에 `synthesis.cancel()` 을 부르므로
+ * 간격이 곧 소음과 도움을 가르는데, 이 자리는 300표본에서 3초 안에 겹치는 것이 0건이다.
+ *
+ * **소환 공개와 성어 발동에는 안 붙인다.** 소환 카드는 판당 311장에 카드 사이 중앙
+ * 간격 0.3초라 막당 마지막 한 장 빼고 전부 잘린다 — 「읽어 준다」가 아니라 「말을
+ * 자른다」가 된다. 성어는 판당 0.67회로 값이 안 나오는 데다, 이벤트의 읽기가 표기 축을
+ * 모르는 고정 한국어 독음이라 일본 음훈 판에서 한글을 일본어 목소리로 읽는다.
+ *
+ * 무엇을 읽을지는 이미 배너가 쓴 그 값을 그대로 쓴다 — 코어(learningInfoForNotation)가
+ * 만든 한 곳에서 나오므로 화면과 소리가 갈라지지 않는다.
+ */
+function speakWaveReading(char: string, reading: string, boss: boolean): void {
+  cancelWaveReading();
+  if (!ctx.readingVoice || !char || !reading) return;
+  const notation = ctx.engine.state.notation;
+  const utterance = readingUtterance(char, notation, reading);
+  if (!utterance) return;
+  waveReadingTimer = window.setTimeout(() => {
+    waveReadingTimer = 0;
+    /*
+     * 기다리는 사이에 판이 바뀔 수 있다 — 껐거나, 졌거나, 메뉴로 나갔거나.
+     * 말하기 직전에 다시 본다. 3.6초는 그런 일이 실제로 일어나는 길이다.
+     */
+    if (!ctx.readingVoice) return;
+    if (ctx.engine.state.phase !== "prep" && ctx.engine.state.phase !== "combat") return;
+    speakReading(utterance, {
+      // 중국어 목소리가 없는 기기에서는 적힌 대로(병음) 읽는 편이 침묵보다 낫다.
+      fallbackText: reading,
+      onStart: () => sound.duckForSpeech(true),
+      onEnd: () => sound.duckForSpeech(false)
+    });
+  }, waveSoundDurationMs(boss));
+}
 
 export function processEvent(event: GameEvent): void {
   sound.handle(event);
@@ -196,6 +257,9 @@ export function processEvent(event: GameEvent): void {
         : "웨이브 " + String(event.wave) + " · " + waveGlyph + "약점 " + event.weakness;
       dressWaveBanner(event.boss ? "boss" : "plain");
       showWaveBanner();
+      speakWaveReading(event.char, waveReading, event.boss);
+      // [v042] 판이 끝날 때 되짚을 수 있게 이 글자를 적어 둔다 — 여태 그냥 증발했다.
+      noteWaveChar(event.char, event.wave);
       break;
     case "waveCleared":
       /*

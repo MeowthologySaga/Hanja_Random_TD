@@ -93,7 +93,7 @@ export function setReadingVoice(enabled: boolean): void {
   primeVoices();
   const ready = speechAvailable();
   showToast(ready
-    ? "읽기 소리 ON · 부적을 완성하면 그 글자를 읽어 줍니다"
+    ? "읽기 소리 ON · 웨이브가 열릴 때와 부적을 완성했을 때 그 글자를 읽어 줍니다"
     : "이 브라우저는 읽기 소리를 지원하지 않습니다", !ready);
 }
 

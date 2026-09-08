@@ -822,6 +822,15 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
         <h2 id="end-heading">봉인전 종료</h2>
         <p id="end-message"></p>
         <div id="end-stats" class="end-stats"></div>
+        <!--
+          이 판이 만난 글자 (v042). 격자 아래로 208.6px 이 남아 있어(실측) 전폭 띠
+          한 장이 든다. 누를 것은 안 만든다 — 수련장에서도 이 화면이 서므로 도감으로
+          들어가는 단추를 세우면 각본이 클릭을 묶어 둔 판에 못 누르는 권유가 선다.
+        -->
+        <div id="end-trace" class="end-trace" hidden>
+          <small id="end-trace-label"></small>
+          <div id="end-trace-chars" class="end-trace-chars"></div>
+        </div>
         <div class="end-actions">
           <button id="new-seed-button" class="start-button" type="button">다시 도전</button>
           <button id="retry-button" class="secondary-button" type="button" hidden>같은 시드 재도전</button>
@@ -1087,7 +1096,7 @@ export function appShellHtml(initialDisplayMode: DisplayMode): string {
         기본은 **꺼짐**이다 — 소리를 내는 기능은 켜 달라고 해야 켠다.
       -->
       <button id="reading-voice-toggle" class="settings-toggle" type="button" role="switch" aria-checked="false" data-testid="reading-voice-toggle">
-        <span><b>학습 모드 · 읽기 소리내기</b><small>부적을 완성하면 그 글자의 <b>훈과 음</b>을 소리로 읽어 줍니다. 표기가 <b>중국 병음</b>이면 그 한자를 중국어 발음으로, <b>일본 음훈</b>이면 일본어 발음으로 읽습니다. 브라우저에 깔린 목소리를 쓰며, 그 언어의 목소리가 없으면 적힌 대로 읽습니다. 기본값은 꺼짐입니다.</small></span>
+        <span><b>학습 모드 · 읽기 소리내기</b><small>웨이브가 열릴 때와 부적을 완성했을 때 그 글자의 <b>훈과 음</b>을 소리로 읽어 줍니다. 표기가 <b>중국 병음</b>이면 그 한자를 중국어 발음으로, <b>일본 음훈</b>이면 일본어 발음으로 읽습니다. 브라우저에 깔린 목소리를 쓰며, 그 언어의 목소리가 없으면 적힌 대로 읽습니다. 기본값은 꺼짐입니다.</small></span>
         <i aria-hidden="true"><em>OFF</em></i>
       </button>
       <button id="replay-coach-button" class="settings-toggle settings-toggle--action" type="button">

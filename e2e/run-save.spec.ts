@@ -182,6 +182,67 @@ test("웨이브를 넘기면 저장되고, 새로고침 뒤 이어하기로 같�
   await page.screenshot({ path: `${SHOT_DIR}/battle-resumed-1280x720.png` });
 });
 
+/*
+ * [v042] 교전 저장으로 들어온 판은 **세워 놓고 선다.**
+ *
+ * 실측이 이 시험을 세웠다. 자동 저장 지점 1110개 가운데 53.7%가 교전 중이고(웨이브
+ * 시작 46.8% · 잔존 합류 6.8%), 사람 기준 시간 가중으로는 약 70%다. 그런데 되살린
+ * 판에서 첫 적이 서기까지 준비 저장은 661프레임(11.02초)인데 **교전 저장은 1프레임
+ * (0.017초)**이다. 배속 3× 에서도 1프레임이라 유예가 하나도 없다 — 목패를 누른 손이
+ * 그대로 전장에 떨어진다.
+ *
+ * 그리고 화면은 그 70%에게도 「준비 시간부터 이어서 봉인합니다」라고 말했다.
+ */
+test("교전 저장으로 이어하면 판이 서 있고, 화면이 교전이라고 말한다", async ({ page }) => {
+  await page.goto("/?seed=RUNSAVE-COMBAT&mode=casual");
+  await openFirstWave(page);
+
+  // 교전 한복판의 저장본을 만든다 — 첫 웨이브에 나선 순간이 이미 그 자리다.
+  await expect
+    .poll(async () => page.evaluate((key: string) => {
+      const raw = window.localStorage.getItem(key);
+      if (!raw) return "";
+      return (JSON.parse(raw) as { state: { phase: string } }).state.phase;
+    }, RUN_SAVE_KEY), { timeout: 20_000 })
+    .toBe("combat");
+
+  await page.reload();
+  const resume = page.getByTestId("resume-run");
+  await expect(resume).toBeVisible();
+  await resume.click();
+
+  await expect(page.locator(".game-shell")).toHaveAttribute("data-phase", "combat");
+
+  // 판이 서 있다 — 정지 칩이 서고, 시계가 안 흐른다.
+  await expect(page.locator("#pause-chip")).toBeVisible();
+  const first = await page.evaluate(() => {
+    const handle = (window as unknown as { __HANJA_CTX_QA__: unknown }).__HANJA_CTX_QA__;
+    const ctx = (typeof handle === "function" ? (handle as () => { engine: { state: { elapsed: number } } })() : handle) as { engine: { state: { elapsed: number } } };
+    return ctx.engine.state.elapsed;
+  });
+  await page.waitForTimeout(1_200);
+  const second = await page.evaluate(() => {
+    const handle = (window as unknown as { __HANJA_CTX_QA__: unknown }).__HANJA_CTX_QA__;
+    const ctx = (typeof handle === "function" ? (handle as () => { engine: { state: { elapsed: number } } })() : handle) as { engine: { state: { elapsed: number } } };
+    return ctx.engine.state.elapsed;
+  });
+  expect(second).toBe(first);
+
+  // 화면이 교전이라고 말한다 — 「준비 시간부터」는 열에 일곱이 거짓이었다.
+  await expect(page.locator("#toast")).toContainText(/교전/u);
+
+  // P 로 풀면 다시 흐른다 — 세운 것이 손정지라 이미 있는 길로 풀린다.
+  await page.keyboard.press("KeyP");
+  await expect(page.locator("#pause-chip")).toBeHidden();
+  await expect
+    .poll(async () => page.evaluate(() => {
+      const handle = (window as unknown as { __HANJA_CTX_QA__: unknown }).__HANJA_CTX_QA__;
+      const ctx = (typeof handle === "function" ? (handle as () => { engine: { state: { elapsed: number } } })() : handle) as { engine: { state: { elapsed: number } } };
+      return ctx.engine.state.elapsed;
+    }), { timeout: 5_000 })
+    .toBeGreaterThan(second);
+});
+
 test("새 판은 두고 온 판을 덮기 전에 한 번 묻는다", async ({ page }) => {
   await page.goto("/?seed=RUNSAVE-E2E-02&mode=casual");
   await openFirstWave(page);

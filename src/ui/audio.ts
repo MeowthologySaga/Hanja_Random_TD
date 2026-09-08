@@ -290,6 +290,27 @@ export function layerSfxForEvent(event: GameEvent): SfxId | null {
   return event.type === "summon" ? "ui-coin-string" : null;
 }
 
+/**
+ * 웨이브가 열릴 때 나는 소리가 끝나기까지 (v042).
+ *
+ * 처음에는 「반 초쯤이면 북 한 방이 지나간다」고 어림잡아 500ms 를 썼다. **재 보니
+ * 틀렸다** — 매니페스트의 실제 길이는 `wave-start` **2.414초**, `fx-boss-drum`
+ * **3.614초**다. 500ms 는 북이 끝나기는커녕 한가운데다. 덕킹은 배경음만 누르므로
+ * (`applyMixVolumes` 는 BGM 두 갈래만 만진다) 그 위에 목소리를 얹으면 그대로 묻힌다 —
+ * 「읽어 준다」고 해 놓고 안 들리게 하는 셈이다.
+ *
+ * 그래서 어림하지 않고 **자산에서 읽는다.** 소리를 갈아 끼우면 이 값이 따라 움직인다.
+ * 배너 간격은 실측 중앙 22.8초이고 300표본에서 3초 안에 겹치는 것이 0건이라, 3.6초를
+ * 기다려도 다음 배너를 못 침범한다.
+ */
+export function waveSoundDurationMs(boss: boolean): number {
+  const id = boss ? "fx-boss-drum" : "wave-start";
+  const asset = manifestAssets.find((entry) => entry.id === id);
+  const seconds = (asset as { durationSeconds?: number } | undefined)?.durationSeconds;
+  // 자산을 못 찾으면 어림값으로 떨어진다 — 침묵보다 늦게 말하는 편이 낫다.
+  return Math.round(((typeof seconds === "number" && Number.isFinite(seconds) ? seconds : 2.5) + 0.15) * 1_000);
+}
+
 /** Per-event playback rate, used where the pack gate asks for a graded pitch. */
 export function sfxRateForEvent(event: GameEvent): number | undefined {
   return event.type === "casualFuse" ? starAscendRate(event.toStar) : undefined;
